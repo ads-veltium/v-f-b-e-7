@@ -166,14 +166,16 @@ void setupOta(void)
 
 void setup() 
 {
+	initWifi();
+
 	Serial.begin(115200);
+
 	DRACO_GPIO_Init();
 	initLeds();
 
 	serverbleInit();
 	controlInit();
 
-	initWifi();
 }
 
 
