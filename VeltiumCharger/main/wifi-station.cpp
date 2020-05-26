@@ -8,7 +8,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#include "wifi.h"
+#include "wifi-station.h"
 #include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -25,14 +25,7 @@
 #include "FirebaseClient.h"
 
 
-/* The examples use WiFi configuration that you can set via 'make menuconfig'.
-
-   If you'd rather not, just change the below entries to strings with
-   the config you want - ie #define EXAMPLE_WIFI_SSID "mywifissid"
-*/
-#define EXAMPLE_ESP_WIFI_SSID      "EthErEAlm6"
-#define EXAMPLE_ESP_WIFI_PASS      "d5a5Lceaqr"
-#define EXAMPLE_ESP_MAXIMUM_RETRY  5
+#define EXAMPLE_ESP_MAXIMUM_RETRY 5
 
 /* FreeRTOS event group to signal when we are connected*/
 static EventGroupHandle_t s_wifi_event_group;
@@ -57,8 +50,9 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
         s_retry_num = 0;
         xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
         ESP_LOGI(TAG, "******** CONNECTED TO WIFI!!!! ********");
-
+        ESP_LOGI(TAG, "before calling initFirebaseClient");
         initFirebaseClient();
+        ESP_LOGI(TAG, "after calling initFirebaseClient");
         break;
     case SYSTEM_EVENT_STA_DISCONNECTED:
         {
@@ -77,7 +71,7 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
     return ESP_OK;
 }
 
-void wifi_init_sta()
+void wifi_init_sta(const char* wifi_ssid, const char* wifi_password)
 {
     s_wifi_event_group = xEventGroupCreate();
 
@@ -87,8 +81,8 @@ void wifi_init_sta()
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
     wifi_config_t wifi_config;
-    strcpy((char*)wifi_config.sta.ssid, EXAMPLE_ESP_WIFI_SSID);
-    strcpy((char*)wifi_config.sta.password, EXAMPLE_ESP_WIFI_PASS);
+    strcpy((char*)wifi_config.sta.ssid, wifi_ssid);
+    strcpy((char*)wifi_config.sta.password, wifi_password);
 
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA) );
     ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config) );
@@ -96,10 +90,10 @@ void wifi_init_sta()
 
     ESP_LOGI(TAG, "wifi_init_sta finished.");
     ESP_LOGI(TAG, "connect to ap SSID:%s password:%s",
-             EXAMPLE_ESP_WIFI_SSID, EXAMPLE_ESP_WIFI_PASS);
+             wifi_ssid, wifi_password);
 }
 
-void initWifi()
+void initWifi(const char* wifi_ssid, const char* wifi_password)
 {
     ESP_LOGI(TAG, "Initializing WIFI...");
 
@@ -113,5 +107,5 @@ void initWifi()
     
     ESP_LOGI(TAG, "ESP_WIFI_MODE_STA");
     ESP_LOGI(TAG, "example modified by David Crespo for Veltium Smart Chargers on May 2020");
-    wifi_init_sta();
+    wifi_init_sta(wifi_ssid, wifi_password);
 }

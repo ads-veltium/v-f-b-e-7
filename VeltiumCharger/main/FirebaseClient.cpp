@@ -9,9 +9,52 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #include "esp_log.h"
-//#include "FirebaseESP32.h"
 
-static const char* TAG = "FirebaseClient";
+
+#include "FirebaseESP32.h"
+#include <Arduino.h>
+
+
+static const char *TAG = "FirebaseClient";
+
+const char* veltiumbackend_firebase_project = "veltiumbackend.firebaseio.com";
+const char* veltiumbackend_database_secret = "Y8LoNguJJ0NJzCNdqpTIIuK7wcNGBPog8kTv5lQn";
+
+//Define FirebaseESP32 data object
+static FirebaseData firebaseData;
+
+static FirebaseJson json;
+
+
+void initFirebaseClient()
+{
+    Serial.println("INIT Firebase Client");
+    ESP_LOGI("FIREBASECLIENT", "initFirebaseClient");
+    ESP_LOGI(TAG, "initFirebaseClient");
+
+    Firebase.begin(
+        veltiumbackend_firebase_project,
+        veltiumbackend_database_secret
+    );
+
+
+    //Firebase.reconnectWiFi(true);
+
+    //Set database read timeout to 1 minute (max 15 minutes)
+    Firebase.setReadTimeout(firebaseData, 1000 * 60);
+    //tiny, small, medium, large and unlimited.
+    //Size and its write timeout e.g. tiny (1s), small (10s), medium (30s) and large (60s).
+    Firebase.setwriteSizeLimit(firebaseData, "tiny");
+
+    Firebase.setDouble(firebaseData, "/test/esp32test/doubletest_5", 3.141592);
+
+    Serial.println("Written DOUBLE value to /test/esp32test/doubletest_5");
+
+	Serial.println("FREE HEAP MEMORY [after firebase write] **************************");
+	Serial.println(ESP.getFreeHeap());
+
+
+}
 
 /*
 <!-- The core Firebase JS SDK is always required and must be listed first -->
@@ -35,33 +78,3 @@ static const char* TAG = "FirebaseClient";
   firebase.initializeApp(firebaseConfig);
 </script>*/
 
-const char* veltiumbackend_firebase_project = "veltiumbackend.firebaseio.com";
-const char* veltiumbackend_database_secret = "7MJaTqi9C56Qi7D2ncIWlBrSFmbx36bIq5W0Ry71";
-
-//Define FirebaseESP32 data object
-//static FirebaseData firebaseData;
-
-//static FirebaseJson json;
-
-
-
-void initFirebaseClient()
-{
-    ESP_LOGI(TAG, "initFirebaseClient");
-
-    // Firebase.begin(
-    //     veltiumbackend_firebase_project,
-    //     veltiumbackend_database_secret
-    // );
-
-
-    // Firebase.reconnectWiFi(true);
-
-    // //Set database read timeout to 1 minute (max 15 minutes)
-    // Firebase.setReadTimeout(firebaseData, 1000 * 60);
-    // //tiny, small, medium, large and unlimited.
-    // //Size and its write timeout e.g. tiny (1s), small (10s), medium (30s) and large (60s).
-    // Firebase.setwriteSizeLimit(firebaseData, "tiny");
-
-    // Firebase.setDouble(firebaseData, "/test/esp32test/doubletest", 3.141592);
-}

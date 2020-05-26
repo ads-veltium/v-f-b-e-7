@@ -162,45 +162,96 @@ void setupOta(void)
 	otaEnable=1;
 }
 
-#include "wifi.h"
-// #include <WiFi.h>
-// #define WIFI_SSID "EthErEAlm6"
-// #define WIFI_PASSWORD "d5a5Lceaqr"
+// IMPORTANTE:
+// solo UNA de estas DOS macros debe estar definida (o NINGUNA para desactivar WIFI)
+//#define USE_WIFI_ARDUINO
+//#define USE_WIFI_ESP
+
+// macro para activar o desactivar el BLE de Draco
+#define USE_DRACO_BLE
+
+// IMPORTANTE: el ssid de la wifi va aquí
+#define WIFI_SSID "EthErEAlm6"
+#define WIFI_PASSWORD "d5a5Lceaqr"
+
+
+#ifdef USE_WIFI_ARDUINO
+#include <WiFi.h>
+#include "FirebaseClient.h"
+#endif
+
+#ifdef USE_WIFI_ESP
+#include "wifi-station.h"
+#endif
 
 #include "dev_auth.h"
+
 
 
 void setup() 
 {
 	Serial.begin(115200);
 
+	Serial.println("FREE HEAP MEMORY [initial] **************************");
+	Serial.println(ESP.getFreeHeap());
+
 	// en mi configuracion con placa de desarrollo ESP32 (sin micro principal)
 	// no se llama a dev_auth_init nunca, asi que dev_auth_challenge falla.
 	// como estamos utilizando un contexto Blowfish estatico,
 	// podemos llamar a dev_auth_init todas las veces que queramos.
 	// ahora lo llamo con un numero de serie todo a unos.
+#ifdef USE_DRACO_BLE
 	unsigned char dummySerial[10] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
 	dev_auth_init(dummySerial);
+#endif
 
-	initWifi();
+#ifdef USE_WIFI_ESP
+	initWifi(WIFI_SSID, WIFI_PASSWORD);
+#endif
 
-	// WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-	// Serial.print("Connecting to Wi-Fi");
-	// while (WiFi.status() != WL_CONNECTED)
-	// {
-	// 	Serial.print(".");
-	// 	delay(300);
-	// }
-	// Serial.println();
-	// Serial.print("Connected with IP: ");
-	// Serial.println(WiFi.localIP());
-	// Serial.println();
+#ifdef USE_WIFI_ARDUINO
+	WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+	Serial.print("Connecting to Wi-Fi");
+	while (WiFi.status() != WL_CONNECTED)
+	{
+		Serial.print(".");
+		delay(300);
+	}
+	Serial.println();
+	Serial.print("Connected with IP: ");
+	Serial.println(WiFi.localIP());
+	Serial.println();
+	initFirebaseClient();
+#endif
 
+	Serial.println("FREE HEAP MEMORY [after wifi init] **************************");
+	Serial.println(ESP.getFreeHeap());
+
+#ifdef USE_DRACO_BLE
 	DRACO_GPIO_Init();
+	
+	Serial.println("FREE HEAP MEMORY [after DRACO_GPIO_Init] **************************");
+	Serial.println(ESP.getFreeHeap());
+
 	initLeds();
 
+	Serial.println("FREE HEAP MEMORY [after initLeds] **************************");
+	Serial.println(ESP.getFreeHeap());
+
 	serverbleInit();
+
+	Serial.println("FREE HEAP MEMORY [after serverbleInit] **************************");
+	Serial.println(ESP.getFreeHeap());
+
 	controlInit();
+
+	Serial.println("FREE HEAP MEMORY [after controlInit write] **************************");
+	Serial.println(ESP.getFreeHeap());
+#endif
+
+	Serial.println("FREE HEAP MEMORY [after draco init] **************************");
+	Serial.println(ESP.getFreeHeap());
+
 
 }
 

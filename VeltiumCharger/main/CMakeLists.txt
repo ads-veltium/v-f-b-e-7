@@ -10,4 +10,6 @@ idf_component_register(SRCS
 "FirebaseJson.cpp"
 "FirebaseESP32.cpp"
 "FirebaseESP32HTTPClient.cpp"
+"FirebaseClient.cpp"
+"wifi-station.cpp"
 INCLUDE_DIRS ".")

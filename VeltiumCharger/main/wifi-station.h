@@ -11,6 +11,6 @@
 #ifndef VSC_wifi_h
 #define VSC_wifi_h
 
-void initWifi();
+void initWifi(const char* wifi_ssid, const char* wifi_password);
 
 #endif

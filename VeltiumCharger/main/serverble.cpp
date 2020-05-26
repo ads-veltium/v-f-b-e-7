@@ -655,6 +655,7 @@ void changeAdvName( uint8_t * name )
 	return;
 }
 
+#include <Arduino.h>
 
 void serverbleInit() {
 
@@ -677,6 +678,9 @@ void serverbleInit() {
 		}
 		else if ( blefields[i].type == TYPE_CHARACTERISTIC )
 		{
+			Serial.println("FREE HEAP MEMORY [before characteristic] **************************");
+			Serial.println(ESP.getFreeHeap());
+
 			pbleCharacteristics[indexCharacteristic] = pbleServices[blefields[i].indexServ]->createCharacteristic( blefields[i].uuid, blefields[i].properties );
 			if ( blefields[i].descriptor2902 == 1 )
 			{
