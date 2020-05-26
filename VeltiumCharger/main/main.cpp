@@ -162,6 +162,8 @@ void setupOta(void)
 	otaEnable=1;
 }
 
+#include "wifi.h"
+
 void setup() 
 {
 	Serial.begin(115200);
@@ -170,6 +172,8 @@ void setup()
 
 	serverbleInit();
 	controlInit();
+
+	initWifi();
 }
 
 
