@@ -163,12 +163,38 @@ void setupOta(void)
 }
 
 #include "wifi.h"
+// #include <WiFi.h>
+// #define WIFI_SSID "EthErEAlm6"
+// #define WIFI_PASSWORD "d5a5Lceaqr"
+
+#include "dev_auth.h"
+
 
 void setup() 
 {
 	Serial.begin(115200);
 
+	// en mi configuracion con placa de desarrollo ESP32 (sin micro principal)
+	// no se llama a dev_auth_init nunca, asi que dev_auth_challenge falla.
+	// como estamos utilizando un contexto Blowfish estatico,
+	// podemos llamar a dev_auth_init todas las veces que queramos.
+	// ahora lo llamo con un numero de serie todo a unos.
+	unsigned char dummySerial[10] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
+	dev_auth_init(dummySerial);
+
 	initWifi();
+
+	// WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+	// Serial.print("Connecting to Wi-Fi");
+	// while (WiFi.status() != WL_CONNECTED)
+	// {
+	// 	Serial.print(".");
+	// 	delay(300);
+	// }
+	// Serial.println();
+	// Serial.print("Connected with IP: ");
+	// Serial.println(WiFi.localIP());
+	// Serial.println();
 
 	DRACO_GPIO_Init();
 	initLeds();

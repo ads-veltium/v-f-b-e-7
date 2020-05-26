@@ -1,10 +1,10 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 //
-// wifi.cpp
+//  wifi.cpp
+//  Veltium Smart Charger on ESP32
 //
-// Veltium Smart Charger on ESP32
-//
-// Created by David Crespo on 2020/05/26
+//  Created by David Crespo on 26/05/2020.
+//  Copyright © 2020 Virtual Code SL. All rights reserved.
 //
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -21,6 +21,8 @@
 
 #include "lwip/err.h"
 #include "lwip/sys.h"
+
+#include "FirebaseClient.h"
 
 
 /* The examples use WiFi configuration that you can set via 'make menuconfig'.
@@ -55,6 +57,8 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
         s_retry_num = 0;
         xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
         ESP_LOGI(TAG, "******** CONNECTED TO WIFI!!!! ********");
+
+        initFirebaseClient();
         break;
     case SYSTEM_EVENT_STA_DISCONNECTED:
         {
