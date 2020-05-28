@@ -22,7 +22,7 @@
 // #include <Update.h>
 // #include <HardwareSerial.h>
 
-#include "FirebaseAuth.h"
+#include "FirebaseClient.h"
 
 WebServer server(80);
 
@@ -224,7 +224,7 @@ void connectToWiFi()
 }
 
 
-FirebaseAuth auth;
+FirebaseClient fireclient;
 
 void setup() 
 {
@@ -243,20 +243,9 @@ void setup()
 
 	connectToWiFi();
 
+	fireclient.initialize("grantasca@yahoo.es", "pepepe");
 
-	bool authResult = auth.performAuth("grantasca@yahoo.es", "pepepe");
-	if (authResult)
-	{
-		Serial.println("Auth succeeded.");
-		Serial.println("LocalId:");
-		Serial.println(auth.getLocalId());
-		Serial.println("IdToken:");
-		Serial.println(auth.getIdToken());
-	}
-	else
-	{
-		Serial.println("Auth FAILED.");
-	}
+	fireclient.testVeltiumClient();
 	
 
 //	setupWebServer();
