@@ -8,6 +8,11 @@
 //
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+#include "FirebaseClient.h"
+#include "FirebaseESP32.h"
+#include "FirebaseJson.h"
+#include <HTTPClient.h>
+
 static const char root_ca[] = \
 "-----BEGIN CERTIFICATE-----\n"\
 "MIIDujCCAqKgAwIBAgILBAAAAAABD4Ym5g0wDQYJKoZIhvcNAQEFBQAwTDEgMB4G\n"\
@@ -40,11 +45,6 @@ static const char veltiumFirebaseProject[] = \
 
 static const char veltiumFirebaseApiKey[] = \
 "AIzaSyBaJA88_Y3ViCzNF_J08f4LBMAM771aZLs";
-
-#include "FirebaseClient.h"
-#include "FirebaseESP32.h"
-#include "FirebaseJson.h"
-#include <HTTPClient.h>
 
 static FirebaseData firebaseData;
 
@@ -145,11 +145,33 @@ bool FirebaseClient::performAuth(const char* email, const char* password)
     return false;
 }
 
+String FirebaseClient::getUserDeviceListJSONString()
+{
+    Serial.println("FirebaseClient::getUserDeviceListJSONString()");
+    String path = "/test/users/";
+    path += _localId;
+    path += "/devices";
+    Serial.println(path);
+    bool ok = Firebase.get(firebaseData, path);
+    if (ok) {
+        Serial.println("...OK");
+        return firebaseData.payload();
+    }
+    else {
+        Serial.println("...FAIL");
+        return "{}";
+    }
+}
+
 void FirebaseClient::testVeltiumClient()
 {
 	String str;
 	FirebaseJson json;
     bool result;
+
+    result = Firebase.setDouble(firebaseData, "/test/esp32test/doubletest_6", 3.141592);
+	if (result) Serial.print("[OK]"); else Serial.print("[FAIL]");
+    Serial.println("Written DOUBLE value to /test/esp32test/doubletest_6");
 
 	result = Firebase.getString(firebaseData, "/test/users/WW1zp2ptgIOK2zxFUWUzjcDTFFq1/data/email", str);
 	if (result) Serial.print("[OK]"); else Serial.print("[FAIL]");
@@ -160,11 +182,13 @@ void FirebaseClient::testVeltiumClient()
 	if (result) Serial.print("[OK]"); else Serial.print("[FAIL]");
     Serial.println("Read JSON value from /test/users/WW1zp2ptgIOK2zxFUWUzjcDTFFq1/data");
 	json.toString(str);
-	Serial.println(str);
+	Serial.println(str+"<<<<");
 	Serial.print("DataType: ");
 	Serial.println(firebaseData.dataType());
 	Serial.print("payload: ");
 	Serial.println(firebaseData.payload()+"||||");
+	json.toString(str);
+	Serial.println(str+">>>>");
 
 	result = Firebase.get(firebaseData, "/test/users/WW1zp2ptgIOK2zxFUWUzjcDTFFq1/devices");
 	if (result) Serial.print("[OK]"); else Serial.print("[FAIL]");

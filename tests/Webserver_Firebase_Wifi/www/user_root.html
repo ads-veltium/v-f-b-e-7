@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <p>user email: PLACEHOLDER_EMAIL</p>
+    <p>user id: PLACEHOLDER_ID</p>
+
+    <p>Charger Device List for current user:</p>
+    <div id="deviceList"></div>
+    <script>
+var req = new XMLHttpRequest();
+var devlist = document.getElementById("deviceList");
+
+function deviceListFromJSON(txt)
+{
+    var obj = JSON.parse(txt);
+    var res = '';
+    for (key in obj) {
+        res += '<p><a href="./device:' + key + '">' + key + '</a></p>'
+    }
+    console.log(obj);
+    return res;
+}
+
+//var testtext = '{"000000000BCD17010003CDCDE074":{"enabled":true,"name":"mi placa","timestamp":1519662804132},"000000000BCD1701000453A975D7":{"enabled":true,"name":"vitoria","timestamp":1521460195442},"000000000BCD1701000524AE4541":{"enabled":true,"name":"veltium real","timestamp":1519656237801},"000000000BCD170100085A1F39FC":{"enabled":true,"name":"mipr8","timestamp":1521113539288},"000000000BCD170100113E74913C":{"enabled":true,"name":"lek t1 sn 11","timestamp":1523262593928},"000000000BCD1701001539195525":{"enabled":true,"name":"placa 15","timestamp":1523263982848},"000000000BCD17040003CB06229F":{"enabled":false,"name":"Veltium","timestamp":1545063658707},"000000000BCD180500017CA939D2":{"enabled":true,"name":"Veltium 18050001","timestamp":1545064288723},"123451234512345123453B48CE16":{"enabled":true,"name":"chaleterequerele","timestamp":1428135244596},"24680246802468024680BB055263":{"enabled":true,"name":"history test","timestamp":1539864544817}}';
+//devlist.innerHTML = deviceListFromJSON(testtext);
+
+req.addEventListener('load', function(ev){
+    // console.log(ev);
+    // console.log(this);
+    if (200 == this.status)
+    {
+        //let parseOk = parseData(this.responseText);
+        devlist.innerHTML = deviceListFromJSON(this.responseText);
+    }
+    else
+    {
+        devlist.innerHTML = "<p>No devices for this user</p>"
+    }
+});
+req.open('GET', './devices.json');
+req.send();
+    </script>
+</body>
+</html>

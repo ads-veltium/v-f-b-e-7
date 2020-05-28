@@ -24,6 +24,9 @@ public:
     String& getIdToken() { return _idToken; }
     int getExpirationTime();  // TBD
 
+    String getUserDeviceListJSONString();
+
+
     void testVeltiumClient();
 
 private:
