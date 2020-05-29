@@ -81,6 +81,10 @@ bool FirebaseClient::initialize(const char* email, const char* password)
     //Size and its write timeout e.g. tiny (1s), small (10s), medium (30s) and large (60s).
     Firebase.setwriteSizeLimit(firebaseData, "tiny");
 
+    testListenAtBranch();
+
+    testSetJSONRecord();
+
     return true;
 }
 
@@ -144,6 +148,84 @@ bool FirebaseClient::performAuth(const char* email, const char* password)
 
     return false;
 }
+
+static FirebaseData fbDataForStream;
+
+void printResult(StreamData &data);
+
+static void streamCallback(StreamData data)
+{
+    Serial.println("Stream Data1 available...");
+    Serial.println("STREAM PATH: " + data.streamPath());
+    Serial.println("EVENT PATH: " + data.dataPath());
+    Serial.println("DATA TYPE: " + data.dataType());
+    Serial.println("EVENT TYPE: " + data.eventType());
+    Serial.print("VALUE: ");
+    printResult(data);
+    Serial.println();
+}
+
+static void streamTimeoutCallback(bool timeout)
+{
+    if (timeout)
+    {
+        Serial.println();
+        Serial.println("Stream timeout, resume streaming...");
+        Serial.println();
+    }
+}
+
+void FirebaseClient::testListenAtBranch()
+{
+//    String path = "/test/users/4i3lMHjiLeVHg2jcxhDDJnDxw7j1/devices/123451234512345123453B48CE16";
+    String path = "/test/users/WW1zp2ptgIOK2zxFUWUzjcDTFFq1/devices/123451234512345123453B48CE16";
+
+    Serial.print("testListenAtBranch: path = ");
+    Serial.println(path);
+
+    if (!Firebase.beginStream(fbDataForStream, path))
+    {
+        Serial.println("------------------------------------");
+        Serial.println("Can't begin stream connection...");
+        Serial.println("REASON: " + fbDataForStream.errorReason());
+        Serial.println("------------------------------------");
+        Serial.println();
+    }
+
+    Firebase.setStreamCallback(fbDataForStream, streamCallback, streamTimeoutCallback);
+
+}
+
+void FirebaseClient::testSetJSONRecord()
+{
+    String jsonRecString = "{"\
+        "\"act\" : \"AY0DcARaBL4E/AUjBS0FNAVBBUIFNQU4BUgE0gNXAkIBiwEQALsAgABYADsAKAAbABIADAAIAAUAAwAB\","\
+        "\"con\" : 1451856279,"\
+        "\"dis\" : 1451902265,"\
+        "\"rea\" : \"ACcAWABvAHkAfwCDAIQAhQCGAIYAhQCFAIcAewBVADkAJwAbABIADAAIAAUABAACAAEAAQ==\","\
+        "\"sta\" : 1451857925,"\
+        "\"usr\" : 0"\
+        "}";
+
+    String path = "/test/devices/123451234512345123453B48CE16/records/1450000000";
+
+    FirebaseJson jsonRec;
+    jsonRec.setJsonData(jsonRecString);
+
+    Serial.print("Trying to write JSON data at branch path ");
+    Serial.println(path);
+
+    bool ok = Firebase.setJSON(firebaseData, path, jsonRec);
+    if (ok) {
+        Serial.println("...OK");
+        Serial.println(firebaseData.dataType());
+        Serial.println(firebaseData.payload());
+    }
+    else {
+        Serial.println("...FAILED");
+    }
+}
+
 
 String FirebaseClient::getUserDeviceListJSONString()
 {
@@ -214,3 +296,111 @@ void FirebaseClient::testVeltiumClient()
 	Serial.println("FREE HEAP MEMORY [after firebase write] **************************");
 	Serial.println(ESP.getFreeHeap());
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/////////////////////////////////////////////
+/////////////////////////////////////////////
+/////////////////////////////////////////////
+/////////////////////////////////////////////
+/////////////////////////////////////////////
+/////////////////////////////////////////////
+/////////////////////////////////////////////
+/////////////////////////////////////////////
+
+
+void printResult(StreamData &data)
+{
+
+  if (data.dataType() == "int")
+    Serial.println(data.intData());
+  else if (data.dataType() == "float")
+    Serial.println(data.floatData(), 5);
+  else if (data.dataType() == "double")
+    printf("%.9lf\n", data.doubleData());
+  else if (data.dataType() == "boolean")
+    Serial.println(data.boolData() == 1 ? "true" : "false");
+  else if (data.dataType() == "string")
+    Serial.println(data.stringData());
+  else if (data.dataType() == "json")
+  {
+    Serial.println();
+    FirebaseJson *json = data.jsonObjectPtr();
+    //Print all object data
+    Serial.println("Pretty printed JSON data:");
+    String jsonStr;
+    json->toString(jsonStr, true);
+    Serial.println(jsonStr);
+    Serial.println();
+    Serial.println("Iterate JSON data:");
+    Serial.println();
+    size_t len = json->iteratorBegin();
+    String key, value = "";
+    int type = 0;
+    for (size_t i = 0; i < len; i++)
+    {
+      json->iteratorGet(i, type, key, value);
+      Serial.print(i);
+      Serial.print(", ");
+      Serial.print("Type: ");
+      Serial.print(type == FirebaseJson::JSON_OBJECT ? "object" : "array");
+      if (type == FirebaseJson::JSON_OBJECT)
+      {
+        Serial.print(", Key: ");
+        Serial.print(key);
+      }
+      Serial.print(", Value: ");
+      Serial.println(value);
+    }
+    json->iteratorEnd();
+  }
+  else if (data.dataType() == "array")
+  {
+    Serial.println();
+    //get array data from FirebaseData using FirebaseJsonArray object
+    FirebaseJsonArray *arr = data.jsonArrayPtr();
+    //Print all array values
+    Serial.println("Pretty printed Array:");
+    String arrStr;
+    arr->toString(arrStr, true);
+    Serial.println(arrStr);
+    Serial.println();
+    Serial.println("Iterate array values:");
+    Serial.println();
+
+    for (size_t i = 0; i < arr->size(); i++)
+    {
+      Serial.print(i);
+      Serial.print(", Value: ");
+
+      FirebaseJsonData *jsonData = data.jsonDataPtr();
+      //Get the result data from FirebaseJsonArray object
+      arr->get(*jsonData, i);
+      if (jsonData->typeNum == FirebaseJson::JSON_BOOL)
+        Serial.println(jsonData->boolValue ? "true" : "false");
+      else if (jsonData->typeNum == FirebaseJson::JSON_INT)
+        Serial.println(jsonData->intValue);
+      else if (jsonData->typeNum == FirebaseJson::JSON_DOUBLE)
+        printf("%.9lf\n", jsonData->doubleValue);
+      else if (jsonData->typeNum == FirebaseJson::JSON_STRING ||
+               jsonData->typeNum == FirebaseJson::JSON_NULL ||
+               jsonData->typeNum == FirebaseJson::JSON_OBJECT ||
+               jsonData->typeNum == FirebaseJson::JSON_ARRAY)
+        Serial.println(jsonData->stringValue);
+    }
+  }
+}
+

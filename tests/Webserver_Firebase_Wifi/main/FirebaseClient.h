@@ -34,6 +34,10 @@ private:
     String _email;
     String _localId;
     String _idToken;
+
+    void testListenAtBranch();
+
+    void testSetJSONRecord();
 };
 
 #endif // VSC_ESP32_FirebaseClient_h
