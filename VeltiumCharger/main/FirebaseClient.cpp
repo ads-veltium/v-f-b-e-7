@@ -48,6 +48,8 @@ void initFirebaseClient()
 
     Firebase.setDouble(firebaseData, "/test/esp32test/doubletest_5", 3.141592);
 
+    Firebase.setTimestamp(firebaseData, "/test/esp32test/ts");
+
     Serial.println("Written DOUBLE value to /test/esp32test/doubletest_5");
 
 	Serial.println("FREE HEAP MEMORY [after firebase write] **************************");
