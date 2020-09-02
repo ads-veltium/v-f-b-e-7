@@ -187,10 +187,57 @@ void setupOta(void)
 #include "dev_auth.h"
 
 
+void perform_ps_malloc_tests(uint8_t pot_first, uint8_t pot_last)
+{
+	for (uint8_t pot = pot_first; pot <= pot_last; pot++) {
+		unsigned bytesToAllocate = 1 << pot;
+		Serial.printf("ps_mallocating %7u bytes... ", bytesToAllocate);
+		void *buf = ps_malloc(bytesToAllocate);
+		if (buf != NULL) {
+			Serial.println("OK.");
+			free(buf);
+			Serial.println("buffer released.");
+		}
+		else {
+			Serial.println("FAILURE!!!");
+			break;
+		}
+	}
+}
+
+
+void perform_malloc_tests(uint8_t pot_first, uint8_t pot_last)
+{
+	for (uint8_t pot = pot_first; pot <= pot_last; pot++) {
+		unsigned bytesToAllocate = 1 << pot;
+		Serial.printf("[before] free heap memory: %7u bytes\n", ESP.getFreeHeap());
+		Serial.printf("mallocating %7u bytes... ", bytesToAllocate);
+		void *buf = malloc(bytesToAllocate);
+		if (buf != NULL) {
+			Serial.println("OK.");
+			Serial.printf("[after ] free heap memory: %7u bytes\n", ESP.getFreeHeap());
+			free(buf);
+			Serial.println("buffer released.");
+		}
+		else {
+			Serial.println("FAILURE!!!");
+			break;
+		}
+	}
+}
+
 
 void setup() 
 {
 	Serial.begin(115200);
+
+	perform_ps_malloc_tests(12, 22);	// test 4K to 4M
+	perform_malloc_tests(12, 22);	// test 4K to 4M
+#ifdef BOARD_HAS_PSRAM
+	Serial.println("Compiled with flag BOARD_HAS_PSRAM");
+#else
+	Serial.println("Compiled WITHOUT flag BOARD_HAS_PSRAM");
+#endif
 
 	Serial.println("FREE HEAP MEMORY [initial] **************************");
 	Serial.println(ESP.getFreeHeap());
