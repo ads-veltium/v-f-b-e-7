@@ -759,7 +759,7 @@ void controlInit(void)
 	xTaskCreate(	
 			controlTask,
 			"TASK CONTROL",
-			4096*10,
+			4096,//4096*10,
 			NULL,
 			1,
 			NULL	

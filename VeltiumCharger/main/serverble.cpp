@@ -8,6 +8,26 @@
 #include "controlLed.h"
 #include <Arduino.h>
 
+
+/*
+#include "esp32-hal-psram.h"
+
+#include <new>
+void* operator new(std::size_t sz)
+{
+	Serial.printf("[before] free heap memory: %7u bytes\n", ESP.getFreeHeap());
+	Serial.printf("Overriden NEW operator: requested %u bytes\n", sz);
+	Serial.printf("[after ] free heap memory: %7u bytes\n", ESP.getFreeHeap());
+	void* ptr = ps_malloc(sz);
+	return ptr;
+}
+
+void operator delete(void* ptr)
+{
+	free(ptr);
+}
+*/
+
 BLEServer *pServer = NULL;
 bool deviceBleConnected = false;
 bool oldDeviceBleConnected = false;
@@ -671,6 +691,10 @@ void serverbleInit() {
 		}
 		else if ( blefields[i].type == TYPE_CHARACTERISTIC )
 		{
+			Serial.println("Free Heap Memory [before characteristic] **************************");
+			Serial.println(ESP.getFreeHeap());
+
+
 			pbleCharacteristics[indexCharacteristic] = pbleServices[blefields[i].indexServ]->createCharacteristic( blefields[i].uuid, blefields[i].properties );
 			if ( blefields[i].descriptor2902 == 1 )
 			{
@@ -699,7 +723,7 @@ void serverbleInit() {
 	xTaskCreate(	
 			serverbleTask,
 			"TASK BLE",
-			4096*4,
+			4096,//4096*4,
 			NULL,
 			1,
 			NULL	

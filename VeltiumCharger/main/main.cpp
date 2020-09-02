@@ -164,7 +164,7 @@ void setupOta(void)
 
 // IMPORTANTE:
 // solo UNA de estas DOS macros debe estar definida (o NINGUNA para desactivar WIFI)
-//#define USE_WIFI_ARDUINO
+#define USE_WIFI_ARDUINO
 //#define USE_WIFI_ESP
 
 // macro para activar o desactivar el BLE de Draco
@@ -187,6 +187,7 @@ void setupOta(void)
 #include "dev_auth.h"
 
 
+/*
 void perform_ps_malloc_tests(uint8_t pot_first, uint8_t pot_last)
 {
 	for (uint8_t pot = pot_first; pot <= pot_last; pot++) {
@@ -204,7 +205,27 @@ void perform_ps_malloc_tests(uint8_t pot_first, uint8_t pot_last)
 		}
 	}
 }
+*/
 
+void perform_ps_malloc_tests(uint8_t pot_first, uint8_t pot_last)
+{
+	for (uint8_t pot = pot_first; pot <= pot_last; pot++) {
+		unsigned bytesToAllocate = 1 << pot;
+		Serial.printf("[before] free heap memory: %7u bytes\n", ESP.getFreeHeap());
+		Serial.printf("ps_mallocating %7u bytes... ", bytesToAllocate);
+		void *buf = ps_malloc(bytesToAllocate);
+		if (buf != NULL) {
+			Serial.println("OK.");
+			Serial.printf("[after ] free heap memory: %7u bytes\n", ESP.getFreeHeap());
+			free(buf);
+			Serial.println("buffer released.");
+		}
+		else {
+			Serial.println("FAILURE!!!");
+			break;
+		}
+	}
+}
 
 void perform_malloc_tests(uint8_t pot_first, uint8_t pot_last)
 {
@@ -231,8 +252,8 @@ void setup()
 {
 	Serial.begin(115200);
 
-	perform_ps_malloc_tests(12, 22);	// test 4K to 4M
-	perform_malloc_tests(12, 22);	// test 4K to 4M
+	// perform_ps_malloc_tests(2, 22);	// test 4K to 4M
+	// perform_malloc_tests(2, 22);	// test 4K to 4M
 #ifdef BOARD_HAS_PSRAM
 	Serial.println("Compiled with flag BOARD_HAS_PSRAM");
 #else
@@ -268,11 +289,16 @@ void setup()
 	Serial.print("Connected with IP: ");
 	Serial.println(WiFi.localIP());
 	Serial.println();
-	initFirebaseClient();
-#endif
 
 	Serial.println("FREE HEAP MEMORY [after wifi init] **************************");
 	Serial.println(ESP.getFreeHeap());
+
+	initFirebaseClient();
+
+	Serial.println("FREE HEAP MEMORY [after firebase init] **************************");
+	Serial.println(ESP.getFreeHeap());
+
+#endif
 
 #ifdef USE_DRACO_BLE
 	DRACO_GPIO_Init();
