@@ -220,6 +220,7 @@ typedef struct _BLE_FIELD
 	uint8_t type;	// service or characteristic 0 or 1
 	indexServices indexServ;
 	BLEUUID	uuid;
+	uint8_t numberOfCharacteristics;
 	uint32_t properties;
 	uint16_t handle;
 	indexCharacteristicsAll indexCharacteristicAll;
