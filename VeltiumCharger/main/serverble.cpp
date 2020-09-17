@@ -9,24 +9,25 @@
 #include <Arduino.h>
 
 
-/*
+
 #include "esp32-hal-psram.h"
 
 #include <new>
 void* operator new(std::size_t sz)
 {
-	Serial.printf("[before] free heap memory: %7u bytes\n", ESP.getFreeHeap());
-	Serial.printf("Overriden NEW operator: requested %u bytes\n", sz);
-	Serial.printf("[after ] free heap memory: %7u bytes\n", ESP.getFreeHeap());
+	// Serial.printf("[before] free heap memory: %7u bytes\n", ESP.getFreeHeap());
+	// Serial.printf("Overriden NEW operator: requested %u bytes\n", sz);
+	// Serial.printf("[after ] free heap memory: %7u bytes\n", ESP.getFreeHeap());
 	void* ptr = ps_malloc(sz);
 	return ptr;
 }
+
 
 void operator delete(void* ptr)
 {
 	free(ptr);
 }
-*/
+
 
 BLEServer *pServer = NULL;
 bool deviceBleConnected = false;
@@ -672,6 +673,14 @@ void changeAdvName( uint8_t * name )
 
 void serverbleInit() {
 
+	Serial.printf("sizeof(BLEService): %d, NUM: %d\n", sizeof(BLEService), NUMBER_OF_SERVICES);
+	Serial.printf("sizeof(BLECharacteristic): %d, NUM: %d\n", sizeof(BLECharacteristic), NUMBER_OF_CHARACTERISTICS);
+	Serial.printf("sizeof(BLE_FIELD): %d, NUM: %d\n", sizeof(BLEService), MAX_BLE_FIELDS);
+
+// BLEService *pbleServices[NUMBER_OF_SERVICES];
+// BLECharacteristic *pbleCharacteristics[NUMBER_OF_CHARACTERISTICS];
+// BLE_FIELD blefields[MAX_BLE_FIELDS] =	
+
 	// Create the BLE Device
 	BLEDevice::init("VCD1701XXXX");
 
@@ -691,10 +700,6 @@ void serverbleInit() {
 		}
 		else if ( blefields[i].type == TYPE_CHARACTERISTIC )
 		{
-			Serial.println("Free Heap Memory [before characteristic] **************************");
-			Serial.println(ESP.getFreeHeap());
-
-
 			pbleCharacteristics[indexCharacteristic] = pbleServices[blefields[i].indexServ]->createCharacteristic( blefields[i].uuid, blefields[i].properties );
 			if ( blefields[i].descriptor2902 == 1 )
 			{

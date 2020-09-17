@@ -113,10 +113,12 @@ String serverIndex =
 
 void setupOta(void) 
 {
-	IPAddress myIP = WiFi.softAP(ssid, password);
+	// IPAddress myIP = WiFi.softAP(ssid, password);
 
-	Serial.print("IP address: ");
-	Serial.println(myIP);
+	//Serial.print("IP address: ");
+	//Serial.println(myIP);
+
+	Serial.println("Setting up OTA...");
 
 	//return index page which is stored in serverIndex 
 	server.on("/", HTTP_GET, []() {
@@ -164,7 +166,7 @@ void setupOta(void)
 
 // IMPORTANTE:
 // solo UNA de estas DOS macros debe estar definida (o NINGUNA para desactivar WIFI)
-#define USE_WIFI_ARDUINO
+//#define USE_WIFI_ARDUINO
 //#define USE_WIFI_ESP
 
 // macro para activar o desactivar el BLE de Draco
@@ -296,6 +298,11 @@ void setup()
 	initFirebaseClient();
 
 	Serial.println("FREE HEAP MEMORY [after firebase init] **************************");
+	Serial.println(ESP.getFreeHeap());
+
+	setupOta();
+
+	Serial.println("FREE HEAP MEMORY [after setup OTA] **************************");
 	Serial.println(ESP.getFreeHeap());
 
 #endif
