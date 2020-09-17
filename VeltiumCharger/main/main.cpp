@@ -166,7 +166,7 @@ void setupOta(void)
 
 // IMPORTANTE:
 // solo UNA de estas DOS macros debe estar definida (o NINGUNA para desactivar WIFI)
-//#define USE_WIFI_ARDUINO
+#define USE_WIFI_ARDUINO
 //#define USE_WIFI_ESP
 
 // macro para activar o desactivar el BLE de Draco

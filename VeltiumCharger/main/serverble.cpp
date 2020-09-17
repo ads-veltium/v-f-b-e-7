@@ -11,7 +11,7 @@
 
 
 #include "esp32-hal-psram.h"
-
+/*
 #include <new>
 void* operator new(std::size_t sz)
 {
@@ -27,7 +27,7 @@ void operator delete(void* ptr)
 {
 	free(ptr);
 }
-
+*/
 
 BLEServer *pServer = NULL;
 bool deviceBleConnected = false;
