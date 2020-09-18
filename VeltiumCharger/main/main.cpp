@@ -166,7 +166,7 @@ void setupOta(void)
 
 // IMPORTANTE:
 // solo UNA de estas DOS macros debe estar definida (o NINGUNA para desactivar WIFI)
-#define USE_WIFI_ARDUINO
+//#define USE_WIFI_ARDUINO
 //#define USE_WIFI_ESP
 
 // macro para activar o desactivar el BLE de Draco
@@ -313,7 +313,7 @@ void setup()
 	Serial.println("FREE HEAP MEMORY [after DRACO_GPIO_Init] **************************");
 	Serial.println(ESP.getFreeHeap());
 
-	initLeds();
+//	initLeds();
 
 	Serial.println("FREE HEAP MEMORY [after initLeds] **************************");
 	Serial.println(ESP.getFreeHeap());
@@ -323,7 +323,7 @@ void setup()
 	Serial.println("FREE HEAP MEMORY [after serverbleInit] **************************");
 	Serial.println(ESP.getFreeHeap());
 
-	controlInit();
+//	controlInit();
 
 	Serial.println("FREE HEAP MEMORY [after controlInit write] **************************");
 	Serial.println(ESP.getFreeHeap());

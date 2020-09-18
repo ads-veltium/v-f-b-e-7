@@ -29,6 +29,20 @@ void operator delete(void* ptr)
 }
 */
 
+static uint32_t ms_prev = 0;
+
+void milestone(const char* mname)
+{
+	int32_t delta = 0;
+	uint32_t ms_curr = ESP.getFreeHeap();
+	if (ms_prev > 0)
+		delta = (int32_t)ms_prev - (int32_t)ms_curr;
+	ms_prev = ms_curr;
+
+	Serial.println("************");
+	Serial.printf("**MILESTONE** [%6u] [%+7d] [%s]\n", ms_curr, delta, mname);
+}
+
 BLEServer *pServer = NULL;
 bool deviceBleConnected = false;
 bool oldDeviceBleConnected = false;
@@ -149,6 +163,7 @@ BLE_FIELD blefields[MAX_BLE_FIELDS] =
 
 };
 
+/*
 void serverblekk( uint8_t *data, int len, uint16_t handle )
 {
 	int i = 0;
@@ -163,7 +178,7 @@ void serverblekk( uint8_t *data, int len, uint16_t handle )
 	}
 	return;
 }
-
+*/
 
 
 void serverbleNotCharacteristic ( uint8_t *data, int len, uint16_t handle )
@@ -221,6 +236,8 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 	void onWrite(BLECharacteristic *pCharacteristic) 
 	{
 		std::string rxValue = pCharacteristic->getValue();
+
+		Serial.printf("onWrite: char = %s\n", pCharacteristic->getUUID().toString().c_str());
 
 		if ( pCharacteristic->getUUID().equals(blefields[TOKEN].uuid) )
 		{
@@ -673,20 +690,30 @@ void changeAdvName( uint8_t * name )
 
 void serverbleInit() {
 
-	Serial.printf("sizeof(BLEService): %d, NUM: %d\n", sizeof(BLEService), NUMBER_OF_SERVICES);
-	Serial.printf("sizeof(BLECharacteristic): %d, NUM: %d\n", sizeof(BLECharacteristic), NUMBER_OF_CHARACTERISTICS);
-	Serial.printf("sizeof(BLE_FIELD): %d, NUM: %d\n", sizeof(BLEService), MAX_BLE_FIELDS);
+	Serial.printf("sizeof(BLEService): %d, NUM: %d, total:%d\n", sizeof(BLEService), NUMBER_OF_SERVICES, sizeof(BLEService) * NUMBER_OF_SERVICES);
+	Serial.printf("sizeof(BLECharacteristic): %d, NUM: %d, total:%d\n", sizeof(BLECharacteristic), NUMBER_OF_CHARACTERISTICS, sizeof(BLECharacteristic) * NUMBER_OF_CHARACTERISTICS);
+	Serial.printf("sizeof(BLE_FIELD): %d, NUM: %d, total:%d\n", sizeof(BLEService), MAX_BLE_FIELDS, sizeof(BLEService) * MAX_BLE_FIELDS);
+	Serial.printf("sizeof(BLE2902): %d\n", sizeof(BLE2902));
+
 
 // BLEService *pbleServices[NUMBER_OF_SERVICES];
 // BLECharacteristic *pbleCharacteristics[NUMBER_OF_CHARACTERISTICS];
 // BLE_FIELD blefields[MAX_BLE_FIELDS] =	
 
+	milestone("at the beginning of serverbleInit");
+
 	// Create the BLE Device
 	BLEDevice::init("VCD1701XXXX");
 
+	milestone("after creating BLEDevice");
+
 	// Create the BLE Server
 	pServer = BLEDevice::createServer();
+	milestone("after BLEDevice::createServer");
+
 	pServer->setCallbacks(new serverCallbacks());
+	milestone("after creating and setting serverCallbacks");
+
 
 	int indexService = 0;
 	int indexCharacteristic = 0;
@@ -710,11 +737,15 @@ void serverbleInit() {
 		}
 	}
 
+	milestone("after creating services and characteristics");
+
 	// Start the service
 	for ( i = 0; i < NUMBER_OF_SERVICES; i++ )
 	{
 		pbleServices[i]->start();
 	}
+
+	milestone("after starting services");
 
 	// Start advertising
 	pServer->getAdvertising()->addServiceUUID(BLEUUID((uint16_t)0xCD03));
@@ -723,6 +754,8 @@ void serverbleInit() {
 	pServer->getAdvertising()->addServiceUUID(BLEUUID((uint16_t)0xCD01));
 	pServer->getAdvertising()->addServiceUUID(BLEUUID((uint16_t)0xCD02));
 	pServer->getAdvertising()->start();
+	milestone("after starting advertising");
+
 	printf("Waiting a client connection to notify...\r\n");
 
 	xTaskCreate(	
@@ -733,6 +766,8 @@ void serverbleInit() {
 			1,
 			NULL	
 		   );
+
+	milestone("after creating serverbleTask");
 
 }
 

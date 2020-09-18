@@ -1,0 +1,62 @@
+****************************************************************************************************
+20200918_0930
+
+Compiled with flag BOARD_HAS_PSRAM
+FREE HEAP MEMORY [initial] **************************
+233828
+Connected with IP: 192.168.15.96
+FREE HEAP MEMORY [after wifi init] **************************
+163716
+INIT Firebase Client
+Written DOUBLE value to /test/esp32test/doubletest_5
+FREE HEAP MEMORY [after firebase write] **************************
+132804
+FREE HEAP MEMORY [after firebase init] **************************
+132804
+Setting up OTA...
+FREE HEAP MEMORY [after setup OTA] **************************
+132008
+FREE HEAP MEMORY [after DRACO_GPIO_Init] **************************
+132008
+FREE HEAP MEMORY [after initLeds] **************************
+131980
+Waiting a client connection to notify...
+FREE HEAP MEMORY [after serverbleInit] **************************
+14992
+FREE HEAP MEMORY [after controlInit write] **************************
+15144
+FREE HEAP MEMORY [after draco init] **************************
+15132
+
+
+****************************************************************************************************
+20200918_1211
+
+FREE HEAP MEMORY [initial] **************************
+266260
+FREE HEAP MEMORY [after DRACO_GPIO_Init] **************************
+266260
+FREE HEAP MEMORY [after initLeds] **************************
+266260
+************
+**MILESTONE** [266260] [     +0] [at the beginning of serverbleInit]
+************
+**MILESTONE** [226988] [ +39272] [after creating BLEDevice]
+************
+**MILESTONE** [226356] [   +632] [after BLEDevice::createServer]
+************
+**MILESTONE** [226384] [    -28] [after creating and setting serverCallbacks]
+************
+**MILESTONE** [155184] [ +71200] [after creating services and characteristics]
+************
+**MILESTONE** [150692] [  +4492] [after starting services]
+************
+**MILESTONE** [149968] [   +724] [after starting advertising]
+************
+**MILESTONE** [145628] [  +4340] [after creating serverbleTask]
+FREE HEAP MEMORY [after serverbleInit] **************************
+145780
+FREE HEAP MEMORY [after controlInit write] **************************
+145780
+FREE HEAP MEMORY [after draco init] **************************
+145780
