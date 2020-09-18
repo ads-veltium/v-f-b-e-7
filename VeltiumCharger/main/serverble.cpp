@@ -419,20 +419,21 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 			}
 			if ( pCharacteristic->getUUID().equals(blefields[SCHEDULE_MATRIX].uuid) )
 			{
-				if( getModeTelecarga() == 0)
-				{
+				// error de copypaste
+				// if( getModeTelecarga() == 0)
+				// {
 					buffer_tx[0] = HEADER_TX;
 					buffer_tx[1] = (uint8)(blefields[SCHEDULE_MATRIX].handle >> 8);
 					buffer_tx[2] = (uint8)(blefields[SCHEDULE_MATRIX].handle);
 					buffer_tx[3] = 168;
 					memcpy(&buffer_tx[4], (uint8_t*)&rxValue[0], 168);
 					controlSendToSerialLocal(buffer_tx,172);
-				}
-				else
-				{
-					memcpy(&buffer_tx[0], (uint8_t*)&rxValue[0], 144);
-					controlSendToSerialLocal(buffer_tx,144);
-				}
+				// }
+				// else
+				// {
+				// 	memcpy(&buffer_tx[0], (uint8_t*)&rxValue[0], 144);
+				// 	controlSendToSerialLocal(buffer_tx,144);
+				// }
 				return;
 			}
 			if ( pCharacteristic->getUUID().equals(blefields[CHARGER_DEVICE_ID].uuid) )
@@ -487,6 +488,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 			}
 			if ( pCharacteristic->getUUID().equals(blefields[RCD_PE_TEST_RESULT].uuid) )
 			{
+				// mecanismo: escribir result a 0, escribir launch, esperar, leer result
 				Update_VELT1_CHARGER_characteristic((uint8_t*)&rxValue[0], 1, TEST_RCD_PE_TEST_RESULT_CHAR_HANDLE);
 				return;
 			}
@@ -561,7 +563,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 					vTaskDelay(100 / portTICK_PERIOD_MS);	
 					esp_restart();
 				}
-				else if(rxValue[0] == 0xAA)
+				else // NO!!!! if(rxValue[0] == 0xAA)
 				{
 					// Micro Principal Bootloading 
 					buffer_tx[0] = HEADER_TX;
