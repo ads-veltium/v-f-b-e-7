@@ -60,3 +60,35 @@ FREE HEAP MEMORY [after controlInit write] **************************
 145780
 FREE HEAP MEMORY [after draco init] **************************
 145780
+
+****************************************************************************************************
+20200918_1211
+
+FREE HEAP MEMORY [initial] **************************
+271392
+FREE HEAP MEMORY [after DRACO_GPIO_Init] **************************
+271392
+FREE HEAP MEMORY [after initLeds] **************************
+271392
+************
+**MILESTONE** [271392] [     +0] [at the beginning of serverbleInit]
+************
+**MILESTONE** [232128] [ +39264] [after creating BLEDevice]
+************
+**MILESTONE** [231496] [   +632] [after BLEDevice::createServer]
+************
+**MILESTONE** [231524] [    -28] [after creating and setting serverCallbacks]
+************
+**MILESTONE** [169352] [ +62172] [after creating services and characteristics]
+************
+**MILESTONE** [163884] [  +5468] [after starting services]
+************
+**MILESTONE** [163488] [   +396] [after starting advertising]
+************
+**MILESTONE** [159024] [  +4464] [after creating serverbleTask]
+FREE HEAP MEMORY [after serverbleInit] **************************
+159172
+FREE HEAP MEMORY [after controlInit write] **************************
+159172
+FREE HEAP MEMORY [after draco init] **************************
+159172

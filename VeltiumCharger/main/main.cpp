@@ -313,7 +313,7 @@ void setup()
 	Serial.println("FREE HEAP MEMORY [after DRACO_GPIO_Init] **************************");
 	Serial.println(ESP.getFreeHeap());
 
-//	initLeds();
+	initLeds();
 
 	Serial.println("FREE HEAP MEMORY [after initLeds] **************************");
 	Serial.println(ESP.getFreeHeap());
@@ -323,7 +323,7 @@ void setup()
 	Serial.println("FREE HEAP MEMORY [after serverbleInit] **************************");
 	Serial.println(ESP.getFreeHeap());
 
-//	controlInit();
+	controlInit();
 
 	Serial.println("FREE HEAP MEMORY [after controlInit write] **************************");
 	Serial.println(ESP.getFreeHeap());
