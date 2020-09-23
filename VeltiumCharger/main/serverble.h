@@ -6,18 +6,57 @@
 #include <BLEUtils.h>
 #include <BLE2902.h>
 
+#include "ble_rcs_config.h"
+
+#ifdef BLE_USE_RCS    // using Reduced Characteristics Set
+
+#define NUMBER_OF_SERVICES 		  1
+#define NUMBER_OF_CHARACTERISTICS 6
+#define MAX_BLE_FIELDS            (NUMBER_OF_SERVICES+NUMBER_OF_CHARACTERISTICS) 
+
+#define TYPE_SERV		0
+#define TYPE_CHAR	1 
+
+enum indexServices
+{
+	SERV_STATUS = 0,
+};
+
+enum indexCharacteristicsAll
+{
+	// SERV_STATUS
+	SELECTOR     = 1,
+	OMNIBUS      = 2,
+	OMNINOT      = 3,
+	RECORD       = 4,
+	SCHED_MATRIX = 5,
+	FW_COMMAND   = 6,
+};
+
+enum indexCharacteristics
+{
+	// SERV_STATUS
+	BLE_CHA_SELECTOR     = 0,
+	BLE_CHA_OMNIBUS      = 1,
+	BLE_CHA_OMNINOT      = 2,
+	BLE_CHA_RECORD       = 3,
+	BLE_CHA_SCHED_MATRIX = 4,
+	BLE_CHA_FW_COMMAND   = 5,
+};
+
+#else    // not using Reduced Characteristics Set
 
 #define NUMBER_OF_SERVICES 		(1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1)
 #define NUMBER_OF_CHARACTERISTICS	(4+5+11+3+6+4+1+4+4+1+3+1+1+4+2+1+3+6+1) 
 #define MAX_BLE_FIELDS			(NUMBER_OF_SERVICES+NUMBER_OF_CHARACTERISTICS) 
 
-#define TYPE_SERVICE		0
-#define TYPE_CHARACTERISTIC	1 
+#define TYPE_SERV		0
+#define TYPE_CHAR	1 
 
 
 enum indexServices
 {
-        SERV_LUMI_COLOR = 0,
+    SERV_LUMI_COLOR = 0,
 	SERV_STATUS = 1,
 	SERV_MEASURES = 2,
 	SERV_ENERGY_RECORD = 3,
@@ -214,6 +253,8 @@ enum indexCharacteristics
 	//ERROR_STATUS
 	BLE_CHA_ERROR_STATUS = 64
 };
+
+#endif  // BLE_USE_RCS
 
 typedef struct _BLE_FIELD
 {
