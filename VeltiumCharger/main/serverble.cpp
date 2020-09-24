@@ -270,6 +270,8 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 			uint8_t* seldata = rcs_server_get_selected_data();
 			uint8_t  slen = rcs_get_size(rcs_server_get_selector());
 
+			Serial.printf("Received selector write request for selector %u\n", rcs_server_get_selector());
+
 			// write characteristic value ONLY if authentication was successful
 			// if (authenticationSucceeded)
 			pbleCharacteristics[BLE_CHA_OMNIBUS]->setValue(seldata, slen);
@@ -277,14 +279,29 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 
 		if (pCharacteristic->getUUID().equals(blefields[OMNIBUS].uuid))
 		{
-			uint16_t handle = rcs_handle_for_idx(rcs_server_get_selector());
-			uint8_t  size = rcs_get_size(rcs_server_get_selector());
+			// when omnibus is used for writing, it should be prefixed with:
+			// 2 bytes for selector
+			// 2 bytes for size prefix (ignored)
+			// as it should have a minimum payload of 1,
+			// its size should never be less than 5
+			if (dlen < 5) {
+				Serial.println("Error at write callback for Omnibus CHR: size less than 5");
+				return;
+			}
+
+			uint8_t selector = data[0];
+			uint16_t handle = rcs_handle_for_idx(selector);
+			uint8_t  size = rcs_get_size(selector);
+
+			uint8_t* payload = data + 4;
+
+			Serial.printf("Received omnibus write request for selector %u\n", selector);
 
 			buffer_tx[0] = HEADER_TX;
 			buffer_tx[1] = (uint8)(handle >> 8);
 			buffer_tx[2] = (uint8)(handle);
 			buffer_tx[3] = size;
-			memcpy(&buffer_tx[4], (uint8_t*)&rxValue[0], size);
+			memcpy(&buffer_tx[4], payload, size);
 			controlSendToSerialLocal(buffer_tx, size + 4);
 			return;
 		}
@@ -802,11 +819,16 @@ void serverbleInit() {
 	milestone("after starting services");
 
 	// Start advertising
+#ifdef BLE_USE_RCS    // using Reduced Characteristics Set
+	pServer->getAdvertising()->addServiceUUID(BLEUUID((uint16_t)0xCD01));
+#else    // not using Reduced Characteristics Set
 	pServer->getAdvertising()->addServiceUUID(BLEUUID((uint16_t)0xCD03));
 	pServer->getAdvertising()->addServiceUUID(BLEUUID((uint16_t)0xCD04));
 	pServer->getAdvertising()->addServiceUUID(BLEUUID((uint16_t)0xCD05));
 	pServer->getAdvertising()->addServiceUUID(BLEUUID((uint16_t)0xCD01));
 	pServer->getAdvertising()->addServiceUUID(BLEUUID((uint16_t)0xCD02));
+#endif  // BLE_USE_RCS
+
 	pServer->getAdvertising()->start();
 	milestone("after starting advertising");
 
