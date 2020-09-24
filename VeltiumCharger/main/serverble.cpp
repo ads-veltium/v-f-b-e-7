@@ -198,8 +198,6 @@ void serverbleNotCharacteristic ( uint8_t *data, int len, uint16_t handle )
 		pbleCharacteristics[BLE_CHA_INS_CURR]->notify();
 		return;
 	}
-	// notify characteristic value using selector mechanism?
-	rcs_server_notify_chr_value(handle, data, len);
 #else    // not using Reduced Characteristics Set
 	int i = 0;
 	for ( i = 0 ;  i < NUMBER_OF_CHARACTERISTICS; i++ )
@@ -281,20 +279,39 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 
 #ifdef BLE_USE_RCS    // using Reduced Characteristics Set
 
+		static uint8_t omnibus_packet_buffer[4 + RCS_CHR_OMNIBUS_SIZE];
+
 		uint8_t* data = (uint8_t*)&rxValue[0];
 		uint16_t dlen = (uint16_t)rxValue.length();
 
 		if (pCharacteristic->getUUID().equals(blefields[SELECTOR].uuid))
 		{
-			rcs_server_set_selector(data, dlen);
-			uint8_t* seldata = rcs_server_get_selected_data();
-			uint8_t  slen = rcs_get_size(rcs_server_get_selector());
+			if (dlen < 1) {
+				Serial.println("Error at write callback for Selector CHR: size less than 1");
+				uint8_t empty_packet[4] = {0, 0, 0, 0};
+				pbleCharacteristics[BLE_CHA_OMNIBUS]->setValue(empty_packet, 4);
+				return;
+			}
+			// characteristic selector https://open.spotify.com/track/04hWYuhqETLXrUy7S8Rxzp?si=iMGb3JzTRna3ikopCm89Pw
+			uint8_t selector = data[0];
 
-			Serial.printf("Received selector write request for selector %u\n", rcs_server_get_selector());
+			// payload to be write to omnibus characteristic
+			uint8_t* payload = rcs_server_get_data_for_selector(selector);
+			// size of payload
+			uint8_t  pldsize = rcs_get_size(selector);
 
+			Serial.printf("Received selector write request for selector %u\n", selector);
+
+			uint8_t* packet = omnibus_packet_buffer;
+			uint8_t pktsize = 4 + pldsize;
+			packet[0] = selector;
+			packet[1] = 0;
+			packet[2] = pldsize;
+			packet[3] = 0;
+			memcpy((packet + 4), payload, pldsize);
 			// write characteristic value ONLY if authentication was successful
 			// if (authenticationSucceeded)
-			pbleCharacteristics[BLE_CHA_OMNIBUS]->setValue(seldata, slen);
+			pbleCharacteristics[BLE_CHA_OMNIBUS]->setValue(packet, pktsize);
 		}
 
 		if (pCharacteristic->getUUID().equals(blefields[OMNIBUS].uuid))
