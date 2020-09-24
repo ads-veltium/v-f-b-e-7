@@ -27,21 +27,21 @@ enum indexCharacteristicsAll
 	// SERV_STATUS
 	SELECTOR     = 1,
 	OMNIBUS      = 2,
-	OMNINOT      = 3,
-	RECORD       = 4,
-	SCHED_MATRIX = 5,
-	FW_COMMAND   = 6,
+	RCS_HPT_STAT = 3,
+	RCS_INS_CURR = 4,
+	RCS_RECORD   = 5,
+	RCS_SCH_MAT  = 6,
 };
 
 enum indexCharacteristics
 {
 	// SERV_STATUS
-	BLE_CHA_SELECTOR     = 0,
-	BLE_CHA_OMNIBUS      = 1,
-	BLE_CHA_OMNINOT      = 2,
-	BLE_CHA_RECORD       = 3,
-	BLE_CHA_SCHED_MATRIX = 4,
-	BLE_CHA_FW_COMMAND   = 5,
+	BLE_CHA_SELECTOR    = 0,
+	BLE_CHA_OMNIBUS     = 1,
+	BLE_CHA_HPT_STAT    = 2,
+	BLE_CHA_INS_CURR    = 3,
+	BLE_CHA_RCS_RECORD  = 4,
+	BLE_CHA_RCS_SCH_MAT = 5,
 };
 
 #else    // not using Reduced Characteristics Set

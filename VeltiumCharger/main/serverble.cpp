@@ -65,12 +65,12 @@ BLECharacteristic *pbleCharacteristics[NUMBER_OF_CHARACTERISTICS];
 BLE_FIELD blefields[MAX_BLE_FIELDS] =
 {
 	{TYPE_SERV, SERV_STATUS, BLEUUID((uint16_t)0xCD01),6, 0, 0, (indexCharacteristicsAll)0, (indexCharacteristics)0, 0},
-	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC001),6, PROP_RW, 0, SELECTOR,     BLE_CHA_SELECTOR,     0},
-	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC002),6, PROP_RW, 0, OMNIBUS,      BLE_CHA_OMNIBUS,      0},
-	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC003),6, PROP_RN, 0, OMNINOT,      BLE_CHA_OMNINOT,      1},
-	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC004),6, PROP_R,  0, RECORD,       BLE_CHA_RECORD,       0},
-	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC005),6, PROP_RW, 0, SCHED_MATRIX, BLE_CHA_SCHED_MATRIX, 0},
-	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC006),6, PROP_WN, 0, FW_COMMAND,   BLE_CHA_FW_COMMAND,   1},
+	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC001),6, PROP_RW, 0, SELECTOR,     BLE_CHA_SELECTOR,    0},
+	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC002),6, PROP_RW, 0, OMNIBUS,      BLE_CHA_OMNIBUS,     0},
+	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC003),6, PROP_RN, 0, RCS_HPT_STAT, BLE_CHA_HPT_STAT,    1},
+	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC004),6, PROP_RN, 0, RCS_INS_CURR, BLE_CHA_INS_CURR,    1},
+	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC005),6, PROP_R,  0, RCS_RECORD,   BLE_CHA_RCS_RECORD,  0},
+	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC006),6, PROP_RW, 0, RCS_SCH_MAT,  BLE_CHA_RCS_SCH_MAT, 0},
 };
 
 #else    // not using Reduced Characteristics Set
@@ -187,6 +187,18 @@ BLE_FIELD blefields[MAX_BLE_FIELDS] =
 void serverbleNotCharacteristic ( uint8_t *data, int len, uint16_t handle )
 {
 #ifdef BLE_USE_RCS    // using Reduced Characteristics Set
+	// check non-selected handles first
+	if (handle == STATUS_HPT_STATUS_CHAR_HANDLE) {
+		pbleCharacteristics[BLE_CHA_HPT_STAT]->setValue(data, len);
+		pbleCharacteristics[BLE_CHA_HPT_STAT]->notify();
+		return;		
+	}
+	if (handle == MEASURES_INST_CURRENT_CHAR_HANDLE) {
+		pbleCharacteristics[BLE_CHA_INS_CURR]->setValue(data, len);
+		pbleCharacteristics[BLE_CHA_INS_CURR]->notify();
+		return;
+	}
+	// notify characteristic value using selector mechanism?
 	rcs_server_notify_chr_value(handle, data, len);
 #else    // not using Reduced Characteristics Set
 	int i = 0;
@@ -207,12 +219,20 @@ void serverbleSetCharacteristic ( uint8_t *data, int len, uint16_t handle )
 {
 #ifdef BLE_USE_RCS    // using Reduced Characteristics Set
 	// check non-selected handles first
+	if (handle == STATUS_HPT_STATUS_CHAR_HANDLE) {
+		pbleCharacteristics[BLE_CHA_HPT_STAT]->setValue(data, len);
+		return;		
+	}
+	if (handle == MEASURES_INST_CURRENT_CHAR_HANDLE) {
+		pbleCharacteristics[BLE_CHA_INS_CURR]->setValue(data, len);
+		return;
+	}
 	if (handle == ENERGY_RECORD_RECORD_CHAR_HANDLE) {
-		pbleCharacteristics[BLE_CHA_RECORD]->setValue(data, len);
+		pbleCharacteristics[BLE_CHA_RCS_RECORD]->setValue(data, len);
 		return;
 	}
 	if (handle == SCHED_CHARGING_SCHEDULE_MATRIX_CHAR_HANDLE) {
-		pbleCharacteristics[BLE_CHA_SCHED_MATRIX]->setValue(data, len);
+		pbleCharacteristics[BLE_CHA_RCS_SCH_MAT]->setValue(data, len);
 		return;
 	}
 	// set characteristic value using selector mechanism
@@ -305,6 +325,20 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 			controlSendToSerialLocal(buffer_tx, size + 4);
 			return;
 		}
+
+		if ( pCharacteristic->getUUID().equals(blefields[RCS_SCH_MAT].uuid) )
+		{
+			uint16_t size = 168;	// for schedule matrix
+			
+			buffer_tx[0] = HEADER_TX;
+			buffer_tx[1] = (uint8)(SCHED_CHARGING_SCHEDULE_MATRIX_CHAR_HANDLE >> 8);
+			buffer_tx[2] = (uint8)(SCHED_CHARGING_SCHEDULE_MATRIX_CHAR_HANDLE);
+			buffer_tx[3] = size;
+			memcpy(&buffer_tx[4], data, size);
+			controlSendToSerialLocal(buffer_tx, size + 4);
+			return;
+		}
+
 
 #else    // not using Reduced Characteristics Set
 
