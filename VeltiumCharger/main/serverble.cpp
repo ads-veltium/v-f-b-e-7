@@ -286,6 +286,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 
 		if (pCharacteristic->getUUID().equals(blefields[SELECTOR].uuid))
 		{
+			// safety check: at least one byte for selector
 			if (dlen < 1) {
 				Serial.println("Error at write callback for Selector CHR: size less than 1");
 				uint8_t empty_packet[4] = {0, 0, 0, 0};
@@ -295,6 +296,20 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 			// characteristic selector https://open.spotify.com/track/04hWYuhqETLXrUy7S8Rxzp?si=iMGb3JzTRna3ikopCm89Pw
 			uint8_t selector = data[0];
 
+			// check authentication
+			if (!hasAutentification())
+			{
+				Serial.println("NO AUTHENTICATION TOKEN");
+				// no authentication, only allowed operation is matrix read
+				uint16_t handle = rcs_handle_for_idx(selector);
+				if (handle != AUTENTICACION_MATRIX_CHAR_HANDLE) {
+					// any other case forces to return without setting the actual value
+					uint8_t empty_packet[4] = {0, 0, 0, 0};
+					pbleCharacteristics[BLE_CHA_OMNIBUS]->setValue(empty_packet, 4);
+					return;
+				}
+			}
+
 			// payload to be write to omnibus characteristic
 			uint8_t* payload = rcs_server_get_data_for_selector(selector);
 			// size of payload
@@ -302,6 +317,9 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 
 			Serial.printf("Received selector write request for selector %u\n", selector);
 
+			// prepare packet to be written to characteristic:
+			// header with 2 bytes selector little endian, 2 bytes payload size little endian
+			// afterwards, the payload with the actual data
 			uint8_t* packet = omnibus_packet_buffer;
 			uint8_t pktsize = 4 + pldsize;
 			packet[0] = selector;
@@ -309,8 +327,8 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 			packet[2] = pldsize;
 			packet[3] = 0;
 			memcpy((packet + 4), payload, pldsize);
-			// write characteristic value ONLY if authentication was successful
-			// if (authenticationSucceeded)
+
+			// set characteristic value to be read by other end
 			pbleCharacteristics[BLE_CHA_OMNIBUS]->setValue(packet, pktsize);
 		}
 
@@ -334,6 +352,20 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 
 			Serial.printf("Received omnibus write request for selector %u\n", selector);
 
+			// special cases
+			if (handle == AUTENTICACION_TOKEN_CHAR_HANDLE)
+			{
+				setAutentificationToken(payload, size);
+				return;
+			}
+
+			// check if we are authenticated, and leave if we aren't
+			if (!hasAutentification()) {
+				return;
+			}
+
+			// if we are here, we are authenticated.
+			// send payload downstream.
 			buffer_tx[0] = HEADER_TX;
 			buffer_tx[1] = (uint8)(handle >> 8);
 			buffer_tx[2] = (uint8)(handle);

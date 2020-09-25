@@ -270,8 +270,13 @@ void controlTask(void *arg)
 	}
 }
 
+bool SN_not_set = true;
+
 void inciar_sistema(void)
 {
+	Serial.printf("iniciar sistema: device SN = %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X \n",
+		device_SN[0], device_SN[1], device_SN[2], device_SN[3], device_SN[4],
+		device_SN[5], device_SN[6], device_SN[7], device_SN[8], device_SN[9]);
 	dev_auth_init((void const*)&device_SN);
 }
 
@@ -428,6 +433,10 @@ void procesar_bloque(uint16 tipo_bloque)
 		Modify_VELT1_CHARGER_characteristic(&buffer_rx_local[217], 1, DOMESTIC_CONSUMPTION_FCT_CHAR_HANDLE);
 		Modify_VELT1_CHARGER_characteristic(&buffer_rx_local[218], 1, DOMESTIC_CONSUMPTION_FS_CHAR_HANDLE);
 		memcpy(device_SN, &buffer_rx_local[219], 10);
+		if (SN_not_set) {
+			inciar_sistema();
+			SN_not_set = false;
+		}
 		Modify_VELT1_CHARGER_characteristic(&buffer_rx_local[229], 1, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_CHAR_HANDLE);
 
 		cnt_timeout_inicio = TIMEOUT_INICIO;
