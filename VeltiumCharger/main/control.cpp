@@ -33,11 +33,11 @@
 
 /* VARIABLES BLE */
 uint8 device_ID[16] = {"VCD17010001"};
-uint8 device_SN[10] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};     //{0x00, 0x00, 0x00, 0x00, 0x0B, 0xCD, 0x17, 0x01, 0x00, 0x05};
-uint8 autent_token[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+uint8 deviceSerNum[10] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};     //{0x00, 0x00, 0x00, 0x00, 0x0B, 0xCD, 0x17, 0x01, 0x00, 0x05};
+uint8 authChallengeReply[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 // DACO changed size by crash
-//uint8 autent_matrix[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};      //{0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF};
-uint8 autent_matrix[10] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};      //{0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF};
+//uint8 authChallengeQuery[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};      //{0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF};
+uint8 authChallengeQuery[10] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};      //{0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF};
 
 uint8 contador_cent_segundos = 0, contador_cent_segundos_ant = 0;
 uint32 cont_seg = 0, cont_seg_ant = 0;
@@ -45,7 +45,7 @@ uint8 luminosidad, rojo, verde, azul, togle_led = 0 ; // cnt_parpadeo = 0;
 int cnt_parpadeo = 0;
 uint8 estado_inicial = 1;
 uint8 estado_actual = ESTADO_ARRANQUE;
-uint8 autentificacion_recibida = 1;
+uint8 authSuccess = 0;
 int aut_semilla = 0x0000;
 
 uint8 cnt_fin_bloque = 0;
@@ -55,10 +55,11 @@ uint8 buffer_rx_local[550];
 uint16 puntero_rx_local = 0;
 uint8 cnt_timeout_tx = 0;
 
-uint8 dummy_array[10] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+// initial serial number
+uint8 initialSerNum[10] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
 
-uint8 modo_telecarga_micro_principal = 0;
+uint8 mainFwUpdateActive = 0;
 
 uint8 dispositivo_inicializado = 0;
 uint8 cnt_timeout_inicio = TIMEOUT_INICIO;
@@ -75,9 +76,11 @@ uint16 cnt_diferencia = 30;
 
 uint8 version_firmware[11] = {"VBLE1_0504"};		// 17122019 Bootloader estable
 
-void inciar_sistema(void);
+uint8 systemStarted = 0;
+void startSystem(void);
+
 void StackEventHandler( uint32 eventCode, void *eventParam );
-void Modify_VELT1_CHARGER_characteristic(uint8* Data, uint16 len, uint16 attrHandle);
+void modifyCharacteristic(uint8* data, uint16 len, uint16 attrHandle);
 void procesar_bloque(uint16 tipo_bloque);
 void proceso_recepcion(void);
 
@@ -138,8 +141,6 @@ void MAIN_RESET_Write( uint8_t val )
 	return;
 }
 
-
-
 HardwareSerial serialLocal(2);
 
 void controlTask(void *arg) 
@@ -153,7 +154,7 @@ void controlTask(void *arg)
 	srand(aut_semilla);
 
 
-	Modify_VELT1_CHARGER_characteristic(autent_matrix, 8, AUTENTICACION_MATRIX_CHAR_HANDLE);
+	modifyCharacteristic(authChallengeQuery, 8, AUTENTICACION_MATRIX_CHAR_HANDLE);
 
 
 	MAIN_RESET_Write(1);        // Permito el arranque del micro principal
@@ -197,7 +198,7 @@ void controlTask(void *arg)
 				}
 			}
 
-			if(modo_telecarga_micro_principal == 0)
+			if(mainFwUpdateActive == 0)
 			{
 				switch (estado_actual)
 				{
@@ -217,8 +218,8 @@ void controlTask(void *arg)
 								if(--cnt_repeticiones_inicio == 0)
 								{
 									cnt_repeticiones_inicio = 100;		//1000;
-									inciar_sistema();
-									modo_telecarga_micro_principal = 1;
+									//startSystem();
+									mainFwUpdateActive = 1;
 									LED_Control(100, 10, 10, 10);
 								}
 							}
@@ -230,7 +231,7 @@ void controlTask(void *arg)
 						}
 						break;
 					case ESTADO_INICIALIZACION:
-						inciar_sistema();
+						//startSystem();
 						cnt_timeout_tx = TIMEOUT_TX_BLOQUE;
 						estado_actual = ESTADO_NORMAL;
 						break;
@@ -270,19 +271,23 @@ void controlTask(void *arg)
 	}
 }
 
-bool SN_not_set = true;
-
-void inciar_sistema(void)
+void startSystem(void)
 {
-	Serial.printf("iniciar sistema: device SN = %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X \n",
-		device_SN[0], device_SN[1], device_SN[2], device_SN[3], device_SN[4],
-		device_SN[5], device_SN[6], device_SN[7], device_SN[8], device_SN[9]);
-	dev_auth_init((void const*)&device_SN);
+	// DEBUG DEBUG DEBUG DEBUG DEBUG
+	// HERE ONLY FOR DEBUGGING - must be commented out
+	// memset(deviceSerNum, 0xFF, 10);
+	// DEBUG DEBUG DEBUG DEBUG DEBUG
+	
+	Serial.printf("startSystem(): device SN = %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X \n",
+		deviceSerNum[0], deviceSerNum[1], deviceSerNum[2], deviceSerNum[3], deviceSerNum[4],
+		deviceSerNum[5], deviceSerNum[6], deviceSerNum[7], deviceSerNum[8], deviceSerNum[9]);
+	dev_auth_init((void const*)&deviceSerNum);
+	serverbleStartAdvertising();
 }
 
 void LED_Control(uint8_t luminosity, uint8_t r_level, uint8_t g_level, uint8_t b_level)
 {
-	if(modo_telecarga_micro_principal)
+	if(mainFwUpdateActive)
 		return;
 	displayAll(luminosity,r_level,g_level,b_level);
 	return;
@@ -294,7 +299,7 @@ void proceso_recepcion(void)
 	static uint16 longitud_bloque = 0, len, i;
 	static uint16 tipo_bloque = 0x0000;
 
-	if(modo_telecarga_micro_principal)
+	if(mainFwUpdateActive)
 	{
 		LED_Control(10, 10, 10, 10);
 
@@ -409,57 +414,57 @@ void procesar_bloque(uint16 tipo_bloque)
 		esp_ble_gap_set_device_name((const char *)device_ID);
 		changeAdvName(device_ID);
 		printf("Change name set device name to %s\r\n",device_ID);
-		Modify_VELT1_CHARGER_characteristic(device_ID, 11, VCD_NAME_USERS_CHARGER_DEVICE_ID_CHAR_HANDLE);
-		Modify_VELT1_CHARGER_characteristic(&buffer_rx_local[11], 1, MEASURES_INSTALATION_CURRENT_LIMIT_CHAR_HANDLE);
+		modifyCharacteristic(device_ID, 11, VCD_NAME_USERS_CHARGER_DEVICE_ID_CHAR_HANDLE);
+		modifyCharacteristic(&buffer_rx_local[11], 1, MEASURES_INSTALATION_CURRENT_LIMIT_CHAR_HANDLE);
 
-		Modify_VELT1_CHARGER_characteristic(&buffer_rx_local[11], 1, MEASURES_CURRENT_COMMAND_CHAR_HANDLE);		// Actualizo "current_command" con el valor mas alto
+		modifyCharacteristic(&buffer_rx_local[11], 1, MEASURES_CURRENT_COMMAND_CHAR_HANDLE);		// Actualizo "current_command" con el valor mas alto
 
-		Modify_VELT1_CHARGER_characteristic(&buffer_rx_local[12], 2, TIME_DATE_DELTA_DELAY_FOR_CHARGING_CHAR_HANDLE);
-		Modify_VELT1_CHARGER_characteristic(&buffer_rx_local[14], 6, TIME_DATE_CHARGING_START_TIME_CHAR_HANDLE);
-		Modify_VELT1_CHARGER_characteristic(&buffer_rx_local[20], 6, TIME_DATE_CHARGING_STOP_TIME_CHAR_HANDLE);
-		Modify_VELT1_CHARGER_characteristic(&buffer_rx_local[26], 1, CHARGING_INSTANT_DELAYED_CHAR_HANDLE);
-		Modify_VELT1_CHARGER_characteristic(&buffer_rx_local[27], 1, CHARGING_START_STOP_START_MODE_CHAR_HANDLE);
-		Modify_VELT1_CHARGER_characteristic(&buffer_rx_local[28], 168, SCHED_CHARGING_SCHEDULE_MATRIX_CHAR_HANDLE);
-		Modify_VELT1_CHARGER_characteristic(&buffer_rx_local[196], 1, VCD_NAME_USERS_USERS_NUMBER_CHAR_HANDLE);
-		Modify_VELT1_CHARGER_characteristic(&buffer_rx_local[197], 1, VCD_NAME_USERS_UI_X_USER_ID_CHAR_HANDLE);
-		Modify_VELT1_CHARGER_characteristic(&buffer_rx_local[198], 1, VCD_NAME_USERS_USER_INDEX_CHAR_HANDLE);
-		Modify_VELT1_CHARGER_characteristic(&buffer_rx_local[199], 10, VERSIONES_VERSION_FIRMWARE_CHAR_HANDLE);
-		Modify_VELT1_CHARGER_characteristic(version_firmware, 10, VERSIONES_VERSION_FIRM_BLE_CHAR_HANDLE);
-		Modify_VELT1_CHARGER_characteristic(&buffer_rx_local[209], 2, RECORDING_REC_CAPACITY_CHAR_HANDLE);
-		Modify_VELT1_CHARGER_characteristic(&buffer_rx_local[211], 2, RECORDING_REC_LAST_CHAR_HANDLE);
-		Modify_VELT1_CHARGER_characteristic(&buffer_rx_local[213], 1, RECORDING_REC_LAPS_CHAR_HANDLE);
-		Modify_VELT1_CHARGER_characteristic(&buffer_rx_local[214], 2, CONFIGURACION_AUTENTICATION_MODES_CHAR_HANDLE);
-		Modify_VELT1_CHARGER_characteristic(&buffer_rx_local[216], 1, DOMESTIC_CONSUMPTION_KS_CHAR_HANDLE);
-		Modify_VELT1_CHARGER_characteristic(&buffer_rx_local[217], 1, DOMESTIC_CONSUMPTION_FCT_CHAR_HANDLE);
-		Modify_VELT1_CHARGER_characteristic(&buffer_rx_local[218], 1, DOMESTIC_CONSUMPTION_FS_CHAR_HANDLE);
-		memcpy(device_SN, &buffer_rx_local[219], 10);
-		if (SN_not_set) {
-			inciar_sistema();
-			SN_not_set = false;
+		modifyCharacteristic(&buffer_rx_local[12], 2, TIME_DATE_DELTA_DELAY_FOR_CHARGING_CHAR_HANDLE);
+		modifyCharacteristic(&buffer_rx_local[14], 6, TIME_DATE_CHARGING_START_TIME_CHAR_HANDLE);
+		modifyCharacteristic(&buffer_rx_local[20], 6, TIME_DATE_CHARGING_STOP_TIME_CHAR_HANDLE);
+		modifyCharacteristic(&buffer_rx_local[26], 1, CHARGING_INSTANT_DELAYED_CHAR_HANDLE);
+		modifyCharacteristic(&buffer_rx_local[27], 1, CHARGING_START_STOP_START_MODE_CHAR_HANDLE);
+		modifyCharacteristic(&buffer_rx_local[28], 168, SCHED_CHARGING_SCHEDULE_MATRIX_CHAR_HANDLE);
+		modifyCharacteristic(&buffer_rx_local[196], 1, VCD_NAME_USERS_USERS_NUMBER_CHAR_HANDLE);
+		modifyCharacteristic(&buffer_rx_local[197], 1, VCD_NAME_USERS_UI_X_USER_ID_CHAR_HANDLE);
+		modifyCharacteristic(&buffer_rx_local[198], 1, VCD_NAME_USERS_USER_INDEX_CHAR_HANDLE);
+		modifyCharacteristic(&buffer_rx_local[199], 10, VERSIONES_VERSION_FIRMWARE_CHAR_HANDLE);
+		modifyCharacteristic(version_firmware, 10, VERSIONES_VERSION_FIRM_BLE_CHAR_HANDLE);
+		modifyCharacteristic(&buffer_rx_local[209], 2, RECORDING_REC_CAPACITY_CHAR_HANDLE);
+		modifyCharacteristic(&buffer_rx_local[211], 2, RECORDING_REC_LAST_CHAR_HANDLE);
+		modifyCharacteristic(&buffer_rx_local[213], 1, RECORDING_REC_LAPS_CHAR_HANDLE);
+		modifyCharacteristic(&buffer_rx_local[214], 2, CONFIGURACION_AUTENTICATION_MODES_CHAR_HANDLE);
+		modifyCharacteristic(&buffer_rx_local[216], 1, DOMESTIC_CONSUMPTION_KS_CHAR_HANDLE);
+		modifyCharacteristic(&buffer_rx_local[217], 1, DOMESTIC_CONSUMPTION_FCT_CHAR_HANDLE);
+		modifyCharacteristic(&buffer_rx_local[218], 1, DOMESTIC_CONSUMPTION_FS_CHAR_HANDLE);
+		memcpy(deviceSerNum, &buffer_rx_local[219], 10);
+		if (!systemStarted) {
+			startSystem();
+			systemStarted = 1;
 		}
-		Modify_VELT1_CHARGER_characteristic(&buffer_rx_local[229], 1, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_CHAR_HANDLE);
+		modifyCharacteristic(&buffer_rx_local[229], 1, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_CHAR_HANDLE);
 
 		cnt_timeout_inicio = TIMEOUT_INICIO;
 		dispositivo_inicializado = 1;
 	}
 	else if(BLOQUE_STATUS == tipo_bloque)
 	{		
-		Modify_VELT1_CHARGER_characteristic(buffer_rx_local, 1, LED_LUMIN_COLOR_LUMINOSITY_LEVEL_CHAR_HANDLE);
-		Modify_VELT1_CHARGER_characteristic(&buffer_rx_local[1], 1, LED_LUMIN_COLOR_R_LED_COLOUR_CHAR_HANDLE);
-		Modify_VELT1_CHARGER_characteristic(&buffer_rx_local[2], 1, LED_LUMIN_COLOR_G_LED_COLOUR_CHAR_HANDLE);
-		Modify_VELT1_CHARGER_characteristic(&buffer_rx_local[3], 1, LED_LUMIN_COLOR_B_LED_COLOUR_CHAR_HANDLE);
-		Modify_VELT1_CHARGER_characteristic(&buffer_rx_local[4], 2, STATUS_HPT_STATUS_CHAR_HANDLE);
+		modifyCharacteristic(buffer_rx_local, 1, LED_LUMIN_COLOR_LUMINOSITY_LEVEL_CHAR_HANDLE);
+		modifyCharacteristic(&buffer_rx_local[1], 1, LED_LUMIN_COLOR_R_LED_COLOUR_CHAR_HANDLE);
+		modifyCharacteristic(&buffer_rx_local[2], 1, LED_LUMIN_COLOR_G_LED_COLOUR_CHAR_HANDLE);
+		modifyCharacteristic(&buffer_rx_local[3], 1, LED_LUMIN_COLOR_B_LED_COLOUR_CHAR_HANDLE);
+		modifyCharacteristic(&buffer_rx_local[4], 2, STATUS_HPT_STATUS_CHAR_HANDLE);
 		if((memcmp(&buffer_rx_local[4], status_hpt_anterior, 2) != 0) && serverbleGetConnected())
 		{
 			memcpy(status_hpt_anterior, &buffer_rx_local[4], 2);
 			serverbleNotCharacteristic(&buffer_rx_local[4], 2, STATUS_HPT_STATUS_CHAR_HANDLE); 
 		}
-		Modify_VELT1_CHARGER_characteristic(&buffer_rx_local[6], 2, STATUS_ICP_STATUS_CHAR_HANDLE);
-		Modify_VELT1_CHARGER_characteristic(&buffer_rx_local[8], 2, STATUS_MCB_STATUS_CHAR_HANDLE);
-		Modify_VELT1_CHARGER_characteristic(&buffer_rx_local[10], 2, STATUS_RCD_STATUS_CHAR_HANDLE);
-		Modify_VELT1_CHARGER_characteristic(&buffer_rx_local[12], 2, STATUS_CONN_LOCK_STATUS_CHAR_HANDLE);
-		Modify_VELT1_CHARGER_characteristic(&buffer_rx_local[14], 1, MEASURES_MAX_CURRENT_CABLE_CHAR_HANDLE);
-		Modify_VELT1_CHARGER_characteristic(&buffer_rx_local[16], 2, MEASURES_INST_CURRENT_CHAR_HANDLE);
+		modifyCharacteristic(&buffer_rx_local[6], 2, STATUS_ICP_STATUS_CHAR_HANDLE);
+		modifyCharacteristic(&buffer_rx_local[8], 2, STATUS_MCB_STATUS_CHAR_HANDLE);
+		modifyCharacteristic(&buffer_rx_local[10], 2, STATUS_RCD_STATUS_CHAR_HANDLE);
+		modifyCharacteristic(&buffer_rx_local[12], 2, STATUS_CONN_LOCK_STATUS_CHAR_HANDLE);
+		modifyCharacteristic(&buffer_rx_local[14], 1, MEASURES_MAX_CURRENT_CABLE_CHAR_HANDLE);
+		modifyCharacteristic(&buffer_rx_local[16], 2, MEASURES_INST_CURRENT_CHAR_HANDLE);
 		inst_current_actual = buffer_rx_local[16] + (buffer_rx_local[17] * 0x100);
 
 		if(((inst_current_actual / 10) != (inst_current_anterior / 10)) && serverbleGetConnected() && (--cnt_diferencia == 0))
@@ -469,18 +474,18 @@ void procesar_bloque(uint16 tipo_bloque)
 			serverbleNotCharacteristic(&buffer_rx_local[16], 2, STATUS_HPT_STATUS_CHAR_HANDLE); 
 		}
 
-		Modify_VELT1_CHARGER_characteristic(&buffer_rx_local[18], 2, MEASURES_INST_VOLTAGE_CHAR_HANDLE);
-		Modify_VELT1_CHARGER_characteristic(&buffer_rx_local[20], 2, MEASURES_ACTIVE_POWER_CHAR_HANDLE);
-		Modify_VELT1_CHARGER_characteristic(&buffer_rx_local[22], 2, MEASURES_REACTIVE_POWER_CHAR_HANDLE);
-		Modify_VELT1_CHARGER_characteristic(&buffer_rx_local[24], 4, MEASURES_ACTIVE_ENERGY_CHAR_HANDLE);
-		Modify_VELT1_CHARGER_characteristic(&buffer_rx_local[28], 4, MEASURES_REACTIVE_ENERGY_CHAR_HANDLE);
-		Modify_VELT1_CHARGER_characteristic(&buffer_rx_local[32], 4, MEASURES_APPARENT_POWER_CHAR_HANDLE);
-		Modify_VELT1_CHARGER_characteristic(&buffer_rx_local[36], 1, MEASURES_POWER_FACTOR_CHAR_HANDLE);
+		modifyCharacteristic(&buffer_rx_local[18], 2, MEASURES_INST_VOLTAGE_CHAR_HANDLE);
+		modifyCharacteristic(&buffer_rx_local[20], 2, MEASURES_ACTIVE_POWER_CHAR_HANDLE);
+		modifyCharacteristic(&buffer_rx_local[22], 2, MEASURES_REACTIVE_POWER_CHAR_HANDLE);
+		modifyCharacteristic(&buffer_rx_local[24], 4, MEASURES_ACTIVE_ENERGY_CHAR_HANDLE);
+		modifyCharacteristic(&buffer_rx_local[28], 4, MEASURES_REACTIVE_ENERGY_CHAR_HANDLE);
+		modifyCharacteristic(&buffer_rx_local[32], 4, MEASURES_APPARENT_POWER_CHAR_HANDLE);
+		modifyCharacteristic(&buffer_rx_local[36], 1, MEASURES_POWER_FACTOR_CHAR_HANDLE);
 
-		Modify_VELT1_CHARGER_characteristic(&buffer_rx_local[38], 2, DOMESTIC_CONSUMPTION_DOMESTIC_CURRENT_CHAR_HANDLE);
-		Modify_VELT1_CHARGER_characteristic(&buffer_rx_local[40], 1, DOMESTIC_CONSUMPTION_REAL_CURRENT_LIMIT_CHAR_HANDLE);
+		modifyCharacteristic(&buffer_rx_local[38], 2, DOMESTIC_CONSUMPTION_DOMESTIC_CURRENT_CHAR_HANDLE);
+		modifyCharacteristic(&buffer_rx_local[40], 1, DOMESTIC_CONSUMPTION_REAL_CURRENT_LIMIT_CHAR_HANDLE);
 
-		Modify_VELT1_CHARGER_characteristic(&buffer_rx_local[41], 1, ERROR_STATUS_ERROR_CODE_CHAR_HANDLE);
+		modifyCharacteristic(&buffer_rx_local[41], 1, ERROR_STATUS_ERROR_CODE_CHAR_HANDLE);
 
 
 		luminosidad = buffer_rx_local[0];
@@ -492,52 +497,52 @@ void procesar_bloque(uint16 tipo_bloque)
 	}
 	else if(BLOQUE_DATE_TIME == tipo_bloque)
 	{
-		Modify_VELT1_CHARGER_characteristic(buffer_rx_local, 6, TIME_DATE_DATE_TIME_CHAR_HANDLE);
+		modifyCharacteristic(buffer_rx_local, 6, TIME_DATE_DATE_TIME_CHAR_HANDLE);
 		aut_semilla = (((int)buffer_rx_local[4]) * 0x100) + (int)buffer_rx_local[5];
-		Modify_VELT1_CHARGER_characteristic(&buffer_rx_local[6], 6, TIME_DATE_CONNECTION_DATE_TIME_CHAR_HANDLE);
-		Modify_VELT1_CHARGER_characteristic(&buffer_rx_local[12], 6, TIME_DATE_DISCONNECTION_DATE_TIME_CHAR_HANDLE);
-		Modify_VELT1_CHARGER_characteristic(&buffer_rx_local[18], 6, TIME_DATE_CHARGING_START_TIME_CHAR_HANDLE);
-		Modify_VELT1_CHARGER_characteristic(&buffer_rx_local[24], 6, TIME_DATE_CHARGING_STOP_TIME_CHAR_HANDLE);
+		modifyCharacteristic(&buffer_rx_local[6], 6, TIME_DATE_CONNECTION_DATE_TIME_CHAR_HANDLE);
+		modifyCharacteristic(&buffer_rx_local[12], 6, TIME_DATE_DISCONNECTION_DATE_TIME_CHAR_HANDLE);
+		modifyCharacteristic(&buffer_rx_local[18], 6, TIME_DATE_CHARGING_START_TIME_CHAR_HANDLE);
+		modifyCharacteristic(&buffer_rx_local[24], 6, TIME_DATE_CHARGING_STOP_TIME_CHAR_HANDLE);
 	}
 	else if(MEASURES_INSTALATION_CURRENT_LIMIT_CHAR_HANDLE == tipo_bloque)
 	{
-		Modify_VELT1_CHARGER_characteristic(buffer_rx_local, 1, MEASURES_INSTALATION_CURRENT_LIMIT_CHAR_HANDLE);
+		modifyCharacteristic(buffer_rx_local, 1, MEASURES_INSTALATION_CURRENT_LIMIT_CHAR_HANDLE);
 	}
 	else if(MEASURES_CURRENT_COMMAND_CHAR_HANDLE == tipo_bloque)
 	{
-		Modify_VELT1_CHARGER_characteristic(buffer_rx_local, 1, MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
+		modifyCharacteristic(buffer_rx_local, 1, MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
 	}
 	else if(TIME_DATE_DELTA_DELAY_FOR_CHARGING_CHAR_HANDLE == tipo_bloque)
 	{
-		Modify_VELT1_CHARGER_characteristic(buffer_rx_local, 2, TIME_DATE_DELTA_DELAY_FOR_CHARGING_CHAR_HANDLE);
+		modifyCharacteristic(buffer_rx_local, 2, TIME_DATE_DELTA_DELAY_FOR_CHARGING_CHAR_HANDLE);
 	}
 	else if(TIME_DATE_CHARGING_START_TIME_CHAR_HANDLE == tipo_bloque)
 	{
-		Modify_VELT1_CHARGER_characteristic(buffer_rx_local, 6, TIME_DATE_CHARGING_START_TIME_CHAR_HANDLE);
+		modifyCharacteristic(buffer_rx_local, 6, TIME_DATE_CHARGING_START_TIME_CHAR_HANDLE);
 	}
 	else if(TIME_DATE_CHARGING_STOP_TIME_CHAR_HANDLE == tipo_bloque)
 	{
-		Modify_VELT1_CHARGER_characteristic(buffer_rx_local, 6, TIME_DATE_CHARGING_STOP_TIME_CHAR_HANDLE);
+		modifyCharacteristic(buffer_rx_local, 6, TIME_DATE_CHARGING_STOP_TIME_CHAR_HANDLE);
 	}
 	else if(CHARGING_INSTANT_DELAYED_CHAR_HANDLE == tipo_bloque)
 	{
-		Modify_VELT1_CHARGER_characteristic(buffer_rx_local, 1, CHARGING_INSTANT_DELAYED_CHAR_HANDLE);
+		modifyCharacteristic(buffer_rx_local, 1, CHARGING_INSTANT_DELAYED_CHAR_HANDLE);
 	}
 	else if(CHARGING_START_STOP_START_MODE_CHAR_HANDLE == tipo_bloque)
 	{
-		Modify_VELT1_CHARGER_characteristic(buffer_rx_local, 1, CHARGING_START_STOP_START_MODE_CHAR_HANDLE);
+		modifyCharacteristic(buffer_rx_local, 1, CHARGING_START_STOP_START_MODE_CHAR_HANDLE);
 	}
 	else if(CHARGING_BLE_MANUAL_START_CHAR_HANDLE == tipo_bloque)
 	{
-		Modify_VELT1_CHARGER_characteristic(buffer_rx_local, 1, CHARGING_BLE_MANUAL_START_CHAR_HANDLE);
+		modifyCharacteristic(buffer_rx_local, 1, CHARGING_BLE_MANUAL_START_CHAR_HANDLE);
 	}
 	else if(CHARGING_BLE_MANUAL_STOP_CHAR_HANDLE == tipo_bloque)
 	{
-		Modify_VELT1_CHARGER_characteristic(buffer_rx_local, 1, CHARGING_BLE_MANUAL_STOP_CHAR_HANDLE);
+		modifyCharacteristic(buffer_rx_local, 1, CHARGING_BLE_MANUAL_STOP_CHAR_HANDLE);
 	}
 	else if(SCHED_CHARGING_SCHEDULE_MATRIX_CHAR_HANDLE == tipo_bloque)
 	{
-		Modify_VELT1_CHARGER_characteristic(buffer_rx_local, 168, SCHED_CHARGING_SCHEDULE_MATRIX_CHAR_HANDLE);
+		modifyCharacteristic(buffer_rx_local, 168, SCHED_CHARGING_SCHEDULE_MATRIX_CHAR_HANDLE);
 	}
 	else if(VCD_NAME_USERS_CHARGER_DEVICE_ID_CHAR_HANDLE == tipo_bloque)
 	{
@@ -546,119 +551,119 @@ void procesar_bloque(uint16 tipo_bloque)
 		changeAdvName(device_ID);
 		printf("CHANge name set device name to %s\r\n",device_ID);
 
-		Update_VELT1_CHARGER_characteristic(device_ID, 11, VCD_NAME_USERS_CHARGER_DEVICE_ID_CHAR_HANDLE);
+		updateCharacteristic(device_ID, 11, VCD_NAME_USERS_CHARGER_DEVICE_ID_CHAR_HANDLE);
 	}
 	else if(VCD_NAME_USERS_USERS_NUMBER_CHAR_HANDLE == tipo_bloque)
 	{
-		Modify_VELT1_CHARGER_characteristic(buffer_rx_local, 1, VCD_NAME_USERS_USERS_NUMBER_CHAR_HANDLE);
+		modifyCharacteristic(buffer_rx_local, 1, VCD_NAME_USERS_USERS_NUMBER_CHAR_HANDLE);
 	}
 	else if(VCD_NAME_USERS_UI_X_USER_ID_CHAR_HANDLE == tipo_bloque)
 	{
-		Modify_VELT1_CHARGER_characteristic(buffer_rx_local, 1, VCD_NAME_USERS_UI_X_USER_ID_CHAR_HANDLE);
+		modifyCharacteristic(buffer_rx_local, 1, VCD_NAME_USERS_UI_X_USER_ID_CHAR_HANDLE);
 	}
 	else if(VCD_NAME_USERS_USER_INDEX_CHAR_HANDLE == tipo_bloque)
 	{
-		Modify_VELT1_CHARGER_characteristic(buffer_rx_local, 1, VCD_NAME_USERS_USER_INDEX_CHAR_HANDLE);
+		modifyCharacteristic(buffer_rx_local, 1, VCD_NAME_USERS_USER_INDEX_CHAR_HANDLE);
 	}
 	else if(TEST_LAUNCH_RCD_PE_TEST_CHAR_HANDLE == tipo_bloque)
 	{
-		Modify_VELT1_CHARGER_characteristic(buffer_rx_local, 1, TEST_LAUNCH_RCD_PE_TEST_CHAR_HANDLE);
+		modifyCharacteristic(buffer_rx_local, 1, TEST_LAUNCH_RCD_PE_TEST_CHAR_HANDLE);
 	}
 	else if(TEST_RCD_PE_TEST_RESULT_CHAR_HANDLE == tipo_bloque)
 	{
-		Modify_VELT1_CHARGER_characteristic(buffer_rx_local, 1, TEST_RCD_PE_TEST_RESULT_CHAR_HANDLE);
+		modifyCharacteristic(buffer_rx_local, 1, TEST_RCD_PE_TEST_RESULT_CHAR_HANDLE);
 	}
 	else if(TEST_LAUNCH_MCB_TEST_CHAR_HANDLE == tipo_bloque)
 	{
-		Modify_VELT1_CHARGER_characteristic(buffer_rx_local, 1, TEST_LAUNCH_MCB_TEST_CHAR_HANDLE);
+		modifyCharacteristic(buffer_rx_local, 1, TEST_LAUNCH_MCB_TEST_CHAR_HANDLE);
 	}
 	else if(TEST_MCB_TEST_RESULT_CHAR_HANDLE == tipo_bloque)
 	{
-		Modify_VELT1_CHARGER_characteristic(buffer_rx_local, 1, TEST_MCB_TEST_RESULT_CHAR_HANDLE);
+		modifyCharacteristic(buffer_rx_local, 1, TEST_MCB_TEST_RESULT_CHAR_HANDLE);
 	}
 	else if(MAN_LOCK_UNLOCK_LOCKING_MECHANISM_ON_OFF_CHAR_HANDLE == tipo_bloque)
 	{
-		Modify_VELT1_CHARGER_characteristic(buffer_rx_local, 1, MAN_LOCK_UNLOCK_LOCKING_MECHANISM_ON_OFF_CHAR_HANDLE);
+		modifyCharacteristic(buffer_rx_local, 1, MAN_LOCK_UNLOCK_LOCKING_MECHANISM_ON_OFF_CHAR_HANDLE);
 	}
 	else if(LED_LUMIN_COLOR_LUMINOSITY_LEVEL_CHAR_HANDLE == tipo_bloque)
 	{
 		luminosidad = buffer_rx_local[0];
 		LED_Control(luminosidad, rojo, verde, azul);
-		Modify_VELT1_CHARGER_characteristic(&buffer_rx_local[0], 1, LED_LUMIN_COLOR_LUMINOSITY_LEVEL_CHAR_HANDLE);
+		modifyCharacteristic(&buffer_rx_local[0], 1, LED_LUMIN_COLOR_LUMINOSITY_LEVEL_CHAR_HANDLE);
 	}
 	else if(LED_LUMIN_COLOR_R_LED_COLOUR_CHAR_HANDLE == tipo_bloque)
 	{
 		rojo = buffer_rx_local[0];
 		LED_Control(luminosidad, rojo, verde, azul);
-		Modify_VELT1_CHARGER_characteristic(&buffer_rx_local[0], 1, LED_LUMIN_COLOR_R_LED_COLOUR_CHAR_HANDLE);
+		modifyCharacteristic(&buffer_rx_local[0], 1, LED_LUMIN_COLOR_R_LED_COLOUR_CHAR_HANDLE);
 	}
 	else if(LED_LUMIN_COLOR_G_LED_COLOUR_CHAR_HANDLE == tipo_bloque)
 	{
 		verde = buffer_rx_local[0];
 		LED_Control(luminosidad, rojo, verde, azul);
-		Modify_VELT1_CHARGER_characteristic(&buffer_rx_local[0], 1, LED_LUMIN_COLOR_G_LED_COLOUR_CHAR_HANDLE);
+		modifyCharacteristic(&buffer_rx_local[0], 1, LED_LUMIN_COLOR_G_LED_COLOUR_CHAR_HANDLE);
 	}
 	else if(LED_LUMIN_COLOR_B_LED_COLOUR_CHAR_HANDLE == tipo_bloque)
 	{
 		azul = buffer_rx_local[0];
 		LED_Control(luminosidad, rojo, verde, azul);
-		Modify_VELT1_CHARGER_characteristic(&buffer_rx_local[0], 1, LED_LUMIN_COLOR_B_LED_COLOUR_CHAR_HANDLE);
+		modifyCharacteristic(&buffer_rx_local[0], 1, LED_LUMIN_COLOR_B_LED_COLOUR_CHAR_HANDLE);
 	}
 	else if(RESET_RESET_CHAR_HANDLE == tipo_bloque)
 	{	
-		//Modify_VELT1_CHARGER_characteristic(&buffer_rx_local[0], 1, RESET_RESET_CHAR_HANDLE);
+		//modifyCharacteristic(&buffer_rx_local[0], 1, RESET_RESET_CHAR_HANDLE);
 	}
 	else if(ENERGY_RECORD_RECORD_CHAR_HANDLE == tipo_bloque)
 	{
-		Modify_VELT1_CHARGER_characteristic(buffer_rx_local, 512, ENERGY_RECORD_RECORD_CHAR_HANDLE);
+		modifyCharacteristic(buffer_rx_local, 512, ENERGY_RECORD_RECORD_CHAR_HANDLE);
 	}
 	else if(RECORDING_REC_CAPACITY_CHAR_HANDLE == tipo_bloque)
 	{
-		Modify_VELT1_CHARGER_characteristic(buffer_rx_local, 2, RECORDING_REC_CAPACITY_CHAR_HANDLE);
+		modifyCharacteristic(buffer_rx_local, 2, RECORDING_REC_CAPACITY_CHAR_HANDLE);
 	}
 	else if(RECORDING_REC_LAST_CHAR_HANDLE == tipo_bloque)
 	{
-		Modify_VELT1_CHARGER_characteristic(buffer_rx_local, 2, RECORDING_REC_LAST_CHAR_HANDLE);
+		modifyCharacteristic(buffer_rx_local, 2, RECORDING_REC_LAST_CHAR_HANDLE);
 	}
 	else if(RECORDING_REC_INDEX_CHAR_HANDLE == tipo_bloque)
 	{
-		Modify_VELT1_CHARGER_characteristic(buffer_rx_local, 2, RECORDING_REC_INDEX_CHAR_HANDLE);
+		modifyCharacteristic(buffer_rx_local, 2, RECORDING_REC_INDEX_CHAR_HANDLE);
 	}
 	else if(RECORDING_REC_LAPS_CHAR_HANDLE == tipo_bloque)
 	{
-		Modify_VELT1_CHARGER_characteristic(buffer_rx_local, 2, RECORDING_REC_LAPS_CHAR_HANDLE);
+		modifyCharacteristic(buffer_rx_local, 2, RECORDING_REC_LAPS_CHAR_HANDLE);
 	}
 	else if(CONFIGURACION_AUTENTICATION_MODES_CHAR_HANDLE == tipo_bloque)
 	{
-		Modify_VELT1_CHARGER_characteristic(buffer_rx_local, 2, CONFIGURACION_AUTENTICATION_MODES_CHAR_HANDLE);
+		modifyCharacteristic(buffer_rx_local, 2, CONFIGURACION_AUTENTICATION_MODES_CHAR_HANDLE);
 	}
 	else if(DOMESTIC_CONSUMPTION_KS_CHAR_HANDLE == tipo_bloque)
 	{
-		Modify_VELT1_CHARGER_characteristic(buffer_rx_local, 1, DOMESTIC_CONSUMPTION_KS_CHAR_HANDLE);
+		modifyCharacteristic(buffer_rx_local, 1, DOMESTIC_CONSUMPTION_KS_CHAR_HANDLE);
 	}
 	else if(DOMESTIC_CONSUMPTION_FCT_CHAR_HANDLE == tipo_bloque)
 	{
-		Modify_VELT1_CHARGER_characteristic(buffer_rx_local, 1, DOMESTIC_CONSUMPTION_FCT_CHAR_HANDLE);
+		modifyCharacteristic(buffer_rx_local, 1, DOMESTIC_CONSUMPTION_FCT_CHAR_HANDLE);
 	}
 	else if(DOMESTIC_CONSUMPTION_FS_CHAR_HANDLE == tipo_bloque)
 	{
-		Modify_VELT1_CHARGER_characteristic(buffer_rx_local, 1, DOMESTIC_CONSUMPTION_FS_CHAR_HANDLE);
+		modifyCharacteristic(buffer_rx_local, 1, DOMESTIC_CONSUMPTION_FS_CHAR_HANDLE);
 	}
 	else if(DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_CHAR_HANDLE == tipo_bloque)
 	{
-		Modify_VELT1_CHARGER_characteristic(buffer_rx_local, 1, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_CHAR_HANDLE);
+		modifyCharacteristic(buffer_rx_local, 1, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_CHAR_HANDLE);
 	}
 	else if(ERROR_STATUS_ERROR_CODE_CHAR_HANDLE == tipo_bloque)
 	{
-		Modify_VELT1_CHARGER_characteristic(buffer_rx_local, 1, ERROR_STATUS_ERROR_CODE_CHAR_HANDLE);
+		modifyCharacteristic(buffer_rx_local, 1, ERROR_STATUS_ERROR_CODE_CHAR_HANDLE);
 	}
 
 }
  
-int controlSendToSerialLocal ( uint8_t * dades, int len )
+int controlSendToSerialLocal ( uint8_t * data, int len )
 {
 	int ret=0;
-	ret = serialLocal.write(dades, len);
+	ret = serialLocal.write(data, len);
 	cnt_timeout_tx = TIMEOUT_TX_BLOQUE;
 	return ret;
 }
@@ -673,55 +678,55 @@ void deviceConnectInd ( void )
 
 	srand(aut_semilla);
 	random = rand();
-	autent_matrix[7] = (uint8)(random >> 8);
-	autent_matrix[6] = (uint8)random;
+	authChallengeQuery[7] = (uint8)(random >> 8);
+	authChallengeQuery[6] = (uint8)random;
 	random = rand();
-	autent_matrix[5] = (uint8)(random >> 8);
-	autent_matrix[4] = (uint8)random;
+	authChallengeQuery[5] = (uint8)(random >> 8);
+	authChallengeQuery[4] = (uint8)random;
 	random = rand();
-	autent_matrix[3] = (uint8)(random >> 8);
-	autent_matrix[2] = (uint8)random;
+	authChallengeQuery[3] = (uint8)(random >> 8);
+	authChallengeQuery[2] = (uint8)random;
 	random = rand();
-	autent_matrix[1] = (uint8)(random >> 8);
-	autent_matrix[0] = (uint8)random;
+	authChallengeQuery[1] = (uint8)(random >> 8);
+	authChallengeQuery[0] = (uint8)random;
 
-	outputvec1 = dev_auth_challenge(autent_matrix);
+	outputvec1 = dev_auth_challenge(authChallengeQuery);
 
-	memcpy(autent_token, outputvec1, 8);
+	memcpy(authChallengeReply, outputvec1, 8);
 
-	Modify_VELT1_CHARGER_characteristic(autent_matrix, 8, AUTENTICACION_MATRIX_CHAR_HANDLE);
+	modifyCharacteristic(authChallengeQuery, 8, AUTENTICACION_MATRIX_CHAR_HANDLE);
 
 }
 
 void deviceDisconnectInd ( void )
 {
 	LED_Control(50, 10, 10, 10);
-	//autentificacion_recibida = 0;
-	memset(autent_token, 0x00, 8);
-	//memset(autent_matrix, 0x00, 8);
-	Modify_VELT1_CHARGER_characteristic(autent_matrix, 10, AUTENTICACION_MATRIX_CHAR_HANDLE);
+	authSuccess = 0;
+	memset(authChallengeReply, 0x00, 8);
+	//memset(authChallengeQuery, 0x00, 8);
+	modifyCharacteristic(authChallengeQuery, 10, AUTENTICACION_MATRIX_CHAR_HANDLE);
 }
 
-uint8_t getModeTelecarga (void)
+uint8_t isMainFwUpdateActive (void)
 {
-	return modo_telecarga_micro_principal;
+	return mainFwUpdateActive;
 }
 
-uint8_t setModeTelecarga (uint8_t val )
+uint8_t setMainFwUpdateActive (uint8_t val )
 {
-	modo_telecarga_micro_principal = val;
-	return modo_telecarga_micro_principal;
+	mainFwUpdateActive = val;
+	return mainFwUpdateActive;
 }
 
-uint8_t setAutentificationToken ( uint8_t *data, int len )
+uint8_t setAuthToken ( uint8_t *data, int len )
 {
-	if(!autentificacion_recibida)
+	if(!authSuccess)
 	{
-		printf("%s %s \r\n",device_SN, dummy_array);
-		if(!memcmp(autent_token, data, 8) || !memcmp(device_SN, dummy_array, 10))
+		printf("%s %s \r\n",deviceSerNum, initialSerNum);
+		if(!memcmp(authChallengeReply, data, 8) || !memcmp(deviceSerNum, initialSerNum, 10))
 		{
-			printf("autentificacion_recibida\r\n");
-			autentificacion_recibida = 1;
+			printf("authSuccess\r\n");
+			authSuccess = 1;
 		}
 	}
 
@@ -730,7 +735,7 @@ uint8_t setAutentificationToken ( uint8_t *data, int len )
 
 uint8_t sendBinaryBlock ( uint8_t *data, int len )
 {
-	if(modo_telecarga_micro_principal)
+	if(mainFwUpdateActive)
 	{
 		controlSendToSerialLocal(data,len);
 	}
@@ -738,21 +743,21 @@ uint8_t sendBinaryBlock ( uint8_t *data, int len )
 	return 1;
 }
 
-uint8_t hasAutentification ( void )
+uint8_t authorizedOK ( void )
 {
-	return (autentificacion_recibida || modo_telecarga_micro_principal == 1 );
+	return (authSuccess || mainFwUpdateActive == 1 );
 }
 
-void Update_VELT1_CHARGER_characteristic(uint8_t* Data, uint16_t len, uint16_t attrHandle) 
+void updateCharacteristic(uint8_t* data, uint16_t len, uint16_t attrHandle) 
 {
-	serverbleSetCharacteristic ( Data,len,attrHandle);
+	serverbleSetCharacteristic ( data,len,attrHandle);
 	return;
 }
 
 
-void Modify_VELT1_CHARGER_characteristic(uint8* Data, uint16 len, uint16 attrHandle)
+void modifyCharacteristic(uint8* data, uint16 len, uint16 attrHandle)
 {
-	serverbleSetCharacteristic ( Data,len,attrHandle);
+	serverbleSetCharacteristic ( data,len,attrHandle);
 	return;
 }
 
