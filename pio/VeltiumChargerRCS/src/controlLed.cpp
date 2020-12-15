@@ -1,9 +1,9 @@
 #include <Arduino.h>
+#include "DRACO_IO.h"
 #include "WS2812.h"
 #include "controlLed.h"
 
 //NEOPIXELS 
-const int DATA_PIN = 14;            
 #define  NUM_PIXELS  7  
 uint8_t MAX_COLOR_VAL = 255;
 
@@ -47,6 +47,18 @@ int correctGammaColor ( void  )
 	return 1;
 }
 
+void displayOne( uint8_t i, uint8_t r, uint8_t g, uint8_t b, uint8_t pixeln)
+{
+	for (int j = 0; j < NUM_PIXELS; j++)
+	{
+		pixels[j] = makeIRGBVal(0, 0, 0, 0);
+	}
+	pixels[pixeln] = makeIRGBVal(i, r, g, b);
+
+	ws2812_setColors(NUM_PIXELS, pixels);
+}
+
+
 void displayAll( uint8_t i, uint8_t r, uint8_t g, uint8_t b)
 {
 	for (int j = 0; j < NUM_PIXELS; j++)
@@ -54,7 +66,9 @@ void displayAll( uint8_t i, uint8_t r, uint8_t g, uint8_t b)
 		pixels[j] = makeIRGBVal(i, r, g, b);
 	}
 	ws2812_setColors(NUM_PIXELS, pixels);
+
 }
+
 
 void displayOff()
 {
@@ -67,13 +81,27 @@ void displayOff()
 
 void initLeds ( void )
 {
-	if(ws2812_init(DATA_PIN, LED_WS2812B))
+	digitalWrite(EN_NEOPIXEL,HIGH);
+	pinMode( EN_NEOPIXEL, OUTPUT);
+	digitalWrite(EN_NEOPIXEL,HIGH);
+
+	if(ws2812_init(DO_NEOPIXEL, LED_WS2812B))
 	{
 		while (1)
 		{
-			vTaskDelay(100 / portTICK_PERIOD_MS);
+			vTaskDelay(pdMS_TO_TICKS(100));
 		}
 	}
-	displayOff();
+}
 
+void Kit (void){
+	
+	for (int j = 0; j < 7; j++){
+		displayOne(100,100,0,0,j);
+		vTaskDelay(pdMS_TO_TICKS(550));
+	}
+	for (int j = 7; j >= 0; j--){
+		displayOne(100,100,0,0,j);
+		vTaskDelay(pdMS_TO_TICKS(550));
+	}
 }

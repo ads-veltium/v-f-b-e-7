@@ -23,18 +23,18 @@
 #define HEADER_TX			':'
 
 
-void Update_VELT1_CHARGER_characteristic(uint8_t* Data, uint16_t len, uint16_t attrHandle);
-int controlSendToSerialLocal( uint8_t * dades, int len );
+void updateCharacteristic(uint8_t* data, uint16_t len, uint16_t attrHandle);
+int controlSendToSerialLocal(uint8_t * data, int len);
 void LED_Control(uint8_t luminosity, uint8_t r_level, uint8_t g_level, uint8_t b_level);
 int controlMain(void);
 void deviceConnectInd(void);
 void deviceDisconnectInd(void);
-uint8_t getModeTelecarga (void);
-uint8_t setModeTelecarga (uint8_t val);
-uint8_t sendBinaryBlock ( uint8_t *data, int len );
-uint8_t setAutentificationToken ( uint8_t *data, int len );
-uint8_t hasAutentification ( void );
-void MAIN_RESET_Write( uint8_t val );
+uint8_t isMainFwUpdateActive(void);
+uint8_t setMainFwUpdateActive(uint8_t val);
+uint8_t sendBinaryBlock(uint8_t *data, int len);
+uint8_t setAuthToken(uint8_t *data, int len);
+uint8_t authorizedOK(void);
+void MAIN_RESET_Write(uint8_t val);
 void controlInit(void);
 
 #endif // __CONTROL_MAIN

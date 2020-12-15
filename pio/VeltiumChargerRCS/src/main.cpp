@@ -1,14 +1,3 @@
-/*
-#include <Arduino.h>
-
-void setup() {
-  // put your setup code here, to run once:
-}
-
-void loop() {
-  // put your main code here, to run repeatedly:
-}
-*/
 
 #include <Arduino.h>
 #include <BLEDevice.h>
@@ -21,7 +10,6 @@ void loop() {
 #include "soc/timer_group_struct.h"
 #include "driver/periph_ctrl.h"
 #include "driver/timer.h"
-//#include <ESP32CAN.h>
 #include <Wire.h>
 #include <EEPROM.h>
 #include "esp32/ulp.h"
@@ -43,6 +31,68 @@ void loop() {
 #include "serverble.h"
 #include "controlLed.h"
 #include "DRACO_IO.h"
+
+
+
+#define USE_ETH
+
+#ifdef USE_ETH
+#include <ETH.h>
+
+//#define ETH_CLK_MODE    ETH_CLOCK_GPIO0_IN
+#define ETH_POWER_PIN  	12 
+#define ETH_TYPE        ETH_PHY_LAN8720
+#define ETH_ADDR        0
+#define ETH_MDC_PIN    	23 
+#define ETH_MDIO_PIN    18
+
+IPAddress local_IP(192, 168, 2, 126);
+IPAddress gateway(192, 168, 2, 1);
+IPAddress subnet(255, 255, 255, 0);
+IPAddress primaryDNS(8, 8, 8, 8); //optional
+IPAddress secondaryDNS(8, 8, 4, 4); //optional
+
+
+static bool eth_connected = false;
+
+void WiFiEvent(WiFiEvent_t event)
+{
+  switch (event) {
+    case SYSTEM_EVENT_ETH_START:
+      Serial.println("ETH Started");
+      //set eth hostname here
+      ETH.setHostname("velitum-ethernet");
+      break;
+    case SYSTEM_EVENT_ETH_CONNECTED:
+      Serial.println("ETH Connected");
+      break;
+    case SYSTEM_EVENT_ETH_GOT_IP:
+      Serial.print("ETH MAC: ");
+      Serial.print(ETH.macAddress());
+      Serial.print(", IPv4: ");
+      Serial.print(ETH.localIP());
+      if (ETH.fullDuplex()) {
+        Serial.print(", FULL_DUPLEX");
+      }
+      Serial.print(", ");
+      Serial.print(ETH.linkSpeed());
+      Serial.println("Mbps");
+      eth_connected = true;
+      break;
+    case SYSTEM_EVENT_ETH_DISCONNECTED:
+      Serial.println("ETH Disconnected");
+      eth_connected = false;
+      break;
+    case SYSTEM_EVENT_ETH_STOP:
+      Serial.println("ETH Stopped");
+      eth_connected = false;
+      break;
+    default:
+      break;
+  }
+}
+#endif // USE_ETH
+
 
 int otaEnable = 0;
 
@@ -187,7 +237,6 @@ void setupOta(void)
 #define WIFI_SSID "EthErEAlm6"
 #define WIFI_PASSWORD "d5a5Lceaqr"
 
-
 #ifdef USE_WIFI_ARDUINO
 #include <WiFi.h>
 #include "FirebaseClient.h"
@@ -264,6 +313,8 @@ void perform_malloc_tests(uint8_t pot_first, uint8_t pot_last)
 void setup() 
 {
 	Serial.begin(115200);
+	DRACO_GPIO_Init();
+	initLeds();
 
 	// perform_ps_malloc_tests(2, 22);	// test 4K to 4M
 	// perform_malloc_tests(2, 22);	// test 4K to 4M
@@ -285,6 +336,17 @@ void setup()
 	unsigned char dummySerial[10] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
 	dev_auth_init(dummySerial);
 #endif
+
+#ifdef USE_ETH
+	WiFi.onEvent(WiFiEvent);
+	//ETH.begin(ETH_ADDR, ETH_POWER_PIN, ETH_MDC_PIN, ETH_MDIO_PIN, ETH_TYPE, ETH_CLK_MODE);
+	ETH.begin(ETH_ADDR, ETH_POWER_PIN, ETH_MDC_PIN, ETH_MDIO_PIN, ETH_TYPE);
+
+	if (!ETH.config(local_IP, gateway, subnet, primaryDNS, secondaryDNS)) 
+	{
+		Serial.println("ERROR: NOT IP ERROR \r\n");
+	}
+#endif // USE_ETH
 
 #ifdef USE_WIFI_ESP
 	initWifi(WIFI_SSID, WIFI_PASSWORD);
@@ -319,12 +381,9 @@ void setup()
 #endif
 
 #ifdef USE_DRACO_BLE
-	DRACO_GPIO_Init();
 	
 	Serial.println("FREE HEAP MEMORY [after DRACO_GPIO_Init] **************************");
 	Serial.println(ESP.getFreeHeap());
-
-	initLeds();
 
 	Serial.println("FREE HEAP MEMORY [after initLeds] **************************");
 	Serial.println(ESP.getFreeHeap());

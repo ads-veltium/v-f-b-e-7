@@ -41,6 +41,7 @@
 
 #include <Arduino.h>
 #include <memory>
+#include <vector>
 
 static const char FirebaseJson_STR_1[] PROGMEM = ",";
 static const char FirebaseJson_STR_2[] PROGMEM = "\"";
