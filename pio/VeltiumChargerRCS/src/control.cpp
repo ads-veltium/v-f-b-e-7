@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "HardwareSerialMOD.h"
+#include "OTA_Firmware_Upgrade.h"
 
 #include <math.h>
 
@@ -20,6 +21,9 @@
 #include "controlLed.h"
 #include "DRACO_IO.h"
 
+#include "cybtldr_parse.h"
+#include "cybtldr_command.h"
+#include "cybtldr_api.h"
 
 #include "tipos.h"
 #include "dev_auth.h"
@@ -57,7 +61,7 @@ uint8 cnt_timeout_tx = 0;
 
 // initial serial number
 uint8 initialSerNum[10] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-
+TaskHandle_t xHandle = NULL;
 
 uint8 mainFwUpdateActive = 0;
 
@@ -83,6 +87,7 @@ void StackEventHandler( uint32 eventCode, void *eventParam );
 void modifyCharacteristic(uint8* data, uint16 len, uint16 attrHandle);
 void procesar_bloque(uint16 tipo_bloque);
 void proceso_recepcion(void);
+void UpdateTask(void *arg);
 
 void Disable_VELT1_CHARGER_services(void);
 
@@ -101,6 +106,7 @@ int TIME_PARPADEO_VARIABLE = 600;
 
 hw_timer_t * timer10ms = NULL;
 hw_timer_t * timer1s = NULL;
+HardwareSerialMOD serialLocal(2);
 
 void IRAM_ATTR onTimer10ms() 
 {
@@ -137,12 +143,9 @@ void configTimers ( void )
 
 void MAIN_RESET_Write( uint8_t val )
 {
-	printf("Main reseted");
 	DRACO_GPIO_Reset_MCU(val);
 	return;
 }
-
-HardwareSerialMOD serialLocal(2);
 
 void controlTask(void *arg) 
 {	
@@ -156,7 +159,7 @@ void controlTask(void *arg)
 
 
 	modifyCharacteristic(authChallengeQuery, 8, AUTENTICACION_MATRIX_CHAR_HANDLE);
-
+	int CreateUpdateTask=1;
 
 	MAIN_RESET_Write(1);        // Permito el arranque del micro principal
 	
@@ -202,6 +205,7 @@ void controlTask(void *arg)
 
 			if(mainFwUpdateActive == 0)
 			{
+				mainFwUpdateActive=1;
 				switch (estado_actual)
 				{
 					case ESTADO_ARRANQUE:
@@ -259,8 +263,14 @@ void controlTask(void *arg)
 			}
 			else
 			{
-				proceso_recepcion();
+				if(CreateUpdateTask){
+					xTaskCreate(UpdateTask,"TASK UPDATE",4096,NULL,5,&xHandle);
+					CreateUpdateTask=0;
+				}
+
+				//proceso_recepcion();
 			}
+
 		}
 
 		// Eventos 1 Seg
@@ -268,13 +278,11 @@ void controlTask(void *arg)
 		{
 			cont_seg_ant = cont_seg;
 		}
-
-		vTaskDelay(pdMS_TO_TICKS(5));	
+		vTaskDelay(pdMS_TO_TICKS(20));	
 	}
 }
 
-void startSystem(void)
-{
+void startSystem(void){
 	// DEBUG DEBUG DEBUG DEBUG DEBUG
 	// HERE ONLY FOR DEBUGGING - must be commented out
 	// memset(deviceSerNum, 0xFF, 10);
@@ -305,7 +313,9 @@ void proceso_recepcion(void)
 
 	if(mainFwUpdateActive)
 	{
-		LED_Control(10, 10, 10, 10);
+		
+
+		return;
 
 		puntero_rx_local = 0;
 		len = serialLocal.available();
@@ -450,6 +460,7 @@ void procesar_bloque(uint16 tipo_bloque)
 
 		cnt_timeout_inicio = TIMEOUT_INICIO;
 		dispositivo_inicializado = 1;
+		
 	}
 	else if(BLOQUE_STATUS == tipo_bloque)
 	{		
@@ -758,7 +769,6 @@ void updateCharacteristic(uint8_t* data, uint16_t len, uint16_t attrHandle)
 	return;
 }
 
-
 void modifyCharacteristic(uint8* data, uint16 len, uint16 attrHandle)
 {
 	serverbleSetCharacteristic ( data,len,attrHandle);
@@ -771,9 +781,97 @@ void Disable_VELT1_CHARGER_services(void)
 }
 
 
+/************************************************
+ * PSOC5 Update Task
+ * **********************************************/
+void UpdateTask(void *arg){
+	int Nlinea =0;
+	uint8_t err = 0;
+	String Buffer;
+	uint8 LedPointer=0;
+	uint8 timeout =0;
+
+	unsigned long  siliconID;
+	unsigned char siliconRev;
+	unsigned char packetChkSumType;
+	unsigned char arrayId; 
+	unsigned short rowNum;
+	unsigned short rowSize; 
+	unsigned char checksum ;
+	unsigned char checksum2;
+	unsigned long blVer=0;
+	unsigned char rowData[512];
+
+	Serial.println("\nComenzando actualizacion!!");
+
+	//Abrir el SPiffS
+	bool begin(bool formatOnFail=true, const char * basePath="/spiffs", uint8_t maxOpenFiles=10);
+	if(!SPIFFS.begin()){ 
+		Serial.println("Error abriendo el SPIFFS");  
+	}
+
+	//Ver si tengo algun archivo:
+	File file = SPIFFS.open("/FreeRTOS_V6.cyacd"); 
+	if(!file || file.size() == 0){ 
+		Serial.println("Failed to open file for reading"); 
+		file.close();
+		return; 
+	}
+
+	//Leer la primera linea y obtener los datos del chip
+	Buffer=file.readStringUntil('\n'); 
+	int longitud = Buffer.length()-1;  
+	unsigned char* b = (unsigned char*) Buffer.c_str(); 
+	err=CyBtldr_ParseHeader((unsigned int)longitud,  b, &siliconID , &siliconRev ,&packetChkSumType);  
+	err = CyBtldr_ParseRowData((unsigned int)longitud,b, &arrayId, &rowNum, rowData, &rowSize, &checksum);
+
+	//Reiniciar la lectura del archivo
+	file.seek(PRIMERA_FILA,SeekSet);
+
+
+	err = CyBtldr_StartBootloadOperation(&serialLocal ,siliconID, siliconRev ,&blVer);
+
+	while(1){
+		//Control de los leds
+		if(timeout >=3){
+			changeOne(100,50,80,100,LedPointer);
+			LedPointer++;
+			timeout=0;
+			if(LedPointer==8){
+				displayAll(0,0,0,0);
+				LedPointer=0;
+			}
+		}
+
+		if (file.available() && err == 0) {   
+			Buffer=file.readStringUntil('\n'); 
+			longitud = Buffer.length()-1; 
+			b = (unsigned char*) Buffer.c_str();     
+			err = CyBtldr_ParseRowData((unsigned int)longitud,b, &arrayId, &rowNum, rowData, &rowSize, &checksum);
+			
+			if (err==0){
+				err = CyBtldr_ProgramRow(arrayId, rowNum, rowData, rowSize);
+			}
+			Nlinea++;
+		}
+		else{
+			//End Bootloader Operation 
+			CyBtldr_EndBootloadOperation();
+			vTaskDelay(1000);
+			setMainFwUpdateActive(0);
+			Serial.println("Actualizacion terminada!!");
+			Serial.printf("Lineas leidas: %u \n",Nlinea);
+			Serial.printf("Error %i \n", err);
+			file.close();
+			vTaskDelete(xHandle);
+		}
+		timeout++;
+		vTaskDelay(pdMS_TO_TICKS(5));
+    }
+}
 void controlInit(void){
 	xTaskCreate(controlTask,"TASK CONTROL",4096,NULL,1,NULL);
-
+	
 }
 
 
