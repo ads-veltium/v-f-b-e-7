@@ -27,6 +27,7 @@
 
 #include "tipos.h"
 #include "dev_auth.h"
+#include "Update.h"
 
 // TIPOS DE BLOQUE DE INTERCAMBIO CON BLE
 #define BLOQUE_INICIALIZACION	0xFFFF
@@ -57,6 +58,7 @@ int estado_recepcion = 0;
 uint8 buffer_tx_local[550];
 uint8 buffer_rx_local[550];
 uint16 puntero_rx_local = 0;
+uint8 updateTaskrunning=0;
 uint8 cnt_timeout_tx = 0;
 
 // initial serial number
@@ -78,7 +80,7 @@ uint16 inst_current_anterior = 0x0000;
 uint16 inst_current_actual = 0x0000;
 uint16 cnt_diferencia = 30;
 
-uint8 version_firmware[11] = {"VBLE1_0504"};		// 17122019 Bootloader estable
+uint8 version_firmware[11] = {"VBLE1_0604"};		
 
 uint8 systemStarted = 0;
 void startSystem(void);
@@ -87,13 +89,10 @@ void StackEventHandler( uint32 eventCode, void *eventParam );
 void modifyCharacteristic(uint8* data, uint16 len, uint16 attrHandle);
 void procesar_bloque(uint16 tipo_bloque);
 void proceso_recepcion(void);
-void UpdateTask(void *arg);
 
 void Disable_VELT1_CHARGER_services(void);
 
 uint32 InterruptHpn;
-
-
 uint8 busyStatus;
 
 double flick1, flick2;
@@ -144,6 +143,7 @@ void configTimers ( void )
 void MAIN_RESET_Write( uint8_t val )
 {
 	DRACO_GPIO_Reset_MCU(val);
+	CyBtldr_EndBootloadOperation(&serialLocal);
 	return;
 }
 
@@ -156,10 +156,9 @@ void controlTask(void *arg)
 
 	// INICIALIZO ELEMENTOS PARA AUTENTICACION
 	srand(aut_semilla);
-
+	uint8_t once=1;
 
 	modifyCharacteristic(authChallengeQuery, 8, AUTENTICACION_MATRIX_CHAR_HANDLE);
-	int CreateUpdateTask=1;
 
 	MAIN_RESET_Write(1);        // Permito el arranque del micro principal
 	
@@ -203,17 +202,12 @@ void controlTask(void *arg)
 				}
 			}
 
-			if(mainFwUpdateActive == 0)
-			{
-				mainFwUpdateActive=1;
-				switch (estado_actual)
-				{
+			if(mainFwUpdateActive == 0){
+				switch (estado_actual){
 					case ESTADO_ARRANQUE:
-						if(!dispositivo_inicializado)
-						{
+						if(!dispositivo_inicializado){
 							proceso_recepcion();
-							if(--cnt_timeout_inicio == 0)
-							{
+							if(--cnt_timeout_inicio == 0){
 								cnt_timeout_inicio = TIMEOUT_INICIO;
 								buffer_tx_local[0] = HEADER_TX;
 								buffer_tx_local[1] = (uint8)(BLOQUE_INICIALIZACION >> 8);
@@ -221,17 +215,16 @@ void controlTask(void *arg)
 								buffer_tx_local[3] = 1;
 								buffer_tx_local[4] = 0;
 								serialLocal.write(buffer_tx_local, 5);
-								if(--cnt_repeticiones_inicio == 0)
-								{
-									cnt_repeticiones_inicio = 100;		//1000;
+								if(--cnt_repeticiones_inicio == 0){
+									cnt_repeticiones_inicio = 1000;		//1000;
 									//startSystem();
 									mainFwUpdateActive = 1;
+									xTaskCreate(UpdateTask,"TASK UPDATE",4096,NULL,5,&xHandle);
 									LED_Control(100, 10, 10, 10);
 								}
 							}
 						}
-						else
-						{
+						else{
 							serialLocal.flush();
 							estado_actual = ESTADO_INICIALIZACION;
 						}
@@ -263,12 +256,19 @@ void controlTask(void *arg)
 			}
 			else
 			{
-				if(CreateUpdateTask){
-					xTaskCreate(UpdateTask,"TASK UPDATE",4096,NULL,5,&xHandle);
-					CreateUpdateTask=0;
+				if(!updateTaskrunning){
+					//Poner el micro principal en modo bootload
+					cnt_timeout_tx = TIMEOUT_TX_BLOQUE;
+					buffer_tx_local[0] = HEADER_TX;
+					buffer_tx_local[1] = (uint8)(BOOT_LOADER_LOAD_SW_APP_CHAR_HANDLE >> 8);
+					buffer_tx_local[2] = (uint8)BOOT_LOADER_LOAD_SW_APP_CHAR_HANDLE;
+					buffer_tx_local[3] = 1;
+					buffer_tx_local[4] = 0;
+
+					serialLocal.write(buffer_tx_local, 5);
 				}
 
-				//proceso_recepcion();
+				proceso_recepcion();
 			}
 
 		}
@@ -672,7 +672,11 @@ void procesar_bloque(uint16 tipo_bloque)
 	{
 		modifyCharacteristic(buffer_rx_local, 1, ERROR_STATUS_ERROR_CODE_CHAR_HANDLE);
 	}
-
+	else if(BOOT_LOADER_LOAD_SW_APP_CHAR_HANDLE== tipo_bloque){
+		Serial.println("UpdateTask Creada");
+		xTaskCreate(UpdateTask,"TASK UPDATE",4096,NULL,5,&xHandle);
+		updateTaskrunning=1;
+	}
 }
  
 int controlSendToSerialLocal ( uint8_t * data, int len )
@@ -688,7 +692,8 @@ void deviceConnectInd ( void ){
 	const void* outputvec1;
 	// This event is received when device is connected over GATT level 
 
-	Kit ();
+	LED_Control(50, 10, 10, 10);
+	
 
 	srand(aut_semilla);
 	random = rand();
@@ -709,17 +714,18 @@ void deviceConnectInd ( void ){
 	memcpy(authChallengeReply, outputvec1, 8);
 
 	modifyCharacteristic(authChallengeQuery, 8, AUTENTICACION_MATRIX_CHAR_HANDLE);
+	vTaskDelay(pdMS_TO_TICKS(500));
 
 }
 
 void deviceDisconnectInd ( void )
 {
-	//LED_Control(50, 10, 10, 10);
-	Kit ();
+	LED_Control(50, 10, 10, 10);
 	authSuccess = 0;
 	memset(authChallengeReply, 0x00, 8);
 	//memset(authChallengeQuery, 0x00, 8);
 	modifyCharacteristic(authChallengeQuery, 10, AUTENTICACION_MATRIX_CHAR_HANDLE);
+	vTaskDelay(pdMS_TO_TICKS(500));
 }
 
 uint8_t isMainFwUpdateActive (void)
@@ -782,7 +788,7 @@ void Disable_VELT1_CHARGER_services(void)
 
 
 /************************************************
- * PSOC5 Update Task
+ * Update Tasks
  * **********************************************/
 void UpdateTask(void *arg){
 	int Nlinea =0;
@@ -790,6 +796,7 @@ void UpdateTask(void *arg){
 	String Buffer;
 	uint8 LedPointer=0;
 	uint8 timeout =0;
+	uint8 Luminosidad=100;
 
 	unsigned long  siliconID;
 	unsigned char siliconRev;
@@ -798,11 +805,8 @@ void UpdateTask(void *arg){
 	unsigned short rowNum;
 	unsigned short rowSize; 
 	unsigned char checksum ;
-	unsigned char checksum2;
 	unsigned long blVer=0;
 	unsigned char rowData[512];
-
-	Serial.println("\nComenzando actualizacion!!");
 
 	//Abrir el SPiffS
 	bool begin(bool formatOnFail=true, const char * basePath="/spiffs", uint8_t maxOpenFiles=10);
@@ -810,7 +814,8 @@ void UpdateTask(void *arg){
 		Serial.println("Error abriendo el SPIFFS");  
 	}
 
-	//Ver si tengo algun archivo:
+	Serial.println("\nComenzando actualizacion del PSOC5!!");
+
 	File file = SPIFFS.open("/FreeRTOS_V6.cyacd"); 
 	if(!file || file.size() == 0){ 
 		Serial.println("Failed to open file for reading"); 
@@ -828,19 +833,20 @@ void UpdateTask(void *arg){
 	//Reiniciar la lectura del archivo
 	file.seek(PRIMERA_FILA,SeekSet);
 
-
 	err = CyBtldr_StartBootloadOperation(&serialLocal ,siliconID, siliconRev ,&blVer);
 
 	while(1){
 		//Control de los leds
-		if(timeout >=3){
-			changeOne(100,50,80,100,LedPointer);
-			LedPointer++;
-			timeout=0;
-			if(LedPointer==8){
-				displayAll(0,0,0,0);
-				LedPointer=0;
+		changeOne(Luminosidad,50,80,100,LedPointer);
+		LedPointer++;
+		if(LedPointer>=8){
+			if(Luminosidad==100){
+				Luminosidad=0;
 			}
+			else{
+				Luminosidad=100;
+			}
+			LedPointer=0;
 		}
 
 		if (file.available() && err == 0) {   
@@ -856,19 +862,56 @@ void UpdateTask(void *arg){
 		}
 		else{
 			//End Bootloader Operation 
-			CyBtldr_EndBootloadOperation();
-			vTaskDelay(1000);
+			CyBtldr_EndBootloadOperation(&serialLocal);
+			vTaskDelay(pdMS_TO_TICKS(1000));
 			setMainFwUpdateActive(0);
 			Serial.println("Actualizacion terminada!!");
 			Serial.printf("Lineas leidas: %u \n",Nlinea);
 			Serial.printf("Error %i \n", err);
 			file.close();
 			vTaskDelete(xHandle);
+			updateTaskrunning=0;
 		}
 		timeout++;
 		vTaskDelay(pdMS_TO_TICKS(5));
-    }
+	}
+	
 }
+
+void UpdateESP(){
+	File file = SPIFFS.open("/firmware.bin");
+
+	if(!file){
+		Serial.println("Failed to open file for reading");
+		return;
+	}
+	
+	Serial.println("\nComenzando actualizacion del Espressif!!");
+	
+	size_t fileSize = file.size();
+
+	if(!Update.begin(fileSize)){
+		return;
+	};
+
+	Update.writeStream(file);
+
+	if(Update.end()){	
+		Serial.println("Micro Actualizado!");  
+	}
+	else {	
+		Serial.println("Error Occurred: " + String(Update.getError()));
+	return;
+	}
+	
+	file.close();
+
+	Serial.println("Reset in 4 seconds...");
+	delay(4000);
+
+	ESP.restart();
+}
+
 void controlInit(void){
 	xTaskCreate(controlTask,"TASK CONTROL",4096,NULL,1,NULL);
 	

@@ -12,6 +12,8 @@
 #include "ble_rcs_server.h"
 #include "esp32-hal-psram.h"
 
+extern TaskHandle_t xHandle;
+
 /* milestone: one-liner for reporting memory usage */
 void milestone(const char* mname)
 {
@@ -62,6 +64,7 @@ BLE_FIELD blefields[MAX_BLE_FIELDS] =
 	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC004),6, PROP_RN, 0, RCS_INS_CURR, BLE_CHA_INS_CURR,    1},
 	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC005),6, PROP_R,  0, RCS_RECORD,   BLE_CHA_RCS_RECORD,  0},
 	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC006),6, PROP_RW, 0, RCS_SCH_MAT,  BLE_CHA_RCS_SCH_MAT, 0},
+	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC007),6, PROP_WN, 0, BINARY_BLOCK,  BLE_CHA_BINARY_BLOCK, 0}
 };
 
 
@@ -237,6 +240,31 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 				updateCharacteristic((uint8_t*)&rxValue[0], 1, TEST_RCD_PE_TEST_RESULT_CHAR_HANDLE);
 				return;
 			}
+			if ( handle== BOOT_LOADER_LOAD_SW_APP_CHAR_HANDLE){
+				Serial.println("SWAPP Received");
+				if(rxValue[0] == 0xFF){
+					vTaskDelay(200 / portTICK_PERIOD_MS);	
+					// Enter Bootloader LOCAL 
+					//Bootloadable_1_Load();
+					printf("Now I execute new FW - Not developed this jump\r\n");
+				}
+				else if(rxValue[0] == 0xAA){
+					// Micro Principal Bootloading 
+					buffer_tx[0] = HEADER_TX;
+					buffer_tx[1] = (uint8)(BOOT_LOADER_LOAD_SW_APP_CHAR_HANDLE >> 8);
+					buffer_tx[2] = (uint8)(BOOT_LOADER_LOAD_SW_APP_CHAR_HANDLE);
+					buffer_tx[3] = 1;
+					memcpy(&buffer_tx[4], (uint8_t*)&rxValue[0], 1);
+					controlSendToSerialLocal(buffer_tx,5);
+					vTaskDelay(500 / portTICK_PERIOD_MS);	
+					LED_Control(100, 10, 10, 10);
+					setMainFwUpdateActive(1);
+				}
+				// Micro Principal Bootloading 
+				setMainFwUpdateActive(1);
+
+				return;
+			}
 
 			// check if we are authenticated, and leave if we aren't
 			if (!authorizedOK()) {
@@ -267,34 +295,6 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 			return;
 		}
 
-
-// TODO: check these cases and incorporate them into omnibus
-#ifdef CHECK_SPECIAL_CASES
-
-		if ( pCharacteristic->getUUID().equals(blefields[LOAD_SW_APP].uuid) )
-		{
-			if(rxValue[0] == 0xFF)
-			{
-				vTaskDelay(200 / portTICK_PERIOD_MS);	
-				// Enter Bootloader LOCAL 
-				//Bootloadable_1_Load();
-				printf("Now I execute new FW - Not developed this jump\r\n");
-			}
-			else if(rxValue[0] == 0xAA)
-			{
-				// Micro Principal Bootloading 
-				buffer_tx[0] = HEADER_TX;
-				buffer_tx[1] = (uint8)(LOAD_SW_APP >> 8);
-				buffer_tx[2] = (uint8)(LOAD_SW_APP);
-				buffer_tx[3] = 1;
-				memcpy(&buffer_tx[4], (uint8_t*)&rxValue[0], 1);
-				controlSendToSerialLocal(buffer_tx,5);
-				vTaskDelay(500 / portTICK_PERIOD_MS);	
-				LED_Control(100, 10, 10, 10);
-				setMainFwUpdateActive(1);
-			}
-			return;
-		}
 		if ( pCharacteristic->getUUID().equals(blefields[BINARY_BLOCK].uuid) )
 		{
 			if ( isMainFwUpdateActive() )
@@ -304,11 +304,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 			}
 			return;
 		}
-		if (handle == CLAVE_WRITE_PASS_CHAR_INDEX) {
-			// should we ignore this?
-			return;
-		}
-#endif  // CHECK_SPECIAL_CASES
+
 	}
 
 	//private int8_t processOmnibusSpecialCases()
@@ -320,9 +316,7 @@ CBCharacteristic pbleCharacteristicCallbacks;
 BLEAdvertisementData advert;
 BLEAdvertising *pAdvertising;
 
-void changeAdvName( uint8_t * name )
-{
-	printf("changing name at adv\r\n");
+void changeAdvName( uint8_t * name ){
 	pAdvertising = pServer->getAdvertising();
 	pAdvertising->stop();
 	advert.setName(std::string((char*)name));

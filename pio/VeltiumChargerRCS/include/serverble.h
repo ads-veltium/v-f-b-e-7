@@ -7,7 +7,7 @@
 #include <BLE2902.h>
 
 #define NUMBER_OF_SERVICES 		  1
-#define NUMBER_OF_CHARACTERISTICS 6
+#define NUMBER_OF_CHARACTERISTICS 7
 #define MAX_BLE_FIELDS            (NUMBER_OF_SERVICES+NUMBER_OF_CHARACTERISTICS) 
 
 #define TYPE_SERV		0
@@ -27,6 +27,7 @@ enum indexCharacteristicsAll
 	RCS_INS_CURR = 4,
 	RCS_RECORD   = 5,
 	RCS_SCH_MAT  = 6,
+	BINARY_BLOCK  = 7,
 };
 
 enum indexCharacteristics
@@ -38,6 +39,7 @@ enum indexCharacteristics
 	BLE_CHA_INS_CURR    = 3,
 	BLE_CHA_RCS_RECORD  = 4,
 	BLE_CHA_RCS_SCH_MAT = 5,
+	BLE_CHA_BINARY_BLOCK = 6,
 };
 
 typedef struct _BLE_FIELD

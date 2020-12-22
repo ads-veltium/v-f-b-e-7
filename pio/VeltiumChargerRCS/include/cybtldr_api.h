@@ -115,7 +115,7 @@ EXTERN int CyBtldr_StartBootloadOperation(HardwareSerialMOD* ReceivedChannel, un
 *   CYRET_ERR_COMM  - There was a communication error talking to the device
 *
 *******************************************************************************/
-EXTERN int CyBtldr_EndBootloadOperation(void);
+EXTERN int CyBtldr_EndBootloadOperation(HardwareSerialMOD* ReceivedChannel);
 
 /*******************************************************************************
 * Function Name: CyBtldr_GetApplicationStatus

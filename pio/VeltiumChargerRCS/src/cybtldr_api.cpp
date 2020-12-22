@@ -27,9 +27,8 @@ int CyBtldr_TransferData(unsigned char* inBuf, int inSize, unsigned char* outBuf
     
     while(err==1 ){
         channel->write(inBuf, inSize);
-        vTaskDelay(pdMS_TO_TICKS(750));
+        vTaskDelay(750 / portTICK_PERIOD_MS);
         channel->read(outBuf, outSize);
-
         if(outBuf[0]==1 && outBuf[outSize-1] == 0x17 && outBuf[1]==0){
             err=outBuf[1];
         }
@@ -100,14 +99,6 @@ int CyBtldr_StartBootloadOperation(HardwareSerialMOD* ReceivedChannel, unsigned 
     int err=CYRET_SUCCESS;
 
     channel = ReceivedChannel;
-
-    //Send bootloader enter command
-    outBuf[0] = ':';
-    outBuf[1] = (uint8_t)(0x0069 >> 8);
-    outBuf[2] = (uint8_t)0x0069;
-    outBuf[3] = 1;
-    outBuf[4] = 0;
-    channel->write(outBuf, 5);
 
     for (i = 0; i < MAX_FLASH_ARRAYS; i++)
         g_validRows[i] = NO_FLASH_ARRAY_DATA;
@@ -181,11 +172,12 @@ int CyBtldr_SetApplicationStatus(unsigned char appID)
     return err;
 }
 
-int CyBtldr_EndBootloadOperation(void)
+int CyBtldr_EndBootloadOperation(HardwareSerialMOD* ReceivedChannel)
 {
     unsigned long inSize;
     unsigned long outSize;
     unsigned char inBuf[MAX_COMMAND_SIZE];
+    channel = ReceivedChannel;
 
     int err = CyBtldr_CreateExitBootLoaderCmd(inBuf, &inSize, &outSize);
     if (CYRET_SUCCESS == err)

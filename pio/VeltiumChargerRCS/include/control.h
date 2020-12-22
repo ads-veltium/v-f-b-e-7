@@ -36,5 +36,6 @@ uint8_t setAuthToken(uint8_t *data, int len);
 uint8_t authorizedOK(void);
 void MAIN_RESET_Write(uint8_t val);
 void controlInit(void);
+void UpdateTask(void *arg);
 
 #endif // __CONTROL_MAIN

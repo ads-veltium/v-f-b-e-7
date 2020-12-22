@@ -65,7 +65,6 @@ void changeOne( uint8_t i, uint8_t r, uint8_t g, uint8_t b, uint8_t pixeln)
 	ws2812_setColors(NUM_PIXELS, pixels);
 }
 
-
 void displayAll( uint8_t i, uint8_t r, uint8_t g, uint8_t b)
 {
 	for (int j = 0; j < NUM_PIXELS; j++)
@@ -75,7 +74,6 @@ void displayAll( uint8_t i, uint8_t r, uint8_t g, uint8_t b)
 	ws2812_setColors(NUM_PIXELS, pixels);
 
 }
-
 
 void displayOff()
 {
@@ -101,6 +99,10 @@ void initLeds ( void )
 	}
 }
 
+
+/***************************
+ *   Efectos de los leds
+ * ************************/
 void Kit (void){
 	
 	for (int j = 0; j < 7; j++){
