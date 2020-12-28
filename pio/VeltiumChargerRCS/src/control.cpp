@@ -218,8 +218,8 @@ void controlTask(void *arg)
 								if(--cnt_repeticiones_inicio == 0){
 									cnt_repeticiones_inicio = 1000;		//1000;
 									//startSystem();
-									mainFwUpdateActive = 1;
-									xTaskCreate(UpdateTask,"TASK UPDATE",4096,NULL,5,&xHandle);
+									//mainFwUpdateActive = 1;
+									//xTaskCreate(UpdateTask,"TASK UPDATE",4096,NULL,5,&xHandle);
 									LED_Control(100, 10, 10, 10);
 								}
 							}

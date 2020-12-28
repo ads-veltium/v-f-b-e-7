@@ -357,7 +357,7 @@ void serverbleInit() {
 	int indexService = 0;
 	int indexCharacteristic = 0;
 	int i;
-	for ( i = 0; i < MAX_BLE_FIELDS; i++ )
+	for ( i = 0; i < 8; i++ )
 	{
 		if ( blefields[i].type == TYPE_SERV )
 		{

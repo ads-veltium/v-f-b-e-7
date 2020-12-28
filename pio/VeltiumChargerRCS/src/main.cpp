@@ -32,9 +32,19 @@
 #include "controlLed.h"
 #include "DRACO_IO.h"
 
+//wifi
+#include <freertos/FreeRTOS.h>
+#include <esp_wifi.h>
+#include <esp_system.h>
+#include <esp_event.h>
+#include <esp_event_loop.h>
+#include <nvs_flash.h>
+#include <tcpip_adapter.h>
+#include <string.h>
 
 
-#define USE_ETH
+
+//#define USE_ETH
 
 #ifdef USE_ETH
 #include <ETH.h>
@@ -97,8 +107,8 @@ void WiFiEvent(WiFiEvent_t event)
 int otaEnable = 0;
 
 const char* host = "veltium";
-const char* ssid = "veltium";
-const char* password = "veltium";
+const char* ssid = "VELTIUM_WF";
+const char* password = "W1f1d3V3lt1um$m4rtCh4rg3r$!";
 
 WebServer server(80);
 
@@ -127,7 +137,7 @@ String loginIndex =
 "}"
 "</script>" + style;
 
-/* Server Index Page */
+// Server Index Page /
 String serverIndex = 
 "<script src='https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js'></script>"
 "<form method='POST' action='#' enctype='multipart/form-data' id='upload_form'>"
@@ -228,14 +238,17 @@ void setupOta(void)
 // IMPORTANTE:
 // solo UNA de estas DOS macros debe estar definida (o NINGUNA para desactivar WIFI)
 //#define USE_WIFI_ARDUINO
-//#define USE_WIFI_ESP
+#define USE_WIFI_ESP
 
 // macro para activar o desactivar el BLE de Draco
 #define USE_DRACO_BLE
 
 // IMPORTANTE: el ssid de la wifi va aquí
-#define WIFI_SSID "EthErEAlm6"
-#define WIFI_PASSWORD "d5a5Lceaqr"
+//#define WIFI_SSID "Deitec_WIFI"
+//#define WIFI_PASSWORD "deitec666_"
+
+#define WIFI_SSID "VELTIUM_WF"
+#define WIFI_PASSWORD "W1f1d3V3lt1um$m4rtCh4rg3r$!"
 
 #ifdef USE_WIFI_ARDUINO
 #include <WiFi.h>
@@ -309,6 +322,20 @@ void perform_malloc_tests(uint8_t pot_first, uint8_t pot_last)
 	}
 }
 
+esp_err_t event_handler(void *ctx, system_event_t *event)
+{
+ if (event->event_id == SYSTEM_EVENT_STA_GOT_IP) {
+ printf("Our IP address is " IPSTR "\n",
+ IP2STR(&event->event_info.got_ip.ip_info.ip));
+ printf("We have now connected to a station and can do things...\n");
+ }
+ if (event->event_id == SYSTEM_EVENT_STA_START) {
+ ESP_ERROR_CHECK(esp_wifi_connect());
+ }
+
+ return ESP_OK;
+}
+
 
 void setup() 
 {
@@ -349,8 +376,26 @@ void setup()
 #endif // USE_ETH
 
 #ifdef USE_WIFI_ESP
-	initWifi(WIFI_SSID, WIFI_PASSWORD);
-#endif
+	//initWifi(WIFI_SSID, WIFI_PASSWORD);
+	nvs_flash_init();
+ 	tcpip_adapter_init();
+ 	ESP_ERROR_CHECK( esp_event_loop_init(event_handler, NULL) );
+ 	wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+ 	ESP_ERROR_CHECK(esp_wifi_init(&cfg) );
+ 	ESP_ERROR_CHECK( esp_wifi_set_storage(WIFI_STORAGE_RAM) );
+ 	ESP_ERROR_CHECK( esp_wifi_set_mode(WIFI_MODE_STA));
+
+	//Allocate storage for the struct
+	wifi_config_t sta_config = {};
+
+	//Assign ssid & password strings
+	strcpy((char*)sta_config.sta.ssid, "VELTIUM_WF");
+	strcpy((char*)sta_config.sta.password, "W1f1d3V3lt1um$m4rtCh4rg3r$!");
+	sta_config.sta.bssid_set = false;
+
+ 	ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &sta_config));
+ 	ESP_ERROR_CHECK(esp_wifi_start());
+#endif 
 
 #ifdef USE_WIFI_ARDUINO
 	WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
@@ -408,10 +453,17 @@ void setup()
 
 void loop() 
 {
-	if ( otaEnable == 1 )
+	/*if ( otaEnable == 1 )
 	{
 		server.handleClient();
-	}
+	}*/
 	vTaskDelay(pdMS_TO_TICKS(1000));
 	//delay(1000);
 }
+
+
+
+
+
+
+

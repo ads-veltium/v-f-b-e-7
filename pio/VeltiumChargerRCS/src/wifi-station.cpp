@@ -14,10 +14,12 @@
 #include "freertos/task.h"
 #include "freertos/event_groups.h"
 #include "esp_system.h"
-#include "esp_wifi.h"
+#include <esp_wifi.h>
 #include "esp_event_loop.h"
 #include "esp_log.h"
 #include "nvs_flash.h"
+#include <Arduino.h>
+
 
 #include "lwip/err.h"
 #include "lwip/sys.h"
@@ -40,13 +42,16 @@ static int s_retry_num = 0;
 
 static esp_err_t event_handler(void *ctx, system_event_t *event)
 {
+    
     switch(event->event_id) {
     case SYSTEM_EVENT_STA_START:
         esp_wifi_connect();
         break;
     case SYSTEM_EVENT_STA_GOT_IP:
+    Serial.println("ggggg");
         ESP_LOGI(TAG, "got ip:%s",
                  ip4addr_ntoa(&event->event_info.got_ip.ip_info.ip));
+                 Serial.printf("got ip:%s",ip4addr_ntoa(&event->event_info.got_ip.ip_info.ip));
         s_retry_num = 0;
         xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
         ESP_LOGI(TAG, "******** CONNECTED TO WIFI!!!! ********");
@@ -89,14 +94,16 @@ void wifi_init_sta(const char* wifi_ssid, const char* wifi_password)
     ESP_ERROR_CHECK(esp_wifi_start() );
 
     ESP_LOGI(TAG, "wifi_init_sta finished.");
+    Serial.println("wifi_init_sta finished");
     ESP_LOGI(TAG, "connect to ap SSID:%s password:%s",
              wifi_ssid, wifi_password);
+    Serial.printf("connect to ap SSID:%s password:%s" ,wifi_ssid, wifi_password);
 }
 
 void initWifi(const char* wifi_ssid, const char* wifi_password)
 {
     ESP_LOGI(TAG, "Initializing WIFI...");
-
+    Serial.println("Initializing WIFI...");
     //Initialize NVS
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
@@ -106,6 +113,8 @@ void initWifi(const char* wifi_ssid, const char* wifi_password)
     ESP_ERROR_CHECK(ret);
     
     ESP_LOGI(TAG, "ESP_WIFI_MODE_STA");
+    Serial.println("ESP_WIFI_MODE_STA");
     ESP_LOGI(TAG, "example modified by David Crespo for Veltium Smart Chargers on May 2020");
+    Serial.println("example modified by David Crespo for Veltium Smart Chargers on May 2020");
     wifi_init_sta(wifi_ssid, wifi_password);
 }
