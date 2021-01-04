@@ -80,7 +80,7 @@ uint16 inst_current_anterior = 0x0000;
 uint16 inst_current_actual = 0x0000;
 uint16 cnt_diferencia = 30;
 
-uint8 version_firmware[11] = {"VBLE1_0604"};		
+uint8 version_firmware[11] = {"VBLE2_0604"};		
 
 uint8 systemStarted = 0;
 void startSystem(void);
@@ -156,7 +156,6 @@ void controlTask(void *arg)
 
 	// INICIALIZO ELEMENTOS PARA AUTENTICACION
 	srand(aut_semilla);
-	uint8_t once=1;
 
 	modifyCharacteristic(authChallengeQuery, 8, AUTENTICACION_MATRIX_CHAR_HANDLE);
 
@@ -218,8 +217,8 @@ void controlTask(void *arg)
 								if(--cnt_repeticiones_inicio == 0){
 									cnt_repeticiones_inicio = 1000;		//1000;
 									//startSystem();
-									mainFwUpdateActive = 1;
-									xTaskCreate(UpdateTask,"TASK UPDATE",4096,NULL,5,&xHandle);
+									//mainFwUpdateActive = 1;
+									//xTaskCreate(UpdateTask,"TASK UPDATE",4096,NULL,5,&xHandle);
 									LED_Control(100, 10, 10, 10);
 								}
 							}
