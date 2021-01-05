@@ -1,4 +1,3 @@
-
 #include <Arduino.h>
 #include <BLEDevice.h>
 #include <BLEUtils.h>
@@ -25,13 +24,167 @@
 #include <ESPmDNS.h>
 #include <Update.h>
 #include <HardwareSerial.h>
+#include <SPIFFS.h>
 
 #include "tipos.h"
 #include "control.h"
 #include "serverble.h"
 #include "controlLed.h"
 #include "DRACO_IO.h"
-#include "comms.h"
+
+
+
+//#define USE_ETH
+
+#ifdef USE_ETH
+#include <ETH.h>
+
+//#define ETH_CLK_MODE    ETH_CLOCK_GPIO0_IN
+#define ETH_POWER_PIN  	12 
+#define ETH_TYPE        ETH_PHY_LAN8720
+#define ETH_ADDR        0
+#define ETH_MDC_PIN    	23 
+#define ETH_MDIO_PIN    18
+
+IPAddress local_IP(192, 168, 2, 126);
+IPAddress gateway(192, 168, 2, 1);
+IPAddress subnet(255, 255, 255, 0);
+IPAddress primaryDNS(8, 8, 8, 8); //optional
+IPAddress secondaryDNS(8, 8, 4, 4); //optional
+
+
+static bool eth_connected = false;
+
+void WiFiEvent(WiFiEvent_t event)
+{
+  switch (event) {
+    case SYSTEM_EVENT_ETH_START:
+      Serial.println("ETH Started");
+      //set eth hostname here
+      ETH.setHostname("velitum-ethernet");
+      break;
+    case SYSTEM_EVENT_ETH_CONNECTED:
+      Serial.println("ETH Connected");
+      break;
+    case SYSTEM_EVENT_ETH_GOT_IP:
+      Serial.print("ETH MAC: ");
+      Serial.print(ETH.macAddress());
+      Serial.print(", IPv4: ");
+      Serial.print(ETH.localIP());
+      if (ETH.fullDuplex()) {
+        Serial.print(", FULL_DUPLEX");
+      }
+      Serial.print(", ");
+      Serial.print(ETH.linkSpeed());
+      Serial.println("Mbps");
+      eth_connected = true;
+      break;
+    case SYSTEM_EVENT_ETH_DISCONNECTED:
+      Serial.println("ETH Disconnected");
+      eth_connected = false;
+      break;
+    case SYSTEM_EVENT_ETH_STOP:
+      Serial.println("ETH Stopped");
+      eth_connected = false;
+      break;
+    default:
+      break;
+  }
+}
+#endif // USE_ETH
+
+
+int otaEnable = 0;
+
+const char* host = "veltium";
+const char* ssid = "veltium";
+const char* password = "veltium";
+
+WebServer server(80);
+
+char loginIndex[2048] = {'\0'};
+char serverIndex[2048] = {'\0'};
+char stilo[2048] = {'\0'};
+
+void setupOta(void) 
+{
+	//Cargar los archivos del servidor
+    File index = SPIFFS.open("/WebServer/index.html");
+    File login = SPIFFS.open("/WebServer/login.html");
+    File style = SPIFFS.open("/WebServer/style.css");
+
+    if(!index || !login || !style){
+        Serial.println("Error en la lectura de los documentos");
+        return;
+    }
+
+    int i=0;
+    while(index.available()){
+        serverIndex[i] = index.read();
+        i++;
+    }
+    serverIndex[i] ='\0';
+
+    i=0;
+    while(login.available()){
+        loginIndex[i] = login.read();
+        i++;
+    }
+    loginIndex[i] ='\0';
+
+    i=0;
+    while(style.available()){
+        stilo[i]=style.read();
+        i++;
+    }
+
+    style.close();
+    index.close();
+    login.close();
+
+	//return index page which is stored in serverIndex 
+	server.on("/", HTTP_GET, []() {
+			server.sendHeader("Connection", "close");
+			server.send(200, "text/html", loginIndex);
+			});
+	server.on("/serverIndex", HTTP_GET, []() {
+			server.sendHeader("Connection", "close");
+			server.send(200, "text/html", serverIndex);
+			});
+	//handling uploading firmware file 
+	server.on("/update", HTTP_POST, []() {
+			server.sendHeader("Connection", "close");
+			server.send(200, "text/plain", (Update.hasError()) ? "FAIL" : "OK");
+			Serial.printf(" fent reset \r\n");
+			//delay(2000);
+			ESP.restart();
+			}, []() {
+			HTTPUpload& upload = server.upload();
+
+			if (upload.status == UPLOAD_FILE_START) {
+			Serial.printf("Update: %s\n", upload.filename.c_str());
+
+			if (!Update.begin(UPDATE_SIZE_UNKNOWN)) { //start with max available size
+			//	delay(20);
+			Update.printError(Serial);
+			}
+			} else if (upload.status == UPLOAD_FILE_WRITE) {
+			// flashing firmware to ESP
+			if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
+			Update.printError(Serial);
+			}
+
+			} else if (upload.status == UPLOAD_FILE_END) {
+				if (Update.end(true)) { //true to set the size to the current progress
+					Serial.printf("Update Success: %u\nRebooting...\n", upload.totalSize);
+				} else {
+					Update.printError(Serial);
+				}
+			}
+			});
+	server.begin();
+	otaEnable=1;
+}
 
 // IMPORTANTE:
 // solo UNA de estas DOS macros debe estar definida (o NINGUNA para desactivar WIFI)
@@ -40,6 +193,10 @@
 
 // macro para activar o desactivar el BLE de Draco
 #define USE_DRACO_BLE
+
+// IMPORTANTE: el ssid de la wifi va aquí
+#define WIFI_SSID "VELTIUM_WF"
+#define WIFI_PASSWORD "W1f1d3V3lt1um$m4rtCh4rg3r$!"
 
 #ifdef USE_WIFI_ARDUINO
 #include <WiFi.h>
@@ -157,7 +314,31 @@ void setup()
 #endif
 
 #ifdef USE_WIFI_ARDUINO
-	xTaskCreate(CommsControlTask,"TASK COMMS",4096,NULL,1,NULL);
+	WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+	Serial.print("Connecting to Wi-Fi");
+	while (WiFi.status() != WL_CONNECTED)
+	{
+		Serial.print(".");
+		delay(300);
+	}
+	Serial.println();
+	Serial.print("Connected with IP: ");
+	Serial.println(WiFi.localIP());
+	Serial.println();
+
+	Serial.println("FREE HEAP MEMORY [after wifi init] **************************");
+	Serial.println(ESP.getFreeHeap());
+
+	initFirebaseClient();
+
+	Serial.println("FREE HEAP MEMORY [after firebase init] **************************");
+	Serial.println(ESP.getFreeHeap());
+
+	setupOta();
+
+	Serial.println("FREE HEAP MEMORY [after setup OTA] **************************");
+	Serial.println(ESP.getFreeHeap());
+
 #endif
 
 #ifdef USE_DRACO_BLE
@@ -188,6 +369,9 @@ void setup()
 
 void loop() 
 {
-	vTaskDelay(pdMS_TO_TICKS(1000));
-	//delay(1000);
+	if ( otaEnable == 1 )
+	{
+		server.handleClient();
+	}
+	delay(100);
 }
