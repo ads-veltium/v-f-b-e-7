@@ -31,7 +31,6 @@
  */
 
 #include "WS2812.h"
-
 #ifdef __cplusplus
 extern "C" {
 #endif

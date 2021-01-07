@@ -28,6 +28,7 @@
 #include "tipos.h"
 #include "dev_auth.h"
 #include "Update.h"
+#include "FirebaseClient.h"
 
 // TIPOS DE BLOQUE DE INTERCAMBIO CON BLE
 #define BLOQUE_INICIALIZACION	0xFFFF
@@ -35,6 +36,9 @@
 #define BLOQUE_DATE_TIME		0xFFFD
 
 #define LED_MAXIMO_PWM      1200     // Sobre 1200 de periodo
+
+//Variables actualizacion
+carac_Auto_Update AutoUpdate;
 
 /* VARIABLES BLE */
 uint8 device_ID[16] = {"VCD17010001"};
@@ -80,7 +84,8 @@ uint16 inst_current_anterior = 0x0000;
 uint16 inst_current_actual = 0x0000;
 uint16 cnt_diferencia = 30;
 
-uint8 version_firmware[11] = {"VBLE2_0604"};		
+uint8 version_firmware[11] = {"VBLE2_0400"};	
+uint8 PSOC5_version_firmware[11] = {""};		
 
 uint8 systemStarted = 0;
 void startSystem(void);
@@ -215,7 +220,8 @@ void controlTask(void *arg)
 								buffer_tx_local[4] = 0;
 								serialLocal.write(buffer_tx_local, 5);
 								if(--cnt_repeticiones_inicio == 0){
-									cnt_repeticiones_inicio = 1000;		//1000;
+									cnt_repeticiones_inicio = 100;		//1000;
+									
 									//startSystem();
 									//mainFwUpdateActive = 1;
 									//xTaskCreate(UpdateTask,"TASK UPDATE",4096,NULL,5,&xHandle);
@@ -276,8 +282,9 @@ void controlTask(void *arg)
 		if(cont_seg != cont_seg_ant)
 		{
 			cont_seg_ant = cont_seg;
+			
 		}
-		vTaskDelay(pdMS_TO_TICKS(20));	
+		vTaskDelay(pdMS_TO_TICKS(50));	
 	}
 }
 
@@ -296,7 +303,7 @@ void startSystem(void){
 
 void LED_Control(uint8_t luminosity, uint8_t r_level, uint8_t g_level, uint8_t b_level)
 {
-	if(mainFwUpdateActive)
+	if(mainFwUpdateActive || AutoUpdate.DescargandoArchivo)
 		return;
 	
 	displayAll(luminosity,r_level,g_level,b_level);
@@ -313,7 +320,7 @@ void proceso_recepcion(void)
 	if(mainFwUpdateActive)
 	{
 		
-
+		Serial.print("AAAAaAAAAA");
 		return;
 
 		puntero_rx_local = 0;
@@ -442,6 +449,7 @@ void procesar_bloque(uint16 tipo_bloque)
 		modifyCharacteristic(&buffer_rx_local[197], 1, VCD_NAME_USERS_UI_X_USER_ID_CHAR_HANDLE);
 		modifyCharacteristic(&buffer_rx_local[198], 1, VCD_NAME_USERS_USER_INDEX_CHAR_HANDLE);
 		modifyCharacteristic(&buffer_rx_local[199], 10, VERSIONES_VERSION_FIRMWARE_CHAR_HANDLE);
+		memcpy(PSOC5_version_firmware, &buffer_rx_local[199],10);
 		modifyCharacteristic(version_firmware, 10, VERSIONES_VERSION_FIRM_BLE_CHAR_HANDLE);
 		modifyCharacteristic(&buffer_rx_local[209], 2, RECORDING_REC_CAPACITY_CHAR_HANDLE);
 		modifyCharacteristic(&buffer_rx_local[211], 2, RECORDING_REC_LAST_CHAR_HANDLE);
@@ -673,7 +681,7 @@ void procesar_bloque(uint16 tipo_bloque)
 	}
 	else if(BOOT_LOADER_LOAD_SW_APP_CHAR_HANDLE== tipo_bloque){
 		Serial.println("UpdateTask Creada");
-		xTaskCreate(UpdateTask,"TASK UPDATE",4096,NULL,5,&xHandle);
+		//xTaskCreate(UpdateTask,"TASK UPDATE",4096,NULL,5,&xHandle);
 		updateTaskrunning=1;
 	}
 }
@@ -874,7 +882,6 @@ void UpdateTask(void *arg){
 		timeout++;
 		vTaskDelay(pdMS_TO_TICKS(5));
 	}
-	
 }
 
 void UpdateESP(){
@@ -912,7 +919,7 @@ void UpdateESP(){
 }
 
 void controlInit(void){
-	xTaskCreate(controlTask,"TASK CONTROL",4096,NULL,1,NULL);
+	xTaskCreate(controlTask,"TASK CONTROL",4096*2,NULL,1,NULL);
 	
 }
 
