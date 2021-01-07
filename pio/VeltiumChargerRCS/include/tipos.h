@@ -129,6 +129,17 @@ typedef struct{
 	uint8 B_led_level;
 } caract_led_ctl;
 
+typedef struct{
+	//configuracion
+	uint8 BetaPermission;
+	uint8 Auto_Act;
+
+	uint8 PSOC5_UpdateAvailable;
+	uint8 ESP_UpdateAvailable;
+	uint8 DescargandoArchivo;
+	
+} carac_Auto_Update;
+
 #define RCD_NO_ACTIVO
 #undef RCD_ACTIVO
 // Variable para definir si el Medidor doméstico mide la corriente total o sólo la vivienda  A.D.S.
