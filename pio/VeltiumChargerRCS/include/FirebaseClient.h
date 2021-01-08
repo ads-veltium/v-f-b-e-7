@@ -19,6 +19,7 @@
 #include "FirebaseESP32.h"
 #include "controlLed.h"
 #include "BLEDevice.h"
+#include "esp32-hal-psram.h"
 
 void initFirebaseClient();
 void WritefireBaseData();

@@ -27,9 +27,11 @@ void milestone(const char* mname)
 	Serial.printf ("**MILESTONE** [%6u] [%+7d] [%s]\n", ms_curr, delta, mname);
 }
 
-BLEServer *pServer = NULL;
+//BLEServer *pServer = NULL;
+BLEServer *pServer = (BLEServer*) ps_malloc(sizeof(BLEServer));
 bool deviceBleConnected = false;
 bool oldDeviceBleConnected = false;
+
 uint8_t txValue = 0;
 
 TaskHandle_t hdServerble = NULL;
@@ -38,9 +40,12 @@ TaskHandle_t hdServerble = NULL;
 // must be large enough to hold maximum writeable characteristic (288 bytes)
 // plus 4 header bytes, so 300 bytes should be enough.
 // actually
-uint8 buffer_tx[300];
+uint8 *buffer_tx=(uint8*)ps_malloc(sizeof(uint8)*300);
 
 BLEService *pbleServices[NUMBER_OF_SERVICES];
+//BLEService *pbleServices = (BLEService*) ps_malloc(sizeof(BLEService)*NUMBER_OF_SERVICES);
+//BLECharacteristic *pbleCharacteristics = (BLECharacteristic*) ps_malloc(sizeof(BLECharacteristic)*NUMBER_OF_SERVICES);
+
 BLECharacteristic *pbleCharacteristics[NUMBER_OF_CHARACTERISTICS];
 
 #define PROP_RW BLECharacteristic::PROPERTY_READ|BLECharacteristic::PROPERTY_WRITE
@@ -436,4 +441,6 @@ void serverbleTask(void *arg)
 		vTaskDelay(1000 / portTICK_PERIOD_MS);	
 	}
 }
+
+
 

@@ -210,7 +210,6 @@ void controlTask(void *arg)
 								buffer_tx_local[3] = 1;
 								buffer_tx_local[4] = 0;
 								serialLocal.write(buffer_tx_local, 5);
-								delay(100);
 								if(--cnt_repeticiones_inicio == 0){
 									cnt_repeticiones_inicio = 100;		//1000;								
 									//startSystem();
@@ -251,8 +250,7 @@ void controlTask(void *arg)
 						break;
 				}
 			}
-			else{
-				
+			else{			
 				if(!updateTaskrunning){
 					//Poner el micro principal en modo bootload
 					cnt_timeout_tx = TIMEOUT_TX_BLOQUE;
@@ -263,8 +261,9 @@ void controlTask(void *arg)
 					buffer_tx_local[4] = 0;
 
 					serialLocal.write(buffer_tx_local, 5);
-					delay(100);
-
+					delay(1000);
+					xTaskCreate(UpdateTask,"TASK UPDATE",4096,NULL,1,&xHandle);
+					updateTaskrunning=1;
 				}				
 			}
 

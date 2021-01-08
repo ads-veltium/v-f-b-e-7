@@ -17,8 +17,9 @@ const char* veltiumbackend_user="joelmartinez@veltium.com";
 const char* veltiumbackend_password="Escolapios2";
 
 //Define FirebaseESP32 data object
-FirebaseData *firebaseData;
-static FirebaseAuth auth;
+
+FirebaseData *firebaseData = (FirebaseData *) ps_malloc(sizeof(FirebaseData));
+FirebaseAuth *auth = (FirebaseAuth *) ps_malloc(sizeof(FirebaseAuth));
 
 String url;
 
@@ -52,6 +53,7 @@ uint16 ParseFirmwareVersion(String Texto){
 }
 
 void CheckForUpdate(){
+  FreeFirebaseHeap();
   ConfigFirebase.FirebaseConnected=0;
   String ESP_Ver;
   String PSOC5_Ver;
@@ -89,6 +91,7 @@ void CheckForUpdate(){
     stopFirebaseClient();
     xTaskCreate(DownloadTask,"TASK DOWNLOAD",4096,NULL,2,&xHandle2); 
   }
+  FreeFirebaseHeap();
 }
 
 
@@ -141,7 +144,7 @@ void WriteFireBaseData(){
 
 void DownloadTask(void *arg){
   Serial.println("Deteniendo el BLE por seguridad");
-  BLEDevice::deinit(1);
+  //BLEDevice::deinit(1);
   Serial.println("Empezando descarga del Fichero");
   AutoUpdate.DescargandoArchivo=1;
 
