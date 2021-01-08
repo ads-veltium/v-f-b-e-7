@@ -37,6 +37,8 @@ void DownloadTask(void *arg);
 void FreeFirebaseHeap(){
   Serial.print("Memoria antes de liberar: ");
   Serial.println(ESP.getFreeHeap());
+  Serial.println(ESP.getFreePsram());
+
 
    if(ESP.getFreeHeap()<30000){
     stopFirebaseClient();
@@ -45,6 +47,7 @@ void FreeFirebaseHeap(){
 
   Serial.print("Memoria tras liberar: ");
   Serial.println(ESP.getFreeHeap());
+  Serial.println(ESP.getFreePsram());
 }
 
 uint16 ParseFirmwareVersion(String Texto){
@@ -117,8 +120,30 @@ void UpdateFirebaseStatus(){
   String Path="/prod/devices/";
   Path=Path + (char *)ConfigFirebase.Device_Db_ID + "/status/" ;
 
-  Firebase.setString(*firebaseData,Path+"HP","C2");
+  Firebase.setString(*firebaseData,Path+"HP","A1");
 
+}
+
+void UpdateFirebaseControl(){
+  //FreeFirebaseHeap();
+ 
+  Serial.println("UPDATE FIREBASE Control CALLED");
+  uint8 err;
+  String Path="/prod/devices/";
+  Path=Path + (char *)ConfigFirebase.Device_Db_ID + "/control/" ;
+  
+  String Control, start;
+  bool startBool;
+  err=Firebase.getString(*firebaseData,Path+"start",start);
+  if(!err){
+    stopFirebaseClient();
+    vTaskDelay(200/portTICK_PERIOD_MS);
+    initFirebaseClient();
+    vTaskDelay(200/portTICK_PERIOD_MS);
+  }
+  err=Firebase.getBool(*firebaseData,Path+"start",startBool);
+
+  Serial.println(startBool);
 }
 
 void stopFirebaseClient(){
@@ -143,8 +168,6 @@ void WriteFireBaseData(){
 }
 
 void DownloadTask(void *arg){
-  Serial.println("Deteniendo el BLE por seguridad");
-  //BLEDevice::deinit(1);
   Serial.println("Empezando descarga del Fichero");
   AutoUpdate.DescargandoArchivo=1;
 

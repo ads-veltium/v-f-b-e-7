@@ -23,6 +23,8 @@
 carac_Auto_Update AutoUpdate;
 carac_Firebase_Configuration ConfigFirebase;
 
+uint8_t StartWifiSubsystem=0;
+
 /* VARIABLES BLE */
 uint8 device_ID[16] = {"VCD17010001"};
 uint8 deviceSerNum[10] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};     //{0x00, 0x00, 0x00, 0x00, 0x0B, 0xCD, 0x17, 0x01, 0x00, 0x05};
@@ -273,7 +275,9 @@ void controlTask(void *arg)
 		if(cont_seg != cont_seg_ant)
 		{
 			cont_seg_ant = cont_seg;
-			
+			if(ConfigFirebase.FirebaseConnected && !serverbleGetConnected()){
+				UpdateFirebaseControl();	
+			}		
 		}
 
 		// Eventos 1 minuto
@@ -281,7 +285,7 @@ void controlTask(void *arg)
 		{
 			if(mainFwUpdateActive == 0){
 				cont_min_ant = cont_min;
-				if(ConfigFirebase.FirebaseConnected){
+				if(ConfigFirebase.FirebaseConnected && !serverbleGetConnected()){
 					UpdateFirebaseStatus();
 				}
 			}
@@ -297,6 +301,7 @@ void controlTask(void *arg)
 				}
 			}
 		}
+		
 		vTaskDelay(50 / portTICK_PERIOD_MS);	
 	}
 }
@@ -311,6 +316,7 @@ void startSystem(void){
 		deviceSerNum[0], deviceSerNum[1], deviceSerNum[2], deviceSerNum[3], deviceSerNum[4],
 		deviceSerNum[5], deviceSerNum[6], deviceSerNum[7], deviceSerNum[8], deviceSerNum[9]);
 	dev_auth_init((void const*)&deviceSerNum);
+
 	serverbleStartAdvertising();
 
 
@@ -324,6 +330,9 @@ void startSystem(void){
   	AutoUpdate.PSOC5_Act_Ver = ParseFirmwareVersion((char *)(PSOC5_version_firmware));
 	AutoUpdate.BetaPermission=1;
 	AutoUpdate.Auto_Act=1;
+
+	StartWifiSubsystem=1;
+
 }
 
 void LED_Control(uint8_t luminosity, uint8_t r_level, uint8_t g_level, uint8_t b_level)
@@ -338,8 +347,8 @@ void LED_Control(uint8_t luminosity, uint8_t r_level, uint8_t g_level, uint8_t b
 
 void proceso_recepcion(void)
 {
-	static uint8 byte, inicio = 0, dummy_8;
-	static uint16 longitud_bloque = 0, len, i;
+	static uint8 byte;
+	static uint16 longitud_bloque = 0, len;
 	static uint16 tipo_bloque = 0x0000;
 
 	if(isMainFwUpdateActive()){
@@ -689,7 +698,7 @@ uint8_t sendBinaryBlock ( uint8_t *data, int len )
 }
 
 int controlSendToSerialLocal ( uint8_t * data, int len ){
-	if(!isMainFwUpdateActive){
+	if(!isMainFwUpdateActive()){
 	    int ret=0;
 		ret = serialLocal.write(data, len);
 		cnt_timeout_tx = TIMEOUT_TX_BLOQUE;
@@ -912,7 +921,7 @@ void UpdateESP(){
 }
 
 void controlInit(void){
-	xTaskCreate(controlTask,"TASK CONTROL",4096*2,NULL,1,NULL);
+	xTaskCreate(controlTask,"TASK CONTROL",4096*2,NULL,2,NULL);
 	
 }
 
