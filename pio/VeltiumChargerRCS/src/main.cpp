@@ -31,7 +31,7 @@
 #include "serverble.h"
 #include "controlLed.h"
 #include "DRACO_IO.h"
-
+#include "ESPAsyncWebServer.h"
 
 
 //#define USE_ETH
@@ -56,6 +56,9 @@ IPAddress secondaryDNS(8, 8, 4, 4); //optional
 static bool eth_connected = false;
 #endif // USE_ETH
 
+float prueba = 2.0;
+const char*estado = "A1";
+int intensidad = 3;
 
 int otaEnable = 0;
 
@@ -63,10 +66,12 @@ const char* host = "veltium";
 const char* ssid = "veltium";
 const char* password = "veltium";
 
-WebServer server(80);
+//WebServer server(80);
+AsyncWebServer server(80);
 
 char loginIndex[2048] = {'\0'};
 char serverIndex[2048] = {'\0'};
+char datosIndex[2048] = {'\0'};
 char stilo[2048] = {'\0'};
 
 // IMPORTANTE:
@@ -93,83 +98,56 @@ char stilo[2048] = {'\0'};
 
 #include "dev_auth.h"
 
-<<<<<<< HEAD
 
 /*
-void perform_ps_malloc_tests(uint8_t pot_first, uint8_t pot_last)
-{
-	for (uint8_t pot = pot_first; pot <= pot_last; pot++) {
-		unsigned bytesToAllocate = 1 << pot;
-		Serial.printf("ps_mallocating %7u bytes... ", bytesToAllocate);
-		void *buf = ps_malloc(bytesToAllocate);
-		if (buf != NULL) {
-			Serial.println("OK.");
-			free(buf);
-			Serial.println("buffer released.");
-		}
-		else {
-			Serial.println("FAILURE!!!");
-			break;
-		}
-	}
-}
+const char index_html[] PROGMEM = R"rawliteral(
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Veltium Smart Chargers</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="/style.css" rel="stylesheet" type="text/css" />
+</head>
+
+<body>
+   
+<h1>VELTIUM SMART CHARGERS</h1>
+<p> Disponible </p>
+<p>
+    <span class="dht-labels">Carga</span> 
+    <span id="temperature">%TEMPERATURE%</span>
+    <sup class="units">kWh</sup>
+</p>
+<p> Autenticación </p>
+<input type="button" value="Cargar ahora"/>
+<input type="button" value="Parar"/>
+<h2> Datos: </h2> 
+<p> Estado del hilo piloto: </p>
+<p> Coriente de carga: </p>
+<p> Cargador conectado: </p>
+<input type="button" value="Reiniciar cargador"/>
+<form action="/get">
+    input1: <input type="text" name="input1">
+    <input type="submit" value="Submit">
+  </form><br>
+</body>
+
+<script>
+    setInterval(function ( ) {
+      var xhttp = new XMLHttpRequest();
+      xhttp.onreadystatechange = function() {
+        if (this.readyState == 4 && this.status == 200) {
+          document.getElementById("temperature").innerHTML = this.responseText;
+        }
+      };
+      xhttp.open("GET", "/temperature", true);
+      xhttp.send();
+    }, 10000 ) ;
+
+</script>
+
+</html>)rawliteral";
 */
-
-void perform_ps_malloc_tests(uint8_t pot_first, uint8_t pot_last)
-{
-	for (uint8_t pot = pot_first; pot <= pot_last; pot++) {
-		unsigned bytesToAllocate = 1 << pot;
-		Serial.printf("[before] free heap memory: %7u bytes\n", ESP.getFreeHeap());
-		Serial.printf("ps_mallocating %7u bytes... ", bytesToAllocate);
-		void *buf = ps_malloc(bytesToAllocate);
-		if (buf != NULL) {
-			Serial.println("OK.");
-			Serial.printf("[after ] free heap memory: %7u bytes\n", ESP.getFreeHeap());
-			free(buf);
-			Serial.println("buffer released.");
-		}
-		else {
-			Serial.println("FAILURE!!!");
-			break;
-		}
-	}
-}
-
-void perform_malloc_tests(uint8_t pot_first, uint8_t pot_last)
-{
-	for (uint8_t pot = pot_first; pot <= pot_last; pot++) {
-		unsigned bytesToAllocate = 1 << pot;
-		Serial.printf("[before] free heap memory: %7u bytes\n", ESP.getFreeHeap());
-		Serial.printf("mallocating %7u bytes... ", bytesToAllocate);
-		void *buf = malloc(bytesToAllocate);
-		if (buf != NULL) {
-			Serial.println("OK.");
-			Serial.printf("[after ] free heap memory: %7u bytes\n", ESP.getFreeHeap());
-			free(buf);
-			Serial.println("buffer released.");
-		}
-		else {
-			Serial.println("FAILURE!!!");
-			break;
-		}
-	}
-}
-
-esp_err_t event_handler(void *ctx, system_event_t *event)
-{
- if (event->event_id == SYSTEM_EVENT_STA_GOT_IP) {
- printf("Our IP address is " IPSTR "\n",
- IP2STR(&event->event_info.got_ip.ip_info.ip));
- printf("We have now connected to a station and can do things...\n");
- }
- if (event->event_id == SYSTEM_EVENT_STA_START) {
- ESP_ERROR_CHECK(esp_wifi_connect());
- }
-
- return ESP_OK;
-}
-
-=======
 /**********************************************
  * 			       PROTOTIPOS
  * *******************************************/
@@ -177,7 +155,6 @@ void perform_ps_malloc_tests(uint8_t pot_first, uint8_t pot_last);
 void perform_malloc_tests(uint8_t pot_first, uint8_t pot_last);
 void Initserver(void);
 void WiFiEvent(WiFiEvent_t event);
->>>>>>> origin/Firmware-Update
 
 void setup() 
 {
@@ -244,7 +221,7 @@ void setup()
 	WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 	WiFi.onEvent(WiFiEvent);
 	Serial.println("Connecting to Wi-Fi...");
-
+	server.begin();
 #endif
 
 #ifdef USE_DRACO_BLE
@@ -276,7 +253,7 @@ void loop()
 {
 	if ( otaEnable == 1 )
 	{
-		server.handleClient();
+		//server.handleClient();
 	}
 	delay(100);
 }
@@ -304,14 +281,6 @@ void perform_ps_malloc_tests(uint8_t pot_first, uint8_t pot_last)
 	}
 }
 
-<<<<<<< HEAD
-
-
-
-
-
-
-=======
 void perform_malloc_tests(uint8_t pot_first, uint8_t pot_last)
 {
 	for (uint8_t pot = pot_first; pot <= pot_last; pot++) {
@@ -333,17 +302,36 @@ void perform_malloc_tests(uint8_t pot_first, uint8_t pot_last)
 }
 
 void handle_NotFound(){
-  server.send(404, "text/plain", "Not found");
+  //server.send(404, "text/plain", "Not found");
   CheckForUpdate();
+}
+
+String processor(const String& var){
+	if (var == "CARGA")
+	{
+		return String(prueba);
+	}
+	if (var=="HP")
+	{
+		return String(estado);
+	}
+	if (var=="CORRIENTE")
+	{
+		return String(intensidad);
+	}
+	return String();
 }
 
 void InitServer(void) {
 	//Cargar los archivos del servidor
     File index = SPIFFS.open("/WebServer/index.html");
     File login = SPIFFS.open("/WebServer/login.html");
+	File datos = SPIFFS.open("/WebServer/datos.html");
     File style = SPIFFS.open("/WebServer/style.css");
+	
+	
 
-    if(!index || !login || !style){
+    if(!index || !login || !datos ||!style){
         Serial.println("Error en la lectura de los documentos");
         return;
     }
@@ -368,13 +356,42 @@ void InitServer(void) {
     }
     loginIndex[i] ='\0';
 
+	i=0;
+    while(datos.available()){
+        datosIndex[i] = datos.read();
+        i++;
+    }
+    datosIndex[i] ='\0';
+
 	strcat(loginIndex,stilo);
 	strcat(serverIndex,stilo);
+	//strcat(datosIndex,stilo);
 
     style.close();
     index.close();
     login.close();
+	datos.close();
 
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send_P(200, "text/html", loginIndex);
+  });
+  server.on("/serverIndex", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send_P(200, "text/html", serverIndex);
+  });	
+
+  server.on("/datosIndex", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send_P(200, "text/html", datosIndex, processor);
+  });
+  server.on("/carga", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send_P(200, "text/plain", String(prueba).c_str());
+  });
+  server.on("/hp", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send_P(200, "text/plain", String(estado).c_str());
+  });
+  server.on("/corriente", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send_P(200, "text/plain", String(intensidad).c_str());
+  });
+/*
 	//return index page which is stored in serverIndex 
 	server.on("/", HTTP_GET, []() {
 		server.sendHeader("Connection", "close");
@@ -385,6 +402,17 @@ void InitServer(void) {
 		server.sendHeader("Connection", "close");
 		server.send(200, "text/html", serverIndex);
 	});
+
+	server.on("/datosIndex", HTTP_GET, []() {
+		server.sendHeader("Connection", "close");
+		server.send(200, "text/html", datosIndex, processor);
+	});
+
+	server.on("/temperature", HTTP_GET, []() {
+		server.sendHeader("Connection", "close");
+			server.send(200, "text/plain", String(prueba).c_str());
+	});
+
 
 	//handling uploading firmware file 
 	server.on("/update", HTTP_POST, []() {
@@ -422,7 +450,7 @@ void InitServer(void) {
 	server.onNotFound(handle_NotFound);
 	server.begin();
 	Serial.println("Servidor inicializado");
-	otaEnable=1;
+	otaEnable=1;*/
 }
 
 void WiFiEvent(WiFiEvent_t event){
@@ -475,4 +503,3 @@ void WiFiEvent(WiFiEvent_t event){
       break;
   }
 }
->>>>>>> origin/Firmware-Update
