@@ -18,11 +18,14 @@
 #include "tipos.h"
 #include "FirebaseESP32.h"
 #include "controlLed.h"
+#include "BLEDevice.h"
 
 void initFirebaseClient();
 void WritefireBaseData();
 void GetUpdateFile(String URL);
 void CheckForUpdate();
 void stopFirebaseClient();
+void UpdateFirebaseStatus();
+uint16  ParseFirmwareVersion(String Texto);
 
 #endif

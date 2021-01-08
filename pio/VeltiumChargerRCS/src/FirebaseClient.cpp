@@ -26,48 +26,68 @@ String url;
 extern uint8 version_firmware[11];
 extern uint8 PSOC5_version_firmware[11];	 
 extern carac_Auto_Update AutoUpdate;
+extern carac_Firebase_Configuration ConfigFirebase;
+extern TaskHandle_t xHandle;
 
 TaskHandle_t xHandle2 = NULL;
 
 void DownloadTask(void *arg);
 
-int ParseFirmwareVersion(String Texto){
+void FreeFirebaseHeap(){
+  Serial.print("Memoria antes de liberar: ");
+  Serial.println(ESP.getFreeHeap());
+
+   if(ESP.getFreeHeap()<30000){
+    stopFirebaseClient();
+    initFirebaseClient();
+  }
+
+  Serial.print("Memoria tras liberar: ");
+  Serial.println(ESP.getFreeHeap());
+}
+
+uint16 ParseFirmwareVersion(String Texto){
   String sub = Texto.substring(6, 10); 
   return(sub.toInt());
 }
 
 void CheckForUpdate(){
+  ConfigFirebase.FirebaseConnected=0;
   String ESP_Ver;
   String PSOC5_Ver;
-  AutoUpdate.BetaPermission=1;
+  url="";
 
   if(AutoUpdate.BetaPermission){
+    //Check PSOC5 firmware updates
     Firebase.getString(*firebaseData, "/prod/fw/beta/VELT2/verstr", PSOC5_Ver);
-    Firebase.getString(*firebaseData, "/prod/fw/beta/VBLE2/verstr", ESP_Ver);
+    uint16 Psoc_int_Version=ParseFirmwareVersion(PSOC5_Ver);
+
+    if(AutoUpdate.PSOC5_Act_Ver<Psoc_int_Version){
+      Firebase.getString(*firebaseData, "/prod/fw/beta/VELT2/url", url);
+      AutoUpdate.PSOC5_UpdateAvailable=1;
+      Serial.println("Updating PSOC5 with Beta firmware");
+    }
+
+    //Check ESP32 firmware updates
+    else{
+      Firebase.getString(*firebaseData, "/prod/fw/beta/VBLE2/verstr", ESP_Ver);
+      uint16 ESP_int_Version=ParseFirmwareVersion(ESP_Ver);
+
+      if(AutoUpdate.ESP_Act_Ver<ESP_int_Version){
+        Serial.println("Updating ESP32 with Beta firmware");
+        AutoUpdate.ESP_UpdateAvailable=1;
+        Firebase.getString(*firebaseData, "/prod/fw/beta/VBLE2/url", url);
+      }
+    }  
   }
   else{
     Firebase.getString(*firebaseData, "/prod/fw/prod/VELT2/verstr", PSOC5_Ver);
     Firebase.getString(*firebaseData, "/prod/fw/prod/VBLE2/verstr", ESP_Ver);
   }
-
-  int Psoc_int_Version=ParseFirmwareVersion(PSOC5_Ver);
-  int ESP_int_Version=ParseFirmwareVersion(ESP_Ver);
-
-  int ESP_Act_int_Version = ParseFirmwareVersion((char *)(version_firmware));
-  int PSOC5_Act_int_Version = ParseFirmwareVersion((char *)(PSOC5_version_firmware));
-
-  
-  if(PSOC5_Act_int_Version<Psoc_int_Version){
-    AutoUpdate.PSOC5_UpdateAvailable=1;
-  }
-  
-  if(ESP_Act_int_Version<ESP_int_Version){
-    url="";
-    Firebase.getString(*firebaseData, "/prod/fw/beta/VBLE2/url", url);
-
+  if(AutoUpdate.ESP_UpdateAvailable || AutoUpdate.PSOC5_UpdateAvailable) {
+    Serial.println("Updating firmware");
     stopFirebaseClient();
-    xTaskCreate(DownloadTask,"TASK DOWNLOAD",4096,NULL,5,&xHandle2);
-    AutoUpdate.ESP_UpdateAvailable=1;
+    xTaskCreate(DownloadTask,"TASK DOWNLOAD",4096,NULL,2,&xHandle2); 
   }
 }
 
@@ -82,9 +102,24 @@ void initFirebaseClient(){
     //Set database read timeout to 1 minute (max 15 minutes)
     Firebase.setReadTimeout(*firebaseData, 1000 * 60);
     Firebase.setwriteSizeLimit(*firebaseData, "tiny");
+
+    ConfigFirebase.FirebaseConnected=1;
+    //Check permisions stored in firebase
+}
+
+void UpdateFirebaseStatus(){
+  FreeFirebaseHeap();
+ 
+  Serial.println("UPDATE FIREBASE CALLED");
+  String Path="/prod/devices/";
+  Path=Path + (char *)ConfigFirebase.Device_Db_ID + "/status/" ;
+
+  Firebase.setString(*firebaseData,Path+"HP","C2");
+
 }
 
 void stopFirebaseClient(){
+    ConfigFirebase.FirebaseConnected=0;
     Serial.println("Stop Firebase Client");
 
     Firebase.endStream(*firebaseData);
@@ -105,7 +140,8 @@ void WriteFireBaseData(){
 }
 
 void DownloadTask(void *arg){
-
+  Serial.println("Deteniendo el BLE por seguridad");
+  BLEDevice::deinit(1);
   Serial.println("Empezando descarga del Fichero");
   AutoUpdate.DescargandoArchivo=1;
 
@@ -116,9 +152,11 @@ void DownloadTask(void *arg){
   uint8 Timeout=0;
 
   SPIFFS.remove("/Archivo.txt");
+  SPIFFS.remove("/FreeRTOS_V6.cyacd");
+  SPIFFS.remove("/firmware.bin");
   
   File UpdateFile = SPIFFS.open("/Archivo.txt", "w");
-
+  Serial.println(url);
   http.begin(url);
   int httpCode = http.GET();
 
@@ -159,7 +197,6 @@ void DownloadTask(void *arg){
             contentLen -= c;
           }
         }
-        vTaskDelay(5 / portTICK_PERIOD_MS);
       }
       Serial.print("File size: ");
       Serial.println(UpdateFile.size());
@@ -178,6 +215,17 @@ void DownloadTask(void *arg){
   Serial.println("Fichero descargado");
   AutoUpdate.DescargandoArchivo=0;
 
+  if(AutoUpdate.Auto_Act){
+    if(AutoUpdate.ESP_UpdateAvailable){
+      SPIFFS.rename("/Archivo.txt", "/firmware.bin");
+      UpdateESP();
+    }
+    else if(AutoUpdate.PSOC5_UpdateAvailable){
+      SPIFFS.rename("/Archivo.txt", "/FreeRTOS_V6.cyacd");
+      setMainFwUpdateActive(1);
+    }
+  }
+ 
   //Eliminar la tarea
   vTaskDelete(xHandle2);
 }

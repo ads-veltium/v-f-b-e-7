@@ -7,6 +7,8 @@
 
 #include "cybtldr_command.h"
 #include "cybtldr_api.h"
+#include  "control.h"
+#include "tipos.h"
 
 
 /* The highest number of memory arrays for any device. This includes flash and EEPROM arrays */
@@ -24,11 +26,31 @@ HardwareSerialMOD* channel;
 int CyBtldr_TransferData(unsigned char* inBuf, int inSize, unsigned char* outBuf, int outSize)
 {
     int err = 1;
-    
+    uint8 cnt_timeout_tx=TIMEOUT_TX_BLOQUE;
+
+
     while(err==1 ){
-        channel->write(inBuf, inSize);
-        vTaskDelay(750 / portTICK_PERIOD_MS);
-        channel->read(outBuf, outSize);
+        
+        if(cnt_timeout_tx == 0){
+            cnt_timeout_tx = TIMEOUT_TX_BLOQUE;
+            sendBinaryBlock(inBuf, inSize);
+        }
+        else
+            cnt_timeout_tx--;
+
+        if(channel->available()!=0){
+			int longitud_bloque=outSize;
+			int puntero_rx_local=0;
+			do{
+				if(longitud_bloque > 0)
+				{
+					channel->read(&outBuf[puntero_rx_local],1);
+					puntero_rx_local++;
+				}
+				longitud_bloque--;							
+			}while(longitud_bloque >0);
+		}
+        delay(10);
         if(outBuf[0]==1 && outBuf[outSize-1] == 0x17 && outBuf[1]==0){
             err=outBuf[1];
         }
