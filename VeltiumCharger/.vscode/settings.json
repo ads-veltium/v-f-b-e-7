@@ -8,36 +8,45 @@
                 "name": "BUILD",
                 "color": "white",
                 "singleInstance": true,
-                "command": ". /home/joel/Documents/SDK_4/idf_4_0/esp-idf/./export.sh && cd /home/joel/Documents/SDK_4/Veltium/VeltiumCharger/ && make",
+                "command": ". /home/joel/Documents/SDK_4/idf_4_0/esp-idf/./export.sh && cd /home/joel/Documents/fw-bird-esp32/VeltiumCharger/ && make",
             },
             {
                 "name": "MFM",
                 "color": "white",
                 "singleInstance": true,
-                "command": ". /home/joel/Documents/SDK_4/idf_4_0/esp-idf/./export.sh && cd /home/joel/Documents/SDK_4/Veltium/VeltiumCharger/ && make flash monitor",
+                "command": ". /home/joel/Documents/SDK_4/idf_4_0/esp-idf/./export.sh && cd /home/joel/Documents/fw-bird-esp32/VeltiumCharger/ && make flash monitor",
             },
             {
                 "name": "MONITOR",
                 "color": "white",
                 "singleInstance": true,
-                "command": ". /home/joel/Documents/SDK_4/idf_4_0/esp-idf/./export.sh && cd /home/joel/Documents/SDK_4/Veltium/VeltiumCharger/ && make monitor",
+                "command": ". /home/joel/Documents/SDK_4/idf_4_0/esp-idf/./export.sh && cd /home/joel/Documents/fw-bird-esp32/VeltiumCharger/ && make monitor",
             },
             {
                 "name": "MENUCONFIG",
                 "color": "white",
                 "singleInstance": true,
-                "command": ". /home/joel/Documents/SDK_4/idf_4_0/esp-idf/./export.sh && cd /home/joel/Documents/SDK_4/Veltium/VeltiumCharger/ && make menuconfig",
+                "command": ". /home/joel/Documents/SDK_4/idf_4_0/esp-idf/./export.sh && cd /home/joel/Documents/fw-bird-esp32/VeltiumCharger/ && make menuconfig",
             },
             {
                 "name": "CLEAR",
                 "color": "white",
                 "singleInstance": true,
-                "command": ". /home/joel/Documents/SDK_4/idf_4_0/esp-idf/./export.sh && cd /home/joel/Documents/SDK_4/Veltium/VeltiumCharger/ && make clear",
+                "command": ". /home/joel/Documents/SDK_4/idf_4_0/esp-idf/./export.sh && cd /home/joel/Documents/fw-bird-esp32/VeltiumCharger/ && make clear",
             }
         ]
     },
     "files.associations": {
-        "string": "cpp"
+        "string": "cpp",
+        "random": "cpp",
+        "array": "cpp",
+        "bitset": "cpp",
+        "string_view": "cpp",
+        "initializer_list": "cpp",
+        "regex": "cpp",
+        "utility": "cpp",
+        "*.tcc": "cpp",
+        "fstream": "cpp"
     }
 }
 

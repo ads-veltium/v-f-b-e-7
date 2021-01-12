@@ -18,14 +18,15 @@ unsigned char DRACO_GPIO_Init(void) {
 	digitalWrite(GPIO_MODEM_PWRMON, LOW);
 
 	//OUTPUTS
+	pinMode ( GPIO_MODEM_PWR_EN,OUTPUT);
 	digitalWrite(GPIO_MODEM_PWR_EN, LOW);
-        pinMode ( GPIO_MODEM_PWR_EN,OUTPUT);    
- 
+            
+    pinMode ( EMAC_nRESET,OUTPUT);
 	digitalWrite(EMAC_nRESET,LOW);
-        pinMode ( EMAC_nRESET,OUTPUT);    
+            
 
 	//OUT OPEN-DRAIN
-        pinMode ( nMAIN_XRES,INPUT_PULLUP);    
+    pinMode ( nMAIN_XRES,INPUT_PULLUP);    
 
 	return 1;
 
@@ -56,17 +57,19 @@ unsigned char DRACO_GPIO_MODEM_is_Powered(void)
 	}
 }
 
-unsigned char DRACO_GPIO_Reset_MCU( unsigned char val)
-{
-	Serial.println("Reset called");
+unsigned char DRACO_GPIO_Reset_MCU( unsigned char val){
+
+
 	if ( val == 1 )
 	{
-       		pinMode ( nMAIN_XRES,INPUT_PULLUP);    
+		pinMode ( nMAIN_XRES,INPUT_PULLUP);
+       	    
 	}
 	if ( val == 0 )
 	{
+		pinMode ( nMAIN_XRES,OUTPUT);
 		digitalWrite(nMAIN_XRES,LOW);
-        	pinMode ( nMAIN_XRES,OUTPUT);    
+            
 	}
 
 	return 0;

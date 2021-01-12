@@ -27,6 +27,7 @@ void CheckForUpdate();
 void stopFirebaseClient();
 void UpdateFirebaseStatus();
 void UpdateFirebaseControl();
+void UpdateFirebaseControl_Task(void *arg);
 uint16  ParseFirmwareVersion(String Texto);
 
 #endif

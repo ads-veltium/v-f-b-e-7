@@ -74,7 +74,7 @@ uint16 inst_current_anterior = 0x0000;
 uint16 inst_current_actual = 0x0000;
 uint16 cnt_diferencia = 30;
 
-uint8 version_firmware[11] = {"VBLE2_0400"};	
+uint8 version_firmware[11] = {"VBLE2_0500"};	
 uint8 PSOC5_version_firmware[11] = {""};		
 
 uint8 systemStarted = 0;
@@ -108,6 +108,7 @@ void IRAM_ATTR onTimer10ms()
 	{
 		contador_cent_segundos = 0;
 	}
+
 
 
 	if ( cnt_fin_bloque )
@@ -146,7 +147,6 @@ void configTimers ( void )
 void MAIN_RESET_Write( uint8_t val )
 {
 	DRACO_GPIO_Reset_MCU(val);
-	CyBtldr_EndBootloadOperation(&serialLocal);
 	return;
 }
 
@@ -171,62 +171,6 @@ void controlTask(void *arg)
 		if(contador_cent_segundos != contador_cent_segundos_ant)
 		{
 			contador_cent_segundos_ant = contador_cent_segundos;
-
-			if (luminosidad & 0x80 && rojo == 0 && verde == 0){ //Cargando
-				
-				uint8 lumin_limit=50;
-
-				if(inst_current_actual>90){
-					lumin_limit=(3200-inst_current_actual)*100/3200;
-					if(lumin_limit<10){
-						lumin_limit=10;
-					}
-				}
-
-				if(subiendo){
-					luminosidad_carga++;
-					if(luminosidad_carga>=lumin_limit){
-						subiendo=0;
-					}
-				}
-				else{
-					luminosidad_carga--;
-					if(luminosidad_carga<=0){
-						subiendo=1;
-					}
-				}			
-				LED_Control(luminosidad_carga,rojo,verde,azul);
-			}
-			else if(luminosidad & 0x80){ //Parpadeo
-				if(++cnt_parpadeo >= TIME_PARPADEO)
-				{
-					cnt_parpadeo = 0;
-					if(togle_led == 0)
-					{
-						togle_led = 1;
-						LED_Control(0, rojo, verde, azul);
-					}
-					else
-					{
-						togle_led = 0;
-						LED_Control((luminosidad & 0x7F), rojo, verde, azul);
-					}
-				}
-			}
-            else if(luminosidad < 0x80){
-
-				//control de saltos entre luminosidad
-				if(luminosidad-luminosidad_Actual>=3){
-					luminosidad_Actual++;
-				}
-				else if (luminosidad_Actual-luminosidad>=3){
-					luminosidad_Actual--;
-				}
-				else{
-					luminosidad_Actual=luminosidad;
-				}
-				LED_Control(luminosidad_Actual,rojo,verde,azul);	
-			}
 
 			if(mainFwUpdateActive == 0){
 				switch (estado_actual){
@@ -300,13 +244,72 @@ void controlTask(void *arg)
 
 		}
 
+		// Eventos 30 mS //control de leds
+		if(contador_cent_segundos%3==0){
+			if (luminosidad & 0x80 && rojo == 0 && verde == 0){ //Cargando
+				
+				uint8 lumin_limit=50;
+
+				if(inst_current_actual>90){
+					lumin_limit=(3200-inst_current_actual)*100/3200;
+					if(lumin_limit<10){
+						lumin_limit=10;
+					}
+				}
+
+				if(subiendo){
+					luminosidad_carga++;
+					if(luminosidad_carga>=lumin_limit){
+						subiendo=0;
+					}
+				}
+				else{
+					luminosidad_carga--;
+					if(luminosidad_carga<=0){
+						subiendo=1;
+					}
+				}			
+				LED_Control(luminosidad_carga,rojo,verde,azul);
+			}
+			else if(luminosidad & 0x80){ //Parpadeo
+				if(++cnt_parpadeo >= TIME_PARPADEO)
+				{
+					cnt_parpadeo = 0;
+					if(togle_led == 0)
+					{
+						togle_led = 1;
+						LED_Control(0, rojo, verde, azul);
+					}
+					else
+					{
+						togle_led = 0;
+						LED_Control((luminosidad & 0x7F), rojo, verde, azul);
+					}
+				}
+			}
+            else if(luminosidad < 0x80){
+
+				//control de saltos entre luminosidad
+				if(luminosidad-luminosidad_Actual>=3){
+					luminosidad_Actual++;
+				}
+				else if (luminosidad_Actual-luminosidad>=3){
+					luminosidad_Actual--;
+				}
+				else{
+					luminosidad_Actual=luminosidad;
+				}
+				LED_Control(luminosidad_Actual,rojo,verde,azul);	
+			}
+		}
+		
 		// Eventos 1 Seg
 		if(cont_seg != cont_seg_ant)
 		{
 			cont_seg_ant = cont_seg;
 			if(mainFwUpdateActive == 0){
 				if(ConfigFirebase.FirebaseConnected && !serverbleGetConnected()){
-					UpdateFirebaseControl();	
+					//UpdateFirebaseControl();	
 				}	
 			}
 			if (ControlFirebase.start){
@@ -386,7 +389,6 @@ void startSystem(void){
 void LED_Control(uint8_t luminosity, uint8_t r_level, uint8_t g_level, uint8_t b_level)
 {
 	if(mainFwUpdateActive || AutoUpdate.DescargandoArchivo){
-		Serial.printf("Recibido %i %i %i %i ", luminosity, r_level, g_level, b_level);
 		return;
 	}
 	displayAll(luminosity,r_level,g_level,b_level);
@@ -425,6 +427,7 @@ void proceso_recepcion(void)
 				estado_recepcion = ESPERANDO_TIPO;
 				if(--len == 0)
 					break;
+				break;
 			case ESPERANDO_TIPO:
 				if(len < 2)
 					break;
@@ -436,6 +439,7 @@ void proceso_recepcion(void)
 				len -= 2;
 				if(len == 0)
 					break;
+				break;
 			case ESPERANDO_LONGITUD:
 				serialLocal.read(&ui8Tmp,1);
 				longitud_bloque = ui8Tmp;
@@ -445,6 +449,7 @@ void proceso_recepcion(void)
 				estado_recepcion = RECIBIENDO_BLOQUE;
 				if(--len == 0)
 					break;
+				break;
 			case RECIBIENDO_BLOQUE:
 				do{
 					if(longitud_bloque > 0)

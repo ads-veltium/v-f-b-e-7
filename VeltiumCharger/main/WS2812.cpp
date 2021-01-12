@@ -35,7 +35,7 @@
 extern "C" {
 #endif
 
-#include <esp_intr.h>
+#include <esp_intr_alloc.h>
 #include <driver/gpio.h>
 #include <driver/rmt.h>
 #include <freertos/FreeRTOS.h>
@@ -44,6 +44,7 @@ extern "C" {
 #include <soc/gpio_sig_map.h>
 #include <soc/rmt_struct.h>
 #include <stdio.h>
+#include "esp32-hal-psram.h"
 //#endif
 
 #ifdef __cplusplus
@@ -195,7 +196,7 @@ void ws2812_handleInterrupt(void *arg)
 int ws2812_init(int gpioNum, int ledType)
 {
   #if DEBUG_WS2812_DRIVER
-    ws2812_debugBuffer = (char*)calloc(ws2812_debugBufferSz, sizeof(char));
+    ws2812_debugBuffer = (char*)ps_calloc(ws2812_debugBufferSz, sizeof(char));
   #endif
 
   switch (ledType) {
@@ -250,17 +251,17 @@ void ws2812_setColors(uint16_t length, rgbVal *array)
   uint16_t i;
 
   ws2812_len = (length * 3) * sizeof(uint8_t);
-  ws2812_buffer = (uint8_t *) malloc(ws2812_len);
+  ws2812_buffer = (uint8_t *) ps_malloc(ws2812_len);
 
-//printf("Color leds \r\n");
+  //printf("Color leds \r\n");
   for (i = 0; i < length; i++) {
     // Where color order is translated from RGB (e.g., WS2812 = GRB)
     ws2812_buffer[0 + i * 3] = array[i].g;
     ws2812_buffer[1 + i * 3] = array[i].r;
     ws2812_buffer[2 + i * 3] = array[i].b;
-//	printf("%i [0x%X] %X %X %X , ",i,array[i].num,array[i].r,array[i].g,array[i].b);
+	//printf("%i [0x%X] %X %X %X , ",i,array[i].num,array[i].r,array[i].g,array[i].b);
   }
-//	printf("\r\n");
+	//printf("\r\n");
 
   ws2812_pos = 0;
   ws2812_half = 0;

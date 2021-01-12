@@ -21,8 +21,6 @@ const char* veltiumbackend_password="Escolapios2";
 FirebaseData *firebaseData = (FirebaseData *) ps_malloc(sizeof(FirebaseData));
 FirebaseAuth *auth = (FirebaseAuth *) ps_malloc(sizeof(FirebaseAuth));
 
-
-
 String url;
 
 //Extern variables
@@ -32,20 +30,20 @@ extern carac_Auto_Update AutoUpdate;
 extern carac_Firebase_Configuration ConfigFirebase;
 extern carac_Firebase_Control ControlFirebase;
 extern carac_Firebase_Status StatusFirebase;
-extern TaskHandle_t xHandle;
 
-TaskHandle_t xHandle2 = NULL;
+TaskHandle_t xHandleDownloadTask = NULL;
+TaskHandle_t xHandleUpdateTask=NULL;
+
+//Semaforo de acceso a firebase
+SemaphoreHandle_t firebase_Access = NULL;
 
 void DownloadTask(void *arg);
 
 void FreeFirebaseHeap(){
-
-
    if(ESP.getFreeHeap()<30000){
     stopFirebaseClient();
     initFirebaseClient();
   }
-
 }
 
 uint16 ParseFirmwareVersion(String Texto){
@@ -53,6 +51,64 @@ uint16 ParseFirmwareVersion(String Texto){
   return(sub.toInt());
 }
 
+/*************************
+ Client control functions
+*************************/
+
+void initFirebaseClient(){
+    Serial.println("INIT Firebase Client");
+
+    firebaseData = new FirebaseData();
+    Firebase.begin(veltiumbackend_firebase_project,veltiumbackend_database_secret);
+
+    //Firebase.reconnectWiFi(true);
+    //Set database read timeout to 1 minute (max 15 minutes)
+    Firebase.setReadTimeout(*firebaseData, 1000 * 60);
+    Firebase.setwriteSizeLimit(*firebaseData, "tiny");
+
+    if(firebase_Access==NULL){
+      vSemaphoreCreateBinary(firebase_Access);
+    }
+    xSemaphoreGive(firebase_Access);
+
+    if(xHandleUpdateTask!=NULL){
+      vTaskResume(xHandleUpdateTask);
+    }
+    else{
+      xTaskCreate(UpdateFirebaseControl_Task, "Firebase Update", 4096*2, NULL, 5, &xHandleUpdateTask); 
+    }
+    
+    ConfigFirebase.FirebaseConnected=1;
+    //Check permisions stored in firebase
+}
+
+void stopFirebaseClient(){
+    ConfigFirebase.FirebaseConnected=0;
+    Serial.println("Stop Firebase Client");
+
+    Firebase.endStream(*firebaseData);
+    Firebase.removeStreamCallback(*firebaseData);
+    Firebase.end(*firebaseData);
+
+    
+
+    //Deallocate
+    delete firebaseData;
+    firebaseData = nullptr;   
+}
+
+void pauseFirebaseClient(){
+  vTaskSuspend(xHandleUpdateTask);
+}
+
+void resumeFirebaseClient(){
+  xSemaphoreGive(firebase_Access);
+  vTaskResume(xHandleUpdateTask);
+}
+
+/*************************
+ Database acces control
+*************************/
 void CheckForUpdate(){
   FreeFirebaseHeap();
   ConfigFirebase.FirebaseConnected=0;
@@ -89,8 +145,8 @@ void CheckForUpdate(){
   }
   if(AutoUpdate.ESP_UpdateAvailable || AutoUpdate.PSOC5_UpdateAvailable) {
     Serial.println("Updating firmware");
+    xTaskCreate(DownloadTask,"TASK DOWNLOAD",4096*2,NULL,1,&xHandleDownloadTask); 
     stopFirebaseClient();
-    xTaskCreate(DownloadTask,"TASK DOWNLOAD",4096,NULL,2,&xHandle2); 
   }
   else{
     ConfigFirebase.FirebaseConnected=1;
@@ -98,75 +154,55 @@ void CheckForUpdate(){
   FreeFirebaseHeap();
 }
 
-
-void initFirebaseClient(){
-    Serial.println("INIT Firebase Client");
-
-    firebaseData=new FirebaseData();
-    Firebase.begin(veltiumbackend_firebase_project,veltiumbackend_database_secret);
-
-    //Firebase.reconnectWiFi(true);
-    //Set database read timeout to 1 minute (max 15 minutes)
-    Firebase.setReadTimeout(*firebaseData, 1000 * 60);
-    Firebase.setwriteSizeLimit(*firebaseData, "tiny");
-
-    ConfigFirebase.FirebaseConnected=1;
-    //Check permisions stored in firebase
-}
-
 void UpdateFirebaseStatus(){
-  FreeFirebaseHeap();
- 
-  Serial.println("UPDATE FIREBASE CALLED");
-  String Path="/prod/devices/";
-  Path=Path + (char *)ConfigFirebase.Device_Db_ID + "/status/" ;
+  if(xSemaphoreTake(firebase_Access,  portMAX_DELAY )){
+    FreeFirebaseHeap();
+  
+    Serial.println("UPDATE FIREBASE CALLED");
+    String Path="/prod/devices/";
+    Path=Path + (char *)ConfigFirebase.Device_Db_ID + "/status/" ;
 
-  Firebase.setString(*firebaseData,Path+"HP",StatusFirebase.HPT_status);
-  Firebase.setInt(*firebaseData,Path+"current",StatusFirebase.inst_current);
-
+    Firebase.setString(*firebaseData,Path+"HP",StatusFirebase.HPT_status);
+    Firebase.setInt(*firebaseData,Path+"current",StatusFirebase.inst_current);
+    xSemaphoreGive(firebase_Access);
+  }
 }
 
-void UpdateFirebaseControl(){ 
+void UpdateFirebaseControl_Task(void *arg){
   String Base_Path="/prod/devices/";
   Base_Path=Base_Path + (char *)ConfigFirebase.Device_Db_ID;
   
   bool Ret;
-  Firebase.getBool(*firebaseData,Base_Path+"/control/start",Ret);
-  
-  if(Ret){
-    ControlFirebase.start=1;
-    Firebase.setBool(*firebaseData,Base_Path+"/control/start",false);
+
+  while(1){
+    if(xSemaphoreTake(firebase_Access,  100/configTICK_RATE_HZ)){
+      Ret=false;
+      Firebase.getBool(*firebaseData,Base_Path+"/control/start",Ret);
+      
+      if(Ret){
+        ControlFirebase.start=1;
+        Firebase.setBool(*firebaseData,Base_Path+"/control/start",false);
+      }
+      else{
+        Firebase.getBool(*firebaseData,Base_Path+"/control/stop",Ret);
+        if(Ret){
+          ControlFirebase.stop=1;
+          Firebase.setBool(*firebaseData,Base_Path+"/control/stop",false);
+        }
+      }
+      
+      if(!Ret){
+
+        Firebase.getBool(*firebaseData,Base_Path +"/fw/StartUpdate",Ret);
+        if(Ret){
+          Firebase.setBool(*firebaseData,Base_Path+"/fw/StartUpdate",false);
+          CheckForUpdate();
+        }
+      }
+      xSemaphoreGive(firebase_Access);
+    } 
+    vTaskDelay(750/configTICK_RATE_HZ); 
   }
-  else{
-    Firebase.getBool(*firebaseData,Base_Path+"/control/stop",Ret);
-    if(Ret){
-      ControlFirebase.stop=1;
-      Firebase.setBool(*firebaseData,Base_Path+"/control/stop",false);
-    }
-  }
-  
-  if(!Ret){
-
-    Firebase.getBool(*firebaseData,Base_Path +"/fw/StartUpdate",Ret);
-
-    if(Ret){
-      Firebase.setBool(*firebaseData,Base_Path+"/fw/StartUpdate",false);
-      CheckForUpdate();
-    }
-  }
-}
-
-void stopFirebaseClient(){
-    ConfigFirebase.FirebaseConnected=0;
-    Serial.println("Stop Firebase Client");
-
-    Firebase.endStream(*firebaseData);
-    Firebase.removeStreamCallback(*firebaseData);
-    Firebase.end(*firebaseData);
-
-    //Deallocate
-    delete firebaseData;
-    firebaseData = nullptr;   
 }
 
 void DownloadTask(void *arg){
@@ -178,8 +214,7 @@ void DownloadTask(void *arg){
 
   TaskHandle_t HandleLeds;
 
-
-  xTaskCreate(LedUpdateDownload_Task, "Led Control", configMINIMAL_STACK_SIZE, (void*)2 , 8, &HandleLeds); 
+  xTaskCreate(LedUpdateDownload_Task, "Led Control", configMINIMAL_STACK_SIZE, (void*)2 , 1, &HandleLeds); 
 
   SPIFFS.remove("/Archivo.txt");
   SPIFFS.remove("/FreeRTOS_V6.cyacd");
@@ -189,16 +224,17 @@ void DownloadTask(void *arg){
   Serial.println(url);
   http.begin(url);
   int httpCode = http.GET();  
-
+  int contentLen=0;
+  unsigned long StartTime = millis();
   if (httpCode > 0) {
 
     // Obtener tamaño del archivo
-    int contentLen = http.getSize();
+    contentLen = http.getSize();  
 
     if(http.connected()) {
 
       stream = http.getStreamPtr();     
-      uint8_t buff[256] = { 0 };
+      uint8_t buff[512] = { 0 };
 
       //Leer datos del servidor
       while (http.connected() && (contentLen > 0 || contentLen == -1)){
@@ -210,28 +246,27 @@ void DownloadTask(void *arg){
 
           if (contentLen > 0){
             contentLen -= c;
-          }
+          }         
         }
-        vTaskDelay(10/configTICK_RATE_HZ);
+        vTaskDelay(5/configTICK_RATE_HZ);
       }
-      Serial.print("File size: ");
-      Serial.println(UpdateFile.size());
     }
   }
+  unsigned long CurrentTime = millis();
+  Serial.println("Elapsed time");
+  Serial.print(CurrentTime - StartTime);
 
   //Liberar memoria
-  UpdateFile.close();
   stream->stop();
   http.end();
 
   delete stream;
 
-  initFirebaseClient();
-
   Serial.println("Fichero descargado");
   AutoUpdate.DescargandoArchivo=0;
 
-  if(AutoUpdate.Auto_Act){
+  if(AutoUpdate.Auto_Act && UpdateFile.size()==contentLen){
+    UpdateFile.close();
     if(AutoUpdate.ESP_UpdateAvailable){
       SPIFFS.rename("/Archivo.txt", "/firmware.bin");
       UpdateESP();
@@ -241,8 +276,8 @@ void DownloadTask(void *arg){
       setMainFwUpdateActive(1);
     }
   }
- 
+  
   //Eliminar la tarea
   vTaskDelete(HandleLeds);
-  vTaskDelete(xHandle2);
+  vTaskDelete(xHandleDownloadTask);
 }

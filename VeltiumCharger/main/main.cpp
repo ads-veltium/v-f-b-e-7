@@ -239,7 +239,6 @@ void perform_malloc_tests(uint8_t pot_first, uint8_t pot_last)
 
 void handle_NotFound(){
   server.send(404, "text/plain", "Not found");
-  CheckForUpdate();
 }
 
 void InitServer(void) {
