@@ -11,6 +11,22 @@
 #ifndef VSC_FirebaseClient_h
 #define VSC_FirebaseClient_h
 
+#include <Arduino.h>
+#include <HTTPClient.h>
+#include "Update.h"
+#include "control.h"
+#include "tipos.h"
+#include "FirebaseESP32.h"
+#include "controlLed.h"
+#include "BLEDevice.h"
+#include "esp32-hal-psram.h"
+
 void initFirebaseClient();
+void GetUpdateFile(String URL);
+void CheckForUpdate();
+void stopFirebaseClient();
+void UpdateFirebaseStatus();
+void UpdateFirebaseControl();
+uint16  ParseFirmwareVersion(String Texto);
 
 #endif

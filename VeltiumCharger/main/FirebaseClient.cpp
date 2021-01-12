@@ -5,78 +5,244 @@
 //
 //  Created by David Crespo on 26/05/2020.
 //  Copyright © 2020 Virtual Code SL. All rights reserved.
+//  Edited by Joël Martínez on 05/01/2020
 //
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#include "esp_log.h"
+#include "FirebaseClient.h"
 
-
-#include "FirebaseESP32.h"
-#include <Arduino.h>
-
-
-static const char *TAG = "FirebaseClient";
-
-const char* veltiumbackend_firebase_project = "veltiumbackend.firebaseio.com";
-const char* veltiumbackend_database_secret = "Y8LoNguJJ0NJzCNdqpTIIuK7wcNGBPog8kTv5lQn";
+const char* veltiumbackend_firebase_project = "veltiumdev-default-rtdb.firebaseio.com";
+const char* veltiumbackend_database_secret = "1mJtIoJnreTFPbyTFQgdN0hj3GQRQo50SJOYE7Al";
+const char* veltiumbackend_user="joelmartinez@veltium.com";
+const char* veltiumbackend_password="Escolapios2";
 
 //Define FirebaseESP32 data object
-static FirebaseData firebaseData;
 
-static FirebaseJson json;
-
-
-void initFirebaseClient()
-{
-    Serial.println("INIT Firebase Client");
-    ESP_LOGI("FIREBASECLIENT", "initFirebaseClient");
-    ESP_LOGI(TAG, "initFirebaseClient");
-
-    Firebase.begin(
-        veltiumbackend_firebase_project,
-        veltiumbackend_database_secret
-    );
+FirebaseData *firebaseData = (FirebaseData *) ps_malloc(sizeof(FirebaseData));
+FirebaseAuth *auth = (FirebaseAuth *) ps_malloc(sizeof(FirebaseAuth));
 
 
-    //Firebase.reconnectWiFi(true);
 
-    //Set database read timeout to 1 minute (max 15 minutes)
-    Firebase.setReadTimeout(firebaseData, 1000 * 60);
-    //tiny, small, medium, large and unlimited.
-    //Size and its write timeout e.g. tiny (1s), small (10s), medium (30s) and large (60s).
-    Firebase.setwriteSizeLimit(firebaseData, "tiny");
+String url;
 
-    Firebase.setDouble(firebaseData, "/test/esp32test/doubletest_5", 3.141592);
+//Extern variables
+extern uint8 version_firmware[11];
+extern uint8 PSOC5_version_firmware[11];	 
+extern carac_Auto_Update AutoUpdate;
+extern carac_Firebase_Configuration ConfigFirebase;
+extern carac_Firebase_Control ControlFirebase;
+extern carac_Firebase_Status StatusFirebase;
+extern TaskHandle_t xHandle;
 
-    Firebase.setTimestamp(firebaseData, "/test/esp32test/ts");
+TaskHandle_t xHandle2 = NULL;
 
-    Serial.println("Written DOUBLE value to /test/esp32test/doubletest_5");
+void DownloadTask(void *arg);
 
-	Serial.println("FREE HEAP MEMORY [after firebase write] **************************");
-	Serial.println(ESP.getFreeHeap());
+void FreeFirebaseHeap(){
 
+
+   if(ESP.getFreeHeap()<30000){
+    stopFirebaseClient();
+    initFirebaseClient();
+  }
 
 }
 
-/*
-<!-- The core Firebase JS SDK is always required and must be listed first -->
-<script src="https://www.gstatic.com/firebasejs/7.14.5/firebase-app.js"></script>
+uint16 ParseFirmwareVersion(String Texto){
+  String sub = Texto.substring(6, 10); 
+  return(sub.toInt());
+}
 
-<!-- TODO: Add SDKs for Firebase products that you want to use
-     https://firebase.google.com/docs/web/setup#available-libraries -->
+void CheckForUpdate(){
+  FreeFirebaseHeap();
+  ConfigFirebase.FirebaseConnected=0;
+  String ESP_Ver;
+  String PSOC5_Ver;
+  url="";
 
-<script>
-  // Your web app's Firebase configuration
-  var firebaseConfig = {
-    apiKey: "AIzaSyBaJA88_Y3ViCzNF_J08f4LBMAM771aZLs",
-    authDomain: "veltiumbackend.firebaseapp.com",
-    databaseURL: "https://veltiumbackend.firebaseio.com",
-    projectId: "veltiumbackend",
-    storageBucket: "veltiumbackend.appspot.com",
-    messagingSenderId: "8626093121",
-    appId: "1:8626093121:web:87bf7c640ccdad9dfe9ac0"
-  };
-  // Initialize Firebase
-  firebase.initializeApp(firebaseConfig);
-</script>*/
+  if(AutoUpdate.BetaPermission){
+    //Check PSOC5 firmware updates
+    Firebase.getString(*firebaseData, "/prod/fw/beta/VELT2/verstr", PSOC5_Ver);
+    uint16 Psoc_int_Version=ParseFirmwareVersion(PSOC5_Ver);
 
+    if(AutoUpdate.PSOC5_Act_Ver<Psoc_int_Version){
+      Firebase.getString(*firebaseData, "/prod/fw/beta/VELT2/url", url);
+      AutoUpdate.PSOC5_UpdateAvailable=1;
+      Serial.println("Updating PSOC5 with Beta firmware");
+    }
+
+    //Check ESP32 firmware updates
+    else{
+      Firebase.getString(*firebaseData, "/prod/fw/beta/VBLE2/verstr", ESP_Ver);
+      uint16 ESP_int_Version=ParseFirmwareVersion(ESP_Ver);
+
+      if(AutoUpdate.ESP_Act_Ver<ESP_int_Version){
+        Serial.println("Updating ESP32 with Beta firmware");
+        AutoUpdate.ESP_UpdateAvailable=1;
+        Firebase.getString(*firebaseData, "/prod/fw/beta/VBLE2/url", url);
+      }
+    }  
+  }
+  else{
+    Firebase.getString(*firebaseData, "/prod/fw/prod/VELT2/verstr", PSOC5_Ver);
+    Firebase.getString(*firebaseData, "/prod/fw/prod/VBLE2/verstr", ESP_Ver);
+  }
+  if(AutoUpdate.ESP_UpdateAvailable || AutoUpdate.PSOC5_UpdateAvailable) {
+    Serial.println("Updating firmware");
+    stopFirebaseClient();
+    xTaskCreate(DownloadTask,"TASK DOWNLOAD",4096,NULL,2,&xHandle2); 
+  }
+  else{
+    ConfigFirebase.FirebaseConnected=1;
+  }
+  FreeFirebaseHeap();
+}
+
+
+void initFirebaseClient(){
+    Serial.println("INIT Firebase Client");
+
+    firebaseData=new FirebaseData();
+    Firebase.begin(veltiumbackend_firebase_project,veltiumbackend_database_secret);
+
+    //Firebase.reconnectWiFi(true);
+    //Set database read timeout to 1 minute (max 15 minutes)
+    Firebase.setReadTimeout(*firebaseData, 1000 * 60);
+    Firebase.setwriteSizeLimit(*firebaseData, "tiny");
+
+    ConfigFirebase.FirebaseConnected=1;
+    //Check permisions stored in firebase
+}
+
+void UpdateFirebaseStatus(){
+  FreeFirebaseHeap();
+ 
+  Serial.println("UPDATE FIREBASE CALLED");
+  String Path="/prod/devices/";
+  Path=Path + (char *)ConfigFirebase.Device_Db_ID + "/status/" ;
+
+  Firebase.setString(*firebaseData,Path+"HP",StatusFirebase.HPT_status);
+  Firebase.setInt(*firebaseData,Path+"current",StatusFirebase.inst_current);
+
+}
+
+void UpdateFirebaseControl(){ 
+  String Base_Path="/prod/devices/";
+  Base_Path=Base_Path + (char *)ConfigFirebase.Device_Db_ID;
+  
+  bool Ret;
+  Firebase.getBool(*firebaseData,Base_Path+"/control/start",Ret);
+  
+  if(Ret){
+    ControlFirebase.start=1;
+    Firebase.setBool(*firebaseData,Base_Path+"/control/start",false);
+  }
+  else{
+    Firebase.getBool(*firebaseData,Base_Path+"/control/stop",Ret);
+    if(Ret){
+      ControlFirebase.stop=1;
+      Firebase.setBool(*firebaseData,Base_Path+"/control/stop",false);
+    }
+  }
+  
+  if(!Ret){
+
+    Firebase.getBool(*firebaseData,Base_Path +"/fw/StartUpdate",Ret);
+
+    if(Ret){
+      Firebase.setBool(*firebaseData,Base_Path+"/fw/StartUpdate",false);
+      CheckForUpdate();
+    }
+  }
+}
+
+void stopFirebaseClient(){
+    ConfigFirebase.FirebaseConnected=0;
+    Serial.println("Stop Firebase Client");
+
+    Firebase.endStream(*firebaseData);
+    Firebase.removeStreamCallback(*firebaseData);
+    Firebase.end(*firebaseData);
+
+    //Deallocate
+    delete firebaseData;
+    firebaseData = nullptr;   
+}
+
+void DownloadTask(void *arg){
+  Serial.println("Empezando descarga del Fichero");
+  AutoUpdate.DescargandoArchivo=1;
+
+  HTTPClient http;
+  WiFiClient* stream = new WiFiClient();
+
+  TaskHandle_t HandleLeds;
+
+
+  xTaskCreate(LedUpdateDownload_Task, "Led Control", configMINIMAL_STACK_SIZE, (void*)2 , 8, &HandleLeds); 
+
+  SPIFFS.remove("/Archivo.txt");
+  SPIFFS.remove("/FreeRTOS_V6.cyacd");
+  SPIFFS.remove("/firmware.bin");
+  
+  File UpdateFile = SPIFFS.open("/Archivo.txt", "w");
+  Serial.println(url);
+  http.begin(url);
+  int httpCode = http.GET();  
+
+  if (httpCode > 0) {
+
+    // Obtener tamaño del archivo
+    int contentLen = http.getSize();
+
+    if(http.connected()) {
+
+      stream = http.getStreamPtr();     
+      uint8_t buff[256] = { 0 };
+
+      //Leer datos del servidor
+      while (http.connected() && (contentLen > 0 || contentLen == -1)){
+
+        size_t size = stream->available();
+        if (size){
+          int c = stream->readBytes(buff, ((size > sizeof(buff)) ? sizeof(buff) : size));
+          UpdateFile.write(buff, c);
+
+          if (contentLen > 0){
+            contentLen -= c;
+          }
+        }
+        vTaskDelay(10/configTICK_RATE_HZ);
+      }
+      Serial.print("File size: ");
+      Serial.println(UpdateFile.size());
+    }
+  }
+
+  //Liberar memoria
+  UpdateFile.close();
+  stream->stop();
+  http.end();
+
+  delete stream;
+
+  initFirebaseClient();
+
+  Serial.println("Fichero descargado");
+  AutoUpdate.DescargandoArchivo=0;
+
+  if(AutoUpdate.Auto_Act){
+    if(AutoUpdate.ESP_UpdateAvailable){
+      SPIFFS.rename("/Archivo.txt", "/firmware.bin");
+      UpdateESP();
+    }
+    else if(AutoUpdate.PSOC5_UpdateAvailable){
+      SPIFFS.rename("/Archivo.txt", "/FreeRTOS_V6.cyacd");
+      setMainFwUpdateActive(1);
+    }
+  }
+ 
+  //Eliminar la tarea
+  vTaskDelete(HandleLeds);
+  vTaskDelete(xHandle2);
+}

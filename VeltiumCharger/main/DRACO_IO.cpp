@@ -58,6 +58,7 @@ unsigned char DRACO_GPIO_MODEM_is_Powered(void)
 
 unsigned char DRACO_GPIO_Reset_MCU( unsigned char val)
 {
+	Serial.println("Reset called");
 	if ( val == 1 )
 	{
        		pinMode ( nMAIN_XRES,INPUT_PULLUP);    

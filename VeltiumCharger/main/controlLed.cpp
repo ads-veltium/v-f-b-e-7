@@ -1,9 +1,9 @@
 #include <Arduino.h>
+#include "DRACO_IO.h"
 #include "WS2812.h"
 #include "controlLed.h"
 
 //NEOPIXELS 
-const int DATA_PIN = 14;            
 #define  NUM_PIXELS  7  
 uint8_t MAX_COLOR_VAL = 255;
 
@@ -47,6 +47,24 @@ int correctGammaColor ( void  )
 	return 1;
 }
 
+void displayOne( uint8_t i, uint8_t r, uint8_t g, uint8_t b, uint8_t pixeln)
+{
+	for (int j = 0; j < NUM_PIXELS; j++)
+	{
+		pixels[j] = makeIRGBVal(0, 0, 0, 0);
+	}
+	pixels[pixeln] = makeIRGBVal(i, r, g, b);
+
+	ws2812_setColors(NUM_PIXELS, pixels);
+}
+
+void changeOne( uint8_t i, uint8_t r, uint8_t g, uint8_t b, uint8_t pixeln)
+{
+	pixels[pixeln] = makeIRGBVal(i, r, g, b);
+
+	ws2812_setColors(NUM_PIXELS, pixels);
+}
+
 void displayAll( uint8_t i, uint8_t r, uint8_t g, uint8_t b)
 {
 	for (int j = 0; j < NUM_PIXELS; j++)
@@ -54,6 +72,7 @@ void displayAll( uint8_t i, uint8_t r, uint8_t g, uint8_t b)
 		pixels[j] = makeIRGBVal(i, r, g, b);
 	}
 	ws2812_setColors(NUM_PIXELS, pixels);
+
 }
 
 void displayOff()
@@ -67,13 +86,62 @@ void displayOff()
 
 void initLeds ( void )
 {
-	if(ws2812_init(DATA_PIN, LED_WS2812B))
+	digitalWrite(EN_NEOPIXEL,HIGH);
+	pinMode( EN_NEOPIXEL, OUTPUT);
+	digitalWrite(EN_NEOPIXEL,HIGH);
+
+	if(ws2812_init(DO_NEOPIXEL, LED_WS2812B))
 	{
 		while (1)
 		{
-			vTaskDelay(100 / portTICK_PERIOD_MS);
+			vTaskDelay(100/portTICK_PERIOD_MS);
 		}
 	}
-	displayOff();
+}
 
+
+/***************************
+ *   Efectos de los leds
+ * ************************/
+void Kit (void){
+	
+	for (int j = 0; j < 7; j++){
+		displayOne(100,100,0,0,j);
+		vTaskDelay(550/portTICK_PERIOD_MS);
+	}
+	for (int j = 7; j >= 0; j--){
+		displayOne(100,100,0,0,j);
+		vTaskDelay(550/portTICK_PERIOD_MS);
+	}
+}
+
+void LedUpdateDownload_Task(void *arg){
+	uint8_t r,g,b;
+	uint8_t LedPointer=0,Luminosidad=0;
+
+	if((int) arg==1){
+		r=50;
+		g=80;
+		b=100;
+	}
+	else{
+		r=20;
+		g=80;
+		b=50;
+	}
+	while (1){
+		//Control de los leds
+		changeOne(Luminosidad,r,g,b,LedPointer);
+		LedPointer++;
+		if(LedPointer>=8){
+			if(Luminosidad==100){
+				Luminosidad=0;
+			}
+			else{
+				Luminosidad=100;
+			}
+			LedPointer=0;
+		} 
+		vTaskDelay(150/portTICK_PERIOD_MS);
+	}
 }
