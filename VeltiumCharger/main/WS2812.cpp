@@ -44,7 +44,7 @@ extern "C" {
 #include <soc/gpio_sig_map.h>
 #include <soc/rmt_struct.h>
 #include <stdio.h>
-#include "esp32-hal-psram.h"
+
 //#endif
 
 #ifdef __cplusplus
@@ -196,7 +196,7 @@ void ws2812_handleInterrupt(void *arg)
 int ws2812_init(int gpioNum, int ledType)
 {
   #if DEBUG_WS2812_DRIVER
-    ws2812_debugBuffer = (char*)ps_calloc(ws2812_debugBufferSz, sizeof(char));
+    ws2812_debugBuffer = (char*)calloc(ws2812_debugBufferSz, sizeof(char));
   #endif
 
   switch (ledType) {
@@ -251,7 +251,7 @@ void ws2812_setColors(uint16_t length, rgbVal *array)
   uint16_t i;
 
   ws2812_len = (length * 3) * sizeof(uint8_t);
-  ws2812_buffer = (uint8_t *) ps_malloc(ws2812_len);
+  ws2812_buffer = (uint8_t *) malloc(ws2812_len);
 
   //printf("Color leds \r\n");
   for (i = 0; i < length; i++) {

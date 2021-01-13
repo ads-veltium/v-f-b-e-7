@@ -98,12 +98,19 @@ void stopFirebaseClient(){
 }
 
 void pauseFirebaseClient(){
-  vTaskSuspend(xHandleUpdateTask);
+  if(xHandleUpdateTask!=NULL){
+    vTaskSuspend(xHandleUpdateTask);
+  }
 }
 
 void resumeFirebaseClient(){
-  xSemaphoreGive(firebase_Access);
-  vTaskResume(xHandleUpdateTask);
+  if(xHandleUpdateTask!=NULL && firebase_Access!=NULL){
+    xSemaphoreGive(firebase_Access);
+    vTaskResume(xHandleUpdateTask);
+  }
+  else{
+    initFirebaseClient();
+  }
 }
 
 /*************************

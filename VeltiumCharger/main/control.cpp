@@ -303,9 +303,9 @@ void controlTask(void *arg)
 			}
 		}
 		
+		#ifdef USE_WIFI
 		// Eventos 1 Seg
-		if(cont_seg != cont_seg_ant)
-		{
+		if(cont_seg != cont_seg_ant){
 			cont_seg_ant = cont_seg;
 			if(mainFwUpdateActive == 0){
 				if(ConfigFirebase.FirebaseConnected && !serverbleGetConnected()){
@@ -321,38 +321,38 @@ void controlTask(void *arg)
 				buffer_tx_local[4] = 1; //size
                 controlSendToSerialLocal(buffer_tx_local, 5);
                 
-            }
-            
-            else if (ControlFirebase.stop)
-            {
-				cnt_timeout_tx = TIMEOUT_TX_BLOQUE;
-                buffer_tx_local[0] = HEADER_TX;
-                buffer_tx_local[1] = (uint8)(CHARGING_BLE_MANUAL_STOP_CHAR_HANDLE >> 8);
-                buffer_tx_local[2] = (uint8)(CHARGING_BLE_MANUAL_STOP_CHAR_HANDLE);
-                buffer_tx_local[3] = 5; //size
-				buffer_tx_local[4] = 1; //size
-                controlSendToSerialLocal(buffer_tx_local, 5);
-            }
-	
+				}
+				
+				else if (ControlFirebase.stop)
+				{
+					cnt_timeout_tx = TIMEOUT_TX_BLOQUE;
+					buffer_tx_local[0] = HEADER_TX;
+					buffer_tx_local[1] = (uint8)(CHARGING_BLE_MANUAL_STOP_CHAR_HANDLE >> 8);
+					buffer_tx_local[2] = (uint8)(CHARGING_BLE_MANUAL_STOP_CHAR_HANDLE);
+					buffer_tx_local[3] = 5; //size
+					buffer_tx_local[4] = 1; //size
+					controlSendToSerialLocal(buffer_tx_local, 5);
+				}
+		
 		}
 
-		// Eventos 1 minuto
-		if(cont_min != cont_min_ant)
-		{
-			cont_min_ant = cont_min;
-		}
+			// Eventos 1 minuto
+			if(cont_min != cont_min_ant)
+			{
+				cont_min_ant = cont_min;
+			}
 
-		// Eventos 1 Hora
-		if(cont_hour != cont_hour_ant)
-		{
-			cont_hour_ant = cont_hour;
-			if(mainFwUpdateActive == 0){
-				if(ConfigFirebase.FirebaseConnected && !serverbleGetConnected()){
-					CheckForUpdate();
+			// Eventos 1 Hora
+			if(cont_hour != cont_hour_ant)
+			{
+				cont_hour_ant = cont_hour;
+				if(mainFwUpdateActive == 0){
+					if(ConfigFirebase.FirebaseConnected && !serverbleGetConnected()){
+						CheckForUpdate();
+					}
 				}
 			}
-		}
-		
+		#endif
 		vTaskDelay(10 / portTICK_PERIOD_MS);	
 	}
 }
@@ -368,21 +368,22 @@ void startSystem(void){
 		deviceSerNum[5], deviceSerNum[6], deviceSerNum[7], deviceSerNum[8], deviceSerNum[9]);
 	dev_auth_init((void const*)&deviceSerNum);
 
-	serverbleStartAdvertising();
+	//serverbleStartAdvertising();
 
+	#ifdef USE_WIFI
+		//Get Device FirebaseDB ID
+		sprintf(ConfigFirebase.Device_Db_ID,"%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",deviceSerNum[0], deviceSerNum[1], deviceSerNum[2], deviceSerNum[3], deviceSerNum[4],
+			deviceSerNum[5], deviceSerNum[6], deviceSerNum[7], deviceSerNum[8], deviceSerNum[9]);
+		memcpy(&ConfigFirebase.Device_Db_ID[20],&device_ID[3],8);
 
-	//Get Device FirebaseDB ID
-	sprintf(ConfigFirebase.Device_Db_ID,"%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",deviceSerNum[0], deviceSerNum[1], deviceSerNum[2], deviceSerNum[3], deviceSerNum[4],
-		deviceSerNum[5], deviceSerNum[6], deviceSerNum[7], deviceSerNum[8], deviceSerNum[9]);
-	memcpy(&ConfigFirebase.Device_Db_ID[20],&device_ID[3],8);
+		//Init firebase values
+		AutoUpdate.ESP_Act_Ver = ParseFirmwareVersion((char *)(version_firmware));
+		AutoUpdate.PSOC5_Act_Ver = ParseFirmwareVersion((char *)(PSOC5_version_firmware));
+		AutoUpdate.BetaPermission=1;
+		AutoUpdate.Auto_Act=1;
 
-	//Init firebase values
-	AutoUpdate.ESP_Act_Ver = ParseFirmwareVersion((char *)(version_firmware));
-  	AutoUpdate.PSOC5_Act_Ver = ParseFirmwareVersion((char *)(PSOC5_version_firmware));
-	AutoUpdate.BetaPermission=1;
-	AutoUpdate.Auto_Act=1;
-
-	StartWifiSubsystem=1;
+		StartWifiSubsystem=1;
+	#endif
 
 }
 
@@ -480,55 +481,64 @@ void proceso_recepcion(void)
 }
 
 void procesar_bloque(uint16 tipo_bloque){
-	if(BLOQUE_INICIALIZACION == tipo_bloque)
-	{	
-		memcpy(device_ID, buffer_rx_local, 11);
-		esp_ble_gap_set_device_name((const char *)device_ID);
-		changeAdvName(device_ID);
-		printf("Change name set device name to %s\r\n",device_ID);
-		modifyCharacteristic(device_ID, 11, VCD_NAME_USERS_CHARGER_DEVICE_ID_CHAR_HANDLE);
-		modifyCharacteristic(&buffer_rx_local[11], 1, MEASURES_INSTALATION_CURRENT_LIMIT_CHAR_HANDLE);
-
-		modifyCharacteristic(&buffer_rx_local[11], 1, MEASURES_CURRENT_COMMAND_CHAR_HANDLE);		// Actualizo "current_command" con el valor mas alto
-
-		modifyCharacteristic(&buffer_rx_local[12], 2, TIME_DATE_DELTA_DELAY_FOR_CHARGING_CHAR_HANDLE);
-		modifyCharacteristic(&buffer_rx_local[14], 6, TIME_DATE_CHARGING_START_TIME_CHAR_HANDLE);
-		modifyCharacteristic(&buffer_rx_local[20], 6, TIME_DATE_CHARGING_STOP_TIME_CHAR_HANDLE);
-		modifyCharacteristic(&buffer_rx_local[26], 1, CHARGING_INSTANT_DELAYED_CHAR_HANDLE);
-		modifyCharacteristic(&buffer_rx_local[27], 1, CHARGING_START_STOP_START_MODE_CHAR_HANDLE);
-		modifyCharacteristic(&buffer_rx_local[28], 168, SCHED_CHARGING_SCHEDULE_MATRIX_CHAR_HANDLE);
-		modifyCharacteristic(&buffer_rx_local[196], 1, VCD_NAME_USERS_USERS_NUMBER_CHAR_HANDLE);
-		modifyCharacteristic(&buffer_rx_local[197], 1, VCD_NAME_USERS_UI_X_USER_ID_CHAR_HANDLE);
-		modifyCharacteristic(&buffer_rx_local[198], 1, VCD_NAME_USERS_USER_INDEX_CHAR_HANDLE);
-		modifyCharacteristic(&buffer_rx_local[199], 10, VERSIONES_VERSION_FIRMWARE_CHAR_HANDLE);
-		memcpy(PSOC5_version_firmware, &buffer_rx_local[199],10);
-		modifyCharacteristic(version_firmware, 10, VERSIONES_VERSION_FIRM_BLE_CHAR_HANDLE);
-		modifyCharacteristic(&buffer_rx_local[209], 2, RECORDING_REC_CAPACITY_CHAR_HANDLE);
-		modifyCharacteristic(&buffer_rx_local[211], 2, RECORDING_REC_LAST_CHAR_HANDLE);
-		modifyCharacteristic(&buffer_rx_local[213], 1, RECORDING_REC_LAPS_CHAR_HANDLE);
-		modifyCharacteristic(&buffer_rx_local[214], 2, CONFIGURACION_AUTENTICATION_MODES_CHAR_HANDLE);
-		modifyCharacteristic(&buffer_rx_local[216], 1, DOMESTIC_CONSUMPTION_KS_CHAR_HANDLE);
-		modifyCharacteristic(&buffer_rx_local[217], 1, DOMESTIC_CONSUMPTION_FCT_CHAR_HANDLE);
-		modifyCharacteristic(&buffer_rx_local[218], 1, DOMESTIC_CONSUMPTION_FS_CHAR_HANDLE);
-		memcpy(deviceSerNum, &buffer_rx_local[219], 10);
+	if(BLOQUE_INICIALIZACION == tipo_bloque){	
 		if (!systemStarted) {
+			memcpy(device_ID, buffer_rx_local, 11);
+			esp_ble_gap_set_device_name((const char *)device_ID);
+			changeAdvName(device_ID);
+			printf("Change name set device name to %s\r\n",device_ID);
+			modifyCharacteristic(device_ID, 11, VCD_NAME_USERS_CHARGER_DEVICE_ID_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[11], 1, MEASURES_INSTALATION_CURRENT_LIMIT_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[12], 2, TIME_DATE_DELTA_DELAY_FOR_CHARGING_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[14], 6, TIME_DATE_CHARGING_START_TIME_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[20], 6, TIME_DATE_CHARGING_STOP_TIME_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[26], 1, CHARGING_INSTANT_DELAYED_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[27], 1, CHARGING_START_STOP_START_MODE_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[28], 168, SCHED_CHARGING_SCHEDULE_MATRIX_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[196], 1, VCD_NAME_USERS_USERS_NUMBER_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[197], 1, VCD_NAME_USERS_UI_X_USER_ID_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[198], 1, VCD_NAME_USERS_USER_INDEX_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[199], 10, VERSIONES_VERSION_FIRMWARE_CHAR_HANDLE);
+			memcpy(PSOC5_version_firmware, &buffer_rx_local[199],10);
+			modifyCharacteristic(version_firmware, 10, VERSIONES_VERSION_FIRM_BLE_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[209], 2, RECORDING_REC_CAPACITY_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[211], 2, RECORDING_REC_LAST_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[213], 1, RECORDING_REC_LAPS_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[214], 2, CONFIGURACION_AUTENTICATION_MODES_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[216], 1, DOMESTIC_CONSUMPTION_KS_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[217], 1, DOMESTIC_CONSUMPTION_FCT_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[218], 1, DOMESTIC_CONSUMPTION_FS_CHAR_HANDLE);
+			memcpy(deviceSerNum, &buffer_rx_local[219], 10);			
+			modifyCharacteristic(&buffer_rx_local[229], 1, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[231], 1, LED_LUMIN_COLOR_LUMINOSITY_LEVEL_CHAR_HANDLE);
+			luminosidad=buffer_rx_local[231];
+			modifyCharacteristic(&buffer_rx_local[232], 1, DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[233], 1, MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
+
+						
 			startSystem();
 			systemStarted = 1;
-		}
-		modifyCharacteristic(&buffer_rx_local[229], 1, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_CHAR_HANDLE);
 
-		cnt_timeout_inicio = TIMEOUT_INICIO;
-		dispositivo_inicializado = 1;
-		
+			cnt_timeout_inicio = TIMEOUT_INICIO;
+			dispositivo_inicializado = 1;
+		}	
 	}
 	else if(BLOQUE_STATUS == tipo_bloque)
 	{		
 		uint8_t UpdatefireBaseData=0;
 		if(buffer_rx_local[89]==0x36){
+			//Leds
 			modifyCharacteristic(buffer_rx_local, 1, LED_LUMIN_COLOR_LUMINOSITY_LEVEL_CHAR_HANDLE);
 			modifyCharacteristic(&buffer_rx_local[1], 1, LED_LUMIN_COLOR_R_LED_COLOUR_CHAR_HANDLE);
 			modifyCharacteristic(&buffer_rx_local[2], 1, LED_LUMIN_COLOR_G_LED_COLOUR_CHAR_HANDLE);
 			modifyCharacteristic(&buffer_rx_local[3], 1, LED_LUMIN_COLOR_B_LED_COLOUR_CHAR_HANDLE);
+
+			luminosidad = buffer_rx_local[0];
+			rojo = buffer_rx_local[1];
+			verde = buffer_rx_local[2];
+			azul = buffer_rx_local[3];
+
+			//Hilo piloto
 			modifyCharacteristic(&buffer_rx_local[4], 2, STATUS_HPT_STATUS_CHAR_HANDLE);
 
 			if((memcmp(&buffer_rx_local[4], status_hpt_anterior, 2) != 0) && (serverbleGetConnected() || ConfigFirebase.FirebaseConnected))
@@ -539,6 +549,7 @@ void procesar_bloque(uint16 tipo_bloque){
 				UpdatefireBaseData=1;
 			}
 
+			//Medidas
 			modifyCharacteristic(&buffer_rx_local[6], 2, STATUS_ICP_STATUS_CHAR_HANDLE);
 			modifyCharacteristic(&buffer_rx_local[8], 2, STATUS_MCB_STATUS_CHAR_HANDLE);
 			modifyCharacteristic(&buffer_rx_local[10], 2, STATUS_RCD_STATUS_CHAR_HANDLE);
@@ -566,21 +577,19 @@ void procesar_bloque(uint16 tipo_bloque){
 
 			modifyCharacteristic(&buffer_rx_local[38], 2, DOMESTIC_CONSUMPTION_DOMESTIC_CURRENT_CHAR_HANDLE);
 			modifyCharacteristic(&buffer_rx_local[40], 1, DOMESTIC_CONSUMPTION_REAL_CURRENT_LIMIT_CHAR_HANDLE);
-
-			modifyCharacteristic(&buffer_rx_local[41], 1, ERROR_STATUS_ERROR_CODE_CHAR_HANDLE);
-
-
-			luminosidad = buffer_rx_local[0];
-			rojo = buffer_rx_local[1];
-			verde = buffer_rx_local[2];
-			azul = buffer_rx_local[3];
+			modifyCharacteristic(&buffer_rx_local[41], 1, ERROR_STATUS_ERROR_CODE_CHAR_HANDLE);		
 
 			if(luminosidad < 0x80)
 				LED_Control(buffer_rx_local[0], buffer_rx_local[1], buffer_rx_local[2], buffer_rx_local[3]);
 
-			if(ConfigFirebase.FirebaseConnected && UpdatefireBaseData){
-				UpdateFirebaseStatus();
-			}
+			#ifdef USE_WIFI
+				if(ConfigFirebase.FirebaseConnected && UpdatefireBaseData){
+					UpdateFirebaseStatus();
+				}
+			#endif
+		}
+		else{
+			Serial.println("Error");
 		}
 	}
 	else if(BLOQUE_DATE_TIME == tipo_bloque)
@@ -807,6 +816,7 @@ void deviceConnectInd ( void ){
 	memcpy(authChallengeReply, outputvec1, 8);
 
 	modifyCharacteristic(authChallengeQuery, 8, AUTENTICACION_MATRIX_CHAR_HANDLE);
+	Serial.print("Sending authentication");
 	vTaskDelay(500/portTICK_PERIOD_MS);
 
 }

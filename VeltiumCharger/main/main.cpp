@@ -1,4 +1,5 @@
 
+#include "settings.h"
 #include <BLEDevice.h>
 #include <BLEUtils.h>
 #include <BLEServer.h>
@@ -56,7 +57,7 @@ IPAddress secondaryDNS(8, 8, 4, 4); //optional
 
 static bool eth_connected = false;
 #endif // USE_ETH
-extern uint8_t StartWifiSubsystem;
+
 
 int otaEnable = 0;
 
@@ -70,27 +71,23 @@ char loginIndex[2048] = {'\0'};
 char serverIndex[2048] = {'\0'};
 char stilo[2048] = {'\0'};
 
-// IMPORTANTE:
-// solo UNA de estas DOS macros debe estar definida (o NINGUNA para desactivar WIFI)
-#define USE_WIFI_ARDUINO
-//#define USE_WIFI_ESP
-
 // macro para activar o desactivar el BLE de Draco
 #define USE_DRACO_BLE
 
 // IMPORTANTE: el ssid de la wifi va aquí
+
+
+
+#ifdef USE_WIFI
+#include <WiFi.h>
+#include "FirebaseClient.h"
+
 #define WIFI_SSID "VELTIUM_WF"
 #define WIFI_PASSWORD "W1f1d3V3lt1um$m4rtCh4rg3r$!"
 
-
-#ifdef USE_WIFI_ARDUINO
-#include <WiFi.h>
-#include "FirebaseClient.h"
+extern uint8_t StartWifiSubsystem;
 #endif
 
-#ifdef USE_WIFI_ESP
-#include "wifi-station.h"
-#endif
 
 #include "dev_auth.h"
 
@@ -145,12 +142,6 @@ void setup()
 	}
 #endif // USE_ETH
 
-#ifdef USE_WIFI_ESP
-	initWifi(WIFI_SSID, WIFI_PASSWORD);
-#endif
-
-
-
 #ifdef USE_DRACO_BLE
 	
 	Serial.println("FREE HEAP MEMORY [after DRACO_GPIO_Init] **************************");
@@ -178,11 +169,11 @@ void setup()
 
 void loop() 
 {
-	if ( otaEnable == 1 )
-	{
-		server.handleClient();
-	}
-	#ifdef USE_WIFI_ARDUINO
+	#ifdef USE_WIFI || USE_ETH
+		if ( otaEnable == 1 )
+		{
+			server.handleClient();
+		}
 		if(StartWifiSubsystem){		
 			SPIFFS.begin();
 			WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
@@ -190,8 +181,11 @@ void loop()
 			Serial.println("Connecting to Wi-Fi...");	
 			StartWifiSubsystem=0;
 		}
+
+		vTaskDelay(100/portTICK_PERIOD_MS);
+	#else
+		vTaskDelay(5000/portTICK_PERIOD_MS);
 	#endif
-	vTaskDelay(100/portTICK_PERIOD_MS);
 }
 
 /**********************************************
@@ -236,146 +230,149 @@ void perform_malloc_tests(uint8_t pot_first, uint8_t pot_last)
 		}
 	}
 }
+#ifdef USE_WIFI
+	void handle_NotFound(){
+	server.send(404, "text/plain", "Not found");
+	}
 
-void handle_NotFound(){
-  server.send(404, "text/plain", "Not found");
-}
+	void InitServer(void) {
+		//Cargar los archivos del servidor
+		File index = SPIFFS.open("/WebServer/index.html");
+		File login = SPIFFS.open("/WebServer/login.html");
+		File style = SPIFFS.open("/WebServer/style.css");
 
-void InitServer(void) {
-	//Cargar los archivos del servidor
-    File index = SPIFFS.open("/WebServer/index.html");
-    File login = SPIFFS.open("/WebServer/login.html");
-    File style = SPIFFS.open("/WebServer/style.css");
+		if(!index || !login || !style){
+			Serial.println("Error en la lectura de los documentos");
+			return;
+		}
 
-    if(!index || !login || !style){
-        Serial.println("Error en la lectura de los documentos");
-        return;
-    }
+		int i=0;
+		while(style.available()){
+			stilo[i]=style.read();
+			i++;
+		}
 
-    int i=0;
-    while(style.available()){
-        stilo[i]=style.read();
-        i++;
-    }
+		i=0;
+		while(index.available()){
+			serverIndex[i] = index.read();
+			i++;
+		}
+		serverIndex[i] ='\0';
 
-	i=0;
-    while(index.available()){
-        serverIndex[i] = index.read();
-        i++;
-    }
-    serverIndex[i] ='\0';
+		i=0;
+		while(login.available()){
+			loginIndex[i] = login.read();
+			i++;
+		}
+		loginIndex[i] ='\0';
 
-    i=0;
-    while(login.available()){
-        loginIndex[i] = login.read();
-        i++;
-    }
-    loginIndex[i] ='\0';
+		strcat(loginIndex,stilo);
+		strcat(serverIndex,stilo);
 
-	strcat(loginIndex,stilo);
-	strcat(serverIndex,stilo);
+		style.close();
+		index.close();
+		login.close();
 
-    style.close();
-    index.close();
-    login.close();
-
-	//return index page which is stored in serverIndex 
-	server.on("/", HTTP_GET, []() {
-		server.sendHeader("Connection", "close");
-		server.send(200, "text/html", loginIndex);
-	});
-
-	server.on("/serverIndex", HTTP_GET, []() {
-		server.sendHeader("Connection", "close");
-		server.send(200, "text/html", serverIndex);
-	});
-
-	//handling uploading firmware file 
-	server.on("/update", HTTP_POST, []() {
+		//return index page which is stored in serverIndex 
+		server.on("/", HTTP_GET, []() {
 			server.sendHeader("Connection", "close");
-			server.send(200, "text/plain", (Update.hasError()) ? "FAIL" : "OK");
-			Serial.printf(" fent reset \r\n");
-			//delay(2000);
-			ESP.restart();
-			}, []() {
-			HTTPUpload& upload = server.upload();
+			server.send(200, "text/html", loginIndex);
+		});
 
-			if (upload.status == UPLOAD_FILE_START) {
-			Serial.printf("Update: %s\n", upload.filename.c_str());
+		server.on("/serverIndex", HTTP_GET, []() {
+			server.sendHeader("Connection", "close");
+			server.send(200, "text/html", serverIndex);
+		});
 
-			if (!Update.begin(UPDATE_SIZE_UNKNOWN)) { //start with max available size
-			//	delay(20);
-			Update.printError(Serial);
-			}
-			} else if (upload.status == UPLOAD_FILE_WRITE) {
-			// flashing firmware to ESP
-			if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
-			Update.printError(Serial);
-			}
+		//handling uploading firmware file 
+		server.on("/update", HTTP_POST, []() {
+				server.sendHeader("Connection", "close");
+				server.send(200, "text/plain", (Update.hasError()) ? "FAIL" : "OK");
+				Serial.printf(" fent reset \r\n");
+				//delay(2000);
+				ESP.restart();
+				}, []() {
+				HTTPUpload& upload = server.upload();
 
-			} else if (upload.status == UPLOAD_FILE_END) {
-				if (Update.end(true)) { //true to set the size to the current progress
-					Serial.printf("Update Success: %u\nRebooting...\n", upload.totalSize);
-				} else {
-					Update.printError(Serial);
+				if (upload.status == UPLOAD_FILE_START) {
+				Serial.printf("Update: %s\n", upload.filename.c_str());
+
+				if (!Update.begin(UPDATE_SIZE_UNKNOWN)) { //start with max available size
+				//	delay(20);
+				Update.printError(Serial);
 				}
+				} else if (upload.status == UPLOAD_FILE_WRITE) {
+				// flashing firmware to ESP
+				if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
+				Update.printError(Serial);
+				}
+
+				} else if (upload.status == UPLOAD_FILE_END) {
+					if (Update.end(true)) { //true to set the size to the current progress
+						Serial.printf("Update Success: %u\nRebooting...\n", upload.totalSize);
+					} else {
+						Update.printError(Serial);
+					}
+				}
+				});
+
+		//Handler del not found
+		server.onNotFound(handle_NotFound);
+		server.begin();
+		Serial.println("Servidor inicializado");
+		otaEnable=1;
+	}
+
+	void WiFiEvent(WiFiEvent_t event){
+	switch (event) {
+		//WIFI cases
+		case SYSTEM_EVENT_STA_DISCONNECTED:
+			Serial.println("Disconnected from AP, reconnecting... ");
+			WiFi.reconnect();
+		break;
+
+		case SYSTEM_EVENT_STA_GOT_IP:
+			Serial.print("Connected with IP: ");
+			Serial.println(WiFi.localIP());
+			if(!serverbleGetConnected()){
+				InitServer();
+				initFirebaseClient();
 			}
-			});
-
-	//Handler del not found
-	server.onNotFound(handle_NotFound);
-	server.begin();
-	Serial.println("Servidor inicializado");
-	otaEnable=1;
-}
-
-void WiFiEvent(WiFiEvent_t event){
-  switch (event) {
-	//WIFI cases
-	case SYSTEM_EVENT_STA_DISCONNECTED:
-		Serial.println("Disconnected from AP, reconnecting... ");
-		WiFi.reconnect();
-	break;
-
-	case SYSTEM_EVENT_STA_GOT_IP:
-		Serial.print("Connected with IP: ");
-		Serial.println(WiFi.localIP());
-		InitServer();
-		initFirebaseClient();
-	break;
-#ifdef USE_ETH
-	//ETH Statements
-    case SYSTEM_EVENT_ETH_START:
-      Serial.println("ETH Started");
-      //set eth hostname here
-      ETH.setHostname("velitum-ethernet");
-      break;
-    case SYSTEM_EVENT_ETH_CONNECTED:
-      Serial.println("ETH Connected");
-      break;
-    case SYSTEM_EVENT_ETH_GOT_IP:
-      Serial.print("ETH MAC: ");
-      Serial.print(ETH.macAddress());
-      Serial.print(", IPv4: ");
-      Serial.print(ETH.localIP());
-      if (ETH.fullDuplex()) {
-        Serial.print(", FULL_DUPLEX");
-      }
-      Serial.print(", ");
-      Serial.print(ETH.linkSpeed());
-      Serial.println("Mbps");
-      eth_connected = true;
-      break;
-    case SYSTEM_EVENT_ETH_DISCONNECTED:
-      Serial.println("ETH Disconnected");
-      eth_connected = false;
-      break;
-    case SYSTEM_EVENT_ETH_STOP:
-      Serial.println("ETH Stopped");
-      eth_connected = false;
-      break;
+		break;
+	#ifdef USE_ETH
+		//ETH Statements
+		case SYSTEM_EVENT_ETH_START:
+		Serial.println("ETH Started");
+		//set eth hostname here
+		ETH.setHostname("velitum-ethernet");
+		break;
+		case SYSTEM_EVENT_ETH_CONNECTED:
+		Serial.println("ETH Connected");
+		break;
+		case SYSTEM_EVENT_ETH_GOT_IP:
+		Serial.print("ETH MAC: ");
+		Serial.print(ETH.macAddress());
+		Serial.print(", IPv4: ");
+		Serial.print(ETH.localIP());
+		if (ETH.fullDuplex()) {
+			Serial.print(", FULL_DUPLEX");
+		}
+		Serial.print(", ");
+		Serial.print(ETH.linkSpeed());
+		Serial.println("Mbps");
+		eth_connected = true;
+		break;
+		case SYSTEM_EVENT_ETH_DISCONNECTED:
+		Serial.println("ETH Disconnected");
+		eth_connected = false;
+		break;
+		case SYSTEM_EVENT_ETH_STOP:
+		Serial.println("ETH Stopped");
+		eth_connected = false;
+		break;
+	#endif
+		default:
+		break;
+	}
+	}
 #endif
-    default:
-      break;
-  }
-}

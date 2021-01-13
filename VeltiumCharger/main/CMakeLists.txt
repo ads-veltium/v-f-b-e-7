@@ -14,7 +14,7 @@ idf_component_register(SRCS
 "wifi-station.cpp"
 "HardwareSerialMOD.cpp"
 "FB_WCS32.cpp"
-"fb_ssl_client_32.cpp"
+"fb_ssl_client32.cpp"
 INCLUDE_DIRS ".")
 
 

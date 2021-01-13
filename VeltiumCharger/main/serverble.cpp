@@ -6,6 +6,9 @@
 #include "control.h"
 #include "serverble.h"
 #include "controlLed.h"
+#ifdef USE_WIFI
+#include "FirebaseClient.h"
+#endif
 #include <Arduino.h>
 
 #include "ble_rcs.h"
@@ -45,8 +48,6 @@ uint8 buffer_tx[300];// EXT_RAM_ATTR;
 
 
 BLEService *pbleServices[NUMBER_OF_SERVICES];
-//BLEService *pbleServices = (BLEService*) ps_malloc(sizeof(BLEService)*NUMBER_OF_SERVICES);
-//BLECharacteristic *pbleCharacteristics = (BLECharacteristic*) ps_malloc(sizeof(BLECharacteristic)*NUMBER_OF_SERVICES);
 
 BLECharacteristic *pbleCharacteristics[NUMBER_OF_CHARACTERISTICS];
 
@@ -122,12 +123,19 @@ class serverCallbacks: public BLEServerCallbacks
 {
 	void onConnect(BLEServer* pServer) 
 	{
+		#ifdef USE_WIFI
+			pauseFirebaseClient();
+		#endif
 		deviceBleConnected = true;
 		deviceConnectInd();
+		
 	};
 
 	void onDisconnect(BLEServer* pServer) 
 	{
+		#ifdef USE_WIFI
+			resumeFirebaseClient();
+		#endif
 		deviceBleConnected = false;
 		deviceDisconnectInd();
 	}
@@ -222,6 +230,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 			uint8_t* payload = data + 4;
 
 			Serial.printf("Received omnibus write request for selector %u\n", selector);
+			Serial.printf("Received omnibus write request for handle %u\n", handle);
 			
 
 			// special cases
@@ -343,11 +352,6 @@ void serverbleInit() {
 	Serial.printf("sizeof(BLE_FIELD): %d, NUM: %d, total:%d\n", sizeof(BLEService), MAX_BLE_FIELDS, sizeof(BLEService) * MAX_BLE_FIELDS);
 	Serial.printf("sizeof(BLE2902): %d\n", sizeof(BLE2902));
 
-
-// BLEService *pbleServices[NUMBER_OF_SERVICES];
-// BLECharacteristic *pbleCharacteristics[NUMBER_OF_CHARACTERISTICS];
-// BLE_FIELD blefields[MAX_BLE_FIELDS] =	
-
 	milestone("at the beginning of serverbleInit");
 
 	// Create the BLE Device
@@ -402,8 +406,7 @@ void serverbleInit() {
 
 	printf("Waiting a client connection to notify...\r\n");
 
-	xTaskCreate(	
-			serverbleTask,
+	xTaskCreate(serverbleTask,
 			"TASK BLE",
 			4096*4,//4096*4,
 			NULL,
@@ -442,7 +445,7 @@ void serverbleTask(void *arg)
 			// do stuff here on connecting
 			oldDeviceBleConnected = deviceBleConnected;
 		}
-		vTaskDelay(1000 / portTICK_PERIOD_MS);	
+		vTaskDelay(500 / portTICK_PERIOD_MS);	
 	}
 }
 
