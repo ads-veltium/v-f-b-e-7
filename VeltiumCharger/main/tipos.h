@@ -464,6 +464,8 @@ typedef struct{
 #define DOMESTIC_CONSUMPTION_FS_CHAR_HANDLE   (0x009Eu) /* Handle of FS characteristic */
 #define DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_DECL_HANDLE   (0x009Fu) /* Handle of Potencia_Contratada characteristic declaration */
 #define DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_CHAR_HANDLE   (0x00A0u) /* Handle of Potencia_Contratada characteristic */
+#define DOMESTIC_CONSUMPTION_DPC_MODE_DECL_HANDLE   (0x00A1u) /* Handle of Dpc_Mode characteristic declaration */
+#define DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE   (0x00A2u) /* Handle of Dpc_Mode characteristic */
 
 #define ERROR_STATUS_SERVICE_HANDLE   (0x00A1u) /* Handle of Error_Status service */
 #define ERROR_STATUS_ERROR_CODE_DECL_HANDLE   (0x00A2u) /* Handle of Error_Code characteristic declaration */

@@ -14,17 +14,7 @@ idf_component_register(SRCS
 "wifi-station.cpp"
 "HardwareSerialMOD.cpp"
 "FB_WCS32.cpp"
-"fb_ssl_client_32.cpp"
-"AsyncEventSource.cpp"
-"AsyncWebSocket.cpp"
-"SPIFFSEditor.cpp"
-"WebAuthentication.cpp"
-"WebHandlers.cpp"
-"WebRequest.cpp"
-"WebResponses.cpp"
-"WebServer.cpp"
-"AsyncTCP.cpp"
+"fb_ssl_client32.cpp"
 INCLUDE_DIRS ".")
-
 
 

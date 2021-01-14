@@ -18,11 +18,17 @@
 #include "tipos.h"
 #include "FirebaseESP32.h"
 #include "controlLed.h"
+#include "BLEDevice.h"
+#include "esp32-hal-psram.h"
 
 void initFirebaseClient();
-void WritefireBaseData();
 void GetUpdateFile(String URL);
 void CheckForUpdate();
 void stopFirebaseClient();
+void UpdateFirebaseStatus();
+void resumeFirebaseClient();
+void pauseFirebaseClient();
+void UpdateFirebaseControl_Task(void *arg);
+uint16  ParseFirmwareVersion(String Texto);
 
 #endif

@@ -343,11 +343,6 @@ void serverbleInit() {
 	Serial.printf("sizeof(BLE_FIELD): %d, NUM: %d, total:%d\n", sizeof(BLEService), MAX_BLE_FIELDS, sizeof(BLEService) * MAX_BLE_FIELDS);
 	Serial.printf("sizeof(BLE2902): %d\n", sizeof(BLE2902));
 
-
-// BLEService *pbleServices[NUMBER_OF_SERVICES];
-// BLECharacteristic *pbleCharacteristics[NUMBER_OF_CHARACTERISTICS];
-// BLE_FIELD blefields[MAX_BLE_FIELDS] =	
-
 	milestone("at the beginning of serverbleInit");
 
 	// Create the BLE Device
@@ -402,8 +397,7 @@ void serverbleInit() {
 
 	printf("Waiting a client connection to notify...\r\n");
 
-	xTaskCreate(	
-			serverbleTask,
+	xTaskCreate(serverbleTask,
 			"TASK BLE",
 			4096*4,//4096*4,
 			NULL,
@@ -442,7 +436,7 @@ void serverbleTask(void *arg)
 			// do stuff here on connecting
 			oldDeviceBleConnected = deviceBleConnected;
 		}
-		vTaskDelay(1000 / portTICK_PERIOD_MS);	
+		vTaskDelay(500 / portTICK_PERIOD_MS);	
 	}
 }
 

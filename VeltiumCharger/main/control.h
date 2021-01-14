@@ -12,7 +12,9 @@
 #include "tipos.h"
 #include "dev_auth.h"
 #include "Update.h"
-#include "FirebaseClient.h"
+#ifdef USE_WIFI
+    #include "FirebaseClient.h"
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include "HardwareSerialMOD.h"

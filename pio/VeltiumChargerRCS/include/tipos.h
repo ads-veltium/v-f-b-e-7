@@ -13,6 +13,7 @@
 
 #ifndef TIPOS_H
 #define TIPOS_H
+#include "Arduino.h"
 
 #define EXT_FLASH_SIZE								8*1024*1024
 #define EXT_FLASH_PAGE_SIZE							4096
@@ -129,15 +130,46 @@ typedef struct{
 	uint8 B_led_level;
 } caract_led_ctl;
 
+
+//Firebase Structs
+typedef struct{
+	uint8 start;
+	uint8 stop;
+
+} carac_Firebase_Control;
+
+typedef struct{
+	char HPT_status[2];
+	uint16 inst_current;
+	uint16 inst_voltage;
+	uint16 active_power;
+	uint8 error_code;
+
+} carac_Firebase_Status;
+
+typedef struct{
+	//Auth configuration
+	char Device_Db_ID[20];
+	uint8 Email[30];
+	uint8 Password[30];
+	uint8 User_Db_ID[30];
+
+	//Firebase conection Status
+	uint8 FirebaseConnected;
+
+}carac_Firebase_Configuration;
+
 typedef struct{
 	//configuracion
 	uint8 BetaPermission;
 	uint8 Auto_Act;
+	uint16 PSOC5_Act_Ver;
+	uint16 ESP_Act_Ver;
 
 	uint8 PSOC5_UpdateAvailable;
 	uint8 ESP_UpdateAvailable;
 	uint8 DescargandoArchivo;
-	
+
 } carac_Auto_Update;
 
 #define RCD_NO_ACTIVO

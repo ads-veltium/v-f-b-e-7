@@ -1,4 +1,5 @@
-#include <Arduino.h>
+
+#include "settings.h"
 #include <BLEDevice.h>
 #include <BLEUtils.h>
 #include <BLEServer.h>
@@ -15,6 +16,7 @@
 #include "esp_sleep.h"
 #include "driver/gpio.h"
 #include "driver/rtc_io.h"
+#include "Arduino.h"
 // OTA
 #include <ArduinoOTA.h>
 #include <FS.h>

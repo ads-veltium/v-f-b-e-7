@@ -27,11 +27,14 @@ int CyBtldr_TransferData(unsigned char* inBuf, int inSize, unsigned char* outBuf
 {
     int err = 1;
     uint8 cnt_timeout_tx=0;
+    uint16 timeout=0;
 
     outBuf[0]='a';
 
     while(err==1 ){
-        
+        if(timeout>4000){
+            err=4;
+        }
         if(cnt_timeout_tx == 0){
             cnt_timeout_tx = TIMEOUT_TX_BLOQUE*2;
             sendBinaryBlock(inBuf, inSize);
@@ -63,6 +66,7 @@ int CyBtldr_TransferData(unsigned char* inBuf, int inSize, unsigned char* outBuf
             }            
         }
         delay(5);
+        timeout++;
     }
     channel->flush();
     if (CYRET_SUCCESS != err)

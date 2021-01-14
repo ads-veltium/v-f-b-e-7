@@ -61,7 +61,10 @@ void displayOne( uint8_t i, uint8_t r, uint8_t g, uint8_t b, uint8_t pixeln)
 void changeOne( uint8_t i, uint8_t r, uint8_t g, uint8_t b, uint8_t pixeln)
 {
 	pixels[pixeln] = makeIRGBVal(i, r, g, b);
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/Firmware-Update
 	ws2812_setColors(NUM_PIXELS, pixels);
 }
 
@@ -133,7 +136,7 @@ void LedUpdateDownload_Task(void *arg){
 		//Control de los leds
 		changeOne(Luminosidad,r,g,b,LedPointer);
 		LedPointer++;
-		if(LedPointer>=8){
+		if(LedPointer>=7){
 			if(Luminosidad==100){
 				Luminosidad=0;
 			}

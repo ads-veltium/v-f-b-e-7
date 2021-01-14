@@ -7,6 +7,8 @@
 
 #include "cybtldr_command.h"
 #include "cybtldr_api.h"
+#include  "control.h"
+#include "tipos.h"
 
 
 /* The highest number of memory arrays for any device. This includes flash and EEPROM arrays */
@@ -24,15 +26,45 @@ HardwareSerialMOD* channel;
 int CyBtldr_TransferData(unsigned char* inBuf, int inSize, unsigned char* outBuf, int outSize)
 {
     int err = 1;
-    
+    uint8 cnt_timeout_tx=0;
+
+    outBuf[0]='a';
+
     while(err==1 ){
-        channel->write(inBuf, inSize);
-        vTaskDelay(750 / portTICK_PERIOD_MS);
-        channel->read(outBuf, outSize);
-        if(outBuf[0]==1 && outBuf[outSize-1] == 0x17 && outBuf[1]==0){
-            err=outBuf[1];
+        
+        if(cnt_timeout_tx == 0){
+            cnt_timeout_tx = TIMEOUT_TX_BLOQUE*2;
+            sendBinaryBlock(inBuf, inSize);
         }
+        else
+            cnt_timeout_tx--;
+        if(channel->available()!=0){
+			int longitud_bloque=outSize;
+			int puntero_rx_local=0;
+			do{
+				if(longitud_bloque > 0)
+				{
+					channel->read(&outBuf[puntero_rx_local],1);
+					puntero_rx_local++;
+				}
+				longitud_bloque--;							
+			}while(longitud_bloque >0);
+		}
+        
+        if(outBuf[0]==1 && outBuf[outSize-1] == 0x17 && outBuf[1]==0){
+            if((inBuf[1]==CMD_PROGRAM_ROW || inBuf[1]==CMD_SEND_DATA)){
+                if(outBuf[2]==inBuf[1]){
+                    err=outBuf[1];
+                    outBuf[2]=0;
+                }
+            }
+            else{
+                err=outBuf[1];
+            }            
+        }
+        delay(5);
     }
+    channel->flush();
     if (CYRET_SUCCESS != err)
         err |= CYRET_ERR_COMM_MASK;
 
@@ -228,7 +260,7 @@ int CyBtldr_ProgramRow(unsigned char arrayID, unsigned short rowNum, unsigned ch
     if (CYRET_SUCCESS == err)
     {
         subBufSize = (unsigned short)(size - offset);
-
+        
         err = CyBtldr_CreateProgramRowCmd(arrayID, rowNum, &buf[offset], subBufSize, inBuf, &inSize, &outSize);
         if (CYRET_SUCCESS == err)
             err = CyBtldr_TransferData(inBuf, inSize, outBuf, outSize);

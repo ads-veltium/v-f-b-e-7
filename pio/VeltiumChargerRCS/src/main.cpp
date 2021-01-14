@@ -159,6 +159,11 @@ void WiFiEvent(WiFiEvent_t event);
 void setup() 
 {
 	Serial.begin(115200);
+
+	Serial.print("Memoria al arranque: ");
+  	Serial.println(ESP.getFreeHeap());
+  	Serial.println(ESP.getFreePsram());
+
 	DRACO_GPIO_Init();
 	initLeds();
 
@@ -216,13 +221,6 @@ void setup()
  	ESP_ERROR_CHECK(esp_wifi_start());
 #endif 
 
-#ifdef USE_WIFI_ARDUINO
-	SPIFFS.begin();
-	WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-	WiFi.onEvent(WiFiEvent);
-	Serial.println("Connecting to Wi-Fi...");
-	server.begin();
-#endif
 
 #ifdef USE_DRACO_BLE
 	
@@ -255,7 +253,16 @@ void loop()
 	{
 		//server.handleClient();
 	}
-	delay(100);
+	#ifdef USE_WIFI_ARDUINO
+		if(StartWifiSubsystem){		
+			SPIFFS.begin();
+			WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+			WiFi.onEvent(WiFiEvent);
+			Serial.println("Connecting to Wi-Fi...");	
+			StartWifiSubsystem=0;
+		}
+	#endif
+	vTaskDelay(100/portTICK_PERIOD_MS);
 }
 
 /**********************************************
