@@ -1,0 +1,12 @@
+{
+    "files.associations": {
+        "string": "cpp",
+        "random": "cpp",
+        "array": "cpp",
+        "string_view": "cpp",
+        "initializer_list": "cpp",
+        "utility": "cpp",
+        "functional": "cpp",
+        "PRUEBA.C": "cpp"
+    }
+}

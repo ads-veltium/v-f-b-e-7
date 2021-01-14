@@ -11,6 +11,18 @@
 #ifndef VSC_FirebaseClient_h
 #define VSC_FirebaseClient_h
 
+#include <Arduino.h>
+#include <HTTPClient.h>
+#include "Update.h"
+#include "control.h"
+#include "tipos.h"
+#include "FirebaseESP32.h"
+#include "controlLed.h"
+
 void initFirebaseClient();
+void WritefireBaseData();
+void GetUpdateFile(String URL);
+void CheckForUpdate();
+void stopFirebaseClient();
 
 #endif

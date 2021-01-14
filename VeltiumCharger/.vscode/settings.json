@@ -1,0 +1,41 @@
+{
+    "actionButtons": {
+        "defaultColor": "#ff0034", // Can also use string color names.
+        "loadNpmCommands":false, // Disables automatic generation of actions for npm commands.
+        "reloadButton":"♻️", // Custom reload button text or icon (default ↻). null value enables automatic reload on configuration change
+        "commands": [
+            {
+                "name": "BUILD",
+                "color": "white",
+                "singleInstance": true,
+                "command": ". /home/jon/Documents/SDK_4/idf_4_0/esp-idf/./export.sh && cd /home/jon/Documents/SDK_4/Veltium/VeltiumCharger/ && make",
+            },
+            {
+                "name": "MFM",
+                "color": "white",
+                "singleInstance": true,
+                "command": ". /home/jon/Documents/SDK_4/idf_4_0/esp-idf/./export.sh && cd /home/jon/Documents/SDK_4/Veltium/VeltiumCharger/ && make flash monitor",
+            },
+            {
+                "name": "MONITOR",
+                "color": "white",
+                "singleInstance": true,
+                "command": ". /home/jon/Documents/SDK_4/idf_4_0/esp-idf/./export.sh && cd /home/jon/Documents/SDK_4/Veltium/VeltiumCharger/ && make monitor",
+            },
+            {
+                "name": "MENUCONFIG",
+                "color": "white",
+                "singleInstance": true,
+                "command": ". /home/jon/Documents/SDK_4/idf_4_0/esp-idf/./export.sh && cd /home/jon/Documents/SDK_4/Veltium/VeltiumCharger/ && make menuconfig",
+            },
+            {
+                "name": "CLEAR",
+                "color": "white",
+                "singleInstance": true,
+                "command": ". /home/jon/Documents/SDK_4/idf_4_0/esp-idf/./export.sh && cd /home/jon/Documents/SDK_4/Veltium/VeltiumCharger/ && make clear",
+            }
+        ]
+    }
+}
+
+

@@ -3,7 +3,11 @@
 # project subdirectory.
 #
 
-ROJECT_NAME := main
+PROJECT_NAME := VBLE2
 
 include $(IDF_PATH)/make/project.mk
+
+#cargar archivos al spiffs
+SPIFFS_IMAGE_FLASH_IN_PROJECT := 1
+$(eval $(call spiffs_create_partition_image,spiffs,data))
 
