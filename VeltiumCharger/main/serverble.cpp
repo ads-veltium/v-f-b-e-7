@@ -72,7 +72,7 @@ BLE_FIELD blefields[MAX_BLE_FIELDS] =
 	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC004),6, PROP_RN, 0, RCS_INS_CURR, BLE_CHA_INS_CURR,    1},
 	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC005),6, PROP_R,  0, RCS_RECORD,   BLE_CHA_RCS_RECORD,  0},
 	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC006),6, PROP_RW, 0, RCS_SCH_MAT,  BLE_CHA_RCS_SCH_MAT, 0},
-	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC007),6, PROP_WN, 0, BINARY_BLOCK,  BLE_CHA_BINARY_BLOCK, 0}
+	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC007),6, PROP_WN, 0, FW_DATA,      BLE_CHA_FW_DATA,     1}
 };
 
 
@@ -87,6 +87,11 @@ void serverbleNotCharacteristic ( uint8_t *data, int len, uint16_t handle )
 	if (handle == MEASURES_INST_CURRENT_CHAR_HANDLE) {
 		pbleCharacteristics[BLE_CHA_INS_CURR]->setValue(data, len);
 		pbleCharacteristics[BLE_CHA_INS_CURR]->notify();
+		return;
+	}
+	if (handle == FWUPDATE_BIRD_DATA_PSEUDO_CHAR_HANDLE) {
+		pbleCharacteristics[BLE_CHA_FW_DATA]->setValue(data, len);
+		pbleCharacteristics[BLE_CHA_FW_DATA]->notify();
 		return;
 	}
 }
@@ -209,6 +214,8 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 
 			// set characteristic value to be read by other end
 			pbleCharacteristics[BLE_CHA_OMNIBUS]->setValue(packet, pktsize);
+
+			return;
 		}
 
 		if (pCharacteristic->getUUID().equals(blefields[OMNIBUS].uuid))
@@ -230,7 +237,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 			uint8_t* payload = data + 4;
 
 			Serial.printf("Received omnibus write request for selector %u\n", selector);
-			Serial.printf("Received omnibus write request for handle %u\n", handle);
+			Serial.printf("Received omnibus write request for handle   %u\n", handle);
 			
 
 			// special cases
@@ -257,28 +264,43 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 				updateCharacteristic((uint8_t*)&rxValue[0], 1, TEST_RCD_PE_TEST_RESULT_CHAR_HANDLE);
 				return;
 			}
-			if ( handle== BOOT_LOADER_LOAD_SW_APP_CHAR_HANDLE){
-				Serial.println("SWAPP Received");
-				if(rxValue[0] == 0xFF){
-					vTaskDelay(200 / portTICK_PERIOD_MS);	
-					// Enter Bootloader LOCAL 
-					//Bootloadable_1_Load();
-					printf("Now I execute new FW - Not developed this jump\r\n");
-				}
-				else if(rxValue[0] == 0xAA){
-					// Micro Principal Bootloading 
-					buffer_tx[0] = HEADER_TX;
-					buffer_tx[1] = (uint8)(BOOT_LOADER_LOAD_SW_APP_CHAR_HANDLE >> 8);
-					buffer_tx[2] = (uint8)(BOOT_LOADER_LOAD_SW_APP_CHAR_HANDLE);
-					buffer_tx[3] = 1;
-					memcpy(&buffer_tx[4], (uint8_t*)&rxValue[0], 1);
-					controlSendToSerialLocal(buffer_tx,5);
-					vTaskDelay(500 / portTICK_PERIOD_MS);	
-					LED_Control(100, 10, 10, 10);
-					setMainFwUpdateActive(1);
-				}
-				// Micro Principal Bootloading 
-				setMainFwUpdateActive(1);
+			if (handle == FWUPDATE_BIRD_PROLOG_PSEUDO_CHAR_HANDLE) {
+				// prolog
+				char signature[11];
+				memcpy(signature, &payload[0], 10);
+				signature[10] = '\0';
+
+				uint32_t fileSize;
+				memcpy(&fileSize, &payload[10], sizeof(fileSize));
+
+				uint16_t partCount;
+				memcpy(&partCount, &payload[14], sizeof(partCount));
+
+				Serial.printf("Received FwUpdate Prolog\n");
+				//for (int i = 0; i < size; i++) Serial.printf("%02X ", payload[i]);
+				//Serial.printf("\n");
+				Serial.printf("Firmware file with signature %s has %u bytes in %u parts\n", signature, fileSize, partCount);
+
+				// notify success (0x00000000)
+				uint32_t successCode = 0x00000000;
+				serverbleNotCharacteristic((uint8_t*)&successCode, sizeof(successCode), FWUPDATE_BIRD_DATA_PSEUDO_CHAR_HANDLE);
+
+				return;
+			}
+			if (handle == FWUPDATE_BIRD_EPILOG_PSEUDO_CHAR_HANDLE) {
+				// epilog
+				Serial.printf("Received FwUpdate Epilog\n");
+				//for (int i = 0; i < size; i++) Serial.printf("%02X ", payload[i]);
+				//Serial.printf("\n");
+
+				uint32_t fullCRC32;
+				memcpy(&fullCRC32, &payload[0], 4);
+
+				Serial.printf("Firmware file has global crc32 %08X\n", fullCRC32);
+
+				// notify success (0x00000000)
+				uint32_t successCode = 0x00000000;
+				serverbleNotCharacteristic((uint8_t*)&successCode, sizeof(successCode), FWUPDATE_BIRD_DATA_PSEUDO_CHAR_HANDLE);
 
 				return;
 			}
@@ -312,14 +334,33 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 			controlSendToSerialLocal(buffer_tx, size + 4);
 			return;
 		}
-
-		if ( pCharacteristic->getUUID().equals(blefields[BINARY_BLOCK].uuid) )
+Serial.printf("blefields[FW_DATA].uuid: %s\n", blefields[FW_DATA].uuid.toString().c_str());
+		if ( pCharacteristic->getUUID().equals(blefields[FW_DATA].uuid) )
 		{
-			if ( isMainFwUpdateActive() )
-			{
-				memcpy(&buffer_tx[0], (uint8_t*)&rxValue[0],rxValue.length());
-				controlSendToSerialLocal(buffer_tx,rxValue.length());
-			}
+			Serial.printf("Received FwData message with length %u\n", dlen);
+
+			uint16_t partIndex;
+			memcpy(&partIndex, &data[0], sizeof(partIndex));
+
+			uint16_t partSize;
+			memcpy(&partSize, &data[2], sizeof(partSize));
+
+			uint8_t* payload = new uint8_t[256];
+			memset(payload, 0, 256);
+			memcpy(payload, &data[4], 256);
+
+			uint32_t partCRC32;
+			memcpy(&partCRC32, &data[260], 4);
+
+			Serial.printf("Firmware part with index %4u has %3u bytes and crc32 %08X\n", partIndex, partSize, partCRC32);
+
+			// TODO: DO SOMETHING WITH PAYLOAD
+			delete[] payload;
+
+			// notify success (0x00000000)
+			uint32_t successCode = 0x00000000;
+			serverbleNotCharacteristic((uint8_t*)&successCode, sizeof(successCode), FWUPDATE_BIRD_DATA_PSEUDO_CHAR_HANDLE);
+
 			return;
 		}
 

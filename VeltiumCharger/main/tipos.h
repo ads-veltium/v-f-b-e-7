@@ -467,9 +467,14 @@ typedef struct{
 #define DOMESTIC_CONSUMPTION_DPC_MODE_DECL_HANDLE   (0x00A1u) /* Handle of Dpc_Mode characteristic declaration */
 #define DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE   (0x00A2u) /* Handle of Dpc_Mode characteristic */
 
-#define ERROR_STATUS_SERVICE_HANDLE   (0x00A1u) /* Handle of Error_Status service */
-#define ERROR_STATUS_ERROR_CODE_DECL_HANDLE   (0x00A2u) /* Handle of Error_Code characteristic declaration */
-#define ERROR_STATUS_ERROR_CODE_CHAR_HANDLE   (0x00A3u) /* Handle of Error_Code characteristic */
+#define ERROR_STATUS_SERVICE_HANDLE   (0x00A3u) /* Handle of Error_Status service */
+#define ERROR_STATUS_ERROR_CODE_DECL_HANDLE   (0x00A4u) /* Handle of Error_Code characteristic declaration */
+#define ERROR_STATUS_ERROR_CODE_CHAR_HANDLE   (0x00A5u) /* Handle of Error_Code characteristic */
+
+// pseudo characteristic handles for Bird Prolog and Epilog Firmware Update Messages
+#define FWUPDATE_BIRD_PROLOG_PSEUDO_CHAR_HANDLE (0x00ADu)
+#define FWUPDATE_BIRD_DATA_PSEUDO_CHAR_HANDLE (0x00AEu)
+#define FWUPDATE_BIRD_EPILOG_PSEUDO_CHAR_HANDLE (0x00AFu)
 
 #endif
 
