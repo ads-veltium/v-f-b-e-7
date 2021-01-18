@@ -31,7 +31,7 @@
 #include "serverble.h"
 #include "controlLed.h"
 #include "DRACO_IO.h"
-
+#include "ESPAsyncWebServer.h"
 
 
 //#define USE_ETH
@@ -55,7 +55,10 @@ IPAddress secondaryDNS(8, 8, 4, 4); //optional
 
 static bool eth_connected = false;
 #endif // USE_ETH
-extern uint8_t StartWifiSubsystem;
+
+float prueba = 2.0;
+const char*estado = "A1";
+int intensidad = 3;
 
 int otaEnable = 0;
 
@@ -63,10 +66,12 @@ const char* host = "veltium";
 const char* ssid = "veltium";
 const char* password = "veltium";
 
-WebServer server(80);
+//WebServer server(80);
+AsyncWebServer server(80);
 
 char loginIndex[2048] = {'\0'};
 char serverIndex[2048] = {'\0'};
+char datosIndex[2048] = {'\0'};
 char stilo[2048] = {'\0'};
 
 // IMPORTANTE:
@@ -145,9 +150,26 @@ void setup()
 #endif // USE_ETH
 
 #ifdef USE_WIFI_ESP
-	initWifi(WIFI_SSID, WIFI_PASSWORD);
-#endif
+	//initWifi(WIFI_SSID, WIFI_PASSWORD);
+	nvs_flash_init();
+ 	tcpip_adapter_init();
+ 	ESP_ERROR_CHECK( esp_event_loop_init(event_handler, NULL) );
+ 	wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+ 	ESP_ERROR_CHECK(esp_wifi_init(&cfg) );
+ 	ESP_ERROR_CHECK( esp_wifi_set_storage(WIFI_STORAGE_RAM) );
+ 	ESP_ERROR_CHECK( esp_wifi_set_mode(WIFI_MODE_STA));
 
+	//Allocate storage for the struct
+	wifi_config_t sta_config = {};
+
+	//Assign ssid & password strings
+	strcpy((char*)sta_config.sta.ssid, "VELTIUM_WF");
+	strcpy((char*)sta_config.sta.password, "W1f1d3V3lt1um$m4rtCh4rg3r$!");
+	sta_config.sta.bssid_set = false;
+
+ 	ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &sta_config));
+ 	ESP_ERROR_CHECK(esp_wifi_start());
+#endif 
 
 
 #ifdef USE_DRACO_BLE
@@ -172,25 +194,6 @@ void setup()
 	Serial.println("FREE HEAP MEMORY [after draco init] **************************");
 	Serial.println(ESP.getFreeHeap());
 
-}
-
-
-void loop() 
-{
-	if ( otaEnable == 1 )
-	{
-		server.handleClient();
-	}
-	#ifdef USE_WIFI_ARDUINO
-		if(StartWifiSubsystem){		
-			SPIFFS.begin();
-			WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-			WiFi.onEvent(WiFiEvent);
-			Serial.println("Connecting to Wi-Fi...");	
-			StartWifiSubsystem=0;
-		}
-	#endif
-	vTaskDelay(100/portTICK_PERIOD_MS);
 }
 
 /**********************************************
@@ -237,17 +240,34 @@ void perform_malloc_tests(uint8_t pot_first, uint8_t pot_last)
 }
 
 void handle_NotFound(){
-  server.send(404, "text/plain", "Not found");
+  //server.send(404, "text/plain", "Not found");
   CheckForUpdate();
+}
+
+String processor(const String& var){
+	if (var == "CARGA")
+	{
+		return String(prueba);
+	}
+	if (var=="HP")
+	{
+		return String(estado);
+	}
+	if (var=="CORRIENTE")
+	{
+		return String(intensidad);
+	}
+	return String();
 }
 
 void InitServer(void) {
 	//Cargar los archivos del servidor
     File index = SPIFFS.open("/WebServer/index.html");
     File login = SPIFFS.open("/WebServer/login.html");
+	File datos = SPIFFS.open("/WebServer/datos.html");
     File style = SPIFFS.open("/WebServer/style.css");
-
-    if(!index || !login || !style){
+	
+    if(!index || !login || !datos ||!style){
         Serial.println("Error en la lectura de los documentos");
         return;
     }
@@ -272,61 +292,41 @@ void InitServer(void) {
     }
     loginIndex[i] ='\0';
 
+	i=0;
+    while(datos.available()){
+        datosIndex[i] = datos.read();
+        i++;
+    }
+    datosIndex[i] ='\0';
+
 	strcat(loginIndex,stilo);
 	strcat(serverIndex,stilo);
+	//strcat(datosIndex,stilo);
 
     style.close();
     index.close();
     login.close();
+	datos.close();
 
-	//return index page which is stored in serverIndex 
-	server.on("/", HTTP_GET, []() {
-		server.sendHeader("Connection", "close");
-		server.send(200, "text/html", loginIndex);
-	});
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send_P(200, "text/html", loginIndex);
+  });
+  server.on("/serverIndex", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send_P(200, "text/html", serverIndex);
+  });	
 
-	server.on("/serverIndex", HTTP_GET, []() {
-		server.sendHeader("Connection", "close");
-		server.send(200, "text/html", serverIndex);
-	});
-
-	//handling uploading firmware file 
-	server.on("/update", HTTP_POST, []() {
-			server.sendHeader("Connection", "close");
-			server.send(200, "text/plain", (Update.hasError()) ? "FAIL" : "OK");
-			Serial.printf(" fent reset \r\n");
-			//delay(2000);
-			ESP.restart();
-			}, []() {
-			HTTPUpload& upload = server.upload();
-
-			if (upload.status == UPLOAD_FILE_START) {
-			Serial.printf("Update: %s\n", upload.filename.c_str());
-
-			if (!Update.begin(UPDATE_SIZE_UNKNOWN)) { //start with max available size
-			//	delay(20);
-			Update.printError(Serial);
-			}
-			} else if (upload.status == UPLOAD_FILE_WRITE) {
-			// flashing firmware to ESP
-			if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
-			Update.printError(Serial);
-			}
-
-			} else if (upload.status == UPLOAD_FILE_END) {
-				if (Update.end(true)) { //true to set the size to the current progress
-					Serial.printf("Update Success: %u\nRebooting...\n", upload.totalSize);
-				} else {
-					Update.printError(Serial);
-				}
-			}
-			});
-
-	//Handler del not found
-	server.onNotFound(handle_NotFound);
-	server.begin();
-	Serial.println("Servidor inicializado");
-	otaEnable=1;
+  server.on("/datosIndex", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send_P(200, "text/html", datosIndex, processor);
+  });
+  server.on("/carga", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send_P(200, "text/plain", String(prueba).c_str());
+  });
+  server.on("/hp", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send_P(200, "text/plain", String(estado).c_str());
+  });
+  server.on("/corriente", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send_P(200, "text/plain", String(intensidad).c_str());
+  });
 }
 
 void WiFiEvent(WiFiEvent_t event){
