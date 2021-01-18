@@ -61,7 +61,8 @@
         "*.inc": "cpp",
         "istream": "cpp",
         "ostream": "cpp",
-        "cstddef": "cpp"
+        "cstddef": "cpp",
+        "cstring": "cpp"
     }
 }
 

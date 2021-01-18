@@ -128,8 +128,10 @@ int CyBtldr_ParseRowData(unsigned int bufSize, unsigned char* buffer, unsigned c
                 rowData[i] = (hexData[DATA_OFFSET + i]);
             }
         }
-        else
+        else{
+            
             err = CYRET_ERR_DATA;
+        }
     }
     else
         err = CYRET_ERR_CMD;

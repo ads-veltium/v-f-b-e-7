@@ -4,10 +4,12 @@
 #include "ble_rcs_server.h"
 
 
-extern TaskHandle_t xHandle;
-
 StaticTask_t xBLEBuffer ;
 StackType_t xBLEStack[4096*2] EXT_RAM_ATTR;
+
+//Update sistem files
+File UpdateFile;
+uint8_t UpdateType=0;
 
 /* milestone: one-liner for reporting memory usage */
 void milestone(const char* mname)
@@ -47,6 +49,8 @@ BLECharacteristic *pbleCharacteristics[NUMBER_OF_CHARACTERISTICS];
 #define PROP_RN BLECharacteristic::PROPERTY_READ|BLECharacteristic::PROPERTY_NOTIFY
 #define PROP_R  BLECharacteristic::PROPERTY_READ
 #define PROP_WN BLECharacteristic::PROPERTY_WRITE|BLECharacteristic::PROPERTY_NOTIFY
+
+
 
 // VSC_SELECTOR     RW 16
 // VSC_OMNIBUS      RW 16
@@ -138,7 +142,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 	{
 		std::string rxValue = pCharacteristic->getValue();
 
-		Serial.printf("onWrite: char = %s\n", pCharacteristic->getUUID().toString().c_str());
+		//Serial.printf("onWrite: char = %s\n", pCharacteristic->getUUID().toString().c_str());
 
 		static uint8_t omnibus_packet_buffer[4 + RCS_CHR_OMNIBUS_SIZE];
 
@@ -237,7 +241,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 					vTaskDelay(200 / portTICK_PERIOD_MS);	
 					MAIN_RESET_Write(0);
 					vTaskDelay(100 / portTICK_PERIOD_MS);	
-					esp_restart();
+					ESP.restart();
 					return;
 				}
 			}
@@ -252,23 +256,49 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 			}
 			if (handle == FWUPDATE_BIRD_PROLOG_PSEUDO_CHAR_HANDLE) {
 				// prolog
+				String Signature;
 				char signature[11];
 				memcpy(signature, &payload[0], 10);
 				signature[10] = '\0';
-
+				Signature= String(signature);
 				uint32_t fileSize;
 				memcpy(&fileSize, &payload[10], sizeof(fileSize));
 
-				uint16_t partCount;
-				memcpy(&partCount, &payload[14], sizeof(partCount));
+				/*uint16_t partCount;
+				memcpy(&partCount, &payload[14], sizeof(partCount));*/
 
 				Serial.printf("Received FwUpdate Prolog\n");
-				//for (int i = 0; i < size; i++) Serial.printf("%02X ", payload[i]);
-				//Serial.printf("\n");
-				Serial.printf("Firmware file with signature %s has %u bytes in %u parts\n", signature, fileSize, partCount);
+				Serial.printf("Firmware file with signature %s has %u bytes\n", signature, fileSize);
 
-				// notify success (0x00000000)
 				uint32_t successCode = 0x00000000;
+				//Empezar el sistema de actualizacion
+				if(getfirebaseClientStatus())stopFirebaseClient();
+				
+				if(strstr (signature,"VBLE")){
+					Serial.println("Updating VBLE");
+					UpdateType= VBLE_UPDATE;
+					if(!Update.begin(fileSize)){
+						successCode = 0x00000001;
+					};
+				}
+				else if(strstr (signature,"VELT")){
+					Serial.println("Updating VELT");
+					UpdateType= VELT_UPDATE;
+
+					SPIFFS.begin(1,"/spiffs",1,"PSOC5");
+					if(SPIFFS.exists("/FreeRTOS_V6.cyacd")){
+						vTaskDelay(50/configTICK_RATE_HZ);
+						SPIFFS.format();
+					}
+
+					vTaskDelay(50/configTICK_RATE_HZ);
+					UpdateFile = SPIFFS.open("/FreeRTOS_V6.cyacd", FILE_WRITE);
+				}
+				else{
+					successCode = 0x00000040;
+				}
+				
+				// notify success (0x00000000)	
 				serverbleNotCharacteristic((uint8_t*)&successCode, sizeof(successCode), FWUPDATE_BIRD_DATA_PSEUDO_CHAR_HANDLE);
 
 				return;
@@ -288,6 +318,19 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 				uint32_t successCode = 0x00000000;
 				serverbleNotCharacteristic((uint8_t*)&successCode, sizeof(successCode), FWUPDATE_BIRD_DATA_PSEUDO_CHAR_HANDLE);
 
+				//Terminar el sistema de actualizacion
+			    if(UpdateType == VBLE_UPDATE){
+					if(Update.end()){	
+						Serial.println("Micro Actualizado!"); 
+						//reboot
+						MAIN_RESET_Write(0);						
+						ESP.restart();
+					}
+				}
+				else if(UpdateType == VELT_UPDATE){
+					UpdateFile.close();
+					setMainFwUpdateActive(1);
+				}				
 				return;
 			}
 
@@ -320,13 +363,13 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 			controlSendToSerialLocal(buffer_tx, size + 4);
 			return;
 		}
-Serial.printf("blefields[FW_DATA].uuid: %s\n", blefields[FW_DATA].uuid.toString().c_str());
+
 		if ( pCharacteristic->getUUID().equals(blefields[FW_DATA].uuid) )
 		{
-			Serial.printf("Received FwData message with length %u\n", dlen);
+			//Serial.printf("Received FwData message with length %u\n", dlen);
 
-			uint16_t partIndex;
-			memcpy(&partIndex, &data[0], sizeof(partIndex));
+			/*uint16_t partIndex;
+			memcpy(&partIndex, &data[0], sizeof(partIndex));*/
 
 			uint16_t partSize;
 			memcpy(&partSize, &data[2], sizeof(partSize));
@@ -335,16 +378,32 @@ Serial.printf("blefields[FW_DATA].uuid: %s\n", blefields[FW_DATA].uuid.toString(
 			memset(payload, 0, 256);
 			memcpy(payload, &data[4], 256);
 
-			uint32_t partCRC32;
-			memcpy(&partCRC32, &data[260], 4);
+			/*uint32_t partCRC32;
+			memcpy(&partCRC32, &data[260], 4);*/
 
-			Serial.printf("Firmware part with index %4u has %3u bytes and crc32 %08X\n", partIndex, partSize, partCRC32);
+			//Serial.printf("Firmware part with index %4u has %3u bytes and crc32 %08X\n", partIndex, partSize, partCRC32);
+
+			// notify success (0x00000000)
+			uint32_t successCode = 0x00000000;
+
+			//Escribir los datos en la actualizacion
+			if(UpdateType == VBLE_UPDATE){
+				if(Update.write(payload,partSize)!=partSize){
+					Serial.println("Writing Error");
+					successCode = 0x00000002;
+				}
+			}
+			else if(UpdateType == VELT_UPDATE){
+				if(UpdateFile.write(payload,partSize)!=partSize){
+					Serial.println("Writing Error");
+					successCode = 0x00000002;
+				}
+			}	
 
 			// TODO: DO SOMETHING WITH PAYLOAD
 			delete[] payload;
 
-			// notify success (0x00000000)
-			uint32_t successCode = 0x00000000;
+			
 			serverbleNotCharacteristic((uint8_t*)&successCode, sizeof(successCode), FWUPDATE_BIRD_DATA_PSEUDO_CHAR_HANDLE);
 
 			return;

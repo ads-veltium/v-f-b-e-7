@@ -77,8 +77,8 @@ uint16 inst_current_anterior = 0x0000;
 uint16 inst_current_actual = 0x0000;
 uint16 cnt_diferencia = 30;
 
-uint8 version_firmware[11] = {"VBLE2_0200"};	
-uint8 PSOC5_version_firmware[11] = {""};		
+uint8 version_firmware[11] = {"VBLE2_0600"};	
+uint8 PSOC5_version_firmware[11] = {"VELT2_0400"};		
 
 uint8 systemStarted = 0;
 
@@ -150,11 +150,13 @@ void configTimers ( void )
 void MAIN_RESET_Write( uint8_t val )
 {
 	DRACO_GPIO_Reset_MCU(val);
+	CyBtldr_EndBootloadOperation(&serialLocal);
 	return;
 }
 
 void controlTask(void *arg) 
 {	
+	
 	// Inicia el timer de 10mS i 1 segundo
 	configTimers();
 
@@ -411,7 +413,7 @@ void procesar_bloque(uint16 tipo_bloque){
 			modifyCharacteristic(&buffer_rx_local[197], 1, VCD_NAME_USERS_UI_X_USER_ID_CHAR_HANDLE);
 			modifyCharacteristic(&buffer_rx_local[198], 1, VCD_NAME_USERS_USER_INDEX_CHAR_HANDLE);
 			modifyCharacteristic(&buffer_rx_local[199], 10, VERSIONES_VERSION_FIRMWARE_CHAR_HANDLE);
-			memcpy(PSOC5_version_firmware, &buffer_rx_local[199],10);
+			//memcpy(PSOC5_version_firmware, &buffer_rx_local[199],10);
 			modifyCharacteristic(version_firmware, 10, VERSIONES_VERSION_FIRM_BLE_CHAR_HANDLE);
 			modifyCharacteristic(&buffer_rx_local[209], 2, RECORDING_REC_CAPACITY_CHAR_HANDLE);
 			modifyCharacteristic(&buffer_rx_local[211], 2, RECORDING_REC_LAST_CHAR_HANDLE);
@@ -793,6 +795,7 @@ void Disable_VELT1_CHARGER_services(void)
  * **********************************************/
 void UpdateTask(void *arg){
 	Serial.println("\nComenzando actualizacion del PSOC5!!");
+
 	int Nlinea =0;
 	uint8_t err = 0;
 	String Buffer;
@@ -806,12 +809,6 @@ void UpdateTask(void *arg){
 	unsigned char checksum ;
 	unsigned long blVer=0;
 	unsigned char rowData[512];
-
-
-	//Abrir el SPiffS
-	if(!SPIFFS.begin(1,"/spiffs",1,"PSOC5")){ 
-		Serial.println("Error abriendo el SPIFFS");  
-	}
 
 	File file = SPIFFS.open("/FreeRTOS_V6.cyacd"); 
 	if(!file || file.size() == 0){ 
@@ -839,7 +836,9 @@ void UpdateTask(void *arg){
 			longitud = Buffer.length()-1; 
 			b = (unsigned char*) Buffer.c_str();     
 			err = CyBtldr_ParseRowData((unsigned int)longitud,b, &arrayId, &rowNum, rowData, &rowSize, &checksum);
-
+			if(err!=0){
+				Serial.printf("Error 1%i \n", err);
+			}
 			if (err==0){
 				err = CyBtldr_ProgramRow(arrayId, rowNum, rowData, rowSize);
 			}	

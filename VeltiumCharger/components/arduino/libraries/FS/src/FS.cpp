@@ -44,6 +44,7 @@ time_t File::getLastWrite()
 size_t File::write(const uint8_t *buf, size_t size)
 {
     if (!_p) {
+        Serial.println("Retruning");
         return 0;
     }
 

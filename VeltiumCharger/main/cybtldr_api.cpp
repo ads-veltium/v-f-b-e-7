@@ -27,17 +27,19 @@ int CyBtldr_TransferData(unsigned char* inBuf, int inSize, unsigned char* outBuf
 {
     int err = 1;
     uint8 cnt_timeout_tx=0;
-    uint16 timeout=0;
+    int timeout=0;
 
     outBuf[0]='a';
 
     while(err==1 ){
         if(timeout>4000){
-            err=4;
+            Serial.println(timeout);
+            err=68;
         }
         if(cnt_timeout_tx == 0){
             cnt_timeout_tx = TIMEOUT_TX_BLOQUE*2;
             sendBinaryBlock(inBuf, inSize);
+            timeout++;
         }
         else
             cnt_timeout_tx--;
@@ -65,8 +67,8 @@ int CyBtldr_TransferData(unsigned char* inBuf, int inSize, unsigned char* outBuf
                 err=outBuf[1];
             }            
         }
-        delay(5);
-        timeout++;
+        vTaskDelay(10/ portTICK_PERIOD_MS);
+        
     }
     channel->flush();
     if (CYRET_SUCCESS != err)

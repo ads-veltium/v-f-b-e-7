@@ -33,8 +33,6 @@ extern carac_Firebase_Status StatusFirebase;
 
 TaskHandle_t xHandleUpdateTask=NULL;
 
-#define STACK_SIZE 4096*4
-
 StaticTask_t xFirebaseBuffer;
 static StackType_t xFirebaseStack[STACK_SIZE] EXT_RAM_ATTR;
 //StaticTask_t xDownloadBuffer;
@@ -129,6 +127,9 @@ void resumeFirebaseClient(){
   }
 }
 
+uint8_t getfirebaseClientStatus(){
+  return ConfigFirebase.FirebaseConnected;
+}
 /*************************
  Comprobar Actualizaciones
 *************************/
@@ -252,7 +253,7 @@ void DownloadTask(void *arg){
       SPIFFS.format();
     }
     vTaskDelay(50/configTICK_RATE_HZ);
-    UpdateFile = SPIFFS.open(FileName, FILE_APPEND);
+    UpdateFile = SPIFFS.open(FileName, FILE_WRITE);
   }
 
   //Abrir la conexion con el servidor
@@ -263,15 +264,16 @@ void DownloadTask(void *arg){
   // Obtener tamaño del archivo
   int contentLen = http.getSize(); 
   int total=contentLen;
-
+  int suma =0;
   WiFiClient* stream = NULL;
   
+  Serial.println(contentLen);
   if (httpCode > 0) {
     if(http.connected()) {
 
       stream = http.getStreamPtr();     
-      uint8_t buff[512] = { 0 };
-      int suma =0;
+      uint8_t buff[128] = { 0 };
+      
 
       if((int) arg ==2){
         if(!Update.begin(contentLen)){
@@ -287,7 +289,10 @@ void DownloadTask(void *arg){
           int c = stream->readBytes(buff, ((size > sizeof(buff)) ? sizeof(buff) : size));
 
           if((int) arg ==1){
-            UpdateFile.write(buff, c);
+            int escritos = UpdateFile.write(buff, c);
+            if(escritos!=c){
+              Serial.printf("\nError %i vs %i \n",escritos, c);
+            }
           }
           else{
             Update.write(buff,c);
@@ -295,16 +300,17 @@ void DownloadTask(void *arg){
 
           if (contentLen > 0){
             contentLen -= c;
-            suma +=c;
+            suma += c;
           }         
-        }
-        Serial.print("Descargados ");
-        Serial.print(suma);
-        Serial.printf(" de %i\r",  total);
+          
+        }      
         vTaskDelay(1/configTICK_RATE_HZ);
       }
     }
   }
+  Serial.println("No escrito");
+  Serial.printf("%i vs %i\n",  suma, UpdateFile.size());
+  
   Serial.println("Archivo descargado!");
   if((int) arg ==2){
     if(Update.end()){	
@@ -322,10 +328,13 @@ void DownloadTask(void *arg){
   http.end(); 
   delete stream;
 
+  Serial.println(UpdateFile.size());
+  Serial.println(total);
   if(UpdateFile.size()==total){
+    UpdateFile.close();
     setMainFwUpdateActive(1);
   }
-  SPIFFS.end();
+
   //Eliminar la tarea
   AutoUpdate.DescargandoArchivo=0;
   vTaskDelete(NULL);

@@ -56,6 +56,12 @@
 #define HEADER_RX			':'
 #define HEADER_TX			':'
 
+#define STACK_SIZE 4096*4
+
+//SISTEMA DE ACTUALIZACION
+#define VBLE_UPDATE    1
+#define VELT_UPDATE    2
+
 
 void updateCharacteristic(uint8_t* data, uint16_t len, uint16_t attrHandle);
 void procesar_bloque(uint16 tipo_bloque);

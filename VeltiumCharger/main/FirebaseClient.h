@@ -29,6 +29,7 @@ void UpdateFirebaseStatus();
 void resumeFirebaseClient();
 void pauseFirebaseClient();
 void UpdateFirebaseControl_Task(void *arg);
+uint8_t getfirebaseClientStatus();
 uint16  ParseFirmwareVersion(String Texto);
 
 #endif

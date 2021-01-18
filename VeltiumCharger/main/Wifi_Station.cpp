@@ -41,9 +41,7 @@ uint8_t Read_cfg(){
 void WiFiEvent(WiFiEvent_t event, WiFiEventInfo_t info){    
 	switch (event) {
 		case SYSTEM_EVENT_STA_DISCONNECTED:
-            if(ConfigFirebase.FirebaseConnected){
-                stopFirebaseClient();
-            }
+            if(getfirebaseClientStatus())stopFirebaseClient();
             
             if(info.disconnected.reason!=WIFI_REASON_ASSOC_LEAVE){
                 Serial.println("Reconectando...");
