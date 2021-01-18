@@ -285,7 +285,9 @@ bool UpdateClass::end(bool evenIfRemaining){
 }
 
 size_t UpdateClass::write(uint8_t *data, size_t len) {
+    
     if(hasError() || !isRunning()){
+        Serial.println("A");
         return 0;
     }
 

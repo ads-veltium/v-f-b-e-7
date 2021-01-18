@@ -2,12 +2,6 @@
 #ifndef OTA_Firmware_Upgrade_h 
 #define OTA_Firmware_Upgrade_h 
 
-//Includes
-#include <inttypes.h>
-#include "serverble.h"
-#include "esp_ota_ops.h"
-#include "HardwareSerialMOD.h"
-#include "SPIFFS.h"
 
 //Defines
 #define FULL_PACKET 512
@@ -61,9 +55,4 @@
 #define PRIMERA_FILA 14
 #define TAMANO_FILA  527
 
-
-
-//Prototipos de funciones
-void WriteDataToOta(BLECharacteristic *pCharacteristic);
-void StartPsocUpdate(HardwareSerialMOD serialLocal);
 #endif

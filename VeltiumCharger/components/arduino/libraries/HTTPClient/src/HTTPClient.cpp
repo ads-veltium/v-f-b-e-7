@@ -757,13 +757,15 @@ WiFiClient* HTTPClient::getStreamPtr(void)
  */
 int HTTPClient::writeToStream(Stream * stream)
 {
-
+    Serial.printf("A");
     if(!stream) {
         return returnError(HTTPC_ERROR_NO_STREAM);
+        log_d(HTTPC_ERROR_NO_STREAM);
     }
 
     if(!connected()) {
         return returnError(HTTPC_ERROR_NOT_CONNECTED);
+        log_d(HTTPC_ERROR_NOT_CONNECTED);
     }
 
     // get length of document (is -1 when Server sends no Content-Length header)
@@ -780,11 +782,12 @@ int HTTPClient::writeToStream(Stream * stream)
     } else if(_transferEncoding == HTTPC_TE_CHUNKED) {
         int size = 0;
         while(1) {
+            Serial.printf("A");
             if(!connected()) {
                 return returnError(HTTPC_ERROR_CONNECTION_LOST);
             }
             String chunkHeader = _client->readStringUntil('\n');
-
+            Serial.printf("b");
             if(chunkHeader.length() <= 0) {
                 return returnError(HTTPC_ERROR_READ_TIMEOUT);
             }
@@ -794,7 +797,7 @@ int HTTPClient::writeToStream(Stream * stream)
             // read size of chunk
             len = (uint32_t) strtol((const char *) chunkHeader.c_str(), NULL, 16);
             size += len;
-            log_d(" read chunk len: %d", len);
+            Serial.printf(" read chunk len: %d", len);
 
             // data left?
             if(len > 0) {
@@ -825,7 +828,7 @@ int HTTPClient::writeToStream(Stream * stream)
                 return returnError(HTTPC_ERROR_READ_TIMEOUT);
             }
 
-            delay(0);
+            delay(5);
         }
     } else {
         return returnError(HTTPC_ERROR_ENCODING);

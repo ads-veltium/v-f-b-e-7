@@ -3,10 +3,10 @@
 
 
 void initLeds ( void );
-void displayAll( uint8_t i, uint8_t r, uint8_t g, uint8_t b);
+/*void displayAll( uint8_t i, uint8_t r, uint8_t g, uint8_t b);
 void displayOne( uint8_t i, uint8_t r, uint8_t g, uint8_t b, uint8_t pixeln) ;
-void changeOne( uint8_t i, uint8_t r, uint8_t g, uint8_t b, uint8_t pixeln);
-void LedUpdateDownload_Task(void *arg);
+void changeOne( uint8_t i, uint8_t r, uint8_t g, uint8_t b, uint8_t pixeln);*/
+void LedControl_Task(void *arg);
 void Kit (void);
 
 #endif // __CONTROLLED_H

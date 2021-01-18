@@ -11,10 +11,11 @@ idf_component_register(SRCS
 "FirebaseESP32.cpp"
 "FB_HTTPClient32.cpp"
 "FirebaseClient.cpp"
-"wifi-station.cpp"
 "HardwareSerialMOD.cpp"
 "FB_WCS32.cpp"
 "fb_ssl_client32.cpp"
-INCLUDE_DIRS ".")
+"Wifi_Station.cpp"
+
+INCLUDE_DIRS headers/)
 
 

@@ -153,7 +153,7 @@ unsigned long IRAM_ATTR millis()
 
 void delay(uint32_t ms)
 {
-    vTaskDelay(pdMS_TO_TICKS(ms));
+    vTaskDelay(ms/portTICK_PERIOD_MS);
 }
 
 void IRAM_ATTR delayMicroseconds(uint32_t us)

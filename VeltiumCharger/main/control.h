@@ -1,26 +1,39 @@
 #ifndef __CONTROL_MAIN
 #define __CONTROL_MAIN
 
+//configuration
+#define USE_WIFI
+#define USE_DRACO_BLE
+
+#include "Arduino.h"
 #include "serverble.h"
 #include "controlLed.h"
 #include "DRACO_IO.h"
 
 #include "cybtldr_parse.h"
-#include "cybtldr_command.h"
+#include "OTA_Firmware_Upgrade.h"
 #include "cybtldr_api.h"
 
 #include "tipos.h"
 #include "dev_auth.h"
 #include "Update.h"
-#ifdef USE_WIFI
-    #include "FirebaseClient.h"
-#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include "HardwareSerialMOD.h"
-#include "OTA_Firmware_Upgrade.h"
-
 #include <math.h>
+#include "SPIFFS.h"
+
+#ifdef USE_WIFI
+	#include "Wifi_Station.h"
+#endif
+
+//Prioridades FreeRTOS
+#define PRIORIDAD_LEDS     1
+#define PRIORIDAD_CONTROL  3
+#define PRIORIDAD_BLE      3
+#define PRIORIDAD_DESCARGA 6
+#define PRIORIDAD_UPDATE   2
+#define PRIORIDAD_FIREBASE 5
 
 // ESTADO GENERAL
 #define	ESTADO_ARRANQUE			0
@@ -44,12 +57,10 @@
 #define HEADER_TX			':'
 
 
-
 void updateCharacteristic(uint8_t* data, uint16_t len, uint16_t attrHandle);
 void procesar_bloque(uint16 tipo_bloque);
 int controlSendToSerialLocal(uint8_t * data, int len);
 uint8_t sendBinaryBlock ( uint8_t *data, int len );
-void LED_Control(uint8_t luminosity, uint8_t r_level, uint8_t g_level, uint8_t b_level);
 int controlMain(void);
 void deviceConnectInd(void);
 void deviceDisconnectInd(void);

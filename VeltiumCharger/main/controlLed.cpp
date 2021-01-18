@@ -1,86 +1,69 @@
-#include <Arduino.h>
-#include "DRACO_IO.h"
-#include "WS2812.h"
+#include "control.h"
 #include "controlLed.h"
+#include "FastLED.h"
 
-//NEOPIXELS 
-#define  NUM_PIXELS  7  
-uint8_t MAX_COLOR_VAL = 255;
+#define NUM_PIXELS 7
 
-//rgbVal *pixels;
-rgbVal myColor;
-rgbVal pixels[NUM_PIXELS];
-rgbVal pixelsTmp[NUM_PIXELS];
+//Extern configuration variables
+extern uint8 luminosidad, rojo, verde, azul;
+extern carac_Auto_Update AutoUpdate;
+extern uint16 inst_current_actual;
 
+//Adafruit_NeoPixel strip EXT_RAM_ATTR;
+CRGB leds[NUM_PIXELS] EXT_RAM_ATTR;
 
-const uint8_t gamma8[] = 
-{
-	0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-	0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  1,  1,  1,  1,
-	1,  1,  1,  1,  1,  1,  1,  1,  1,  2,  2,  2,  2,  2,  2,  2,
-	2,  3,  3,  3,  3,  3,  3,  3,  4,  4,  4,  4,  4,  5,  5,  5,
-	5,  6,  6,  6,  6,  7,  7,  7,  7,  8,  8,  8,  9,  9,  9, 10,
-	10, 10, 11, 11, 11, 12, 12, 13, 13, 13, 14, 14, 15, 15, 16, 16,
-	17, 17, 18, 18, 19, 19, 20, 20, 21, 21, 22, 22, 23, 24, 24, 25,
-	25, 26, 27, 27, 28, 29, 29, 30, 31, 32, 32, 33, 34, 35, 35, 36,
-	37, 38, 39, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 50,
-	51, 52, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 66, 67, 68,
-	69, 70, 72, 73, 74, 75, 77, 78, 79, 81, 82, 83, 85, 86, 87, 89,
-	90, 92, 93, 95, 96, 98, 99,101,102,104,105,107,109,110,112,114,
-	115,117,119,120,122,124,126,127,129,131,133,135,137,138,140,142,
-	144,146,148,150,152,154,156,158,160,162,164,167,169,171,173,175,
-	177,180,182,184,186,189,191,193,196,198,200,203,205,208,210,213,
-	215,218,220,223,225,228,231,233,236,239,241,244,247,249,252,255 
-};
-
-
-int correctGammaColor ( void  )
-{
-	int i = 0 ;
-
-	for ( i = 0 ; i< NUM_PIXELS; i++ )
-	{
-		pixelsTmp[i].r = gamma8[pixels[i].r];
-		pixelsTmp[i].g = gamma8[pixels[i].g];
-		pixelsTmp[i].b = gamma8[pixels[i].b];
-	}
-	return 1;
-}
-
+//Encender un solo led (Y apagar el resto)
 void displayOne( uint8_t i, uint8_t r, uint8_t g, uint8_t b, uint8_t pixeln)
 {
+	i=map(i,0,100,0,255);
+	r=map(r,0,100,0,255);
+	g=map(g,0,100,0,255);
+	b=map(b,0,100,0,255);
+
 	for (int j = 0; j < NUM_PIXELS; j++)
 	{
-		pixels[j] = makeIRGBVal(0, 0, 0, 0);
+		leds[j].r = r; 
+    	leds[j].g = g; 
+    	leds[j].b = b;
 	}
-	pixels[pixeln] = makeIRGBVal(i, r, g, b);
-
-	ws2812_setColors(NUM_PIXELS, pixels);
+	FastLED.setBrightness(i);
+	leds[pixeln].r = r; 
+    leds[pixeln].g = g; 
+    leds[pixeln].b = b;
+	FastLED.show();
 }
 
+//Cambiar un solo led (El resto permanecen igual)
 void changeOne( uint8_t i, uint8_t r, uint8_t g, uint8_t b, uint8_t pixeln)
 {
-	pixels[pixeln] = makeIRGBVal(i, r, g, b);
-	ws2812_setColors(NUM_PIXELS, pixels);
+	i=map(i,0,100,0,255);
+	r=map(r,0,100,0,255);
+	g=map(g,0,100,0,255);
+	b=map(b,0,100,0,255);
+
+	FastLED.setBrightness(i);
+	leds[pixeln].r = r; 
+    leds[pixeln].g = g; 
+    leds[pixeln].b = b;
+	FastLED.show();
 }
 
+//Cambiar un solo led (El resto permanecen igual)
 void displayAll( uint8_t i, uint8_t r, uint8_t g, uint8_t b)
 {
-	for (int j = 0; j < NUM_PIXELS; j++)
-	{
-		pixels[j] = makeIRGBVal(i, r, g, b);
-	}
-	ws2812_setColors(NUM_PIXELS, pixels);
+	i=map(i,0,100,0,255);
+	r=map(r,0,100,0,255);
+	g=map(g,0,100,0,255);
+	b=map(b,0,100,0,255);
 
-}
-
-void displayOff()
-{
-	for (int i = 0; i < NUM_PIXELS; i++)
-	{
-		pixels[i] = makeRGBVal(0, 0, 0);
+	FastLED.setBrightness(i );
+	for(int dot = 0; dot < NUM_PIXELS; dot++) { 
+		leds[dot].r = r; 
+    	leds[dot].g = g; 
+    	leds[dot].b = b;
+		FastLED.show();
 	}
-	ws2812_setColors(NUM_PIXELS, pixels);
+
 }
 
 void initLeds ( void )
@@ -89,13 +72,8 @@ void initLeds ( void )
 	pinMode( EN_NEOPIXEL, OUTPUT);
 	digitalWrite(EN_NEOPIXEL,HIGH);
 
-	if(ws2812_init(DO_NEOPIXEL, LED_WS2812B))
-	{
-		while (1)
-		{
-			vTaskDelay(100/portTICK_PERIOD_MS);
-		}
-	}
+	FastLED.addLeds<NEOPIXEL, DO_NEOPIXEL>(leds, NUM_PIXELS);
+
 }
 
 
@@ -114,33 +92,104 @@ void Kit (void){
 	}
 }
 
-void LedUpdateDownload_Task(void *arg){
-	uint8_t r,g,b;
-	uint8_t LedPointer=0,Luminosidad=0;
 
-	if((int) arg==1){
-		r=50;
-		g=80;
-		b=100;
-	}
-	else{
-		r=20;
-		g=80;
-		b=50;
-	}
-	while (1){
-		//Control de los leds
-		changeOne(Luminosidad,r,g,b,LedPointer);
-		LedPointer++;
-		if(LedPointer>=7){
-			if(Luminosidad==100){
-				Luminosidad=0;
+void LedControl_Task(void *arg){
+	uint8 subiendo=1, luminosidad_carga= 0, LedPointer =0,luminosidad_Actual=50, togle_led=0;
+	uint16 cnt_parpadeo=0, Delay= 20;
+	uint8 Efectos=0;
+
+	initLeds();
+
+	while(1){
+		if(AutoUpdate.DescargandoArchivo){
+			Efectos=1;
+		}
+
+		//Descarga:
+		if(Efectos){
+			Delay=150;
+			luminosidad=100;
+			LedPointer++;
+			if(LedPointer>=7){
+				if(luminosidad==100){
+					rojo=0;
+					verde=0;
+					azul=0;
+					luminosidad=0;
+				}
+				else{
+					rojo=50;
+					verde=80;
+					azul=100;
+					luminosidad=100;
+				}
+				LedPointer=0;
+			} 
+			changeOne(100,rojo,verde,azul,LedPointer);
+		}
+		else{
+			
+			//Funcionamiento normal
+			if (luminosidad & 0x80 && rojo == 0 && verde == 0){ //Cargando				
+				uint8 lumin_limit=50;
+
+				if(inst_current_actual>90){
+					lumin_limit=(3200-inst_current_actual)*100/3200;
+					if(lumin_limit<10){
+						lumin_limit=10;
+					}
+				}
+
+				if(subiendo){
+					luminosidad_carga++;
+					if(luminosidad_carga>=lumin_limit){
+						subiendo=0;
+					}
+				}
+				else{
+					luminosidad_carga--;
+					if(luminosidad_carga<=0){
+						subiendo=1;
+					}
+				}
+			    Delay=20;
+				displayAll(luminosidad_carga,rojo,verde,azul);
 			}
-			else{
-				Luminosidad=100;
+			else if(luminosidad & 0x80){ //Parpadeo
+				if(++cnt_parpadeo >= TIME_PARPADEO)
+				{
+					cnt_parpadeo = 0;
+					if(togle_led == 0)
+					{
+						togle_led = 1;
+						displayAll(0, rojo, verde, azul);
+					}
+					else
+					{
+						togle_led = 0;
+						displayAll((luminosidad & 0x7F), rojo, verde, azul);
+					}
+				}
 			}
-			LedPointer=0;
-		} 
-		vTaskDelay(150/portTICK_PERIOD_MS);
+			else if(luminosidad < 0x80){
+
+				//control de saltos entre luminosidad
+				if(luminosidad-luminosidad_Actual>=3){
+					luminosidad_Actual++;
+				}
+				else if (luminosidad_Actual-luminosidad>=3){
+					luminosidad_Actual--;
+				}
+				else{
+					luminosidad_Actual=luminosidad;
+				}
+				Delay=500;
+				displayAll(luminosidad_Actual,rojo,verde,azul);	
+			}
+
+		}
+
+		
+		vTaskDelay(Delay/portTICK_PERIOD_MS);
 	}
 }

@@ -31,8 +31,14 @@ extern carac_Firebase_Configuration ConfigFirebase;
 extern carac_Firebase_Control ControlFirebase;
 extern carac_Firebase_Status StatusFirebase;
 
-TaskHandle_t xHandleDownloadTask = NULL;
 TaskHandle_t xHandleUpdateTask=NULL;
+
+#define STACK_SIZE 4096*4
+
+StaticTask_t xFirebaseBuffer;
+static StackType_t xFirebaseStack[STACK_SIZE] EXT_RAM_ATTR;
+//StaticTask_t xDownloadBuffer;
+//StackType_t xDownloadStack[4096*2] EXT_RAM_ATTR;
 
 //Semaforo de acceso a firebase
 SemaphoreHandle_t firebase_Access = NULL;
@@ -75,14 +81,25 @@ void initFirebaseClient(){
       vTaskResume(xHandleUpdateTask);
     }
     else{
-      xTaskCreate(UpdateFirebaseControl_Task, "Firebase Update", 4096*2, NULL, 5, &xHandleUpdateTask); 
+      xHandleUpdateTask = xTaskCreateStatic(UpdateFirebaseControl_Task,"Firebase Update",STACK_SIZE,NULL,PRIORIDAD_FIREBASE,xFirebaseStack,&xFirebaseBuffer );
     }
-    
+
+    #ifndef USE_DRACO_BLE
+      
+      memcpy(&ConfigFirebase.Device_Db_ID,"CD012012140000049461C051E014",29);
+      AutoUpdate.BetaPermission=1;
+
+    #endif
+
     ConfigFirebase.FirebaseConnected=1;
-    //Check permisions stored in firebase
+
 }
 
 void stopFirebaseClient(){
+    if(xHandleUpdateTask!=NULL){
+      vTaskSuspend(xHandleUpdateTask);
+    }
+
     ConfigFirebase.FirebaseConnected=0;
     Serial.println("Stop Firebase Client");
 
@@ -90,11 +107,10 @@ void stopFirebaseClient(){
     Firebase.removeStreamCallback(*firebaseData);
     Firebase.end(*firebaseData);
 
-    
-
     //Deallocate
     delete firebaseData;
     firebaseData = nullptr;   
+
 }
 
 void pauseFirebaseClient(){
@@ -114,15 +130,17 @@ void resumeFirebaseClient(){
 }
 
 /*************************
- Database acces control
+ Comprobar Actualizaciones
 *************************/
 void CheckForUpdate(){
-  FreeFirebaseHeap();
+
   ConfigFirebase.FirebaseConnected=0;
   String ESP_Ver;
   String PSOC5_Ver;
   url="";
-
+  uint8 tipo=0;
+  AutoUpdate.BetaPermission=1;
+  Serial.println("Updating firmware");
   if(AutoUpdate.BetaPermission){
     //Check PSOC5 firmware updates
     Firebase.getString(*firebaseData, "/prod/fw/beta/VELT2/verstr", PSOC5_Ver);
@@ -130,7 +148,7 @@ void CheckForUpdate(){
 
     if(AutoUpdate.PSOC5_Act_Ver<Psoc_int_Version){
       Firebase.getString(*firebaseData, "/prod/fw/beta/VELT2/url", url);
-      AutoUpdate.PSOC5_UpdateAvailable=1;
+      tipo=1;
       Serial.println("Updating PSOC5 with Beta firmware");
     }
 
@@ -141,7 +159,7 @@ void CheckForUpdate(){
 
       if(AutoUpdate.ESP_Act_Ver<ESP_int_Version){
         Serial.println("Updating ESP32 with Beta firmware");
-        AutoUpdate.ESP_UpdateAvailable=1;
+        tipo=2;
         Firebase.getString(*firebaseData, "/prod/fw/beta/VBLE2/url", url);
       }
     }  
@@ -150,20 +168,20 @@ void CheckForUpdate(){
     Firebase.getString(*firebaseData, "/prod/fw/prod/VELT2/verstr", PSOC5_Ver);
     Firebase.getString(*firebaseData, "/prod/fw/prod/VBLE2/verstr", ESP_Ver);
   }
-  if(AutoUpdate.ESP_UpdateAvailable || AutoUpdate.PSOC5_UpdateAvailable) {
-    Serial.println("Updating firmware");
-    xTaskCreate(DownloadTask,"TASK DOWNLOAD",4096*2,NULL,1,&xHandleDownloadTask); 
+  if(tipo!=0) {
+    xTaskCreate(DownloadTask,"TASK DOWNLOAD",4096*2,(void*) tipo,PRIORIDAD_DESCARGA, NULL);
     stopFirebaseClient();
   }
   else{
     ConfigFirebase.FirebaseConnected=1;
   }
-  FreeFirebaseHeap();
 }
 
+/***************************************************
+ Acutalizar la base de datos con el estado actual
+***************************************************/
 void UpdateFirebaseStatus(){
   if(xSemaphoreTake(firebase_Access,  portMAX_DELAY )){
-    FreeFirebaseHeap();
   
     Serial.println("UPDATE FIREBASE CALLED");
     String Path="/prod/devices/";
@@ -175,7 +193,11 @@ void UpdateFirebaseStatus(){
   }
 }
 
+/***************************************************
+ Leer la base de datos de manera recurrente 
+***************************************************/
 void UpdateFirebaseControl_Task(void *arg){
+  
   String Base_Path="/prod/devices/";
   Base_Path=Base_Path + (char *)ConfigFirebase.Device_Db_ID;
   
@@ -208,40 +230,54 @@ void UpdateFirebaseControl_Task(void *arg){
       }
       xSemaphoreGive(firebase_Access);
     } 
-    vTaskDelay(750/configTICK_RATE_HZ); 
+    vTaskDelay(1000/configTICK_RATE_HZ); 
   }
 }
 
+/***************************************************
+ Descargar archivos de actualizacion
+***************************************************/
 void DownloadTask(void *arg){
-  Serial.println("Empezando descarga del Fichero");
   AutoUpdate.DescargandoArchivo=1;
 
+  File UpdateFile;
+  String FileName;
+
+  //Si descargamos actualizacion para el PSOC5, debemos crear el archivo en el SPIFFS
+  if((int) arg ==1){
+    SPIFFS.begin(1,"/spiffs",1,"PSOC5");
+    FileName="/FreeRTOS_V6.cyacd";
+    if(SPIFFS.exists(FileName)){
+      vTaskDelay(50/configTICK_RATE_HZ);
+      SPIFFS.format();
+    }
+    vTaskDelay(50/configTICK_RATE_HZ);
+    UpdateFile = SPIFFS.open(FileName, FILE_APPEND);
+  }
+
+  //Abrir la conexion con el servidor
   HTTPClient http;
-  WiFiClient* stream = new WiFiClient();
-
-  TaskHandle_t HandleLeds;
-
-  xTaskCreate(LedUpdateDownload_Task, "Led Control", configMINIMAL_STACK_SIZE, (void*)2 , 1, &HandleLeds); 
-
-  SPIFFS.remove("/Archivo.txt");
-  SPIFFS.remove("/FreeRTOS_V6.cyacd");
-  SPIFFS.remove("/firmware.bin");
-  
-  File UpdateFile = SPIFFS.open("/Archivo.txt", "w");
-  Serial.println(url);
   http.begin(url);
-  int httpCode = http.GET();  
-  int contentLen=0;
-  unsigned long StartTime = millis();
+  int httpCode = http.GET();
+
+  // Obtener tamaño del archivo
+  int contentLen = http.getSize(); 
+  int total=contentLen;
+
+  WiFiClient* stream = NULL;
+  
   if (httpCode > 0) {
-
-    // Obtener tamaño del archivo
-    contentLen = http.getSize();  
-
     if(http.connected()) {
 
       stream = http.getStreamPtr();     
       uint8_t buff[512] = { 0 };
+      int suma =0;
+
+      if((int) arg ==2){
+        if(!Update.begin(contentLen)){
+          return;
+        };
+      }
 
       //Leer datos del servidor
       while (http.connected() && (contentLen > 0 || contentLen == -1)){
@@ -249,42 +285,48 @@ void DownloadTask(void *arg){
         size_t size = stream->available();
         if (size){
           int c = stream->readBytes(buff, ((size > sizeof(buff)) ? sizeof(buff) : size));
-          UpdateFile.write(buff, c);
+
+          if((int) arg ==1){
+            UpdateFile.write(buff, c);
+          }
+          else{
+            Update.write(buff,c);
+          }        
 
           if (contentLen > 0){
             contentLen -= c;
+            suma +=c;
           }         
         }
-        vTaskDelay(5/configTICK_RATE_HZ);
+        Serial.print("Descargados ");
+        Serial.print(suma);
+        Serial.printf(" de %i\r",  total);
+        vTaskDelay(1/configTICK_RATE_HZ);
       }
     }
   }
-  unsigned long CurrentTime = millis();
-  Serial.println("Elapsed time");
-  Serial.print(CurrentTime - StartTime);
-
-  //Liberar memoria
-  stream->stop();
-  http.end();
-
-  delete stream;
-
-  Serial.println("Fichero descargado");
-  AutoUpdate.DescargandoArchivo=0;
-
-  if(AutoUpdate.Auto_Act && UpdateFile.size()==contentLen){
-    UpdateFile.close();
-    if(AutoUpdate.ESP_UpdateAvailable){
-      SPIFFS.rename("/Archivo.txt", "/firmware.bin");
-      UpdateESP();
-    }
-    else if(AutoUpdate.PSOC5_UpdateAvailable){
-      SPIFFS.rename("/Archivo.txt", "/FreeRTOS_V6.cyacd");
-      setMainFwUpdateActive(1);
+  Serial.println("Archivo descargado!");
+  if((int) arg ==2){
+    if(Update.end()){	
+      Serial.println("Micro Actualizado!"); 
+      //reboot
+      MAIN_RESET_Write(0);
+      ESP.restart();
     }
   }
+
+  //Aqui solo llega si está actualizando el psoc5
+  //Liberar memoria
   
+  stream->stop();
+  http.end(); 
+  delete stream;
+
+  if(UpdateFile.size()==total){
+    setMainFwUpdateActive(1);
+  }
+  SPIFFS.end();
   //Eliminar la tarea
-  vTaskDelete(HandleLeds);
-  vTaskDelete(xHandleDownloadTask);
+  AutoUpdate.DescargandoArchivo=0;
+  vTaskDelete(NULL);
 }

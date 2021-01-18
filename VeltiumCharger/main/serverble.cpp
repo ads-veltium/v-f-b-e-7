@@ -1,21 +1,13 @@
-#include <BLEDevice.h>
-#include <BLEServer.h>
-#include <BLEUtils.h>
-#include <BLE2902.h>
-#include "tipos.h"
 #include "control.h"
-#include "serverble.h"
-#include "controlLed.h"
-#ifdef USE_WIFI
-#include "FirebaseClient.h"
-#endif
-#include <Arduino.h>
 
 #include "ble_rcs.h"
 #include "ble_rcs_server.h"
-#include "esp32-hal-psram.h"
+
 
 extern TaskHandle_t xHandle;
+
+StaticTask_t xBLEBuffer ;
+StackType_t xBLEStack[4096*2] EXT_RAM_ATTR;
 
 /* milestone: one-liner for reporting memory usage */
 void milestone(const char* mname)
@@ -123,9 +115,6 @@ class serverCallbacks: public BLEServerCallbacks
 {
 	void onConnect(BLEServer* pServer) 
 	{
-		#ifdef USE_WIFI
-			pauseFirebaseClient();
-		#endif
 		deviceBleConnected = true;
 		deviceConnectInd();
 		
@@ -133,9 +122,6 @@ class serverCallbacks: public BLEServerCallbacks
 
 	void onDisconnect(BLEServer* pServer) 
 	{
-		#ifdef USE_WIFI
-			resumeFirebaseClient();
-		#endif
 		deviceBleConnected = false;
 		deviceDisconnectInd();
 	}
@@ -273,8 +259,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 					buffer_tx[3] = 1;
 					memcpy(&buffer_tx[4], (uint8_t*)&rxValue[0], 1);
 					controlSendToSerialLocal(buffer_tx,5);
-					vTaskDelay(500 / portTICK_PERIOD_MS);	
-					LED_Control(100, 10, 10, 10);
+					vTaskDelay(500 / portTICK_PERIOD_MS);
 					setMainFwUpdateActive(1);
 				}
 				// Micro Principal Bootloading 
@@ -406,13 +391,7 @@ void serverbleInit() {
 
 	printf("Waiting a client connection to notify...\r\n");
 
-	xTaskCreate(serverbleTask,
-			"TASK BLE",
-			4096*4,//4096*4,
-			NULL,
-			1,
-			NULL	
-		   );
+	xTaskCreateStatic(serverbleTask,"TASK BLE",4096*2,NULL,PRIORIDAD_BLE,xBLEStack,&xBLEBuffer); 
 
 	milestone("after creating serverbleTask");
 

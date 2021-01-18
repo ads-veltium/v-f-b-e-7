@@ -19,11 +19,17 @@
 
 #define LED_MAXIMO_PWM      1200     // Sobre 1200 de periodo
 
+
+StaticTask_t xControlBuffer ;
+static StackType_t xControlStack[4096*4] EXT_RAM_ATTR;
+StaticTask_t xLEDBuffer ;
+StackType_t xLEDStack[4096*2] EXT_RAM_ATTR;
+
 //Variables Firebase
-carac_Auto_Update AutoUpdate;
-carac_Firebase_Configuration ConfigFirebase;
-carac_Firebase_Control ControlFirebase;
-carac_Firebase_Status StatusFirebase;
+carac_Auto_Update AutoUpdate EXT_RAM_ATTR;
+carac_Firebase_Configuration ConfigFirebase EXT_RAM_ATTR;
+carac_Firebase_Control ControlFirebase EXT_RAM_ATTR;
+carac_Firebase_Status StatusFirebase EXT_RAM_ATTR;
 
 uint8_t StartWifiSubsystem=0;
 
@@ -37,8 +43,7 @@ uint8 authChallengeQuery[10] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
 
 uint8 contador_cent_segundos = 0, contador_cent_segundos_ant = 0;
 uint32 cont_seg = 0, cont_seg_ant = 0, cont_min_ant = 0, cont_min=0, cont_hour=0, cont_hour_ant=0;
-uint8 luminosidad, rojo, verde, azul, togle_led = 0 ; // cnt_parpadeo = 0;
-int cnt_parpadeo = 0;
+uint8 luminosidad, rojo, verde, azul, togle_led = 0 ;
 uint8 estado_inicial = 1;
 uint8 estado_actual = ESTADO_ARRANQUE;
 uint8 authSuccess = 0;
@@ -52,8 +57,6 @@ uint8 buffer_rx_local[550];
 uint16 puntero_rx_local = 0;
 uint8 updateTaskrunning=0;
 uint8 cnt_timeout_tx = 0;
-
-uint8 luminosidad_Actual=50, luminosidad_carga=50;
 
 // initial serial number
 uint8 initialSerNum[10] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
@@ -74,11 +77,11 @@ uint16 inst_current_anterior = 0x0000;
 uint16 inst_current_actual = 0x0000;
 uint16 cnt_diferencia = 30;
 
-uint8 version_firmware[11] = {"VBLE2_0500"};	
+uint8 version_firmware[11] = {"VBLE2_0200"};	
 uint8 PSOC5_version_firmware[11] = {""};		
 
 uint8 systemStarted = 0;
-uint8 subiendo=1;
+
 void startSystem(void);
 
 void StackEventHandler( uint32 eventCode, void *eventParam );
@@ -166,7 +169,6 @@ void controlTask(void *arg)
 	
 	while(1)
 	{
-
 		// Eventos 10 mS
 		if(contador_cent_segundos != contador_cent_segundos_ant)
 		{
@@ -191,7 +193,6 @@ void controlTask(void *arg)
 									mainFwUpdateActive = 1;
 									updateTaskrunning=1;
 									xTaskCreate(UpdateTask,"TASK UPDATE",4096,NULL,1,&xHandle);
-									LED_Control(100, 10, 10, 10);
 								}
 							}
 						}
@@ -236,7 +237,7 @@ void controlTask(void *arg)
 					buffer_tx_local[4] = 0;
 
 					serialLocal.write(buffer_tx_local, 5);
-					delay(1000);
+					vTaskDelay(500 / portTICK_PERIOD_MS);
 					xTaskCreate(UpdateTask,"TASK UPDATE",4096,NULL,1,&xHandle);
 					updateTaskrunning=1;
 				}				
@@ -244,74 +245,11 @@ void controlTask(void *arg)
 
 		}
 
-		// Eventos 30 mS //control de leds
-		if(contador_cent_segundos%3==0){
-			if (luminosidad & 0x80 && rojo == 0 && verde == 0){ //Cargando
-				
-				uint8 lumin_limit=50;
-
-				if(inst_current_actual>90){
-					lumin_limit=(3200-inst_current_actual)*100/3200;
-					if(lumin_limit<10){
-						lumin_limit=10;
-					}
-				}
-
-				if(subiendo){
-					luminosidad_carga++;
-					if(luminosidad_carga>=lumin_limit){
-						subiendo=0;
-					}
-				}
-				else{
-					luminosidad_carga--;
-					if(luminosidad_carga<=0){
-						subiendo=1;
-					}
-				}			
-				LED_Control(luminosidad_carga,rojo,verde,azul);
-			}
-			else if(luminosidad & 0x80){ //Parpadeo
-				if(++cnt_parpadeo >= TIME_PARPADEO)
-				{
-					cnt_parpadeo = 0;
-					if(togle_led == 0)
-					{
-						togle_led = 1;
-						LED_Control(0, rojo, verde, azul);
-					}
-					else
-					{
-						togle_led = 0;
-						LED_Control((luminosidad & 0x7F), rojo, verde, azul);
-					}
-				}
-			}
-            else if(luminosidad < 0x80){
-
-				//control de saltos entre luminosidad
-				if(luminosidad-luminosidad_Actual>=3){
-					luminosidad_Actual++;
-				}
-				else if (luminosidad_Actual-luminosidad>=3){
-					luminosidad_Actual--;
-				}
-				else{
-					luminosidad_Actual=luminosidad;
-				}
-				LED_Control(luminosidad_Actual,rojo,verde,azul);	
-			}
-		}
 		
-		#ifdef USE_WIFI
 		// Eventos 1 Seg
 		if(cont_seg != cont_seg_ant){
 			cont_seg_ant = cont_seg;
-			if(mainFwUpdateActive == 0){
-				if(ConfigFirebase.FirebaseConnected && !serverbleGetConnected()){
-					//UpdateFirebaseControl();	
-				}	
-			}
+
 			if (ControlFirebase.start){
 				cnt_timeout_tx = TIMEOUT_TX_BLOQUE;
                 buffer_tx_local[0] = HEADER_TX;
@@ -319,49 +257,38 @@ void controlTask(void *arg)
                 buffer_tx_local[2] = (uint8)(CHARGING_BLE_MANUAL_START_CHAR_HANDLE);
                 buffer_tx_local[3] = 5; //size
 				buffer_tx_local[4] = 1; //size
-                controlSendToSerialLocal(buffer_tx_local, 5);
-                
+                controlSendToSerialLocal(buffer_tx_local, 5);              
 				}
 				
-				else if (ControlFirebase.stop)
-				{
-					cnt_timeout_tx = TIMEOUT_TX_BLOQUE;
-					buffer_tx_local[0] = HEADER_TX;
-					buffer_tx_local[1] = (uint8)(CHARGING_BLE_MANUAL_STOP_CHAR_HANDLE >> 8);
-					buffer_tx_local[2] = (uint8)(CHARGING_BLE_MANUAL_STOP_CHAR_HANDLE);
-					buffer_tx_local[3] = 5; //size
-					buffer_tx_local[4] = 1; //size
-					controlSendToSerialLocal(buffer_tx_local, 5);
-				}
+			else if (ControlFirebase.stop)
+			{
+				cnt_timeout_tx = TIMEOUT_TX_BLOQUE;
+				buffer_tx_local[0] = HEADER_TX;
+				buffer_tx_local[1] = (uint8)(CHARGING_BLE_MANUAL_STOP_CHAR_HANDLE >> 8);
+				buffer_tx_local[2] = (uint8)(CHARGING_BLE_MANUAL_STOP_CHAR_HANDLE);
+				buffer_tx_local[3] = 5; //size
+				buffer_tx_local[4] = 1; //size
+				controlSendToSerialLocal(buffer_tx_local, 5);
+			}
 		
 		}
 
-			// Eventos 1 minuto
-			if(cont_min != cont_min_ant)
-			{
-				cont_min_ant = cont_min;
-			}
+		// Eventos 1 minuto
+		if(cont_min != cont_min_ant)
+		{
+			cont_min_ant = cont_min;
+		}
 
-			// Eventos 1 Hora
-			if(cont_hour != cont_hour_ant)
-			{
-				cont_hour_ant = cont_hour;
-				if(mainFwUpdateActive == 0){
-					if(ConfigFirebase.FirebaseConnected && !serverbleGetConnected()){
-						CheckForUpdate();
-					}
-				}
-			}
-		#endif
-		vTaskDelay(10 / portTICK_PERIOD_MS);	
+		// Eventos 1 Hora
+		if(cont_hour != cont_hour_ant)
+		{
+			cont_hour_ant = cont_hour;
+		}
+		vTaskDelay(15 / portTICK_PERIOD_MS);	
 	}
 }
 
 void startSystem(void){
-	// DEBUG DEBUG DEBUG DEBUG DEBUG
-	// HERE ONLY FOR DEBUGGING - must be commented out
-	// memset(deviceSerNum, 0xFF, 10);
-	// DEBUG DEBUG DEBUG DEBUG DEBUG
 	
 	Serial.printf("startSystem(): device SN = %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X \n",
 		deviceSerNum[0], deviceSerNum[1], deviceSerNum[2], deviceSerNum[3], deviceSerNum[4],
@@ -369,7 +296,6 @@ void startSystem(void){
 	dev_auth_init((void const*)&deviceSerNum);
 
 	//serverbleStartAdvertising();
-
 	#ifdef USE_WIFI
 		//Get Device FirebaseDB ID
 		sprintf(ConfigFirebase.Device_Db_ID,"%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",deviceSerNum[0], deviceSerNum[1], deviceSerNum[2], deviceSerNum[3], deviceSerNum[4],
@@ -379,22 +305,8 @@ void startSystem(void){
 		//Init firebase values
 		AutoUpdate.ESP_Act_Ver = ParseFirmwareVersion((char *)(version_firmware));
 		AutoUpdate.PSOC5_Act_Ver = ParseFirmwareVersion((char *)(PSOC5_version_firmware));
-		AutoUpdate.BetaPermission=1;
-		AutoUpdate.Auto_Act=1;
-
-		StartWifiSubsystem=1;
 	#endif
 
-}
-
-void LED_Control(uint8_t luminosity, uint8_t r_level, uint8_t g_level, uint8_t b_level)
-{
-	if(mainFwUpdateActive || AutoUpdate.DescargandoArchivo){
-		return;
-	}
-	displayAll(luminosity,r_level,g_level,b_level);
-	//displayOne(luminosity,r_level,g_level,b_level,3);
-	return;
 }
 
 void proceso_recepcion(void)
@@ -513,8 +425,10 @@ void procesar_bloque(uint16 tipo_bloque){
 			modifyCharacteristic(&buffer_rx_local[231], 1, LED_LUMIN_COLOR_LUMINOSITY_LEVEL_CHAR_HANDLE);
 			luminosidad=buffer_rx_local[231];
 			modifyCharacteristic(&buffer_rx_local[232], 1, DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE);
+			Serial.println(buffer_rx_local[232]);
 			modifyCharacteristic(&buffer_rx_local[233], 1, MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
 
+			Serial.println(buffer_rx_local[233]);
 						
 			startSystem();
 			systemStarted = 1;
@@ -579,17 +493,11 @@ void procesar_bloque(uint16 tipo_bloque){
 			modifyCharacteristic(&buffer_rx_local[40], 1, DOMESTIC_CONSUMPTION_REAL_CURRENT_LIMIT_CHAR_HANDLE);
 			modifyCharacteristic(&buffer_rx_local[41], 1, ERROR_STATUS_ERROR_CODE_CHAR_HANDLE);		
 
-			if(luminosidad < 0x80)
-				LED_Control(buffer_rx_local[0], buffer_rx_local[1], buffer_rx_local[2], buffer_rx_local[3]);
-
 			#ifdef USE_WIFI
 				if(ConfigFirebase.FirebaseConnected && UpdatefireBaseData){
 					UpdateFirebaseStatus();
 				}
 			#endif
-		}
-		else{
-			Serial.println("Error");
 		}
 	}
 	else if(BLOQUE_DATE_TIME == tipo_bloque)
@@ -686,29 +594,21 @@ void procesar_bloque(uint16 tipo_bloque){
 	else if(LED_LUMIN_COLOR_LUMINOSITY_LEVEL_CHAR_HANDLE == tipo_bloque)
 	{
 		luminosidad = buffer_rx_local[0];
-		LED_Control(luminosidad, rojo, verde, azul);
-		Serial.println(luminosidad);
 		modifyCharacteristic(&buffer_rx_local[0], 1, LED_LUMIN_COLOR_LUMINOSITY_LEVEL_CHAR_HANDLE);
 	}
 	else if(LED_LUMIN_COLOR_R_LED_COLOUR_CHAR_HANDLE == tipo_bloque)
 	{
 		rojo = buffer_rx_local[0];
-		LED_Control(luminosidad, rojo, verde, azul);
-		Serial.println(rojo);
 		modifyCharacteristic(&buffer_rx_local[0], 1, LED_LUMIN_COLOR_R_LED_COLOUR_CHAR_HANDLE);
 	}
 	else if(LED_LUMIN_COLOR_G_LED_COLOUR_CHAR_HANDLE == tipo_bloque)
 	{
 		verde = buffer_rx_local[0];
-		LED_Control(luminosidad, rojo, verde, azul);
-		Serial.println(verde);
 		modifyCharacteristic(&buffer_rx_local[0], 1, LED_LUMIN_COLOR_G_LED_COLOUR_CHAR_HANDLE);
 	}
 	else if(LED_LUMIN_COLOR_B_LED_COLOUR_CHAR_HANDLE == tipo_bloque)
 	{
 		azul = buffer_rx_local[0];
-		LED_Control(luminosidad, rojo, verde, azul);
-		Serial.println(azul);
 		modifyCharacteristic(&buffer_rx_local[0], 1, LED_LUMIN_COLOR_B_LED_COLOUR_CHAR_HANDLE);
 	}
 	else if(RESET_RESET_CHAR_HANDLE == tipo_bloque)
@@ -794,7 +694,10 @@ void deviceConnectInd ( void ){
 	const void* outputvec1;
 	// This event is received when device is connected over GATT level 
 
-	LED_Control(50, 10, 10, 10);
+	luminosidad = 50;
+	rojo = 10;
+	verde = 10;
+	azul = 10;
 	
 
 	srand(aut_semilla);
@@ -815,6 +718,8 @@ void deviceConnectInd ( void ){
 
 	memcpy(authChallengeReply, outputvec1, 8);
 
+	//Delay para dar tiempo a conectar
+	vTaskDelay(500/portTICK_PERIOD_MS);
 	modifyCharacteristic(authChallengeQuery, 8, AUTENTICACION_MATRIX_CHAR_HANDLE);
 	Serial.print("Sending authentication");
 	vTaskDelay(500/portTICK_PERIOD_MS);
@@ -823,7 +728,10 @@ void deviceConnectInd ( void ){
 
 void deviceDisconnectInd ( void )
 {
-	LED_Control(50, 10, 10, 10);
+	luminosidad = 50;
+	rojo = 10;
+	verde = 10;
+	azul = 10;
 	authSuccess = 0;
 	memset(authChallengeReply, 0x00, 8);
 	//memset(authChallengeQuery, 0x00, 8);
@@ -884,6 +792,7 @@ void Disable_VELT1_CHARGER_services(void)
  * Update Tasks
  * **********************************************/
 void UpdateTask(void *arg){
+	Serial.println("\nComenzando actualizacion del PSOC5!!");
 	int Nlinea =0;
 	uint8_t err = 0;
 	String Buffer;
@@ -898,15 +807,11 @@ void UpdateTask(void *arg){
 	unsigned long blVer=0;
 	unsigned char rowData[512];
 
-	TaskHandle_t HandleLeds;
 
 	//Abrir el SPiffS
-	bool begin(bool formatOnFail=true, const char * basePath="/spiffs", uint8_t maxOpenFiles=10);
-	if(!SPIFFS.begin()){ 
+	if(!SPIFFS.begin(1,"/spiffs",1,"PSOC5")){ 
 		Serial.println("Error abriendo el SPIFFS");  
 	}
-
-	Serial.println("\nComenzando actualizacion del PSOC5!!");
 
 	File file = SPIFFS.open("/FreeRTOS_V6.cyacd"); 
 	if(!file || file.size() == 0){ 
@@ -927,7 +832,7 @@ void UpdateTask(void *arg){
 
 	err = CyBtldr_StartBootloadOperation(&serialLocal ,siliconID, siliconRev ,&blVer);
 	Serial.println(err);
-	xTaskCreate(LedUpdateDownload_Task, "Led Control", configMINIMAL_STACK_SIZE, (void*)1 , 8, &HandleLeds); 
+	
 	while(1){
 		if (file.available() && err == 0) {   
 			Buffer=file.readStringUntil('\n'); 
@@ -951,7 +856,6 @@ void UpdateTask(void *arg){
 			file.close();
 			updateTaskrunning=0;
 			setMainFwUpdateActive(0);
-			vTaskDelete(HandleLeds);
 			vTaskDelete(xHandle);		
 		}
 		
@@ -993,8 +897,10 @@ void UpdateESP(){
 }
 
 void controlInit(void){
-	xTaskCreate(controlTask,"TASK CONTROL",4096*2,NULL,1,NULL);
-	
+	//xTaskCreate(controlTask,"TASK CONTROL",4096*2,NULL,1,NULL);
+	//Freertos estatico
+	xTaskCreateStatic(LedControl_Task,"TASK LEDS",4096,NULL,PRIORIDAD_LEDS,xLEDStack,&xLEDBuffer); 
+	xTaskCreateStatic(controlTask,"TASK CONTROL",4096*4,NULL,PRIORIDAD_CONTROL,xControlStack,&xControlBuffer); 
 }
 
 

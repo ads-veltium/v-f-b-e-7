@@ -89,7 +89,7 @@ static bool _start_network_event_task(){
         }
     }
     if(!_network_event_task_handle){
-        xTaskCreateUniversal(_network_event_task, "network_event", 4096, NULL, ESP_TASKD_EVENT_PRIO - 1, &_network_event_task_handle, CONFIG_ARDUINO_EVENT_RUNNING_CORE);
+        xTaskCreateUniversal(_network_event_task, "network_event", 4096*4, NULL, ESP_TASKD_EVENT_PRIO - 1, &_network_event_task_handle, CONFIG_ARDUINO_EVENT_RUNNING_CORE);
         if(!_network_event_task_handle){
             log_e("Network Event Task Start Failed!");
             return false;

@@ -76,6 +76,7 @@ set(LIBRARY_SRCS
   libraries/WiFi/src/WiFiSTA.cpp
   libraries/WiFi/src/WiFiUdp.cpp
   libraries/Wire/src/Wire.cpp
+  libraries/FastLed/src/FastLed.cpp
   )
 
 set(BLE_SRCS

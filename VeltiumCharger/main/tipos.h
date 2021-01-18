@@ -13,7 +13,7 @@
 
 #ifndef TIPOS_H
 #define TIPOS_H
-#include "Arduino.h"
+
 
 #define EXT_FLASH_SIZE								8*1024*1024
 #define EXT_FLASH_PAGE_SIZE							4096
@@ -149,7 +149,7 @@ typedef struct{
 
 typedef struct{
 	//Auth configuration
-	char Device_Db_ID[25];
+	char Device_Db_ID[30];
 	uint8 Email[30];
 	uint8 Password[30];
 	uint8 User_Db_ID[30];
@@ -467,9 +467,9 @@ typedef struct{
 #define DOMESTIC_CONSUMPTION_DPC_MODE_DECL_HANDLE   (0x00A1u) /* Handle of Dpc_Mode characteristic declaration */
 #define DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE   (0x00A2u) /* Handle of Dpc_Mode characteristic */
 
-#define ERROR_STATUS_SERVICE_HANDLE   (0x00A1u) /* Handle of Error_Status service */
-#define ERROR_STATUS_ERROR_CODE_DECL_HANDLE   (0x00A2u) /* Handle of Error_Code characteristic declaration */
-#define ERROR_STATUS_ERROR_CODE_CHAR_HANDLE   (0x00A3u) /* Handle of Error_Code characteristic */
+#define ERROR_STATUS_SERVICE_HANDLE   (0x00A3u) /* Handle of Error_Status service */
+#define ERROR_STATUS_ERROR_CODE_DECL_HANDLE   (0x00A4u) /* Handle of Error_Code characteristic declaration */
+#define ERROR_STATUS_ERROR_CODE_CHAR_HANDLE   (0x00A5u) /* Handle of Error_Code characteristic */
 
 #endif
 

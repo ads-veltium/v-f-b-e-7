@@ -7,7 +7,7 @@
 
 #include <string.h>
 #include "cybtldr_parse.h"
-#include "OTA_Firmware_Upgrade.h"
+
 
 /* Pointer to the *.cyacd file containing the data that is to be read */
 static FILE* dataFile;
