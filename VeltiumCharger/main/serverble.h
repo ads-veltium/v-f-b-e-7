@@ -27,7 +27,7 @@ enum indexCharacteristicsAll
 	RCS_INS_CURR = 4,
 	RCS_RECORD   = 5,
 	RCS_SCH_MAT  = 6,
-	BINARY_BLOCK  = 7,
+	FW_DATA      = 7,
 };
 
 enum indexCharacteristics
@@ -39,7 +39,7 @@ enum indexCharacteristics
 	BLE_CHA_INS_CURR    = 3,
 	BLE_CHA_RCS_RECORD  = 4,
 	BLE_CHA_RCS_SCH_MAT = 5,
-	BLE_CHA_BINARY_BLOCK = 6,
+	BLE_CHA_FW_DATA     = 6,
 };
 
 typedef struct _BLE_FIELD

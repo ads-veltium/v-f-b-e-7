@@ -15,12 +15,12 @@
 extern "C" {
 #endif // __cplusplus
 
-#define RCS_MAX_IDX 62
+#define RCS_MAX_IDX 64
 #define RCS_NUM_IDX (1+RCS_MAX_IDX)
 
-#define RCS_MAX_HANDLE 0x00A5
+#define RCS_MAX_HANDLE 0x00AF
 
-#define RCS_CHR_OMNIBUS_SIZE 12
+#define RCS_CHR_OMNIBUS_SIZE 16
 
 // get characteristic index for given handle
 uint8_t rcs_idx_for_handle(uint16_t handle);
