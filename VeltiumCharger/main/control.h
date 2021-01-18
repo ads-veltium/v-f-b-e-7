@@ -11,7 +11,6 @@
 #include "DRACO_IO.h"
 
 #include "cybtldr_parse.h"
-#include "OTA_Firmware_Upgrade.h"
 #include "cybtldr_api.h"
 
 #include "tipos.h"
@@ -61,7 +60,9 @@
 //SISTEMA DE ACTUALIZACION
 #define VBLE_UPDATE    1
 #define VELT_UPDATE    2
-
+/*Direcciones del archivo*/
+#define PRIMERA_FILA 14
+#define TAMANO_FILA  527
 
 void updateCharacteristic(uint8_t* data, uint16_t len, uint16_t attrHandle);
 void procesar_bloque(uint16 tipo_bloque);

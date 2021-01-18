@@ -33,36 +33,15 @@
                 "color": "white",
                 "singleInstance": true,
                 "command": ". /home/joel/Documents/SDK_4/idf_4_0/esp-idf/./export.sh && cd /home/joel/Documents/fw-bird-esp32/VeltiumCharger/ && make clean",
-            }
+            },
+            {
+                "name": "FLASH",
+                "color": "white",
+                "singleInstance": true,
+                "command": ". /home/joel/Documents/SDK_4/idf_4_0/esp-idf/./export.sh && cd /home/joel/Documents/fw-bird-esp32/VeltiumCharger/ && make flash",
+            },
+
         ]
-    },
-    "files.associations": {
-        "string": "cpp",
-        "random": "cpp",
-        "array": "cpp",
-        "bitset": "cpp",
-        "string_view": "cpp",
-        "initializer_list": "cpp",
-        "regex": "cpp",
-        "utility": "cpp",
-        "*.tcc": "cpp",
-        "fstream": "cpp",
-        "condition_variable": "cpp",
-        "future": "cpp",
-        "map": "cpp",
-        "tuple": "cpp",
-        "stdexcept": "cpp",
-        "*.ipp": "cpp",
-        "deque": "cpp",
-        "list": "cpp",
-        "unordered_map": "cpp",
-        "unordered_set": "cpp",
-        "vector": "cpp",
-        "*.inc": "cpp",
-        "istream": "cpp",
-        "ostream": "cpp",
-        "cstddef": "cpp",
-        "cstring": "cpp"
     }
 }
 

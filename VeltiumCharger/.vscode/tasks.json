@@ -24,7 +24,7 @@
             },
         },
         {
-            "label": "monito",
+            "label": "monitor",
             "type": "shell",
             "command": ". /home/joel/SDK_4/idf_4_0/esp-idf/./export.sh && cd /home/joel/SDK_4/Veltium/VeltiumCharger/ && make monitor ",
             "group": "test",
