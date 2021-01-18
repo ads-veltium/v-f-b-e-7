@@ -10,6 +10,7 @@
  * ========================================
  */
 #include "control.h"
+#include "FirebaseClient.h"
 
 
 // TIPOS DE BLOQUE DE INTERCAMBIO CON BLE
@@ -110,10 +111,6 @@ void IRAM_ATTR onTimer10ms()
 	}
 
 
-<<<<<<< HEAD
-=======
-
->>>>>>> origin/Firmware-Update
 	if ( cnt_fin_bloque )
 	{
 		--cnt_fin_bloque;
@@ -306,15 +303,17 @@ void controlTask(void *arg)
 			}
 		}
 		
-		#ifdef USE_WIFI
+		
 		// Eventos 1 Seg
 		if(cont_seg != cont_seg_ant){
 			cont_seg_ant = cont_seg;
+			#ifdef USE_WIFI
 			if(mainFwUpdateActive == 0){
 				if(ConfigFirebase.FirebaseConnected && !serverbleGetConnected()){
 					//UpdateFirebaseControl();	
 				}	
 			}
+			#endif
 			if (ControlFirebase.start){
 				cnt_timeout_tx = TIMEOUT_TX_BLOQUE;
                 buffer_tx_local[0] = HEADER_TX;
@@ -355,7 +354,7 @@ void controlTask(void *arg)
 					}
 				}
 			}
-		#endif
+	
 		vTaskDelay(10 / portTICK_PERIOD_MS);	
 	}
 }
@@ -580,7 +579,8 @@ void procesar_bloque(uint16 tipo_bloque){
 
 			modifyCharacteristic(&buffer_rx_local[38], 2, DOMESTIC_CONSUMPTION_DOMESTIC_CURRENT_CHAR_HANDLE);
 			modifyCharacteristic(&buffer_rx_local[40], 1, DOMESTIC_CONSUMPTION_REAL_CURRENT_LIMIT_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[41], 1, ERROR_STATUS_ERROR_CODE_CHAR_HANDLE);		
+			modifyCharacteristic(&buffer_rx_local[41], 1, ERROR_STATUS_ERROR_CODE_CHAR_HANDLE);	
+	
 
 			if(luminosidad < 0x80)
 				LED_Control(buffer_rx_local[0], buffer_rx_local[1], buffer_rx_local[2], buffer_rx_local[3]);
@@ -591,9 +591,12 @@ void procesar_bloque(uint16 tipo_bloque){
 				}
 			#endif
 		}
-		else{
-			Serial.println("Error");
-		}
+			StatusFirebase.HPT_status[0] = (char)buffer_rx_local[4];
+			StatusFirebase.HPT_status[1] = (char)buffer_rx_local[5];
+			StatusFirebase.inst_current = (buffer_rx_local [16] + (buffer_rx_local[17]* 0x100))/10;
+			StatusFirebase.inst_voltage = (buffer_rx_local [18] + (buffer_rx_local[19]* 0x100))/10;
+			StatusFirebase.active_power = (buffer_rx_local [20] + (buffer_rx_local[21]* 0x100))/10;
+			StatusFirebase.error_code = buffer_rx_local [41];
 	}
 	else if(BLOQUE_DATE_TIME == tipo_bloque)
 	{

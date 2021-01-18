@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<meta http-equiv=”Content-Type” content=”text/html; charset=UTF-8″ />
 <html>
 <head>
     <title>Veltium Smart Chargers</title>
@@ -10,7 +11,7 @@
 <body>
 <form>
 <h1>VELTIUM SMART CHARGERS</h1>
-<h2> Datos: </h2>
+<h2> Datos </h2>
 <p>
   <span class="dht-labels">Estado del hilo piloto:</span> 
   <span id="hp">%HP%</span>
@@ -41,6 +42,17 @@
 
 <h3>Orden de carga</h3>
   %BUTTONPLACEHOLDER%
+
+<h4>Actualizaciones</h4>  
+<p>
+  <span class="dht-labels">Actualizaciones autom&aacuteticas</span> 
+  <span>%AUTOUPDATE%</span>
+</p>
+
+<p>
+  <span>%ACTUALIZAR%</span>
+</p>
+
 </form>
 </body>
 
@@ -104,11 +116,17 @@
 
     function Startbutton(element) {
       var xhr = new XMLHttpRequest();
-        if(element.clicked){ xhr.open("GET", "/update?output="+element.id+"&state=1", true); }
-        else { xhr.open("GET", "/update?output="+element.id+"&state=0", true); }
+        if(element.clicked){ xhr.open("GET", "/update?output="+element.id+"", true); }
+        else { xhr.open("GET", "/update?output="+element.id+"", true); }
       xhr.send();
     }
 
+    function toggleCheckbox(element) {
+      var xhr = new XMLHttpRequest();
+        if(element.checked){ xhr.open("GET", "/autoupdate?&state=1", true); }
+        else { xhr.open("GET", "/autoupdate?&state=0", true); }
+      xhr.send();
+    }
 
 </script>
 

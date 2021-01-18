@@ -34,7 +34,7 @@
 #include "controlLed.h"
 #include "DRACO_IO.h"
 #include "ESPAsyncWebServer.h"
-
+#include "FirebaseClient.h"
 
 #define USE_ETH
 
@@ -55,6 +55,7 @@ extern uint8_t StartWifiSubsystem;
 
 extern carac_Firebase_Status StatusFirebase;
 extern carac_Firebase_Control ControlFirebase;
+extern carac_Auto_Update AutoUpdate;
 
 int otaEnable = 0;
 
@@ -62,9 +63,13 @@ const char* host = "veltium";
 const char* ssid = "veltium";
 const char* password = "veltium";
 
-const char* CARGANDO = "output";
+const char* NUM_BOTON = "output";
+const char* ACTUALIZACIONES = "state";
+const char* USER = "userid";
+const char* PASSWORD = "pwd";
 
-String estado_boton = "1";
+String usuario;
+String contrasena;
 
 AsyncWebServer server(80);
 
@@ -83,7 +88,7 @@ AsyncWebServer server(80);
 
 #ifdef USE_WIFI_ARDUINO
 #include <WiFi.h>
-#include "FirebaseClient.h"
+
 #endif
 
 #ifdef USE_WIFI_ESP
@@ -236,6 +241,19 @@ void handle_NotFound(){
   CheckForUpdate();
 }
 
+void notFound(AsyncWebServerRequest *request) {
+  request->send(404, "text/plain", "Not found");
+}
+
+//Función para ver estado de la variable de actualizaciones automáticas 
+String outputState(){
+  if(AutoUpdate.Auto_Act == 1){
+    return "checked";
+  }
+  else {
+    return "";
+  }
+}
 
 //Funcion para sustituir los placeholders de los archivos html
 String processor(const String& var){
@@ -263,38 +281,82 @@ String processor(const String& var){
 	{
 		String buttons = "";
 		
-		buttons += "<p><label class=\"button\"><input type=\"button\" value=\"Cargar ahora\" style='height:30px;width:100px;background:#3498db;color:#fff' onclick=\"Startbutton(this)\" id=\"1\" " + estado_boton + "></label></p>";
-		buttons += "<p><label class=\"button\"><input type=\"button\" value=\"Parar\" style='height:30px;width:100px;background:#3498db;color:#fff' onclick=\"Startbutton(this)\" id=\"2\" " + estado_boton + "></label></p>";	
+		buttons += "<p><label class=\"button\"><input type=\"button\" value=\"Cargar ahora\" style='height:30px;width:100px;background:#3498db;color:#fff' onclick=\"Startbutton(this)\" id=\"1\"></label></p>";
+		buttons += "<p><label class=\"button\"><input type=\"button\" value=\"Parar\" style='height:30px;width:100px;background:#3498db;color:#fff' onclick=\"Startbutton(this)\" id=\"2\"></label></p>";	
 		
 		return buttons;
+	}
+	if (var == "AUTOUPDATE")
+	{
+		String checkbox = "";
+
+		checkbox += "<label class=\"switch\"><input type=\"checkbox\" onchange=\"toggleCheckbox(this)\" "+outputState()+"><span class=\"slider\"></span></label>";
+		return checkbox;
+	}
+	if (var == "ACTUALIZAR")
+	{
+		String boton = "";
+
+		boton += "<p><label class=\"button\"><input type=\"button\" value=\"Actualizar\" style='height:30px;width:100px;background:#3498db;color:#fff' onclick=\"Startbutton(this)\" id=\"3\"></label></p>";
+		return boton;
+	}
+	if (var == "F_PWD")
+	{	
+		String error = "";
+		
+		error +="<p>Invalid username or password</p>";
+	
+		return error;
 	}
 	
 	return String();
 }
 
-void InitServer(void) {
+String processor2(const String& var){
+	
+	String login = "";
+		
+	login +="";
+	
+	return login;
+	
+	return String();
+}
 
+void InitServer(void) {
+	
 	//Cargar los archivos del servidor
 	Serial.println(ESP.getFreeHeap());
 
-  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
-	request->send(SPIFFS, "/WebServer/login.html","text/html");
-  });
-  server.on("/serverIndex", HTTP_GET, [](AsyncWebServerRequest *request){
-	request->send(SPIFFS, "/WebServer/index.html","text/html");
-  });	
-  server.on("/datosIndex", HTTP_GET, [](AsyncWebServerRequest *request){
-	request->send(SPIFFS, "/WebServer/datos.html",String(), false,processor);
-  });
+    server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
+     request->send(SPIFFS, "/WebServer/login.html",String(), false, processor2);
+    });
+
+   server.on("/get", HTTP_GET, [] (AsyncWebServerRequest *request) {
+
+	usuario = request->getParam(USER)->value();
+	contrasena = request->getParam(PASSWORD)->value();
+
+	if(usuario!="admin" || contrasena!="admin" ){
+		
+		request->send(SPIFFS, "/WebServer/login.html",String(), false, processor);
+ 	
+	}
+	else
+	{
+		request->send(SPIFFS, "/WebServer/datos.html",String(), false, processor);
+
+	}
+
+   });
 
    server.on("/style.css", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(SPIFFS, "/WebServer/style.css", "text/css");
-  });
-
+   });
 
    server.on("/hp", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send_P(200, "text/plain", String(StatusFirebase.HPT_status).c_str());
-  });
+   });
 
    server.on("/corriente", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send_P(200, "text/plain", String(StatusFirebase.inst_current).c_str());
@@ -313,23 +375,48 @@ void InitServer(void) {
   });
 
    server.on("/update", HTTP_GET, [] (AsyncWebServerRequest *request) {
-    	String estado_cargando;
 
-		estado_cargando = request->getParam(CARGANDO)->value();
-
-	if (estado_cargando=="1")
+		String entrada;
+		entrada = request->getParam(NUM_BOTON)->value();
+		
+	if (entrada=="1")
 	{
 		ControlFirebase.start = 1;
 		ControlFirebase.stop = 0;
 		Serial.println("Has pulsado el boton start");
 	}
 	
-	if (estado_cargando=="2")
+	if (entrada=="2")
 	{
 		ControlFirebase.stop = 1;
 		ControlFirebase.start = 0;
 		Serial.println("Has pulsado el boton stop");
 	}
+
+	if (entrada=="3")
+	{
+	
+		Serial.println("Has pulsado el boton actualizar");
+		CheckForUpdate();
+	}
+   });
+
+   server.on("/autoupdate", HTTP_GET, [] (AsyncWebServerRequest *request) {
+    	String auto_updates;
+		
+		auto_updates = request->getParam(ACTUALIZACIONES)->value();
+
+		if (auto_updates == "1")
+		{
+			AutoUpdate.Auto_Act = 1;
+		}
+		else
+		{
+			AutoUpdate.Auto_Act = 0;
+		}
+
+		Serial.println(AutoUpdate.Auto_Act);
+	
    });
    Serial.println(ESP.getFreeHeap());
 

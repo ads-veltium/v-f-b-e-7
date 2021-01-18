@@ -6,22 +6,25 @@
     <link rel="stylesheet" type="text/css" href="style.css">
 </head>
 <body>
-    <form name=loginForm>
+    <form name=loginForm action="/get">
     <h1>VELTIUM Login</h1>
-    <input name=userid placeholder='User ID'> 
-    <input name=pwd placeholder=Password type=Password> 
-    <input type=submit onclick=check(this.form) class=btn value=Login>
-    </br></br>
+    <input name=userid placeholder='User ID'type="text"> 
+    <input name=pwd placeholder=Password type="password"> 
+
+<p>
+    <input type="submit" class=btn value=Login onclick= errormesage(this)>
+</p>
+<p>
+    <span>%F_PWD%</span>
+</p>
+</br></br>
     </form>
 </body>
 <script>
-function check(form) {
-    if(form.userid.value=='admin' && form.pwd.value=='admin')
-        {window.open('/serverIndex')}
-        else
-        {alert('Error Password or Username')}
+   function errormesage(element) {
+      var xhr = new XMLHttpRequest();
+      if(element.clicked){ xhr.open("GET", "/get", true); }
+        else { xhr.open("GET", "/", true); }
+        xhr.send();
     }
 </script>
-
-
-

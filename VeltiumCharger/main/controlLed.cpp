@@ -61,10 +61,6 @@ void displayOne( uint8_t i, uint8_t r, uint8_t g, uint8_t b, uint8_t pixeln)
 void changeOne( uint8_t i, uint8_t r, uint8_t g, uint8_t b, uint8_t pixeln)
 {
 	pixels[pixeln] = makeIRGBVal(i, r, g, b);
-<<<<<<< HEAD
-
-=======
->>>>>>> origin/Firmware-Update
 	ws2812_setColors(NUM_PIXELS, pixels);
 }
 
