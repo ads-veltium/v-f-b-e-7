@@ -8,7 +8,7 @@
 #ifndef MAIN_DRACO_IO_H_
 #define MAIN_DRACO_IO_H_
 
-#include <Arduino.h>
+#include "Arduino.h"
 
 #include "driver/gpio.h"
 #include "freertos/FreeRTOS.h"

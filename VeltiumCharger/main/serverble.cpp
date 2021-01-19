@@ -278,6 +278,8 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 					Serial.println("Updating VBLE");
 					UpdateType= VBLE_UPDATE;
 					if(!Update.begin(fileSize)){
+						Serial.println("File too big");
+						Update.end();
 						successCode = 0x00000001;
 					};
 				}
@@ -321,8 +323,8 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 				//Terminar el sistema de actualizacion
 			    if(UpdateType == VBLE_UPDATE){
 					if(Update.end()){	
-						Serial.println("Micro Actualizado!"); 
-						//reboot
+						Serial.println("Reiniciando en 4 segundos!"); 
+						vTaskDelay(pdMS_TO_TICKS(4000));
 						MAIN_RESET_Write(0);						
 						ESP.restart();
 					}

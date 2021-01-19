@@ -19,19 +19,18 @@
 
 #define LED_MAXIMO_PWM      1200     // Sobre 1200 de periodo
 
-
 StaticTask_t xControlBuffer ;
 static StackType_t xControlStack[4096*4] EXT_RAM_ATTR;
 StaticTask_t xLEDBuffer ;
-StackType_t xLEDStack[4096*2] EXT_RAM_ATTR;
+static StackType_t xLEDStack[4096*2] EXT_RAM_ATTR;
 
 //Variables Firebase
 carac_Auto_Update AutoUpdate EXT_RAM_ATTR;
 carac_Firebase_Configuration ConfigFirebase EXT_RAM_ATTR;
-carac_Firebase_Control ControlFirebase EXT_RAM_ATTR;
-carac_Firebase_Status StatusFirebase EXT_RAM_ATTR;
-
-uint8_t StartWifiSubsystem=0;
+carac_Comands Comands      EXT_RAM_ATTR;
+carac_Status  Status       EXT_RAM_ATTR;
+carac_Params  Params       EXT_RAM_ATTR;
+carac_Coms    Coms         EXT_RAM_ATTR;
 
 /* VARIABLES BLE */
 uint8 device_ID[16] = {"VCD17010001"};
@@ -60,24 +59,18 @@ uint8 cnt_timeout_tx = 0;
 
 // initial serial number
 uint8 initialSerNum[10] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-TaskHandle_t xHandle = NULL;
 
 uint8 mainFwUpdateActive = 0;
 
 uint8 dispositivo_inicializado = 0;
 uint8 cnt_timeout_inicio = TIMEOUT_INICIO;
-uint16 cnt_repeticiones_inicio = 100;	//1000;
-
-caract_measures measures;
-caract_charge_config charge_config;
-caract_name_users name_users;
+uint16 cnt_repeticiones_inicio = 1000;	//1000;
 
 uint8 status_hpt_anterior[2] = {'0','V' };
 uint16 inst_current_anterior = 0x0000;
-uint16 inst_current_actual = 0x0000;
 uint16 cnt_diferencia = 30;
 
-uint8 version_firmware[11] = {"VBLE2_0600"};	
+uint8 version_firmware[11] = {"VBLE2_0500"};	
 uint8 PSOC5_version_firmware[11] = {"VELT2_0400"};		
 
 uint8 systemStarted = 0;
@@ -89,13 +82,6 @@ void modifyCharacteristic(uint8* data, uint16 len, uint16 attrHandle);
 void proceso_recepcion(void);
 
 void Disable_VELT1_CHARGER_services(void);
-
-uint32 InterruptHpn;
-uint8 busyStatus;
-
-double flick1, flick2;
-int flick3,lum;
-int TIME_PARPADEO_VARIABLE = 600;
 
 /*******************************************************************************
  * Rutina de atencion a inerrupcion de timer (10mS)
@@ -111,9 +97,6 @@ void IRAM_ATTR onTimer10ms()
 	{
 		contador_cent_segundos = 0;
 	}
-
-
-
 	if ( cnt_fin_bloque )
 	{
 		--cnt_fin_bloque;
@@ -194,7 +177,7 @@ void controlTask(void *arg)
 									//startSystem();
 									mainFwUpdateActive = 1;
 									updateTaskrunning=1;
-									xTaskCreate(UpdateTask,"TASK UPDATE",4096,NULL,1,&xHandle);
+									xTaskCreate(UpdateTask,"TASK UPDATE",4096,NULL,1,NULL);
 								}
 							}
 						}
@@ -240,7 +223,7 @@ void controlTask(void *arg)
 
 					serialLocal.write(buffer_tx_local, 5);
 					vTaskDelay(500 / portTICK_PERIOD_MS);
-					xTaskCreate(UpdateTask,"TASK UPDATE",4096,NULL,1,&xHandle);
+					xTaskCreate(UpdateTask,"TASK UPDATE",4096,NULL,1,NULL);
 					updateTaskrunning=1;
 				}				
 			}
@@ -252,7 +235,7 @@ void controlTask(void *arg)
 		if(cont_seg != cont_seg_ant){
 			cont_seg_ant = cont_seg;
 
-			if (ControlFirebase.start){
+			if (Comands.start){
 				cnt_timeout_tx = TIMEOUT_TX_BLOQUE;
                 buffer_tx_local[0] = HEADER_TX;
                 buffer_tx_local[1] = (uint8)(CHARGING_BLE_MANUAL_START_CHAR_HANDLE >> 8);
@@ -262,7 +245,7 @@ void controlTask(void *arg)
                 controlSendToSerialLocal(buffer_tx_local, 5);              
 				}
 				
-			else if (ControlFirebase.stop)
+			else if (Comands.stop)
 			{
 				cnt_timeout_tx = TIMEOUT_TX_BLOQUE;
 				buffer_tx_local[0] = HEADER_TX;
@@ -413,7 +396,7 @@ void procesar_bloque(uint16 tipo_bloque){
 			modifyCharacteristic(&buffer_rx_local[197], 1, VCD_NAME_USERS_UI_X_USER_ID_CHAR_HANDLE);
 			modifyCharacteristic(&buffer_rx_local[198], 1, VCD_NAME_USERS_USER_INDEX_CHAR_HANDLE);
 			modifyCharacteristic(&buffer_rx_local[199], 10, VERSIONES_VERSION_FIRMWARE_CHAR_HANDLE);
-			//memcpy(PSOC5_version_firmware, &buffer_rx_local[199],10);
+			memcpy(PSOC5_version_firmware, &buffer_rx_local[199],10);
 			modifyCharacteristic(version_firmware, 10, VERSIONES_VERSION_FIRM_BLE_CHAR_HANDLE);
 			modifyCharacteristic(&buffer_rx_local[209], 2, RECORDING_REC_CAPACITY_CHAR_HANDLE);
 			modifyCharacteristic(&buffer_rx_local[211], 2, RECORDING_REC_LAST_CHAR_HANDLE);
@@ -461,25 +444,20 @@ void procesar_bloque(uint16 tipo_bloque){
 			{
 				memcpy(status_hpt_anterior, &buffer_rx_local[4], 2);
 				serverbleNotCharacteristic(&buffer_rx_local[4], 2, STATUS_HPT_STATUS_CHAR_HANDLE); 
-				memcpy(StatusFirebase.HPT_status, &buffer_rx_local[4], 2);
 				UpdatefireBaseData=1;
 			}
 
 			//Medidas
-			modifyCharacteristic(&buffer_rx_local[6], 2, STATUS_ICP_STATUS_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[8], 2, STATUS_MCB_STATUS_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[10], 2, STATUS_RCD_STATUS_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[12], 2, STATUS_CONN_LOCK_STATUS_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[14], 1, MEASURES_MAX_CURRENT_CABLE_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[6], 2, STATUS_ICP_STATUS_CHAR_HANDLE);						
+			modifyCharacteristic(&buffer_rx_local[10], 2, STATUS_RCD_STATUS_CHAR_HANDLE);			
+			modifyCharacteristic(&buffer_rx_local[12], 2, STATUS_CONN_LOCK_STATUS_CHAR_HANDLE);			
+			modifyCharacteristic(&buffer_rx_local[14], 1, MEASURES_MAX_CURRENT_CABLE_CHAR_HANDLE);	
 			modifyCharacteristic(&buffer_rx_local[16], 2, MEASURES_INST_CURRENT_CHAR_HANDLE);
-			inst_current_actual = buffer_rx_local[16] + (buffer_rx_local[17] * 0x100);
-
-			if(((inst_current_actual / 10) != (inst_current_anterior / 10)) && (serverbleGetConnected() || ConfigFirebase.FirebaseConnected)&& (--cnt_diferencia == 0))
+			if(((Status.Measures.instant_current) != (inst_current_anterior)) && (serverbleGetConnected() || ConfigFirebase.FirebaseConnected)&& (--cnt_diferencia == 0))
 			{
 				cnt_diferencia = 2; // A.D.S. Cambiado de 30 a 5
-				inst_current_anterior = inst_current_actual;
+				inst_current_anterior = Status.Measures.instant_current;
 				serverbleNotCharacteristic(&buffer_rx_local[16], 2, STATUS_HPT_STATUS_CHAR_HANDLE); 
-				StatusFirebase.inst_current=inst_current_actual;
 				UpdatefireBaseData=1;
 			}
 
@@ -490,10 +468,28 @@ void procesar_bloque(uint16 tipo_bloque){
 			modifyCharacteristic(&buffer_rx_local[28], 4, MEASURES_REACTIVE_ENERGY_CHAR_HANDLE);
 			modifyCharacteristic(&buffer_rx_local[32], 4, MEASURES_APPARENT_POWER_CHAR_HANDLE);
 			modifyCharacteristic(&buffer_rx_local[36], 1, MEASURES_POWER_FACTOR_CHAR_HANDLE);
-
 			modifyCharacteristic(&buffer_rx_local[38], 2, DOMESTIC_CONSUMPTION_DOMESTIC_CURRENT_CHAR_HANDLE);
 			modifyCharacteristic(&buffer_rx_local[40], 1, DOMESTIC_CONSUMPTION_REAL_CURRENT_LIMIT_CHAR_HANDLE);
 			modifyCharacteristic(&buffer_rx_local[41], 1, ERROR_STATUS_ERROR_CODE_CHAR_HANDLE);		
+			
+
+			//Pasar datos a Status
+			memcpy(Status.HPT_status, &buffer_rx_local[4], 2);
+			memcpy(Status.ICP_status, &buffer_rx_local[6], 2);
+			memcpy(Status.DC_Leack_status, &buffer_rx_local[10], 2);
+			memcpy(Status.Con_Lock, &buffer_rx_local[12], 2);
+			Status.Measures.max_current_cable=buffer_rx_local[14];
+			Status.Measures.instant_current = buffer_rx_local[16] + (buffer_rx_local[17] * 0x100);
+			Status.Measures.instant_voltage = buffer_rx_local[18] + (buffer_rx_local[19] * 0x100);
+			Status.Measures.active_power = buffer_rx_local[20] + (buffer_rx_local[21] * 0x100);
+			Status.Measures.reactive_power = buffer_rx_local[22] + (buffer_rx_local[23] * 0x100);
+			Status.Measures.active_energy = buffer_rx_local[24] + (buffer_rx_local[25] * 0x100) +(buffer_rx_local[26] * 0x1000) +(buffer_rx_local[27] * 0x10000);
+			Status.Measures.active_energy = buffer_rx_local[28] + (buffer_rx_local[29] * 0x100) +(buffer_rx_local[30] * 0x1000) +(buffer_rx_local[32] * 0x10000);			
+			Status.Measures.active_energy = buffer_rx_local[32] + (buffer_rx_local[33] * 0x100) +(buffer_rx_local[34] * 0x1000) +(buffer_rx_local[35] * 0x10000);		
+			Status.Measures.power_factor = buffer_rx_local[36];
+			Status.Measures.active_power = buffer_rx_local[38] + (buffer_rx_local[39] * 0x100);
+			Status.error_code = buffer_rx_local[41];
+
 
 			#ifdef USE_WIFI
 				if(ConfigFirebase.FirebaseConnected && UpdatefireBaseData){
@@ -541,12 +537,12 @@ void procesar_bloque(uint16 tipo_bloque){
 	}
 	else if(CHARGING_BLE_MANUAL_START_CHAR_HANDLE == tipo_bloque)
 	{
-		ControlFirebase.start=0;
+		Comands.start=0;
 		modifyCharacteristic(buffer_rx_local, 1, CHARGING_BLE_MANUAL_START_CHAR_HANDLE);
 	}
 	else if(CHARGING_BLE_MANUAL_STOP_CHAR_HANDLE == tipo_bloque)
 	{
-		ControlFirebase.stop=0;
+		Comands.stop=0;
 		modifyCharacteristic(buffer_rx_local, 1, CHARGING_BLE_MANUAL_STOP_CHAR_HANDLE);
 	}
 	else if(SCHED_CHARGING_SCHEDULE_MATRIX_CHAR_HANDLE == tipo_bloque)
@@ -663,7 +659,7 @@ void procesar_bloque(uint16 tipo_bloque){
 	}
 	else if(BOOT_LOADER_LOAD_SW_APP_CHAR_HANDLE== tipo_bloque){
 		Serial.println("UpdateTask Creada");
-		xTaskCreate(UpdateTask,"TASK UPDATE",4096,NULL,1,&xHandle);
+		xTaskCreate(UpdateTask,"TASK UPDATE",4096,NULL,1,NULL);
 		updateTaskrunning=1;
 	}
 }
@@ -855,7 +851,7 @@ void UpdateTask(void *arg){
 			file.close();
 			updateTaskrunning=0;
 			setMainFwUpdateActive(0);
-			vTaskDelete(xHandle);		
+			vTaskDelete(NULL);		
 		}
 		
 	}

@@ -42,6 +42,30 @@
             },
 
         ]
+    },
+    "C_Cpp.errorSquiggles": "Enabled",
+    "files.associations": {
+        "array": "cpp",
+        "*.tcc": "cpp",
+        "memory": "cpp",
+        "future": "cpp",
+        "istream": "cpp",
+        "functional": "cpp",
+        "tuple": "cpp",
+        "utility": "cpp",
+        "bitset": "cpp",
+        "deque": "cpp",
+        "list": "cpp",
+        "string": "cpp",
+        "unordered_map": "cpp",
+        "unordered_set": "cpp",
+        "vector": "cpp",
+        "string_view": "cpp",
+        "initializer_list": "cpp",
+        "regex": "cpp",
+        "*.ipp": "cpp",
+        "random": "cpp",
+        "limits": "cpp"
     }
 }
 

@@ -18,25 +18,27 @@ const char* veltiumbackend_password="Escolapios2";
 
 //Define FirebaseESP32 data object
 
-FirebaseData *firebaseData = (FirebaseData *) ps_malloc(sizeof(FirebaseData));
-FirebaseAuth *auth = (FirebaseAuth *) ps_malloc(sizeof(FirebaseAuth));
+//FirebaseData *firebaseData = (FirebaseData *) ps_malloc(sizeof(FirebaseData));
+//FirebaseAuth *auth = (FirebaseAuth *) ps_malloc(sizeof(FirebaseAuth));
+
+static FirebaseData *firebaseData EXT_RAM_ATTR;
+static FirebaseAuth *auth EXT_RAM_ATTR;
 
 String url;
 
 //Extern variables
-extern uint8 version_firmware[11];
-extern uint8 PSOC5_version_firmware[11];	 
-extern carac_Auto_Update AutoUpdate;
 extern carac_Firebase_Configuration ConfigFirebase;
-extern carac_Firebase_Control ControlFirebase;
-extern carac_Firebase_Status StatusFirebase;
+extern carac_Comands                Comands;
+extern carac_Status                 Status;
+extern carac_Auto_Update            AutoUpdate;
 
 TaskHandle_t xHandleUpdateTask=NULL;
 
 StaticTask_t xFirebaseBuffer;
 static StackType_t xFirebaseStack[STACK_SIZE] EXT_RAM_ATTR;
-//StaticTask_t xDownloadBuffer;
-//StackType_t xDownloadStack[4096*2] EXT_RAM_ATTR;
+static FirebaseJson Lectura_Json              EXT_RAM_ATTR;
+static FirebaseJson Escritura_Json            EXT_RAM_ATTR;
+static FirebaseJsonData Datos_Json            EXT_RAM_ATTR; 
 
 //Semaforo de acceso a firebase
 SemaphoreHandle_t firebase_Access = NULL;
@@ -94,6 +96,7 @@ void initFirebaseClient(){
 }
 
 void stopFirebaseClient(){
+
     if(xHandleUpdateTask!=NULL){
       vTaskSuspend(xHandleUpdateTask);
     }
@@ -130,6 +133,7 @@ void resumeFirebaseClient(){
 uint8_t getfirebaseClientStatus(){
   return ConfigFirebase.FirebaseConnected;
 }
+
 /*************************
  Comprobar Actualizaciones
 *************************/
@@ -140,9 +144,9 @@ void CheckForUpdate(){
   String PSOC5_Ver;
   url="";
   uint8 tipo=0;
-  AutoUpdate.BetaPermission=1;
+  //AutoUpdate.BetaPermission=1;
   Serial.println("Updating firmware");
-  if(AutoUpdate.BetaPermission){
+  if(1/*AutoUpdate.BetaPermission*/){
     //Check PSOC5 firmware updates
     Firebase.getString(*firebaseData, "/prod/fw/beta/VELT2/verstr", PSOC5_Ver);
     uint16 Psoc_int_Version=ParseFirmwareVersion(PSOC5_Ver);
@@ -182,14 +186,32 @@ void CheckForUpdate(){
  Acutalizar la base de datos con el estado actual
 ***************************************************/
 void UpdateFirebaseStatus(){
-  if(xSemaphoreTake(firebase_Access,  portMAX_DELAY )){
-  
+
+  if(xSemaphoreTake(firebase_Access,  pdMS_TO_TICKS(10) )){
     Serial.println("UPDATE FIREBASE CALLED");
+    
     String Path="/prod/devices/";
     Path=Path + (char *)ConfigFirebase.Device_Db_ID + "/status/" ;
+    Serial.println(Status.HPT_status);
+    Escritura_Json.set("HPT_Status",String(Status.HPT_status));
+    Escritura_Json.set("ICP_Status",String(Status.ICP_status));
+    Escritura_Json.set("DC_Leackage_Status", String(Status.DC_Leack_status));
+    Escritura_Json.set("Con_Lock", String(Status.Con_Lock));
+    Escritura_Json.set("Max_Current_Cable", Status.Measures.max_current_cable);
+    Escritura_Json.set("Medidas_Fase_A/power_factor", Status.Measures.power_factor);
+    Escritura_Json.set("Medidas_Fase_A/instant_current", Status.Measures.instant_current);
+    Escritura_Json.set("Medidas_Fase_A/instant_voltage", Status.Measures.instant_voltage);
+    Escritura_Json.set("Medidas_Fase_A/active_power", Status.Measures.active_power);
+    Escritura_Json.set("Medidas_Fase_A/reactive_power", Status.Measures.reactive_power);
+    Escritura_Json.set("Medidas_Fase_A/active_energy", Status.Measures.active_energy);
+    Escritura_Json.set("Medidas_Fase_A/reactive_energy", Status.Measures.reactive_energy);
+    Escritura_Json.set("Medidas_Fase_A/apparent_power", Status.Measures.apparent_power);
+    Escritura_Json.set("Medidas_Fase_A/consumo_domestico", Status.Measures.consumo_domestico);
+    Escritura_Json.set("Codigo_Error",Status.error_code);
+    
+    //Escritura_Json.set("Time");
 
-    Firebase.setString(*firebaseData,Path+"HP",StatusFirebase.HPT_status);
-    Firebase.setInt(*firebaseData,Path+"current",StatusFirebase.inst_current);
+    Firebase.updateNode(*firebaseData, Path, Escritura_Json);
     xSemaphoreGive(firebase_Access);
   }
 }
@@ -200,38 +222,39 @@ void UpdateFirebaseStatus(){
 void UpdateFirebaseControl_Task(void *arg){
   
   String Base_Path="/prod/devices/";
-  Base_Path=Base_Path + (char *)ConfigFirebase.Device_Db_ID;
-  
-  bool Ret;
+  Base_Path=Base_Path + (char *)ConfigFirebase.Device_Db_ID+"/control/";
 
   while(1){
-    if(xSemaphoreTake(firebase_Access,  100/configTICK_RATE_HZ)){
-      Ret=false;
-      Firebase.getBool(*firebaseData,Base_Path+"/control/start",Ret);
-      
-      if(Ret){
-        ControlFirebase.start=1;
-        Firebase.setBool(*firebaseData,Base_Path+"/control/start",false);
-      }
-      else{
-        Firebase.getBool(*firebaseData,Base_Path+"/control/stop",Ret);
-        if(Ret){
-          ControlFirebase.stop=1;
-          Firebase.setBool(*firebaseData,Base_Path+"/control/stop",false);
-        }
-      }
-      
-      if(!Ret){
+    if(xSemaphoreTake(firebase_Access,  pdMS_TO_TICKS(100))){
 
-        Firebase.getBool(*firebaseData,Base_Path +"/fw/StartUpdate",Ret);
-        if(Ret){
-          Firebase.setBool(*firebaseData,Base_Path+"/fw/StartUpdate",false);
-          CheckForUpdate();
-        }
+      Firebase.get(*firebaseData,Base_Path);
+      Lectura_Json = firebaseData->jsonObject();
+
+      Lectura_Json.get(Datos_Json, "start");
+      Comands.start = ((Datos_Json.boolValue) ? Datos_Json.boolValue : Comands.start);
+
+      Lectura_Json.get(Datos_Json, "stop");
+      Comands.stop = ((Datos_Json.boolValue) ? Datos_Json.boolValue : Comands.stop);
+
+      Lectura_Json.get(Datos_Json, "reset");
+      Comands.Reset = ((Datos_Json.boolValue) ? Datos_Json.boolValue : Comands.Reset);
+
+      Lectura_Json.get(Datos_Json, "Fw_Update");
+      Comands.Fw_Update = ((Datos_Json.boolValue) ? Datos_Json.boolValue : Comands.Fw_Update);
+
+      Lectura_Json.get(Datos_Json, "Lim_Corriente");
+      Comands.Limite_Corriente = ((Datos_Json.intValue) ? Datos_Json.intValue : Comands.Limite_Corriente);
+
+      if(Comands.start || Comands.stop || Comands.Reset || Comands.Fw_Update){
+        Lectura_Json.set("start", false);
+        Lectura_Json.set("stop", false);
+        Lectura_Json.set("reset", false);
+        Lectura_Json.set("Fw_Update", false);
+        Firebase.updateNode(*firebaseData, Base_Path, Lectura_Json);
       }
       xSemaphoreGive(firebase_Access);
     } 
-    vTaskDelay(1000/configTICK_RATE_HZ); 
+    vTaskDelay(pdMS_TO_TICKS(1000)); 
   }
 }
 
@@ -239,7 +262,6 @@ void UpdateFirebaseControl_Task(void *arg){
  Descargar archivos de actualizacion
 ***************************************************/
 void DownloadTask(void *arg){
-  AutoUpdate.DescargandoArchivo=1;
 
   File UpdateFile;
   String FileName;
@@ -336,6 +358,6 @@ void DownloadTask(void *arg){
   }
 
   //Eliminar la tarea
-  AutoUpdate.DescargandoArchivo=0;
+  //AutoUpdate.DescargandoArchivo=0;
   vTaskDelete(NULL);
 }

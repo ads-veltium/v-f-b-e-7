@@ -59,40 +59,17 @@ typedef	uint8_t			uint8;
 typedef	uint16_t		uint16;
 typedef	uint32_t		uint32;
 
-
 typedef struct{
-	char HPT_status[2];
-	char ICP_status[2];
-	char MCB_status[2];
-	char RCD_status[2];
-	char conn_lock_status[2];
-	uint8 max_current_cable;
-	uint16 inst_current;
-	uint16 inst_voltage;
-	uint16 active_power;
-	uint16 reactive_power;
-	uint32 actve_energy;
-	uint32 reactve_energy;
-	uint32 apparent_power;
-	uint8 power_factor;
+	uint8  max_current_cable;
+	uint8  power_factor;
 	uint16 consumo_domestico;
-	uint8 limite_corriente;
-	uint8 error_code;
-	uint8 HPT_status_automata;
-} caract_status;
-
-typedef struct{
-	uint8 max_current_cable;
-	uint8 instalation_current_limit;
-	uint8 current_command;
 	uint16 instant_current;
 	uint16 instant_voltage;
 	uint16 active_power;
 	uint16 reactive_power;
-	uint8 active_energy;
-	uint8 reactive_energy;
+	uint32 active_energy;
+	uint32 reactive_energy;
 	uint32 apparent_power;
-	uint8 power_factor;
 } caract_measures;
 
 typedef struct{
@@ -116,40 +93,80 @@ typedef struct{
 	uint8 user_index;
 } caract_name_users;
 
-typedef struct{
-	uint8 start_RCD_PE_test;
-	uint8 RCD_PE_test_result;
-	uint8 start_MCB_test;
-	uint8 MCB_test_result;
-} caract_test_ctl;
 
 typedef struct{
 	uint8 luminosity;
 	uint8 R_led_level;
 	uint8 G_led_level;
 	uint8 B_led_level;
+
 } caract_led_ctl;
 
 
-//Firebase Structs
+/************* Estructuras para Firebase ************/
 typedef struct{
-	uint8 start;
-	uint8 stop;
-
-} carac_Firebase_Control;
+	bool start;
+	bool stop;
+	bool Reset;
+	bool Fw_Update;
+	uint8 Limite_Corriente;
+	uint32 TimeStamp;
+} carac_Comands;
 
 typedef struct{
+	char Con_Lock[2];
 	char HPT_status[2];
-	uint16 inst_current;
-	uint16 inst_voltage;
-	uint16 active_power;
-	uint8 error_code;
+	char ICP_status[2];
+	char DC_Leack_status[2];
+	uint8  error_code;
+	caract_measures Measures;
+	caract_date_time Time;
 
-} carac_Firebase_Status;
+} carac_Status;
+
+typedef struct{
+	bool   Ubicacion_Sensor;
+	bool   CDP_On;
+	char   Fw_Update_mode[2];
+	char   autentication_mode[2];
+	uint8  inst_current_limit;
+	uint16 potencia_contratada;
+	uint32 Timestamp;
+
+} carac_Params;
+
+typedef struct{
+	bool ON;
+	String AP;
+	String Pass;
+}carac_WIFI;
+
+typedef struct{
+	bool ON;
+	bool Auto;
+	String AP;
+	String Pass;
+	String IP1;
+	String IP2;
+	String Gateway;
+	String Mask;
+}carac_ETH;
+
+typedef struct{
+	bool ON;
+	String APN;
+	String Pass;
+}carac_MODEM;
+
+typedef struct{
+	carac_WIFI   Wifi;
+	carac_ETH     ETH;
+	carac_MODEM   GSM;
+} carac_Coms;
 
 typedef struct{
 	//Auth configuration
-	char Device_Db_ID[30];
+	char  Device_Db_ID[30];
 	uint8 Email[30];
 	uint8 Password[30];
 	uint8 User_Db_ID[30];
@@ -158,7 +175,6 @@ typedef struct{
 	uint8 FirebaseConnected;
 
 }carac_Firebase_Configuration;
-
 typedef struct{
 	//configuracion
 	uint8 BetaPermission;
@@ -171,14 +187,11 @@ typedef struct{
 	uint8 DescargandoArchivo;
 
 } carac_Auto_Update;
-
 #define RCD_NO_ACTIVO
 #undef RCD_ACTIVO
 // Variable para definir si el Medidor doméstico mide la corriente total o sólo la vivienda  A.D.S.
 #undef MEDIDA_CONSUMO_TOTAL
 #define MEDIDA_CONSUMO_VIVIENDA
-
-
 
 /***************************************
 * Conditional Compilation Parameters

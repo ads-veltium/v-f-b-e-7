@@ -7,7 +7,7 @@
 //Extern configuration variables
 extern uint8 luminosidad, rojo, verde, azul;
 extern carac_Auto_Update AutoUpdate;
-extern uint16 inst_current_actual;
+extern carac_Status  Status;
 
 //Adafruit_NeoPixel strip EXT_RAM_ATTR;
 CRGB leds[NUM_PIXELS] EXT_RAM_ATTR;
@@ -133,8 +133,8 @@ void LedControl_Task(void *arg){
 			if (luminosidad & 0x80 && rojo == 0 && verde == 0){ //Cargando				
 				uint8 lumin_limit=50;
 
-				if(inst_current_actual>90){
-					lumin_limit=(3200-inst_current_actual)*100/3200;
+				if(Status.Measures.instant_current>900){
+					lumin_limit=(32000-Status.Measures.instant_current)*100/32000;
 					if(lumin_limit<10){
 						lumin_limit=10;
 					}
@@ -190,6 +190,6 @@ void LedControl_Task(void *arg){
 		}
 
 		
-		vTaskDelay(Delay/portTICK_PERIOD_MS);
+		vTaskDelay(pdMS_TO_TICKS(Delay));
 	}
 }
