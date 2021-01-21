@@ -67,7 +67,8 @@
         "random": "cpp",
         "limits": "cpp",
         "fstream": "cpp"
-    }
+    },
+    "git.ignoreLimitWarning": true
 }
 
 

@@ -501,9 +501,9 @@ void procesar_bloque(uint16 tipo_bloque){
 
 
 			#ifdef USE_WIFI
-				if(ConfigFirebase.FirebaseConnected && UpdatefireBaseData){
+				/*if(ConfigFirebase.FirebaseConnected){
 					UpdateFirebaseStatus();
-				}
+				}*/
 			#endif
 		}
 	}

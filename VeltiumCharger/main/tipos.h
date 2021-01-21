@@ -173,6 +173,7 @@ typedef struct{
 
 	//Firebase conection Status
 	uint8 FirebaseConnected;
+	uint8 InternetConection;
 
 }carac_Firebase_Configuration;
 typedef struct{

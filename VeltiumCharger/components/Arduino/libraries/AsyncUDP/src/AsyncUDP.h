@@ -7,7 +7,7 @@
 #include <functional>
 extern "C" {
 #include "lwip/ip_addr.h"
-#include <tcpip_adapter.h>
+#include "esp_netif.h"
 #include "freertos/queue.h"
 #include "freertos/semphr.h"
 }
@@ -29,7 +29,7 @@ protected:
     size_t _index;
     size_t _size;
 public:
-    AsyncUDPMessage(size_t size=CONFIG_LWIP_TCP_MSS);
+    AsyncUDPMessage(size_t size=CONFIG_TCP_MSS);
     virtual ~AsyncUDPMessage();
     size_t write(const uint8_t *data, size_t len);
     size_t write(uint8_t data);

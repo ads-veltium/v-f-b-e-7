@@ -20,7 +20,11 @@ void displayOne( uint8_t i, uint8_t color, uint8_t pixeln){
 	{
 		leds[j].setHSV(0,0,0);
 	}
-	leds[pixeln].setHSV(color, 255,i);
+	uint8_t s = 255;
+	if(color==BLANCO){
+		s=0;
+	}
+	leds[pixeln].setHSV(color, s,i);
 	FastLED.show();
 }
 
@@ -28,15 +32,22 @@ void displayOne( uint8_t i, uint8_t color, uint8_t pixeln){
 void changeOne( uint8_t i, uint8_t color, uint8_t pixeln)
 {
 	i=map(i,0,100,0,255);
-
-	leds[pixeln].setHSV(color, 255,i);
+	uint8_t s = 255;
+	if(color==BLANCO){
+		s=0;
+	}
+	leds[pixeln].setHSV(color, s,i);
 	FastLED.show();
 }
 
 void displayAll( uint8_t i, uint8_t color)
 {
 	i=map(i,0,100,0,255);
-	FastLED.showColor(CHSV(color, 255, i));
+	uint8_t s = 255;
+	if(color==BLANCO){
+		s=0;
+	}
+	FastLED.showColor(CHSV(color, s, i));
 }
 
 void initLeds ( void )
@@ -76,6 +87,7 @@ void LedControl_Task(void *arg){
 	initLeds();
 
 	while(1){
+
 		
 		if(UpdateStatus.InstalandoArchivo && !Efectos){
 			Efectos=1;
@@ -91,6 +103,7 @@ void LedControl_Task(void *arg){
 		}
 
 		Efectos=UpdateStatus.InstalandoArchivo;
+
 		//Descarga:
 		if(Efectos){			
 			LedPointer++;

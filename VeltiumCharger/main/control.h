@@ -2,7 +2,7 @@
 #define __CONTROL_MAIN
 
 //configuration
-//#define USE_WIFI
+#define USE_WIFI
 #define USE_DRACO_BLE
 
 #include "Arduino.h"
@@ -21,6 +21,7 @@
 #include "HardwareSerialMOD.h"
 #include <math.h>
 #include "SPIFFS.h"
+
 /*********** Pruebas tar.gz **************/
 //Descomentar para probar el sistema de actualizacion con firmware comprimido
 //#define UPDATE_COMPRESSED

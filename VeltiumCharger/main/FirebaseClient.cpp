@@ -12,18 +12,20 @@
 #include "FirebaseClient.h"
 
 const char* veltiumbackend_firebase_project = "veltiumdev-default-rtdb.firebaseio.com";
-const char* veltiumbackend_database_secret = "1mJtIoJnreTFPbyTFQgdN0hj3GQRQo50SJOYE7Al";
-const char* veltiumbackend_user="joelmartinez@veltium.com";
-const char* veltiumbackend_password="Escolapios2";
+const char* veltiumbackend_database_secret  = "1mJtIoJnreTFPbyTFQgdN0hj3GQRQo50SJOYE7Al";
+const char* veltiumbackend_api_key          = "AIzaSyCYZpVNUOQvrXvc3qETxCqX4DPfp3Fwe3w";
+const char* veltiumbackend_user             = "joelmartinez@veltium.com";
+const char* veltiumbackend_password         = "Escolapios2";
 
-//Define FirebaseESP32 data object
+//Define FIREBASE data object
 
 //FirebaseData *firebaseData = (FirebaseData *) ps_malloc(sizeof(FirebaseData));
 //FirebaseAuth *auth = (FirebaseAuth *) ps_malloc(sizeof(FirebaseAuth));
+//FirebaseConfig *config = (FirebaseConfig *) ps_malloc(sizeof(FirebaseConfig));
 
-static FirebaseData *firebaseData EXT_RAM_ATTR;
-static FirebaseAuth *auth EXT_RAM_ATTR;
-//static FirebaseConfig *config EXT_RAM_ATTR;
+static FirebaseData firebaseData EXT_RAM_ATTR;
+/*static FirebaseAuth   *auth         EXT_RAM_ATTR;
+static FirebaseConfig *config       EXT_RAM_ATTR;*/
 
 String url;
 
@@ -33,16 +35,16 @@ extern carac_Comands                Comands;
 extern carac_Status                 Status;
 extern carac_Update_Status          UpdateStatus;
 
-TaskHandle_t xHandleUpdateTask=NULL;
-
-StaticTask_t xFirebaseBuffer;
 static StackType_t xFirebaseStack[STACK_SIZE] EXT_RAM_ATTR;
 static FirebaseJson Lectura_Json              EXT_RAM_ATTR;
 static FirebaseJson Escritura_Json            EXT_RAM_ATTR;
 static FirebaseJsonData Datos_Json            EXT_RAM_ATTR; 
 
+//RTOS 
 //Semaforo de acceso a firebase
 SemaphoreHandle_t firebase_Access = NULL;
+TaskHandle_t xHandleUpdateTask=NULL;
+StaticTask_t xFirebaseBuffer;
 
 void DownloadTask(void *arg);
 
@@ -61,18 +63,24 @@ uint16 ParseFirmwareVersion(String Texto){
 /*************************
  Client control functions
 *************************/
-
 void initFirebaseClient(){
     Serial.println("INIT Firebase Client");
 
-    firebaseData = new FirebaseData();
+    FirebaseAuth   auth;
+    FirebaseConfig config;
 
-    Firebase.begin(veltiumbackend_firebase_project,veltiumbackend_database_secret);
+    config.api_key = veltiumbackend_api_key;
+    config.host    = veltiumbackend_firebase_project;
 
-    //Firebase.reconnectWiFi(true);
+    auth.user.email    = veltiumbackend_user;
+    auth.user.password = veltiumbackend_password;
+
+    Firebase.begin(&config,&auth);
+    Firebase.reconnectWiFi(false);
+
     //Set database read timeout to 1 minute (max 15 minutes)
-    Firebase.setReadTimeout(*firebaseData, 1000 * 60);
-    Firebase.setwriteSizeLimit(*firebaseData, "tiny");
+    //Firebase.setReadTimeout(*firebaseData, 1000 * 60);
+    //Firebase.setwriteSizeLimit(*firebaseData, "tiny");
 
     if(firebase_Access==NULL){
       vSemaphoreCreateBinary(firebase_Access);
@@ -85,13 +93,6 @@ void initFirebaseClient(){
     else{
       xHandleUpdateTask = xTaskCreateStatic(UpdateFirebaseControl_Task,"Firebase Update",STACK_SIZE,NULL,PRIORIDAD_FIREBASE,xFirebaseStack,&xFirebaseBuffer );
     }
-
-    #ifndef USE_DRACO_BLE
-      
-      memcpy(&ConfigFirebase.Device_Db_ID,"CD012012140000049461C051E014",29);
-      UpdateStatus.BetaPermission=1;
-
-    #endif
 
     ConfigFirebase.FirebaseConnected=1;
 
@@ -106,14 +107,12 @@ void stopFirebaseClient(){
     ConfigFirebase.FirebaseConnected=0;
     Serial.println("Stop Firebase Client");
 
-    Firebase.endStream(*firebaseData);
-    Firebase.removeStreamCallback(*firebaseData);
-    Firebase.end(*firebaseData);
+    Firebase.RTDB.endStream(&firebaseData);
+    Firebase.RTDB.removeStreamCallback(&firebaseData);
+    Firebase.RTDB.end(&firebaseData);
 
     //Deallocate
-    delete firebaseData;
-    firebaseData = nullptr;   
-
+    delete &firebaseData;  
 }
 
 void pauseFirebaseClient(){
@@ -153,30 +152,30 @@ void CheckForUpdate(){
   if(UpdateStatus.BetaPermission){
 
     //Check PSOC5 firmware updates
-    Firebase.getString(*firebaseData, "/prod/fw/beta/VELT2/verstr", PSOC5_Ver);
+    Firebase.RTDB.getString(&firebaseData, "/prod/fw/beta/VELT2/verstr", &PSOC5_Ver);
     uint16 Psoc_int_Version=ParseFirmwareVersion(PSOC5_Ver);
 
     if(UpdateStatus.PSOC5_Act_Ver<Psoc_int_Version){
-      Firebase.getString(*firebaseData, "/prod/fw/beta/VELT2/url", url);
+      Firebase.RTDB.getString(&firebaseData, "/prod/fw/beta/VELT2/url", &url);
       tipo=1;
       Serial.println("Updating PSOC5 with Beta firmware");
     }
 
     //Check ESP32 firmware updates
     else{
-      Firebase.getString(*firebaseData, "/prod/fw/beta/VBLE2/verstr", ESP_Ver);
+      Firebase.RTDB.getString(&firebaseData, "/prod/fw/beta/VBLE2/verstr", &ESP_Ver);
       uint16 ESP_int_Version=ParseFirmwareVersion(ESP_Ver);
 
       if(UpdateStatus.ESP_Act_Ver<ESP_int_Version){
         Serial.println("Updating ESP32 with Beta firmware");
         tipo=2;
-        Firebase.getString(*firebaseData, "/prod/fw/beta/VBLE2/url", url);
+        Firebase.RTDB.getString(&firebaseData, "/prod/fw/beta/VBLE2/url", &url);
       }
     }  
   }
   else{
-    Firebase.getString(*firebaseData, "/prod/fw/prod/VELT2/verstr", PSOC5_Ver);
-    Firebase.getString(*firebaseData, "/prod/fw/prod/VBLE2/verstr", ESP_Ver);
+    Firebase.RTDB.getString(&firebaseData, "/prod/fw/prod/VELT2/verstr", &PSOC5_Ver);
+    Firebase.RTDB.getString(&firebaseData, "/prod/fw/prod/VBLE2/verstr", &ESP_Ver);
   }
   if(tipo!=0) {
     xTaskCreate(DownloadTask,"TASK DOWNLOAD",4096*2,(void*) tipo,PRIORIDAD_DESCARGA, NULL);
@@ -216,7 +215,7 @@ void UpdateFirebaseStatus(){
     
     //Escritura_Json.set("Time");
 
-    Firebase.updateNode(*firebaseData, Path, Escritura_Json);
+    Firebase.RTDB.updateNode(&firebaseData, Path.c_str(), &Escritura_Json);
     xSemaphoreGive(firebase_Access);
   }
 }
@@ -230,10 +229,15 @@ void UpdateFirebaseControl_Task(void *arg){
   Base_Path=Base_Path + (char *)ConfigFirebase.Device_Db_ID+"/control/";
 
   while(1){
-    if(xSemaphoreTake(firebase_Access,  pdMS_TO_TICKS(100))){
-
-      Firebase.get(*firebaseData,Base_Path);
-      Lectura_Json = firebaseData->jsonObject();
+    if(xSemaphoreTake(firebase_Access,  pdMS_TO_TICKS(10))){
+      
+      QueryFilter query;
+      if(!Firebase.RTDB.getJSON(&firebaseData,"/prod/devices/CD012012140000049461C051E014/control/",&query,&Lectura_Json)){  
+          Serial.println(Base_Path.c_str()); 
+          //Serial.print("Error en actualizacion de firebase: ");
+          //Serial.println(firebaseData.errorReason()); 
+      }
+      Lectura_Json = firebaseData.jsonObject();
 
       Lectura_Json.get(Datos_Json, "start");
       Comands.start = ((Datos_Json.boolValue) ? Datos_Json.boolValue : Comands.start);
@@ -255,8 +259,14 @@ void UpdateFirebaseControl_Task(void *arg){
         Lectura_Json.set("stop", false);
         Lectura_Json.set("reset", false);
         Lectura_Json.set("Fw_Update", false);
-        Firebase.updateNode(*firebaseData, Base_Path, Lectura_Json);
+        if(!Firebase.RTDB.updateNode(&firebaseData, Base_Path.c_str(), &Lectura_Json)){
+          Serial.print("Error en actualizacion de firebase: ");
+          Serial.println(firebaseData.errorReason());
+        }
       }
+      String data;
+      Lectura_Json.toString(data, 1); 
+      Serial.println(data);
       xSemaphoreGive(firebase_Access);
     } 
     vTaskDelay(pdMS_TO_TICKS(1000)); 
@@ -365,4 +375,29 @@ void DownloadTask(void *arg){
   //Eliminar la tarea
   UpdateStatus.DescargandoArchivo=0;
   vTaskDelete(NULL);
+}
+
+/***************************************************
+ Tarea de control de firebase
+***************************************************/
+void Firebase_Conn_Task(void *args){
+  uint8_t ConnectionState =  DISCONNECTED;
+  while(1){
+    switch (ConnectionState){
+
+    //Comprobar estado de la red
+    case DISCONNECTED:
+      if(ConfigFirebase.InternetConection){
+        ConnectionState=CONNECTING;
+      }
+      break;
+    case CONNECTING:
+      break;
+    default:
+      break;
+    }
+
+  }
+  vTaskDelay(pdMS_TO_TICKS(5000));
+
 }

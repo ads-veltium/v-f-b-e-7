@@ -34,18 +34,20 @@ void WiFiEvent(WiFiEvent_t event, WiFiEventInfo_t info){
 		case SYSTEM_EVENT_STA_DISCONNECTED:
             if(getfirebaseClientStatus())stopFirebaseClient();
             
-            if(info.disconnected.reason!=WIFI_REASON_ASSOC_LEAVE){
+            if(info.wifi_sta_disconnected.reason!=WIFI_REASON_ASSOC_LEAVE){
                 Serial.println("Reconectando...");
 			    WiFi.reconnect();
             }
 		break;
 
 		case SYSTEM_EVENT_STA_GOT_IP:
+			Serial.print("Connected with IP: ");
+			Serial.println(WiFi.localIP());
+            ConfigFirebase.InternetConection=1;
+            vTaskDelay(pdMS_TO_TICKS(5000));
             initFirebaseClient();
             Serial.println("FREE HEAP MEMORY [after FIREBASE_INIT] **************************");
 	        Serial.println(ESP.getFreeHeap());
-			Serial.print("Connected with IP: ");
-			Serial.println(WiFi.localIP());
 		break;
 		default:
 		break;
