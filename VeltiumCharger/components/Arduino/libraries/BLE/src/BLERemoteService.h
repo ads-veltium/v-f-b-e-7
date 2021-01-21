@@ -8,14 +8,14 @@
 #ifndef COMPONENTS_CPP_UTILS_BLEREMOTESERVICE_H_
 #define COMPONENTS_CPP_UTILS_BLEREMOTESERVICE_H_
 #include "sdkconfig.h"
-#if defined(CONFIG_BLUEDROID_ENABLED)
+#if defined(CONFIG_BT_ENABLED)
 
 #include <map>
 
 #include "BLEClient.h"
 #include "BLERemoteCharacteristic.h"
 #include "BLEUUID.h"
-#include "RTOS.h"
+#include "FreeRTOS.h"
 
 class BLEClient;
 class BLERemoteCharacteristic;
@@ -81,5 +81,5 @@ private:
 	uint16_t            m_endHandle;        // The ending handle of this service.
 }; // BLERemoteService
 
-#endif /* CONFIG_BLUEDROID_ENABLED */
+#endif /* CONFIG_BT_ENABLED */
 #endif /* COMPONENTS_CPP_UTILS_BLEREMOTESERVICE_H_ */

@@ -36,37 +36,10 @@ extern "C" {
 #include <string.h>
 #include <esp_err.h>
 #include <esp_wifi.h>
-#include <esp_event.h>
+#include <esp_event_loop.h>
 #include <esp32-hal.h>
 #include <lwip/ip_addr.h>
 #include "lwip/err.h"
-}
-
-static const char * cipher_str(int cipher)
-{
-    switch (cipher) {
-    case WIFI_CIPHER_TYPE_NONE:
-        return ("NONE");
-        break;
-    case WIFI_CIPHER_TYPE_WEP40:
-    	return ("WEP40");
-        break;
-    case WIFI_CIPHER_TYPE_WEP104:
-    	return ("WEP104");
-        break;
-    case WIFI_CIPHER_TYPE_TKIP:
-    	return ("TKIP");
-        break;
-    case WIFI_CIPHER_TYPE_CCMP:
-    	return ("CCMP");
-        break;
-    case WIFI_CIPHER_TYPE_TKIP_CCMP:
-    	return ("TKIP_CCMP");
-        break;
-    default:
-        break;
-    }
-	return ("UNKNOWN");
 }
 
 bool WiFiScanClass::_scanAsync = false;
@@ -95,7 +68,7 @@ int16_t WiFiScanClass::scanNetworks(bool async, bool show_hidden, bool passive, 
     scanDelete();
 
     wifi_scan_config_t config;
-    config.ssid = 0;
+    /*config.ssid = 0;
     config.bssid = 0;
     config.channel = channel;
     config.show_hidden = show_hidden;
@@ -106,7 +79,7 @@ int16_t WiFiScanClass::scanNetworks(bool async, bool show_hidden, bool passive, 
         config.scan_type = WIFI_SCAN_TYPE_ACTIVE;
         config.scan_time.active.min = 100;
         config.scan_time.active.max = max_ms_per_chan;
-    }
+    }*/
     if(esp_wifi_scan_start(&config, false) == ESP_OK) {
         _scanStarted = millis();
         if (!_scanStarted) { //Prevent 0 from millis overflow

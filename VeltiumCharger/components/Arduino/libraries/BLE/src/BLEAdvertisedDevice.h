@@ -8,10 +8,11 @@
 #ifndef COMPONENTS_CPP_UTILS_BLEADVERTISEDDEVICE_H_
 #define COMPONENTS_CPP_UTILS_BLEADVERTISEDDEVICE_H_
 #include "sdkconfig.h"
-#if defined(CONFIG_BLUEDROID_ENABLED)
+#if defined(CONFIG_BT_ENABLED)
 #include <esp_gattc_api.h>
 
 #include <map>
+#include <vector>
 
 #include "BLEAddress.h"
 #include "BLEScan.h"
@@ -64,7 +65,6 @@ private:
 	friend class BLEScan;
 
 	void parseAdvertisement(uint8_t* payload, size_t total_len=62);
-	void setPayload(uint8_t* payload, size_t total_len=62);
 	void setAddress(BLEAddress address);
 	void setAdFlag(uint8_t adFlag);
 	void setAdvertizementResult(uint8_t* payload);
@@ -124,5 +124,5 @@ public:
 	virtual void onResult(BLEAdvertisedDevice advertisedDevice) = 0;
 };
 
-#endif /* CONFIG_BLUEDROID_ENABLED */
+#endif /* CONFIG_BT_ENABLED */
 #endif /* COMPONENTS_CPP_UTILS_BLEADVERTISEDDEVICE_H_ */

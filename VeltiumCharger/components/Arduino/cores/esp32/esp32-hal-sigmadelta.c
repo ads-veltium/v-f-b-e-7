@@ -24,8 +24,6 @@
 #ifdef ESP_IDF_VERSION_MAJOR // IDF 4+
 #if CONFIG_IDF_TARGET_ESP32 // ESP32/PICO-D4
 #include "esp32/rom/ets_sys.h"
-#elif CONFIG_IDF_TARGET_ESP32S2
-#include "esp32s2/rom/ets_sys.h"
 #else 
 #error Target CONFIG_IDF_TARGET is not supported
 #endif
@@ -81,9 +79,6 @@ uint32_t sigmaDeltaSetup(uint8_t channel, uint32_t freq) //chan 0-7 freq 1220-31
         prescale = 0xFF;
     }
     SD_MUTEX_LOCK();
-#ifndef CONFIG_IDF_TARGET_ESP32
-    SIGMADELTA.misc.function_clk_en = 1;
-#endif
     SIGMADELTA.channel[channel].prescale = prescale;
     SIGMADELTA.cg.clk_en = 0;
     SIGMADELTA.cg.clk_en = 1;

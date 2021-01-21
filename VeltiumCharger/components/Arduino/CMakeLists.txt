@@ -15,7 +15,6 @@ set(CORE_SRCS
   cores/esp32/esp32-hal-spi.c
   cores/esp32/esp32-hal-time.c
   cores/esp32/esp32-hal-timer.c
-  cores/esp32/esp32-hal-tinyusb.c
   cores/esp32/esp32-hal-touch.c
   cores/esp32/esp32-hal-uart.c
   cores/esp32/esp32-hal-rmt.c
@@ -32,8 +31,6 @@ set(CORE_SRCS
   cores/esp32/stdlib_noniso.c
   cores/esp32/Stream.cpp
   cores/esp32/StreamString.cpp
-  cores/esp32/USB.cpp
-  cores/esp32/USBCDC.cpp
   cores/esp32/wiring_pulse.c
   cores/esp32/wiring_shift.c
   cores/esp32/WMath.cpp
@@ -52,7 +49,6 @@ set(LIBRARY_SRCS
   libraries/FS/src/vfs_api.cpp
   libraries/HTTPClient/src/HTTPClient.cpp
   libraries/HTTPUpdate/src/HTTPUpdate.cpp
-  libraries/LITTLEFS/src/LITTLEFS.cpp
   libraries/NetBIOS/src/NetBIOS.cpp
   libraries/Preferences/src/Preferences.cpp
   libraries/SD_MMC/src/SD_MMC.cpp
@@ -64,7 +60,6 @@ set(LIBRARY_SRCS
   libraries/SPI/src/SPI.cpp
   libraries/Ticker/src/Ticker.cpp
   libraries/Update/src/Updater.cpp
-  libraries/Update/src/HttpsOTAUpdate.cpp
   libraries/WebServer/src/WebServer.cpp
   libraries/WebServer/src/Parsing.cpp
   libraries/WebServer/src/detail/mimetable.cpp
@@ -80,8 +75,8 @@ set(LIBRARY_SRCS
   libraries/WiFi/src/WiFiServer.cpp
   libraries/WiFi/src/WiFiSTA.cpp
   libraries/WiFi/src/WiFiUdp.cpp
-  libraries/WiFiProv/src/WiFiProv.cpp
   libraries/Wire/src/Wire.cpp
+  libraries/FastLed/src/FastLed.cpp
   )
 
 set(BLE_SRCS
@@ -116,8 +111,9 @@ set(BLE_SRCS
   libraries/BLE/src/GeneralUtils.cpp
   )
 
+set(COMPONENT_SRCS ${CORE_SRCS} ${LIBRARY_SRCS} ${BLE_SRCS})
 
-set(includedirs
+set(COMPONENT_ADD_INCLUDEDIRS
   variants/esp32/
   cores/esp32/
   libraries/ArduinoOTA/src
@@ -132,7 +128,6 @@ set(includedirs
   libraries/FS/src
   libraries/HTTPClient/src
   libraries/HTTPUpdate/src
-  libraries/LITTLEFS/src
   libraries/NetBIOS/src
   libraries/Preferences/src
   libraries/SD_MMC/src
@@ -145,20 +140,12 @@ set(includedirs
   libraries/WebServer/src
   libraries/WiFiClientSecure/src
   libraries/WiFi/src
-  libraries/WiFiProv/src
   libraries/Wire/src
   )
 
-set(srcs ${CORE_SRCS} ${LIBRARY_SRCS} ${BLE_SRCS})
-set(priv_includes cores/esp32/libb64)
-set(requires spi_flash mbedtls mdns esp_adc_cal)
-set(priv_requires fatfs nvs_flash app_update spiffs bootloader_support openssl bt tinyusb main)
+set(COMPONENT_PRIV_INCLUDEDIRS cores/esp32/libb64)
 
-idf_component_register(INCLUDE_DIRS ${includedirs} PRIV_INCLUDE_DIRS ${priv_includes} SRCS ${srcs} REQUIRES ${requires} PRIV_REQUIRES ${priv_requires})
+set(COMPONENT_REQUIRES spi_flash mbedtls mdns esp_adc_cal)
+set(COMPONENT_PRIV_REQUIRES fatfs nvs_flash app_update spiffs bootloader_support openssl bt)
 
-if(IDF_TARGET STREQUAL "esp32")
-target_compile_options(${COMPONENT_TARGET} PUBLIC -DARDUINO=10812 -DARDUINO_ESP32_DEV -DARDUINO_ARCH_ESP32 -DARDUINO_BOARD="ESP32_DEV" -DARDUINO_VARIANT="esp32" -DESP32)
-endif()
-if(IDF_TARGET STREQUAL "esp32s2")
-target_compile_options(${COMPONENT_TARGET} PUBLIC -DARDUINO=10812 -DARDUINO_ESP32S2_DEV -DARDUINO_ARCH_ESP32 -DARDUINO_BOARD="ESP32S2_DEV" -DARDUINO_VARIANT="esp32s2" -DESP32)
-endif()
+register_component()
