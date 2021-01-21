@@ -43,7 +43,7 @@ void WiFiEvent(WiFiEvent_t event, WiFiEventInfo_t info){
 		case SYSTEM_EVENT_STA_DISCONNECTED:
             if(getfirebaseClientStatus())stopFirebaseClient();
             
-            if(info.wifi_sta_disconnected.reason!=WIFI_REASON_ASSOC_LEAVE){
+            if(info.disconnected.reason!=WIFI_REASON_ASSOC_LEAVE){
                 Serial.println("Reconectando...");
 			    WiFi.reconnect();
             }

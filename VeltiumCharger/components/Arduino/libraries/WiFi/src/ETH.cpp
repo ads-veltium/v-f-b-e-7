@@ -70,6 +70,34 @@ extern void tcpipInit();
 
 
 
+// Event handler for Ethernet
+void ETHClass::eth_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
+{
+    system_event_t event;
+    switch (event_id) {
+    case ETHERNET_EVENT_CONNECTED:
+        event.event_id = SYSTEM_EVENT_ETH_CONNECTED;
+        ((ETHClass*)(arg))->eth_link = ETH_LINK_UP;
+        break;
+    case ETHERNET_EVENT_DISCONNECTED:
+        event.event_id = SYSTEM_EVENT_ETH_DISCONNECTED;
+        ((ETHClass*)(arg))->eth_link = ETH_LINK_DOWN;
+        break;
+    case ETHERNET_EVENT_START:
+        event.event_id = SYSTEM_EVENT_ETH_START;
+        ((ETHClass*)(arg))->started = true;
+        break;
+    case ETHERNET_EVENT_STOP:
+        event.event_id = SYSTEM_EVENT_ETH_STOP;
+        ((ETHClass*)(arg))->started = false;
+        break;
+    default:
+        break;
+    }
+    WiFi._eventCallback(arg, &event);
+}
+
+
 #else
 static int _eth_phy_mdc_pin = -1;
 static int _eth_phy_mdio_pin = -1;
@@ -98,11 +126,11 @@ ETHClass::ETHClass()
     :initialized(false)
     ,staticIP(false)
 #if ESP_IDF_VERSION_MAJOR > 3
-     ,eth_handle(NULL)
+    ,eth_handle(NULL)
 #endif
-     ,started(false)
+    ,started(false)
 #if ESP_IDF_VERSION_MAJOR > 3
-     ,eth_link(ETH_LINK_DOWN)
+    ,eth_link(ETH_LINK_DOWN)
 #endif
 {
 }
@@ -116,29 +144,20 @@ bool ETHClass::begin(uint8_t phy_addr, int power, int mdc, int mdio, eth_phy_typ
     tcpipInit();
 
     tcpip_adapter_set_default_eth_handlers();
-    
-    esp_netif_config_t cfg = ESP_NETIF_DEFAULT_ETH();
-    esp_netif_t *eth_netif = esp_netif_new(&cfg);
+    esp_event_handler_register(ETH_EVENT, ESP_EVENT_ANY_ID, eth_event_handler, this);
+    //ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_ETH_GOT_IP, &got_ip_event_handler, NULL));
 
-    if(esp_eth_set_default_handlers(eth_netif) != ESP_OK){
-        log_e("esp_eth_set_default_handlers failed");
-        return false;
-    }
-    
-    
+    eth_mac_config_t mac_config = ETH_MAC_DEFAULT_CONFIG();
+    mac_config.smi_mdc_gpio_num = mdc;
+    mac_config.smi_mdio_gpio_num = mdio;
+    //mac_config.sw_reset_timeout_ms = 1000;
     esp_eth_mac_t *eth_mac = NULL;
 #if CONFIG_ETH_SPI_ETHERNET_DM9051
     if(type == ETH_PHY_DM9051){
         return false;//todo
     } else {
 #endif
-#if CONFIG_ETH_USE_ESP32_EMAC
-        eth_mac_config_t mac_config = ETH_MAC_DEFAULT_CONFIG();
-        mac_config.smi_mdc_gpio_num = mdc;
-        mac_config.smi_mdio_gpio_num = mdio;
-        //mac_config.sw_reset_timeout_ms = 1000;
         eth_mac = esp_eth_mac_new_esp32(&mac_config);
-#endif
 #if CONFIG_ETH_SPI_ETHERNET_DM9051
     }
 #endif
@@ -184,12 +203,6 @@ bool ETHClass::begin(uint8_t phy_addr, int power, int mdc, int mdio, eth_phy_typ
     //eth_config.on_lowlevel_deinit_done = on_lowlevel_deinit_done;
     if(esp_eth_driver_install(&eth_config, &eth_handle) != ESP_OK || eth_handle == NULL){
         log_e("esp_eth_driver_install failed");
-        return false;
-    }
-    
-    /* attach Ethernet driver to TCP/IP stack */
-    if(esp_netif_attach(eth_netif, esp_eth_new_netif_glue(eth_handle)) != ESP_OK){
-        log_e("esp_netif_attach failed");
         return false;
     }
 

@@ -48,22 +48,16 @@ else
 	export ARDUINO_USR_PATH="$HOME/Arduino"
 fi
 
-# Updated as of Nov 3rd 2020
-ARDUINO_IDE_URL="https://github.com/espressif/arduino-esp32/releases/download/1.0.4/arduino-nightly-"
-
-# Currently not working
-#ARDUINO_IDE_URL="https://www.arduino.cc/download.php?f=/arduino-nightly-"
-
 if [ ! -d "$ARDUINO_IDE_PATH" ]; then
 	echo "Installing Arduino IDE on $OS_NAME ..."
-	echo "Downloading '$ARDUINO_IDE_URL$OS_NAME.$ARCHIVE_FORMAT' to 'arduino.$ARCHIVE_FORMAT' ..."
+	echo "Downloading 'arduino-nightly-$OS_NAME.$ARCHIVE_FORMAT' to 'arduino.$ARCHIVE_FORMAT' ..."
 	if [ "$OS_IS_LINUX" == "1" ]; then
-		wget -O "arduino.$ARCHIVE_FORMAT" "$ARDUINO_IDE_URL$OS_NAME.$ARCHIVE_FORMAT" > /dev/null 2>&1
+		wget -O "arduino.$ARCHIVE_FORMAT" "https://www.arduino.cc/download.php?f=/arduino-nightly-$OS_NAME.$ARCHIVE_FORMAT" > /dev/null 2>&1
 		echo "Extracting 'arduino.$ARCHIVE_FORMAT' ..."
 		tar xf "arduino.$ARCHIVE_FORMAT" > /dev/null
 		mv arduino-nightly "$ARDUINO_IDE_PATH"
 	else
-		curl -o "arduino.$ARCHIVE_FORMAT" -L "$ARDUINO_IDE_URL$OS_NAME.$ARCHIVE_FORMAT" > /dev/null 2>&1
+		curl -o "arduino.$ARCHIVE_FORMAT" -L "https://www.arduino.cc/download.php?f=/arduino-nightly-$OS_NAME.$ARCHIVE_FORMAT" > /dev/null 2>&1
 		echo "Extracting 'arduino.$ARCHIVE_FORMAT' ..."
 		unzip "arduino.$ARCHIVE_FORMAT" > /dev/null
 		if [ "$OS_IS_MACOS" == "1" ]; then
@@ -116,10 +110,9 @@ function build_sketch(){ # build_sketch <fqbn> <path-to-ino> [extra-options]
 		$win_opts $xtra_opts "$sketch"
 }
 
-function count_sketches() # count_sketches <examples-path> <target-mcu>
+function count_sketches() # count_sketches <examples-path>
 {
 	local examples="$1"
-	local target="$2"
     rm -rf sketches.txt
 	if [ ! -d "$examples" ]; then
 		touch sketches.txt
@@ -134,7 +127,7 @@ function count_sketches() # count_sketches <examples-path> <target-mcu>
         if [[ "${sketchdirname}.ino" != "$sketchname" ]]; then
             continue
         fi;
-        if [[ -f "$sketchdir/.skip.$target" ]]; then
+        if [[ -f "$sketchdir/.test.skip" ]]; then
             continue
         fi
         echo $sketch >> sketches.txt
@@ -143,25 +136,24 @@ function count_sketches() # count_sketches <examples-path> <target-mcu>
     return $sketchnum
 }
 
-function build_sketches() # build_sketches <fqbn> <target-mcu> <examples-path> <chunk> <total-chunks> [extra-options]
+function build_sketches() # build_sketches <fqbn> <examples-path> <chunk> <total-chunks> [extra-options]
 {
     local fqbn=$1
-	local target="$2"
-    local examples=$3
-    local chunk_idex=$4
-    local chunks_num=$5
-    local xtra_opts=$6
+    local examples=$2
+    local chunk_idex=$3
+    local chunks_num=$4
+    local xtra_opts=$5
 
-    if [ "$#" -lt 3 ]; then
+    if [ "$#" -lt 2 ]; then
 		echo "ERROR: Illegal number of parameters"
-		echo "USAGE: build_sketches <fqbn> <target-mcu <examples-path> [<chunk> <total-chunks>] [extra-options]"
+		echo "USAGE: build_sketches <fqbn> <examples-path> [<chunk> <total-chunks>] [extra-options]"
 		return 1
 	fi
 
-    if [ "$#" -lt 5 ]; then
+    if [ "$#" -lt 4 ]; then
 		chunk_idex="0"
 		chunks_num="1"
-		xtra_opts=$4
+		xtra_opts=$3
 	fi
 
 	if [ "$chunks_num" -le 0 ]; then
@@ -210,7 +202,7 @@ function build_sketches() # build_sketches <fqbn> <target-mcu> <examples-path> <
         local sketchdirname=$(basename $sketchdir)
         local sketchname=$(basename $sketch)
         if [ "${sketchdirname}.ino" != "$sketchname" ] \
-        || [ -f "$sketchdir/.skip.$target" ]; then
+        || [ -f "$sketchdir/.test.skip" ]; then
             continue
         fi
         sketchnum=$(($sketchnum + 1))

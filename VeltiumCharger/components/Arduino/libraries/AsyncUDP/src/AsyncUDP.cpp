@@ -150,7 +150,7 @@ static bool _udp_task_start(){
         }
     }
     if(!_udp_task_handle){
-        xTaskCreateUniversal(_udp_task, "async_udp", 4096, NULL, CONFIG_ARDUINO_UDP_TASK_PRIORITY, (TaskHandle_t*)&_udp_task_handle, CONFIG_ARDUINO_UDP_RUNNING_CORE);
+        xTaskCreateUniversal(_udp_task, "async_udp", 4096*2, NULL, 3, (TaskHandle_t*)&_udp_task_handle, CONFIG_ARDUINO_UDP_RUNNING_CORE);
         if(!_udp_task_handle){
             return false;
         }
@@ -221,8 +221,8 @@ static bool _udp_task_stop(){
 AsyncUDPMessage::AsyncUDPMessage(size_t size)
 {
     _index = 0;
-    if(size > CONFIG_TCP_MSS) {
-        size = CONFIG_TCP_MSS;
+    if(size > CONFIG_LWIP_TCP_MSS) {
+        size = CONFIG_LWIP_TCP_MSS;
     }
     _size = size;
     _buffer = (uint8_t *)malloc(size);
@@ -643,8 +643,8 @@ size_t AsyncUDP::writeTo(const uint8_t * data, size_t len, const ip_addr_t * add
             return 0;
         }
     }
-    if(len > CONFIG_TCP_MSS) {
-        len = CONFIG_TCP_MSS;
+    if(len > CONFIG_LWIP_TCP_MSS) {
+        len = CONFIG_LWIP_TCP_MSS;
     }
     err_t err = ERR_OK;
     pbuf* pbt = pbuf_alloc(PBUF_TRANSPORT, len, PBUF_RAM);

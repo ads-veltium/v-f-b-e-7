@@ -38,8 +38,6 @@
 #ifdef ESP_IDF_VERSION_MAJOR // IDF 4+
 #if CONFIG_IDF_TARGET_ESP32 // ESP32/PICO-D4
 #include "esp32/rom/rtc.h"
-#elif CONFIG_IDF_TARGET_ESP32S2
-#include "esp32s2/rom/rtc.h"
 #else 
 #error Target CONFIG_IDF_TARGET is not supported
 #endif
@@ -143,22 +141,22 @@ BaseType_t xTaskCreateUniversal( TaskFunction_t pxTaskCode,
 #endif
 }
 
-unsigned long ARDUINO_ISR_ATTR micros()
+unsigned long IRAM_ATTR micros()
 {
     return (unsigned long) (esp_timer_get_time());
 }
 
-unsigned long ARDUINO_ISR_ATTR millis()
+unsigned long IRAM_ATTR millis()
 {
     return (unsigned long) (esp_timer_get_time() / 1000ULL);
 }
 
 void delay(uint32_t ms)
 {
-    vTaskDelay(ms / portTICK_PERIOD_MS);
+    vTaskDelay(ms/portTICK_PERIOD_MS);
 }
 
-void ARDUINO_ISR_ATTR delayMicroseconds(uint32_t us)
+void IRAM_ATTR delayMicroseconds(uint32_t us)
 {
     uint32_t m = micros();
     if(us){
@@ -210,7 +208,7 @@ void initArduino()
 #ifdef F_CPU
     setCpuFrequencyMhz(F_CPU/1000000);
 #endif
-#if CONFIG_SPIRAM_SUPPORT || CONFIG_SPIRAM
+#if CONFIG_SPIRAM_SUPPORT
     psramInit();
 #endif
     esp_log_level_set("*", CONFIG_LOG_DEFAULT_LEVEL);
@@ -239,7 +237,7 @@ void initArduino()
 }
 
 //used by hal log
-const char * ARDUINO_ISR_ATTR pathToFileName(const char * path)
+const char * IRAM_ATTR pathToFileName(const char * path)
 {
     size_t i = 0;
     size_t pos = 0;
