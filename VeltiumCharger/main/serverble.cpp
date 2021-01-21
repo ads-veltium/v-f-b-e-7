@@ -10,6 +10,7 @@ StackType_t xBLEStack[4096*2] EXT_RAM_ATTR;
 //Update sistem files
 File UpdateFile;
 uint8_t UpdateType=0;
+extern carac_Update_Status UpdateStatus;
 
 /* milestone: one-liner for reporting memory usage */
 void milestone(const char* mname)
@@ -272,16 +273,28 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 
 				uint32_t successCode = 0x00000000;
 				//Empezar el sistema de actualizacion
+				#ifdef USE_WIFI
 				if(getfirebaseClientStatus())stopFirebaseClient();
-				
+				#endif
+				UpdateStatus.DescargandoArchivo=1;
 				if(strstr (signature,"VBLE")){
-					Serial.println("Updating VBLE");
 					UpdateType= VBLE_UPDATE;
-					if(!Update.begin(fileSize)){
-						Serial.println("File too big");
-						Update.end();
-						successCode = 0x00000001;
-					};
+					#ifndef UPDATE_COMPRESSED
+						Serial.println("Updating VBLE");			
+						if(!Update.begin(fileSize)){
+							Serial.println("File too big");
+							Update.end();
+							successCode = 0x00000001;
+						};
+					#else 
+						Serial.println("Updating VBLE Compressed");	
+						if (SPIFFS.begin(1,"/spiffs",1,"ESP32")){}
+							vTaskDelay(50/configTICK_RATE_HZ);
+							SPIFFS.format();
+						}
+						vTaskDelay(50/configTICK_RATE_HZ);
+						UpdateFile = SPIFFS.open("/VBLE2.bin.gz", FILE_WRITE);
+					#endif
 				}
 				else if(strstr (signature,"VELT")){
 					Serial.println("Updating VELT");
@@ -321,15 +334,24 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 				serverbleNotCharacteristic((uint8_t*)&successCode, sizeof(successCode), FWUPDATE_BIRD_DATA_PSEUDO_CHAR_HANDLE);
 
 				//Terminar el sistema de actualizacion
+				UpdateStatus.DescargandoArchivo=0;
+				UpdateStatus.InstalandoArchivo=1;
 			    if(UpdateType == VBLE_UPDATE){
-					if(Update.end()){	
-						Serial.println("Reiniciando en 4 segundos!"); 
-						vTaskDelay(pdMS_TO_TICKS(4000));
-						MAIN_RESET_Write(0);						
-						ESP.restart();
-					}
+					#ifndef UPDATE_COMPRESSED
+						if(Update.end()){	
+							Serial.println("Reiniciando en 4 segundos!"); 
+							vTaskDelay(pdMS_TO_TICKS(4000));
+							MAIN_RESET_Write(0);						
+							ESP.restart();
+						}
+					#else 
+						Serial.println("Decompressing");
+						xTaskCreate(UpdateCompressedTask, "DECOMPRESS_TASK", 4096*4, NULL,1,NULL);
+					#endif
+					
 				}
 				else if(UpdateType == VELT_UPDATE){
+					
 					UpdateFile.close();
 					setMainFwUpdateActive(1);
 				}				
@@ -390,10 +412,17 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 
 			//Escribir los datos en la actualizacion
 			if(UpdateType == VBLE_UPDATE){
-				if(Update.write(payload,partSize)!=partSize){
-					Serial.println("Writing Error");
-					successCode = 0x00000002;
-				}
+				#ifndef UPDATE_COMPRESSED
+					if(Update.write(payload,partSize)!=partSize){
+						Serial.println("Writing Error");
+						successCode = 0x00000002;
+					}
+				#else
+					if(UpdateFile.write(payload,partSize)!=partSize){
+						Serial.println("Writing Error");
+						successCode = 0x00000002;
+					}
+				#endif
 			}
 			else if(UpdateType == VELT_UPDATE){
 				if(UpdateFile.write(payload,partSize)!=partSize){

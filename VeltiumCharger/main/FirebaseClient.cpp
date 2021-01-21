@@ -23,6 +23,7 @@ const char* veltiumbackend_password="Escolapios2";
 
 static FirebaseData *firebaseData EXT_RAM_ATTR;
 static FirebaseAuth *auth EXT_RAM_ATTR;
+//static FirebaseConfig *config EXT_RAM_ATTR;
 
 String url;
 
@@ -30,7 +31,7 @@ String url;
 extern carac_Firebase_Configuration ConfigFirebase;
 extern carac_Comands                Comands;
 extern carac_Status                 Status;
-extern carac_Auto_Update            AutoUpdate;
+extern carac_Update_Status          UpdateStatus;
 
 TaskHandle_t xHandleUpdateTask=NULL;
 
@@ -65,6 +66,7 @@ void initFirebaseClient(){
     Serial.println("INIT Firebase Client");
 
     firebaseData = new FirebaseData();
+
     Firebase.begin(veltiumbackend_firebase_project,veltiumbackend_database_secret);
 
     //Firebase.reconnectWiFi(true);
@@ -87,7 +89,7 @@ void initFirebaseClient(){
     #ifndef USE_DRACO_BLE
       
       memcpy(&ConfigFirebase.Device_Db_ID,"CD012012140000049461C051E014",29);
-      AutoUpdate.BetaPermission=1;
+      UpdateStatus.BetaPermission=1;
 
     #endif
 
@@ -144,14 +146,17 @@ void CheckForUpdate(){
   String PSOC5_Ver;
   url="";
   uint8 tipo=0;
-  //AutoUpdate.BetaPermission=1;
+  /*********************/
+  UpdateStatus.BetaPermission=1;
+  /*********************/
   Serial.println("Updating firmware");
-  if(1/*AutoUpdate.BetaPermission*/){
+  if(UpdateStatus.BetaPermission){
+
     //Check PSOC5 firmware updates
     Firebase.getString(*firebaseData, "/prod/fw/beta/VELT2/verstr", PSOC5_Ver);
     uint16 Psoc_int_Version=ParseFirmwareVersion(PSOC5_Ver);
 
-    if(AutoUpdate.PSOC5_Act_Ver<Psoc_int_Version){
+    if(UpdateStatus.PSOC5_Act_Ver<Psoc_int_Version){
       Firebase.getString(*firebaseData, "/prod/fw/beta/VELT2/url", url);
       tipo=1;
       Serial.println("Updating PSOC5 with Beta firmware");
@@ -162,7 +167,7 @@ void CheckForUpdate(){
       Firebase.getString(*firebaseData, "/prod/fw/beta/VBLE2/verstr", ESP_Ver);
       uint16 ESP_int_Version=ParseFirmwareVersion(ESP_Ver);
 
-      if(AutoUpdate.ESP_Act_Ver<ESP_int_Version){
+      if(UpdateStatus.ESP_Act_Ver<ESP_int_Version){
         Serial.println("Updating ESP32 with Beta firmware");
         tipo=2;
         Firebase.getString(*firebaseData, "/prod/fw/beta/VBLE2/url", url);
@@ -262,7 +267,7 @@ void UpdateFirebaseControl_Task(void *arg){
  Descargar archivos de actualizacion
 ***************************************************/
 void DownloadTask(void *arg){
-
+  UpdateStatus.DescargandoArchivo=1;
   File UpdateFile;
   String FileName;
 
@@ -358,6 +363,6 @@ void DownloadTask(void *arg){
   }
 
   //Eliminar la tarea
-  //AutoUpdate.DescargandoArchivo=0;
+  UpdateStatus.DescargandoArchivo=0;
   vTaskDelete(NULL);
 }

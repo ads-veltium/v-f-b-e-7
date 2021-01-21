@@ -4,7 +4,6 @@ NVS cfg;
 char password[32] = {0};
 char ssid[32] = {0};
 
-extern carac_Auto_Update AutoUpdate;
 extern carac_Firebase_Configuration ConfigFirebase;
 
 uint8_t Store_cfg(){
@@ -14,12 +13,6 @@ uint8_t Store_cfg(){
     } 
     if(!cfg.create("wifi_sta_pass", "W1f1d3V3lt1um$m4rtCh4rg3r$!")){
         cfg.write("wifi_sta_pass", "W1f1d3V3lt1um$m4rtCh4rg3r$!");
-    } 
-    if(!cfg.create("b_firmware", 1)){
-        cfg.write("b_firmware", 1);
-    } 
-    if(!cfg.create("auto", 1)){
-        cfg.write("auto", 1);
     } 
     cfg.close();
 
@@ -31,8 +24,6 @@ uint8_t Read_cfg(){
 
     cfg.read("wifi_sta_ssid", ssid, 15); 
     cfg.read("wifi_sta_pass", password, 32); 
-    cfg.read("b_firmware", &AutoUpdate.BetaPermission);
-    cfg.read("auto", &AutoUpdate.BetaPermission);
 
     cfg.close();
     return 1;

@@ -2,7 +2,7 @@
 #define __CONTROL_MAIN
 
 //configuration
-#define USE_WIFI
+//#define USE_WIFI
 #define USE_DRACO_BLE
 
 #include "Arduino.h"
@@ -21,18 +21,27 @@
 #include "HardwareSerialMOD.h"
 #include <math.h>
 #include "SPIFFS.h"
+/*********** Pruebas tar.gz **************/
+//Descomentar para probar el sistema de actualizacion con firmware comprimido
+//#define UPDATE_COMPRESSED
+#ifdef UPDATE_COMPRESSED
+	#define  DEST_FS_USES_SPIFFS
+	#include "ESP32-targz.h"
+#endif
+
+
 
 #ifdef USE_WIFI
 	#include "Wifi_Station.h"
 #endif
 
 //Prioridades FreeRTOS
-#define PRIORIDAD_LEDS     1
-#define PRIORIDAD_CONTROL  3
-#define PRIORIDAD_BLE      3
-#define PRIORIDAD_DESCARGA 6
+#define PRIORIDAD_LEDS     3
+#define PRIORIDAD_CONTROL  1
+#define PRIORIDAD_BLE      1
+#define PRIORIDAD_DESCARGA 5
 #define PRIORIDAD_UPDATE   2
-#define PRIORIDAD_FIREBASE 5
+#define PRIORIDAD_FIREBASE 4
 
 // ESTADO GENERAL
 #define	ESTADO_ARRANQUE			0
@@ -67,6 +76,7 @@
 void updateCharacteristic(uint8_t* data, uint16_t len, uint16_t attrHandle);
 void procesar_bloque(uint16 tipo_bloque);
 int controlSendToSerialLocal(uint8_t * data, int len);
+void UpdateCompressedTask(void *arg);
 uint8_t sendBinaryBlock ( uint8_t *data, int len );
 int controlMain(void);
 void deviceConnectInd(void);

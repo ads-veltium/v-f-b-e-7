@@ -177,16 +177,17 @@ typedef struct{
 }carac_Firebase_Configuration;
 typedef struct{
 	//configuracion
-	uint8 BetaPermission;
-	uint8 Auto_Act;
+	bool BetaPermission;
 	uint16 PSOC5_Act_Ver;
 	uint16 ESP_Act_Ver;
 
-	uint8 PSOC5_UpdateAvailable;
-	uint8 ESP_UpdateAvailable;
-	uint8 DescargandoArchivo;
+	bool PSOC5_UpdateAvailable;
+	bool ESP_UpdateAvailable;
+	bool DescargandoArchivo;
+	bool InstalandoArchivo;
+	
 
-} carac_Auto_Update;
+} carac_Update_Status;
 #define RCD_NO_ACTIVO
 #undef RCD_ACTIVO
 // Variable para definir si el Medidor doméstico mide la corriente total o sólo la vivienda  A.D.S.

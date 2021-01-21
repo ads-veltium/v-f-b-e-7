@@ -65,7 +65,8 @@
         "regex": "cpp",
         "*.ipp": "cpp",
         "random": "cpp",
-        "limits": "cpp"
+        "limits": "cpp",
+        "fstream": "cpp"
     }
 }
 

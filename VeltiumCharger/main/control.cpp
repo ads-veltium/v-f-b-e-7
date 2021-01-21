@@ -25,7 +25,7 @@ StaticTask_t xLEDBuffer ;
 static StackType_t xLEDStack[4096*2] EXT_RAM_ATTR;
 
 //Variables Firebase
-carac_Auto_Update AutoUpdate EXT_RAM_ATTR;
+carac_Update_Status UpdateStatus EXT_RAM_ATTR;
 carac_Firebase_Configuration ConfigFirebase EXT_RAM_ATTR;
 carac_Comands Comands      EXT_RAM_ATTR;
 carac_Status  Status       EXT_RAM_ATTR;
@@ -42,7 +42,7 @@ uint8 authChallengeQuery[10] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
 
 uint8 contador_cent_segundos = 0, contador_cent_segundos_ant = 0;
 uint32 cont_seg = 0, cont_seg_ant = 0, cont_min_ant = 0, cont_min=0, cont_hour=0, cont_hour_ant=0;
-uint8 luminosidad, rojo, verde, azul, togle_led = 0 ;
+uint8 luminosidad, rojo, verde, azul, togle_led = 0, Led_color=VERDE ;
 uint8 estado_inicial = 1;
 uint8 estado_actual = ESTADO_ARRANQUE;
 uint8 authSuccess = 0;
@@ -64,7 +64,7 @@ uint8 mainFwUpdateActive = 0;
 
 uint8 dispositivo_inicializado = 0;
 uint8 cnt_timeout_inicio = TIMEOUT_INICIO;
-uint16 cnt_repeticiones_inicio = 1000;	//1000;
+uint16 cnt_repeticiones_inicio = 100;	//1000;
 
 uint8 status_hpt_anterior[2] = {'0','V' };
 uint16 inst_current_anterior = 0x0000;
@@ -177,6 +177,7 @@ void controlTask(void *arg)
 									//startSystem();
 									mainFwUpdateActive = 1;
 									updateTaskrunning=1;
+									Serial.println("Enviando firmware al PSOC5 por falta de comunicacion!");
 									xTaskCreate(UpdateTask,"TASK UPDATE",4096,NULL,1,NULL);
 								}
 							}
@@ -269,7 +270,8 @@ void controlTask(void *arg)
 		{
 			cont_hour_ant = cont_hour;
 		}
-		vTaskDelay(15 / portTICK_PERIOD_MS);	
+
+		vTaskDelay(pdMS_TO_TICKS(15));	
 	}
 }
 
@@ -288,8 +290,8 @@ void startSystem(void){
 		memcpy(&ConfigFirebase.Device_Db_ID[20],&device_ID[3],8);
 
 		//Init firebase values
-		AutoUpdate.ESP_Act_Ver = ParseFirmwareVersion((char *)(version_firmware));
-		AutoUpdate.PSOC5_Act_Ver = ParseFirmwareVersion((char *)(PSOC5_version_firmware));
+		UpdateStatus.ESP_Act_Ver = ParseFirmwareVersion((char *)(version_firmware));
+		UpdateStatus.PSOC5_Act_Ver = ParseFirmwareVersion((char *)(PSOC5_version_firmware));
 	#endif
 
 }
@@ -406,7 +408,7 @@ void procesar_bloque(uint16 tipo_bloque){
 			modifyCharacteristic(&buffer_rx_local[217], 1, DOMESTIC_CONSUMPTION_FCT_CHAR_HANDLE);
 			modifyCharacteristic(&buffer_rx_local[218], 1, DOMESTIC_CONSUMPTION_FS_CHAR_HANDLE);
 			memcpy(deviceSerNum, &buffer_rx_local[219], 10);			
-			modifyCharacteristic(&buffer_rx_local[229], 1, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[229], 2, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_CHAR_HANDLE);
 			modifyCharacteristic(&buffer_rx_local[231], 1, LED_LUMIN_COLOR_LUMINOSITY_LEVEL_CHAR_HANDLE);
 			luminosidad=buffer_rx_local[231];
 			modifyCharacteristic(&buffer_rx_local[232], 1, DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE);
@@ -424,7 +426,6 @@ void procesar_bloque(uint16 tipo_bloque){
 	}
 	else if(BLOQUE_STATUS == tipo_bloque)
 	{		
-		uint8_t UpdatefireBaseData=0;
 		if(buffer_rx_local[89]==0x36){
 			//Leds
 			modifyCharacteristic(buffer_rx_local, 1, LED_LUMIN_COLOR_LUMINOSITY_LEVEL_CHAR_HANDLE);
@@ -437,14 +438,23 @@ void procesar_bloque(uint16 tipo_bloque){
 			verde = buffer_rx_local[2];
 			azul = buffer_rx_local[3];
 
+			if(rojo ==100){
+				Led_color=ROJO;
+			}
+			else if (azul==100){
+				Led_color=AZUL_OSCURO;
+			}
+			else if (verde==100){
+				Led_color=VERDE;
+			}
+
 			//Hilo piloto
 			modifyCharacteristic(&buffer_rx_local[4], 2, STATUS_HPT_STATUS_CHAR_HANDLE);
 
-			if((memcmp(&buffer_rx_local[4], status_hpt_anterior, 2) != 0) && (serverbleGetConnected() || ConfigFirebase.FirebaseConnected))
+			if((memcmp(&buffer_rx_local[4], status_hpt_anterior, 2) != 0) && (serverbleGetConnected()))
 			{
 				memcpy(status_hpt_anterior, &buffer_rx_local[4], 2);
 				serverbleNotCharacteristic(&buffer_rx_local[4], 2, STATUS_HPT_STATUS_CHAR_HANDLE); 
-				UpdatefireBaseData=1;
 			}
 
 			//Medidas
@@ -453,12 +463,11 @@ void procesar_bloque(uint16 tipo_bloque){
 			modifyCharacteristic(&buffer_rx_local[12], 2, STATUS_CONN_LOCK_STATUS_CHAR_HANDLE);			
 			modifyCharacteristic(&buffer_rx_local[14], 1, MEASURES_MAX_CURRENT_CABLE_CHAR_HANDLE);	
 			modifyCharacteristic(&buffer_rx_local[16], 2, MEASURES_INST_CURRENT_CHAR_HANDLE);
-			if(((Status.Measures.instant_current) != (inst_current_anterior)) && (serverbleGetConnected() || ConfigFirebase.FirebaseConnected)&& (--cnt_diferencia == 0))
+			if(((Status.Measures.instant_current) != (inst_current_anterior)) && (serverbleGetConnected())&& (--cnt_diferencia == 0))
 			{
 				cnt_diferencia = 2; // A.D.S. Cambiado de 30 a 5
 				inst_current_anterior = Status.Measures.instant_current;
-				serverbleNotCharacteristic(&buffer_rx_local[16], 2, STATUS_HPT_STATUS_CHAR_HANDLE); 
-				UpdatefireBaseData=1;
+				serverbleNotCharacteristic(&buffer_rx_local[16], 2, MEASURES_INST_CURRENT_CHAR_HANDLE); 
 			}
 
 			modifyCharacteristic(&buffer_rx_local[18], 2, MEASURES_INST_VOLTAGE_CHAR_HANDLE);
@@ -620,6 +629,7 @@ void procesar_bloque(uint16 tipo_bloque){
 	else if(RECORDING_REC_CAPACITY_CHAR_HANDLE == tipo_bloque)
 	{
 		modifyCharacteristic(buffer_rx_local, 2, RECORDING_REC_CAPACITY_CHAR_HANDLE);
+		
 	}
 	else if(RECORDING_REC_LAST_CHAR_HANDLE == tipo_bloque)
 	{
@@ -651,17 +661,23 @@ void procesar_bloque(uint16 tipo_bloque){
 	}
 	else if(DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_CHAR_HANDLE == tipo_bloque)
 	{
-		modifyCharacteristic(buffer_rx_local, 1, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_CHAR_HANDLE);
+		modifyCharacteristic(buffer_rx_local, 2, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_CHAR_HANDLE);
+		Serial.println(buffer_rx_local[0]+buffer_rx_local[1]*100);
 	}
 	else if(ERROR_STATUS_ERROR_CODE_CHAR_HANDLE == tipo_bloque)
 	{
 		modifyCharacteristic(buffer_rx_local, 1, ERROR_STATUS_ERROR_CODE_CHAR_HANDLE);
 	}
 	else if(BOOT_LOADER_LOAD_SW_APP_CHAR_HANDLE== tipo_bloque){
-		Serial.println("UpdateTask Creada");
 		xTaskCreate(UpdateTask,"TASK UPDATE",4096,NULL,1,NULL);
 		updateTaskrunning=1;
 	}
+	else if (DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE== tipo_bloque){
+		modifyCharacteristic(buffer_rx_local, 1, DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE);
+	}
+	else if (DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE== tipo_bloque){
+		modifyCharacteristic(buffer_rx_local, 1, DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE);
+	}		
 }
  
 uint8_t sendBinaryBlock ( uint8_t *data, int len )
@@ -693,9 +709,7 @@ void deviceConnectInd ( void ){
 	// This event is received when device is connected over GATT level 
 
 	luminosidad = 50;
-	rojo = 10;
-	verde = 10;
-	azul = 10;
+	Led_color=BLANCO;
 	
 
 	srand(aut_semilla);
@@ -717,19 +731,17 @@ void deviceConnectInd ( void ){
 	memcpy(authChallengeReply, outputvec1, 8);
 
 	//Delay para dar tiempo a conectar
-	vTaskDelay(500/portTICK_PERIOD_MS);
+	vTaskDelay(pdMS_TO_TICKS(250));
 	modifyCharacteristic(authChallengeQuery, 8, AUTENTICACION_MATRIX_CHAR_HANDLE);
 	Serial.print("Sending authentication");
-	vTaskDelay(500/portTICK_PERIOD_MS);
+	vTaskDelay(pdMS_TO_TICKS(250));
 
 }
 
 void deviceDisconnectInd ( void )
 {
 	luminosidad = 50;
-	rojo = 10;
-	verde = 10;
-	azul = 10;
+	Led_color=BLANCO;
 	authSuccess = 0;
 	memset(authChallengeReply, 0x00, 8);
 	//memset(authChallengeQuery, 0x00, 8);
@@ -791,7 +803,7 @@ void Disable_VELT1_CHARGER_services(void)
  * **********************************************/
 void UpdateTask(void *arg){
 	Serial.println("\nComenzando actualizacion del PSOC5!!");
-
+	
 	int Nlinea =0;
 	uint8_t err = 0;
 	String Buffer;
@@ -806,90 +818,85 @@ void UpdateTask(void *arg){
 	unsigned long blVer=0;
 	unsigned char rowData[512];
 
+	SPIFFS.begin(1,"/spiffs",1,"PSOC5");
 	File file = SPIFFS.open("/FreeRTOS_V6.cyacd"); 
 	if(!file || file.size() == 0){ 
-		Serial.println("Failed to open file for reading"); 
-		file.close();
-		return; 
-	}
-
-	//Leer la primera linea y obtener los datos del chip
-	Buffer=file.readStringUntil('\n'); 
-	int longitud = Buffer.length()-1;  
-	unsigned char* b = (unsigned char*) Buffer.c_str(); 
-	err=CyBtldr_ParseHeader((unsigned int)longitud,  b, &siliconID , &siliconRev ,&packetChkSumType);  
-	err = CyBtldr_ParseRowData((unsigned int)longitud,b, &arrayId, &rowNum, rowData, &rowSize, &checksum);
-
-	//Reiniciar la lectura del archivo
-	file.seek(PRIMERA_FILA,SeekSet);
-
-	err = CyBtldr_StartBootloadOperation(&serialLocal ,siliconID, siliconRev ,&blVer);
-	Serial.println(err);
-	
-	while(1){
-		if (file.available() && err == 0) {   
-			Buffer=file.readStringUntil('\n'); 
-			longitud = Buffer.length()-1; 
-			b = (unsigned char*) Buffer.c_str();     
-			err = CyBtldr_ParseRowData((unsigned int)longitud,b, &arrayId, &rowNum, rowData, &rowSize, &checksum);
-			if(err!=0){
-				Serial.printf("Error 1%i \n", err);
-			}
-			if (err==0){
-				err = CyBtldr_ProgramRow(arrayId, rowNum, rowData, rowSize);
-			}	
-					
-			Nlinea++;
-			Serial.printf("Lineas leidas: %u \n",Nlinea);
-		}
-		else{
-			//End Bootloader Operation 
-			CyBtldr_EndBootloadOperation(&serialLocal);		
-			Serial.println("Actualizacion terminada!!");
-			Serial.printf("Lineas leidas: %u \n",Nlinea);
-			Serial.printf("Error %i \n", err);
-			file.close();
-			updateTaskrunning=0;
-			setMainFwUpdateActive(0);
-			vTaskDelete(NULL);		
-		}
+		Serial.println("Failed to open file for reading , intentandolo otra vez"); 
 		
+		file = SPIFFS.open("/FreeRTOS_V6.cyacd");
+		if(!file || file.size() == 0){
+			Serial.println("Imposible abrir");
+		}
+	}
+	if(file){
+		//Leer la primera linea y obtener los datos del chip
+		Buffer=file.readStringUntil('\n'); 
+		int longitud = Buffer.length()-1;  
+		unsigned char* b = (unsigned char*) Buffer.c_str(); 
+		err=CyBtldr_ParseHeader((unsigned int)longitud,  b, &siliconID , &siliconRev ,&packetChkSumType);  
+		err = CyBtldr_ParseRowData((unsigned int)longitud,b, &arrayId, &rowNum, rowData, &rowSize, &checksum);
+
+		//Reiniciar la lectura del archivo
+		file.seek(PRIMERA_FILA,SeekSet);
+
+		err = CyBtldr_StartBootloadOperation(&serialLocal ,siliconID, siliconRev ,&blVer);
+		Serial.println(err);
+		
+		while(1){
+			if (file.available() && err == 0) {   
+				Buffer=file.readStringUntil('\n'); 
+				longitud = Buffer.length()-1; 
+				b = (unsigned char*) Buffer.c_str();     
+				err = CyBtldr_ParseRowData((unsigned int)longitud,b, &arrayId, &rowNum, rowData, &rowSize, &checksum);
+				if(err!=0){
+					Serial.printf("Error 1%i \n", err);
+				}
+				if (err==0){
+					err = CyBtldr_ProgramRow(arrayId, rowNum, rowData, rowSize);
+				}	
+						
+				Nlinea++;
+				Serial.printf("Lineas leidas: %u \n",Nlinea);
+			}
+			else{
+				//End Bootloader Operation 
+				CyBtldr_EndBootloadOperation(&serialLocal);		
+				Serial.println("Actualizacion terminada!!");
+				Serial.printf("Lineas leidas: %u \n",Nlinea);
+				Serial.printf("Error %i \n", err);
+				file.close();
+				updateTaskrunning=0;
+				setMainFwUpdateActive(0);
+				UpdateStatus.InstalandoArchivo=0;
+				Serial.println("Reiniciando en 4 segundos!"); 
+				vTaskDelay(pdMS_TO_TICKS(4000));
+				MAIN_RESET_Write(0);						
+				ESP.restart();
+				vTaskDelete(NULL);		
+			}
+			
+		}
 	}
 }
+/*********** Pruebas tar.gz **************/
+#ifdef UPDATE_COMPRESSED
+void UpdateCompressedTask(void *arg){
 
-void UpdateESP(){
-	File file = SPIFFS.open("/firmware.bin");
+	Serial.println("Source filesystem Mount Successful :)");
 
-	if(!file){
-		Serial.println("Failed to open file for reading");
-		return;
+	GzUnpacker *GZUnpacker = new GzUnpacker();
+
+	GZUnpacker->haltOnError( true ); // stop on fail (manual restart/reset required)
+	GZUnpacker->setupFSCallbacks( targzTotalBytesFn, targzFreeBytesFn2 ); // prevent the partition from exploding, recommended
+	GZUnpacker->setGzProgressCallback( BaseUnpacker::defaultProgressCallback ); // targzNullProgressCallback or defaultProgressCallback
+	GZUnpacker->setLoggerCallback( BaseUnpacker::targzPrintLoggerCallback  );    // gz log verbosity
+
+	if( ! GZUnpacker->gzUpdater(tarGzFS, tarGzFile, false ) ) {
+	Serial.printf("gzUpdater failed with return code #%d\n", GZUnpacker->tarGzGetError() );
 	}
-	
-	Serial.println("\nComenzando actualizacion del Espressif!!");
-	
-	size_t fileSize = file.size();
-
-	if(!Update.begin(fileSize)){
-		return;
-	};
-
-	Update.writeStream(file);
-
-	if(Update.end()){	
-		Serial.println("Micro Actualizado!");  
-	}
-	else {	
-		Serial.println("Error Occurred: " + String(Update.getError()));
-	return;
-	}
-	
-	file.close();
-
-	Serial.println("Reset in 4 seconds...");
-	delay(4000);
-
-	ESP.restart();
+	tarGzFS.end();
 }
+#endif
 
 void controlInit(void){
 	//xTaskCreate(controlTask,"TASK CONTROL",4096*2,NULL,1,NULL);

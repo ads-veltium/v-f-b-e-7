@@ -5,65 +5,38 @@
 #define NUM_PIXELS 7
 
 //Extern configuration variables
-extern uint8 luminosidad, rojo, verde, azul;
-extern carac_Auto_Update AutoUpdate;
+extern uint8 luminosidad, Led_color;
+extern carac_Update_Status UpdateStatus;
 extern carac_Status  Status;
 
 //Adafruit_NeoPixel strip EXT_RAM_ATTR;
 CRGB leds[NUM_PIXELS] EXT_RAM_ATTR;
 
 //Encender un solo led (Y apagar el resto)
-void displayOne( uint8_t i, uint8_t r, uint8_t g, uint8_t b, uint8_t pixeln)
-{
+void displayOne( uint8_t i, uint8_t color, uint8_t pixeln){
 	i=map(i,0,100,0,255);
-	r=map(r,0,100,0,255);
-	g=map(g,0,100,0,255);
-	b=map(b,0,100,0,255);
 
 	for (int j = 0; j < NUM_PIXELS; j++)
 	{
-		leds[j].r = r; 
-    	leds[j].g = g; 
-    	leds[j].b = b;
+		leds[j].setHSV(0,0,0);
 	}
-	FastLED.setBrightness(i);
-	leds[pixeln].r = r; 
-    leds[pixeln].g = g; 
-    leds[pixeln].b = b;
+	leds[pixeln].setHSV(color, 255,i);
 	FastLED.show();
 }
 
 //Cambiar un solo led (El resto permanecen igual)
-void changeOne( uint8_t i, uint8_t r, uint8_t g, uint8_t b, uint8_t pixeln)
+void changeOne( uint8_t i, uint8_t color, uint8_t pixeln)
 {
 	i=map(i,0,100,0,255);
-	r=map(r,0,100,0,255);
-	g=map(g,0,100,0,255);
-	b=map(b,0,100,0,255);
 
-	FastLED.setBrightness(i);
-	leds[pixeln].r = r; 
-    leds[pixeln].g = g; 
-    leds[pixeln].b = b;
+	leds[pixeln].setHSV(color, 255,i);
 	FastLED.show();
 }
 
-//Cambiar un solo led (El resto permanecen igual)
-void displayAll( uint8_t i, uint8_t r, uint8_t g, uint8_t b)
+void displayAll( uint8_t i, uint8_t color)
 {
 	i=map(i,0,100,0,255);
-	r=map(r,0,100,0,255);
-	g=map(g,0,100,0,255);
-	b=map(b,0,100,0,255);
-
-	FastLED.setBrightness(i );
-	for(int dot = 0; dot < NUM_PIXELS; dot++) { 
-		leds[dot].r = r; 
-    	leds[dot].g = g; 
-    	leds[dot].b = b;
-		FastLED.show();
-	}
-
+	FastLED.showColor(CHSV(color, 255, i));
 }
 
 void initLeds ( void )
@@ -83,54 +56,62 @@ void initLeds ( void )
 void Kit (void){
 	
 	for (int j = 0; j < 7; j++){
-		displayOne(100,100,0,0,j);
-		vTaskDelay(550/portTICK_PERIOD_MS);
+		displayOne(100,HUE_RED,j);
+		vTaskDelay(50/portTICK_PERIOD_MS);
 	}
 	for (int j = 7; j >= 0; j--){
-		displayOne(100,100,0,0,j);
-		vTaskDelay(550/portTICK_PERIOD_MS);
+		displayOne(100,HUE_RED,j);
+		vTaskDelay(50/portTICK_PERIOD_MS);
+	
 	}
 }
 
 
 void LedControl_Task(void *arg){
 	uint8 subiendo=1, luminosidad_carga= 0, LedPointer =0,luminosidad_Actual=50, togle_led=0;
+	uint8 _LED_COLOR=0;
 	uint16 cnt_parpadeo=0, Delay= 20;
 	uint8 Efectos=0;
 
 	initLeds();
 
 	while(1){
-		if(AutoUpdate.DescargandoArchivo){
+		
+		if(UpdateStatus.InstalandoArchivo && !Efectos){
 			Efectos=1;
-		}
-
-		//Descarga:
-		if(Efectos){
+			LedPointer=0;
 			Delay=150;
 			luminosidad=100;
+			Led_color=HUE_AQUA;
+		}
+		else if(UpdateStatus.DescargandoArchivo){
+			Delay=75;
+			luminosidad |= 0x80;
+			Led_color=HUE_PURPLE;
+		}
+
+		Efectos=UpdateStatus.InstalandoArchivo;
+		//Descarga:
+		if(Efectos){			
 			LedPointer++;
+			
 			if(LedPointer>=7){
 				if(luminosidad==100){
-					rojo=0;
-					verde=0;
-					azul=0;
+					_LED_COLOR=0;
 					luminosidad=0;
 				}
 				else{
-					rojo=50;
-					verde=80;
-					azul=100;
+					_LED_COLOR = HUE_AQUA;
 					luminosidad=100;
 				}
 				LedPointer=0;
 			} 
-			changeOne(100,rojo,verde,azul,LedPointer);
+			changeOne(luminosidad,_LED_COLOR,LedPointer);
 		}
 		else{
 			
 			//Funcionamiento normal
-			if (luminosidad & 0x80 && rojo == 0 && verde == 0){ //Cargando				
+			if (luminosidad & 0x80 && (Led_color==HUE_BLUE || Led_color==HUE_PURPLE)) { //Cargando o actualizando		
 				uint8 lumin_limit=50;
 
 				if(Status.Measures.instant_current>900){
@@ -152,8 +133,7 @@ void LedControl_Task(void *arg){
 						subiendo=1;
 					}
 				}
-			    Delay=20;
-				displayAll(luminosidad_carga,rojo,verde,azul);
+				displayAll(luminosidad_carga,Led_color);
 			}
 			else if(luminosidad & 0x80){ //Parpadeo
 				if(++cnt_parpadeo >= TIME_PARPADEO)
@@ -162,12 +142,12 @@ void LedControl_Task(void *arg){
 					if(togle_led == 0)
 					{
 						togle_led = 1;
-						displayAll(0, rojo, verde, azul);
+						displayAll(0, 0);
 					}
 					else
 					{
 						togle_led = 0;
-						displayAll((luminosidad & 0x7F), rojo, verde, azul);
+						displayAll((luminosidad & 0x7F), Led_color);
 					}
 				}
 			}
@@ -183,8 +163,8 @@ void LedControl_Task(void *arg){
 				else{
 					luminosidad_Actual=luminosidad;
 				}
-				Delay=500;
-				displayAll(luminosidad_Actual,rojo,verde,azul);	
+				Delay=100;
+				displayAll(luminosidad_Actual,Led_color);	
 			}
 
 		}

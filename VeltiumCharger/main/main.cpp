@@ -25,8 +25,6 @@ static bool eth_connected = false;
  * *******************************************/
 void perform_ps_malloc_tests(uint8_t pot_first, uint8_t pot_last);
 void perform_malloc_tests(uint8_t pot_first, uint8_t pot_last);
-void Initserver(void);
-void WiFiEvent(WiFiEvent_t event);
 
 void setup() 
 {
