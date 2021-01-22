@@ -10,6 +10,7 @@
  * ========================================
  */
 #include "control.h"
+#include "FirebaseClient.h"
 
 
 // TIPOS DE BLOQUE DE INTERCAMBIO CON BLE
@@ -947,7 +948,7 @@ void controlInit(void){
 	//Freertos estatico
 	xTaskCreateStatic(LedControl_Task,"TASK LEDS",4096,NULL,PRIORIDAD_LEDS,xLEDStack,&xLEDBuffer); 
 	xTaskCreateStatic(controlTask,"TASK CONTROL",4096*4,NULL,PRIORIDAD_CONTROL,xControlStack,&xControlBuffer); 
-	#ifdef USE_WIFI
+	#ifdef CONNECTED
 		xTaskCreateStatic(Firebase_Conn_Task,"TASK FIREBASE", 4096*4,NULL,PRIORIDAD_FIREBASE,xFirebaseStack, &xFirebaseBuffer);
 	#endif
 }

@@ -1,0 +1,71 @@
+PROGMEM = R"rawliteral(<!DOCTYPE html>
+<html>
+<head>
+    <title>Veltium Smart Chargers</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="/style.css" rel="stylesheet" type="text/css" />
+</head>
+
+<body>
+   
+<h1>VELTIUM SMART CHARGERS</h1>
+<p> Disponible </p>
+<p>
+    <span class="dht-labels">Carga</span> 
+    <span id="carga">%CARGA%</span>
+    <span class="units">kWh</span>
+</p>
+<p> Autenticación </p>
+<input type="button" value="Cargar ahora"/>
+<input type="button" value="Parar"/>
+<h2> Datos: </h2> 
+<p>
+  <span class="dht-labels">Estado del hilo piloto:</span> 
+  <span id="hp">%HP%</span>
+</p>
+<p>
+  <span class="dht-labels">Corriente de carga:</span> 
+  <span id="corriente">%CORRIENTE%</span>
+  <span class="units">A</span>
+</p>
+<p> Cargador conectado: </p>
+<input type="button" value="Reiniciar cargador"/>
+
+<script>
+    setInterval(function ( ) {
+      var xhttp = new XMLHttpRequest();
+      xhttp.onreadystatechange = function() {
+        if (this.readyState == 4 && this.status == 200) {
+          document.getElementById("carga").innerHTML = this.responseText;
+        }
+      };
+      xhttp.open("GET", "/carga", true);
+      xhttp.send();
+    }, 10000 ) ;
+
+    setInterval(function ( ) {
+      var xhttp = new XMLHttpRequest();
+      xhttp.onreadystatechange = function() {
+        if (this.readyState == 4 && this.status == 200) {
+          document.getElementById("hp").innerHTML = this.responseText;
+        }
+      };
+      xhttp.open("GET", "/hp", true);
+      xhttp.send();
+    }, 10000 ) ;
+
+    setInterval(function ( ) {
+      var xhttp = new XMLHttpRequest();
+      xhttp.onreadystatechange = function() {
+        if (this.readyState == 4 && this.status == 200) {
+          document.getElementById("corriente").innerHTML = this.responseText;
+        }
+      };
+      xhttp.open("GET", "/corrriente", true);
+      xhttp.send();
+    }, 10000 ) ;
+
+</script>
+
+</html>)rawliteral;
+

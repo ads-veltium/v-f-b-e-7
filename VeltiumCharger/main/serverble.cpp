@@ -43,6 +43,8 @@ uint8 buffer_tx[300];// EXT_RAM_ATTR;
 
 
 BLEService *pbleServices[NUMBER_OF_SERVICES];
+//BLEService *pbleServices = (BLEService*) ps_malloc(sizeof(BLEService)*NUMBER_OF_SERVICES);
+//BLECharacteristic *pbleCharacteristics = (BLECharacteristic*) ps_malloc(sizeof(BLECharacteristic)*NUMBER_OF_SERVICES);
 
 BLECharacteristic *pbleCharacteristics[NUMBER_OF_CHARACTERISTICS];
 
@@ -127,7 +129,6 @@ class serverCallbacks: public BLEServerCallbacks
 	{
 		deviceBleConnected = true;
 		deviceConnectInd();
-		
 	};
 
 	void onDisconnect(BLEServer* pServer) 

@@ -7,11 +7,30 @@
 #include "esp32-hal-psram.h"
 #include "tipos.h"
 #include "FirebaseClient.h"
+#include "ESPAsyncWebServer.h"
 
+
+#ifdef USE_WIFI
 #define WIFI_SSID "VELTIUM_WF"
 #define WIFI_PASSWORD "W1f1d3V3lt1um$m4rtCh4rg3r$!"
+#endif
+
+#ifdef USE_ETH
+    #include <ETH.h>
+
+    //#define ETH_CLK_MODE    ETH_CLOCK_GPIO0_IN
+    #define ETH_POWER_PIN  	12 
+    #define ETH_TYPE        ETH_PHY_LAN8720
+    #define ETH_ADDR        0
+    #define ETH_MDC_PIN    	23 
+    #define ETH_MDIO_PIN    18
 
 
+    static bool eth_connected = false;
+#endif // USE_ETH
+
+void InitServer(void) ;
+void ETH_begin();
 void Station_Begin();
 void Station_Pause();
 void Station_Resume();

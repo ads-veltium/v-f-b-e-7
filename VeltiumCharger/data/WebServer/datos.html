@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<meta http-equiv=”Content-Type” content=”text/html; charset=UTF-8″ />
+<html>
+<head>
+    <title>Veltium Smart Chargers</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" type="text/css" href="style.css">
+</head>
+
+<body>
+<form>
+<h1>VELTIUM SMART CHARGERS</h1>
+<h2> Datos </h2>
+<p>
+  <span class="dht-labels">Estado del hilo piloto:</span> 
+  <span id="hp">%HP%</span>
+</p>
+
+<p>
+  <span class="dht-labels">Corriente de carga:</span> 
+  <span id="corriente">%CORRIENTE%</span>
+  <span class="units">A</span>
+</p>
+
+<p>
+    <span class="dht-labels">Voltaje:</span> 
+    <span id="voltaje">%VOLTAJE%</span>
+    <span class="units">V</span>
+</p>
+
+<p>
+  <span class="dht-labels">Potencia activa:</span> 
+  <span id="potencia">%POTENCIA%</span>
+  <span class="units">W</span>
+</p>
+
+<p>
+  <span class="dht-labels">Error code:</span> 
+  <span id="error">%ERROR%</span>
+</p>
+
+<h3>Orden de carga</h3>
+  %BUTTONPLACEHOLDER%
+
+<h4>Actualizaciones</h4>  
+<p>
+  <span class="dht-labels">Actualizaciones autom&aacuteticas</span> 
+  <span>%AUTOUPDATE%</span>
+</p>
+
+<p>
+  <span>%ACTUALIZAR%</span>
+</p>
+
+</form>
+</body>
+
+<script>
+
+    setInterval(function ( ) {
+      var xhttp = new XMLHttpRequest();
+      xhttp.onreadystatechange = function() {
+        if (this.readyState == 4 && this.status == 200) {
+          document.getElementById("hp").innerHTML = this.responseText;
+        }
+      };
+      xhttp.open("GET", "/hp", true);
+      xhttp.send();
+    }, 5000 ) ;
+
+    setInterval(function ( ) {
+      var xhttp = new XMLHttpRequest();
+      xhttp.onreadystatechange = function() {
+        if (this.readyState == 4 && this.status == 200) {
+          document.getElementById("corriente").innerHTML = this.responseText;
+        }
+      };
+      xhttp.open("GET", "/corrriente", true);
+      xhttp.send();
+    }, 5000 ) ;
+
+
+    setInterval(function ( ) {
+      var xhttp = new XMLHttpRequest();
+      xhttp.onreadystatechange = function() {
+        if (this.readyState == 4 && this.status == 200) {
+          document.getElementById("voltaje").innerHTML = this.responseText;
+        }
+      };
+      xhttp.open("GET", "/voltaje", true);
+      xhttp.send();
+    }, 5000 ) ;
+
+    setInterval(function ( ) {
+      var xhttp = new XMLHttpRequest();
+      xhttp.onreadystatechange = function() {
+        if (this.readyState == 4 && this.status == 200) {
+          document.getElementById("potencia").innerHTML = this.responseText;
+        }
+      };
+      xhttp.open("GET", "/potencia", true);
+      xhttp.send();
+    }, 5000 ) ;
+
+    setInterval(function ( ) {
+      var xhttp = new XMLHttpRequest();
+      xhttp.onreadystatechange = function() {
+        if (this.readyState == 4 && this.status == 200) {
+          document.getElementById("error").innerHTML = this.responseText;
+        }
+      };
+      xhttp.open("GET", "/error", true);
+      xhttp.send();
+    }, 5000 ) ;
+
+    function Startbutton(element) {
+      var xhr = new XMLHttpRequest();
+        if(element.clicked){ xhr.open("GET", "/update?output="+element.id+"", true); }
+        else { xhr.open("GET", "/update?output="+element.id+"", true); }
+      xhr.send();
+    }
+
+    function toggleCheckbox(element) {
+      var xhr = new XMLHttpRequest();
+        if(element.checked){ xhr.open("GET", "/autoupdate?&state=1", true); }
+        else { xhr.open("GET", "/autoupdate?&state=0", true); }
+      xhr.send();
+    }
+
+</script>
+
+</html>

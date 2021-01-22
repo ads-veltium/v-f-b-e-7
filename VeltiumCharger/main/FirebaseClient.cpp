@@ -81,12 +81,13 @@ bool initFirebaseClient(){
     auth.user.password = veltiumbackend_password;
 
     Firebase.begin(&config,&auth);
-    Firebase.reconnectWiFi(false);
+    //Firebase.reconnectWiFi(false);
 
     //Set database read timeout to 1 minute (max 15 minutes)
     //Firebase.setReadTimeout(*firebaseData, 1000 * 60);
     //Firebase.setwriteSizeLimit(*firebaseData, "tiny");
 
+    Serial.println("Done");
     if(firebase_Access==NULL){
       vSemaphoreCreateBinary(firebase_Access);
     }

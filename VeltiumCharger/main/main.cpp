@@ -1,25 +1,5 @@
 #include "control.h"
 
-#ifdef USE_ETH
-#include <ETH.h>
-
-//#define ETH_CLK_MODE    ETH_CLOCK_GPIO0_IN
-#define ETH_POWER_PIN  	12 
-#define ETH_TYPE        ETH_PHY_LAN8720
-#define ETH_ADDR        0
-#define ETH_MDC_PIN    	23 
-#define ETH_MDIO_PIN    18
-
-IPAddress local_IP(192, 168, 2, 126);
-IPAddress gateway(192, 168, 2, 1);
-IPAddress subnet(255, 255, 255, 0);
-IPAddress primaryDNS(8, 8, 8, 8); //optional
-IPAddress secondaryDNS(8, 8, 4, 4); //optional
-
-
-static bool eth_connected = false;
-#endif // USE_ETH
-
 /**********************************************
  * 			       PROTOTIPOS
  * *******************************************/
@@ -40,14 +20,7 @@ void setup()
 #endif
 
 #ifdef USE_ETH
-	WiFi.onEvent(WiFiEvent);
-	//ETH.begin(ETH_ADDR, ETH_POWER_PIN, ETH_MDC_PIN, ETH_MDIO_PIN, ETH_TYPE, ETH_CLK_MODE);
-	ETH.begin(ETH_ADDR, ETH_POWER_PIN, ETH_MDC_PIN, ETH_MDIO_PIN, ETH_TYPE);
-
-	if (!ETH.config(local_IP, gateway, subnet, primaryDNS, secondaryDNS)) 
-	{
-		Serial.println("ERROR: NOT IP ERROR \r\n");
-	}
+	ETH_begin();
 #endif // USE_ETH
 
 #ifdef USE_WIFI
@@ -123,3 +96,6 @@ void perform_malloc_tests(uint8_t pot_first, uint8_t pot_last)
 		}
 	}
 }
+
+
+
