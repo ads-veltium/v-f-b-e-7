@@ -1,5 +1,4 @@
 tools/xtensa-esp32-elf
-tools/xtensa-esp32s2-elf
 tools/dist
 tools/esptool
 tools/esptool.exe
@@ -13,7 +12,3 @@ tools/mkspiffs/mkspiffs.exe
 .vs/
 __vm/
 *.vcxproj*
-.vscode/
-platform.sloeber.txt
-boards.sloeber.txt
-tools/mklittlefs

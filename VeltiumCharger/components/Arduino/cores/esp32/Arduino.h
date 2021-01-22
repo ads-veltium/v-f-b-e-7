@@ -29,7 +29,6 @@
 #include <string.h>
 #include <inttypes.h>
 
-#include "esp_arduino_version.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
@@ -79,7 +78,7 @@
 #define interrupts() sei()
 #define noInterrupts() cli()
 
-#define clockCyclesPerMicrosecond() ( (long int)getCpuFrequencyMhz() )
+#define clockCyclesPerMicrosecond() ( F_CPU / 1000000L )
 #define clockCyclesToMicroseconds(a) ( (a) / clockCyclesPerMicrosecond() )
 #define microsecondsToClockCycles(a) ( (a) * clockCyclesPerMicrosecond() )
 
@@ -89,7 +88,7 @@
 #define bitRead(value, bit) (((value) >> (bit)) & 0x01)
 #define bitSet(value, bit) ((value) |= (1UL << (bit)))
 #define bitClear(value, bit) ((value) &= ~(1UL << (bit)))
-#define bitWrite(value, bit, bitvalue) ((bitvalue) ? bitSet(value, bit) : bitClear(value, bit))
+#define bitWrite(value, bit, bitvalue) (bitvalue ? bitSet(value, bit) : bitClear(value, bit))
 
 // avr-libc defines _NOP() since 1.6.2
 #ifndef _NOP
@@ -116,10 +115,10 @@ typedef bool boolean;
 typedef uint8_t byte;
 typedef unsigned int word;
 
-#ifdef __cplusplus
 void setup(void);
 void loop(void);
 
+#ifdef __cplusplus
 long random(long, long);
 #endif
 void randomSeed(unsigned long);

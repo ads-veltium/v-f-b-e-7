@@ -68,11 +68,11 @@ void Kit (void){
 	
 	for (int j = 0; j < 7; j++){
 		displayOne(100,HUE_RED,j);
-		vTaskDelay(50/portTICK_PERIOD_MS);
+		vTaskDelay(pdMS_TO_TICKS(50));
 	}
 	for (int j = 7; j >= 0; j--){
 		displayOne(100,HUE_RED,j);
-		vTaskDelay(50/portTICK_PERIOD_MS);
+		vTaskDelay(pdMS_TO_TICKS(50));
 	
 	}
 }

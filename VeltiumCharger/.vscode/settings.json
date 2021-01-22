@@ -29,16 +29,40 @@
                 "command": ". /home/joel/Documents/SDK_4/idf_4_0/esp-idf/./export.sh && cd /home/joel/Documents/fw-bird-esp32/VeltiumCharger/ && make menuconfig",
             },
             {
-                "name": "CLEAR",
-                "color": "white",
-                "singleInstance": true,
-                "command": ". /home/joel/Documents/SDK_4/idf_4_0/esp-idf/./export.sh && cd /home/joel/Documents/fw-bird-esp32/VeltiumCharger/ && make clean",
-            },
-            {
                 "name": "FLASH",
                 "color": "white",
                 "singleInstance": true,
                 "command": ". /home/joel/Documents/SDK_4/idf_4_0/esp-idf/./export.sh && cd /home/joel/Documents/fw-bird-esp32/VeltiumCharger/ && make flash",
+            },
+            {
+                "name": "BUILD_4_2",
+                "color": "white",
+                "singleInstance": true,
+                "command": ". /home/joel/Documents/SDK_4/idf_4_2/esp-idf/./export.sh && cd /home/joel/Documents/fw-bird-esp32/VeltiumCharger/ && make",
+            },
+            {
+                "name": "MFM_4_2",
+                "color": "white",
+                "singleInstance": true,
+                "command": ". /home/joel/Documents/SDK_4/idf_4_2/esp-idf/./export.sh && cd /home/joel/Documents/fw-bird-esp32/VeltiumCharger/ && make flash monitor",
+            },
+            {
+                "name": "MONITOR_4_2",
+                "color": "white",
+                "singleInstance": true,
+                "command": ". /home/joel/Documents/SDK_4/idf_4_2/esp-idf/./export.sh && cd /home/joel/Documents/fw-bird-esp32/VeltiumCharger/ && make monitor",
+            },
+            {
+                "name": "MENUCONFIG_4_2",
+                "color": "white",
+                "singleInstance": true,
+                "command": ". /home/joel/Documents/SDK_4/idf_4_2/esp-idf/./export.sh && cd /home/joel/Documents/fw-bird-esp32/VeltiumCharger/ && make menuconfig",
+            },
+            {
+                "name": "FLASH_4_2",
+                "color": "white",
+                "singleInstance": true,
+                "command": ". /home/joel/Documents/SDK_4/idf_4_2/esp-idf/./export.sh && cd /home/joel/Documents/fw-bird-esp32/VeltiumCharger/ && make flash",
             },
 
         ]
@@ -66,7 +90,9 @@
         "*.ipp": "cpp",
         "random": "cpp",
         "limits": "cpp",
-        "fstream": "cpp"
+        "fstream": "cpp",
+        "complex": "cpp",
+        "condition_variable": "cpp"
     },
     "git.ignoreLimitWarning": true
 }

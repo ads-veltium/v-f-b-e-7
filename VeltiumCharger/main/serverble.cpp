@@ -239,9 +239,9 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 			if (handle == RESET_RESET_CHAR_HANDLE) {
 				if( isMainFwUpdateActive() )
 				{
-					vTaskDelay(200 / portTICK_PERIOD_MS);	
+					vTaskDelay(pdMS_TO_TICKS(200));	
 					MAIN_RESET_Write(0);
-					vTaskDelay(100 / portTICK_PERIOD_MS);	
+					vTaskDelay(pdMS_TO_TICKS(100));	
 					ESP.restart();
 					return;
 				}
@@ -289,10 +289,10 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 					#else 
 						Serial.println("Updating VBLE Compressed");	
 						if (SPIFFS.begin(1,"/spiffs",1,"ESP32")){}
-							vTaskDelay(50/configTICK_RATE_HZ);
+							vTaskDelay(pdMS_TO_TICKS(50));
 							SPIFFS.format();
 						}
-						vTaskDelay(50/configTICK_RATE_HZ);
+						vTaskDelay(pdMS_TO_TICKS(50));
 						UpdateFile = SPIFFS.open("/VBLE2.bin.gz", FILE_WRITE);
 					#endif
 				}
@@ -302,11 +302,11 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 
 					SPIFFS.begin(1,"/spiffs",1,"PSOC5");
 					if(SPIFFS.exists("/FreeRTOS_V6.cyacd")){
-						vTaskDelay(50/configTICK_RATE_HZ);
+						vTaskDelay(pdMS_TO_TICKS(50));
 						SPIFFS.format();
 					}
 
-					vTaskDelay(50/configTICK_RATE_HZ);
+					vTaskDelay(pdMS_TO_TICKS(50));
 					UpdateFile = SPIFFS.open("/FreeRTOS_V6.cyacd", FILE_WRITE);
 				}
 				else{
@@ -556,7 +556,7 @@ void serverbleTask(void *arg)
 			// do stuff here on connecting
 			oldDeviceBleConnected = deviceBleConnected;
 		}
-		vTaskDelay(500 / portTICK_PERIOD_MS);	
+		vTaskDelay(pdMS_TO_TICKS(500));	
 	}
 }
 

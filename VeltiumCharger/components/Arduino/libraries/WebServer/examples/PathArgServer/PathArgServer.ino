@@ -32,7 +32,7 @@ void setup(void) {
     Serial.println("MDNS responder started");
   }
 
-  server.on(F("/"), []() {
+  server.on("/", []() {
     server.send(200, "text/plain", "hello from esp32!");
   });
 

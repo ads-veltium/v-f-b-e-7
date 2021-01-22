@@ -37,9 +37,9 @@ unsigned char DRACO_GPIO_Init(void) {
 unsigned char DRACO_GPIO_MODEM_Pulse(void)
 {
 	digitalWrite(GPIO_MODEM_PWR_EN, HIGH);
-	vTaskDelay(5000 / portTICK_PERIOD_MS);
+	vTaskDelay(pdMS_TO_TICKS(5000));
 	digitalWrite(GPIO_MODEM_PWR_EN, LOW);
-	vTaskDelay(1000 / portTICK_PERIOD_MS);
+	vTaskDelay(pdMS_TO_TICKS(1000));
 	return 0;
 
 }

@@ -20,9 +20,11 @@
 #define LED_MAXIMO_PWM      1200     // Sobre 1200 de periodo
 
 StaticTask_t xControlBuffer ;
-static StackType_t xControlStack[4096*4] EXT_RAM_ATTR;
 StaticTask_t xLEDBuffer ;
-static StackType_t xLEDStack[4096*2] EXT_RAM_ATTR;
+StaticTask_t xFirebaseBuffer ;
+static StackType_t xControlStack [4096*4]     EXT_RAM_ATTR;
+static StackType_t xLEDStack     [4096*2]     EXT_RAM_ATTR;
+static StackType_t xFirebaseStack [4096*4]     EXT_RAM_ATTR;
 
 //Variables Firebase
 carac_Update_Status UpdateStatus EXT_RAM_ATTR;
@@ -223,7 +225,7 @@ void controlTask(void *arg)
 					buffer_tx_local[4] = 0;
 
 					serialLocal.write(buffer_tx_local, 5);
-					vTaskDelay(500 / portTICK_PERIOD_MS);
+					vTaskDelay(pdMS_TO_TICKS(500));
 					xTaskCreate(UpdateTask,"TASK UPDATE",4096,NULL,1,NULL);
 					updateTaskrunning=1;
 				}				
@@ -283,7 +285,7 @@ void startSystem(void){
 	dev_auth_init((void const*)&deviceSerNum);
 
 	//serverbleStartAdvertising();
-	#ifdef USE_WIFI
+	#ifdef CONNECTED
 		//Get Device FirebaseDB ID
 		sprintf(ConfigFirebase.Device_Db_ID,"%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",deviceSerNum[0], deviceSerNum[1], deviceSerNum[2], deviceSerNum[3], deviceSerNum[4],
 			deviceSerNum[5], deviceSerNum[6], deviceSerNum[7], deviceSerNum[8], deviceSerNum[9]);
@@ -412,7 +414,6 @@ void procesar_bloque(uint16 tipo_bloque){
 			modifyCharacteristic(&buffer_rx_local[231], 1, LED_LUMIN_COLOR_LUMINOSITY_LEVEL_CHAR_HANDLE);
 			luminosidad=buffer_rx_local[231];
 			modifyCharacteristic(&buffer_rx_local[232], 1, DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE);
-			Serial.println(buffer_rx_local[232]);
 			modifyCharacteristic(&buffer_rx_local[233], 1, MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
 
 			Serial.println(buffer_rx_local[233]);
@@ -422,6 +423,22 @@ void procesar_bloque(uint16 tipo_bloque){
 
 			cnt_timeout_inicio = TIMEOUT_INICIO;
 			dispositivo_inicializado = 1;
+
+			#ifdef CONNECTED
+				/************************ Set firebase Params **********************/
+				memcpy(Params.autentication_mode, &buffer_rx_local[214],2);
+				Params.inst_current_limit = buffer_rx_local[11];
+				//Caution!!!!!
+				memcpy(Params.Fw_Update_mode, "AA",2);	
+				Params.potencia_contratada=buffer_rx_local[229]+buffer_rx_local[230]*100;
+				Params.Sensor_Conectado = (buffer_rx_local[232]  >> 0) & 0x01;
+				Params.CDP_On           = (buffer_rx_local[232]  >> 1) & 0x01;
+				Params.Ubicacion_Sensor = (buffer_rx_local[232]  >> 2) & 0x03;
+				Serial.println(Params.potencia_contratada);
+
+				ConfigFirebase.WriteParams=true;
+				ConfigFirebase.WriteComs=true;
+			#endif
 		}	
 	}
 	else if(BLOQUE_STATUS == tipo_bloque)
@@ -451,10 +468,17 @@ void procesar_bloque(uint16 tipo_bloque){
 			//Hilo piloto
 			modifyCharacteristic(&buffer_rx_local[4], 2, STATUS_HPT_STATUS_CHAR_HANDLE);
 
-			if((memcmp(&buffer_rx_local[4], status_hpt_anterior, 2) != 0) && (serverbleGetConnected()))
+			if((memcmp(&buffer_rx_local[4], status_hpt_anterior, 2) != 0))
 			{
 				memcpy(status_hpt_anterior, &buffer_rx_local[4], 2);
-				serverbleNotCharacteristic(&buffer_rx_local[4], 2, STATUS_HPT_STATUS_CHAR_HANDLE); 
+				if(serverbleGetConnected()){
+					serverbleNotCharacteristic(&buffer_rx_local[4], 2, STATUS_HPT_STATUS_CHAR_HANDLE); 
+				}
+				#ifdef CONNECTED
+					if(ConfigFirebase.FirebaseConnected){
+						ConfigFirebase.WriteStatus=true;
+					}
+				#endif
 			}
 
 			//Medidas
@@ -468,6 +492,7 @@ void procesar_bloque(uint16 tipo_bloque){
 				cnt_diferencia = 2; // A.D.S. Cambiado de 30 a 5
 				inst_current_anterior = Status.Measures.instant_current;
 				serverbleNotCharacteristic(&buffer_rx_local[16], 2, MEASURES_INST_CURRENT_CHAR_HANDLE); 
+
 			}
 
 			modifyCharacteristic(&buffer_rx_local[18], 2, MEASURES_INST_VOLTAGE_CHAR_HANDLE);
@@ -481,29 +506,23 @@ void procesar_bloque(uint16 tipo_bloque){
 			modifyCharacteristic(&buffer_rx_local[40], 1, DOMESTIC_CONSUMPTION_REAL_CURRENT_LIMIT_CHAR_HANDLE);
 			modifyCharacteristic(&buffer_rx_local[41], 1, ERROR_STATUS_ERROR_CODE_CHAR_HANDLE);		
 			
-
-			//Pasar datos a Status
-			memcpy(Status.HPT_status, &buffer_rx_local[4], 2);
-			memcpy(Status.ICP_status, &buffer_rx_local[6], 2);
-			memcpy(Status.DC_Leack_status, &buffer_rx_local[10], 2);
-			memcpy(Status.Con_Lock, &buffer_rx_local[12], 2);
-			Status.Measures.max_current_cable=buffer_rx_local[14];
-			Status.Measures.instant_current = buffer_rx_local[16] + (buffer_rx_local[17] * 0x100);
-			Status.Measures.instant_voltage = buffer_rx_local[18] + (buffer_rx_local[19] * 0x100);
-			Status.Measures.active_power = buffer_rx_local[20] + (buffer_rx_local[21] * 0x100);
-			Status.Measures.reactive_power = buffer_rx_local[22] + (buffer_rx_local[23] * 0x100);
-			Status.Measures.active_energy = buffer_rx_local[24] + (buffer_rx_local[25] * 0x100) +(buffer_rx_local[26] * 0x1000) +(buffer_rx_local[27] * 0x10000);
-			Status.Measures.active_energy = buffer_rx_local[28] + (buffer_rx_local[29] * 0x100) +(buffer_rx_local[30] * 0x1000) +(buffer_rx_local[32] * 0x10000);			
-			Status.Measures.active_energy = buffer_rx_local[32] + (buffer_rx_local[33] * 0x100) +(buffer_rx_local[34] * 0x1000) +(buffer_rx_local[35] * 0x10000);		
-			Status.Measures.power_factor = buffer_rx_local[36];
-			Status.Measures.active_power = buffer_rx_local[38] + (buffer_rx_local[39] * 0x100);
-			Status.error_code = buffer_rx_local[41];
-
-
-			#ifdef USE_WIFI
-				/*if(ConfigFirebase.FirebaseConnected){
-					UpdateFirebaseStatus();
-				}*/
+			#ifdef CONNECTED
+				//Pasar datos a Status
+				memcpy(Status.HPT_status, &buffer_rx_local[4], 2);
+				memcpy(Status.ICP_status, &buffer_rx_local[6], 2);
+				memcpy(Status.DC_Leack_status, &buffer_rx_local[10], 2);
+				memcpy(Status.Con_Lock, &buffer_rx_local[12], 2);
+				Status.Measures.max_current_cable=buffer_rx_local[14];
+				Status.Measures.instant_current = buffer_rx_local[16] + (buffer_rx_local[17] * 0x100);
+				Status.Measures.instant_voltage = buffer_rx_local[18] + (buffer_rx_local[19] * 0x100);
+				Status.Measures.active_power = buffer_rx_local[20] + (buffer_rx_local[21] * 0x100);
+				Status.Measures.reactive_power = buffer_rx_local[22] + (buffer_rx_local[23] * 0x100);
+				Status.Measures.active_energy = buffer_rx_local[24] + (buffer_rx_local[25] * 0x100) +(buffer_rx_local[26] * 0x1000) +(buffer_rx_local[27] * 0x10000);
+				Status.Measures.active_energy = buffer_rx_local[28] + (buffer_rx_local[29] * 0x100) +(buffer_rx_local[30] * 0x1000) +(buffer_rx_local[32] * 0x10000);			
+				Status.Measures.active_energy = buffer_rx_local[32] + (buffer_rx_local[33] * 0x100) +(buffer_rx_local[34] * 0x1000) +(buffer_rx_local[35] * 0x10000);		
+				Status.Measures.power_factor = buffer_rx_local[36];
+				Status.Measures.active_power = buffer_rx_local[38] + (buffer_rx_local[39] * 0x100);
+				Status.error_code = buffer_rx_local[41];
 			#endif
 		}
 	}
@@ -518,7 +537,13 @@ void procesar_bloque(uint16 tipo_bloque){
 	}
 	else if(MEASURES_INSTALATION_CURRENT_LIMIT_CHAR_HANDLE == tipo_bloque)
 	{
+		
 		modifyCharacteristic(buffer_rx_local, 1, MEASURES_INSTALATION_CURRENT_LIMIT_CHAR_HANDLE);
+
+		#ifdef CONNECTED
+			Params.inst_current_limit = buffer_rx_local[0];
+			ConfigFirebase.WriteParams=true;
+		#endif
 	}
 	else if(MEASURES_CURRENT_COMMAND_CHAR_HANDLE == tipo_bloque)
 	{
@@ -620,6 +645,7 @@ void procesar_bloque(uint16 tipo_bloque){
 	}
 	else if(RESET_RESET_CHAR_HANDLE == tipo_bloque)
 	{	
+		ESP.restart();
 		//modifyCharacteristic(&buffer_rx_local[0], 1, RESET_RESET_CHAR_HANDLE);
 	}
 	else if(ENERGY_RECORD_RECORD_CHAR_HANDLE == tipo_bloque)
@@ -646,6 +672,11 @@ void procesar_bloque(uint16 tipo_bloque){
 	else if(CONFIGURACION_AUTENTICATION_MODES_CHAR_HANDLE == tipo_bloque)
 	{
 		modifyCharacteristic(buffer_rx_local, 2, CONFIGURACION_AUTENTICATION_MODES_CHAR_HANDLE);
+
+		#ifdef CONNECTED
+			memcpy(Params.autentication_mode,buffer_rx_local,2);
+			ConfigFirebase.WriteParams=true;
+		#endif
 	}
 	else if(DOMESTIC_CONSUMPTION_KS_CHAR_HANDLE == tipo_bloque)
 	{
@@ -662,11 +693,20 @@ void procesar_bloque(uint16 tipo_bloque){
 	else if(DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_CHAR_HANDLE == tipo_bloque)
 	{
 		modifyCharacteristic(buffer_rx_local, 2, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_CHAR_HANDLE);
-		Serial.println(buffer_rx_local[0]+buffer_rx_local[1]*100);
+
+		#ifdef CONNECTED
+			Params.potencia_contratada=buffer_rx_local[0]+buffer_rx_local[1]*100;
+			ConfigFirebase.WriteParams=true;
+		#endif
 	}
 	else if(ERROR_STATUS_ERROR_CODE_CHAR_HANDLE == tipo_bloque)
 	{
 		modifyCharacteristic(buffer_rx_local, 1, ERROR_STATUS_ERROR_CODE_CHAR_HANDLE);
+
+		#ifdef CONNECTED
+			Status.error_code=buffer_rx_local[0];
+			ConfigFirebase.WriteStatus=true;
+		#endif
 	}
 	else if(BOOT_LOADER_LOAD_SW_APP_CHAR_HANDLE== tipo_bloque){
 		xTaskCreate(UpdateTask,"TASK UPDATE",4096,NULL,1,NULL);
@@ -674,10 +714,14 @@ void procesar_bloque(uint16 tipo_bloque){
 	}
 	else if (DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE== tipo_bloque){
 		modifyCharacteristic(buffer_rx_local, 1, DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE);
+		#ifdef CONNECTED
+			//Caution!!!!!	
+			Params.Sensor_Conectado = (buffer_rx_local[0]  >> 0) & 0x01;
+			Params.CDP_On           = (buffer_rx_local[0]  >> 1) & 0x01;
+			Params.Ubicacion_Sensor = (buffer_rx_local[0]  >> 2) & 0x03;
+			ConfigFirebase.WriteParams=true;
+		#endif
 	}
-	else if (DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE== tipo_bloque){
-		modifyCharacteristic(buffer_rx_local, 1, DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE);
-	}		
 }
  
 uint8_t sendBinaryBlock ( uint8_t *data, int len )
@@ -746,7 +790,7 @@ void deviceDisconnectInd ( void )
 	memset(authChallengeReply, 0x00, 8);
 	//memset(authChallengeQuery, 0x00, 8);
 	modifyCharacteristic(authChallengeQuery, 10, AUTENTICACION_MATRIX_CHAR_HANDLE);
-	vTaskDelay(500/portTICK_PERIOD_MS);
+	vTaskDelay(pdMS_TO_TICKS(500));
 }
 
 uint8_t isMainFwUpdateActive (void)
@@ -903,6 +947,9 @@ void controlInit(void){
 	//Freertos estatico
 	xTaskCreateStatic(LedControl_Task,"TASK LEDS",4096,NULL,PRIORIDAD_LEDS,xLEDStack,&xLEDBuffer); 
 	xTaskCreateStatic(controlTask,"TASK CONTROL",4096*4,NULL,PRIORIDAD_CONTROL,xControlStack,&xControlBuffer); 
+	#ifdef USE_WIFI
+		xTaskCreateStatic(Firebase_Conn_Task,"TASK FIREBASE", 4096*4,NULL,PRIORIDAD_FIREBASE,xFirebaseStack, &xFirebaseBuffer);
+	#endif
 }
 
 

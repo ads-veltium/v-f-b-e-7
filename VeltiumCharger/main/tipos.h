@@ -127,6 +127,7 @@ typedef struct{
 typedef struct{
 	bool   Ubicacion_Sensor;
 	bool   CDP_On;
+	bool   Sensor_Conectado;
 	char   Fw_Update_mode[2];
 	char   autentication_mode[2];
 	uint8  inst_current_limit;
@@ -165,6 +166,18 @@ typedef struct{
 } carac_Coms;
 
 typedef struct{
+	//Machine state orders
+	bool WriteParams;
+	bool WriteStatus;
+	bool WriteComs;
+	bool WriteControl;
+
+	bool ReadControl;
+	bool ReadStatus;
+	bool ReadComs;
+	bool ReadParams;
+
+
 	//Auth configuration
 	char  Device_Db_ID[30];
 	uint8 Email[30];
@@ -176,6 +189,7 @@ typedef struct{
 	uint8 InternetConection;
 
 }carac_Firebase_Configuration;
+
 typedef struct{
 	//configuracion
 	bool BetaPermission;

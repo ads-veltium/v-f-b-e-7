@@ -34,6 +34,9 @@
 
 #ifdef USE_WIFI
 	#include "Wifi_Station.h"
+	#ifndef CONNECTED
+		#define CONNECTED
+	#endif
 #endif
 
 //Prioridades FreeRTOS
