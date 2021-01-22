@@ -2,7 +2,7 @@
 #define __CONTROL_MAIN
 
 //configuration
-#define USE_WIFI
+//#define USE_WIFI
 #define USE_DRACO_BLE
 
 #include "Arduino.h"
