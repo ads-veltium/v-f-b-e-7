@@ -112,7 +112,10 @@
                 "${workspaceFolder}/components/Arduino/libraries/FastLed/src",
                 "/home/joel/Documents/SDK_4/idf_4_0/esp-idf/components/newlib/include",
                 "/home/joel/Documents/SDK_4/idf_4_0/esp-idf/components/soc/esp32/include",
-                "/home/joel/Documents/SDK_4/idf_4_0/esp-idf/components/esp_eth/include"
+                "/home/joel/Documents/SDK_4/idf_4_0/esp-idf/components/esp_eth/include",
+                "${workspaceFolder}/components/Arduino/libraries/ArduinoJson",
+                "${workspaceFolder}/components/Arduino/libraries/ArduinoJson/src",
+                "${workspaceFolder}/main"
             ],
             "intelliSenseMode": "clang-x64",
             "browse": {

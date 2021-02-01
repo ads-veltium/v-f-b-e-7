@@ -14,7 +14,6 @@
 #include <HTTPClient.h>
 #include "Update.h"
 #include "control.h"
-#include "Firebase_ESP_Client.h"
 #include "esp32-hal-psram.h"
 
 #define DISCONNECTED      0
@@ -35,7 +34,6 @@
 
 bool initFirebaseClient();
 void GetUpdateFile(String URL);
-bool stopFirebaseClient();
 void Firebase_Conn_Task(void *args);
 uint8_t getfirebaseClientStatus();
 uint16  ParseFirmwareVersion(String Texto);

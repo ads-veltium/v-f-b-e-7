@@ -510,9 +510,10 @@ void procesar_bloque(uint16 tipo_bloque){
 			#ifdef CONNECTED
 				//Pasar datos a Status
 				memcpy(Status.HPT_status, &buffer_rx_local[4], 2);
-				memcpy(Status.ICP_status, &buffer_rx_local[6], 2);
-				memcpy(Status.DC_Leack_status, &buffer_rx_local[10], 2);
-				memcpy(Status.Con_Lock, &buffer_rx_local[12], 2);
+				Status.ICP_status 		= (memcmp(&buffer_rx_local[6],  "CL" ,2) == 0 )? true : false;
+				Status.Con_Lock   		= (memcmp(&buffer_rx_local[12], "LOC",3) == 0 )? true : false;
+				Status.DC_Leack_status  = (memcmp(&buffer_rx_local[12], "TR" ,2) >  0 )? true : false;
+
 				Status.Measures.max_current_cable=buffer_rx_local[14];
 				Status.Measures.instant_current = buffer_rx_local[16] + (buffer_rx_local[17] * 0x100);
 				Status.Measures.instant_voltage = buffer_rx_local[18] + (buffer_rx_local[19] * 0x100);
@@ -535,6 +536,12 @@ void procesar_bloque(uint16 tipo_bloque){
 		modifyCharacteristic(&buffer_rx_local[12], 6, TIME_DATE_DISCONNECTION_DATE_TIME_CHAR_HANDLE);
 		modifyCharacteristic(&buffer_rx_local[18], 6, TIME_DATE_CHARGING_START_TIME_CHAR_HANDLE);
 		modifyCharacteristic(&buffer_rx_local[24], 6, TIME_DATE_CHARGING_STOP_TIME_CHAR_HANDLE);
+		#ifdef CONNECTED
+			/*Status.Time.connect_date_time;
+			Status.Time.disconnect_date_time;
+			Status.Time.charge_start_time;
+			Status.Time.charge_stop_time;*/
+		#endif
 	}
 	else if(MEASURES_INSTALATION_CURRENT_LIMIT_CHAR_HANDLE == tipo_bloque)
 	{

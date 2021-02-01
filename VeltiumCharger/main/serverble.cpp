@@ -10,7 +10,9 @@ StackType_t xBLEStack[4096*2] EXT_RAM_ATTR;
 //Update sistem files
 File UpdateFile;
 uint8_t UpdateType=0;
+
 extern carac_Update_Status UpdateStatus;
+extern carac_Firebase_Configuration ConfigFirebase;
 
 /* milestone: one-liner for reporting memory usage */
 void milestone(const char* mname)
@@ -275,7 +277,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 				uint32_t successCode = 0x00000000;
 				//Empezar el sistema de actualizacion
 				#ifdef USE_WIFI
-				if(getfirebaseClientStatus())stopFirebaseClient();
+				if(getfirebaseClientStatus())ConfigFirebase.StopSistem=true;
 				#endif
 				UpdateStatus.DescargandoArchivo=1;
 				if(strstr (signature,"VBLE")){

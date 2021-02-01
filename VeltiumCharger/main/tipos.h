@@ -105,23 +105,31 @@ typedef struct{
 
 /************* Estructuras para Firebase ************/
 typedef struct{
-	bool start;
-	bool stop;
-	bool Reset;
-	bool Fw_Update;
-	uint8 Limite_Corriente;
-	uint32 TimeStamp;
+	bool   start;
+	bool   stop;
+	bool   reset;
+	bool   fw_update;
+	bool   conn_lock;
+	uint8  desired_current;
+
+	uint32 ts_app_req;
+	uint32 ts_dev_ack;
 } carac_Comands;
 
 typedef struct{
-	char Con_Lock[2];
-	char HPT_status[2];
-	char ICP_status[2];
-	char DC_Leack_status[2];
+	bool ICP_status;
+	bool DC_Leack_status;
+	bool Con_Lock;
+
 	uint8  error_code;
+
+	char HPT_status[2];
+	
 	caract_measures Measures;
 	caract_date_time Time;
 
+	uint32 ts_app_req;
+	uint32 ts_dev_ack;
 } carac_Status;
 
 typedef struct{
@@ -132,8 +140,9 @@ typedef struct{
 	char   autentication_mode[2];
 	uint8  inst_current_limit;
 	uint16 potencia_contratada;
-	uint32 Timestamp;
 
+	uint32 ts_app_req;
+	uint32 ts_dev_ack;
 } carac_Params;
 
 typedef struct{
@@ -157,6 +166,9 @@ typedef struct{
 	bool ON;
 	String APN;
 	String Pass;
+	
+	uint32 ts_app_req;
+	uint32 ts_dev_ack;
 }carac_MODEM;
 
 typedef struct{
@@ -171,6 +183,7 @@ typedef struct{
 	bool WriteStatus;
 	bool WriteComs;
 	bool WriteControl;
+	bool StopSistem;
 
 	bool ReadControl;
 	bool ReadStatus;
