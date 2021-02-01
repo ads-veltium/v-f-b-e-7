@@ -3,7 +3,7 @@
 
 //configuration
 //#define USE_WIFI
-#define USE_ETH
+//#define USE_ETH
 #define USE_DRACO_BLE
 
 #include "Arduino.h"

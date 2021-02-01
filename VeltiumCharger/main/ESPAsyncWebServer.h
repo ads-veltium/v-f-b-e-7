@@ -28,7 +28,6 @@
 
 #include "StringArray.h"
 
-#define ESP32
 #ifdef ESP32
 #include <WiFi.h>
 #include "AsyncTCP.h"

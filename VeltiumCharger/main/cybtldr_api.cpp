@@ -67,7 +67,11 @@ int CyBtldr_TransferData(unsigned char* inBuf, int inSize, unsigned char* outBuf
                 err=outBuf[1];
             }            
         }
-        vTaskDelay(pdMS_TO_TICKS(4));
+        #ifdef CONNCECTED
+            vTaskDelay(pdMS_TO_TICKS(40));
+        #else
+            vTaskDelay(pdMS_TO_TICKS(4));
+        #endif
         
     }
     channel->flush();

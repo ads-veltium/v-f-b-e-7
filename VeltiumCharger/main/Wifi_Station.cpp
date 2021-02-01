@@ -86,6 +86,9 @@ void ETHEvent(WiFiEvent_t event, WiFiEventInfo_t info){
         Serial.print(ETH.macAddress());
         Serial.print(", IPv4: ");
         Serial.print(ETH.localIP());
+        Coms.ETH.IP1     = ETH.localIP().toString();
+        Coms.ETH.Gateway = ETH.gatewayIP().toString();
+        Coms.ETH.Mask    = ETH.subnetMask().toString();
         if (ETH.fullDuplex()) {
             Serial.print(", FULL_DUPLEX");
         }

@@ -23,8 +23,8 @@
 StaticTask_t xControlBuffer ;
 StaticTask_t xLEDBuffer ;
 StaticTask_t xFirebaseBuffer ;
-static StackType_t xControlStack [4096*4]     EXT_RAM_ATTR;
-static StackType_t xLEDStack     [4096*2]     EXT_RAM_ATTR;
+static StackType_t xControlStack  [4096*4]     EXT_RAM_ATTR;
+static StackType_t xLEDStack      [4096*2]     EXT_RAM_ATTR;
 static StackType_t xFirebaseStack [4096*4]     EXT_RAM_ATTR;
 
 //Variables Firebase
@@ -54,8 +54,8 @@ uint8 NextLine=0;
 
 uint8 cnt_fin_bloque = 0;
 int estado_recepcion = 0;
-uint8 buffer_tx_local[550];
-uint8 buffer_rx_local[550];
+uint8 buffer_tx_local[550]  EXT_RAM_ATTR;
+uint8 buffer_rx_local[550]  EXT_RAM_ATTR;
 uint16 puntero_rx_local = 0;
 uint8 updateTaskrunning=0;
 uint8 cnt_timeout_tx = 0;
@@ -73,17 +73,19 @@ uint8 status_hpt_anterior[2] = {'0','V' };
 uint16 inst_current_anterior = 0x0000;
 uint16 cnt_diferencia = 30;
 
-uint8 version_firmware[11] = {"VBLE2_0500"};	
-uint8 PSOC5_version_firmware[11] = {"VELT2_0400"};		
+uint8 version_firmware[11] = {"VBLE2_0502"};	
+uint8 PSOC5_version_firmware[11] ;		
 
 uint8 systemStarted = 0;
 
 void startSystem(void);
 
+void SendToPSOC5(uint8 data, uint16 attrHandle);
+void SendToPSOC5(uint8 *data, uint16 len, uint16 attrHandle);
 void StackEventHandler( uint32 eventCode, void *eventParam );
 void modifyCharacteristic(uint8* data, uint16 len, uint16 attrHandle);
 void proceso_recepcion(void);
-
+int Convert_To_Epoch(uint8_t DateTime[6]);
 void Disable_VELT1_CHARGER_services(void);
 
 /*******************************************************************************
@@ -235,30 +237,26 @@ void controlTask(void *arg)
 		}
 
 		
-		// Eventos 1 Seg
+		// Eventos 1 Seg (Enviar ordenes recibidas desde firebase o la base de datos)
 		if(cont_seg != cont_seg_ant){
 			cont_seg_ant = cont_seg;
 
 			if (Comands.start){
-				cnt_timeout_tx = TIMEOUT_TX_BLOQUE;
-                buffer_tx_local[0] = HEADER_TX;
-                buffer_tx_local[1] = (uint8)(CHARGING_BLE_MANUAL_START_CHAR_HANDLE >> 8);
-                buffer_tx_local[2] = (uint8)(CHARGING_BLE_MANUAL_START_CHAR_HANDLE);
-                buffer_tx_local[3] = 5; //size
-				buffer_tx_local[4] = 1; //size
-                controlSendToSerialLocal(buffer_tx_local, 5);              
-				}
-				
-			else if (Comands.stop)
-			{
-				cnt_timeout_tx = TIMEOUT_TX_BLOQUE;
-				buffer_tx_local[0] = HEADER_TX;
-				buffer_tx_local[1] = (uint8)(CHARGING_BLE_MANUAL_STOP_CHAR_HANDLE >> 8);
-				buffer_tx_local[2] = (uint8)(CHARGING_BLE_MANUAL_STOP_CHAR_HANDLE);
-				buffer_tx_local[3] = 5; //size
-				buffer_tx_local[4] = 1; //size
-				controlSendToSerialLocal(buffer_tx_local, 5);
+				SendToPSOC5(1, CHARGING_BLE_MANUAL_START_CHAR_HANDLE);             
 			}
+
+			else if (Comands.stop){
+				SendToPSOC5(1, CHARGING_BLE_MANUAL_STOP_CHAR_HANDLE);
+			}
+			else if (Comands.reset){
+				Serial.println("Reiniciando en 4 segundos!"); 
+				vTaskDelay(4000/configTICK_RATE_HZ);
+				MAIN_RESET_Write(0);						
+				ESP.restart();
+			}
+			else if(Comands.Newdata){		
+				SendToPSOC5(Comands.desired_current, MEASURES_CURRENT_COMMAND_CHAR_HANDLE); 
+			}		
 		
 		}
 
@@ -483,7 +481,7 @@ void procesar_bloque(uint16 tipo_bloque){
 			}
 
 			//Medidas
-			modifyCharacteristic(&buffer_rx_local[6], 2, STATUS_ICP_STATUS_CHAR_HANDLE);						
+			modifyCharacteristic(&buffer_rx_local[6],  2,  STATUS_ICP_STATUS_CHAR_HANDLE);						
 			modifyCharacteristic(&buffer_rx_local[10], 2, STATUS_RCD_STATUS_CHAR_HANDLE);			
 			modifyCharacteristic(&buffer_rx_local[12], 2, STATUS_CONN_LOCK_STATUS_CHAR_HANDLE);			
 			modifyCharacteristic(&buffer_rx_local[14], 1, MEASURES_MAX_CURRENT_CABLE_CHAR_HANDLE);	
@@ -536,11 +534,12 @@ void procesar_bloque(uint16 tipo_bloque){
 		modifyCharacteristic(&buffer_rx_local[12], 6, TIME_DATE_DISCONNECTION_DATE_TIME_CHAR_HANDLE);
 		modifyCharacteristic(&buffer_rx_local[18], 6, TIME_DATE_CHARGING_START_TIME_CHAR_HANDLE);
 		modifyCharacteristic(&buffer_rx_local[24], 6, TIME_DATE_CHARGING_STOP_TIME_CHAR_HANDLE);
+
 		#ifdef CONNECTED
-			/*Status.Time.connect_date_time;
-			Status.Time.disconnect_date_time;
-			Status.Time.charge_start_time;
-			Status.Time.charge_stop_time;*/
+			Status.Time.connect_date_time    = Convert_To_Epoch(&buffer_rx_local[6]);
+			Status.Time.disconnect_date_time = Convert_To_Epoch(&buffer_rx_local[12]);
+			Status.Time.charge_start_time    = Convert_To_Epoch(&buffer_rx_local[18]);
+			Status.Time.charge_stop_time     = Convert_To_Epoch(&buffer_rx_local[24]);
 		#endif
 	}
 	else if(MEASURES_INSTALATION_CURRENT_LIMIT_CHAR_HANDLE == tipo_bloque)
@@ -556,6 +555,7 @@ void procesar_bloque(uint16 tipo_bloque){
 	else if(MEASURES_CURRENT_COMMAND_CHAR_HANDLE == tipo_bloque)
 	{
 		modifyCharacteristic(buffer_rx_local, 1, MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
+		Comands.Newdata=false;
 	}
 	else if(TIME_DATE_DELTA_DELAY_FOR_CHARGING_CHAR_HANDLE == tipo_bloque)
 	{
@@ -849,6 +849,19 @@ void Disable_VELT1_CHARGER_services(void)
 
 }
 
+/************************************************
+		Convertir fecha a timestamp epoch
+************************************************/
+int Convert_To_Epoch(uint8* data){
+	struct tm t = {0};  // Initalize to all 0's
+	t.tm_year = (data[2]!=0)?data[2]+100:0;  // This is year-1900, so 112 = 2012
+	t.tm_mon  = (data[1]!=0)?data[1]-1:0;
+	t.tm_mday = data[0];
+	t.tm_hour = data[3];
+	t.tm_min  = data[4];
+	t.tm_sec  = data[5];
+	return mktime(&t);
+}
 
 /************************************************
  * Update Tasks
@@ -869,7 +882,6 @@ void UpdateTask(void *arg){
 	unsigned char checksum ;
 	unsigned long blVer=0;
 	unsigned char rowData[512];
-
 	SPIFFS.begin(1,"/spiffs",1,"PSOC5");
 	File file = SPIFFS.open("/FreeRTOS_V6.cyacd"); 
 	if(!file || file.size() == 0){ 
@@ -961,3 +973,27 @@ void controlInit(void){
 }
 
 
+/***************************************************
+ *         Enviar nuevos valores al PSOC5
+***************************************************/
+void SendToPSOC5(uint8 data, uint16 attrHandle){
+
+  cnt_timeout_tx = TIMEOUT_TX_BLOQUE;
+  buffer_tx_local[0] = HEADER_TX;
+  buffer_tx_local[1] = (uint8)(attrHandle >> 8);
+  buffer_tx_local[2] = (uint8)(attrHandle);
+  buffer_tx_local[3] = 5; //size
+  buffer_tx_local[4] = data;
+  controlSendToSerialLocal(buffer_tx_local, 5);
+}
+
+void SendToPSOC5(uint8 *data, uint16 len, uint16 attrHandle){
+
+  cnt_timeout_tx = TIMEOUT_TX_BLOQUE;
+  buffer_tx_local[0] = HEADER_TX;
+  buffer_tx_local[1] = (uint8)(attrHandle >> 8);
+  buffer_tx_local[2] = (uint8)(attrHandle);
+  buffer_tx_local[3] = len+4; //size
+  memcpy(&buffer_tx_local[4],data,len);
+  controlSendToSerialLocal(buffer_tx_local, len+4);
+}

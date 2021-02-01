@@ -11,8 +11,9 @@ StackType_t xBLEStack[4096*2] EXT_RAM_ATTR;
 File UpdateFile;
 uint8_t UpdateType=0;
 
-extern carac_Update_Status UpdateStatus;
+extern carac_Update_Status 			UpdateStatus;
 extern carac_Firebase_Configuration ConfigFirebase;
+extern carac_Comands                Comands;
 
 /* milestone: one-liner for reporting memory usage */
 void milestone(const char* mname)
@@ -342,10 +343,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 			    if(UpdateType == VBLE_UPDATE){
 					#ifndef UPDATE_COMPRESSED
 						if(Update.end()){	
-							Serial.println("Reiniciando en 4 segundos!"); 
-							vTaskDelay(pdMS_TO_TICKS(4000));
-							MAIN_RESET_Write(0);						
-							ESP.restart();
+							Comands.reset = true;
 						}
 					#else 
 						Serial.println("Decompressing");

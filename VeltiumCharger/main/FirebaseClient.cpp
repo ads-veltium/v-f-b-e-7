@@ -18,8 +18,8 @@
 
 Firebase Database;
 
-StaticJsonDocument<512>  Lectura        EXT_RAM_ATTR;
-StaticJsonDocument<512>  Escritura      EXT_RAM_ATTR;
+StaticJsonDocument<1024>  Lectura        EXT_RAM_ATTR;
+StaticJsonDocument<1024>  Escritura      EXT_RAM_ATTR;
 StaticJsonDocument<1024> Actualizacion  EXT_RAM_ATTR;
 //Define FIREBASE data object
 
@@ -47,11 +47,6 @@ SemaphoreHandle_t firebase_Access = NULL;
 
 void DownloadTask(void *arg);
 
-void FreeFirebaseHeap(){
-   if(ESP.getFreeHeap()<30000){
-  }
-}
-
 uint16 ParseFirmwareVersion(String Texto){
   String sub = Texto.substring(6, 10); 
   return(sub.toInt());
@@ -71,7 +66,6 @@ bool initFirebaseClient(){
 
     Database.RTDB.begin(FIREBASE_PROJECT);
 
-    Serial.println("Done");
     if(firebase_Access==NULL){
       vSemaphoreCreateBinary(firebase_Access);
     }
@@ -124,112 +118,178 @@ bool WriteFirebaseStatus(String Path){
     }
     xSemaphoreGive(firebase_Access);
   }
-  return false;
+  return response;
 }
 
-
 bool WriteFirebaseParams(String Path){
-
+  bool response = false;
   if(xSemaphoreTake(firebase_Access,  pdMS_TO_TICKS(10) )){
     Serial.println("Write Params CALLED");
     Escritura.clear();
-    Escritura["Ubic_sensor"]            = Params.Ubicacion_Sensor;
-    Escritura["Inst_current_limit"]     = Params.inst_current_limit;
-    Escritura["Potencia_Contratada"]    = Params.potencia_contratada;
-    Escritura["CDP_On"]                 = Params.CDP_On;
-    Escritura["Autentication_mode"]     = String(Params.autentication_mode).substring(0,2);
-    Escritura["Fw_Update_mode"]         = String(Params.Fw_Update_mode).substring(0,2);
+    Escritura["auth_mode"]     = String(Params.autentication_mode).substring(0,2);
+    Escritura["inst_current_limit"]     = Params.inst_current_limit;
+    Escritura["contract_power"]    = Params.potencia_contratada;
+    Escritura["dps_placement"]            = Params.Ubicacion_Sensor;
+    Escritura["dpc_on"]                 = Params.CDP_On;
+    Escritura["fw_auto"]         = String(Params.Fw_Update_mode).substring(0,2);
     
-    serializeJson(Escritura,Serial);
     if(Database.RTDB.Send_Command(Path,&Escritura,UPDATE,Database.Auth.idToken)){     
-      Path += "/Timestamp";
-      if(Database.RTDB.Send_Command(Path,&Escritura,TIMESTAMP,Database.Auth.idToken)){
-        xSemaphoreGive(firebase_Access);
-        return true;
+      //Write readed Timestamp
+      if(Database.RTDB.Send_Command(Path+"ts_dev_ack/",&Escritura,TIMESTAMP,Database.Auth.idToken)){
+        response = true;
       }
-      xSemaphoreGive(firebase_Access);
-      return false;
     }
     xSemaphoreGive(firebase_Access);
-    return false;
   }
-  return false;
+  return response;
 }
 
 bool WriteFirebaseComs(String Path){
+  bool response = false;
 
   if(xSemaphoreTake(firebase_Access,  pdMS_TO_TICKS(10) )){
     Serial.println("Write Coms CALLED");
     Escritura.clear();
     #ifdef USE_WIFI
-      Escritura["WIFI/ON"]        = Coms.Wifi.ON;
-      Escritura["WIFI/AP"]        = Coms.Wifi.AP;
-      Escritura["WIFI/Password"]  = Coms.Wifi.Pass;
+      Escritura["wifi/on"]     = Coms.Wifi.ON;
+      Escritura["wifi/apn"]    = Coms.Wifi.AP;
+      Escritura["wifi/passwd"] = Coms.Wifi.Pass;
     #endif
 
     #ifdef USE_ETH
-      Escritura["ETH/ON"]   = Coms.ETH.ON;
-      Escritura["ETH/AUTO"] = Coms.ETH.Auto;
+      Escritura["eth/on"]     = Coms.ETH.ON;
+      Escritura["eth/auto"]   = Coms.ETH.Auto;
       if(!Coms.ETH.Auto){
-        Escritura["ETH/IP1"]   = Coms.ETH.IP1;
-        Escritura["ETH/IP2"]   = Coms.ETH.IP2;
-        Escritura["ETH/Gateway"]   = Coms.ETH.Gateway;
-        Escritura["ETH/Mask"]   = Coms.ETH.Mask;
-        Escritura["ETH/AP"]   = Coms.ETH.AP;
-        Escritura["ETH/Pass"]   = Coms.ETH.Pass;
+        Escritura["eth/ip1"]      = Coms.ETH.IP1;
+        Escritura["eth/ip2"]      = Coms.ETH.IP2;
+        Escritura["eth/gateway"]  = Coms.ETH.Gateway;
+        Escritura["eth/mask"]     = Coms.ETH.Mask;
       }
     #endif
 
     #ifdef USE_GSM
-      Comms_Json.set("GSM/ON",Coms.GSM.ON);
-      Comms_Json.set("GSM/APN",Coms.GSM.APN);
-      Comms_Json.set("GSM/Pass",Coms.GSM.Pass);
+      Comms_Json.set("modem/on",Coms.GSM.ON);
+      Comms_Json.set("modem/apn",Coms.GSM.APN);
+      Comms_Json.set("modem/passwd",Coms.GSM.Pass);
     #endif
    
     if(Database.RTDB.Send_Command(Path,&Escritura,UPDATE,Database.Auth.idToken)){     
-      Path += "/Timestamp";
-      if(Database.RTDB.Send_Command(Path,&Escritura,TIMESTAMP,Database.Auth.idToken)){
-        xSemaphoreGive(firebase_Access);
-        return true;
+      //Write readed Timestamp
+      if(Database.RTDB.Send_Command(Path+"ts_dev_ack/",&Escritura,TIMESTAMP,Database.Auth.idToken)){
+        response = true;
       }
-      xSemaphoreGive(firebase_Access);
-      return false;
     }
     xSemaphoreGive(firebase_Access);
-    return false;
   }
-  return false;
+  return response;
 }
 
+
+bool WriteFirebaseControl(String Path){
+  Escritura.clear();
+  bool response=false;
+  if(xSemaphoreTake(firebase_Access,  pdMS_TO_TICKS(10))){
+    Escritura["fw_update"] = false;
+    Escritura["reset"]     = false;
+    Escritura["start"]     = false;
+    Escritura["stop"]      = false;
+    Escritura["desired_current"] = Comands.desired_current;
+    if(Database.RTDB.Send_Command(Path,&Escritura,UPDATE,Database.Auth.idToken)){
+      response = true;
+    }
+    xSemaphoreGive(firebase_Access);
+  }
+  return response;
+}
 /***************************************************
   Funciones de lectura
 ***************************************************/
+bool ReadFirebaseComs(String Path){
+  Lectura.clear();
+  bool response = false;
+  if(xSemaphoreTake(firebase_Access,  pdMS_TO_TICKS(10))){
+    if(Database.RTDB.Send_Command(Path,&Lectura, READ, Database.Auth.idToken)){
+      if(Lectura["ts_app_req"] > Coms.last_ts_app_req){
+
+        #ifdef USE_WIFI
+          Coms.Wifi.ON   = Lectura["wifi"]["on"];
+          Coms.Wifi.AP   = Lectura["wifi"]["apn"].as<String>();
+          Coms.Wifi.Pass = Lectura["wifi"]["passwd"].as<String>();
+        #endif
+
+        #ifdef USE_ETH
+          Coms.ETH.ON   = Lectura["eth"]["on"];
+          Coms.ETH.Auto = Lectura["eth"]["auto"];
+          if(!Coms.ETH.Auto){
+            Coms.ETH.IP1     = Lectura["eth"]["ip1"];
+            Coms.ETH.IP2     = Lectura["eth"]["ip2"];
+            Coms.ETH.gateway = Lectura["eth"]["gateway"];
+            Coms.ETH.mask    = Lectura["eth"]["mask"];
+          }
+        #endif
+
+        #ifdef USE_GSM
+          Coms.GSM.ON    = Lectura["modem"]["on"];
+          Coms.GSM.APN   = Lectura["modem"]["apn"];
+          Coms.GSM.Pass  = Lectura["modem"]["passwd"];
+        #endif
+
+        if(Database.RTDB.Send_Command(Path+"ts_dev_ack/",&Lectura,TIMESTAMP,Database.Auth.idToken)){
+            response = true;
+        } 
+      }
+    }
+    xSemaphoreGive(firebase_Access);
+  } 
+  return response;
+}
+
+bool ReadFirebaseParams(String Path){
+  Lectura.clear();
+  bool response = false;
+  if(xSemaphoreTake(firebase_Access,  pdMS_TO_TICKS(10))){
+    if(Database.RTDB.Send_Command(Path,&Lectura, READ, Database.Auth.idToken)){
+      if(Lectura["ts_app_req"] > Params.last_ts_app_req){
+
+        String buff = Lectura["auth_mode"].as<String>();
+        buff.toCharArray(Params.autentication_mode,2);
+        Params.inst_current_limit  = Lectura["inst_current_limit"];
+        Params.potencia_contratada = Lectura["contract_power"];
+        Params.Ubicacion_Sensor=Lectura["dps_placement"];
+        Params.CDP_On=Lectura["dpc_on"];
+        buff = Lectura["fw_auto"].as<String>();;
+        buff.toCharArray(Params.Fw_Update_mode,2);
+
+        if(Database.RTDB.Send_Command(Path+"ts_dev_ack/",&Lectura,TIMESTAMP,Database.Auth.idToken)){
+            response = true;
+        } 
+      }
+      //Write readed Timestamp    
+    }
+    xSemaphoreGive(firebase_Access);
+  } 
+  return response;
+}
+
 bool ReadFirebaseControl(String Path){
   Lectura.clear();
   bool response = false;
   if(xSemaphoreTake(firebase_Access,  pdMS_TO_TICKS(10))){
     if(Database.RTDB.Send_Command(Path,&Lectura, READ, Database.Auth.idToken)){
-      Comands.start           = Lectura["start"]     ? true : Comands.start;
-      Comands.stop            = Lectura["stop"]      ? true : Comands.stop;
-      Comands.reset           = Lectura["reset"]     ? true : Comands.reset;
-      Comands.desired_current = Lectura["desired_current"];     
-      Comands.fw_update       = Lectura["fw_update"] ? true : Comands.fw_update;
-      Comands.conn_lock       = Lectura["conn_lock"] ? true : Comands.conn_lock;
+      if(Lectura["ts_app_req"] > Comands.last_ts_app_req){
+        Comands.last_ts_app_req = Lectura["ts_app_req"];
+        Comands.start           = Lectura["start"]     ? true : Comands.start;
+        Comands.stop            = Lectura["stop"]      ? true : Comands.stop;
+        Comands.reset           = Lectura["reset"]     ? true : Comands.reset;
+        Comands.Newdata         =(Lectura["desired_current"]!= Comands.desired_current && !Comands.Newdata) ? true : Comands.Newdata;
+        Comands.desired_current = Lectura["desired_current"];         
+        Comands.fw_update       = Lectura["fw_update"] ? true : Comands.fw_update;
+        Comands.conn_lock       = Lectura["conn_lock"] ? true : Comands.conn_lock;
 
-      response = true;
-      if(Lectura["start"] || Lectura["stop"] || Lectura["reset"] || Lectura["fw_update"]){
-        Lectura["fw_update"]=false;
-        Lectura["reset"]=false;
-        Lectura["start"]=false;
-        Lectura["stop"]=false;
-        serializeJson(Lectura,Serial);
-        response = true;
-        if(!Database.RTDB.Send_Command(Path,&Lectura,UPDATE,Database.Auth.idToken)){
-          response = false;
+        if(Database.RTDB.Send_Command(Path+"ts_dev_ack/",&Lectura,TIMESTAMP,Database.Auth.idToken)){
+            response = true;
         } 
-      }
-      //Write readed Timestamp
-      Database.RTDB.Send_Command(Path+"ts_dev_ack/",&Lectura,TIMESTAMP,Database.Auth.idToken);
+      }  
     }
     xSemaphoreGive(firebase_Access);
   } 
@@ -313,7 +373,7 @@ void DownloadFileTask(void *args){
         int c = stream->readBytes(buff, ((size > sizeof(buff)) ? sizeof(buff) : size));
 
         if(UpdateStatus.PSOC5_UpdateAvailable){
-          int escritos = UpdateFile.write(buff, c);
+          UpdateFile.write(buff, c);
         }
         else{
           Update.write(buff,c);
@@ -356,8 +416,9 @@ void DownloadFileTask(void *args){
 /***************************************************
  Tarea de control de firebase
 ***************************************************/
+
 void Firebase_Conn_Task(void *args){
-  uint8_t ConnectionState =  DISCONNECTED;
+  uint8_t ConnectionState =  DISCONNECTED,  LastStatus = DISCONNECTED;;
   uint8_t Error_Count;
   String Base_Path;
 
@@ -394,40 +455,56 @@ void Firebase_Conn_Task(void *args){
         break;
       }
 
-      //Las ordenes de conrtrol.cpp siempre tienen mas prioridad
-      else if(ConfigFirebase.WriteStatus){
-        ConfigFirebase.WriteStatus=false;
-        ConnectionState = WRITTING_STATUS;
-        break;
+      //comprobar si hay usuarios observando:
+      Lectura.clear();
+      Database.RTDB.Send_Command(Base_Path+"/status/",&Lectura, READ, Database.Auth.idToken);
+      serializeJson(Lectura,Serial);
+      if(Lectura["ts_app_req"].as<int>() > Status.last_ts_app_req){
+        Status.last_ts_app_req= Lectura["ts_app_req"];
+        ConfigFirebase.ClientConnected  = true;
+        ConfigFirebase.ConectionTimeout = 60;
       }
 
-      else if(ConfigFirebase.WriteParams){
-        ConfigFirebase.WriteParams=false;
-        ConnectionState = WRITTING_PARAMS;
-        break;
+      if(ConfigFirebase.ClientConnected){
+
+        if(--ConfigFirebase.ConectionTimeout<=0){
+          ConfigFirebase.ClientConnected  = false;
+        }
+        Serial.println(ConfigFirebase.ConectionTimeout);
+
+        if(ConfigFirebase.WriteStatus){
+          ConfigFirebase.WriteStatus=false;
+          ConnectionState = WRITTING_STATUS;
+          break;
+        }
+
+        else if(ConfigFirebase.WriteParams){
+          ConfigFirebase.WriteParams=false;
+          ConnectionState = WRITTING_PARAMS;
+          break;
+        }
+
+        else if(ConfigFirebase.WriteComs){
+          ConfigFirebase.WriteComs=false;
+          ConnectionState = WRITTING_COMS;
+          break;
+        }
+
+        //Comprobar actualizaciones
+        else if(Comands.fw_update){
+          Serial.println("Starting update sistem");
+          Comands.fw_update=0;
+          ConnectionState = UPDATING;
+          break;
+        }
+        ConnectionState=READING_CONTROL;
       }
-
-      else if(ConfigFirebase.WriteComs){
-        ConfigFirebase.WriteComs=false;
-        ConnectionState = WRITTING_COMS;
-        break;
-      }
-
-      //Comprobar actualizaciones
-      else if(Comands.fw_update){
-        Serial.println("Starting update sistem");
-        Comands.fw_update=0;
-        ConnectionState = UPDATING;
-        break;
-      }
-
-
-      ConnectionState=READING_CONTROL;
+      
       break;
 
     /*********************** WRITTING states **********************/
     case WRITTING_CONTROL:
-      //Error_Count+=!WriteFirebaseControl(Base_Path+"/control/");
+      Error_Count+=!WriteFirebaseControl(Base_Path+"/control/");
       ConnectionState=WRITTING_STATUS;
       break;
 
@@ -442,23 +519,22 @@ void Firebase_Conn_Task(void *args){
       break;
     
     case WRITTING_PARAMS:
-      Error_Count+=WriteFirebaseParams(Base_Path+"/params/");
+      Error_Count+=!WriteFirebaseParams(Base_Path+"/params/");
       ConnectionState=IDLE;
       break;
     /*********************** READING states **********************/
     case READING_CONTROL:
-
       Error_Count+=!ReadFirebaseControl(Base_Path+"/control/");
       ConnectionState=IDLE;
       break;
 
     case READING_PARAMS:
-      //Error_Count+=!ReadFirebaseParams(Base_Path+"/params/");
+      Error_Count+=!ReadFirebaseParams(Base_Path+"/params/");
       ConnectionState=IDLE;
       break;
     
     case READING_COMS:
-      //Error_Count+=!ReadFirebaseComsBase_Path+"/coms/");
+      Error_Count+=!ReadFirebaseComs(Base_Path+"/coms/");
       ConnectionState=IDLE;
       break;
 
@@ -501,6 +577,11 @@ void Firebase_Conn_Task(void *args){
       }
       break;
     }
-    vTaskDelay(pdMS_TO_TICKS(2000));
+    if(LastStatus!= ConnectionState){
+      Serial.printf("Maquina de estados pasa de % i a %i \n", LastStatus, ConnectionState);
+      LastStatus= ConnectionState;
+    }
+    vTaskDelay(pdMS_TO_TICKS(1000));
   }
 }
+

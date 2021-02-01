@@ -73,12 +73,11 @@ typedef struct{
 } caract_measures;
 
 typedef struct{
-	uint8 actual_date_time[6];
-	uint8 connect_date_time[6];
-	uint8 disconnect_date_time[6];
-	uint8 charge_delta_delay[2];
-	uint8 charge_start_time[6];
-	uint8 charge_stop_time[6];
+
+	int connect_date_time;
+	int disconnect_date_time;
+	int charge_start_time;
+	int charge_stop_time;
 } caract_date_time;
 
 typedef struct{
@@ -110,10 +109,12 @@ typedef struct{
 	bool   reset;
 	bool   fw_update;
 	bool   conn_lock;
+
 	uint8  desired_current;
 
-	uint32 ts_app_req;
-	uint32 ts_dev_ack;
+	bool Newdata = false;
+	int last_ts_app_req= 0;
+
 } carac_Comands;
 
 typedef struct{
@@ -128,8 +129,7 @@ typedef struct{
 	caract_measures Measures;
 	caract_date_time Time;
 
-	uint32 ts_app_req;
-	uint32 ts_dev_ack;
+	int last_ts_app_req= 0;
 } carac_Status;
 
 typedef struct{
@@ -141,8 +141,7 @@ typedef struct{
 	uint8  inst_current_limit;
 	uint16 potencia_contratada;
 
-	uint32 ts_app_req;
-	uint32 ts_dev_ack;
+	int last_ts_app_req= 0;
 } carac_Params;
 
 typedef struct{
@@ -175,6 +174,7 @@ typedef struct{
 	carac_WIFI   Wifi;
 	carac_ETH     ETH;
 	carac_MODEM   GSM;
+	int last_ts_app_req= 0;
 } carac_Coms;
 
 typedef struct{
@@ -200,6 +200,9 @@ typedef struct{
 	//Firebase conection Status
 	uint8 FirebaseConnected;
 	uint8 InternetConection;
+
+	uint8 ConectionTimeout=0;
+	uint8 ClientConnected = false;
 
 }carac_Firebase_Configuration;
 
