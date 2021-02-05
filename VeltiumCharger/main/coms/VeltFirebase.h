@@ -21,6 +21,7 @@
 #define WRITTING_STATUS  36
 #define WRITTING_PARAMS  37
 #define WRITTING_COMS    38
+#define WRITTING_TIMES   39
 #define DISCONNECTING    45
 #define DOWNLOADING      55
 #define UPDATING         65

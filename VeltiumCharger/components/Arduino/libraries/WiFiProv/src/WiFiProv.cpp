@@ -143,9 +143,9 @@ void WiFiProvClass :: beginProvision(prov_scheme_t prov_scheme, scheme_handler_t
         } else {
 #endif
             if(service_key == NULL) {
-               log_i("Starting provisioning AP using SOFTAP. service_name : %s, pop : %s",service_name,pop);
+               Serial.printf("Starting provisioning AP using SOFTAP. service_name : %s, pop : %s",service_name,pop);
             } else {
-               log_i("Starting provisioning AP using SOFTAP. service_name : %s, password : %s, pop : %s",service_name,service_key,pop);
+               Serial.printf("Starting provisioning AP using SOFTAP. service_name : %s, password : %s, pop : %s",service_name,service_key,pop);
             }
 #ifndef CONFIG_BLUEDROID_ENABLED
         }

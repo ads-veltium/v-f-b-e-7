@@ -176,7 +176,7 @@ void LedControl_Task(void *arg){
 				else{
 					luminosidad_Actual=luminosidad;
 				}
-				Delay=100;
+				Delay=20;
 				displayAll(luminosidad_Actual,Led_color);	
 			}
 

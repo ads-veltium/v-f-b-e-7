@@ -39,15 +39,5 @@ void setup()
 #endif
 	Serial.println("FREE HEAP MEMORY [after draco init] **************************");
 	Serial.println(ESP.getFreeHeap());
-	
-#ifdef USE_WIFI
-	Station_Begin();
-	Serial.println("FREE HEAP MEMORY [after WIFI_INIT] **************************");
-	Serial.println(ESP.getFreeHeap());
-#endif
-
-#ifdef USE_ETH
-	ETH_begin();
-#endif // USE_ETH
 
 }

@@ -218,7 +218,6 @@ void WiFiEvent(arduino_event_id_t event, arduino_event_info_t info){
 	switch (event) {
 #ifdef USE_WIFI
         //WIFI cases
-
 		case ARDUINO_EVENT_WIFI_STA_DISCONNECTED:
             ConfigFirebase.InternetConection=0;  
        
@@ -321,12 +320,16 @@ void WiFiEvent(arduino_event_id_t event, arduino_event_info_t info){
 
 void Station_Begin(){
     Coms.Wifi.ON=true;
-    //nvs_flash_erase();
 
-	//Serial.println(ssid);
+	//Descomentar e introducir credenciales para conectarse a piñon ¡¡¡¡Comentar lo de abajo!!!!
     //WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+
+    //Comentar estas lineas para conectarse a piñon!
     WiFi.onEvent(WiFiEvent);
-    WiFiProv.beginProvision(WIFI_PROV_SCHEME_SOFTAP, WIFI_PROV_SCHEME_HANDLER_NONE, WIFI_PROV_SECURITY_1, "abcd1234", "Prov_123");
+    String SSID = "WF_";
+    SSID.concat(ConfigFirebase.Device_Id);
+
+    WiFiProv.beginProvision(WIFI_PROV_SCHEME_SOFTAP, WIFI_PROV_SCHEME_HANDLER_NONE, WIFI_PROV_SECURITY_1, (char*)(ConfigFirebase.Device_Ser_num), SSID.c_str());
     Serial.println("Connecting to Wi-Fi...");
 } 
 
@@ -342,4 +345,40 @@ void Station_Stop(){
 
 
 #endif
+
+void ComsTask(void *args){
+    int ComsMachineState =DISCONNECTED;
+    while (1){
+        switch (ComsMachineState){
+            case DISCONNECTED:
+                //Wait to Psoc 5 to send data
+                if(memcmp(ConfigFirebase.Device_Id,"0",1)!=0){
+                    ComsMachineState=CONECTADO;
+                }
+                break;
+            case CONECTADO:
+
+                #ifdef USE_WIFI
+                    Station_Begin();
+                    Serial.println("FREE HEAP MEMORY [after WIFI_INIT] **************************");
+                    Serial.println(ESP.getFreeHeap());
+                #endif
+                #ifdef USE_ETH
+                    ETH_begin();
+                #endif // USE_ETH
+                ComsMachineState=IDLE;
+                break;
+            case IDLE:             
+                
+                break;
+            case 2:
+            break;
+            default:
+            break;
+        }
+
+
+        vTaskDelay(pdMS_TO_TICKS(100));
+    }
+}
 

@@ -111,11 +111,11 @@ typedef struct{
 
 /************* Estructuras para Firebase ************/
 typedef struct{
-	bool   start;
-	bool   stop;
-	bool   reset;
-	bool   fw_update;
-	bool   conn_lock;
+	bool   start = false;
+	bool   stop  = false;
+	bool   reset = false;
+	bool   fw_update = false;
+	bool   conn_lock = false;
 
 	uint8  desired_current;
 
@@ -187,43 +187,45 @@ typedef struct{
 
 typedef struct{
 	//Machine state orders
-	bool WriteParams;
-	bool WriteStatus;
-	bool WriteComs;
-	bool WriteControl;
-	bool StopSistem;
+	bool WriteParams  = false;
+	bool WriteStatus  = false;
+	bool WriteComs    = false;
+	bool WriteControl = false;
+	bool StopSistem   = false;
+	bool WriteTime    = false;
 
-	bool ReadControl;
-	bool ReadStatus;
-	bool ReadComs;
-	bool ReadParams;
-
+	bool ReadControl  = false;
+	bool ReadStatus   = false;
+	bool ReadComs     = false;
+	bool ReadParams   = false;
 
 	//Auth configuration
-	char  Device_Db_ID[30];
-	uint8 Email[30];
-	uint8 Password[30];
-	uint8 User_Db_ID[30];
+	char  Device_Ser_num[30] = {'0'};
+	char  Device_Id[12]      = {'0'};
+	char  Device_Db_ID[30]   = {'0'};
+	uint8 Email[30]          = {'0'};
+	uint8 Password[30]		 = {'0'};
+	uint8 User_Db_ID[30		]= {'0'};
 
 	//Firebase conection Status
-	uint8 FirebaseConnected;
-	uint8 InternetConection;
+	bool FirebaseConnected = false;
+	bool InternetConection = false;
 
 	uint8 ConectionTimeout=0;
-	uint8 ClientConnected = false;
+	bool ClientConnected = false;
 
 }carac_Firebase_Configuration;
 
 typedef struct{
 	//configuracion
-	bool BetaPermission;
+	bool BetaPermission = false;
 	uint16 PSOC5_Act_Ver;
 	uint16 ESP_Act_Ver;
 
-	bool PSOC5_UpdateAvailable;
-	bool ESP_UpdateAvailable;
-	bool DescargandoArchivo;
-	bool InstalandoArchivo;
+	bool PSOC5_UpdateAvailable = false;
+	bool ESP_UpdateAvailable   = false;
+	bool DescargandoArchivo    = false;
+	bool InstalandoArchivo     = false;
 	
 
 } carac_Update_Status;

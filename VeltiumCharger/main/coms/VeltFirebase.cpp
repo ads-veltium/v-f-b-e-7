@@ -46,15 +46,14 @@ void Real_Time_Database::begin(String Host, String DatabaseID, String auth){
     RTDB_url="https://";
     RTDB_url+=Host+("prod/devices/"+DatabaseID);
 
-    Write_url = RTDB_url+"/status/ts_app_req.json?auth="+auth+"&timeout=2000ms";
+    Write_url = RTDB_url+"/status/ts_app_req.json?auth="+auth+"&timeout=2500ms";
     idToken=auth;
 
     RTDBClient.begin(Write_url);
+    RTDBClient.addHeader("Content-Type", "application/json"); 
     RTDBClient.setTimeout(2000);
     RTDBClient.setConnectTimeout(2000);
     RTDBClient.setReuse(true);
-
-
 }
 
 void Real_Time_Database::end(){
@@ -63,12 +62,13 @@ void Real_Time_Database::end(){
 }
 
 void Real_Time_Database::restart(){
-    Write_url = RTDB_url+"/status/ts_app_req.json?auth="+idToken+"&timeout=2000ms";
+    Write_url = RTDB_url+"/status/ts_app_req.json?auth="+idToken+"&timeout=2500ms";
 
     RTDBClient.begin(Write_url);
     RTDBClient.setTimeout(2000);
     RTDBClient.setConnectTimeout(2000);
     RTDBClient.setReuse(true);
+    RTDBClient.addHeader("Content-Type", "application/json"); 
 }
 
 bool Real_Time_Database::Send_Command(String path, JsonDocument *doc, uint8_t Command){   
@@ -78,9 +78,11 @@ bool Real_Time_Database::Send_Command(String path, JsonDocument *doc, uint8_t Co
     Write_url = RTDB_url+path+".json?auth="+idToken;
 
     if(Command < 3){      
-        Write_url += +"&print=silent&writeSizeLimit=tiny&timeout=2000ms";     
+        Write_url += +"&timeout=2500ms";  
+          
         serializeJson(*doc, SerializedData);
     }
+    
     RTDBClient.setURL(Write_url);
 
     switch(Command){

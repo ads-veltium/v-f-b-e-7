@@ -4,7 +4,7 @@
 #include "Arduino.h"
 #include "WiFi.h"
 #include "esp32-hal-psram.h"
-#include "../tipos.h"
+#include "../control.h"
 #include "FirebaseClient.h"
 #include "WiFiProv.h"
 
@@ -34,6 +34,7 @@ void ESP_Station_begin();
 void Station_Pause();
 void Station_Resume();
 void Station_Scan();
+void ComsTask(void *args);
 
 
 #endif

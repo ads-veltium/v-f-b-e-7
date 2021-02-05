@@ -824,7 +824,7 @@ int HTTPClient::writeToStream(Stream * stream)
             // read size of chunk
             len = (uint32_t) strtol((const char *) chunkHeader.c_str(), NULL, 16);
             size += len;
-            Serial.printf(" read chunk len: %d", len);
+            log_i(" read chunk len: %d", len);
 
             // data left?
             if(len > 0) {

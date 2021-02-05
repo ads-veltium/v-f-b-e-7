@@ -5,7 +5,7 @@
 
 
 StaticTask_t xBLEBuffer ;
-StackType_t xBLEStack[4096*2] EXT_RAM_ATTR;
+static StackType_t xBLEStack[4096*2] EXT_RAM_ATTR;
 
 //Update sistem files
 File UpdateFile;

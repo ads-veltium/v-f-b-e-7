@@ -10,13 +10,16 @@
  * ========================================
  */
 #include "control.h"
+
 StaticTask_t xControlBuffer ;
 StaticTask_t xLEDBuffer ;
 StaticTask_t xFirebaseBuffer ;
+StaticTask_t xComsBuffer ;
 
-static StackType_t xControlStack  [4096*4]     EXT_RAM_ATTR;
+static StackType_t xComsStack     [4096*6] EXT_RAM_ATTR;
+static StackType_t xControlStack  [4096*6]    EXT_RAM_ATTR;
 static StackType_t xLEDStack      [4096*2]     EXT_RAM_ATTR;
-static StackType_t xFirebaseStack [4096*4]     EXT_RAM_ATTR;
+static StackType_t xFirebaseStack [4096*6]     EXT_RAM_ATTR;
 
 //Variables Firebase
 carac_Update_Status UpdateStatus EXT_RAM_ATTR;
@@ -274,12 +277,15 @@ void startSystem(void){
 		deviceSerNum[5], deviceSerNum[6], deviceSerNum[7], deviceSerNum[8], deviceSerNum[9]);
 	dev_auth_init((void const*)&deviceSerNum);
 
-	//serverbleStartAdvertising();
 	#ifdef CONNECTED
 		//Get Device FirebaseDB ID
 		sprintf(ConfigFirebase.Device_Db_ID,"%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",deviceSerNum[0], deviceSerNum[1], deviceSerNum[2], deviceSerNum[3], deviceSerNum[4],
 			deviceSerNum[5], deviceSerNum[6], deviceSerNum[7], deviceSerNum[8], deviceSerNum[9]);
+		memcpy(ConfigFirebase.Device_Ser_num,ConfigFirebase.Device_Db_ID,20);
 		memcpy(&ConfigFirebase.Device_Db_ID[20],&device_ID[3],8);
+		memcpy(ConfigFirebase.Device_Id,&device_ID[3],8);
+
+
 
 		//Init firebase values
 		UpdateStatus.ESP_Act_Ver = ParseFirmwareVersion((char *)(version_firmware));
@@ -499,6 +505,7 @@ void procesar_bloque(uint16 tipo_bloque){
 			#ifdef CONNECTED
 				//Pasar datos a Status
 				memcpy(Status.HPT_status, &buffer_rx_local[4], 2);
+				
 				Status.ICP_status 		= (memcmp(&buffer_rx_local[6],  "CL" ,2) == 0 )? true : false;
 				Status.Con_Lock   		= (memcmp(&buffer_rx_local[12], "LOC",3) == 0 )? true : false;
 				Status.DC_Leack_status  = (memcmp(&buffer_rx_local[12], "TR" ,2) >  0 )? true : false;
@@ -545,13 +552,11 @@ void procesar_bloque(uint16 tipo_bloque){
 
 		#ifdef CONNECTED
 			Params.inst_current_limit = buffer_rx_local[0];
-			ConfigFirebase.WriteParams=true;
 		#endif
 	}
 	else if(MEASURES_CURRENT_COMMAND_CHAR_HANDLE == tipo_bloque)
 	{
 		modifyCharacteristic(buffer_rx_local, 1, MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
-		Comands.Newdata=false;
 	}
 	else if(TIME_DATE_DELTA_DELAY_FOR_CHARGING_CHAR_HANDLE == tipo_bloque)
 	{
@@ -679,7 +684,6 @@ void procesar_bloque(uint16 tipo_bloque){
 
 		#ifdef CONNECTED
 			memcpy(Params.autentication_mode,buffer_rx_local,2);
-			ConfigFirebase.WriteParams=true;
 		#endif
 	}
 	else if(DOMESTIC_CONSUMPTION_KS_CHAR_HANDLE == tipo_bloque)
@@ -700,7 +704,6 @@ void procesar_bloque(uint16 tipo_bloque){
 
 		#ifdef CONNECTED
 			Params.potencia_contratada=buffer_rx_local[0]+buffer_rx_local[1]*100;
-			ConfigFirebase.WriteParams=true;
 		#endif
 	}
 	else if(ERROR_STATUS_ERROR_CODE_CHAR_HANDLE == tipo_bloque)
@@ -709,7 +712,6 @@ void procesar_bloque(uint16 tipo_bloque){
 
 		#ifdef CONNECTED
 			Status.error_code=buffer_rx_local[0];
-			ConfigFirebase.WriteStatus=true;
 		#endif
 	}
 	else if(BOOT_LOADER_LOAD_SW_APP_CHAR_HANDLE== tipo_bloque){
@@ -724,7 +726,6 @@ void procesar_bloque(uint16 tipo_bloque){
 			//Params.CDP_On           = (buffer_rx_local[0]  >> 1) & 0x01;
 			//Params.Ubicacion_Sensor = (buffer_rx_local[0]  >> 2) & 0x03;
 			Params.CDP				  = buffer_rx_local[0];
-			ConfigFirebase.WriteParams=true;
 		#endif
 	}
 }
@@ -960,12 +961,14 @@ void UpdateCompressedTask(void *arg){
 #endif
 
 void controlInit(void){
-	//xTaskCreate(controlTask,"TASK CONTROL",4096*2,NULL,1,NULL);
+
 	//Freertos estatico
-	xTaskCreateStatic(LedControl_Task,"TASK LEDS",4096,NULL,PRIORIDAD_LEDS,xLEDStack,&xLEDBuffer); 
-	xTaskCreateStatic(controlTask,"TASK CONTROL",4096*4,NULL,PRIORIDAD_CONTROL,xControlStack,&xControlBuffer); 
+	xTaskCreateStatic(LedControl_Task,"TASK LEDS",4096*2,NULL,PRIORIDAD_LEDS,xLEDStack,&xLEDBuffer); 
+	xTaskCreateStatic(controlTask,"TASK CONTROL",4096*6,NULL,PRIORIDAD_CONTROL,xControlStack,&xControlBuffer); 
 	#ifdef CONNECTED
-		xTaskCreateStatic(Firebase_Conn_Task,"TASK FIREBASE", 4096*4,NULL,PRIORIDAD_FIREBASE,xFirebaseStack, &xFirebaseBuffer);
+		//xTaskCreateStatic(ComsTask,"TASK COMS", 4096*4,NULL,PRIORIDAD_COMS,xComsStack, &xComsBuffer);
+		xTaskCreate(ComsTask,"Task Coms",4096*2,NULL,PRIORIDAD_COMS,NULL);
+		xTaskCreateStatic(Firebase_Conn_Task,"TASK FIREBASE", 4096*6,NULL,PRIORIDAD_FIREBASE,xFirebaseStack , &xFirebaseBuffer );
 	#endif
 }
 
