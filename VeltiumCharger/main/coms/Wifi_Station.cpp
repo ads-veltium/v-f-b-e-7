@@ -322,14 +322,16 @@ void Station_Begin(){
     Coms.Wifi.ON=true;
 
 	//Descomentar e introducir credenciales para conectarse a piñon ¡¡¡¡Comentar lo de abajo!!!!
-    //WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-
-    //Comentar estas lineas para conectarse a piñon!
     WiFi.onEvent(WiFiEvent);
-    String SSID = "WF_";
-    SSID.concat(ConfigFirebase.Device_Id);
+    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
-    WiFiProv.beginProvision(WIFI_PROV_SCHEME_SOFTAP, WIFI_PROV_SCHEME_HANDLER_NONE, WIFI_PROV_SECURITY_1, (char*)(ConfigFirebase.Device_Ser_num), SSID.c_str());
+    
+    
+    //Comentar estas lineas para conectarse a piñon!
+    String SSID = "WF_";
+    //SSID.concat(ConfigFirebase.Device_Id);
+
+    //WiFiProv.beginProvision(WIFI_PROV_SCHEME_SOFTAP, WIFI_PROV_SCHEME_HANDLER_NONE, WIFI_PROV_SECURITY_1, (char*)(ConfigFirebase.Device_Ser_num), SSID.c_str());
     Serial.println("Connecting to Wi-Fi...");
 } 
 

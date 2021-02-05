@@ -486,6 +486,7 @@ void Firebase_Conn_Task(void *args){
         Status.last_ts_app_req= ts_app_req;
         ConfigFirebase.ClientConnected  = true;
         xStarted = xTaskGetTickCount();
+        Serial.println("User connected!");
       }
  
       if(ConfigFirebase.ClientConnected){
