@@ -27,7 +27,9 @@ unsigned char DRACO_GPIO_Init(void) {
 
 	//OUT OPEN-DRAIN
     pinMode ( nMAIN_XRES,INPUT_PULLUP);    
-
+	DRACO_GPIO_Reset_MCU(1);
+	DRACO_GPIO_Reset_MCU(0);
+	DRACO_GPIO_Reset_MCU(1);
 	return 1;
 
 }

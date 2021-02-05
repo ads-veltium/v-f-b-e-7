@@ -43,20 +43,6 @@ void BLEScan::handleGAPEvent(
 	esp_ble_gap_cb_param_t* param) {
 
 	switch(event) {
-
-		// ---------------------------
-		// scan_rst:
-		// esp_gap_search_evt_t search_evt
-		// esp_bd_addr_t bda
-		// esp_bt_dev_type_t dev_type
-		// esp_ble_addr_type_t ble_addr_type
-		// esp_ble_evt_type_t ble_evt_type
-		// int rssi
-		// uint8_t ble_adv[ESP_BLE_ADV_DATA_LEN_MAX]
-		// int flag
-		// int num_resps
-		// uint8_t adv_data_len
-		// uint8_t scan_rsp_len
 		case ESP_GAP_BLE_SCAN_RESULT_EVT: {
 
 			switch(param->scan_rst.search_evt) {

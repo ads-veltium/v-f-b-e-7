@@ -527,7 +527,35 @@ int HTTPClient::PUT(uint8_t * payload, size_t size) {
 int HTTPClient::PUT(String payload) {
     return PUT((uint8_t *) payload.c_str(), payload.length());
 }
+bool HTTPClient::setURL(const String& url)
+{
+    // if the new location is only a path then only update the URI
+    if (url && url[0] == '/') {
+        _uri = url;
+        clear();
+        return true;
+    }
 
+    if (!url.startsWith(_protocol + ':')) {
+        log_d("new URL not the same protocol, expected '%s', URL: '%s'\n", _protocol.c_str(), url.c_str());
+        return false;
+    }
+
+    // check if the port is specified
+    int indexPort = url.indexOf(':', 6); // find the first ':' excluding the one from the protocol
+    int indexURI = url.indexOf('/', 7); // find where the URI starts to make sure the ':' is not part of it
+    if (indexPort == -1 || indexPort > indexURI) {
+        // the port is not specified
+        _port = (_protocol == "https" ? 443 : 80);
+    }
+
+    // disconnect but preserve _client. 
+    // Also have to keep the connection otherwise it will free some of the memory used by _client 
+    // and will blow up later when trying to do _client->available() or similar
+    _canReuse = true;
+    disconnect(true);
+    return beginInternal(url, _protocol.c_str());
+}
 /**
  * sendRequest
  * @param type const char *     "GET", "POST", ....
@@ -760,10 +788,12 @@ int HTTPClient::writeToStream(Stream * stream)
 
     if(!stream) {
         return returnError(HTTPC_ERROR_NO_STREAM);
+        log_d(HTTPC_ERROR_NO_STREAM);
     }
 
     if(!connected()) {
         return returnError(HTTPC_ERROR_NOT_CONNECTED);
+        log_d(HTTPC_ERROR_NOT_CONNECTED);
     }
 
     // get length of document (is -1 when Server sends no Content-Length header)
@@ -784,7 +814,7 @@ int HTTPClient::writeToStream(Stream * stream)
                 return returnError(HTTPC_ERROR_CONNECTION_LOST);
             }
             String chunkHeader = _client->readStringUntil('\n');
-
+            Serial.printf("b");
             if(chunkHeader.length() <= 0) {
                 return returnError(HTTPC_ERROR_READ_TIMEOUT);
             }
@@ -794,7 +824,7 @@ int HTTPClient::writeToStream(Stream * stream)
             // read size of chunk
             len = (uint32_t) strtol((const char *) chunkHeader.c_str(), NULL, 16);
             size += len;
-            log_d(" read chunk len: %d", len);
+            Serial.printf(" read chunk len: %d", len);
 
             // data left?
             if(len > 0) {
@@ -825,7 +855,7 @@ int HTTPClient::writeToStream(Stream * stream)
                 return returnError(HTTPC_ERROR_READ_TIMEOUT);
             }
 
-            delay(0);
+            delay(5);
         }
     } else {
         return returnError(HTTPC_ERROR_ENCODING);

@@ -55,6 +55,13 @@
 #define HPT_ESTADO_E		7
 #define HPT_ESTADO_F		8
 
+// TIPOS DE BLOQUE DE INTERCAMBIO CON BLE
+#define BLOQUE_INICIALIZACION	0xFFFF
+#define BLOQUE_STATUS			0xFFFE
+#define BLOQUE_DATE_TIME		0xFFFD
+
+#define LED_MAXIMO_PWM      1200     // Sobre 1200 de periodo
+
 typedef	uint8_t			uint8;
 typedef	uint16_t		uint16;
 typedef	uint32_t		uint32;
@@ -74,10 +81,10 @@ typedef struct{
 
 typedef struct{
 
-	int connect_date_time;
-	int disconnect_date_time;
-	int charge_start_time;
-	int charge_stop_time;
+	String connect_date_time;
+	String disconnect_date_time;
+	String charge_start_time;
+	String charge_stop_time;
 } caract_date_time;
 
 typedef struct{
@@ -113,7 +120,7 @@ typedef struct{
 	uint8  desired_current;
 
 	bool Newdata = false;
-	int last_ts_app_req= 0;
+	long long last_ts_app_req= 0;
 
 } carac_Comands;
 
@@ -129,7 +136,7 @@ typedef struct{
 	caract_measures Measures;
 	caract_date_time Time;
 
-	int last_ts_app_req= 0;
+	long long last_ts_app_req= 0;
 } carac_Status;
 
 typedef struct{
@@ -138,10 +145,11 @@ typedef struct{
 	bool   Sensor_Conectado;
 	char   Fw_Update_mode[2];
 	char   autentication_mode[2];
+	uint8  CDP;
 	uint8  inst_current_limit;
 	uint16 potencia_contratada;
 
-	int last_ts_app_req= 0;
+	long long last_ts_app_req= 0;
 } carac_Params;
 
 typedef struct{
@@ -174,7 +182,7 @@ typedef struct{
 	carac_WIFI   Wifi;
 	carac_ETH     ETH;
 	carac_MODEM   GSM;
-	int last_ts_app_req= 0;
+	long long last_ts_app_req= 0;
 } carac_Coms;
 
 typedef struct{

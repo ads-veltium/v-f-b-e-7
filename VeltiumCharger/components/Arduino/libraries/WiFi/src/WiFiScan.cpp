@@ -68,7 +68,7 @@ int16_t WiFiScanClass::scanNetworks(bool async, bool show_hidden, bool passive, 
     scanDelete();
 
     wifi_scan_config_t config;
-    config.ssid = 0;
+    /*config.ssid = 0;
     config.bssid = 0;
     config.channel = channel;
     config.show_hidden = show_hidden;
@@ -79,7 +79,7 @@ int16_t WiFiScanClass::scanNetworks(bool async, bool show_hidden, bool passive, 
         config.scan_type = WIFI_SCAN_TYPE_ACTIVE;
         config.scan_time.active.min = 100;
         config.scan_time.active.max = max_ms_per_chan;
-    }
+    }*/
     if(esp_wifi_scan_start(&config, false) == ESP_OK) {
         _scanStarted = millis();
         if (!_scanStarted) { //Prevent 0 from millis overflow

@@ -10,19 +10,10 @@
  * ========================================
  */
 #include "control.h"
-#include "FirebaseClient.h"
-
-
-// TIPOS DE BLOQUE DE INTERCAMBIO CON BLE
-#define BLOQUE_INICIALIZACION	0xFFFF
-#define BLOQUE_STATUS			0xFFFE
-#define BLOQUE_DATE_TIME		0xFFFD
-
-#define LED_MAXIMO_PWM      1200     // Sobre 1200 de periodo
-
 StaticTask_t xControlBuffer ;
 StaticTask_t xLEDBuffer ;
 StaticTask_t xFirebaseBuffer ;
+
 static StackType_t xControlStack  [4096*4]     EXT_RAM_ATTR;
 static StackType_t xLEDStack      [4096*2]     EXT_RAM_ATTR;
 static StackType_t xFirebaseStack [4096*4]     EXT_RAM_ATTR;
@@ -250,7 +241,7 @@ void controlTask(void *arg)
 			}
 			else if (Comands.reset){
 				Serial.println("Reiniciando en 4 segundos!"); 
-				vTaskDelay(4000/configTICK_RATE_HZ);
+				vTaskDelay(pdMS_TO_TICKS(4000));
 				MAIN_RESET_Write(0);						
 				ESP.restart();
 			}
@@ -430,10 +421,10 @@ void procesar_bloque(uint16 tipo_bloque){
 				//Caution!!!!!
 				memcpy(Params.Fw_Update_mode, "AA",2);	
 				Params.potencia_contratada=buffer_rx_local[229]+buffer_rx_local[230]*100;
-				Params.Sensor_Conectado = (buffer_rx_local[232]  >> 0) & 0x01;
-				Params.CDP_On           = (buffer_rx_local[232]  >> 1) & 0x01;
-				Params.Ubicacion_Sensor = (buffer_rx_local[232]  >> 2) & 0x03;
-				Serial.println(Params.potencia_contratada);
+				Params.CDP 				=  buffer_rx_local[232];
+				//Params.Sensor_Conectado = (buffer_rx_local[232]  >> 0) & 0x01;
+				//Params.CDP_On           = (buffer_rx_local[232]  >> 1) & 0x01;
+				//Params.Ubicacion_Sensor = (buffer_rx_local[232]  >> 2) & 0x03;
 
 				ConfigFirebase.WriteParams=true;
 				ConfigFirebase.WriteComs=true;
@@ -536,10 +527,15 @@ void procesar_bloque(uint16 tipo_bloque){
 		modifyCharacteristic(&buffer_rx_local[24], 6, TIME_DATE_CHARGING_STOP_TIME_CHAR_HANDLE);
 
 		#ifdef CONNECTED
-			Status.Time.connect_date_time    = Convert_To_Epoch(&buffer_rx_local[6]);
+			String str = (char*)buffer_rx_local;
+			Status.Time.connect_date_time    = str.substring(6,12);
+			Status.Time.disconnect_date_time = str.substring(12,18);
+			Status.Time.charge_start_time    = str.substring(18,24);
+			Status.Time.charge_stop_time     = str.substring(24,30);
+			/*Status.Time.connect_date_time    = Convert_To_Epoch(&buffer_rx_local[6]);
 			Status.Time.disconnect_date_time = Convert_To_Epoch(&buffer_rx_local[12]);
 			Status.Time.charge_start_time    = Convert_To_Epoch(&buffer_rx_local[18]);
-			Status.Time.charge_stop_time     = Convert_To_Epoch(&buffer_rx_local[24]);
+			Status.Time.charge_stop_time     = Convert_To_Epoch(&buffer_rx_local[24]);*/
 		#endif
 	}
 	else if(MEASURES_INSTALATION_CURRENT_LIMIT_CHAR_HANDLE == tipo_bloque)
@@ -724,9 +720,10 @@ void procesar_bloque(uint16 tipo_bloque){
 		modifyCharacteristic(buffer_rx_local, 1, DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE);
 		#ifdef CONNECTED
 			//Caution!!!!!	
-			Params.Sensor_Conectado = (buffer_rx_local[0]  >> 0) & 0x01;
-			Params.CDP_On           = (buffer_rx_local[0]  >> 1) & 0x01;
-			Params.Ubicacion_Sensor = (buffer_rx_local[0]  >> 2) & 0x03;
+			//Params.Sensor_Conectado = (buffer_rx_local[0]  >> 0) & 0x01;
+			//Params.CDP_On           = (buffer_rx_local[0]  >> 1) & 0x01;
+			//Params.Ubicacion_Sensor = (buffer_rx_local[0]  >> 2) & 0x03;
+			Params.CDP				  = buffer_rx_local[0];
 			ConfigFirebase.WriteParams=true;
 		#endif
 	}

@@ -19,17 +19,6 @@ void setup()
 	dev_auth_init(dummySerial);
 #endif
 
-#ifdef USE_ETH
-	ETH_begin();
-#endif // USE_ETH
-
-#ifdef USE_WIFI
-	Station_Begin();
-	Serial.println("FREE HEAP MEMORY [after WIFI_INIT] **************************");
-	Serial.println(ESP.getFreeHeap());
-
-#endif
-
 #ifdef USE_DRACO_BLE
 	
 	Serial.println("FREE HEAP MEMORY [after DRACO_GPIO_Init] **************************");
@@ -48,54 +37,17 @@ void setup()
 	Serial.println("FREE HEAP MEMORY [after controlInit write] **************************");
 	Serial.println(ESP.getFreeHeap());
 #endif
-
 	Serial.println("FREE HEAP MEMORY [after draco init] **************************");
 	Serial.println(ESP.getFreeHeap());
+	
+#ifdef USE_WIFI
+	Station_Begin();
+	Serial.println("FREE HEAP MEMORY [after WIFI_INIT] **************************");
+	Serial.println(ESP.getFreeHeap());
+#endif
+
+#ifdef USE_ETH
+	ETH_begin();
+#endif // USE_ETH
 
 }
-/**********************************************
- * 			       FUNCIONES
- * *******************************************/
-
-void perform_ps_malloc_tests(uint8_t pot_first, uint8_t pot_last)
-{
-	for (uint8_t pot = pot_first; pot <= pot_last; pot++) {
-		unsigned bytesToAllocate = 1 << pot;
-		Serial.printf("[before] free heap memory: %7u bytes\n", ESP.getFreeHeap());
-		Serial.printf("ps_mallocating %7u bytes... ", bytesToAllocate);
-		void *buf = ps_malloc(bytesToAllocate);
-		if (buf != NULL) {
-			Serial.println("OK.");
-			Serial.printf("[after ] free heap memory: %7u bytes\n", ESP.getFreeHeap());
-			free(buf);
-			Serial.println("buffer released.");
-		}
-		else {
-			Serial.println("FAILURE!!!");
-			break;
-		}
-	}
-}
-
-void perform_malloc_tests(uint8_t pot_first, uint8_t pot_last)
-{
-	for (uint8_t pot = pot_first; pot <= pot_last; pot++) {
-		unsigned bytesToAllocate = 1 << pot;
-		Serial.printf("[before] free heap memory: %7u bytes\n", ESP.getFreeHeap());
-		Serial.printf("mallocating %7u bytes... ", bytesToAllocate);
-		void *buf = malloc(bytesToAllocate);
-		if (buf != NULL) {
-			Serial.println("OK.");
-			Serial.printf("[after ] free heap memory: %7u bytes\n", ESP.getFreeHeap());
-			free(buf);
-			Serial.println("buffer released.");
-		}
-		else {
-			Serial.println("FAILURE!!!");
-			break;
-		}
-	}
-}
-
-
-

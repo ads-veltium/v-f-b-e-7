@@ -248,7 +248,7 @@ int start_ssl_client(sslclient_context *ssl_client, const char *host, uint32_t p
 
 void stop_ssl_socket(sslclient_context *ssl_client, const char *rootCABuff, const char *cli_cert, const char *cli_key)
 {
-    Serial.println("Cleaning SSL connection.");
+    log_v("Cleaning SSL connection.");
 
     if (ssl_client->socket >= 0) {
         close(ssl_client->socket);

@@ -97,10 +97,11 @@ public:
     bool beginSmartConfig();
     bool stopSmartConfig();
     bool smartConfigDone();
-
-protected:
-    static bool _smartConfigStarted;
+    
     static bool _smartConfigDone;
+protected:
+    
+    static bool _smartConfigStarted;
 #ifdef ESP_IDF_VERSION_MAJOR //todo
     static void _smartConfigCallback(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data);
 #else

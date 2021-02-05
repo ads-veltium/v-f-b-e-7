@@ -65,7 +65,7 @@ bool MDNSResponder::begin(const char* hostName){
         log_e("Failed starting MDNS");
         return false;
     }
-    WiFi.onEvent(_on_sys_event);
+    //WiFi.onEvent(_on_sys_event);
     _hostname = hostName;
 	_hostname.toLowerCase();
     if(mdns_hostname_set(hostName)) {

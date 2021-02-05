@@ -26,7 +26,7 @@
                 "name": "MENUCONFIG",
                 "color": "white",
                 "singleInstance": true,
-                "command": ". /home/joel/Documents/SDK_4/idf_4_0/esp-idf/./export.sh && cd /home/joel/Documents/fw-bird-esp32/VeltiumCharger/ && make menuconfig",
+                "command": ". /home/joel/Documents/SDK_4/idf_4_0/esp-idf/./export.sh && cd /home/joel/Desktop/Respositoriocopiado/fw-bird-esp32/VeltiumCharger && make menuconfig",
             },
             {
                 "name": "FLASH",
@@ -106,7 +106,8 @@
         "stdexcept": "cpp",
         "streambuf": "cpp",
         "system_error": "cpp",
-        "thread": "cpp"
+        "thread": "cpp",
+        "*.inc": "c"
     },
     "git.ignoreLimitWarning": true
 }

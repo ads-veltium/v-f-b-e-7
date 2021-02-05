@@ -26,7 +26,6 @@ extern "C" void app_main()
     loopTaskWDTEnabled = false;
     initArduino();
     setup();
-    //xTaskCreateUniversal(loopTask, "loopTask", 8192, NULL, 1, &loopTaskHandle, CONFIG_ARDUINO_RUNNING_CORE);
 }
 
 #endif

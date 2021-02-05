@@ -1,1 +1,0 @@
-source /SDK/esp-idf-v3.3.1/export.sh 

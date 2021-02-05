@@ -2,20 +2,21 @@
 #define __CONTROL_MAIN
 
 //configuration
-//#define USE_WIFI
+#define USE_WIFI
+//#define USE_WIFI_ESP
 //#define USE_ETH
 #define USE_DRACO_BLE
 
 #include "Arduino.h"
-#include "serverble.h"
+#include "ble/serverble.h"
 #include "controlLed.h"
 #include "DRACO_IO.h"
 
-#include "cybtldr_parse.h"
-#include "cybtldr_api.h"
+#include "cybtldr/cybtldr_parse.h"
+#include "cybtldr/cybtldr_api.h"
 
 #include "tipos.h"
-#include "dev_auth.h"
+#include "ble/dev_auth.h"
 #include "Update.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -31,20 +32,21 @@
 	#include "ESP32-targz.h"
 #endif
 
-
-
-#ifdef USE_WIFI
-	#include "Wifi_Station.h"
+#ifdef USE_WIFI	
 	#ifndef CONNECTED
 		#define CONNECTED
 	#endif
 #endif
 
 #ifdef USE_ETH
-	#include "Wifi_Station.h"
 	#ifndef CONNECTED
 		#define CONNECTED
 	#endif
+#endif
+
+#ifdef CONNECTED
+	#include "coms/Wifi_Station.h"
+   #include "coms/FirebaseClient.h"
 #endif
 
 //Prioridades FreeRTOS
