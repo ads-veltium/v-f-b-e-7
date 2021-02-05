@@ -61,6 +61,7 @@
 #define BLOQUE_DATE_TIME		0xFFFD
 
 #define LED_MAXIMO_PWM      1200     // Sobre 1200 de periodo
+#define pdTICKS_TO_MS( xTicks )   ( ( uint32_t ) ( xTicks ) * 1000 / configTICK_RATE_HZ )
 
 typedef	uint8_t			uint8;
 typedef	uint16_t		uint16;
