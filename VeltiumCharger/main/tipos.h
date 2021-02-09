@@ -144,6 +144,7 @@ typedef struct{
 	bool   Ubicacion_Sensor;
 	bool   CDP_On;
 	bool   Sensor_Conectado;
+	bool   NewData;
 	char   Fw_Update_mode[2];
 	char   autentication_mode[2];
 	uint8  CDP;
@@ -540,6 +541,7 @@ typedef struct{
 
 //Custom handles for comunications
 #define COMS_CONFIGURATION_CHAR_HANDLE (0x00B0u)
+#define COMS_FW_UPDATEMODE_CHAR_HANDLE (0x00B1u)
 
 #endif
 

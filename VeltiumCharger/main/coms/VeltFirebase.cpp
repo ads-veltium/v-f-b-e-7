@@ -44,6 +44,7 @@ void Real_Time_Database::endAuth(void){
 void Real_Time_Database::begin(String Host, String DatabaseID){
     RTDB_url="https://";
     RTDB_url+=Host+("prod/devices/"+DatabaseID);
+    Base_Path+="https://"+Host;
 
     Write_url = RTDB_url+"/status/ts_app_req.json?auth="+idToken+"&timeout=2500ms";
 
@@ -79,6 +80,7 @@ bool Real_Time_Database::Send_Command(String path, JsonDocument *doc, uint8_t Co
           
         serializeJson(*doc, SerializedData);
     }
+
     
     RTDBClient.setURL(Write_url);
 
@@ -93,6 +95,11 @@ bool Real_Time_Database::Send_Command(String path, JsonDocument *doc, uint8_t Co
             response = RTDBClient.PUT("{\".sv\": \"timestamp\"}");
             break;
         case READ:
+            response = RTDBClient.GET();
+            break;
+        case READ_FW:
+            Serial.println(Base_Path+"/prod/fw/beta/");
+            RTDBClient.setURL(Base_Path+"prod/fw/beta"+".json?auth="+idToken);
             response = RTDBClient.GET();
             break;
 

@@ -246,10 +246,7 @@ void controlTask(void *arg)
 				vTaskDelay(pdMS_TO_TICKS(4000));
 				MAIN_RESET_Write(0);						
 				ESP.restart();
-			}
-			else if(Comands.Newdata){		
-				SendToPSOC5(Comands.desired_current, MEASURES_CURRENT_COMMAND_CHAR_HANDLE); 
-			}		
+			}	
 		}
 
 		// Eventos 1 minuto
@@ -282,7 +279,6 @@ void startSystem(void){
 		memcpy(ConfigFirebase.Device_Ser_num,ConfigFirebase.Device_Db_ID,20);
 		memcpy(&ConfigFirebase.Device_Db_ID[20],&device_ID[3],8);
 		memcpy(ConfigFirebase.Device_Id,&device_ID[3],8);
-
 
 
 		//Init firebase values
@@ -422,18 +418,20 @@ void procesar_bloque(uint16 tipo_bloque){
 				Params.inst_current_limit = buffer_rx_local[11];
 				Params.potencia_contratada=buffer_rx_local[229]+buffer_rx_local[230]*100;
 				Params.CDP 	  =  buffer_rx_local[232];
+				memcpy(Params.Fw_Update_mode, &buffer_rx_local[250],2);
 				Comands.desired_current = buffer_rx_local[233];
+
+				//Coms
 				Coms.Wifi.ON    =  buffer_rx_local[234];
 				Coms.ETH.ON     =  buffer_rx_local[235];	
 				Coms.GSM.ON     =  buffer_rx_local[236];				
 				Coms.ETH.Auto   =  buffer_rx_local[237];	
-				Serial.printf("ETH Config: %i %i \n",Coms.ETH.ON,Coms.ETH.Auto);
+
 				Coms.ETH.IP1[0] =  buffer_rx_local[238];
 				Coms.ETH.IP1[1] =  buffer_rx_local[239];
 				Coms.ETH.IP1[2] =  buffer_rx_local[240];
 				Coms.ETH.IP1[3] =  buffer_rx_local[241];
 
-				Serial.println(Coms.ETH.IP1.toString());
 				Coms.ETH.Gateway[0] =  buffer_rx_local[242];
 				Coms.ETH.Gateway[1] =  buffer_rx_local[243];
 				Coms.ETH.Gateway[2] =  buffer_rx_local[244];
@@ -540,6 +538,7 @@ void procesar_bloque(uint16 tipo_bloque){
 				Status.Measures.power_factor = buffer_rx_local[36];
 				Status.Measures.active_power = buffer_rx_local[38] + (buffer_rx_local[39] * 0x100);
 				Status.error_code = buffer_rx_local[41];
+
 			#endif
 		}
 	}
@@ -1059,29 +1058,42 @@ void SendToPSOC5(uint8 *data, uint16 len, uint16 attrHandle){
 void SendToPSOC5(uint16 attrHandle){
   uint8 data[20] = {0};
   uint8 len;
-  if(attrHandle==COMS_CONFIGURATION_CHAR_HANDLE){
-	len=16;
-	data[0] = (uint8)(Coms.Wifi.ON);
-	data[1] = (uint8)(Coms.ETH.ON);	
-	data[2] = (uint8)(Coms.GSM.ON);	
-	data[3] = (uint8)(Coms.ETH.Auto);	
 
-	data[4] = (uint8)Coms.ETH.IP1[0];
-	data[5] = (uint8)Coms.ETH.IP1[1];
-	data[6] = (uint8)Coms.ETH.IP1[2];
-	data[7] = (uint8)Coms.ETH.IP1[3];
+  switch(attrHandle){
+	  case COMS_CONFIGURATION_CHAR_HANDLE:
+		len=16;
+		data[0] = (uint8)(Coms.Wifi.ON);
+		data[1] = (uint8)(Coms.ETH.ON);	
+		data[2] = (uint8)(Coms.GSM.ON);	
+		data[3] = (uint8)(Coms.ETH.Auto);	
 
-	data[8] = (uint8)Coms.ETH.Gateway[0];
-	data[9] = (uint8)Coms.ETH.Gateway[1];
-	data[10] = (uint8)Coms.ETH.Gateway[2];
-	data[11] = (uint8)Coms.ETH.Gateway[3];
+		data[4] = (uint8)Coms.ETH.IP1[0];
+		data[5] = (uint8)Coms.ETH.IP1[1];
+		data[6] = (uint8)Coms.ETH.IP1[2];
+		data[7] = (uint8)Coms.ETH.IP1[3];
 
-	data[12] = (uint8)Coms.ETH.Mask[0];
-	data[13] = (uint8)Coms.ETH.Mask[1];
-	data[14] = (uint8)Coms.ETH.Mask[2];
-	data[15] = (uint8)Coms.ETH.Mask[3];
+		data[8] = (uint8)Coms.ETH.Gateway[0];
+		data[9] = (uint8)Coms.ETH.Gateway[1];
+		data[10] = (uint8)Coms.ETH.Gateway[2];
+		data[11] = (uint8)Coms.ETH.Gateway[3];
 
+		data[12] = (uint8)Coms.ETH.Mask[0];
+		data[13] = (uint8)Coms.ETH.Mask[1];
+		data[14] = (uint8)Coms.ETH.Mask[2];
+		data[15] = (uint8)Coms.ETH.Mask[3];
+	  break;
+
+	  case CONFIGURACION_AUTENTICATION_MODES_CHAR_HANDLE:
+	  	len = 2;
+	    data[0] =Params.autentication_mode[0];
+		data[1] =Params.autentication_mode[1];
+	  break;
+
+	  default:
+	  return;
   }
+
+  
   cnt_timeout_tx = TIMEOUT_TX_BLOQUE;
   buffer_tx_local[0] = HEADER_TX;
   buffer_tx_local[1] = (uint8)(attrHandle >> 8);

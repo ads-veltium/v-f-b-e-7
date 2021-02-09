@@ -65,6 +65,10 @@ static int _pin_len;
 static bool _isPinSet;
 static bool _enableSSP;
 
+StaticTask_t xEventBuffer ;
+
+static StackType_t xEventStack  [4096*6]     EXT_RAM_ATTR;
+
 #define SPP_RUNNING     0x01
 #define SPP_CONNECTED   0x02
 #define SPP_CONGESTED   0x04
@@ -477,7 +481,8 @@ static bool _init_bt(const char *deviceName)
     }
 
     if(!_spp_task_handle){
-        xTaskCreatePinnedToCore(_spp_tx_task, "spp_tx", 4096, NULL, 2, &_spp_task_handle, 0);
+        _spp_task_handle=xTaskCreateStaticPinnedToCore(_spp_tx_task,"spp_tx",4096*2,NULL,2,xEventStack,&xEventBuffer,0);
+        //xTaskCreatePinnedToCore(_spp_tx_task, "spp_tx", 4096, NULL, 2, &_spp_task_handle, 0);
         if(!_spp_task_handle){
             log_e("Network Event Task Start Failed!");
             return false;

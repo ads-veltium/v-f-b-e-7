@@ -22,19 +22,11 @@
 //Select the scheme using which you want to provision
 typedef enum {
     WIFI_PROV_SCHEME_SOFTAP,
-#if CONFIG_BLUEDROID_ENABLED
-    WIFI_PROV_SCHEME_BLE,
-#endif
     WIFI_PROV_SCHEME_MAX
 } prov_scheme_t;
 
 typedef enum {
     WIFI_PROV_SCHEME_HANDLER_NONE,
-#if CONFIG_BLUEDROID_ENABLED
-    WIFI_PROV_SCHEME_HANDLER_FREE_BTDM,
-    WIFI_PROV_SCHEME_HANDLER_FREE_BLE,
-    WIFI_PROV_SCHEME_HANDLER_FREE_BT,
-#endif
     WIFI_PROV_SCHEME_HANDLER_MAX
 } scheme_handler_t;
 

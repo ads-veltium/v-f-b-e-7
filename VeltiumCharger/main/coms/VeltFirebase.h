@@ -35,7 +35,7 @@ uint16  ParseFirmwareVersion(String Texto);
 
 
 class Real_Time_Database{
-    String RTDB_url, Read_url, Write_url;
+    String RTDB_url, Read_url, Write_url, Base_Path;
     HTTPClient RTDBClient, AutenticationClient; 
 
     String Auth_url= "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=";
@@ -45,6 +45,7 @@ class Real_Time_Database{
     #define UPDATE    1
     #define TIMESTAMP 4
     #define READ      5
+    #define READ_FW   6
 
     String email, pass;
     String idToken;

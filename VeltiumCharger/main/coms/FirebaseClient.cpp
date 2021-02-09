@@ -15,7 +15,6 @@ Firebase Database   EXT_RAM_ATTR;
 
 StaticJsonDocument<1024>  Lectura        EXT_RAM_ATTR;
 StaticJsonDocument<1024>  Escritura      EXT_RAM_ATTR;
-StaticJsonDocument<1024>  Actualizacion  EXT_RAM_ATTR;
 
 const char* veltiumbackend_user             = "joelmartinez@veltium.com";
 const char* veltiumbackend_password         = "Escolapios2";
@@ -240,14 +239,36 @@ bool ReadFirebaseParams(String Path){
       
       Params.last_ts_app_req=ts_app_req;
 
-      String buff = Lectura["auth_mode"].as<String>();
-      buff.toCharArray(Params.autentication_mode,2);
-      Params.inst_current_limit  = Lectura["inst_curr_limit"];
-      Params.potencia_contratada = Lectura["contract_power"];
-      Params.CDP = Lectura["dpc"];
-      buff = Lectura["fw_auto"].as<String>();;
-      buff.toCharArray(Params.Fw_Update_mode,2);
+      if(memcmp(Params.autentication_mode,Lectura["auth_mode"].as<String>().c_str(),2) != 0){
+        memcpy(Params.autentication_mode,Lectura["auth_mode"].as<String>().c_str(),2);
+        SendToPSOC5(CONFIGURACION_AUTENTICATION_MODES_CHAR_HANDLE);
+        delay(10);
+      }
+        
+      if(Lectura["inst_curr_limit"] != Params.inst_current_limit){
+        Params.inst_current_limit  = Lectura["inst_curr_limit"];
+        SendToPSOC5(Params.inst_current_limit, MEASURES_INSTALATION_CURRENT_LIMIT_CHAR_HANDLE);
+        delay(10);
+      }
+      
+      if(Params.potencia_contratada != Lectura["contract_power"]){
+        Params.potencia_contratada = Lectura["contract_power"];
+        SendToPSOC5(Params.potencia_contratada, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_CHAR_HANDLE);
+        delay(10);
+      }
+      if(Params.CDP != Lectura["dpc"]){
+        Params.CDP = Lectura["dpc"];
+        SendToPSOC5(Params.CDP, DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE);
+        delay(10);
+      }
+      
+      if(memcmp(Params.Fw_Update_mode, Lectura["fw_auto"].as<String>().c_str(),2)!=0){
+        memcpy(Params.Fw_Update_mode, Lectura["fw_auto"].as<String>().c_str(),2);
+        SendToPSOC5((uint8* )Params.Fw_Update_mode, 2, COMS_FW_UPDATEMODE_CHAR_HANDLE);
+        delay(10);
+      }
 
+      
       if(!Database.RTDB.Send_Command(Path+"/ts_dev_ack",&Lectura,TIMESTAMP)){
           return false;
       } 
@@ -289,26 +310,26 @@ bool ReadFirebaseControl(String Path){
  *              Sistema de Actualización
  *****************************************************/
 bool CheckForUpdate(){
-
-  if(Database.RTDB.Send_Command("/prod/fw/beta/",&Actualizacion, READ)){
-    String ESP_Ver   = Actualizacion["VBLE2"]["verstr"];
+  Lectura.clear();
+  if(Database.RTDB.Send_Command("/prod/fw/beta/",&Lectura, READ_FW)){
+    String ESP_Ver   = Lectura["VBLE2"]["verstr"].as<String>();
     Serial.println(ESP_Ver);
     uint16 ESP_int_Version=ParseFirmwareVersion(ESP_Ver);
 
     if(ESP_int_Version>UpdateStatus.ESP_Act_Ver){
       Serial.println("Updating ESP!");
       UpdateStatus.ESP_UpdateAvailable= true;
-      url = Actualizacion["VBLE2"]["url"].as<String>();
+      url = Lectura["VBLE2"]["url"].as<String>();
       return true;
     }
 
-    String PSOC5_Ver   = Actualizacion["VELT2"]["verstr"];
+    String PSOC5_Ver   = Lectura["VELT2"]["verstr"].as<String>();
     uint16 VELT_int_Version=ParseFirmwareVersion(PSOC5_Ver);
 
     if(VELT_int_Version>UpdateStatus.PSOC5_Act_Ver){
       Serial.println("Updating PSOC5!");
       UpdateStatus.PSOC5_UpdateAvailable= true;
-      url = Actualizacion["VELT2"]["url"].as<String>();
+      url = Lectura["VELT2"]["url"].as<String>();
       return true;
     }    
     return false;
@@ -519,7 +540,7 @@ void Firebase_Conn_Task(void *args){
           ConnectionState = WRITTING_TIMES;
           break;
         }
-        else if(++Params_Coms_Timeout>=10){
+        else if(++Params_Coms_Timeout>=3){
           ConnectionState = READING_PARAMS;
           Params_Coms_Timeout = 0;
           break; 

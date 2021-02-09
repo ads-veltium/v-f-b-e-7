@@ -545,17 +545,15 @@ void Station_Begin(){
 
 	//Descomentar e introducir credenciales para conectarse a piñon ¡¡¡¡Comentar lo de abajo!!!!
     if(!Coms.Wifi.Auto){   
-        do{      
-            vTaskDelay(pdMS_TO_TICKS(250));
-        }while(WiFi.begin(WIFI_SSID, WIFI_PASSWORD)==4);
+         wifi_connecting = WiFi.begin(WIFI_SSID, WIFI_PASSWORD) == 3;
     }
     else{
         //String SSID = "WF_";
         //SSID.concat(ConfigFirebase.Device_Id);
         WiFiProv.beginProvision(WIFI_PROV_SCHEME_SOFTAP, WIFI_PROV_SCHEME_HANDLER_NONE, WIFI_PROV_SECURITY_1, (char*)(ConfigFirebase.Device_Ser_num), 'WF_'+(char*)ConfigFirebase.Device_Id);
         Serial.println("Connecting to Wi-Fi...");
+        wifi_connecting = true;
     }
-    wifi_connecting = true;
 } 
 
 void Delete_Credentials(){
@@ -587,6 +585,7 @@ void ETH_Restart(){
     eth_connecting = true;
     delay(100);
 }
+
 void ETH_begin(){
     if(eth_connected || eth_connecting){
         ETH_Stop();
