@@ -154,10 +154,10 @@ wl_status_t WiFiSTAClass::begin(const char* ssid, const char *passphrase, int32_
     wifi_config_t current_conf;
     esp_wifi_get_config(WIFI_IF_STA, &current_conf);
     if(!sta_config_equal(current_conf, conf)) {
-        if(esp_wifi_disconnect()){
+        /*if(esp_wifi_disconnect()){
             log_e("disconnect failed!");
             return WL_CONNECT_FAILED;
-        }
+        }*/
 
         esp_wifi_set_config(WIFI_IF_STA, &conf);
     } else if(status() == WL_CONNECTED){
@@ -174,9 +174,11 @@ wl_status_t WiFiSTAClass::begin(const char* ssid, const char *passphrase, int32_
     } else {
         tcpip_adapter_dhcpc_stop(TCPIP_ADAPTER_IF_STA);
     }
-
+    esp_err_t error = esp_wifi_connect();
     if(connect && esp_wifi_connect()) {
         log_e("connect failed!");
+        
+        log_e("Error en la conexion %i", error);
         return WL_CONNECT_FAILED;
     }
 
@@ -253,8 +255,10 @@ bool WiFiSTAClass::disconnect(bool wifioff, bool eraseap)
                 log_e("clear config failed!");
             }
         }
-        if(esp_wifi_disconnect()){
-            log_e("disconnect failed!");
+        esp_err_t error = esp_wifi_disconnect();
+        if(error){
+            log_e("disconnect failed!%i",error );
+
             return false;
         }
         if(wifioff) {

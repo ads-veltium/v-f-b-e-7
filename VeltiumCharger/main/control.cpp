@@ -16,8 +16,7 @@ StaticTask_t xLEDBuffer ;
 StaticTask_t xFirebaseBuffer ;
 StaticTask_t xComsBuffer ;
 
-static StackType_t xComsStack     [4096*6] EXT_RAM_ATTR;
-static StackType_t xControlStack  [4096*6]    EXT_RAM_ATTR;
+static StackType_t xControlStack  [4096*6]     EXT_RAM_ATTR;
 static StackType_t xLEDStack      [4096*2]     EXT_RAM_ATTR;
 static StackType_t xFirebaseStack [4096*6]     EXT_RAM_ATTR;
 
@@ -39,7 +38,7 @@ uint8 authChallengeQuery[10] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
 
 uint8 contador_cent_segundos = 0, contador_cent_segundos_ant = 0;
 uint32 cont_seg = 0, cont_seg_ant = 0, cont_min_ant = 0, cont_min=0, cont_hour=0, cont_hour_ant=0;
-uint8 luminosidad, rojo, verde, azul, togle_led = 0, Led_color=VERDE ;
+uint8 luminosidad = 60, rojo, verde, azul, togle_led = 0, Led_color=VERDE ;
 uint8 estado_inicial = 1;
 uint8 estado_actual = ESTADO_ARRANQUE;
 uint8 authSuccess = 0;
@@ -74,8 +73,6 @@ uint8 systemStarted = 0;
 
 void startSystem(void);
 
-void SendToPSOC5(uint8 data, uint16 attrHandle);
-void SendToPSOC5(uint8 *data, uint16 len, uint16 attrHandle);
 void StackEventHandler( uint32 eventCode, void *eventParam );
 void modifyCharacteristic(uint8* data, uint16 len, uint16 attrHandle);
 void proceso_recepcion(void);
@@ -231,16 +228,18 @@ void controlTask(void *arg)
 		}
 
 		
-		// Eventos 1 Seg (Enviar ordenes recibidas desde firebase o la base de datos)
+		// Eventos 1 Seg (Enviar ordenes recibidas desde firebase o el servidor interno)
 		if(cont_seg != cont_seg_ant){
 			cont_seg_ant = cont_seg;
 
 			if (Comands.start){
-				SendToPSOC5(1, CHARGING_BLE_MANUAL_START_CHAR_HANDLE);             
+				SendToPSOC5(1, CHARGING_BLE_MANUAL_START_CHAR_HANDLE);   
+				Comands.start=false;          
 			}
 
 			else if (Comands.stop){
 				SendToPSOC5(1, CHARGING_BLE_MANUAL_STOP_CHAR_HANDLE);
+				Comands.stop=false;
 			}
 			else if (Comands.reset){
 				Serial.println("Reiniciando en 4 segundos!"); 
@@ -251,7 +250,6 @@ void controlTask(void *arg)
 			else if(Comands.Newdata){		
 				SendToPSOC5(Comands.desired_current, MEASURES_CURRENT_COMMAND_CHAR_HANDLE); 
 			}		
-		
 		}
 
 		// Eventos 1 minuto
@@ -290,6 +288,10 @@ void startSystem(void){
 		//Init firebase values
 		UpdateStatus.ESP_Act_Ver = ParseFirmwareVersion((char *)(version_firmware));
 		UpdateStatus.PSOC5_Act_Ver = ParseFirmwareVersion((char *)(PSOC5_version_firmware));
+
+		Coms.StartConnection = true;
+		Coms.ETH.ON  = true;
+		Coms.Wifi.ON = true;
 	#endif
 
 }
@@ -411,27 +413,46 @@ void procesar_bloque(uint16 tipo_bloque){
 			luminosidad=buffer_rx_local[231];
 			modifyCharacteristic(&buffer_rx_local[232], 1, DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE);
 			modifyCharacteristic(&buffer_rx_local[233], 1, MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
-
-			Serial.println(buffer_rx_local[233]);
 						
-			startSystem();
-			systemStarted = 1;
-
-			cnt_timeout_inicio = TIMEOUT_INICIO;
-			dispositivo_inicializado = 1;
 
 			#ifdef CONNECTED
 				/************************ Set firebase Params **********************/
 				memcpy(Params.autentication_mode, &buffer_rx_local[214],2);
 				Params.inst_current_limit = buffer_rx_local[11];
-				//Caution!!!!!
-				memcpy(Params.Fw_Update_mode, "AA",2);	
 				Params.potencia_contratada=buffer_rx_local[229]+buffer_rx_local[230]*100;
-				Params.CDP 				=  buffer_rx_local[232];
+				Params.CDP 	  =  buffer_rx_local[232];
+				Comands.desired_current = buffer_rx_local[233];
+				Coms.Wifi.ON    =  buffer_rx_local[234];
+				Coms.ETH.ON     =  buffer_rx_local[235];	
+				Coms.GSM.ON     =  buffer_rx_local[236];				
+				Coms.ETH.Auto   =  buffer_rx_local[237];	
+				Serial.printf("ETH Config: %i %i \n",Coms.ETH.ON,Coms.ETH.Auto);
+				Coms.ETH.IP1[0] =  buffer_rx_local[238];
+				Coms.ETH.IP1[1] =  buffer_rx_local[239];
+				Coms.ETH.IP1[2] =  buffer_rx_local[240];
+				Coms.ETH.IP1[3] =  buffer_rx_local[241];
+
+				Serial.println(Coms.ETH.IP1.toString());
+				Coms.ETH.Gateway[0] =  buffer_rx_local[242];
+				Coms.ETH.Gateway[1] =  buffer_rx_local[243];
+				Coms.ETH.Gateway[2] =  buffer_rx_local[244];
+				Coms.ETH.Gateway[3] =  buffer_rx_local[245];
+
+				Coms.ETH.Mask[0] =  buffer_rx_local[246];
+				Coms.ETH.Mask[1] =  buffer_rx_local[247];
+				Coms.ETH.Mask[2] =  buffer_rx_local[248];
+				Coms.ETH.Mask[3] =  buffer_rx_local[249];
+
 				//Params.Sensor_Conectado = (buffer_rx_local[232]  >> 0) & 0x01;
 				//Params.CDP_On           = (buffer_rx_local[232]  >> 1) & 0x01;
 				//Params.Ubicacion_Sensor = (buffer_rx_local[232]  >> 2) & 0x03;
 			#endif
+
+			startSystem();
+			systemStarted = 1;
+
+			cnt_timeout_inicio = TIMEOUT_INICIO;
+			dispositivo_inicializado = 1;
 		}	
 	}
 	else if(BLOQUE_STATUS == tipo_bloque)
@@ -531,15 +552,27 @@ void procesar_bloque(uint16 tipo_bloque){
 		modifyCharacteristic(&buffer_rx_local[24], 6, TIME_DATE_CHARGING_STOP_TIME_CHAR_HANDLE);
 
 		#ifdef CONNECTED
-			String str = (char*)buffer_rx_local;
-			Status.Time.connect_date_time    = str.substring(6,12);
-			Status.Time.disconnect_date_time = str.substring(12,18);
-			Status.Time.charge_start_time    = str.substring(18,24);
-			Status.Time.charge_stop_time     = str.substring(24,30);
-			/*Status.Time.connect_date_time    = Convert_To_Epoch(&buffer_rx_local[6]);
-			Status.Time.disconnect_date_time = Convert_To_Epoch(&buffer_rx_local[12]);
-			Status.Time.charge_start_time    = Convert_To_Epoch(&buffer_rx_local[18]);
-			Status.Time.charge_stop_time     = Convert_To_Epoch(&buffer_rx_local[24]);*/
+			int TimeStamp = Convert_To_Epoch(&buffer_rx_local[6]);
+			if(TimeStamp!=Status.Time.connect_date_time){
+				Status.Time.connect_date_time = TimeStamp;
+				ConfigFirebase.WriteTime = true;
+			}
+			TimeStamp = Convert_To_Epoch(&buffer_rx_local[12]);
+			if(TimeStamp!=Status.Time.disconnect_date_time){
+				Status.Time.disconnect_date_time = TimeStamp;
+				ConfigFirebase.WriteTime = true;
+			}
+			TimeStamp = Convert_To_Epoch(&buffer_rx_local[18]);
+			if(TimeStamp!=Status.Time.charge_start_time){
+				Status.Time.charge_start_time = TimeStamp;
+				ConfigFirebase.WriteTime = true;
+			}
+			TimeStamp = Convert_To_Epoch(&buffer_rx_local[24]);
+			if(TimeStamp!=Status.Time.charge_stop_time){
+				Status.Time.charge_stop_time = TimeStamp;
+				ConfigFirebase.WriteTime = true;
+			}
+			
 		#endif
 	}
 	else if(MEASURES_INSTALATION_CURRENT_LIMIT_CHAR_HANDLE == tipo_bloque)
@@ -553,6 +586,8 @@ void procesar_bloque(uint16 tipo_bloque){
 	}
 	else if(MEASURES_CURRENT_COMMAND_CHAR_HANDLE == tipo_bloque)
 	{
+		Comands.Newdata = false;
+		Comands.desired_current = buffer_rx_local[0];
 		modifyCharacteristic(buffer_rx_local, 1, MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
 	}
 	else if(TIME_DATE_DELTA_DELAY_FOR_CHARGING_CHAR_HANDLE == tipo_bloque)
@@ -725,6 +760,30 @@ void procesar_bloque(uint16 tipo_bloque){
 			Params.CDP				  = buffer_rx_local[0];
 		#endif
 	}
+	#ifdef CONNECTED
+	else if (COMS_CONFIGURATION_CHAR_HANDLE == tipo_bloque){
+		Coms.Wifi.ON    =  buffer_rx_local[0];
+		Coms.ETH.ON     =  buffer_rx_local[1];	
+		Coms.GSM.ON     =  buffer_rx_local[2];	
+		Coms.ETH.Auto   =  buffer_rx_local[3];	
+		if(!Coms.ETH.Auto){
+			Coms.ETH.IP1[0] =  buffer_rx_local[4];
+			Coms.ETH.IP1[1] =  buffer_rx_local[5];
+			Coms.ETH.IP1[2] =  buffer_rx_local[6];
+			Coms.ETH.IP1[3] =  buffer_rx_local[7];
+
+			Coms.ETH.Gateway[0] =  buffer_rx_local[8];
+			Coms.ETH.Gateway[1] =  buffer_rx_local[9];
+			Coms.ETH.Gateway[2] =  buffer_rx_local[10];
+			Coms.ETH.Gateway[3] =  buffer_rx_local[11];
+
+			Coms.ETH.Mask[0] =  buffer_rx_local[12];
+			Coms.ETH.Mask[1] =  buffer_rx_local[13];
+			Coms.ETH.Mask[2] =  buffer_rx_local[14];
+			Coms.ETH.Mask[3] =  buffer_rx_local[15];
+		}
+	}
+	#endif
 }
  
 uint8_t sendBinaryBlock ( uint8_t *data, int len )
@@ -970,6 +1029,7 @@ void controlInit(void){
 }
 
 
+#ifdef CONNECTED
 /***************************************************
  *         Enviar nuevos valores al PSOC5
 ***************************************************/
@@ -994,3 +1054,41 @@ void SendToPSOC5(uint8 *data, uint16 len, uint16 attrHandle){
   memcpy(&buffer_tx_local[4],data,len);
   controlSendToSerialLocal(buffer_tx_local, len+4);
 }
+
+void SendToPSOC5(uint16 attrHandle){
+  uint8 data[20] = {0};
+  uint8 len;
+  if(attrHandle==COMS_CONFIGURATION_CHAR_HANDLE){
+	len=16;
+	data[0] = (uint8)(Coms.Wifi.ON);
+	data[1] = (uint8)(Coms.ETH.ON);	
+	data[2] = (uint8)(Coms.GSM.ON);	
+	data[3] = (uint8)(Coms.ETH.Auto);	
+
+	data[4] = (uint8)Coms.ETH.IP1[0];
+	data[5] = (uint8)Coms.ETH.IP1[1];
+	data[6] = (uint8)Coms.ETH.IP1[2];
+	data[7] = (uint8)Coms.ETH.IP1[3];
+
+	data[8] = (uint8)Coms.ETH.Gateway[0];
+	data[9] = (uint8)Coms.ETH.Gateway[1];
+	data[10] = (uint8)Coms.ETH.Gateway[2];
+	data[11] = (uint8)Coms.ETH.Gateway[3];
+
+	data[12] = (uint8)Coms.ETH.Mask[0];
+	data[13] = (uint8)Coms.ETH.Mask[1];
+	data[14] = (uint8)Coms.ETH.Mask[2];
+	data[15] = (uint8)Coms.ETH.Mask[3];
+
+  }
+  cnt_timeout_tx = TIMEOUT_TX_BLOQUE;
+  buffer_tx_local[0] = HEADER_TX;
+  buffer_tx_local[1] = (uint8)(attrHandle >> 8);
+  buffer_tx_local[2] = (uint8)(attrHandle);
+  buffer_tx_local[3] = len+4; //size
+  memcpy(&buffer_tx_local[4],data,len);
+  controlSendToSerialLocal(buffer_tx_local, len+4);
+}
+
+
+#endif

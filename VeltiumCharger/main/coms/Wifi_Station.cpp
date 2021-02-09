@@ -2,8 +2,12 @@
 
 
 /*********************** Globals ************************/
-char password[64] = {0};
-char ssid[32] = {0};
+
+static bool eth_link_up    = false;
+static bool eth_connected   = false;
+static bool eth_connecting  = false;
+static bool wifi_connected  = false;
+static bool wifi_connecting = false;
 
 extern carac_Firebase_Configuration ConfigFirebase;
 extern carac_Update_Status          UpdateStatus;
@@ -12,15 +16,10 @@ extern carac_Status                 Status;
 extern carac_Params                 Params;
 extern carac_Coms                   Coms;
 
-void Station_Stop();
 void WiFiEvent(arduino_event_id_t event, arduino_event_info_t info);
-/*************** Wifi and ETH event handlers *****************/
-
-#ifdef USE_ETH
+void Station_Stop();
 AsyncWebServer server(80);
-
-String usuario;
-String contrasena;
+/*************** Wifi and ETH event handlers *****************/
 
 const char* NUM_BOTON = "output";
 const char* ACTUALIZACIONES = "state";
@@ -116,79 +115,71 @@ void InitServer(void) {
 	Serial.println(ESP.getFreeHeap());
 
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
-     request->send(SPIFFS, "/login.html",String(), false, processor2);
+        SPIFFS.begin(0,"/spiffs",1,"WebServer");
+        request->send(SPIFFS, "/login.html",String(), false, processor2);
+        SPIFFS.end();
     });
 
-   server.on("/get", HTTP_GET, [] (AsyncWebServerRequest *request) {
+    server.on("/get", HTTP_GET, [] (AsyncWebServerRequest *request) {
 
-	usuario = request->getParam(USER)->value();
-	contrasena = request->getParam(PASSWORD)->value();
-
-	if(usuario!="admin" || contrasena!="admin" ){
-		
-		request->send(SPIFFS, "/login.html",String(), false, processor);
- 	
-	}
-	else
-	{
-		request->send(SPIFFS, "/datos.html",String(), false, processor);
-
-	}
-
+        SPIFFS.begin(0,"/spiffs",1,"WebServer");
+        if(request->getParam(USER)->value()!="admin" || request->getParam(PASSWORD)->value()!="admin" ){
+            request->send(SPIFFS, "/login.html",String(), false, processor);
+        }
+        else
+        {
+            request->send(SPIFFS, "/datos.html",String(), false, processor);
+        }
+        SPIFFS.end();
    });
 
    server.on("/style.css", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send(SPIFFS, "/style.css", "text/css");
+        SPIFFS.begin(0,"/spiffs",1,"WebServer");
+        request->send(SPIFFS, "/style.css", "text/css");
+        SPIFFS.end();
    });
 
    server.on("/hp", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send_P(200, "text/plain", String(Status.HPT_status).c_str());
+        request->send_P(200, "text/plain", String(Status.HPT_status).c_str());
    });
 
    server.on("/corriente", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send_P(200, "text/plain", String(Status.Measures.instant_current).c_str());
+        request->send_P(200, "text/plain", String(Status.Measures.instant_current).c_str());
   });
 
   server.on("/voltaje", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send_P(200, "text/plain", String(Status.Measures.instant_voltage).c_str());
+        request->send_P(200, "text/plain", String(Status.Measures.instant_voltage).c_str());
   });
 
    server.on("/potencia", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send_P(200, "text/plain", String(Status.Measures.active_power).c_str());
+        request->send_P(200, "text/plain", String(Status.Measures.active_power).c_str());
   });
 
    server.on("/error", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send_P(200, "text/plain", String(Status.error_code).c_str());
+        request->send_P(200, "text/plain", String(Status.error_code).c_str());
   });
 
    server.on("/update", HTTP_GET, [] (AsyncWebServerRequest *request) {
 
-		String entrada;
-		entrada = request->getParam(NUM_BOTON)->value();
-		
-	if (entrada=="1")
-	{
-		Comands.start = true;
-	}
-	
-	if (entrada=="2")
-	{
-		Comands.stop = true;
-	}
-
-	if (entrada=="3")
-	{
-		Serial.println("Has pulsado el boton actualizar");
-		//CheckForUpdate();
-	}
+	switch (request->getParam(NUM_BOTON)->value().toInt()){
+        case 1:
+            Comands.start = true;
+            break;
+        case 2:
+            Comands.stop = true;
+            break;
+        case 3:
+            Comands.fw_update = true;
+            break;
+        
+        default:
+            break;
+    }
    });
 
    server.on("/autoupdate", HTTP_GET, [] (AsyncWebServerRequest *request) {
-    	String auto_updates;
-		
-		auto_updates = request->getParam(ACTUALIZACIONES)->value();
 
-		if (auto_updates == "1")
+		if (request->getParam(ACTUALIZACIONES)->value() == "1")
 		{
 			memcpy(Params.autentication_mode,"AA",2);
 		}
@@ -204,23 +195,15 @@ void InitServer(void) {
 
 }
 
-/********************* Wifi Functions **************************/
-
-void ETH_begin(){
-    WiFi.onEvent(WiFiEvent);
-	ETH.begin(ETH_ADDR, ETH_POWER_PIN, ETH_MDC_PIN, ETH_MDIO_PIN, ETH_TYPE);
-	SPIFFS.begin(0,"/spiffs",1,"WebServer");
-}
-#endif
+/********************* Conection Functions **************************/
 #include <nvs_flash.h>
 void WiFiEvent(arduino_event_id_t event, arduino_event_info_t info){ 
     Serial.println(event);   
 	switch (event) {
-#ifdef USE_WIFI
-        //WIFI cases
+
+//********************** WIFI Cases **********************//
 		case ARDUINO_EVENT_WIFI_STA_DISCONNECTED:
-            ConfigFirebase.InternetConection=0;  
-       
+            wifi_connected = false;
             if(info.wifi_sta_disconnected.reason!=WIFI_REASON_ASSOC_LEAVE){
                 Serial.println("Reconectando...");
 			    WiFi.reconnect();
@@ -230,6 +213,9 @@ void WiFiEvent(arduino_event_id_t event, arduino_event_info_t info){
 		case ARDUINO_EVENT_WIFI_STA_GOT_IP:
 			Serial.print("Connected with IP: ");
 			Serial.println(WiFi.localIP());
+            Coms.Wifi.IP=WiFi.localIP();
+            wifi_connected = true;
+            wifi_connecting = false;
             ConfigFirebase.InternetConection=1;
 		break;
 
@@ -265,122 +251,229 @@ void WiFiEvent(arduino_event_id_t event, arduino_event_info_t info){
         case ARDUINO_EVENT_PROV_END:
             Serial.println("\nProvisioning Ends");
             break;
-#endif
-#ifdef USE_ETH
-            //ETH Cases
-        case SYSTEM_EVENT_ETH_START:
+
+//********************** ETH Cases **********************//
+        case ARDUINO_EVENT_ETH_START:
             Serial.println("ETH Started");
             //set eth hostname here
             ETH.setHostname("velitum-ethernet");
             break;
-        case SYSTEM_EVENT_ETH_CONNECTED:
-        #ifdef USE_WIFI
-            Station_Stop();
-        #endif
+        case ARDUINO_EVENT_ETH_CONNECTED:
             Serial.println("ETH Connected");
+            if(Coms.Wifi.ON){
+                Station_Stop();
+            }
+            eth_link_up    = true;
             break;
         case SYSTEM_EVENT_ETH_GOT_IP:
             Serial.print("ETH MAC: ");
             Serial.print(ETH.macAddress());
             Serial.print(", IPv4: ");
             Serial.print(ETH.localIP());
-            Coms.ETH.IP1     = ETH.localIP().toString();
-            Coms.ETH.Gateway = ETH.gatewayIP().toString();
-            Coms.ETH.Mask    = ETH.subnetMask().toString();
-            if (ETH.fullDuplex()) {
-                Serial.print(", FULL_DUPLEX");
+            if(Coms.ETH.Auto){
+                Coms.ETH.IP1     = ETH.localIP();
+                Coms.ETH.Gateway = ETH.gatewayIP();
+                Coms.ETH.Mask    = ETH.subnetMask();
+                ConfigFirebase.WriteComs = true;
             }
-            Serial.print(", ");
-            Serial.print(ETH.linkSpeed());
-            Serial.println("Mbps");
             eth_connected = true;
-            server.begin();
-            InitServer();
-            ConfigFirebase.InternetConection=1; 
+            eth_connecting = false;
+            ConfigFirebase.InternetConection=true; 
             break;
-        case SYSTEM_EVENT_ETH_DISCONNECTED:
-        #ifdef USE_WIFI
-            Station_Begin();
-        #endif
+        case ARDUINO_EVENT_ETH_DISCONNECTED:
+            ConfigFirebase.InternetConection=false; 
+            if(Coms.Wifi.ON){
+                Station_Begin();
+            }
             Serial.println("ETH Disconnected");
-            eth_connected = false;
-            ConfigFirebase.InternetConection=0; 
+            eth_link_up = false;
+            
             break;
-        case SYSTEM_EVENT_ETH_STOP:
+
+        case ARDUINO_EVENT_ETH_STOP:
             Serial.println("ETH Stopped");
             eth_connected = false;
             break;
-#endif
+
 	    default:
 		    break;
 	}
 }
 
-#ifdef USE_WIFI
-
 void Station_Begin(){
-    Coms.Wifi.ON=true;
+
+    //Comprobar si esta encendida ya
+    if(wifi_connecting || wifi_connected){
+        Station_Stop();
+    }
 
 	//Descomentar e introducir credenciales para conectarse a piñon ¡¡¡¡Comentar lo de abajo!!!!
-    WiFi.onEvent(WiFiEvent);
-    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-
-    
-    
-    //Comentar estas lineas para conectarse a piñon!
-    String SSID = "WF_";
-    //SSID.concat(ConfigFirebase.Device_Id);
-
-    //WiFiProv.beginProvision(WIFI_PROV_SCHEME_SOFTAP, WIFI_PROV_SCHEME_HANDLER_NONE, WIFI_PROV_SECURITY_1, (char*)(ConfigFirebase.Device_Ser_num), SSID.c_str());
-    Serial.println("Connecting to Wi-Fi...");
+    if(!Coms.Wifi.Auto){   
+        do{      
+            vTaskDelay(pdMS_TO_TICKS(250));
+        }while(WiFi.begin(WIFI_SSID, WIFI_PASSWORD)==4);
+    }
+    else{
+        //String SSID = "WF_";
+        //SSID.concat(ConfigFirebase.Device_Id);
+        WiFiProv.beginProvision(WIFI_PROV_SCHEME_SOFTAP, WIFI_PROV_SCHEME_HANDLER_NONE, WIFI_PROV_SECURITY_1, (char*)(ConfigFirebase.Device_Ser_num), 'WF_'+(char*)ConfigFirebase.Device_Id);
+        Serial.println("Connecting to Wi-Fi...");
+    }
+    wifi_connecting = true;
 } 
 
 void Delete_Credentials(){
-    
+    nvs_flash_erase();
+    nvs_flash_init();
 }
 
 void Station_Stop(){
-    WiFi.softAPdisconnect (true);
+    wifi_connecting = false;
+    wifi_connected  = false;
+    WiFi.disconnect(true);
     Serial.println("Wifi Paused");
-    Coms.Wifi.ON=false;
+    delay(500);
 } 
 
+void ETH_Stop(){
+    eth_connected  = false;
+    eth_connecting = false;
+    ETH.end();
+    delay(500);
 
-#endif
+}
+
+void ETH_Restart(){
+    ETH.restart();
+    eth_connecting = true;
+    delay(100);
+}
+void ETH_begin(){
+    if(eth_connected || eth_connecting){
+        ETH_Stop();
+    }
+    
+    if(Coms.ETH.Auto){
+        ETH.begin(ETH_ADDR, ETH_POWER_PIN, ETH_MDC_PIN, ETH_MDIO_PIN, ETH_TYPE);
+    }
+	else{   
+        ETH.begin(ETH_ADDR, ETH_POWER_PIN, ETH_MDC_PIN, ETH_MDIO_PIN, ETH_TYPE);
+        IPAddress primaryDNS(8, 8, 8, 8); //optional
+        IPAddress secondaryDNS(8, 8, 4, 4); //optional
+        Serial.println("Configuration done!");
+        ETH.config(Coms.ETH.IP1,Coms.ETH.Gateway,Coms.ETH.Mask, primaryDNS, secondaryDNS);
+    }
+	eth_connecting = true;
+}
 
 void ComsTask(void *args){
-    int ComsMachineState =DISCONNECTED;
+    uint8_t ComsMachineState =DISCONNECTED;
+    uint8_t LastStatus = DISCONNECTED;
+    bool ServidorArrancado = false;
+    WiFi.onEvent(WiFiEvent);
     while (1){
         switch (ComsMachineState){
             case DISCONNECTED:
                 //Wait to Psoc 5 to send data
-                if(memcmp(ConfigFirebase.Device_Id,"0",1)!=0){
-                    ComsMachineState=CONECTADO;
+                if(Coms.StartConnection){      
+                    Coms.StartConnection = false;    
+                    ComsMachineState=STARTING;
                 }
                 break;
-            case CONECTADO:
 
-                #ifdef USE_WIFI
+            case STARTING:
+                
+                if(Coms.Wifi.ON && !wifi_connected && !wifi_connecting){
                     Station_Begin();
-                    Serial.println("FREE HEAP MEMORY [after WIFI_INIT] **************************");
-                    Serial.println(ESP.getFreeHeap());
-                #endif
-                #ifdef USE_ETH
+                    ComsMachineState=CONNECTING;
+                }
+
+                if(Coms.ETH.ON && !eth_connected && !eth_connecting){
                     ETH_begin();
-                #endif // USE_ETH
-                ComsMachineState=IDLE;
-                break;
-            case IDLE:             
+                    ComsMachineState=CONNECTING;
+                }
                 
                 break;
-            case 2:
-            break;
+
+            case CONNECTING:
+                //Wait for a conection sistem to retrieve a IP
+                if(ConfigFirebase.InternetConection){
+                    if(!Coms.ETH.Auto){
+                        //En este modo debemos dejar un pequeño delay
+                        delay(5000);
+                    }
+                    if(!ServidorArrancado){
+                        server.begin();
+                        InitServer();
+                        ServidorArrancado = true;
+                    }
+                    ComsMachineState=IDLE;
+                }
+                break;
+
+            case IDLE:   
+                //Encendido de las interfaces          
+                if(Coms.Wifi.ON && !wifi_connected && !wifi_connecting && !eth_link_up ){
+                    Station_Begin();
+                }
+                if(wifi_connected && !Coms.Wifi.ON){
+                    Station_Stop();
+
+                    Coms.StartConnection=true;
+                    Coms.ETH.ON = true;
+                }
+
+                if(Coms.ETH.ON && !eth_connected && !eth_connecting && eth_link_up){
+                    ETH_Restart();
+                }
+                if(!Coms.ETH.ON && eth_connected){
+                    ETH_Stop();
+
+                    //debug
+                    Coms.StartConnection=true;
+                    Coms.Wifi.ON=true;
+                }
+
+                if(Coms.RestartConection){
+                    Serial.println("restarting ethernet coms!");          
+                    ETH_Restart();
+                    Coms.RestartConection = false;
+                }
+
+                if(Coms.StartProvisioning){
+                    Serial.println("Starting provisioning system");
+                    Delete_Credentials();
+                    Coms.Wifi.Auto = true;
+                    Station_Begin();
+                    Coms.StartProvisioning = false;
+                }
+
+
+                //Comprobar si hemos perdido todas las conexiones
+                if(!eth_connected && !wifi_connected){
+                    ConfigFirebase.InternetConection=false;
+                    ComsMachineState=DISCONNECTED;
+                }
+                break;
+            
+            case DISCONNECTING:
+                //Liberar recursos
+                eth_connecting  = false;
+                wifi_connecting = false;
+                wifi_connected  = false;
+                eth_connected   = false;
+                ComsMachineState=DISCONNECTED;
+                break;
+
             default:
+                Serial.println("Error in ComsTask, state not implemented");
             break;
         }
-
-
-        vTaskDelay(pdMS_TO_TICKS(100));
+        if(LastStatus!= ComsMachineState){
+            Serial.printf("Maquina de estados de comunicacion pasa de % i a %i \n", LastStatus, ComsMachineState);
+            LastStatus= ComsMachineState;
+        }
+        vTaskDelay(pdMS_TO_TICKS(500));
     }
 }
 

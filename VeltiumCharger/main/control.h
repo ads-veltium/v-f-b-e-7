@@ -2,9 +2,7 @@
 #define __CONTROL_MAIN
 
 //configuration
-#define USE_WIFI
-//#define USE_WIFI_ESP
-//#define USE_ETH
+#define USE_COMS
 #define USE_DRACO_BLE
 
 #include "Arduino.h"
@@ -32,21 +30,11 @@
 	#include "ESP32-targz.h"
 #endif
 
-#ifdef USE_WIFI	
-	#ifndef CONNECTED
-		#define CONNECTED
-	#endif
-#endif
-
-#ifdef USE_ETH
-	#ifndef CONNECTED
-		#define CONNECTED
-	#endif
-#endif
-
-#ifdef CONNECTED
+#ifdef USE_COMS	
 	#include "coms/Wifi_Station.h"
-   #include "coms/FirebaseClient.h"
+	#ifndef CONNECTED
+		#define CONNECTED
+	#endif
 #endif
 
 //Prioridades FreeRTOS
@@ -104,5 +92,9 @@ void MAIN_RESET_Write(uint8_t val);
 void controlInit(void);
 void UpdateTask(void *arg);
 void UpdateESP();
+
+void SendToPSOC5(uint8 data, uint16 attrHandle);
+void SendToPSOC5(uint8 *data, uint16 len, uint16 attrHandle);
+void SendToPSOC5(uint16 attrHandle);
 
 #endif // __CONTROL_MAIN

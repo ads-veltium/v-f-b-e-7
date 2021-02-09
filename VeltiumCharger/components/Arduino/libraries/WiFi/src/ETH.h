@@ -58,7 +58,10 @@ class ETHClass {
         bool initialized;
         bool staticIP;
 #if ESP_IDF_VERSION_MAJOR > 3
-        esp_eth_handle_t eth_handle;
+        esp_eth_handle_t eth_handle = NULL;
+        esp_eth_handle_t eth_handle1 = NULL;
+        esp_eth_handle_t eth_handle2 = NULL;
+
 
     protected:
         bool started;
@@ -79,7 +82,8 @@ class ETHClass {
 #endif
         
         bool config(IPAddress local_ip, IPAddress gateway, IPAddress subnet, IPAddress dns1 = (uint32_t)0x00000000, IPAddress dns2 = (uint32_t)0x00000000);
-
+        bool end();
+        bool restart();
         const char * getHostname();
         bool setHostname(const char * hostname);
 

@@ -276,8 +276,8 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 
 				uint32_t successCode = 0x00000000;
 				//Empezar el sistema de actualizacion
-				#ifdef USE_WIFI
-				if(getfirebaseClientStatus())ConfigFirebase.StopSistem=true;
+				#ifdef USE_COMS
+					if(getfirebaseClientStatus())ConfigFirebase.StopSistem=true;
 				#endif
 				UpdateStatus.DescargandoArchivo=1;
 				if(strstr (signature,"VBLE")){
@@ -303,7 +303,10 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 					Serial.println("Updating VELT");
 					UpdateType= VELT_UPDATE;
 
-					SPIFFS.begin(1,"/spiffs",1,"PSOC5");
+					if(!SPIFFS.begin(1,"/spiffs",1,"PSOC5")){
+						SPIFFS.end();
+						SPIFFS.begin(1,"/spiffs",1,"PSOC5");
+					}
 					if(SPIFFS.exists("/FreeRTOS_V6.cyacd")){
 						vTaskDelay(pdMS_TO_TICKS(50));
 						SPIFFS.format();
@@ -416,6 +419,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 					if(Update.write(payload,partSize)!=partSize){
 						Serial.println("Writing Error");
 						successCode = 0x00000002;
+						
 					}
 				#else
 					if(UpdateFile.write(payload,partSize)!=partSize){
@@ -428,6 +432,8 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 				if(UpdateFile.write(payload,partSize)!=partSize){
 					Serial.println("Writing Error");
 					successCode = 0x00000002;
+					SPIFFS.end();
+					UpdateFile.close();
 				}
 			}	
 

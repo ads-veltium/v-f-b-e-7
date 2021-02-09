@@ -33,36 +33,33 @@ void Firebase_Conn_Task(void *args);
 uint8_t getfirebaseClientStatus();
 uint16  ParseFirmwareVersion(String Texto);
 
-class Autenticacion { 
-    HTTPClient AutenticationClient; 
-
-    String Auth_url= "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=";
-    StaticJsonDocument<256> doc;
-  public:
-    String email, pass;
-    String idToken;
-    String localId;
-    uint16_t expiration;
-
-    void begin (void);
-    void end (void);
-
-    bool LogIn(void);
-};
 
 class Real_Time_Database{
     String RTDB_url, Read_url, Write_url;
-    HTTPClient RTDBClient; 
-    String idToken;
+    HTTPClient RTDBClient, AutenticationClient; 
+
+    String Auth_url= "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=";
+    StaticJsonDocument<256> AuthDoc;
   public:
     #define WRITE     0
     #define UPDATE    1
     #define TIMESTAMP 4
     #define READ      5
 
+    String email, pass;
+    String idToken;
+    String localId;
+    uint16_t expiration;
+
+    //Auth functions
+    void beginAuth (void);
+    void endAuth (void);
+    bool LogIn(void);
+
+    //Database functions
     bool Send_Command(String path, JsonDocument *doc, uint8_t Command);
-    long long  Get_Timestamp(String path);
-    void begin(String Host, String DatabaseID, String auth);
+    long long  Get_Timestamp(String path,JsonDocument *response);
+    void begin(String Host, String DatabaseID);
     void restart();
     void end();
 };
@@ -70,7 +67,6 @@ class Real_Time_Database{
 class Firebase{
     
   public:
-    Autenticacion Auth;
     Real_Time_Database RTDB;
 
 

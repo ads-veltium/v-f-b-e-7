@@ -155,7 +155,7 @@ static bool espWiFiStart(){
     return true;
 }
 
-static bool espWiFiStop(){
+bool espWiFiStop(){
     esp_err_t err;
     if(!_esp_wifi_started){
         return true;

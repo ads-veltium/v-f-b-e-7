@@ -127,7 +127,16 @@
                 "${workspaceFolder}/main/ble",
                 "${workspaceFolder}/main/cybtldr",
                 "${workspaceFolder}/components/Arduino/libraries/WiFiProv/src",
-                "${workspaceFolder}/main/coms"
+                "${workspaceFolder}/main/coms",
+                "${workspaceFolder}/components/Arduino/tools/sdk/include/lwip",
+                "${workspaceFolder}/components/Arduino/tools/sdk/include/esp_common",
+                "${workspaceFolder}/components/Arduino/tools/sdk/include/config",
+                "${workspaceFolder}/components/Arduino/tools/sdk/include/freertos",
+                "${workspaceFolder}/components/Arduino/tools/sdk/include/xtensa",
+                "${workspaceFolder}/components/Arduino/tools/sdk/include",
+                "${workspaceFolder}/components/Arduino/cores/esp32",
+                "${workspaceFolder}/components/Arduino/libraries/AsyncTCP/src",
+                "${workspaceFolder}/components/Arduino/libraries/Update/src"
             ],
             "intelliSenseMode": "clang-x64",
             "browse": {

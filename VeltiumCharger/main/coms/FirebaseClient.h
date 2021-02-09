@@ -16,7 +16,9 @@
 #include "../control.h"
 #include "esp32-hal-psram.h"
 
+//Estados para la maquina de estados
 #define DISCONNECTED      0
+#define STARTING          1
 #define CONNECTING        5
 #define CONECTADO        10
 #define IDLE             20

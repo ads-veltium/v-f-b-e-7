@@ -10,7 +10,7 @@
 #define ROSA           225
 #define AZUL_OSCURO    160
 #define AMARILLO        65
-#define ROJO             0
+#define ROJO             1
 #define AZUL_CLARITO   130
 #define BLANCO           0
 

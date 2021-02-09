@@ -1,22 +1,22 @@
 #include "VeltFirebase.h"
 
 /*********** Clase autenticacion ************/
-void Autenticacion::begin (void) {
+void Real_Time_Database::beginAuth (void) {
   AutenticationClient.setTimeout(1000);
   AutenticationClient.begin(Auth_url+FIREBASE_API_KEY);
   AutenticationClient.addHeader("Content-Type", "application/json");
 }
 
-bool Autenticacion::LogIn(void){
-
+bool Real_Time_Database::LogIn(void){
+    beginAuth();
     String AuthPostData;
     DynamicJsonDocument Response(4096);
 
-    doc["email"] = email;
-    doc["password"]  = pass;
-    doc["returnSecureToken"] = true;
+    AuthDoc["email"] = email;
+    AuthDoc["password"]  = pass;
+    AuthDoc["returnSecureToken"] = true;
 
-    serializeJson(doc, AuthPostData);
+    serializeJson(AuthDoc, AuthPostData);
 
     int status = AutenticationClient.POST(AuthPostData);
     
@@ -32,22 +32,20 @@ bool Autenticacion::LogIn(void){
 
     idToken = Response["idToken"].as<String>();
     localId = Response["localId"].as<String>();
-    
-    
+    endAuth();
     return true;
 }
 
-void Autenticacion::end(void){
+void Real_Time_Database::endAuth(void){
     AutenticationClient.end();
 }
 
 /*********** Clase RTDB ************/
-void Real_Time_Database::begin(String Host, String DatabaseID, String auth){
+void Real_Time_Database::begin(String Host, String DatabaseID){
     RTDB_url="https://";
     RTDB_url+=Host+("prod/devices/"+DatabaseID);
 
-    Write_url = RTDB_url+"/status/ts_app_req.json?auth="+auth+"&timeout=2500ms";
-    idToken=auth;
+    Write_url = RTDB_url+"/status/ts_app_req.json?auth="+idToken+"&timeout=2500ms";
 
     RTDBClient.begin(Write_url);
     RTDBClient.addHeader("Content-Type", "application/json"); 
@@ -58,7 +56,6 @@ void Real_Time_Database::begin(String Host, String DatabaseID, String auth){
 
 void Real_Time_Database::end(){
     RTDBClient.end();
-
 }
 
 void Real_Time_Database::restart(){
@@ -104,7 +101,7 @@ bool Real_Time_Database::Send_Command(String path, JsonDocument *doc, uint8_t Co
             return false;
             break;
     }
-    if (response < -11) {
+    if (response < -0) {
         Serial.println(response);
         Serial.printf("HTTP error: %s\n", 
         RTDBClient.errorToString(response).c_str());
@@ -116,7 +113,7 @@ bool Real_Time_Database::Send_Command(String path, JsonDocument *doc, uint8_t Co
     return true;
 }
 
-long long  Real_Time_Database::Get_Timestamp(String path){
+long long  Real_Time_Database::Get_Timestamp(String path, JsonDocument *respuesta){
     String SerializedData;
     int response;
 
@@ -132,8 +129,12 @@ long long  Real_Time_Database::Get_Timestamp(String path){
         RTDBClient.errorToString(response).c_str());
     }
 
-    String respuesta = RTDBClient.getString();
-    long long data1 = atoll(respuesta.c_str());
+    String payload = RTDBClient.getString();
+    long long data1 = atoll(payload.c_str());
+    if(data1<1){
+        respuesta->clear();
+        deserializeJson(*respuesta,payload);
+    }
 
     //conection refused
     if(response == -1){

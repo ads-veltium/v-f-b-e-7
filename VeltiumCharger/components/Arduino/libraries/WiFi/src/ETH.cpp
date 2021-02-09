@@ -35,7 +35,7 @@
 #include "lwip/dns.h"
 
 extern void tcpipInit();
-
+static bool once = false;
 #ifdef ESP_IDF_VERSION_MAJOR
 
 /**
@@ -139,6 +139,20 @@ ETHClass::~ETHClass()
 {}
 
 #ifdef ESP_IDF_VERSION_MAJOR
+bool ETHClass::end(){
+    if(esp_eth_stop(eth_handle) != ESP_OK){
+        log_e("esp_eth_start failed");
+        return false;
+    }
+    return true;
+}
+bool ETHClass::restart(){
+    if(esp_eth_start(eth_handle) != ESP_OK){
+        log_e("esp_eth_start failed");
+        return false;
+    }
+    return true;
+}
 bool ETHClass::begin(uint8_t phy_addr, int power, int mdc, int mdio, eth_phy_type_t type){
 
     tcpipInit();
@@ -169,6 +183,8 @@ bool ETHClass::begin(uint8_t phy_addr, int power, int mdc, int mdio, eth_phy_typ
 
     eth_phy_config_t phy_config = ETH_PHY_DEFAULT_CONFIG();
     phy_config.phy_addr = phy_addr;
+    phy_config.phy_addr1 = 1;
+    phy_config.phy_addr2 = 2;
     phy_config.reset_gpio_num = power;
     esp_eth_phy_t *eth_phy = NULL;
     switch(type){
@@ -410,6 +426,7 @@ bool ETHClass::linkUp()
 {
 #ifdef ESP_IDF_VERSION_MAJOR
     return eth_link == ETH_LINK_UP;
+    
 #else
     return eth_config.phy_check_link();
 #endif

@@ -397,7 +397,7 @@ typedef std::function<void(AsyncWebServerRequest *request, uint8_t *data, size_t
 class AsyncWebServer {
   protected:
     AsyncServer _server;
-    LinkedList<AsyncWebRewrite*> _rewrites;
+    LinkedList<AsyncWebRewrite*> _rewrites ;
     LinkedList<AsyncWebHandler*> _handlers;
     AsyncCallbackWebHandler* _catchAllHandler;
 

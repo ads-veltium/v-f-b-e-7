@@ -82,10 +82,10 @@ typedef struct{
 
 typedef struct{
 
-	String connect_date_time;
-	String disconnect_date_time;
-	String charge_start_time;
-	String charge_stop_time;
+	int connect_date_time;
+	int disconnect_date_time;
+	int charge_start_time;
+	int charge_stop_time;
 } caract_date_time;
 
 typedef struct{
@@ -155,19 +155,20 @@ typedef struct{
 
 typedef struct{
 	bool ON;
+	bool Auto;
 	String AP;
 	String Pass;
+	IPAddress IP;
 }carac_WIFI;
 
 typedef struct{
 	bool ON;
 	bool Auto;
-	String AP;
-	String Pass;
-	String IP1;
-	String IP2;
-	String Gateway;
-	String Mask;
+
+	IPAddress IP1;
+	IPAddress IP2;
+	IPAddress Gateway;
+	IPAddress Mask;
 }carac_ETH;
 
 typedef struct{
@@ -180,6 +181,10 @@ typedef struct{
 }carac_MODEM;
 
 typedef struct{
+	bool StartConnection   = false;;
+	bool StartProvisioning = false;
+	bool RemoveCredentials = false;
+	bool RestartConection  = false;
 	carac_WIFI   Wifi;
 	carac_ETH     ETH;
 	carac_MODEM   GSM;
@@ -531,6 +536,10 @@ typedef struct{
 #define FWUPDATE_BIRD_PROLOG_PSEUDO_CHAR_HANDLE (0x00ADu)
 #define FWUPDATE_BIRD_DATA_PSEUDO_CHAR_HANDLE (0x00AEu)
 #define FWUPDATE_BIRD_EPILOG_PSEUDO_CHAR_HANDLE (0x00AFu)
+
+
+//Custom handles for comunications
+#define COMS_CONFIGURATION_CHAR_HANDLE (0x00B0u)
 
 #endif
 

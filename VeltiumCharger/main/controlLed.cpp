@@ -85,6 +85,14 @@ void LedControl_Task(void *arg){
 	uint8 Efectos=0;
 
 	initLeds();
+	vTaskDelay(pdMS_TO_TICKS(100));
+	displayAll(50,VERDE);	
+	vTaskDelay(pdMS_TO_TICKS(350));
+	displayAll(50,ROJO);
+	vTaskDelay(pdMS_TO_TICKS(350));
+	displayAll(50,AZUL_OSCURO);
+	vTaskDelay(pdMS_TO_TICKS(350));
+	displayAll(50,VERDE);
 
 	while(1){
 
@@ -125,8 +133,8 @@ void LedControl_Task(void *arg){
 			
 			//Funcionamiento normal
 			if (luminosidad & 0x80 && (Led_color==HUE_BLUE || Led_color==HUE_PURPLE)) { //Cargando o actualizando		
-				uint8 lumin_limit=50;
-
+				uint8 lumin_limit=100;
+				Delay=50;
 				if(Status.Measures.instant_current>900){
 					lumin_limit=(32000-Status.Measures.instant_current)*100/32000;
 					if(lumin_limit<10){
@@ -142,13 +150,14 @@ void LedControl_Task(void *arg){
 				}
 				else{
 					luminosidad_carga--;
-					if(luminosidad_carga<=0){
+					if(luminosidad_carga<=30){
 						subiendo=1;
 					}
 				}
 				displayAll(luminosidad_carga,Led_color);
 			}
 			else if(luminosidad & 0x80){ //Parpadeo
+
 				if(++cnt_parpadeo >= TIME_PARPADEO)
 				{
 					cnt_parpadeo = 0;
@@ -165,7 +174,7 @@ void LedControl_Task(void *arg){
 				}
 			}
 			else if(luminosidad < 0x80){
-
+				Delay=50;
 				//control de saltos entre luminosidad
 				if(luminosidad-luminosidad_Actual>=3){
 					luminosidad_Actual++;
@@ -174,15 +183,14 @@ void LedControl_Task(void *arg){
 					luminosidad_Actual--;
 				}
 				else{
+					Delay=500;
 					luminosidad_Actual=luminosidad;
 				}
-				Delay=20;
+				
 				displayAll(luminosidad_Actual,Led_color);	
 			}
 
-		}
-
-		
+		}	
 		vTaskDelay(pdMS_TO_TICKS(Delay));
 	}
 }
