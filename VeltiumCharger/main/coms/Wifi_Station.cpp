@@ -15,17 +15,28 @@ extern carac_Coms                   Coms;
 void Station_Stop();
 void WiFiEvent(arduino_event_id_t event, arduino_event_info_t info);
 /*************** Wifi and ETH event handlers *****************/
-
-#ifdef USE_ETH
+#ifdef USE_WIFI
 AsyncWebServer server(80);
 
 String usuario;
 String contrasena;
 
 const char* NUM_BOTON = "output";
-const char* ACTUALIZACIONES = "state";
+const char* ESTADO = "state";
 const char* USER = "userid";
 const char* PASSWORD = "pwd";
+const char* SALIDA = "com";
+
+const char* AP = "w_ap";
+const char* WIFI_PWD = "w_pass";
+const char* IP1 = "ip1";
+const char* IP2 = "ip2";
+const char* GATEWAY = "gateway";
+const char* MASK = "mask";
+const char* APN = "apn";
+const char* GSM_PWD = "m_pass";
+
+
 
 /************* Internal server configuration ****************/
 void notFound(AsyncWebServerRequest *request) {
@@ -41,12 +52,109 @@ String outputState(){
     return "";
   }
 }
+//Función para ver estado de la variable de encender Wifi 
+String outputStateWifi(){
+  if(Coms.Wifi.ON == true){
+      return "checked";
+  }else{
+    return "";  
+  }
+}
+//Función para ver estado de la variable de encender ETH
+String outputStateEth(){
+    if(Coms.ETH.ON == true){
+        return "checked";
+    }else{
+        return "";  
+    }
+}
+//Función para ver estado de la variable de ETH AUTO
+String outputStateEthAuto(){
+if(Coms.ETH.Auto == true){
+    return "checked";
+  }else{
+    return "";  
+  }
+}
+//Función para ver estado de la variable de encender GSM
+String outputStateGsm(){
+if(Coms.GSM.ON == true){
+    return "checked";
+  }else{
+    return "";  
+  }
+}
+
+//Función para ver estado de la variable de encender GSM
+String outputStateCdp(){
+if(Params.CDP_On == true){
+    return "checked";
+  }else{
+    return "";  
+  }
+}
 
 //Funcion para sustituir los placeholders de los archivos html
 String processor(const String& var){
 	if (var == "HP")
 	{
 		return String(Status.HPT_status);
+	}
+    if (var == "ICP")
+	{
+		return String(Status.ICP_status);
+	}
+    if (var == "LEAK")
+	{
+		return String(Status.DC_Leack_status);
+	}
+    if (var == "LOCKSTATUS")
+	{
+		return String(Status.Con_Lock);
+	}
+    if (var == "MAXCABLE")
+	{
+		return String(Status.Measures.max_current_cable);
+	}
+    if (var == "POTENCIARE")
+	{
+		return String(Status.Measures.reactive_power);
+	}
+    if (var == "POTENCIAP")
+	{
+		return String(Status.Measures.apparent_power);
+	}
+    if (var == "ENERGIA")
+	{
+		return String(Status.Measures.active_energy);
+	}
+    if (var == "ENERGIARE")
+	{
+		return String(Status.Measures.reactive_energy);
+	}
+    if (var == "POWERFACTOR")
+	{
+		return String(Status.Measures.power_factor);
+	}
+    if (var == "CORRIENTEDOM")
+	{
+		return String(Status.Measures.consumo_domestico);
+	}
+    if (var == "CONT")
+	{
+		return String(Status.Time.connect_date_time);
+	}
+    if (var == "DESCONT")
+	{
+		return String(Status.Time.disconnect_date_time);
+	}
+    if (var == "STARTTIME")
+	{
+		return String(Status.Time.charge_start_time);
+	}
+    if (var == "STOPTIME")
+	{
+		return String(Status.Time.charge_stop_time);
 	}
 	if (var=="CORRIENTE")
 	{
@@ -70,43 +178,52 @@ String processor(const String& var){
 		
 		buttons += "<p><label class=\"button\"><input type=\"button\" value=\"Cargar ahora\" style='height:30px;width:100px;background:#3498db;color:#fff' onclick=\"Startbutton(this)\" id=\"1\"></label></p>";
 		buttons += "<p><label class=\"button\"><input type=\"button\" value=\"Parar\" style='height:30px;width:100px;background:#3498db;color:#fff' onclick=\"Startbutton(this)\" id=\"2\"></label></p>";	
-		
-		return buttons;
+		buttons += "<p><label class=\"button\"><input type=\"button\" value=\"Reset\" style='height:30px;width:100px;background:#3498db;color:#fff' onclick=\"Startbutton(this)\" id=\"4\"></label></p>";
+		buttons += "<p><label class=\"button\"><input type=\"button\" value=\"Actualizar\" style='height:30px;width:100px;background:#3498db;color:#fff' onclick=\"Startbutton(this)\" id=\"3\"></label></p>";
+        return buttons;
 	}
 	if (var == "AUTOUPDATE")
 	{
 		String checkbox = "";
 
-		checkbox += "<label class=\"switch\"><input type=\"checkbox\" onchange=\"toggleCheckbox(this)\" "+outputState()+"><span class=\"slider\"></span></label>";
+		checkbox += "<label class=\"switch\"><input type=\"checkbox\" onchange=\"toggleCheckbox(this)\" id=\"11\" "+outputState()+"><span class=\"slider\"></span></label>";
 		return checkbox;
 	}
-	if (var == "ACTUALIZAR")
+    	if (var == "WON")
 	{
-		String boton = "";
+		String checkbox = "";
 
-		boton += "<p><label class=\"button\"><input type=\"button\" value=\"Actualizar\" style='height:30px;width:100px;background:#3498db;color:#fff' onclick=\"Startbutton(this)\" id=\"3\"></label></p>";
-		return boton;
+		checkbox += "<label class=\"switch\"><input type=\"checkbox\" onchange=\"toggleCheckbox(this)\" id=\"12\" "+outputStateWifi()+"><span class=\"slider\"></span></label>";
+		return checkbox;
 	}
-	if (var == "F_PWD")
-	{	
-		String error = "";
-		
-		error +="<p>Invalid username or password</p>";
-	
-		return error;
-	}
-	
-	return String();
-}
+     	if (var == "EON")
+	{
+		String checkbox = "";
 
-String processor2(const String& var){
-	
-	String login = "";
-		
-	login +="";
-	
-	return login;
-	
+		checkbox += "<label class=\"switch\"><input type=\"checkbox\" onchange=\"toggleCheckbox(this)\" id=\"13\""+outputStateEth()+"><span class=\"slider\"></span></label>";
+		return checkbox;
+	}
+     	if (var == "EAUTO")
+	{
+		String checkbox = "";
+
+		checkbox += "<label class=\"switch\"><input type=\"checkbox\" onchange=\"toggleCheckbox(this)\" id=\"14\""+outputStateEthAuto()+"><span class=\"slider\"></span></label>";
+		return checkbox;
+	}
+     	if (var == "MON")
+	{
+		String checkbox = "";
+
+		checkbox += "<label class=\"switch\"><input type=\"checkbox\" onchange=\"toggleCheckbox(this)\" id=\"15\""+outputStateGsm()+"><span class=\"slider\"></span></label>";
+		return checkbox;
+    }
+    	if (var == "CDP")
+	{
+		String checkbox = "";
+
+		checkbox += "<label class=\"switch\"><input type=\"checkbox\" onchange=\"toggleCheckbox(this)\" id=\"16\""+outputStateCdp()+"><span class=\"slider\"></span></label>";
+		return checkbox;
+    }
 	return String();
 }
 
@@ -116,34 +233,106 @@ void InitServer(void) {
 	Serial.println(ESP.getFreeHeap());
 
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
-     request->send(SPIFFS, "/login.html",String(), false, processor2);
+     request->send(SPIFFS, "/login.html");
     });
 
-   server.on("/get", HTTP_GET, [] (AsyncWebServerRequest *request) {
+    server.on("/login", HTTP_GET, [](AsyncWebServerRequest *request){
+     request->send(SPIFFS, "/login.html");
+    });
 
-	usuario = request->getParam(USER)->value();
-	contrasena = request->getParam(PASSWORD)->value();
+     server.on("/datos", HTTP_GET, [](AsyncWebServerRequest *request){
+     request->send(SPIFFS, "/datos.html",String(), false, processor);
+    });
 
-	if(usuario!="admin" || contrasena!="admin" ){
-		
-		request->send(SPIFFS, "/login.html",String(), false, processor);
- 	
-	}
-	else
-	{
-		request->send(SPIFFS, "/datos.html",String(), false, processor);
-
-	}
-
-   });
-
-   server.on("/style.css", HTTP_GET, [](AsyncWebServerRequest *request){
+    server.on("/style.css", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(SPIFFS, "/style.css", "text/css");
-   });
+    });
 
-   server.on("/hp", HTTP_GET, [](AsyncWebServerRequest *request){
+    server.on("/get", HTTP_GET, [](AsyncWebServerRequest *request){
+      //request->send(SPIFFS, "/datos.html",String(), false, processor);
+        String ap;
+        String wifi_pass;
+        String ip1;
+        String ip2;
+        String gateway;
+        String mask; 
+        String apn;
+        String gsm_pass;
+   if(request->hasParam(AP))
+   {
+        ap = request->getParam(AP)->value();
+        Coms.Wifi.AP = ap;
+   } else if (request->hasParam(WIFI_PWD)){
+        wifi_pass = request->getParam(WIFI_PWD)->value();
+        Coms.Wifi.Pass = wifi_pass;
+   } else if (request->hasParam(IP1)){
+        ip1 = request->getParam(IP1)->value();
+        Coms.ETH.IP1 = ip1;
+   } else if (request->hasParam(IP2)){
+        ip2 = request->getParam(IP2)->value();
+        Coms.ETH.IP2 =ip2;
+   } else if (request->hasParam(GATEWAY)){
+        gateway = request->getParam(GATEWAY)->value();
+        Coms.ETH.Gateway = gateway;
+   } else if (request->hasParam(MASK)){
+        mask = request->getParam(MASK)->value();
+        Coms.ETH.Mask = mask;
+   } else if (request->hasParam(APN)){
+        apn = request->getParam(APN)->value();
+        Coms.GSM.APN = apn;
+   } else if (request->hasParam(GSM_PWD)){
+        gsm_pass = request->getParam(GSM_PWD)->value();
+        Coms.GSM.Pass = gsm_pass;
+   }     
+        //Serial.println(Coms.GSM.APN);
+        //Serial.println(Coms.GSM.Pass);
+    });
+    Serial.println(Coms.GSM.APN);
+    Serial.println(Coms.GSM.Pass);
+
+    server.on("/hp", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send_P(200, "text/plain", String(Status.HPT_status).c_str());
-   });
+    });
+
+    server.on("/icp", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send_P(200, "text/plain", String(Status.ICP_status).c_str());
+    });
+
+    server.on("/dcleak", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send_P(200, "text/plain", String(Status.DC_Leack_status).c_str());
+    });
+
+    server.on("/conlock", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send_P(200, "text/plain", String(Status.Con_Lock).c_str());
+    });
+
+    server.on("/maxcable", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send_P(200, "text/plain", String(Status.Measures.max_current_cable).c_str());
+    });
+
+    server.on("/potenciare", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send_P(200, "text/plain", String(Status.Measures.reactive_power).c_str());
+    });
+
+    server.on("/potenciap", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send_P(200, "text/plain", String(Status.Measures.apparent_power).c_str());
+    });
+
+    server.on("/energia", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send_P(200, "text/plain", String(Status.Measures.active_energy).c_str());
+    });
+
+    server.on("/energiare", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send_P(200, "text/plain", String(Status.Measures.reactive_energy).c_str());
+    });
+
+    server.on("/powerfactor", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send_P(200, "text/plain", String(Status.Measures.power_factor).c_str());
+    });
+
+    server.on("/corrientedom", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send_P(200, "text/plain", String(Status.Measures.consumo_domestico).c_str());
+    });
 
    server.on("/corriente", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send_P(200, "text/plain", String(Status.Measures.instant_current).c_str());
@@ -161,6 +350,8 @@ void InitServer(void) {
     request->send_P(200, "text/plain", String(Status.error_code).c_str());
   });
 
+  
+   
    server.on("/update", HTTP_GET, [] (AsyncWebServerRequest *request) {
 
 		String entrada;
@@ -178,31 +369,81 @@ void InitServer(void) {
 
 	if (entrada=="3")
 	{
-		Serial.println("Has pulsado el boton actualizar");
-		//CheckForUpdate();
+        Comands.fw_update = true;
+	}
+    if (entrada=="4")
+	{
+		Comands.reset = true;
 	}
    });
 
    server.on("/autoupdate", HTTP_GET, [] (AsyncWebServerRequest *request) {
-    	String auto_updates;
-		
-		auto_updates = request->getParam(ACTUALIZACIONES)->value();
+    	String estado;
+        String numero;
 
-		if (auto_updates == "1")
+		
+		estado = request->getParam(ESTADO)->value();
+        numero = request->getParam(SALIDA)->value();
+        
+
+		if (estado == "1" && numero == "11")
 		{
 			memcpy(Params.autentication_mode,"AA",2);
 		}
-		else
+		if (estado == "0" && numero == "11")
 		{
 			memcpy(Params.autentication_mode,"MA",2);
 		}
-
+        if (estado == "1" && numero == "12")
+		{
+			Coms.Wifi.ON = true;
+		}
+        if (estado == "0" && numero == "12")
+		{
+			Coms.Wifi.ON = false;
+		}
+        if (estado == "1" && numero == "13")
+		{
+			Coms.ETH.ON = true;
+		}
+        if (estado == "0" && numero == "13")
+		{
+			Coms.ETH.ON = false;
+		}
+        if (estado == "1" && numero == "14")
+		{
+			Coms.ETH.Auto = true;
+		}
+        if (estado == "0" && numero == "14")
+		{
+			Coms.ETH.Auto = false;
+		}
+        if (estado == "1" && numero == "15")
+		{
+			Coms.GSM.ON = true;
+		}
+        if (estado == "0" && numero == "15")
+		{
+			Coms.GSM.ON = false;
+		}
+        if (estado == "1" && numero == "16")
+		{
+			Params.CDP_On = true;
+		}
+        if (estado == "0" && numero == "16")
+		{
+			Params.CDP_On = false;
+		}
 		Serial.println(Params.autentication_mode);
-	
+        Serial.println(Coms.GSM.ON);
+        Serial.println(Coms.ETH.ON);
    });
+
    Serial.println(ESP.getFreeHeap());
 
 }
+#endif 
+#ifdef USE_ETH
 
 /********************* Wifi Functions **************************/
 
@@ -230,6 +471,8 @@ void WiFiEvent(arduino_event_id_t event, arduino_event_info_t info){
 		case ARDUINO_EVENT_WIFI_STA_GOT_IP:
 			Serial.print("Connected with IP: ");
 			Serial.println(WiFi.localIP());
+            server.begin();
+            InitServer();
             ConfigFirebase.InternetConection=1;
 		break;
 
@@ -359,6 +602,7 @@ void ComsTask(void *args){
             case CONECTADO:
 
                 #ifdef USE_WIFI
+                    SPIFFS.begin();
                     Station_Begin();
                     Serial.println("FREE HEAP MEMORY [after WIFI_INIT] **************************");
                     Serial.println(ESP.getFreeHeap());

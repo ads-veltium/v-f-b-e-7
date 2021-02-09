@@ -10,11 +10,10 @@
 
 #define WIFI_SSID "VELTIUM_WF"
 #define WIFI_PASSWORD "W1f1d3V3lt1um$m4rtCh4rg3r$!"
-
+#include "ESPAsyncWebServer.h"
 
 #ifdef USE_ETH
     #include <ETH.h>
-    #include "ESPAsyncWebServer.h"
 
     //#define ETH_CLK_MODE    ETH_CLOCK_GPIO0_IN
     #define ETH_POWER_PIN  	12 

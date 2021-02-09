@@ -6,17 +6,42 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="icon" href="data:,">
     <link rel="stylesheet" type="text/css" href="style.css">
+<script src="https://www.gstatic.com/firebasejs/4.8.2/firebase.js"></script>
+<script src="https://www.gstatic.com/firebasejs/4.8.2/firebase-auth.js"></script>
+
 </head>
 
 <body>
-<form>
+
+<form action="/get">
 <h1>VELTIUM SMART CHARGERS</h1>
-<h2> Datos </h2>
+<div id="main_container" style="display:none;">
+<button onclick="mainApp.logout();">logout</button>
+</div>
+
+<h2>Status</h2>
+
 <p>
   <span class="dht-labels">Estado del hilo piloto:</span> 
   <span id="hp">%HP%</span>
 </p>
-
+<p>
+  <span class="dht-labels">Estado del ICP:</span> 
+  <span id="icp">%ICP%</span>
+</p>
+<p>
+  <span class="dht-labels">Leakage current:</span> 
+  <span id="leakage">%LEAK%</span>
+</p>
+<p>
+  <span class="dht-labels">Estado de bloqueo:</span> 
+  <span id="lockstatus">%LOCKSTATUS%</span>
+</p>
+<p>
+  <span class="dht-labels">Corriente m&aacutexima cable:</span> 
+  <span id="maxcable">%MAXCABLE%</span>
+  <span class="units">A</span>
+</p>
 <p>
   <span class="dht-labels">Corriente de carga:</span> 
   <span id="corriente">%CORRIENTE%</span>
@@ -36,27 +61,175 @@
 </p>
 
 <p>
+  <span class="dht-labels">Potencia reactiva:</span> 
+  <span id="potenciare">%POTENCIARE%</span>
+  <span class="units">VAR</span>
+</p>
+<p>
+  <span class="dht-labels">Potencia aparente:</span> 
+  <span id="potenciap">%POTENCIAP%</span>
+  <span class="units">VA</span>
+</p>
+<p>
+  <span class="dht-labels">Energ&iacutea activa:</span> 
+  <span id="energia">%ENERGIA%</span>
+  <span class="units">J</span>
+</p>
+<p>
+  <span class="dht-labels">Energ&iacutea reactiva:</span> 
+  <span id="energiare">%ENERGIARE%</span>
+  <span class="units">J</span>
+</p>
+<p>
+  <span class="dht-labels">Factor de potencia:</span> 
+  <span id="powerfactor">%POWERFACTOR%</span>
+</p>
+<p>
+  <span class="dht-labels">Corriente dom&eacutestica:</span> 
+  <span id="corrientedom">%CORRIENTEDOM%</span>
+  <span class="units">A</span>
+</p>
+<p>
   <span class="dht-labels">Error code:</span> 
   <span id="error">%ERROR%</span>
 </p>
+ 
 
-<h3>Orden de carga</h3>
-  %BUTTONPLACEHOLDER%
 
-<h4>Actualizaciones</h4>  
+<h2>Comms</h2>
+
+<p>
+  <h4>Wifi</h4>
+    <span class="dht-labels">ON</span> 
+    <span>%WON%</span>
+</p>
+
+<p>
+  <span class="dht-labels">SSID:</span> 
+  <input name="w_ap" placeholder="SSID de red" type="text"></input>
+</p>
+<p>
+  <span class="dht-labels">Contrase&ntildea:</span> 
+  <input name="w_pass" placeholder="Contrasese&ntildea de la red" type="password"></input>
+</p>
+<h4>Ethernet</h4>
+<span class="dht-labels">ON</span> 
+<span>%EON%</span>
+</p>
+<p>
+  <span class="dht-labels">AUTO</span> 
+  <span>%EAUTO%</span>
+</p>
+<p>
+
+
+<span class="dht-labels">Ip1:</span> 
+<input name="ip1" type="text" minlength="7" maxlength="15" size="15" pattern="^((\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.){3}(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])$">
+
+</p>
+<p>
+  <span class="dht-labels">Ip2:</span> 
+  <input name="ip2" type="text" minlength="7" maxlength="15" size="15" pattern="^((\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.){3}(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])$">
+</p>
+<p>
+  <span class="dht-labels">Gateway:</span> 
+  <input name="gateway" type="text" minlength="7" maxlength="15" size="15" pattern="^((\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.){3}(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])$">
+</p>
+<p>
+  <span class="dht-labels">Mask:</span> 
+  <input name="mask" type="text" minlength="7" maxlength="15" size="15" pattern="^((\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.){3}(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])$">
+</p>
+
+
+<h4>Modem</h4>
+<span class="dht-labels">ON</span> 
+<span>%MON%</span>
+</p>
+<p>
+
+  <label for="m_ap" class="dht-labels">Apn:</label> 
+  <input name="apn" id="m_ap" placeholder="Nombre de APN" type="text">
+</p>
+<p>
+  <label for="pass" class="dht-labels">Contra:</label> 
+  <input name="m_pass" id="pass" placeholder="Contrasese&ntildea de la red" type="password">
+</p>
+  <input type="submit" value="Guardar" onclick = "guardacoms(this)" style='height:30px;width:100px;background:#3498db;color:#fff'>
+
+
+<p>
+  <span class="dht-labels">Bloqueo</span> 
+  <span>%CONNLOCK%</span>
+</p>
+
+<h2>Par&aacutemetros</h2>
+<p>
+  <span class="dht-labels">Control din&aacutemico de potencia</span> 
+  <span>%CDP%</span>
+</p>  
 <p>
   <span class="dht-labels">Actualizaciones autom&aacuteticas</span> 
   <span>%AUTOUPDATE%</span>
 </p>
-
 <p>
-  <span>%ACTUALIZAR%</span>
+  <span>Corriente deseada:</span>
 </p>
-
+<h2>Control</h2>
+<label>Orden de carga<label>
+<p>
+  %BUTTONPLACEHOLDER%
+</p>
 </form>
 </body>
-
 <script>
+
+var fireBase = fireBase || firebase;
+var hasInit = false;
+var config = {
+  apiKey: "AIzaSyCYZpVNUOQvrXvc3qETxCqX4DPfp3Fwe3w",
+  authDomain: "veltiumdev.firebaseapp.com",
+  projectId: "veltiumdev",
+  databaseURL: "https://veltiumdev-default-rtdb.firebaseio.com",
+  storageBucket: "veltiumdev.appspot.com",
+  messagingSenderId: "1020185418136",
+  appId: "1:1020185418136:web:6453b887d5d71329c633ed",
+  measurementId: "G-VN3G1YL6TX"
+  };
+if(!hasInit){
+    firebase.initializeApp(config);
+    hasInit = true;
+}
+
+var mainApp = {};
+(function(){
+var mainContainer = document.getElementById("main_container");
+
+    var logtout =  function(){
+        firebase.auth().signOut().then(function(){
+            console.log('success');
+            window.location.replace("login");
+        },function(){})
+    }
+
+var init = function(){
+    firebase.auth().onAuthStateChanged(function(user) {
+        if (user) {
+          // User is signed in.
+          console.log("stay");
+          mainContainer.style.display = "";
+        } else {
+          // No user is signed in.
+          mainContainer.style.display = "none";
+          console.log("redirect");
+          window.location.replace("login");
+        }
+      });
+}
+    
+init();
+
+mainApp.logout = logtout;
+})();
 
     setInterval(function ( ) {
       var xhttp = new XMLHttpRequest();
@@ -73,10 +246,120 @@
       var xhttp = new XMLHttpRequest();
       xhttp.onreadystatechange = function() {
         if (this.readyState == 4 && this.status == 200) {
+          document.getElementById("icp").innerHTML = this.responseText;
+        }
+      };
+      xhttp.open("GET", "/icp", true);
+      xhttp.send();
+    }, 5000 ) ;
+
+    setInterval(function ( ) {
+      var xhttp = new XMLHttpRequest();
+      xhttp.onreadystatechange = function() {
+        if (this.readyState == 4 && this.status == 200) {
+          document.getElementById("leakage").innerHTML = this.responseText;
+        }
+      };
+      xhttp.open("GET", "/dcleak", true);
+      xhttp.send();
+    }, 5000 ) ;
+
+    setInterval(function ( ) {
+      var xhttp = new XMLHttpRequest();
+      xhttp.onreadystatechange = function() {
+        if (this.readyState == 4 && this.status == 200) {
+          document.getElementById("lockstatus").innerHTML = this.responseText;
+        }
+      };
+      xhttp.open("GET", "/conlock", true);
+      xhttp.send();
+    }, 5000 ) ;
+
+    setInterval(function ( ) {
+      var xhttp = new XMLHttpRequest();
+      xhttp.onreadystatechange = function() {
+        if (this.readyState == 4 && this.status == 200) {
+          document.getElementById("maxcable").innerHTML = this.responseText;
+        }
+      };
+      xhttp.open("GET", "/maxcable", true);
+      xhttp.send();
+    }, 5000 ) ;
+
+    setInterval(function ( ) {
+      var xhttp = new XMLHttpRequest();
+      xhttp.onreadystatechange = function() {
+        if (this.readyState == 4 && this.status == 200) {
+          document.getElementById("potenciare").innerHTML = this.responseText;
+        }
+      };
+      xhttp.open("GET", "/potenciare", true);
+      xhttp.send();
+    }, 5000 ) ;
+
+    setInterval(function ( ) {
+      var xhttp = new XMLHttpRequest();
+      xhttp.onreadystatechange = function() {
+        if (this.readyState == 4 && this.status == 200) {
+          document.getElementById("potenciap").innerHTML = this.responseText;
+        }
+      };
+      xhttp.open("GET", "/potenciap", true);
+      xhttp.send();
+    }, 5000 ) ;
+
+    setInterval(function ( ) {
+      var xhttp = new XMLHttpRequest();
+      xhttp.onreadystatechange = function() {
+        if (this.readyState == 4 && this.status == 200) {
+          document.getElementById("energia").innerHTML = this.responseText;
+        }
+      };
+      xhttp.open("GET", "/energia", true);
+      xhttp.send();
+    }, 5000 ) ;
+
+    setInterval(function ( ) {
+      var xhttp = new XMLHttpRequest();
+      xhttp.onreadystatechange = function() {
+        if (this.readyState == 4 && this.status == 200) {
+          document.getElementById("energiare").innerHTML = this.responseText;
+        }
+      };
+      xhttp.open("GET", "/energiare", true);
+      xhttp.send();
+    }, 5000 ) ;
+
+    setInterval(function ( ) {
+      var xhttp = new XMLHttpRequest();
+      xhttp.onreadystatechange = function() {
+        if (this.readyState == 4 && this.status == 200) {
+          document.getElementById("powerfactor").innerHTML = this.responseText;
+        }
+      };
+      xhttp.open("GET", "/powerfactor", true);
+      xhttp.send();
+    }, 5000 ) ;
+
+    setInterval(function ( ) {
+      var xhttp = new XMLHttpRequest();
+      xhttp.onreadystatechange = function() {
+        if (this.readyState == 4 && this.status == 200) {
+          document.getElementById("corrientedom").innerHTML = this.responseText;
+        }
+      };
+      xhttp.open("GET", "/corrientedom", true);
+      xhttp.send();
+    }, 5000 ) ;
+
+    setInterval(function ( ) {
+      var xhttp = new XMLHttpRequest();
+      xhttp.onreadystatechange = function() {
+        if (this.readyState == 4 && this.status == 200) {
           document.getElementById("corriente").innerHTML = this.responseText;
         }
       };
-      xhttp.open("GET", "/corrriente", true);
+      xhttp.open("GET", "/corriente", true);
       xhttp.send();
     }, 5000 ) ;
 
@@ -123,11 +406,22 @@
 
     function toggleCheckbox(element) {
       var xhr = new XMLHttpRequest();
-        if(element.checked){ xhr.open("GET", "/autoupdate?&state=1", true); }
-        else { xhr.open("GET", "/autoupdate?&state=0", true); }
+        if(element.checked){ xhr.open("GET", "/autoupdate?com="+element.id+"&state=1", true); }
+        else { xhr.open("GET", "/autoupdate?com="+element.id+"&state=0", true); }
       xhr.send();
     }
+/*
+    function guardacoms(element) {
+      var xhr = new XMLHttpRequest();
+      if(element.clicked){ xhr.open("GET", "/get?apn=value&m_pass=value", true); }
+      else{ xhr.open("GET", "/get?apn=value&m_pass=value", true); }
+        xhr.send();
+    }
+*/
+
+
 
 </script>
+
 
 </html>
