@@ -292,6 +292,7 @@ void startSystem(void){
 		Coms.StartConnection = true;
 		Coms.ETH.ON  = true;
 		Coms.Wifi.ON = true;
+		Coms.Wifi.Auto = true;
 	#endif
 
 }

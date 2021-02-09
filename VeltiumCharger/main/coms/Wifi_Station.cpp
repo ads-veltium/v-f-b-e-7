@@ -362,8 +362,8 @@ void InitServer(void) {
    
    server.on("/update", HTTP_GET, [] (AsyncWebServerRequest *request) {
 
-		int entrada;
-		entrada = request->getParam(NUM_BOTON)->value().toInt();
+	int entrada;
+	entrada = request->getParam(NUM_BOTON)->value().toInt();
     switch(entrada){
         case 1:
             Comands.start = true;
@@ -392,11 +392,10 @@ void InitServer(void) {
     	bool estado;
         int numero;
 	
-		estado = request->getParam(ESTADO)->value().toInt();
+		estado = request->getParam(ESTADO)->value().toInt() == 1 ;
         numero = request->getParam(SALIDA)->value().toInt();
         
-        switch (numero)
-        {
+        switch (numero){
             case 11:
                 if (estado){
                     memcpy(Params.autentication_mode,"AA",2);
@@ -404,7 +403,7 @@ void InitServer(void) {
                 else{
                     memcpy(Params.autentication_mode,"MA",2);
                 }
-            break;
+                break;
 
             case 12:
                 Coms.Wifi.ON = estado;
@@ -422,9 +421,11 @@ void InitServer(void) {
                 Params.CDP_On = estado;
                 break;
             
-        default:
-            break;
+            default:
+                break;
         }
+        Serial.println(Coms.Wifi.ON);
+        Serial.println(Coms.ETH.ON);
    });
 
    Serial.println(ESP.getFreeHeap());
@@ -565,9 +566,12 @@ void Delete_Credentials(){
 void Station_Stop(){
     wifi_connecting = false;
     wifi_connected  = false;
-    WiFi.disconnect(true);
-    Serial.println("Wifi Paused");
-    delay(500);
+    if(WiFi.disconnect(true)){
+        Serial.println("Wifi Paused");
+        delay(500);
+        return;
+    }
+    Serial.println("Error Disconecting");
 } 
 
 void ETH_Stop(){
