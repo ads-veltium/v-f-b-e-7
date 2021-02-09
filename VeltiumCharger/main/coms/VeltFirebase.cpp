@@ -3,7 +3,7 @@
 /*********** Clase autenticacion ************/
 void Autenticacion::begin (void) {
   AutenticationClient.setTimeout(1000);
-  Serial.println(AutenticationClient.begin(Auth_url+FIREBASE_API_KEY) ? "DNS Resolved" : "DNS Fail");
+  AutenticationClient.begin(Auth_url+FIREBASE_API_KEY);
   AutenticationClient.addHeader("Content-Type", "application/json");
 }
 
@@ -104,7 +104,7 @@ bool Real_Time_Database::Send_Command(String path, JsonDocument *doc, uint8_t Co
             return false;
             break;
     }
-    if (response <= 0) {
+    if (response < -11) {
         Serial.println(response);
         Serial.printf("HTTP error: %s\n", 
         RTDBClient.errorToString(response).c_str());
@@ -126,7 +126,7 @@ long long  Real_Time_Database::Get_Timestamp(String path){
 
     response = RTDBClient.GET();
 
-    if (response <= 0) {
+    if (response < -11) {
         Serial.println(response);
         Serial.printf("HTTP error: %s\n", 
         RTDBClient.errorToString(response).c_str());

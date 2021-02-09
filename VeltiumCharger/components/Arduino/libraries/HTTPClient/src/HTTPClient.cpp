@@ -814,7 +814,6 @@ int HTTPClient::writeToStream(Stream * stream)
                 return returnError(HTTPC_ERROR_CONNECTION_LOST);
             }
             String chunkHeader = _client->readStringUntil('\n');
-            Serial.printf("b");
             if(chunkHeader.length() <= 0) {
                 return returnError(HTTPC_ERROR_READ_TIMEOUT);
             }

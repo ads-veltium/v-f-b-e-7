@@ -431,9 +431,6 @@ void procesar_bloque(uint16 tipo_bloque){
 				//Params.Sensor_Conectado = (buffer_rx_local[232]  >> 0) & 0x01;
 				//Params.CDP_On           = (buffer_rx_local[232]  >> 1) & 0x01;
 				//Params.Ubicacion_Sensor = (buffer_rx_local[232]  >> 2) & 0x03;
-
-				ConfigFirebase.WriteParams=true;
-				ConfigFirebase.WriteComs=true;
 			#endif
 		}	
 	}

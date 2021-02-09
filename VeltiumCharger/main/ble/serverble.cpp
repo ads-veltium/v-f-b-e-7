@@ -57,7 +57,6 @@ BLECharacteristic *pbleCharacteristics[NUMBER_OF_CHARACTERISTICS];
 #define PROP_WN BLECharacteristic::PROPERTY_WRITE|BLECharacteristic::PROPERTY_NOTIFY
 
 
-
 // VSC_SELECTOR     RW 16
 // VSC_OMNIBUS      RW 16
 // VSC_OMNINOT      RN 16
