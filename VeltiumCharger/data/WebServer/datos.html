@@ -13,7 +13,7 @@
 
 <body>
 
-<form action="/get">
+<form action="/get" accept-charset="UTF-8">
 <h1>VELTIUM SMART CHARGERS</h1>
 <div id="main_container" style="display:none;">
 <button onclick="mainApp.logout();">logout</button>
@@ -110,7 +110,7 @@
 </p>
 <p>
   <span class="dht-labels">Contrase&ntildea:</span> 
-  <input name="w_pass" placeholder="Contrasese&ntildea de la red" type="password"></input>
+  <input name="w_pass" placeholder="Password" type="password"></input>
 </p>
 <h4>Ethernet</h4>
 <span class="dht-labels">ON</span> 
@@ -121,23 +121,20 @@
   <span>%EAUTO%</span>
 </p>
 <p>
-
-
 <span class="dht-labels">Ip1:</span> 
-<input name="ip1" type="text" minlength="7" maxlength="15" size="15" pattern="^((\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.){3}(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])$">
-
+<input name="ip1" type="text" minlength="7" maxlength="15" size="15" pattern="^((\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.){3}(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])$" placeholder="Ip1">
 </p>
 <p>
   <span class="dht-labels">Ip2:</span> 
-  <input name="ip2" type="text" minlength="7" maxlength="15" size="15" pattern="^((\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.){3}(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])$">
+  <input name="ip2" type="text" minlength="7" maxlength="15" size="15" pattern="^((\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.){3}(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])$" placeholder="Ip2">
 </p>
 <p>
   <span class="dht-labels">Gateway:</span> 
-  <input name="gateway" type="text" minlength="7" maxlength="15" size="15" pattern="^((\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.){3}(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])$">
+  <input name="gateway" type="text" minlength="7" maxlength="15" size="15" pattern="^((\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.){3}(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])$" placeholder="Gateway">
 </p>
 <p>
   <span class="dht-labels">Mask:</span> 
-  <input name="mask" type="text" minlength="7" maxlength="15" size="15" pattern="^((\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.){3}(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])$">
+  <input name="mask" type="text" minlength="7" maxlength="15" size="15" pattern="^((\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.){3}(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])$" placeholder="Mask">
 </p>
 
 
@@ -151,8 +148,8 @@
   <input name="apn" id="m_ap" placeholder="Nombre de APN" type="text">
 </p>
 <p>
-  <label for="pass" class="dht-labels">Contra:</label> 
-  <input name="m_pass" id="pass" placeholder="Contrasese&ntildea de la red" type="password">
+  <label for="pass" class="dht-labels">Contrase&ntildea:</label> 
+  <input name="m_pass" id="pass" placeholder="Password" type="password">
 </p>
   <input type="submit" value="Guardar" onclick = "guardacoms(this)" style='height:30px;width:100px;background:#3498db;color:#fff'>
 
@@ -164,6 +161,22 @@
 
 <h2>Par&aacutemetros</h2>
 <p>
+  <span class="dht-labels">Modo de autenticaci&oacuten:</span> 
+  <input name="auth_mode" placeholder="Autenticacion" type="text"></input>
+</p>
+<p>
+  <span class="dht-labels">L&iacutemite de corriente de instalaci&oacuten:</span> 
+  <input name="inst_curr_lim" placeholder="Corriente limite" type="text"></input>
+</p>
+<p>
+  <span class="dht-labels">Potencia contratada:</span> 
+  <input name="potencia_cont" placeholder="Potencia" type="text"></input>
+</p>
+<p>
+  <span class="dht-labels">Ubicaci&oacuten CDP:</span> 
+  <input name="ubi_cdp" placeholder="Ubicacion CDP" type="text"></input>
+</p>
+<p>
   <span class="dht-labels">Control din&aacutemico de potencia</span> 
   <span>%CDP%</span>
 </p>  
@@ -171,14 +184,20 @@
   <span class="dht-labels">Actualizaciones autom&aacuteticas</span> 
   <span>%AUTOUPDATE%</span>
 </p>
-<p>
-  <span>Corriente deseada:</span>
-</p>
 <h2>Control</h2>
 <label>Orden de carga<label>
+  <p>
+    %BUTTONPLACEHOLDER%
+  </p>
 <p>
-  %BUTTONPLACEHOLDER%
+  <span class="dht-labels">Corriente deseada:</span> 
+  <input name="curr_comand" placeholder="Comando de corriente" type="text"></input>
 </p>
+<p>
+  <span class="dht-labels">Mecanismo de bloqueo</span> 
+  <span>%CONLOCK%</span>
+</p>  
+
 </form>
 </body>
 <script>
@@ -410,14 +429,6 @@ mainApp.logout = logtout;
         else { xhr.open("GET", "/autoupdate?com="+element.id+"&state=0", true); }
       xhr.send();
     }
-/*
-    function guardacoms(element) {
-      var xhr = new XMLHttpRequest();
-      if(element.clicked){ xhr.open("GET", "/get?apn=value&m_pass=value", true); }
-      else{ xhr.open("GET", "/get?apn=value&m_pass=value", true); }
-        xhr.send();
-    }
-*/
 
 
 
@@ -425,3 +436,4 @@ mainApp.logout = logtout;
 
 
 </html>
+
