@@ -434,7 +434,7 @@ void InitServer(void) {
 /********************* Conection Functions **************************/
 #include <nvs_flash.h>
 void WiFiEvent(arduino_event_id_t event, arduino_event_info_t info){ 
-    Serial.println(event);
+    //Serial.println(event);
 	switch (event) {
 
 //********************** WIFI Cases **********************//
@@ -506,6 +506,7 @@ void WiFiEvent(arduino_event_id_t event, arduino_event_info_t info){
             Serial.print(ETH.macAddress());
             Serial.print(", IPv4: ");
             Serial.print(ETH.localIP());
+            Serial.println();
             if(Coms.ETH.Auto){
                 Coms.ETH.IP1     = ETH.localIP();
                 Coms.ETH.Gateway = ETH.gatewayIP();
@@ -543,7 +544,7 @@ void Delete_Credentials(){
 
 
 void Station_Begin(){
-    Delete_Credentials();
+    //Delete_Credentials();
     //Comprobar si esta encendida ya
     if(wifi_connecting || wifi_connected){
         Station_Stop();
@@ -557,7 +558,6 @@ void Station_Begin(){
         //String SSID = "WF_";
         //SSID.concat(ConfigFirebase.Device_Id);
         WiFiProv.beginProvision(WIFI_PROV_SCHEME_SOFTAP, WIFI_PROV_SCHEME_HANDLER_NONE, WIFI_PROV_SECURITY_1);
-        Serial.println("Connecting to Wi-Fi...");
         wifi_connecting = true;
     //}
 } 
@@ -599,7 +599,6 @@ void ETH_begin(){
         ETH.begin(ETH_ADDR, ETH_POWER_PIN, ETH_MDC_PIN, ETH_MDIO_PIN, ETH_TYPE);
         IPAddress primaryDNS(8, 8, 8, 8); //optional
         IPAddress secondaryDNS(8, 8, 4, 4); //optional
-        Serial.println("Configuration done!");
         ETH.config(Coms.ETH.IP1,Coms.ETH.Gateway,Coms.ETH.Mask, primaryDNS, secondaryDNS);
     }
 	eth_connecting = true;
@@ -708,10 +707,10 @@ void ComsTask(void *args){
                 Serial.println("Error in ComsTask, state not implemented");
             break;
         }
-        if(LastStatus!= ComsMachineState){
+        /*if(LastStatus!= ComsMachineState){
             Serial.printf("Maquina de estados de comunicacion pasa de % i a %i \n", LastStatus, ComsMachineState);
             LastStatus= ComsMachineState;
-        }
+        }*/
         vTaskDelay(pdMS_TO_TICKS(500));
     }
 }

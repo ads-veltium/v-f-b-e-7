@@ -1,11 +1,5 @@
 #include "control.h"
 
-/**********************************************
- * 			       PROTOTIPOS
- * *******************************************/
-void perform_ps_malloc_tests(uint8_t pot_first, uint8_t pot_last);
-void perform_malloc_tests(uint8_t pot_first, uint8_t pot_last);
-
 void setup() 
 {
 	Serial.begin(115200);
@@ -15,16 +9,11 @@ void setup()
 	DRACO_GPIO_Init();
 	
 #ifdef USE_DRACO_BLE
+
 	unsigned char dummySerial[10] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
 	dev_auth_init(dummySerial);
-#endif
-
-#ifdef USE_DRACO_BLE
 	
 	Serial.println("FREE HEAP MEMORY [after DRACO_GPIO_Init] **************************");
-	Serial.println(ESP.getFreeHeap());
-
-	Serial.println("FREE HEAP MEMORY [after initLeds] **************************");
 	Serial.println(ESP.getFreeHeap());
 
 	serverbleInit();

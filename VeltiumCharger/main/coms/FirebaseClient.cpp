@@ -54,7 +54,8 @@ bool initFirebaseClient(){
     String project = FIREBASE_PROJECT;
     project += "/";
     Database.RTDB.begin(project, ConfigFirebase.Device_Db_ID);
-
+    UpdateStatus.BetaPermission = Database.RTDB.checkPermisions();
+    Serial.printf("Usuario tiene permiso de firmware beta : %s \n", UpdateStatus.BetaPermission ? "Si" : "No");
     return true;
 
 }
@@ -242,9 +243,7 @@ bool ReadFirebaseParams(String Path){
       if(!memcmp(Params.autentication_mode,Lectura["auth_mode"].as<String>().c_str(),2)){
         SendToPSOC5(CONFIGURACION_AUTENTICATION_MODES_CHAR_HANDLE);
         delay(10);
-      } 
-
-      
+      }     
         
       if(Lectura["inst_curr_limit"] != Params.inst_current_limit){
         Params.inst_current_limit  = Lectura["inst_curr_limit"];
@@ -311,19 +310,36 @@ bool ReadFirebaseControl(String Path){
  *              Sistema de Actualización
  *****************************************************/
 bool CheckForUpdate(){
-  Lectura.clear();
-  if(Database.RTDB.Send_Command("/prod/fw/beta/",&Lectura, READ_FW)){
-    String ESP_Ver   = Lectura["VBLE2"]["verstr"].as<String>();
-    Serial.println(ESP_Ver);
-    uint16 ESP_int_Version=ParseFirmwareVersion(ESP_Ver);
+  //Check Permisions
 
-    if(ESP_int_Version>UpdateStatus.ESP_Act_Ver){
-      Serial.println("Updating ESP!");
-      UpdateStatus.ESP_UpdateAvailable= true;
-      url = Lectura["VBLE2"]["url"].as<String>();
-      return true;
+  //Check Beta Firmware
+  if(UpdateStatus.BetaPermission){
+    if(Database.RTDB.Send_Command("/prod/fw/beta/",&Lectura, READ_FW)){
+      String PSOC5_Ver   = Lectura["VELT2"]["verstr"].as<String>();
+      uint16 VELT_int_Version=ParseFirmwareVersion(PSOC5_Ver);
+
+      if(VELT_int_Version>UpdateStatus.PSOC5_Act_Ver){
+        Serial.println("Updating PSOC5!");
+        UpdateStatus.PSOC5_UpdateAvailable= true;
+        url = Lectura["VELT2"]["url"].as<String>();
+        return true;
+      }    
+
+      String ESP_Ver   = Lectura["VBLE2"]["verstr"].as<String>();
+      uint16 ESP_int_Version=ParseFirmwareVersion(ESP_Ver);
+
+      if(ESP_int_Version>UpdateStatus.ESP_Act_Ver){
+        Serial.println("Updating ESP!");
+        UpdateStatus.ESP_UpdateAvailable= true;
+        url = Lectura["VBLE2"]["url"].as<String>();
+        return true;
+      }  
     }
+  }
+  
 
+  //Check Normal Firmware
+  if(Database.RTDB.Send_Command("/prod/fw/prod/",&Lectura, READ_FW)){
     String PSOC5_Ver   = Lectura["VELT2"]["verstr"].as<String>();
     uint16 VELT_int_Version=ParseFirmwareVersion(PSOC5_Ver);
 
@@ -333,9 +349,17 @@ bool CheckForUpdate(){
       url = Lectura["VELT2"]["url"].as<String>();
       return true;
     }    
-    return false;
-  }
 
+    String ESP_Ver   = Lectura["VBLE2"]["verstr"].as<String>();
+    uint16 ESP_int_Version=ParseFirmwareVersion(ESP_Ver);
+
+    if(ESP_int_Version>UpdateStatus.ESP_Act_Ver){
+      Serial.println("Updating ESP!");
+      UpdateStatus.ESP_UpdateAvailable= true;
+      url = Lectura["VBLE2"]["url"].as<String>();
+      return true;
+    }  
+  }
   return false;
 }
 
@@ -347,7 +371,7 @@ void DownloadFileTask(void *args){
 
   //Si descargamos actualizacion para el PSOC5, debemos crear el archivo en el SPIFFS
   if(UpdateStatus.PSOC5_UpdateAvailable){
-    SPIFFS.begin(0,"/spiffs",1,"ESP32");
+    SPIFFS.begin(0,"/spiffs",1,"PSOC5");
     FileName="/FreeRTOS_V6.cyacd";
     if(SPIFFS.exists(FileName)){
       vTaskDelay(pdMS_TO_TICKS(50));
@@ -376,7 +400,7 @@ void DownloadFileTask(void *args){
       };
     }
 
-
+    Serial.println("Descargando firmware...");
     while (DownloadClient.connected() &&(len > 0 || len == -1)){
       size_t size = stream->available();
       if (size){
@@ -394,7 +418,6 @@ void DownloadFileTask(void *args){
           written +=c;
           len -= c;
         }
-        Serial.printf("%i vs %i \r", written, total);
       }
       vTaskDelay(pdMS_TO_TICKS(1));
     }
@@ -408,17 +431,15 @@ void DownloadFileTask(void *args){
       ESP.restart();
     }
   }
+  //Aqui solo lleg asi se está actualizando el PSOC5
 
   stream->stop();
   DownloadClient.end(); 
   delete stream;
 
-  Serial.println(UpdateFile.size());
-  Serial.println(total);
-  if(UpdateFile.size()==total){
-    UpdateFile.close();
-    setMainFwUpdateActive(1);
-  }
+  Serial.println("Firmware de PSOC5 descargado!");
+  UpdateFile.close();
+  setMainFwUpdateActive(1);
 
   UpdateStatus.DescargandoArchivo=false;
   vTaskDelete(NULL);
@@ -436,6 +457,7 @@ void Firebase_Conn_Task(void *args){
   String Base_Path;
   long long ts_app_req =0;
   TickType_t xStarted = 0, xElapsed = 0; 
+  int UpdateCheckTimeout=0;
 
   while(1){
     switch (ConnectionState){
@@ -462,7 +484,7 @@ void Firebase_Conn_Task(void *args){
       Params.last_ts_app_req  = Database.RTDB.Get_Timestamp("/params/ts_app_req",&Lectura);
       Comands.last_ts_app_req = Database.RTDB.Get_Timestamp("/control/ts_app_req",&Lectura);
       Coms.last_ts_app_req    = Database.RTDB.Get_Timestamp("/coms/ts_app_req",&Lectura);
-      Serial.println("conectado a firebase!");
+      Serial.println("Conectado a firebase!");
       ConnectionState=IDLE;
       break;
 
@@ -498,7 +520,17 @@ void Firebase_Conn_Task(void *args){
           ConnectionState=DISCONNECTING;
           break;
         }
+      }
 
+      //Comprobar actualizaciones
+      //TODO: Comprobar el estado del Hilo Piloto y horas inactivo
+      else if(++UpdateCheckTimeout>8640){ // Unas 12 horas
+          UpdateCheckTimeout=0;
+          Serial.println("Comprobando firmware nuevo");
+          if(!memcmp(Params.Fw_Update_mode, "AA",2)){
+            ConnectionState = UPDATING;
+            break;
+        }
       }
       
       if(ts_app_req > Status.last_ts_app_req){
@@ -607,15 +639,11 @@ void Firebase_Conn_Task(void *args){
     /*********************** UPDATING states **********************/
     case UPDATING:
       if(CheckForUpdate()){
-        if(!memcmp(Params.Fw_Update_mode, "AA",2)){
-          xTaskCreate(DownloadFileTask,"DOWNLOAD FILE", 4096*2, NULL, 1,NULL);
-          ConnectionState=DOWNLOADING;
-        }
-        else{
-          ConnectionState=IDLE;
-        }
+        xTaskCreate(DownloadFileTask,"DOWNLOAD FILE", 4096*2, NULL, 1,NULL);
+        ConnectionState=DOWNLOADING;
       }
       else{
+        Serial.println("No hay software nuevo disponible");
         ConnectionState=IDLE;
       }
       break;
@@ -643,7 +671,7 @@ void Firebase_Conn_Task(void *args){
       break;
     }
     if(LastStatus!= ConnectionState){
-      Serial.printf("Maquina de estados pasa de % i a %i \n", LastStatus, ConnectionState);
+      Serial.printf("Maquina de estados de Firebase de % i a %i \n", LastStatus, ConnectionState);
       LastStatus= ConnectionState;
     }
     

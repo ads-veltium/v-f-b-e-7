@@ -32,6 +32,7 @@ bool Real_Time_Database::LogIn(void){
 
     idToken = Response["idToken"].as<String>();
     localId = Response["localId"].as<String>();
+
     endAuth();
     return true;
 }
@@ -40,11 +41,29 @@ void Real_Time_Database::endAuth(void){
     AutenticationClient.end();
 }
 
+bool Real_Time_Database::checkPermisions(void){
+
+    DynamicJsonDocument Response(1024);
+    //Get User permisions.
+    RTDBClient.setURL(Base_Path+"/prod/users/"+localId+"/perms.json?auth="+idToken);
+    int response = RTDBClient.GET(); 
+    if (response < -0) {
+        Serial.println(response);
+        Serial.printf("HTTP error: %s\n", 
+        RTDBClient.errorToString(response).c_str());
+    }
+
+    deserializeJson(Response, RTDBClient.getString());   
+
+    return Response["fw_beta"];
+}
+
 /*********** Clase RTDB ************/
 void Real_Time_Database::begin(String Host, String DatabaseID){
     RTDB_url="https://";
     RTDB_url+=Host+("prod/devices/"+DatabaseID);
-    Base_Path+="https://"+Host;
+    Base_Path="https://";
+    Base_Path+=Host;
 
     Write_url = RTDB_url+"/status/ts_app_req.json?auth="+idToken+"&timeout=2500ms";
 
@@ -98,8 +117,7 @@ bool Real_Time_Database::Send_Command(String path, JsonDocument *doc, uint8_t Co
             response = RTDBClient.GET();
             break;
         case READ_FW:
-            Serial.println(Base_Path+"/prod/fw/beta/");
-            RTDBClient.setURL(Base_Path+"prod/fw/beta"+".json?auth="+idToken);
+            RTDBClient.setURL(Base_Path+path+".json?auth="+idToken);
             response = RTDBClient.GET();
             break;
 

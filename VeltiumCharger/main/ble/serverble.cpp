@@ -74,7 +74,7 @@ BLE_FIELD blefields[MAX_BLE_FIELDS] =
 	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC005),6, PROP_R,  0, RCS_RECORD,   BLE_CHA_RCS_RECORD,  0},
 	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC006),6, PROP_RW, 0, RCS_SCH_MAT,  BLE_CHA_RCS_SCH_MAT, 0},
 	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC007),6, PROP_WN, 0, FW_DATA,      BLE_CHA_FW_DATA,     1}
-};
+} ;
 
 
 void serverbleNotCharacteristic ( uint8_t *data, int len, uint16_t handle )

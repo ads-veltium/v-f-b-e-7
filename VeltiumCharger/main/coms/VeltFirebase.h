@@ -56,6 +56,7 @@ class Real_Time_Database{
     void beginAuth (void);
     void endAuth (void);
     bool LogIn(void);
+    bool checkPermisions(void);
 
     //Database functions
     bool Send_Command(String path, JsonDocument *doc, uint8_t Command);
