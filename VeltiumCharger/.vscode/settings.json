@@ -1,5 +1,5 @@
 {
-    "actionButtons": {
+   "actionButtons": {
         "defaultColor": "#ff0034", // Can also use string color names.
         "loadNpmCommands":false, // Disables automatic generation of actions for npm commands.
         "reloadButton":"♻️", // Custom reload button text or icon (default ↻). null value enables automatic reload on configuration change
@@ -8,83 +8,33 @@
                 "name": "BUILD",
                 "color": "white",
                 "singleInstance": true,
-                "command": ". /home/jon/Documentos/SDK_4/idf_4_0/esp-idf/./export.sh && cd /home/jon/Escritorio/firmware/fw-bird-esp32/VeltiumCharger/ && make",
+                "command": ". /home/joel/Documents/fw-bird-esp32/SDK/esp-idf/./export.sh && cd /home/joel/Documents/fw-bird-esp32/VeltiumCharger/ && make",
             },
             {
                 "name": "MFM",
                 "color": "white",
                 "singleInstance": true,
-                "command": ". /home/jon/Documentos/SDK_4/idf_4_0/esp-idf/./export.sh && cd /home/jon/Escritorio/firmware/fw-bird-esp32/VeltiumCharger/ && make flash monitor",
+                "command": ". /home/joel/Documents/fw-bird-esp32/SDK/esp-idf/./export.sh && cd /home/joel/Documents/fw-bird-esp32/VeltiumCharger/ && make flash monitor",
             },
             {
                 "name": "MONITOR",
                 "color": "white",
                 "singleInstance": true,
-                "command": ". /home/jon/Documentos/SDK_4/idf_4_0/esp-idf/./export.sh && cd /home/jon/Escritorio/firmware/fw-bird-esp32/VeltiumCharger/ && make monitor",
+                "command": ". /home/joel/Documents/fw-bird-esp32/SDK/esp-idf/./export.sh && cd /home/joel/Documents/fw-bird-esp32/VeltiumCharger/ && make monitor",
             },
             {
                 "name": "MENUCONFIG",
                 "color": "white",
                 "singleInstance": true,
-                "command": ". /home/joel/Documents/SDK_4/idf_4_0/esp-idf/./export.sh && cd /home/joel/Documents/fw-bird-esp32/VeltiumCharger && make menuconfig",
+                "command": ". /home/joel/Documents/fw-bird-esp32/SDK/esp-idf/./export.sh && cd /home/joel/Documents/fw-bird-esp32/VeltiumCharger && make menuconfig",
             },
             {
                 "name": "FLASH",
                 "color": "white",
                 "singleInstance": true,
-                "command": ". /home/jon/Documentos/SDK_4/idf_4_0/esp-idf/./export.sh && cd /home/jon/Escritorio/firmware/fw-bird-esp32/VeltiumCharger/ && make flash",
+                "command": ". /home/joel/Documents/fw-bird-esp32/SDK/esp-idf/./export.sh && cd /home/joel/Documents/firmware/fw-bird-esp32/VeltiumCharger/ && make flash",
             },
 
         ]
-    },
-    "C_Cpp.errorSquiggles": "Enabled",
-    "files.associations": {
-        "array": "cpp",
-        "*.tcc": "cpp",
-        "memory": "cpp",
-        "future": "cpp",
-        "istream": "cpp",
-        "functional": "cpp",
-        "tuple": "cpp",
-        "utility": "cpp",
-        "bitset": "cpp",
-        "deque": "cpp",
-        "list": "cpp",
-        "string": "cpp",
-        "unordered_map": "cpp",
-        "unordered_set": "cpp",
-        "vector": "cpp",
-        "string_view": "cpp",
-        "initializer_list": "cpp",
-        "regex": "cpp",
-        "*.ipp": "cpp",
-        "random": "cpp",
-        "limits": "cpp",
-        "fstream": "cpp",
-        "complex": "cpp",
-        "condition_variable": "cpp",
-        "atomic": "cpp",
-        "strstream": "cpp",
-        "chrono": "cpp",
-        "iterator": "cpp",
-        "memory_resource": "cpp",
-        "optional": "cpp",
-        "new": "cpp",
-        "ostream": "cpp",
-        "shared_mutex": "cpp",
-        "sstream": "cpp",
-        "stdexcept": "cpp",
-        "streambuf": "cpp",
-        "system_error": "cpp",
-        "thread": "cpp",
-        "*.inc": "c",
-        "ppp_opts.h": "c",
-        "hash_map": "cpp",
-        "hash_set": "cpp",
-        "valarray": "cpp",
-        "*.contiki": "cpp"
-    },
-    "git.ignoreLimitWarning": true
+    }
 }
-
-

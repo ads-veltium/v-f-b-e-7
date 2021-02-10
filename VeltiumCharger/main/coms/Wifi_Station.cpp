@@ -434,7 +434,7 @@ void InitServer(void) {
 /********************* Conection Functions **************************/
 #include <nvs_flash.h>
 void WiFiEvent(arduino_event_id_t event, arduino_event_info_t info){ 
-    Serial.println(event);   
+    Serial.println(event);
 	switch (event) {
 
 //********************** WIFI Cases **********************//
@@ -536,30 +536,31 @@ void WiFiEvent(arduino_event_id_t event, arduino_event_info_t info){
 	}
 }
 
-void Station_Begin(){
+void Delete_Credentials(){
+    nvs_flash_erase();
+    nvs_flash_init();
+}
 
+
+void Station_Begin(){
+    Delete_Credentials();
     //Comprobar si esta encendida ya
     if(wifi_connecting || wifi_connected){
         Station_Stop();
     }
 
 	//Descomentar e introducir credenciales para conectarse a piñon ¡¡¡¡Comentar lo de abajo!!!!
-    if(!Coms.Wifi.Auto){   
+    /*if(!Coms.Wifi.Auto){   
          wifi_connecting = WiFi.begin(WIFI_SSID, WIFI_PASSWORD) == 3;
     }
-    else{
+    else{*/
         //String SSID = "WF_";
         //SSID.concat(ConfigFirebase.Device_Id);
-        WiFiProv.beginProvision(WIFI_PROV_SCHEME_SOFTAP, WIFI_PROV_SCHEME_HANDLER_NONE, WIFI_PROV_SECURITY_1, (char*)(ConfigFirebase.Device_Ser_num), 'WF_'+(char*)ConfigFirebase.Device_Id);
+        WiFiProv.beginProvision(WIFI_PROV_SCHEME_SOFTAP, WIFI_PROV_SCHEME_HANDLER_NONE, WIFI_PROV_SECURITY_1);
         Serial.println("Connecting to Wi-Fi...");
         wifi_connecting = true;
-    }
+    //}
 } 
-
-void Delete_Credentials(){
-    nvs_flash_erase();
-    nvs_flash_init();
-}
 
 void Station_Stop(){
     wifi_connecting = false;
