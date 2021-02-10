@@ -35,6 +35,11 @@ const char* GATEWAY = "gateway";
 const char* MASK = "mask";
 const char* APN = "apn";
 const char* GSM_PWD = "m_pass";
+const char* CURR_COMAND = "curr_comand";
+const char* AUTH_MODE = "auth_mode";
+const char* INST_CURR_LIM = "inst_curr_lim";
+const char* POT_CONT = "potencia_cont";
+const char* UBI_CDP = "ubi_cdp";
 
 
 
@@ -53,42 +58,9 @@ String outputState(){
   }
 }
 //Función para ver estado de la variable de encender Wifi 
-String outputStateWifi(){
-  if(Coms.Wifi.ON == true){
+String outputStateWifi(bool com){
+  if(com == true){
       return "checked";
-  }else{
-    return "";  
-  }
-}
-//Función para ver estado de la variable de encender ETH
-String outputStateEth(){
-    if(Coms.ETH.ON == true){
-        return "checked";
-    }else{
-        return "";  
-    }
-}
-//Función para ver estado de la variable de ETH AUTO
-String outputStateEthAuto(){
-if(Coms.ETH.Auto == true){
-    return "checked";
-  }else{
-    return "";  
-  }
-}
-//Función para ver estado de la variable de encender GSM
-String outputStateGsm(){
-if(Coms.GSM.ON == true){
-    return "checked";
-  }else{
-    return "";  
-  }
-}
-
-//Función para ver estado de la variable de encender GSM
-String outputStateCdp(){
-if(Params.CDP_On == true){
-    return "checked";
   }else{
     return "";  
   }
@@ -193,35 +165,42 @@ String processor(const String& var){
 	{
 		String checkbox = "";
 
-		checkbox += "<label class=\"switch\"><input type=\"checkbox\" onchange=\"toggleCheckbox(this)\" id=\"12\" "+outputStateWifi()+"><span class=\"slider\"></span></label>";
+		checkbox += "<label class=\"switch\"><input type=\"checkbox\" onchange=\"toggleCheckbox(this)\" id=\"12\" "+outputStateWifi(Coms.Wifi.ON )+"><span class=\"slider\"></span></label>";
 		return checkbox;
 	}
     else if (var == "EON")
 	{
 		String checkbox = "";
 
-		checkbox += "<label class=\"switch\"><input type=\"checkbox\" onchange=\"toggleCheckbox(this)\" id=\"13\""+outputStateEth()+"><span class=\"slider\"></span></label>";
+		checkbox += "<label class=\"switch\"><input type=\"checkbox\" onchange=\"toggleCheckbox(this)\" id=\"13\""+outputStateWifi(Coms.ETH.ON )+"><span class=\"slider\"></span></label>";
 		return checkbox;
 	}
     else if (var == "EAUTO")
 	{
 		String checkbox = "";
 
-		checkbox += "<label class=\"switch\"><input type=\"checkbox\" onchange=\"toggleCheckbox(this)\" id=\"14\""+outputStateEthAuto()+"><span class=\"slider\"></span></label>";
+		checkbox += "<label class=\"switch\"><input type=\"checkbox\" onchange=\"toggleCheckbox(this)\" id=\"14\""+outputStateWifi(Coms.ETH.Auto)+"><span class=\"slider\"></span></label>";
 		return checkbox;
 	}
     else if (var == "MON")
 	{
 		String checkbox = "";
 
-		checkbox += "<label class=\"switch\"><input type=\"checkbox\" onchange=\"toggleCheckbox(this)\" id=\"15\""+outputStateGsm()+"><span class=\"slider\"></span></label>";
+		checkbox += "<label class=\"switch\"><input type=\"checkbox\" onchange=\"toggleCheckbox(this)\" id=\"15\""+outputStateWifi(Coms.GSM.ON)+"><span class=\"slider\"></span></label>";
 		return checkbox;
     }
     else if (var == "CDP")
 	{
 		String checkbox = "";
 
-		checkbox += "<label class=\"switch\"><input type=\"checkbox\" onchange=\"toggleCheckbox(this)\" id=\"16\""+outputStateCdp()+"><span class=\"slider\"></span></label>";
+		checkbox += "<label class=\"switch\"><input type=\"checkbox\" onchange=\"toggleCheckbox(this)\" id=\"16\""+outputStateWifi(Params.CDP_On)+"><span class=\"slider\"></span></label>";
+		return checkbox;
+    }
+    else if (var == "CDP")
+	{
+		String checkbox = "";
+
+		checkbox += "<label class=\"switch\"><input type=\"checkbox\" onchange=\"toggleCheckbox(this)\" id=\"17\""+outputStateWifi(Comands.conn_lock)+"><span class=\"slider\"></span></label>";
 		return checkbox;
     }
 	return String();
@@ -233,70 +212,66 @@ void InitServer(void) {
 	Serial.println(ESP.getFreeHeap());
 
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
-     SPIFFS.begin(false,"/spiffs",1,"WebServer");
+     //SPIFFS.begin(false,"/spiffs",1,"WebServer");
      request->send(SPIFFS, "/login.html");
-     SPIFFS.end();
+     //SPIFFS.end();
     });
 
     server.on("/login", HTTP_GET, [](AsyncWebServerRequest *request){
-    SPIFFS.begin(false,"/spiffs",1,"WebServer");
+    //SPIFFS.begin(false,"/spiffs",1,"WebServer");
      request->send(SPIFFS, "/login.html");
-     SPIFFS.end();
+     //SPIFFS.end();
     });
 
      server.on("/datos", HTTP_GET, [](AsyncWebServerRequest *request){
-      SPIFFS.begin(false,"/spiffs",1,"WebServer");
+      //SPIFFS.begin(false,"/spiffs",1,"WebServer");
      request->send(SPIFFS, "/datos.html",String(), false, processor);
-     SPIFFS.end();
+     Serial.println(Coms.GSM.ON);
+     //SPIFFS.end();
     });
 
     server.on("/style.css", HTTP_GET, [](AsyncWebServerRequest *request){
-    SPIFFS.begin(false,"/spiffs",1,"WebServer");
+    //SPIFFS.begin(false,"/spiffs",1,"WebServer");
     request->send(SPIFFS, "/style.css", "text/css");
-    SPIFFS.end();
+    //SPIFFS.end();
     });
 
     server.on("/get", HTTP_GET, [](AsyncWebServerRequest *request){
-      //request->send(SPIFFS, "/datos.html",String(), false, processor);
-        String ap;
-        String wifi_pass;
-        String ip1;
-        String ip2;
-        String gateway;
-        String mask; 
-        String apn;
-        String gsm_pass;
-   if(request->hasParam(AP))
-   {
-        ap = request->getParam(AP)->value();
-        Coms.Wifi.AP = ap;
-   } else if (request->hasParam(WIFI_PWD)){
-        wifi_pass = request->getParam(WIFI_PWD)->value();
-        Coms.Wifi.Pass = wifi_pass;
-   } else if (request->hasParam(IP1)){
-        ip1 = request->getParam(IP1)->value();
-        Coms.ETH.IP1.fromString(ip1);
-   } else if (request->hasParam(IP2)){
-        ip2 = request->getParam(IP2)->value();
-        Coms.ETH.IP2.fromString(ip2);
-   } else if (request->hasParam(GATEWAY)){
-        gateway = request->getParam(GATEWAY)->value();
-        Coms.ETH.Gateway.fromString(gateway);
-   } else if (request->hasParam(MASK)){
-        mask = request->getParam(MASK)->value();
-        Coms.ETH.Mask.fromString(mask);
-   } else if (request->hasParam(APN)){
-        apn = request->getParam(APN)->value();
-        Coms.GSM.APN = apn;
-   } else if (request->hasParam(GSM_PWD)){
-        gsm_pass = request->getParam(GSM_PWD)->value();
-        Coms.GSM.Pass = gsm_pass;
-   }     
-        //Serial.println(Coms.GSM.APN);
-        //Serial.println(Coms.GSM.Pass);
+    
+        Coms.Wifi.AP = request->getParam(AP)->value();
+        Coms.Wifi.Pass = request->getParam(WIFI_PWD)->value();
+        //Coms.ETH.IP1 = request->getParam(IP1)->value().toInt();
+        //Coms.ETH.IP2 = request->getParam(IP2)->value().toInt();
+        //Coms.ETH.Gateway = request->getParam(GATEWAY)->value().toInt();
+        //Coms.ETH.Mask = request->getParam(MASK)->value().toInt();
+        Coms.GSM.APN = request->getParam(APN)->value();
+        Coms.GSM.Pass = request->getParam(GSM_PWD)->value();
+        Comands.desired_current = request->getParam(CURR_COMAND)->value().toInt();
+        //Params.autentication_mode = request->getParam(AUTH_MODE)->value();
+        Params.CDP = request->getParam(UBI_CDP)->value().toInt();
+        Params.inst_current_limit = request->getParam(INST_CURR_LIM)->value().toInt();
+        Params.potencia_contratada = request->getParam(POT_CONT)->value().toInt();
+
+        Serial.println(Coms.Wifi.AP);
+        Serial.println(Coms.Wifi.Pass);
+        Serial.println(Coms.ETH.IP1 );
+        Serial.println(Coms.ETH.IP2);
+        Serial.println(Coms.ETH.Gateway);
+        Serial.println(Coms.ETH.Mask);
+        Serial.println(Coms.GSM.APN);
+        Serial.println(Coms.GSM.Pass);
+        Serial.println(Comands.desired_current);
+        Serial.println(Params.autentication_mode );
+        Serial.println(Params.CDP);
+        Serial.println(Params.inst_current_limit);
+        Serial.println(Params.potencia_contratada);
+
+
+    //SPIFFS.begin(false,"/spiffs",1,"WebServer");
+    request->send(SPIFFS, "/datos.html",String(), false, processor);
+    //SPIFFS.end();
     });
-    Serial.println(Coms.GSM.APN);
-    Serial.println(Coms.GSM.Pass);
+    
 
     server.on("/hp", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send_P(200, "text/plain", String(Status.HPT_status).c_str());
@@ -359,12 +334,13 @@ void InitServer(void) {
   });
 
   
-   
+  
    server.on("/update", HTTP_GET, [] (AsyncWebServerRequest *request) {
 
-	int entrada;
-	entrada = request->getParam(NUM_BOTON)->value().toInt();
-    switch(entrada){
+		int entrada;
+		entrada = request->getParam(NUM_BOTON)->value().toInt();
+		
+	    switch(entrada){
         case 1:
             Comands.start = true;
         break;
@@ -391,11 +367,13 @@ void InitServer(void) {
    server.on("/autoupdate", HTTP_GET, [] (AsyncWebServerRequest *request) {
     	bool estado;
         int numero;
-	
-		estado = request->getParam(ESTADO)->value().toInt() == 1 ;
+
+		
+		estado = request->getParam(ESTADO)->value().toInt();
         numero = request->getParam(SALIDA)->value().toInt();
         
-        switch (numero){
+         switch (numero)
+        {
             case 11:
                 if (estado){
                     memcpy(Params.autentication_mode,"AA",2);
@@ -403,7 +381,7 @@ void InitServer(void) {
                 else{
                     memcpy(Params.autentication_mode,"MA",2);
                 }
-                break;
+            break;
 
             case 12:
                 Coms.Wifi.ON = estado;
@@ -420,14 +398,16 @@ void InitServer(void) {
             case 16:
                 Params.CDP_On = estado;
                 break;
-            
-            default:
+            case 17:
+                Comands.conn_lock = estado;
                 break;
+        default:
+            break;
         }
-        Serial.println(Coms.Wifi.ON);
-        Serial.println(Coms.ETH.ON);
-   });
 
+        Serial.println(Coms.GSM.ON);
+   });
+  
    Serial.println(ESP.getFreeHeap());
 
 }
@@ -450,6 +430,8 @@ void WiFiEvent(arduino_event_id_t event, arduino_event_info_t info){
 			Serial.print("Connected with IP: ");
 			Serial.println(WiFi.localIP());
             Coms.Wifi.IP=WiFi.localIP();
+            server.begin();
+            InitServer();
             wifi_connected = true;
             wifi_connecting = false;
             ConfigFirebase.InternetConection=1;
@@ -622,6 +604,7 @@ void ComsTask(void *args){
             case STARTING:
                 
                 if(Coms.Wifi.ON && !wifi_connected && !wifi_connecting){
+                    SPIFFS.begin();
                     Station_Begin();
                     ComsMachineState=CONNECTING;
                 }
