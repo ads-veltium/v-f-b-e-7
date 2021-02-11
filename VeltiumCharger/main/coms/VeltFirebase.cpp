@@ -95,11 +95,9 @@ bool Real_Time_Database::Send_Command(String path, JsonDocument *doc, uint8_t Co
     Write_url = RTDB_url+path+".json?auth="+idToken;
 
     if(Command < 3){      
-        Write_url += +"&timeout=2500ms";  
-          
+        Write_url += +"&timeout=2500ms";           
         serializeJson(*doc, SerializedData);
     }
-
     
     RTDBClient.setURL(Write_url);
 

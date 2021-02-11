@@ -248,10 +248,12 @@ def write_rcs_tables_h_file(ifn, chlist):
     f.write(create_type_table(chlist))
     f.write('\n')
     
-
+import os
 def main():
     print('='*100)
-    chlist = read_chlist('art.csv')
+    lista = os.listdir('codegen/')
+    print (lista)
+    chlist = read_chlist('codegen/art.csv')
 
     for ch in chlist:
         print(ch)

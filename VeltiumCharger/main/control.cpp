@@ -286,9 +286,6 @@ void startSystem(void){
 		UpdateStatus.PSOC5_Act_Ver = ParseFirmwareVersion((char *)(PSOC5_version_firmware));
 
 		Coms.StartConnection = true;
-		Coms.ETH.ON  = true;
-		Coms.Wifi.ON = true;
-		Coms.Wifi.Auto = true;
 	#endif
 
 }
@@ -410,6 +407,8 @@ void procesar_bloque(uint16 tipo_bloque){
 			luminosidad=buffer_rx_local[231];
 			modifyCharacteristic(&buffer_rx_local[232], 1, DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE);
 			modifyCharacteristic(&buffer_rx_local[233], 1, MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[236], 1, COMS_CONFIGURATION_WIFI_ON);
+			modifyCharacteristic(&buffer_rx_local[237], 1, COMS_CONFIGURATION_ETH_ON);
 						
 
 			#ifdef CONNECTED
@@ -418,29 +417,14 @@ void procesar_bloque(uint16 tipo_bloque){
 				Params.inst_current_limit = buffer_rx_local[11];
 				Params.potencia_contratada=buffer_rx_local[229]+buffer_rx_local[230]*100;
 				Params.CDP 	  =  buffer_rx_local[232];
-				memcpy(Params.Fw_Update_mode, &buffer_rx_local[250],2);
+				memcpy(Params.Fw_Update_mode, &buffer_rx_local[234],2);
 				Comands.desired_current = buffer_rx_local[233];
 
-				//Coms
-				Coms.Wifi.ON    =  buffer_rx_local[234];
-				Coms.ETH.ON     =  buffer_rx_local[235];	
-				Coms.GSM.ON     =  buffer_rx_local[236];				
-				Coms.ETH.Auto   =  buffer_rx_local[237];	
-
-				Coms.ETH.IP1[0] =  buffer_rx_local[238];
-				Coms.ETH.IP1[1] =  buffer_rx_local[239];
-				Coms.ETH.IP1[2] =  buffer_rx_local[240];
-				Coms.ETH.IP1[3] =  buffer_rx_local[241];
-
-				Coms.ETH.Gateway[0] =  buffer_rx_local[242];
-				Coms.ETH.Gateway[1] =  buffer_rx_local[243];
-				Coms.ETH.Gateway[2] =  buffer_rx_local[244];
-				Coms.ETH.Gateway[3] =  buffer_rx_local[245];
-
-				Coms.ETH.Mask[0] =  buffer_rx_local[246];
-				Coms.ETH.Mask[1] =  buffer_rx_local[247];
-				Coms.ETH.Mask[2] =  buffer_rx_local[248];
-				Coms.ETH.Mask[3] =  buffer_rx_local[249];
+				Coms.Wifi.ON = buffer_rx_local[236];
+				Serial.println(Coms.Wifi.ON);
+				Coms.ETH.ON = buffer_rx_local[237];
+				Serial.println(Coms.ETH.ON);
+				
 
 				//Params.Sensor_Conectado = (buffer_rx_local[232]  >> 0) & 0x01;
 				//Params.CDP_On           = (buffer_rx_local[232]  >> 1) & 0x01;
@@ -538,6 +522,8 @@ void procesar_bloque(uint16 tipo_bloque){
 				Status.Measures.power_factor = buffer_rx_local[36];
 				Status.Measures.active_power = buffer_rx_local[38] + (buffer_rx_local[39] * 0x100);
 				Status.error_code = buffer_rx_local[41];
+
+
 
 			#endif
 		}
@@ -761,28 +747,42 @@ void procesar_bloque(uint16 tipo_bloque){
 		#endif
 	}
 	#ifdef CONNECTED
-	else if (COMS_CONFIGURATION_CHAR_HANDLE == tipo_bloque){
-		Coms.Wifi.ON    =  buffer_rx_local[0];
-		Coms.ETH.ON     =  buffer_rx_local[1];	
-		Coms.GSM.ON     =  buffer_rx_local[2];	
-		Coms.ETH.Auto   =  buffer_rx_local[3];	
-		if(!Coms.ETH.Auto){
-			Coms.ETH.IP1[0] =  buffer_rx_local[4];
-			Coms.ETH.IP1[1] =  buffer_rx_local[5];
-			Coms.ETH.IP1[2] =  buffer_rx_local[6];
-			Coms.ETH.IP1[3] =  buffer_rx_local[7];
 
-			Coms.ETH.Gateway[0] =  buffer_rx_local[8];
-			Coms.ETH.Gateway[1] =  buffer_rx_local[9];
-			Coms.ETH.Gateway[2] =  buffer_rx_local[10];
-			Coms.ETH.Gateway[3] =  buffer_rx_local[11];
-
-			Coms.ETH.Mask[0] =  buffer_rx_local[12];
-			Coms.ETH.Mask[1] =  buffer_rx_local[13];
-			Coms.ETH.Mask[2] =  buffer_rx_local[14];
-			Coms.ETH.Mask[3] =  buffer_rx_local[15];
+		else if(COMS_CONFIGURATION_WIFI_ON== tipo_bloque){
+			Coms.Wifi.ON    =  buffer_rx_local[0];
+			Serial.print("WIFI ON:");
+			Serial.println(Coms.Wifi.ON);
+			modifyCharacteristic(buffer_rx_local , 1, COMS_CONFIGURATION_WIFI_ON);
 		}
-	}
+		else if(COMS_CONFIGURATION_WIFI_START_PROV== tipo_bloque){
+			Serial.println("Starting Provisioning!");
+			Coms.StartProvisioning = true;
+		}
+		else if(COMS_CONFIGURATION_ETH_ON== tipo_bloque){
+			Coms.ETH.ON     =  buffer_rx_local[0];
+			Serial.print("ETH ON:");
+			Serial.println(Coms.ETH.ON);
+			modifyCharacteristic(buffer_rx_local,  1, COMS_CONFIGURATION_ETH_ON);
+		}
+		/*else if(COMS_CONFIGURATION_LAN_IP1){
+			
+			Coms.ETH.IP1[0] =  buffer_rx_local[0];
+			Coms.ETH.IP1[1] =  buffer_rx_local[1];
+			Coms.ETH.IP1[2] =  buffer_rx_local[2];
+			Coms.ETH.IP1[3] =  buffer_rx_local[3];
+			Serial.print("Direccion IP1 Recibida: ");
+			Serial.println(Coms.ETH.IP1.toString());
+			modifyCharacteristic(buffer_rx_local, 4, COMS_CONFIGURATION_LAN_IP1);
+		}
+		else if(COMS_CONFIGURATION_LAN_IP2== tipo_bloque){
+			Coms.ETH.IP2[0] =  buffer_rx_local[0];
+			Coms.ETH.IP2[1] =  buffer_rx_local[1];
+			Coms.ETH.IP2[2] =  buffer_rx_local[2];
+			Coms.ETH.IP2[3] =  buffer_rx_local[3];
+			Serial.print("Direccion IP1 Recibida: ");
+			Serial.println(Coms.ETH.IP2.toString());
+			modifyCharacteristic(buffer_rx_local, 4, COMS_CONFIGURATION_LAN_IP2);
+		}*/
 	#endif
 }
  
@@ -939,8 +939,7 @@ void UpdateTask(void *arg){
 	SPIFFS.begin(1,"/spiffs",1,"PSOC5");
 	File file = SPIFFS.open("/FreeRTOS_V6.cyacd"); 
 	if(!file || file.size() == 0){ 
-		Serial.println("Failed to open file for reading , intentandolo otra vez"); 
-		
+		Serial.println("Failed to open file for reading , intentandolo otra vez"); 		
 		file = SPIFFS.open("/FreeRTOS_V6.cyacd");
 		if(!file || file.size() == 0){
 			Serial.println("Imposible abrir");
@@ -1060,28 +1059,6 @@ void SendToPSOC5(uint16 attrHandle){
   uint8 len;
 
   switch(attrHandle){
-	  case COMS_CONFIGURATION_CHAR_HANDLE:
-		len=16;
-		data[0] = (uint8)(Coms.Wifi.ON);
-		data[1] = (uint8)(Coms.ETH.ON);	
-		data[2] = (uint8)(Coms.GSM.ON);	
-		data[3] = (uint8)(Coms.ETH.Auto);	
-
-		data[4] = (uint8)Coms.ETH.IP1[0];
-		data[5] = (uint8)Coms.ETH.IP1[1];
-		data[6] = (uint8)Coms.ETH.IP1[2];
-		data[7] = (uint8)Coms.ETH.IP1[3];
-
-		data[8] = (uint8)Coms.ETH.Gateway[0];
-		data[9] = (uint8)Coms.ETH.Gateway[1];
-		data[10] = (uint8)Coms.ETH.Gateway[2];
-		data[11] = (uint8)Coms.ETH.Gateway[3];
-
-		data[12] = (uint8)Coms.ETH.Mask[0];
-		data[13] = (uint8)Coms.ETH.Mask[1];
-		data[14] = (uint8)Coms.ETH.Mask[2];
-		data[15] = (uint8)Coms.ETH.Mask[3];
-	  break;
 
 	  case CONFIGURACION_AUTENTICATION_MODES_CHAR_HANDLE:
 	  	len = 2;

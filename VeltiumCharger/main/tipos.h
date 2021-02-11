@@ -59,6 +59,7 @@
 #define BLOQUE_INICIALIZACION	0xFFFF
 #define BLOQUE_STATUS			0xFFFE
 #define BLOQUE_DATE_TIME		0xFFFD
+#define BLOQUE_COMS				0xFFFC
 
 #define LED_MAXIMO_PWM      1200     // Sobre 1200 de periodo
 #define pdTICKS_TO_MS( xTicks )   ( ( uint32_t ) ( xTicks ) * 1000 / configTICK_RATE_HZ )
@@ -157,7 +158,7 @@ typedef struct{
 typedef struct{
 	bool ON;
 	bool Auto;
-	String AP;
+	uint8_t AP[32]={'\0'};
 	String Pass;
 	IPAddress IP;
 }carac_WIFI;
@@ -538,16 +539,18 @@ typedef struct{
 #define FWUPDATE_BIRD_DATA_PSEUDO_CHAR_HANDLE   (0x00AEu)
 #define FWUPDATE_BIRD_EPILOG_PSEUDO_CHAR_HANDLE (0x00AFu)
 
+
 //Custom handles for comunications
 #define COMS_CONFIGURATION_WIFI_ON	       (0x00B1u)
 #define COMS_CONFIGURATION_WIFI_SSID_1	   (0x00B3u)
 #define COMS_CONFIGURATION_WIFI_SSID_2	   (0x00B5u)
 #define COMS_CONFIGURATION_WIFI_START_PROV (0x00B7u)
-#define COMS_CONFIGURATION_WIFI_ETH_ON	   (0x00B9u)
-#define COMS_CONFIGURATION_WIFI_LAN_IP1	   (0x00BBu)
-#define COMS_CONFIGURATION_WIFI_LAN_IP2	   (0x00BDu)
+#define COMS_CONFIGURATION_ETH_ON	       (0x00B9u)
+#define COMS_CONFIGURATION_LAN_IP1	       (0x00BBu)
+#define COMS_CONFIGURATION_LAN_IP2	       (0x00BDu)
 
 #define COMS_FW_UPDATEMODE_CHAR_HANDLE     (0x00BFu)
+
 
 #endif
 

@@ -190,8 +190,8 @@ bool ReadFirebaseComs(String Path){
       Coms.last_ts_app_req=ts_app_req;
 
       Coms.Wifi.ON   = Lectura["wifi"]["on"];
-      Coms.Wifi.AP   = Lectura["wifi"]["apn"].as<String>();
-      Coms.Wifi.Pass = Lectura["wifi"]["passwd"].as<String>();
+      //Coms.Wifi.AP   = Lectura["wifi"]["apn"].as<String>();
+      //Coms.Wifi.Pass = Lectura["wifi"]["passwd"].as<String>();
 
       Coms.ETH.ON   = Lectura["eth"]["on"];
       Coms.ETH.Auto = Lectura["eth"]["auto"];
@@ -221,7 +221,7 @@ bool ReadFirebaseComs(String Path){
         Coms.GSM.Pass  = Lectura["modem"]["passwd"];
       #endif
       //Store coms in psoc5 flash memory
-      SendToPSOC5(COMS_CONFIGURATION_CHAR_HANDLE);
+      //SendToPSOC5(COMS_CONFIGURATION_CHAR_HANDLE);
 
       if(!Database.RTDB.Send_Command(Path+"/ts_dev_ack",&Lectura,TIMESTAMP)){
           return false;

@@ -1,11 +1,13 @@
 #include "Wifi_Station.h"
 
 
+
 /*********************** Globals ************************/
 
-static bool eth_link_up    = false;
+static bool eth_link_up     = false;
 static bool eth_connected   = false;
 static bool eth_connecting  = false;
+static bool eth_started     = false;
 static bool wifi_connected  = false;
 static bool wifi_connecting = false;
 
@@ -212,33 +214,23 @@ void InitServer(void) {
 	Serial.println(ESP.getFreeHeap());
 
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
-     //SPIFFS.begin(false,"/spiffs",1,"WebServer");
      request->send(SPIFFS, "/login.html");
-     //SPIFFS.end();
     });
 
     server.on("/login", HTTP_GET, [](AsyncWebServerRequest *request){
-    //SPIFFS.begin(false,"/spiffs",1,"WebServer");
      request->send(SPIFFS, "/login.html");
-     //SPIFFS.end();
     });
 
      server.on("/datos", HTTP_GET, [](AsyncWebServerRequest *request){
-      //SPIFFS.begin(false,"/spiffs",1,"WebServer");
      request->send(SPIFFS, "/datos.html",String(), false, processor);
-     Serial.println(Coms.GSM.ON);
-     //SPIFFS.end();
     });
 
     server.on("/style.css", HTTP_GET, [](AsyncWebServerRequest *request){
-    //SPIFFS.begin(false,"/spiffs",1,"WebServer");
     request->send(SPIFFS, "/style.css", "text/css");
-    //SPIFFS.end();
     });
 
     server.on("/get", HTTP_GET, [](AsyncWebServerRequest *request){
-    
-        Coms.Wifi.AP = request->getParam(AP)->value();
+        memcpy(Coms.Wifi.AP,request->getParam(AP)->value().c_str(),32);
         Coms.Wifi.Pass = request->getParam(WIFI_PWD)->value();
         //Coms.ETH.IP1 = request->getParam(IP1)->value().toInt();
         //Coms.ETH.IP2 = request->getParam(IP2)->value().toInt();
@@ -252,7 +244,7 @@ void InitServer(void) {
         Params.inst_current_limit = request->getParam(INST_CURR_LIM)->value().toInt();
         Params.potencia_contratada = request->getParam(POT_CONT)->value().toInt();
 
-        Serial.println(Coms.Wifi.AP);
+        Serial.println((char*)Coms.Wifi.AP);
         Serial.println(Coms.Wifi.Pass);
         Serial.println(Coms.ETH.IP1 );
         Serial.println(Coms.ETH.IP2);
@@ -367,8 +359,7 @@ void InitServer(void) {
    server.on("/autoupdate", HTTP_GET, [] (AsyncWebServerRequest *request) {
     	bool estado;
         int numero;
-
-		
+	
 		estado = request->getParam(ESTADO)->value().toInt();
         numero = request->getParam(SALIDA)->value().toInt();
         
@@ -384,10 +375,17 @@ void InitServer(void) {
             break;
 
             case 12:
-                Coms.Wifi.ON = estado;
+                while(Coms.Wifi.ON != estado){
+                    SendToPSOC5(estado,COMS_CONFIGURATION_WIFI_ON);
+                }
+                
                 break;
             case 13:
-                Coms.ETH.ON = estado;
+                while(Coms.ETH.ON != estado){
+                    SendToPSOC5(estado,COMS_CONFIGURATION_ETH_ON);
+                    delay(1);
+                }
+                
                 break;
             case 14:
                 Coms.ETH.Auto = estado;
@@ -399,13 +397,14 @@ void InitServer(void) {
                 Params.CDP_On = estado;
                 break;
             case 17:
-                Comands.conn_lock = estado;
+                
+                while(Comands.conn_lock != estado){
+                    SendToPSOC5(estado,STATUS_CONN_LOCK_STATUS_CHAR_INDEX);
+                }               
                 break;
         default:
             break;
         }
-
-        Serial.println(Coms.GSM.ON);
    });
   
    Serial.println(ESP.getFreeHeap());
@@ -426,15 +425,19 @@ void WiFiEvent(arduino_event_id_t event, arduino_event_info_t info){
             }
 		break;
 
-		case ARDUINO_EVENT_WIFI_STA_GOT_IP:
+		case ARDUINO_EVENT_WIFI_STA_GOT_IP:{
 			Serial.print("Connected with IP: ");
 			Serial.println(WiFi.localIP());
             Coms.Wifi.IP=WiFi.localIP();
-            server.begin();
-            InitServer();
+            uint8_t len=WiFi.SSID().length();
+            memcpy(Coms.Wifi.AP,WiFi.SSID().c_str(),len);
+            Serial.println((char*)Coms.Wifi.AP);
+            modifyCharacteristic((uint8_t*)Coms.Wifi.AP, 16, COMS_CONFIGURATION_WIFI_SSID_1);
+            //modifyCharacteristic((uint8_t*)Coms.Wifi.AP[16], 16, COMS_CONFIGURATION_WIFI_SSID_2);
             wifi_connected = true;
             wifi_connecting = false;
             ConfigFirebase.InternetConection=1;
+        }
 		break;
 
         case ARDUINO_EVENT_PROV_START:
@@ -490,9 +493,14 @@ void WiFiEvent(arduino_event_id_t event, arduino_event_info_t info){
             Serial.print(ETH.localIP());
             Serial.println();
             if(Coms.ETH.Auto){
-                Coms.ETH.IP1     = ETH.localIP();
+                Coms.ETH.IP1 = ETH.localIP();
+                modifyCharacteristic(&Coms.ETH.IP1[0], 4, COMS_CONFIGURATION_LAN_IP1);
+                modifyCharacteristic(&Coms.ETH.IP2[0], 4, COMS_CONFIGURATION_LAN_IP2);
+
                 Coms.ETH.Gateway = ETH.gatewayIP();
+                Serial.println(Coms.ETH.Gateway);
                 Coms.ETH.Mask    = ETH.subnetMask();
+                Serial.println(Coms.ETH.Mask);
                 ConfigFirebase.WriteComs = true;
             }
             eth_connected = true;
@@ -500,18 +508,21 @@ void WiFiEvent(arduino_event_id_t event, arduino_event_info_t info){
             ConfigFirebase.InternetConection=true; 
             break;
         case ARDUINO_EVENT_ETH_DISCONNECTED:
-            ConfigFirebase.InternetConection=false; 
+            eth_connected = false;
+            eth_link_up = false;
             if(Coms.Wifi.ON){
                 Station_Begin();
             }
             Serial.println("ETH Disconnected");
-            eth_link_up = false;
             
             break;
 
         case ARDUINO_EVENT_ETH_STOP:
             Serial.println("ETH Stopped");
             eth_connected = false;
+            if(Coms.Wifi.ON){
+                Station_Begin();
+            }
             break;
 
 	    default:
@@ -584,6 +595,7 @@ void ETH_begin(){
         ETH.config(Coms.ETH.IP1,Coms.ETH.Gateway,Coms.ETH.Mask, primaryDNS, secondaryDNS);
     }
 	eth_connecting = true;
+    eth_started = true;
 }
 
 void ComsTask(void *args){
@@ -603,8 +615,7 @@ void ComsTask(void *args){
 
             case STARTING:
                 
-                if(Coms.Wifi.ON && !wifi_connected && !wifi_connecting){
-                    SPIFFS.begin();
+                if(Coms.Wifi.ON && !wifi_connected && !wifi_connecting){            
                     Station_Begin();
                     ComsMachineState=CONNECTING;
                 }
@@ -624,6 +635,8 @@ void ComsTask(void *args){
                         delay(5000);
                     }
                     if(!ServidorArrancado){
+                        //SPIFFS.begin();
+                        SPIFFS.begin(false,"/spiffs",1,"WebServer");
                         server.begin();
                         InitServer();
                         ServidorArrancado = true;
@@ -633,6 +646,20 @@ void ComsTask(void *args){
                 break;
 
             case IDLE:   
+                //Comprobar si hemos perdido todas las conexiones
+                if(!eth_connected && !wifi_connected){
+                    ConfigFirebase.InternetConection=false;
+                }
+
+                //Arranque del provisioning
+                if(Coms.StartProvisioning){
+                    if(wifi_connected){
+                        Station_Stop();
+                    }
+                    Delete_Credentials();
+                    Station_Begin();
+                    Coms.StartProvisioning = false;
+                }
                 //Encendido de las interfaces          
                 if(Coms.Wifi.ON && !wifi_connected && !wifi_connecting && !eth_link_up ){
                     Station_Begin();
@@ -643,7 +670,9 @@ void ComsTask(void *args){
                     Coms.StartConnection=true;
                     Coms.ETH.ON = true;
                 }
-
+                if(Coms.ETH.ON && !eth_started){
+                    ETH_begin();
+                }
                 if(Coms.ETH.ON && !eth_connected && !eth_connecting && eth_link_up){
                     ETH_Restart();
                 }
@@ -669,21 +698,6 @@ void ComsTask(void *args){
                     Coms.StartProvisioning = false;
                 }
 
-
-                //Comprobar si hemos perdido todas las conexiones
-                if(!eth_connected && !wifi_connected){
-                    ConfigFirebase.InternetConection=false;
-                    ComsMachineState=DISCONNECTED;
-                }
-                break;
-            
-            case DISCONNECTING:
-                //Liberar recursos
-                eth_connecting  = false;
-                wifi_connecting = false;
-                wifi_connected  = false;
-                eth_connected   = false;
-                ComsMachineState=DISCONNECTED;
                 break;
 
             default:

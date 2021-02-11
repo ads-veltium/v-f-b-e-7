@@ -92,6 +92,7 @@ void MAIN_RESET_Write(uint8_t val);
 void controlInit(void);
 void UpdateTask(void *arg);
 void UpdateESP();
+void modifyCharacteristic(uint8* data, uint16 len, uint16 attrHandle);
 
 void SendToPSOC5(uint8 data, uint16 attrHandle);
 void SendToPSOC5(uint8 *data, uint16 len, uint16 attrHandle);
