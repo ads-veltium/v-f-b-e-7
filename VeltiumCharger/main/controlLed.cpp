@@ -81,7 +81,7 @@ void Kit (void){
 void LedControl_Task(void *arg){
 	uint8 subiendo=1, luminosidad_carga= 0, LedPointer =0,luminosidad_Actual=50, togle_led=0;
 	uint8 _LED_COLOR=0;
-	uint16 cnt_parpadeo=0, Delay= 20;
+	uint16 cnt_parpadeo=TIME_PARPADEO, Delay= 20;
 	uint8 Efectos=0;
 
 	initLeds();
@@ -132,62 +132,108 @@ void LedControl_Task(void *arg){
 		else{
 			
 			//Funcionamiento normal
-			if (luminosidad & 0x80 && (Led_color==HUE_BLUE || Led_color==HUE_PURPLE)) { //Cargando o actualizando		
-				uint8 lumin_limit=100;
-				Delay=50;
-				if(Status.Measures.instant_current>900){
-					lumin_limit=(32000-Status.Measures.instant_current)*100/32000;
-					if(lumin_limit<10){
-						lumin_limit=10;
+			if(Status.error_code == 0){
+				if (luminosidad & 0x80 && (Led_color==HUE_BLUE || Led_color==HUE_PURPLE)) { //Cargando o actualizando		
+					uint8 lumin_limit=100;
+					Delay=50;
+					if(Status.Measures.instant_current>900){
+						lumin_limit=(32000-Status.Measures.instant_current)*100/32000;
+						if(lumin_limit<10){
+							lumin_limit=10;
+						}
 					}
-				}
 
-				if(subiendo){
-					luminosidad_carga++;
-					if(luminosidad_carga>=lumin_limit){
-						subiendo=0;
+					if(subiendo){
+						luminosidad_carga++;
+						if(luminosidad_carga>=lumin_limit){
+							subiendo=0;
+						}
 					}
-				}
-				else{
-					luminosidad_carga--;
-					if(luminosidad_carga<=30){
-						subiendo=1;
+					else{
+						luminosidad_carga--;
+						if(luminosidad_carga<=30){
+							subiendo=1;
+						}
 					}
+					displayAll(luminosidad_carga,Led_color);
 				}
-				displayAll(luminosidad_carga,Led_color);
-			}
-			else if(luminosidad & 0x80){ //Parpadeo
+				else if(luminosidad & 0x80){ //Parpadeo
 
-				if(++cnt_parpadeo >= TIME_PARPADEO)
-				{
-					cnt_parpadeo = 0;
-					if(togle_led == 0)
+					if(++cnt_parpadeo >= TIME_PARPADEO)
 					{
-						togle_led = 1;
-						displayAll(0, 0);
+						cnt_parpadeo = 0;
+						if(togle_led == 0)
+						{
+							togle_led = 1;
+							displayAll(0, 0);
+						}
+						else
+						{
+							togle_led = 0;
+							displayAll((luminosidad & 0x7F), Led_color);
+						}
 					}
-					else
-					{
-						togle_led = 0;
-						displayAll((luminosidad & 0x7F), Led_color);
+				}
+				else if(luminosidad < 0x80){
+					Delay=50;
+					//control de saltos entre luminosidad
+					if(luminosidad-luminosidad_Actual>=3){
+						luminosidad_Actual++;
 					}
+					else if (luminosidad_Actual-luminosidad>=3){
+						luminosidad_Actual--;
+					}
+					else{
+						Delay=500;
+						luminosidad_carga = luminosidad;
+						luminosidad_Actual=luminosidad;
+					}
+					
+					displayAll(luminosidad_Actual,Led_color);	
 				}
 			}
-			else if(luminosidad < 0x80){
-				Delay=50;
-				//control de saltos entre luminosidad
-				if(luminosidad-luminosidad_Actual>=3){
-					luminosidad_Actual++;
+			else{//Si hay algun error
+				//Error transitorio				
+				if(Status.error_code <= (uint8)0x33 && Status.error_code != (uint8)0x30){
+					Delay=50;
+					Serial.println(cnt_parpadeo);
+					if(++cnt_parpadeo >= TIME_PARPADEO){
+						cnt_parpadeo = 0;
+						if(togle_led == 0)
+						{
+							togle_led = 1;
+							displayAll(0, 0);
+						}
+						else
+						{
+							togle_led = 0;
+							displayAll(100, ROJO);
+						}
+					}
 				}
-				else if (luminosidad_Actual-luminosidad>=3){
-					luminosidad_Actual--;
+				//Error grave
+				else if(Status.error_code == (uint8)0x60 || Status.error_code == (uint8)0x70 || Status.error_code == (uint8)0x30){
+					displayAll(100,ROJO);
+					Delay=1000;
 				}
-				else{
-					Delay=500;
-					luminosidad_Actual=luminosidad;
+				//Error instalacion
+				else if(Status.error_code == (uint8)0x40 || Status.error_code == (uint8)0x50){
+					Delay=50;
+					if(++cnt_parpadeo >= TIME_PARPADEO/2)
+					{
+						cnt_parpadeo = 0;
+						if(togle_led == 0)
+						{
+							togle_led = 1;
+							displayAll(luminosidad, AMARILLO);
+						}
+						else
+						{
+							togle_led = 0;
+							displayAll(100, ROJO);
+						}
+					}
 				}
-				
-				displayAll(luminosidad_Actual,Led_color);	
 			}
 
 		}	

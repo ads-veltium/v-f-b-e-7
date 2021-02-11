@@ -62,7 +62,7 @@
 #define TIMEOUT_TX_BLOQUE	10
 #define TIMEOUT_RX_BLOQUE	10
 #define TIMEOUT_INICIO		10
-#define TIME_PARPADEO		500 		// 500 mS (2seg)
+#define TIME_PARPADEO		50
 
 #define HEADER_RX			':'
 #define HEADER_TX			':'
