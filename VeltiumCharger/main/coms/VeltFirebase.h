@@ -47,7 +47,7 @@ class Real_Time_Database{
     #define READ      5
     #define READ_FW   6
 
-    String email, pass;
+    String deviceID;
     String idToken;
     String localId;
     uint16_t expiration;

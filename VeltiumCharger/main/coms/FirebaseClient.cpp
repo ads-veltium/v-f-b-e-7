@@ -16,9 +16,6 @@ Firebase Database   EXT_RAM_ATTR;
 StaticJsonDocument<1024>  Lectura        EXT_RAM_ATTR;
 StaticJsonDocument<1024>  Escritura      EXT_RAM_ATTR;
 
-const char* veltiumbackend_user             = "joelmartinez@veltium.com";
-const char* veltiumbackend_password         = "Escolapios2";
-
 String url;
 
 //Extern variables
@@ -43,10 +40,7 @@ uint16 ParseFirmwareVersion(String Texto){
 bool initFirebaseClient(){
 
     Serial.println("INIT Firebase Client");
-
-    Database.RTDB.email=veltiumbackend_user;
-    Database.RTDB.pass=veltiumbackend_password;
-
+    Database.RTDB.deviceID = ConfigFirebase.Device_Id;
     if(!Database.RTDB.LogIn()){
       return false;
     }

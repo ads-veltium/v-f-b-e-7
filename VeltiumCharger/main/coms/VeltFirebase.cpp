@@ -12,8 +12,8 @@ bool Real_Time_Database::LogIn(void){
     String AuthPostData;
     DynamicJsonDocument Response(4096);
 
-    AuthDoc["email"] = email;
-    AuthDoc["password"]  = pass;
+    AuthDoc["email"] = "charger+VCD"+deviceID+"@veltium.com";
+    AuthDoc["password"]  = "V3lt1um_C3c1l10_4m4s0rr41n";
     AuthDoc["returnSecureToken"] = true;
 
     serializeJson(AuthDoc, AuthPostData);
