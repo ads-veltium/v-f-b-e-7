@@ -402,7 +402,7 @@ void procesar_bloque(uint16 tipo_bloque){
 			modifyCharacteristic(&buffer_rx_local[217], 1, DOMESTIC_CONSUMPTION_FCT_CHAR_HANDLE);
 			modifyCharacteristic(&buffer_rx_local[218], 1, DOMESTIC_CONSUMPTION_FS_CHAR_HANDLE);
 			memcpy(deviceSerNum, &buffer_rx_local[219], 10);			
-			modifyCharacteristic(&buffer_rx_local[229], 2, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[229], 1, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_CHAR_HANDLE);
 			modifyCharacteristic(&buffer_rx_local[231], 1, LED_LUMIN_COLOR_LUMINOSITY_LEVEL_CHAR_HANDLE);
 			luminosidad=buffer_rx_local[231];
 			modifyCharacteristic(&buffer_rx_local[232], 1, DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE);
@@ -415,7 +415,9 @@ void procesar_bloque(uint16 tipo_bloque){
 				/************************ Set firebase Params **********************/
 				memcpy(Params.autentication_mode, &buffer_rx_local[214],2);
 				Params.inst_current_limit = buffer_rx_local[11];
-				Params.potencia_contratada=buffer_rx_local[229]+buffer_rx_local[230]*100;
+				Params.potencia_contratada=buffer_rx_local[229];
+				Serial.println("Potencia contratatda");
+				Serial.println(Params.potencia_contratada);
 				Params.CDP 	  =  buffer_rx_local[232];
 				memcpy(Params.Fw_Update_mode, &buffer_rx_local[234],2);
 				Comands.desired_current = buffer_rx_local[233];
@@ -718,10 +720,12 @@ void procesar_bloque(uint16 tipo_bloque){
 	}
 	else if(DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_CHAR_HANDLE == tipo_bloque)
 	{
-		modifyCharacteristic(buffer_rx_local, 2, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_CHAR_HANDLE);
+		modifyCharacteristic(buffer_rx_local, 1, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_CHAR_HANDLE);
 
 		#ifdef CONNECTED
-			Params.potencia_contratada=buffer_rx_local[0]+buffer_rx_local[1]*100;
+			Params.potencia_contratada=buffer_rx_local[0];
+			Serial.println("Potencia contratatda");
+			Serial.println(Params.potencia_contratada);
 		#endif
 	}
 	else if(ERROR_STATUS_ERROR_CODE_CHAR_HANDLE == tipo_bloque)

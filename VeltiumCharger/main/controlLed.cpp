@@ -195,7 +195,7 @@ void LedControl_Task(void *arg){
 			else{//Si hay algun error
 				//Error transitorio				
 				if(Status.error_code <= (uint8)0x33 && Status.error_code != (uint8)0x30){
-					Delay=50;
+					Delay=40;
 					Serial.println(cnt_parpadeo);
 					if(++cnt_parpadeo >= TIME_PARPADEO){
 						cnt_parpadeo = 0;
@@ -218,14 +218,14 @@ void LedControl_Task(void *arg){
 				}
 				//Error instalacion
 				else if(Status.error_code == (uint8)0x40 || Status.error_code == (uint8)0x50){
-					Delay=50;
-					if(++cnt_parpadeo >= TIME_PARPADEO/2)
+					Delay=10;
+					if(++cnt_parpadeo >= TIME_PARPADEO)
 					{
 						cnt_parpadeo = 0;
 						if(togle_led == 0)
 						{
 							togle_led = 1;
-							displayAll(luminosidad, AMARILLO);
+							displayAll(100, AMARILLO);
 						}
 						else
 						{

@@ -72,7 +72,7 @@
 //  56 KS                           1 RW   uint8       CD20 CE02 009A                    
 //  57 FCT                          1 RW   uint8       CD20 CE03 009C                    
 //  58 FS                           1 RW   uint8       CD20 CE04 009E                    
-//  59 Potencia_Contratada          1 RW   uint8       CD20 CE05 00A0                    
+//  59 Potencia_Contratada          2 RW   uint16      CD20 CE05 00A0                    
 //  60 DPC_Mode                     1 RW   uint8       CD20 CE06 00A2                    
 //  61 Error_Code                   1 R    uint8       CD30 CF00 00A5                    
 //  62 FwProlog                    16 W    uint8_array CD01 C0A7 00AD                    
@@ -115,7 +115,7 @@ static uint8_t table_size_for_idx[1+RCS_MAX_IDX] = {
     2,2,2,2,2,1,1,1,2,2,2,4,4,4,1,1,
     1,6,6,6,2,6,6,1,1,1,1,11,1,1,1,1,
     1,1,1,1,1,1,1,1,1,1,1,6,2,2,2,2,
-    10,10,2,10,8,8,1,2,1,1,1,1,1,1,16,4,
+    10,10,2,10,8,8,1,2,1,1,1,2,1,1,16,4,
     1,16,16,1,1,4,4
 };
 

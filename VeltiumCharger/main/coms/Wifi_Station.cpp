@@ -510,7 +510,7 @@ void WiFiEvent(arduino_event_id_t event, arduino_event_info_t info){
         case ARDUINO_EVENT_ETH_DISCONNECTED:
             eth_connected = false;
             eth_link_up = false;
-            if(Coms.Wifi.ON){
+            if(Coms.Wifi.ON && !wifi_connecting && !wifi_connected){
                 Station_Begin();
             }
             Serial.println("ETH Disconnected");
@@ -520,7 +520,7 @@ void WiFiEvent(arduino_event_id_t event, arduino_event_info_t info){
         case ARDUINO_EVENT_ETH_STOP:
             Serial.println("ETH Stopped");
             eth_connected = false;
-            if(Coms.Wifi.ON){
+            if(Coms.Wifi.ON && !wifi_connecting && !wifi_connected){
                 Station_Begin();
             }
             break;
@@ -542,7 +542,7 @@ void Station_Begin(){
     if(wifi_connecting || wifi_connected){
         Station_Stop();
     }
-
+    wifi_connecting = true;
 	//Descomentar e introducir credenciales para conectarse a piñon ¡¡¡¡Comentar lo de abajo!!!!
     /*if(!Coms.Wifi.Auto){   
          wifi_connecting = WiFi.begin(WIFI_SSID, WIFI_PASSWORD) == 3;
@@ -550,8 +550,10 @@ void Station_Begin(){
     else{*/
         //String SSID = "WF_";
         //SSID.concat(ConfigFirebase.Device_Id);
-        WiFiProv.beginProvision(WIFI_PROV_SCHEME_SOFTAP, WIFI_PROV_SCHEME_HANDLER_NONE, WIFI_PROV_SECURITY_1);
-        wifi_connecting = true;
+        char POP [20] ="WF_";
+        strcat(POP,ConfigFirebase.Device_Id);
+        WiFiProv.beginProvision(WIFI_PROV_SCHEME_SOFTAP, WIFI_PROV_SCHEME_HANDLER_NONE, WIFI_PROV_SECURITY_1, ConfigFirebase.Device_Ser_num, POP);
+        
     //}
 } 
 
