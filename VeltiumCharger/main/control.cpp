@@ -405,6 +405,8 @@ void procesar_bloque(uint16 tipo_bloque){
 			modifyCharacteristic(&buffer_rx_local[229], 1, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_CHAR_HANDLE);
 			modifyCharacteristic(&buffer_rx_local[231], 1, LED_LUMIN_COLOR_LUMINOSITY_LEVEL_CHAR_HANDLE);
 			luminosidad=buffer_rx_local[231];
+			Serial.println("CDP");
+			Serial.println(buffer_rx_local[232]);
 			modifyCharacteristic(&buffer_rx_local[232], 1, DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE);
 			modifyCharacteristic(&buffer_rx_local[233], 1, MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
 			modifyCharacteristic(&buffer_rx_local[236], 1, COMS_CONFIGURATION_WIFI_ON);
@@ -416,9 +418,8 @@ void procesar_bloque(uint16 tipo_bloque){
 				memcpy(Params.autentication_mode, &buffer_rx_local[214],2);
 				Params.inst_current_limit = buffer_rx_local[11];
 				Params.potencia_contratada=buffer_rx_local[229];
-				Serial.println("Potencia contratatda");
-				Serial.println(Params.potencia_contratada);
 				Params.CDP 	  =  buffer_rx_local[232];
+
 				memcpy(Params.Fw_Update_mode, &buffer_rx_local[234],2);
 				Comands.desired_current = buffer_rx_local[233];
 
