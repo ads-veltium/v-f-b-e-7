@@ -247,7 +247,6 @@ bool WiFiSTAClass::reconnect()
 bool WiFiSTAClass::disconnect(bool wifioff, bool eraseap)
 {
     wifi_config_t conf;
-
     if(WiFi.getMode() & WIFI_MODE_STA){
         if(eraseap){
             memset(&conf, 0, sizeof(wifi_config_t));
@@ -263,6 +262,24 @@ bool WiFiSTAClass::disconnect(bool wifioff, bool eraseap)
         }
         if(wifioff) {
              return WiFi.enableSTA(false);
+        }
+        return true;
+    }
+    else if(WiFi.getMode() & WIFI_MODE_APSTA){
+        if(eraseap){
+            memset(&conf, 0, sizeof(wifi_config_t));
+            if(esp_wifi_set_config(WIFI_IF_STA, &conf)){
+                log_e("clear config failed!");
+            }
+        }
+        esp_err_t error = esp_wifi_disconnect();
+        if(error){
+            log_e("disconnect failed!%i",error );
+
+            return false;
+        }
+        if(wifioff) {
+             return WiFi.enableAP(false);
         }
         return true;
     }

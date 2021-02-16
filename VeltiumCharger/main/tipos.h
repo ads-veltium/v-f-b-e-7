@@ -552,6 +552,9 @@ typedef struct{
 #define COMS_FW_UPDATEMODE_CHAR_HANDLE     (0x00BFu)
 
 
+#define ENERGY_PARTIAL_RECORD_1			   (0x00D0u)
+#define ENERGY_PARTIAL_RECORD_2			   (0x00D1u)
+
 #endif
 
 /* [] END OF FILE */

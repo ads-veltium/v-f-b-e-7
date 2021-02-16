@@ -43,6 +43,7 @@ const char* INST_CURR_LIM = "inst_curr_lim";
 const char* POT_CONT = "potencia_cont";
 const char* UBI_CDP = "ubi_cdp";
 
+uint8 AuthErrorCount =0;
 
 
 /************* Internal server configuration ****************/
@@ -377,13 +378,14 @@ void InitServer(void) {
             case 12:
                 while(Coms.Wifi.ON != estado){
                     SendToPSOC5(estado,COMS_CONFIGURATION_WIFI_ON);
+                    delay(50);
                 }
                 
                 break;
             case 13:
                 while(Coms.ETH.ON != estado){
                     SendToPSOC5(estado,COMS_CONFIGURATION_ETH_ON);
-                    delay(1);
+                    delay(50);
                 }
                 
                 break;
@@ -411,7 +413,6 @@ void InitServer(void) {
 
 }
 /********************* Conection Functions **************************/
-#include <nvs_flash.h>
 void WiFiEvent(arduino_event_id_t event, arduino_event_info_t info){ 
     //Serial.println(event);
 	switch (event) {
@@ -419,7 +420,20 @@ void WiFiEvent(arduino_event_id_t event, arduino_event_info_t info){
 //********************** WIFI Cases **********************//
 		case ARDUINO_EVENT_WIFI_STA_DISCONNECTED:
             wifi_connected = false;
-            if(info.wifi_sta_disconnected.reason!=WIFI_REASON_ASSOC_LEAVE){
+            if (info.wifi_sta_disconnected.reason == WIFI_REASON_AUTH_FAIL){
+                if(++AuthErrorCount >5){
+                    AuthErrorCount=0;
+                    Serial.println("Contraseña incorrecta, deteniendo sistema");  
+                    WiFiProv.StopProvision();
+                    wifi_connected = false;
+                    wifi_connecting = false;
+                    vTaskDelay(50);
+                    //Station_Begin();
+                }
+
+    
+            }
+            else if(info.wifi_sta_disconnected.reason!=WIFI_REASON_ASSOC_LEAVE ){
                 Serial.println("Reconectando...");
 			    WiFi.reconnect();
             }
@@ -429,49 +443,19 @@ void WiFiEvent(arduino_event_id_t event, arduino_event_info_t info){
 			Serial.print("Connected with IP: ");
 			Serial.println(WiFi.localIP());
             Coms.Wifi.IP=WiFi.localIP();
+
             uint8_t len=WiFi.SSID().length();
             memcpy(Coms.Wifi.AP,WiFi.SSID().c_str(),len);
             Serial.println((char*)Coms.Wifi.AP);
             modifyCharacteristic((uint8_t*)Coms.Wifi.AP, 16, COMS_CONFIGURATION_WIFI_SSID_1);
-            //modifyCharacteristic((uint8_t*)Coms.Wifi.AP[16], 16, COMS_CONFIGURATION_WIFI_SSID_2);
+            if(len>16){
+                modifyCharacteristic((uint8_t*)Coms.Wifi.AP[16], 16, COMS_CONFIGURATION_WIFI_SSID_2);
+            }
             wifi_connected = true;
             wifi_connecting = false;
             ConfigFirebase.InternetConection=1;
         }
 		break;
-
-        case ARDUINO_EVENT_PROV_START:
-            Serial.println("\nProvisioning started\nGive Credentials of your access point using \" Android app \"");
-            break;
-        case ARDUINO_EVENT_PROV_CRED_RECV: { 
-            Serial.println("\nReceived Wi-Fi credentials");
-            Serial.print("\tSSID : ");
-            Serial.println((const char *) info.prov_cred_recv.ssid);
-            Serial.print("\tPassword : ");
-            Serial.println((char const *) info.prov_cred_recv.password);
-            break;
-        }
-        case ARDUINO_EVENT_PROV_CRED_FAIL: { 
-            Serial.println("\nProvisioning failed!\nPlease reset to factory and retry provisioning\n");
-            if(info.prov_fail_reason == WIFI_PROV_STA_AUTH_ERROR){
-                Serial.println("\nWi-Fi AP password incorrect");
-            }
-            else
-                Serial.println("\nWi-Fi AP not found....Add API \" nvs_flash_erase() \" before beginProvision()");        
-            
-            nvs_flash_erase();
-            nvs_flash_init();
-            wifi_prov_mgr_deinit();
-            WiFiProv.beginProvision(WIFI_PROV_SCHEME_SOFTAP, WIFI_PROV_SCHEME_HANDLER_NONE, WIFI_PROV_SECURITY_1, "abcd1234", "Prov_123");
-
-            break;
-        }
-        case ARDUINO_EVENT_PROV_CRED_SUCCESS:
-            Serial.println("\nProvisioning Successful");
-            break;
-        case ARDUINO_EVENT_PROV_END:
-            Serial.println("\nProvisioning Ends");
-            break;
 
 //********************** ETH Cases **********************//
         case ARDUINO_EVENT_ETH_START:
@@ -510,9 +494,6 @@ void WiFiEvent(arduino_event_id_t event, arduino_event_info_t info){
         case ARDUINO_EVENT_ETH_DISCONNECTED:
             eth_connected = false;
             eth_link_up = false;
-            if(Coms.Wifi.ON && !wifi_connecting && !wifi_connected){
-                Station_Begin();
-            }
             Serial.println("ETH Disconnected");
             
             break;
@@ -520,9 +501,6 @@ void WiFiEvent(arduino_event_id_t event, arduino_event_info_t info){
         case ARDUINO_EVENT_ETH_STOP:
             Serial.println("ETH Stopped");
             eth_connected = false;
-            if(Coms.Wifi.ON && !wifi_connecting && !wifi_connected){
-                Station_Begin();
-            }
             break;
 
 	    default:
@@ -539,30 +517,22 @@ void Delete_Credentials(){
 void Station_Begin(){
     //Delete_Credentials();
     //Comprobar si esta encendida ya
+    Serial.println("Station begin");
     if(wifi_connecting || wifi_connected){
         Station_Stop();
     }
     wifi_connecting = true;
-	//Descomentar e introducir credenciales para conectarse a piñon ¡¡¡¡Comentar lo de abajo!!!!
-    /*if(!Coms.Wifi.Auto){   
-         wifi_connecting = WiFi.begin(WIFI_SSID, WIFI_PASSWORD) == 3;
-    }
-    else{*/
-        //String SSID = "WF_";
-        //SSID.concat(ConfigFirebase.Device_Id);
-        char POP [20] ="WF_";
-        strcat(POP,ConfigFirebase.Device_Id);
-        WiFiProv.beginProvision(WIFI_PROV_SCHEME_SOFTAP, WIFI_PROV_SCHEME_HANDLER_NONE, WIFI_PROV_SECURITY_1, ConfigFirebase.Device_Ser_num, POP);
-        
-    //}
+    char POP [20] ="WF_";
+    strcat(POP,ConfigFirebase.Device_Id);
+    WiFiProv.beginProvision(WIFI_PROV_SCHEME_SOFTAP, WIFI_PROV_SCHEME_HANDLER_NONE, WIFI_PROV_SECURITY_1, ConfigFirebase.Device_Ser_num, POP);
 } 
 
 void Station_Stop(){
-    wifi_connecting = false;
-    wifi_connected  = false;
     if(WiFi.disconnect(true)){
         Serial.println("Wifi Paused");
         delay(500);
+        wifi_connecting = false;
+        wifi_connected  = false;
         return;
     }
     Serial.println("Error Disconecting");
@@ -606,110 +576,66 @@ void ComsTask(void *args){
     bool ServidorArrancado = false;
     WiFi.onEvent(WiFiEvent);
     while (1){
-        switch (ComsMachineState){
-            case DISCONNECTED:
-                //Wait to Psoc 5 to send data
-                if(Coms.StartConnection){      
-                    Coms.StartConnection = false;    
-                    ComsMachineState=STARTING;
-                }
-                break;
 
-            case STARTING:
-                
-                if(Coms.Wifi.ON && !wifi_connected && !wifi_connecting){            
-                    Station_Begin();
-                    ComsMachineState=CONNECTING;
+        if(Coms.StartConnection){
+            //Arranque del provisioning
+            if(Coms.StartProvisioning){
+                Serial.println("Starting provisioning sistem");
+                if(ServidorArrancado){
+                    server.end();
+                    ServidorArrancado = false;
                 }
-
-                if(Coms.ETH.ON && !eth_connected && !eth_connecting){
-                    ETH_begin();
-                    ComsMachineState=CONNECTING;
+                if(wifi_connected){
+                    WiFiProv.StopProvision();
                 }
-                
-                break;
-
-            case CONNECTING:
-                //Wait for a conection sistem to retrieve a IP
-                if(ConfigFirebase.InternetConection){
-                    if(!Coms.ETH.Auto){
-                        //En este modo debemos dejar un pequeño delay
-                        delay(5000);
-                    }
-                    if(!ServidorArrancado){
-                        //SPIFFS.begin();
-                        SPIFFS.begin(false,"/spiffs",1,"WebServer");
-                        server.begin();
-                        InitServer();
-                        ServidorArrancado = true;
-                    }
-                    ComsMachineState=IDLE;
-                }
-                break;
-
-            case IDLE:   
-                //Comprobar si hemos perdido todas las conexiones
-                if(!eth_connected && !wifi_connected){
-                    ConfigFirebase.InternetConection=false;
-                }
-
-                //Arranque del provisioning
-                if(Coms.StartProvisioning){
-                    if(wifi_connected){
-                        Station_Stop();
-                    }
+                else{
                     Delete_Credentials();
-                    Station_Begin();
-                    Coms.StartProvisioning = false;
                 }
-                //Encendido de las interfaces          
-                if(Coms.Wifi.ON && !wifi_connected && !wifi_connecting && !eth_link_up ){
-                    Station_Begin();
-                }
-                if(wifi_connected && !Coms.Wifi.ON){
-                    Station_Stop();
 
-                    Coms.StartConnection=true;
-                    Coms.ETH.ON = true;
+                if(Coms.ETH.ON){
+                    ETH_Stop();
+                    Coms.ETH.ON=false;
                 }
-                if(Coms.ETH.ON && !eth_started){
+                Station_Begin();
+                Coms.Wifi.ON=true;
+                SendToPSOC5(Coms.Wifi.ON,COMS_CONFIGURATION_WIFI_ON);
+                Coms.StartProvisioning = false;
+                ComsMachineState=CONNECTING;
+            }
+
+            //Comprobar si hemos perdido todas las conexiones
+            if(!eth_connected && !wifi_connected){
+                ConfigFirebase.InternetConection=false;
+            }
+            //Encendido de las interfaces          
+            if(Coms.Wifi.ON && !wifi_connected && !wifi_connecting){
+                if(!Coms.ETH.ON || !eth_link_up){
+                    Station_Begin();
+                }                    
+            }
+            else if(wifi_connected && !Coms.Wifi.ON){
+                Station_Stop();
+            }
+            if(Coms.ETH.ON){
+                if(!eth_started){
                     ETH_begin();
                 }
-                if(Coms.ETH.ON && !eth_connected && !eth_connecting && eth_link_up){
-                    ETH_Restart();
-                }
-                if(!Coms.ETH.ON && eth_connected){
-                    ETH_Stop();
-
-                    //debug
-                    Coms.StartConnection=true;
-                    Coms.Wifi.ON=true;
-                }
-
-                if(Coms.RestartConection){
-                    Serial.println("restarting ethernet coms!");          
+                else if((!eth_connected && !eth_connecting && eth_link_up) || Coms.RestartConection){
                     ETH_Restart();
                     Coms.RestartConection = false;
                 }
-
-                if(Coms.StartProvisioning){
-                    Serial.println("Starting provisioning system");
-                    Delete_Credentials();
-                    Coms.Wifi.Auto = true;
-                    Station_Begin();
-                    Coms.StartProvisioning = false;
-                }
-
-                break;
-
-            default:
-                Serial.println("Error in ComsTask, state not implemented");
-            break;
+            }
+            else if(eth_connected){
+                ETH_Stop();
+            }
+            if(ConfigFirebase.InternetConection && !ServidorArrancado){
+                //SPIFFS.begin();
+                SPIFFS.begin(false,"/spiffs",1,"WebServer");
+                server.begin();
+                InitServer();
+                ServidorArrancado = true;
+            }
         }
-        /*if(LastStatus!= ComsMachineState){
-            Serial.printf("Maquina de estados de comunicacion pasa de % i a %i \n", LastStatus, ComsMachineState);
-            LastStatus= ComsMachineState;
-        }*/
         vTaskDelay(pdMS_TO_TICKS(500));
     }
 }

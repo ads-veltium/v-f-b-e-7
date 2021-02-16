@@ -131,10 +131,14 @@ bool wifiLowLevelInit(bool persistent){
     return true;
 }
 
-static bool wifiLowLevelDeinit(){
-    //deinit not working yet!
-    //esp_wifi_deinit();
-    return true;
+bool wifiLowLevelDeinit(){
+
+    if(lowLevelInitDone){
+        lowLevelInitDone = false;
+    	return esp_wifi_deinit() == ESP_OK;
+        
+    }
+    return false;
 }
 
 static bool _esp_wifi_started = false;

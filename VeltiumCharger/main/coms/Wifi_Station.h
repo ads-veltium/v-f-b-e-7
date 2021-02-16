@@ -24,6 +24,7 @@
 void InitServer(void) ;
 void ETH_begin();
 void Station_Begin();
+void Delete_Credentials();
 void ESP_Station_begin();
 void Station_Pause();
 void Station_Resume();

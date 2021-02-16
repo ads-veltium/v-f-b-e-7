@@ -236,30 +236,25 @@ bool ReadFirebaseParams(String Path){
 
       if(!memcmp(Params.autentication_mode,Lectura["auth_mode"].as<String>().c_str(),2)){
         SendToPSOC5(CONFIGURACION_AUTENTICATION_MODES_CHAR_HANDLE);
-        delay(10);
       }     
         
-      if(Lectura["inst_curr_limit"] != Params.inst_current_limit){
+      /*if(Lectura["inst_curr_limit"] != Params.inst_current_limit){
         Params.inst_current_limit  = Lectura["inst_curr_limit"];
         SendToPSOC5(Params.inst_current_limit, MEASURES_INSTALATION_CURRENT_LIMIT_CHAR_HANDLE);
-        delay(10);
       }
       
       if(Params.potencia_contratada != Lectura["contract_power"]){
         Params.potencia_contratada = Lectura["contract_power"];
         SendToPSOC5(Params.potencia_contratada, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_CHAR_HANDLE);
-        delay(10);
       }
       if(Params.CDP != Lectura["dpc"]){
         Params.CDP = Lectura["dpc"];
         SendToPSOC5(Params.CDP, DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE);
-        delay(10);
-      }
+      }*/
       
       if(memcmp(Params.Fw_Update_mode, Lectura["fw_auto"].as<String>().c_str(),2)!=0){
         memcpy(Params.Fw_Update_mode, Lectura["fw_auto"].as<String>().c_str(),2);
         SendToPSOC5((uint8* )Params.Fw_Update_mode, 2, COMS_FW_UPDATEMODE_CHAR_HANDLE);
-        delay(10);
       }
 
       
@@ -284,12 +279,16 @@ bool ReadFirebaseControl(String Path){
       Comands.start           = Lectura["start"]     ? true : Comands.start;
       Comands.stop            = Lectura["stop"]      ? true : Comands.stop;
       Comands.reset           = Lectura["reset"]     ? true : Comands.reset;
-      Comands.Newdata         = (Lectura["desired_current"] != Comands.desired_current && !Comands.Newdata) ? true : Comands.Newdata;
-      Comands.desired_current = (Lectura["desired_current"] >= 6 )? Lectura["desired_current"]:Comands.desired_current ;         
+
+      if(Comands.desired_current != Lectura["desired_current"] && !Comands.Newdata){   
+        Comands.desired_current = Lectura["desired_current"];
+        Comands.Newdata = true;
+      }
+            
       Comands.fw_update       = Lectura["fw_update"] ? true : Comands.fw_update;
       Comands.conn_lock       = Lectura["conn_lock"] ? true : Comands.conn_lock;
 
-      ConfigFirebase.WriteControl=true;
+      WriteFirebaseControl("/control");
       if(!Database.RTDB.Send_Command(Path+"/ts_dev_ack",&Lectura,TIMESTAMP)){
           return false;
       } 
@@ -454,6 +453,9 @@ void Firebase_Conn_Task(void *args){
   int UpdateCheckTimeout=0;
 
   while(1){
+    if(!ConfigFirebase.InternetConection && ConnectionState!= DISCONNECTED){
+      ConnectionState=DISCONNECTING;
+    }
     switch (ConnectionState){
     //Comprobar estado de la red
     case DISCONNECTED:
@@ -493,6 +495,7 @@ void Firebase_Conn_Task(void *args){
 
       //Si está conectado por ble no hace nada
       else if(serverbleGetConnected()){
+        ConfigFirebase.ClientConnected = false;
         break;
       }
 
@@ -545,6 +548,12 @@ void Firebase_Conn_Task(void *args){
           break;
         }
 
+        else if(ConfigFirebase.WriteStatus){
+          ConfigFirebase.WriteStatus=false;
+          ConnectionState = WRITTING_STATUS;
+          break;
+        }
+
         else if(ConfigFirebase.WriteParams){
           ConfigFirebase.WriteParams=false;
           ConnectionState = WRITTING_PARAMS;
@@ -567,7 +576,7 @@ void Firebase_Conn_Task(void *args){
           ConnectionState = WRITTING_TIMES;
           break;
         }
-        else if(++Params_Coms_Timeout>=3){
+        else if(++Params_Coms_Timeout>=5){
           ConnectionState = READING_PARAMS;
           Params_Coms_Timeout = 0;
           break; 
@@ -616,12 +625,13 @@ void Firebase_Conn_Task(void *args){
     case READING_CONTROL:
       Error_Count+=!ReadFirebaseControl("/control");
       ConnectionState=IDLE;
-      NextState=WRITTING_STATUS;
+      //NextState=WRITTING_STATUS;
       break;
 
     case READING_PARAMS:
       Error_Count+=!ReadFirebaseParams("/params");
       ConnectionState=IDLE;
+      NextState=WRITTING_STATUS;
       break;
     
     case READING_COMS: //Está preparado pero nunca lee las comunicaciones de firebase
@@ -669,7 +679,7 @@ void Firebase_Conn_Task(void *args){
       LastStatus= ConnectionState;
     }
     
-    vTaskDelay(pdMS_TO_TICKS(ConfigFirebase.ClientConnected ? 500:5000));
+    vTaskDelay(pdMS_TO_TICKS(ConfigFirebase.ClientConnected ? 400:5000));
 
   }
 }

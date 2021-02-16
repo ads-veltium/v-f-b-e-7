@@ -14,6 +14,7 @@ uint8_t UpdateType=0;
 extern carac_Update_Status 			UpdateStatus;
 extern carac_Firebase_Configuration ConfigFirebase;
 extern carac_Comands                Comands;
+extern carac_Coms					Coms;
 
 /* milestone: one-liner for reporting memory usage */
 void milestone(const char* mname)
@@ -280,7 +281,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 
 				uint32_t successCode = 0x00000000;
 				//Empezar el sistema de actualizacion
-				#ifdef USE_COMS
+				#ifdef USE_
 					if(getfirebaseClientStatus())ConfigFirebase.StopSistem=true;
 				#endif
 				UpdateStatus.DescargandoArchivo=1;
@@ -306,9 +307,9 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 				else if(strstr (signature,"VELT")){
 					Serial.println("Updating VELT");
 					UpdateType= VELT_UPDATE;
-
+					SPIFFS.end();
 					if(!SPIFFS.begin(1,"/spiffs",1,"PSOC5")){
-						SPIFFS.end();
+						SPIFFS.end();					
 						SPIFFS.begin(1,"/spiffs",1,"PSOC5");
 					}
 					if(SPIFFS.exists("/FreeRTOS_V6.cyacd")){
@@ -370,6 +371,10 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 				return;
 			}
 
+			if(handle == COMS_CONFIGURATION_WIFI_START_PROV){
+				Coms.StartProvisioning = true;
+				return;
+			}
 			
 			// if we are here, we are authenticated.
 			// send payload downstream.
