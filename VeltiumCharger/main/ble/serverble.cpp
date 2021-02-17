@@ -118,10 +118,6 @@ void serverbleSetCharacteristic ( uint8_t *data, int len, uint16_t handle )
 		return;
 	}
 	// set characteristic value using selector mechanism
-	if(handle==0x00A0u){
-        Serial.println(data[0]);
-		Serial.println(data[1]);
-    }
 	rcs_server_set_chr_value(handle, data, len);
 }
 
