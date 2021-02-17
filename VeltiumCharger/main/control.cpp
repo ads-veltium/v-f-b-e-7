@@ -560,7 +560,7 @@ void procesar_bloque(uint16 tipo_bloque){
 		modifyCharacteristic(&buffer_rx_local[24], 6, TIME_DATE_CHARGING_STOP_TIME_CHAR_HANDLE);
 
 		#ifdef CONNECTED
-			int TimeStamp = Convert_To_Epoch(&buffer_rx_local[6]);
+			int TimeStamp = (Convert_To_Epoch(&buffer_rx_local[6]));
 			if(TimeStamp!=Status.Time.connect_date_time){
 				Status.Time.connect_date_time = TimeStamp;
 				ConfigFirebase.WriteTime = true;
@@ -966,18 +966,6 @@ void UpdateTask(void *arg){
 	unsigned long blVer=0;
 	unsigned char rowData[512];
 	SPIFFS.begin();
-	/*File root = SPIFFS.open("/");
- 
-	File files = root.openNextFile();
-	
-	while(files){
-	
-		Serial.print("FILE: ");
-		Serial.println(files.name());
-	
-		files = root.openNextFile();
-	}
-*/
 	File file;
 	file = SPIFFS.open("/FreeRTOS_V6.cyacd"); 	
 	if(!file || file.size() == 0){ 

@@ -94,10 +94,10 @@ bool WriteFirebaseTimes(String Path){
   Escritura.clear();
 
   //Tiempos
-  Escritura["connect_ts"]           = Status.Time.connect_date_time;
-  Escritura["disconnect_ts"] = Status.Time.disconnect_date_time;
-  Escritura["charge_start_ts"]    = Status.Time.charge_start_time;
-  Escritura["charge_stop_ts"]     = Status.Time.charge_stop_time;
+  Escritura["connect_ts"]         = Status.Time.connect_date_time * 1000;
+  Escritura["disconnect_ts"]      = Status.Time.disconnect_date_time * 1000;
+  Escritura["charge_start_ts"]    = Status.Time.charge_start_time * 1000;
+  Escritura["charge_stop_ts"]     = Status.Time.charge_stop_time * 1000;
 
   if(Database.RTDB.Send_Command(Path,&Escritura,UPDATE)){     
     return true;

@@ -2,7 +2,7 @@
 // Copyright Benoit Blanchon 2014-2021
 // MIT License
 
-#define ARDUINOJSON_USE_LONG_LONG 0
+#define ARDUINOJSON_USE_LONG_LONG 1
 #include <ArduinoJson.h>
 
 #if defined(__SIZEOF_LONG__) && __SIZEOF_LONG__ >= 8

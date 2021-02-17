@@ -83,10 +83,10 @@ typedef struct{
 
 typedef struct{
 
-	int connect_date_time;
-	int disconnect_date_time;
-	int charge_start_time;
-	int charge_stop_time;
+	long long connect_date_time;
+	long long disconnect_date_time;
+	long long charge_start_time;
+	long long charge_stop_time;
 } caract_date_time;
 
 typedef struct{

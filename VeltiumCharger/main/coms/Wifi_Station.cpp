@@ -115,6 +115,7 @@ String processor(const String& var){
 	{
 		return String(Status.Measures.consumo_domestico);
 	}
+    /*
     else if (var == "CONT")
 	{
 		return String(Status.Time.connect_date_time);
@@ -129,8 +130,8 @@ String processor(const String& var){
 	}
     else if (var == "STOPTIME")
 	{
-		return String(Status.Time.charge_stop_time);
-	}
+		return Status.Time.charge_stop_time.toString();
+	}*/
 	else if (var=="CORRIENTE")
 	{
 		return String(Status.Measures.instant_current);
