@@ -549,8 +549,6 @@ void procesar_bloque(uint16 tipo_bloque){
 				Status.error_code = buffer_rx_local[16];
 				Status.Trifasico= buffer_rx_local[80]==3;
 
-				Status.Trifasico ? Serial.println("Equipo Trifasico"):Serial.println("Equipo Monofasico");
-
 
 				if(Status.Trifasico){
 					Status.MeasuresB.instant_current = buffer_rx_local[38] + (buffer_rx_local[39] * 0x100);
