@@ -183,10 +183,11 @@ typedef struct{
 }carac_MODEM;
 
 typedef struct{
-	bool StartConnection   = false;;
+	bool StartConnection   = false;
 	bool StartProvisioning = false;
 	bool RemoveCredentials = false;
 	bool RestartConection  = false;
+	bool Provisioning 	   = false;
 	carac_WIFI   Wifi;
 	carac_ETH     ETH;
 	carac_MODEM   GSM;

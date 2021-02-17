@@ -50,7 +50,7 @@ static esp_err_t custom_prov_data_handler(uint32_t session_id, const uint8_t *in
     return ESP_OK;
 }
 
-void WiFiProvClass :: beginProvision(prov_scheme_t prov_scheme, scheme_handler_t scheme_handler, wifi_prov_security_t security, const char * pop, const char *service_name, const char *service_key, uint8_t * uuid)
+uint8_t WiFiProvClass :: beginProvision(prov_scheme_t prov_scheme, scheme_handler_t scheme_handler, wifi_prov_security_t security, const char * pop, const char *service_name, bool provisioning, const char *service_key, uint8_t * uuid)
 {
     bool provisioned = false;
     static char service_name_temp[32];
@@ -66,16 +66,21 @@ void WiFiProvClass :: beginProvision(prov_scheme_t prov_scheme, scheme_handler_t
     wifiLowLevelInit(true);
     if(wifi_prov_mgr_init(config) != ESP_OK){
     	log_e("wifi_prov_mgr_init failed!");
-    	return;
+    	return 0;
     }
     
     if(wifi_prov_mgr_is_provisioned(&provisioned) != ESP_OK){
         log_e("%i",wifi_prov_mgr_is_provisioned(&provisioned));
     	log_e("wifi_prov_mgr_is_provisioned failed!");
     	wifi_prov_mgr_deinit();
-    	return;
+    	return 0;
     }
     if(provisioned == false) {
+        if(!provisioning){
+            StopProvision();
+            wifi_prov_mgr_deinit();
+            return 6;
+        }
 
         if(service_name == NULL) {
             get_device_service_name(prov_scheme, service_name_temp, 32);
@@ -89,7 +94,7 @@ void WiFiProvClass :: beginProvision(prov_scheme_t prov_scheme, scheme_handler_t
             }
         if(wifi_prov_mgr_start_provisioning(security, pop, service_name, service_key) != ESP_OK){
         	log_e("wifi_prov_mgr_start_provisioning failed!");
-        	return;
+        	return 0;
         }
     } else {
         log_i("Already Provisioned");
@@ -102,7 +107,9 @@ void WiFiProvClass :: beginProvision(prov_scheme_t prov_scheme, scheme_handler_t
         esp_wifi_start();        
         wifi_prov_mgr_deinit();
         WiFi.begin();
+        return 0;
     }
+    return 0;
 }
 
 bool WiFiProvClass::StopProvision(){

@@ -67,7 +67,7 @@ uint8 status_hpt_anterior[2] = {'0','V' };
 uint16 inst_current_anterior = 0x0000;
 uint16 cnt_diferencia = 30;
 
-uint8 version_firmware[11] = {"VBLE2_0505"};	
+uint8 version_firmware[11] = {"VBLE2_0504"};	
 uint8 PSOC5_version_firmware[11] ;		
 
 uint8 systemStarted = 0;
@@ -226,10 +226,10 @@ void controlTask(void *arg)
 							}
 
 						}
-						if(++TimeoutMainDisconnect>1500){
+						if(++TimeoutMainDisconnect>3000){
 							Serial.println("Main reset detected");
-							MAIN_RESET_Write(0);						
-							ESP.restart();
+							//MAIN_RESET_Write(0);						
+							//ESP.restart();
 						}
 						else
 							cnt_timeout_tx--;
@@ -965,16 +965,32 @@ void UpdateTask(void *arg){
 	unsigned char checksum ;
 	unsigned long blVer=0;
 	unsigned char rowData[512];
-
-	File file = SPIFFS.open("/FreeRTOS_V6.cyacd"); 
-	Serial.println(file.size());
+	SPIFFS.begin();
+	/*File root = SPIFFS.open("/");
+ 
+	File files = root.openNextFile();
+	
+	while(files){
+	
+		Serial.print("FILE: ");
+		Serial.println(files.name());
+	
+		files = root.openNextFile();
+	}
+*/
+	File file;
+	file = SPIFFS.open("/FreeRTOS_V6.cyacd"); 	
 	if(!file || file.size() == 0){ 
-		Serial.println("Failed to open file for reading , intentandolo otra vez"); 		
+		file.close();
+		SPIFFS.end();
+		Serial.println("El spiffs parece cerrado, intentandolo otra vez"); 		
+		SPIFFS.begin(0,"/spiffs",1,"PSOC5");
 		file = SPIFFS.open("/FreeRTOS_V6.cyacd");
 		if(!file || file.size() == 0){
 			Serial.println("Imposible abrir");
 		}
 	}
+	Serial.println(file.size());
 	if(file){
 		//Leer la primera linea y obtener los datos del chip
 		Buffer=file.readStringUntil('\n'); 

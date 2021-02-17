@@ -420,15 +420,16 @@ void WiFiEvent(arduino_event_id_t event, arduino_event_info_t info){
 //********************** WIFI Cases **********************//
 		case ARDUINO_EVENT_WIFI_STA_DISCONNECTED:
             wifi_connected = false;
-            if (info.wifi_sta_disconnected.reason == WIFI_REASON_AUTH_FAIL){
-                if(++AuthErrorCount >5){
+            if (info.wifi_sta_disconnected.reason == WIFI_REASON_AUTH_FAIL || info.wifi_sta_disconnected.reason == WIFI_REASON_CONNECTION_FAIL){
+                if(++AuthErrorCount > 5){
                     AuthErrorCount=0;
                     Serial.println("Contraseña incorrecta, deteniendo sistema");  
                     WiFiProv.StopProvision();
                     wifi_connected = false;
                     wifi_connecting = false;
+                    Coms.Wifi.ON = 0;
+                    SendToPSOC5(Coms.Wifi.ON,COMS_CONFIGURATION_WIFI_ON);
                     vTaskDelay(50);
-                    //Station_Begin();
                 }
 
     
@@ -436,6 +437,10 @@ void WiFiEvent(arduino_event_id_t event, arduino_event_info_t info){
             else if(info.wifi_sta_disconnected.reason!=WIFI_REASON_ASSOC_LEAVE ){
                 Serial.println("Reconectando...");
 			    WiFi.reconnect();
+            }
+            else{
+                Serial.println(event);
+                Serial.println(info.wifi_sta_disconnected.reason);
             }
 		break;
 
@@ -450,6 +455,10 @@ void WiFiEvent(arduino_event_id_t event, arduino_event_info_t info){
             modifyCharacteristic((uint8_t*)Coms.Wifi.AP, 16, COMS_CONFIGURATION_WIFI_SSID_1);
             if(len>16){
                 modifyCharacteristic((uint8_t*)Coms.Wifi.AP[16], 16, COMS_CONFIGURATION_WIFI_SSID_2);
+            }
+            if(Coms.Provisioning){
+                MAIN_RESET_Write(0);
+                ESP.restart();
             }
             wifi_connected = true;
             wifi_connecting = false;
@@ -515,7 +524,7 @@ void Delete_Credentials(){
 
 
 void Station_Begin(){
-    //Delete_Credentials();
+    
     //Comprobar si esta encendida ya
     Serial.println("Station begin");
     if(wifi_connecting || wifi_connected){
@@ -524,7 +533,13 @@ void Station_Begin(){
     wifi_connecting = true;
     char POP [20] ="WF_";
     strcat(POP,ConfigFirebase.Device_Id);
-    WiFiProv.beginProvision(WIFI_PROV_SCHEME_SOFTAP, WIFI_PROV_SCHEME_HANDLER_NONE, WIFI_PROV_SECURITY_1, ConfigFirebase.Device_Ser_num, POP);
+    uint8 result = WiFiProv.beginProvision(WIFI_PROV_SCHEME_SOFTAP, WIFI_PROV_SCHEME_HANDLER_NONE, WIFI_PROV_SECURITY_1, ConfigFirebase.Device_Ser_num, POP,Coms.StartProvisioning);
+    if(result == 6){
+        Serial.println("Not provisioned and not provisioning!");
+        WiFiProv.StopProvision();
+        Coms.Wifi.ON=false;
+        SendToPSOC5(Coms.Wifi.ON,COMS_CONFIGURATION_WIFI_ON);
+    }
 } 
 
 void Station_Stop(){
@@ -589,7 +604,11 @@ void ComsTask(void *args){
                     WiFiProv.StopProvision();
                 }
                 else{
-                    Delete_Credentials();
+                    wifi_config_t conf;
+                    memset(&conf, 0, sizeof(wifi_config_t));
+                    if(esp_wifi_set_config(WIFI_IF_STA, &conf)){
+                        log_e("clear config failed!");
+                    }
                 }
 
                 if(Coms.ETH.ON){
@@ -600,6 +619,7 @@ void ComsTask(void *args){
                 Coms.Wifi.ON=true;
                 SendToPSOC5(Coms.Wifi.ON,COMS_CONFIGURATION_WIFI_ON);
                 Coms.StartProvisioning = false;
+                Coms.Provisioning = true;
                 ComsMachineState=CONNECTING;
             }
 
