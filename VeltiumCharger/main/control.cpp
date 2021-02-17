@@ -396,47 +396,43 @@ void procesar_bloque(uint16 tipo_bloque){
 			printf("Change name set device name to %s\r\n",device_ID);
 			modifyCharacteristic(device_ID, 11, VCD_NAME_USERS_CHARGER_DEVICE_ID_CHAR_HANDLE);
 			modifyCharacteristic(&buffer_rx_local[11], 1, MEASURES_INSTALATION_CURRENT_LIMIT_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[12], 2, TIME_DATE_DELTA_DELAY_FOR_CHARGING_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[14], 6, TIME_DATE_CHARGING_START_TIME_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[20], 6, TIME_DATE_CHARGING_STOP_TIME_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[26], 1, CHARGING_INSTANT_DELAYED_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[27], 1, CHARGING_START_STOP_START_MODE_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[28], 168, SCHED_CHARGING_SCHEDULE_MATRIX_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[196], 1, VCD_NAME_USERS_USERS_NUMBER_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[197], 1, VCD_NAME_USERS_UI_X_USER_ID_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[198], 1, VCD_NAME_USERS_USER_INDEX_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[199], 10, VERSIONES_VERSION_FIRMWARE_CHAR_HANDLE);
-			memcpy(PSOC5_version_firmware, &buffer_rx_local[199],10);
+			modifyCharacteristic(&buffer_rx_local[12], 6, TIME_DATE_CHARGING_START_TIME_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[18], 6, TIME_DATE_CHARGING_STOP_TIME_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[24], 1, CHARGING_INSTANT_DELAYED_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[25], 1, CHARGING_START_STOP_START_MODE_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[26], 168, SCHED_CHARGING_SCHEDULE_MATRIX_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[194], 1, VCD_NAME_USERS_USERS_NUMBER_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[195], 1, VCD_NAME_USERS_UI_X_USER_ID_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[196], 1, VCD_NAME_USERS_USER_INDEX_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[197], 10, VERSIONES_VERSION_FIRMWARE_CHAR_HANDLE);
+			memcpy(PSOC5_version_firmware, &buffer_rx_local[197],10);
 			modifyCharacteristic(version_firmware, 10, VERSIONES_VERSION_FIRM_BLE_CHAR_HANDLE);
 
-			modifyCharacteristic(&buffer_rx_local[209], 2, RECORDING_REC_CAPACITY_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[211], 2, RECORDING_REC_LAST_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[213], 1, RECORDING_REC_LAPS_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[207], 2, RECORDING_REC_CAPACITY_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[209], 2, RECORDING_REC_LAST_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[211], 1, RECORDING_REC_LAPS_CHAR_HANDLE);
 
-			modifyCharacteristic(&buffer_rx_local[214], 2, CONFIGURACION_AUTENTICATION_MODES_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[216], 1, DOMESTIC_CONSUMPTION_KS_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[217], 1, DOMESTIC_CONSUMPTION_FCT_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[218], 1, DOMESTIC_CONSUMPTION_FS_CHAR_HANDLE);
-			memcpy(deviceSerNum, &buffer_rx_local[219], 10);			
-			modifyCharacteristic(&buffer_rx_local[229], 2, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[231], 1, LED_LUMIN_COLOR_LUMINOSITY_LEVEL_CHAR_HANDLE);
-			luminosidad=buffer_rx_local[231];
-			modifyCharacteristic(&buffer_rx_local[232], 1, DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[233], 1, MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[236], 1, COMS_CONFIGURATION_WIFI_ON);
-			modifyCharacteristic(&buffer_rx_local[237], 1, COMS_CONFIGURATION_ETH_ON);						
+			modifyCharacteristic(&buffer_rx_local[212], 2, CONFIGURACION_AUTENTICATION_MODES_CHAR_HANDLE);
+			memcpy(deviceSerNum, &buffer_rx_local[217], 10);			
+			modifyCharacteristic(&buffer_rx_local[227], 2, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[229], 1, LED_LUMIN_COLOR_LUMINOSITY_LEVEL_CHAR_HANDLE);
+			luminosidad=buffer_rx_local[229];
+			modifyCharacteristic(&buffer_rx_local[230], 1, DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[231], 1, MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[234], 1, COMS_CONFIGURATION_WIFI_ON);
+			modifyCharacteristic(&buffer_rx_local[235], 1, COMS_CONFIGURATION_ETH_ON);						
 
 			#ifdef CONNECTED
 				/************************ Set firebase Params **********************/
-				memcpy(Params.autentication_mode, &buffer_rx_local[214],2);
+				memcpy(Params.autentication_mode, &buffer_rx_local[212],2);
 				Params.inst_current_limit = buffer_rx_local[11];
-				Params.potencia_contratada=buffer_rx_local[229]+buffer_rx_local[230]*0x100;
-				Params.CDP 	  =  buffer_rx_local[232];
-				memcpy(Params.Fw_Update_mode, &buffer_rx_local[234],2);
-				Comands.desired_current = buffer_rx_local[233];
+				Params.potencia_contratada=buffer_rx_local[227]+buffer_rx_local[228]*0x100;
+				Params.CDP 	  =  buffer_rx_local[230];
+				memcpy(Params.Fw_Update_mode, &buffer_rx_local[232],2);
+				Comands.desired_current = buffer_rx_local[231];
 
-				Coms.Wifi.ON = buffer_rx_local[236];
-				Coms.ETH.ON = buffer_rx_local[237];				
+				Coms.Wifi.ON = buffer_rx_local[234];
+				Coms.ETH.ON = buffer_rx_local[235];				
 
 				//Params.Sensor_Conectado = (buffer_rx_local[232]  >> 0) & 0x01;
 				//Params.CDP_On           = (buffer_rx_local[232]  >> 1) & 0x01;
@@ -450,16 +446,16 @@ void procesar_bloque(uint16 tipo_bloque){
 			dispositivo_inicializado = 1;
 		}
 		else{
-			modifyCharacteristic(&buffer_rx_local[14], 6, TIME_DATE_CHARGING_START_TIME_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[20], 6, TIME_DATE_CHARGING_STOP_TIME_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[209], 2, RECORDING_REC_CAPACITY_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[211], 2, RECORDING_REC_LAST_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[213], 1, RECORDING_REC_LAPS_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[12], 6, TIME_DATE_CHARGING_START_TIME_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[18], 6, TIME_DATE_CHARGING_STOP_TIME_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[207], 2, RECORDING_REC_CAPACITY_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[209], 2, RECORDING_REC_LAST_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[211], 1, RECORDING_REC_LAPS_CHAR_HANDLE);
 		}	
 	}
 	else if(BLOQUE_STATUS == tipo_bloque){	
 	
-		if(buffer_rx_local[81]==0x36){
+		if(buffer_rx_local[48]==0x36){
 			TimeoutMainDisconnect = 0;	
 			//Leds
 			modifyCharacteristic(buffer_rx_local, 1, LED_LUMIN_COLOR_LUMINOSITY_LEVEL_CHAR_HANDLE);
@@ -519,13 +515,7 @@ void procesar_bloque(uint16 tipo_bloque){
 
 			modifyCharacteristic(&buffer_rx_local[19], 2, MEASURES_INST_VOLTAGE_CHAR_HANDLE);
 			modifyCharacteristic(&buffer_rx_local[21], 2, MEASURES_ACTIVE_POWER_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[23], 2, MEASURES_REACTIVE_POWER_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[25], 4, MEASURES_ACTIVE_ENERGY_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[29], 4, MEASURES_REACTIVE_ENERGY_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[33], 4, MEASURES_APPARENT_POWER_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[37], 1, MEASURES_POWER_FACTOR_CHAR_HANDLE);
-
-	
+			modifyCharacteristic(&buffer_rx_local[23], 4, MEASURES_ACTIVE_ENERGY_CHAR_HANDLE);
 			
 			#ifdef CONNECTED
 			
@@ -541,33 +531,25 @@ void procesar_bloque(uint16 tipo_bloque){
 				Status.Measures.instant_current = buffer_rx_local[17] + (buffer_rx_local[18] * 0x100);
 				Status.Measures.instant_voltage = buffer_rx_local[19] + (buffer_rx_local[20] * 0x100);
 				Status.Measures.active_power = buffer_rx_local[21] + (buffer_rx_local[22] * 0x100);
-				Status.Measures.reactive_power = buffer_rx_local[23] + (buffer_rx_local[24] * 0x100);
-				Status.Measures.active_energy = buffer_rx_local[25] + (buffer_rx_local[26] * 0x100) +(buffer_rx_local[27] * 0x1000) +(buffer_rx_local[28] * 0x10000);
-				Status.Measures.reactive_energy = buffer_rx_local[29] + (buffer_rx_local[30] * 0x100) +(buffer_rx_local[31] * 0x1000) +(buffer_rx_local[32] * 0x10000);			
-				Status.Measures.apparent_power = buffer_rx_local[33] + (buffer_rx_local[34] * 0x100) +(buffer_rx_local[35] * 0x1000) +(buffer_rx_local[36] * 0x10000);		
-				Status.Measures.power_factor = buffer_rx_local[37];
+				Status.Measures.active_energy = buffer_rx_local[23] + (buffer_rx_local[24] * 0x100) +(buffer_rx_local[25] * 0x1000) +(buffer_rx_local[26] * 0x10000);
+
+
 				Status.error_code = buffer_rx_local[16];
-				Status.Trifasico= buffer_rx_local[80]==3;
+				Status.Trifasico= buffer_rx_local[51]==3;
 
 
 				if(Status.Trifasico){
-					Status.MeasuresB.instant_current = buffer_rx_local[38] + (buffer_rx_local[39] * 0x100);
-					Status.MeasuresB.instant_voltage = buffer_rx_local[40] + (buffer_rx_local[41] * 0x100);
-					Status.MeasuresB.active_power = buffer_rx_local[42] + (buffer_rx_local[43] * 0x100);
-					Status.MeasuresB.reactive_power = buffer_rx_local[44] + (buffer_rx_local[45] * 0x100);
-					Status.MeasuresB.active_energy = buffer_rx_local[46] + (buffer_rx_local[47] * 0x100) +(buffer_rx_local[48] * 0x1000) +(buffer_rx_local[49] * 0x10000);
-					Status.MeasuresB.reactive_energy = buffer_rx_local[50] + (buffer_rx_local[51] * 0x100) +(buffer_rx_local[52] * 0x1000) +(buffer_rx_local[53] * 0x10000);			
-					Status.MeasuresB.apparent_power = buffer_rx_local[54] + (buffer_rx_local[55] * 0x100) +(buffer_rx_local[56] * 0x1000) +(buffer_rx_local[57] * 0x10000);		
-					Status.MeasuresB.power_factor = buffer_rx_local[58];
+					Status.MeasuresB.instant_current = buffer_rx_local[27] + (buffer_rx_local[28] * 0x100);
+					Status.MeasuresB.instant_voltage = buffer_rx_local[29] + (buffer_rx_local[30] * 0x100);
+					Status.MeasuresB.active_power = buffer_rx_local[31] + (buffer_rx_local[32] * 0x100);
+					Status.MeasuresB.active_energy = buffer_rx_local[33] + (buffer_rx_local[34] * 0x100) +(buffer_rx_local[35] * 0x1000) +(buffer_rx_local[36] * 0x10000);
 
-					Status.MeasuresC.instant_current = buffer_rx_local[59] + (buffer_rx_local[60] * 0x100);
-					Status.MeasuresC.instant_voltage = buffer_rx_local[61] + (buffer_rx_local[62] * 0x100);
-					Status.MeasuresC.active_power = buffer_rx_local[63] + (buffer_rx_local[64] * 0x100);
-					Status.MeasuresC.reactive_power = buffer_rx_local[65] + (buffer_rx_local[66] * 0x100);
-					Status.MeasuresC.active_energy = buffer_rx_local[67] + (buffer_rx_local[68] * 0x100) +(buffer_rx_local[69] * 0x1000) +(buffer_rx_local[70] * 0x10000);
-					Status.MeasuresC.active_energy = buffer_rx_local[71] + (buffer_rx_local[72] * 0x100) +(buffer_rx_local[73] * 0x1000) +(buffer_rx_local[74] * 0x10000);			
-					Status.MeasuresC.active_energy = buffer_rx_local[75] + (buffer_rx_local[76] * 0x100) +(buffer_rx_local[77] * 0x1000) +(buffer_rx_local[78] * 0x10000);		
-					Status.MeasuresC.power_factor = buffer_rx_local[79];
+
+					Status.MeasuresC.instant_current = buffer_rx_local[37] + (buffer_rx_local[38] * 0x100);
+					Status.MeasuresC.instant_voltage = buffer_rx_local[39] + (buffer_rx_local[40] * 0x100);
+					Status.MeasuresC.active_power = buffer_rx_local[41] + (buffer_rx_local[42] * 0x100);
+					Status.MeasuresC.active_energy = buffer_rx_local[43] + (buffer_rx_local[44] * 0x100) +(buffer_rx_local[45] * 0x1000) +(buffer_rx_local[46] * 0x10000);
+
 				}
 
 			#endif
@@ -622,10 +604,6 @@ void procesar_bloque(uint16 tipo_bloque){
 		Serial.println("Current command received");
 		Serial.println(Comands.desired_current);
 		modifyCharacteristic(buffer_rx_local, 1, MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
-	}
-	else if(TIME_DATE_DELTA_DELAY_FOR_CHARGING_CHAR_HANDLE == tipo_bloque)
-	{
-		modifyCharacteristic(buffer_rx_local, 2, TIME_DATE_DELTA_DELAY_FOR_CHARGING_CHAR_HANDLE);
 	}
 	else if(TIME_DATE_CHARGING_START_TIME_CHAR_HANDLE == tipo_bloque)
 	{
@@ -684,14 +662,6 @@ void procesar_bloque(uint16 tipo_bloque){
 	else if(TEST_RCD_PE_TEST_RESULT_CHAR_HANDLE == tipo_bloque)
 	{
 		modifyCharacteristic(buffer_rx_local, 1, TEST_RCD_PE_TEST_RESULT_CHAR_HANDLE);
-	}
-	else if(TEST_LAUNCH_MCB_TEST_CHAR_HANDLE == tipo_bloque)
-	{
-		modifyCharacteristic(buffer_rx_local, 1, TEST_LAUNCH_MCB_TEST_CHAR_HANDLE);
-	}
-	else if(TEST_MCB_TEST_RESULT_CHAR_HANDLE == tipo_bloque)
-	{
-		modifyCharacteristic(buffer_rx_local, 1, TEST_MCB_TEST_RESULT_CHAR_HANDLE);
 	}
 	else if(MAN_LOCK_UNLOCK_LOCKING_MECHANISM_ON_OFF_CHAR_HANDLE == tipo_bloque)
 	{
@@ -757,18 +727,6 @@ void procesar_bloque(uint16 tipo_bloque){
 		#ifdef CONNECTED
 			memcpy(Params.autentication_mode,buffer_rx_local,2);
 		#endif
-	}
-	else if(DOMESTIC_CONSUMPTION_KS_CHAR_HANDLE == tipo_bloque)
-	{
-		modifyCharacteristic(buffer_rx_local, 1, DOMESTIC_CONSUMPTION_KS_CHAR_HANDLE);
-	}
-	else if(DOMESTIC_CONSUMPTION_FCT_CHAR_HANDLE == tipo_bloque)
-	{
-		modifyCharacteristic(buffer_rx_local, 1, DOMESTIC_CONSUMPTION_FCT_CHAR_HANDLE);
-	}
-	else if(DOMESTIC_CONSUMPTION_FS_CHAR_HANDLE == tipo_bloque)
-	{
-		modifyCharacteristic(buffer_rx_local, 1, DOMESTIC_CONSUMPTION_FS_CHAR_HANDLE);
 	}
 	else if(DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_CHAR_HANDLE == tipo_bloque)
 	{
