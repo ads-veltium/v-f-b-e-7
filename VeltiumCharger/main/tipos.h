@@ -130,12 +130,14 @@ typedef struct{
 	bool ICP_status;
 	bool DC_Leack_status;
 	bool Con_Lock;
-
+	bool Trifasico = false;
 	uint8  error_code;
 
 	char HPT_status[2];
 	
 	caract_measures Measures;
+	caract_measures MeasuresB;
+	caract_measures MeasuresC;
 	caract_date_time Time;
 
 	long long last_ts_app_req= 0;

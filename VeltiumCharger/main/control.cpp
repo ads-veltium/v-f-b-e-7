@@ -424,8 +424,7 @@ void procesar_bloque(uint16 tipo_bloque){
 			modifyCharacteristic(&buffer_rx_local[232], 1, DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE);
 			modifyCharacteristic(&buffer_rx_local[233], 1, MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
 			modifyCharacteristic(&buffer_rx_local[236], 1, COMS_CONFIGURATION_WIFI_ON);
-			modifyCharacteristic(&buffer_rx_local[237], 1, COMS_CONFIGURATION_ETH_ON);
-						
+			modifyCharacteristic(&buffer_rx_local[237], 1, COMS_CONFIGURATION_ETH_ON);						
 
 			#ifdef CONNECTED
 				/************************ Set firebase Params **********************/
@@ -459,8 +458,8 @@ void procesar_bloque(uint16 tipo_bloque){
 		}	
 	}
 	else if(BLOQUE_STATUS == tipo_bloque){	
-		
-		if(buffer_rx_local[89]==0x36){
+	
+		if(buffer_rx_local[81]==0x36){
 			TimeoutMainDisconnect = 0;	
 			//Leds
 			modifyCharacteristic(buffer_rx_local, 1, LED_LUMIN_COLOR_LUMINOSITY_LEVEL_CHAR_HANDLE);
@@ -488,7 +487,6 @@ void procesar_bloque(uint16 tipo_bloque){
 
 			if((memcmp(&buffer_rx_local[4], status_hpt_anterior, 2) != 0))
 			{
-
 				memcpy(status_hpt_anterior, &buffer_rx_local[4], 2);
 				if(serverbleGetConnected()){
 					serverbleNotCharacteristic(&buffer_rx_local[4], 2, STATUS_HPT_STATUS_CHAR_HANDLE); 
@@ -499,53 +497,80 @@ void procesar_bloque(uint16 tipo_bloque){
 			}
 
 			//Medidas
-			modifyCharacteristic(&buffer_rx_local[6],  2,  STATUS_ICP_STATUS_CHAR_HANDLE);						
-			modifyCharacteristic(&buffer_rx_local[10], 2, STATUS_RCD_STATUS_CHAR_HANDLE);			
-			modifyCharacteristic(&buffer_rx_local[12], 2, STATUS_CONN_LOCK_STATUS_CHAR_HANDLE);			
-			modifyCharacteristic(&buffer_rx_local[14], 1, MEASURES_MAX_CURRENT_CABLE_CHAR_HANDLE);	
-			modifyCharacteristic(&buffer_rx_local[16], 2, MEASURES_INST_CURRENT_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[6],  2, STATUS_ICP_STATUS_CHAR_HANDLE);						
+			modifyCharacteristic(&buffer_rx_local[8],  2, STATUS_RCD_STATUS_CHAR_HANDLE);			
+			modifyCharacteristic(&buffer_rx_local[10], 2, STATUS_CONN_LOCK_STATUS_CHAR_HANDLE);			
+			modifyCharacteristic(&buffer_rx_local[12], 1, MEASURES_MAX_CURRENT_CABLE_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[13], 2, DOMESTIC_CONSUMPTION_DOMESTIC_CURRENT_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[15], 1, DOMESTIC_CONSUMPTION_REAL_CURRENT_LIMIT_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[16], 1, ERROR_STATUS_ERROR_CODE_CHAR_HANDLE);	
+
+			//FaseA	
+			modifyCharacteristic(&buffer_rx_local[17], 2, MEASURES_INST_CURRENT_CHAR_HANDLE);
 			if(((Status.Measures.instant_current) != (inst_current_anterior)) && (serverbleGetConnected())&& (--cnt_diferencia == 0))
 			{
 				cnt_diferencia = 2; // A.D.S. Cambiado de 30 a 5
 				inst_current_anterior = Status.Measures.instant_current;
-				serverbleNotCharacteristic(&buffer_rx_local[16], 2, MEASURES_INST_CURRENT_CHAR_HANDLE); 
+				serverbleNotCharacteristic(&buffer_rx_local[17], 2, MEASURES_INST_CURRENT_CHAR_HANDLE); 
 				#ifdef CONNECTED
 					ConfigFirebase.WriteStatus=true;
 				#endif
 			}
 
-			modifyCharacteristic(&buffer_rx_local[18], 2, MEASURES_INST_VOLTAGE_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[20], 2, MEASURES_ACTIVE_POWER_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[22], 2, MEASURES_REACTIVE_POWER_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[24], 4, MEASURES_ACTIVE_ENERGY_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[28], 4, MEASURES_REACTIVE_ENERGY_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[32], 4, MEASURES_APPARENT_POWER_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[36], 1, MEASURES_POWER_FACTOR_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[38], 2, DOMESTIC_CONSUMPTION_DOMESTIC_CURRENT_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[40], 1, DOMESTIC_CONSUMPTION_REAL_CURRENT_LIMIT_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[41], 1, ERROR_STATUS_ERROR_CODE_CHAR_HANDLE);		
+			modifyCharacteristic(&buffer_rx_local[19], 2, MEASURES_INST_VOLTAGE_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[21], 2, MEASURES_ACTIVE_POWER_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[23], 2, MEASURES_REACTIVE_POWER_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[25], 4, MEASURES_ACTIVE_ENERGY_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[29], 4, MEASURES_REACTIVE_ENERGY_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[33], 4, MEASURES_APPARENT_POWER_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[37], 1, MEASURES_POWER_FACTOR_CHAR_HANDLE);
+
+	
 			
 			#ifdef CONNECTED
+			
 				//Pasar datos a Status
 				memcpy(Status.HPT_status, &buffer_rx_local[4], 2);
 				
 				Status.ICP_status 		= (memcmp(&buffer_rx_local[6],  "CL" ,2) == 0 )? true : false;
-				Status.Con_Lock   		= (memcmp(&buffer_rx_local[12], "LOC",3) == 0 )? true : false;
-				Status.DC_Leack_status  = (memcmp(&buffer_rx_local[12], "TR" ,2) >  0 )? true : false;
+				Status.DC_Leack_status  = (memcmp(&buffer_rx_local[8], "TR" ,2) >  0 )? true : false;
+				Status.Con_Lock   		= (memcmp(&buffer_rx_local[10], "UL",3) == 0 )? true : false;
+				
 
-				Status.Measures.max_current_cable=buffer_rx_local[14];
-				Status.Measures.instant_current = buffer_rx_local[16] + (buffer_rx_local[17] * 0x100);
-				Status.Measures.instant_voltage = buffer_rx_local[18] + (buffer_rx_local[19] * 0x100);
-				Status.Measures.active_power = buffer_rx_local[20] + (buffer_rx_local[21] * 0x100);
-				Status.Measures.reactive_power = buffer_rx_local[22] + (buffer_rx_local[23] * 0x100);
-				Status.Measures.active_energy = buffer_rx_local[24] + (buffer_rx_local[25] * 0x100) +(buffer_rx_local[26] * 0x1000) +(buffer_rx_local[27] * 0x10000);
-				Status.Measures.active_energy = buffer_rx_local[28] + (buffer_rx_local[29] * 0x100) +(buffer_rx_local[30] * 0x1000) +(buffer_rx_local[32] * 0x10000);			
-				Status.Measures.active_energy = buffer_rx_local[32] + (buffer_rx_local[33] * 0x100) +(buffer_rx_local[34] * 0x1000) +(buffer_rx_local[35] * 0x10000);		
-				Status.Measures.power_factor = buffer_rx_local[36];
-				Status.Measures.active_power = buffer_rx_local[38] + (buffer_rx_local[39] * 0x100);
-				Status.error_code = buffer_rx_local[41];
+				Status.Measures.max_current_cable=buffer_rx_local[12];
+				Status.Measures.instant_current = buffer_rx_local[17] + (buffer_rx_local[18] * 0x100);
+				Status.Measures.instant_voltage = buffer_rx_local[19] + (buffer_rx_local[20] * 0x100);
+				Status.Measures.active_power = buffer_rx_local[21] + (buffer_rx_local[22] * 0x100);
+				Status.Measures.reactive_power = buffer_rx_local[23] + (buffer_rx_local[24] * 0x100);
+				Status.Measures.active_energy = buffer_rx_local[25] + (buffer_rx_local[26] * 0x100) +(buffer_rx_local[27] * 0x1000) +(buffer_rx_local[28] * 0x10000);
+				Status.Measures.reactive_energy = buffer_rx_local[29] + (buffer_rx_local[30] * 0x100) +(buffer_rx_local[31] * 0x1000) +(buffer_rx_local[32] * 0x10000);			
+				Status.Measures.apparent_power = buffer_rx_local[33] + (buffer_rx_local[34] * 0x100) +(buffer_rx_local[35] * 0x1000) +(buffer_rx_local[36] * 0x10000);		
+				Status.Measures.power_factor = buffer_rx_local[37];
+				Status.error_code = buffer_rx_local[16];
+				Status.Trifasico= buffer_rx_local[80]==3;
+
+				Status.Trifasico ? Serial.println("Equipo Trifasico"):Serial.println("Equipo Monofasico");
 
 
+				if(Status.Trifasico){
+					Status.MeasuresB.instant_current = buffer_rx_local[38] + (buffer_rx_local[39] * 0x100);
+					Status.MeasuresB.instant_voltage = buffer_rx_local[40] + (buffer_rx_local[41] * 0x100);
+					Status.MeasuresB.active_power = buffer_rx_local[42] + (buffer_rx_local[43] * 0x100);
+					Status.MeasuresB.reactive_power = buffer_rx_local[44] + (buffer_rx_local[45] * 0x100);
+					Status.MeasuresB.active_energy = buffer_rx_local[46] + (buffer_rx_local[47] * 0x100) +(buffer_rx_local[48] * 0x1000) +(buffer_rx_local[49] * 0x10000);
+					Status.MeasuresB.reactive_energy = buffer_rx_local[50] + (buffer_rx_local[51] * 0x100) +(buffer_rx_local[52] * 0x1000) +(buffer_rx_local[53] * 0x10000);			
+					Status.MeasuresB.apparent_power = buffer_rx_local[54] + (buffer_rx_local[55] * 0x100) +(buffer_rx_local[56] * 0x1000) +(buffer_rx_local[57] * 0x10000);		
+					Status.MeasuresB.power_factor = buffer_rx_local[58];
+
+					Status.MeasuresC.instant_current = buffer_rx_local[59] + (buffer_rx_local[60] * 0x100);
+					Status.MeasuresC.instant_voltage = buffer_rx_local[61] + (buffer_rx_local[62] * 0x100);
+					Status.MeasuresC.active_power = buffer_rx_local[63] + (buffer_rx_local[64] * 0x100);
+					Status.MeasuresC.reactive_power = buffer_rx_local[65] + (buffer_rx_local[66] * 0x100);
+					Status.MeasuresC.active_energy = buffer_rx_local[67] + (buffer_rx_local[68] * 0x100) +(buffer_rx_local[69] * 0x1000) +(buffer_rx_local[70] * 0x10000);
+					Status.MeasuresC.active_energy = buffer_rx_local[71] + (buffer_rx_local[72] * 0x100) +(buffer_rx_local[73] * 0x1000) +(buffer_rx_local[74] * 0x10000);			
+					Status.MeasuresC.active_energy = buffer_rx_local[75] + (buffer_rx_local[76] * 0x100) +(buffer_rx_local[77] * 0x1000) +(buffer_rx_local[78] * 0x10000);		
+					Status.MeasuresC.power_factor = buffer_rx_local[79];
+				}
 
 			#endif
 		}
