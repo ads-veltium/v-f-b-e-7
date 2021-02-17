@@ -226,10 +226,10 @@ void controlTask(void *arg)
 							}
 
 						}
-						if(++TimeoutMainDisconnect>3000){
+						if(++TimeoutMainDisconnect>1500){
 							Serial.println("Main reset detected");
-							//MAIN_RESET_Write(0);						
-							//ESP.restart();
+							MAIN_RESET_Write(0);						
+							ESP.restart();
 						}
 						else
 							cnt_timeout_tx--;

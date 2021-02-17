@@ -245,8 +245,6 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 				return;
 			}
 			if (handle == RESET_RESET_CHAR_HANDLE) {
-				Coms.StartProvisioning = true;
-				return;
 				if( isMainFwUpdateActive() )
 				{
 					vTaskDelay(pdMS_TO_TICKS(200));	
