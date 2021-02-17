@@ -753,7 +753,7 @@ void procesar_bloque(uint16 tipo_bloque){
 	else if(CONFIGURACION_AUTENTICATION_MODES_CHAR_HANDLE == tipo_bloque)
 	{
 		modifyCharacteristic(buffer_rx_local, 2, CONFIGURACION_AUTENTICATION_MODES_CHAR_HANDLE);
-
+		
 		#ifdef CONNECTED
 			memcpy(Params.autentication_mode,buffer_rx_local,2);
 		#endif

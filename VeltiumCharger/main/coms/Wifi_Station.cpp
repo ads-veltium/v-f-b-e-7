@@ -422,7 +422,7 @@ void WiFiEvent(arduino_event_id_t event, arduino_event_info_t info){
 		case ARDUINO_EVENT_WIFI_STA_DISCONNECTED:
             wifi_connected = false;
             if (info.wifi_sta_disconnected.reason == WIFI_REASON_AUTH_FAIL || info.wifi_sta_disconnected.reason == WIFI_REASON_CONNECTION_FAIL){
-                if(++AuthErrorCount > 5){
+                if(++AuthErrorCount > 3){
                     AuthErrorCount=0;
                     Serial.println("Contraseña incorrecta, deteniendo sistema");  
                     WiFiProv.StopProvision();
@@ -432,6 +432,16 @@ void WiFiEvent(arduino_event_id_t event, arduino_event_info_t info){
                     SendToPSOC5(Coms.Wifi.ON,COMS_CONFIGURATION_WIFI_ON);
                     vTaskDelay(50);
                 }
+            if(info.wifi_sta_disconnected.reason == WIFI_REASON_AUTH_EXPIRE){
+                    AuthErrorCount=0;
+                    Serial.println("Contraseña incorrecta, deteniendo sistema");  
+                    WiFiProv.StopProvision();
+                    wifi_connected = false;
+                    wifi_connecting = false;
+                    Coms.Wifi.ON = 0;
+                    SendToPSOC5(Coms.Wifi.ON,COMS_CONFIGURATION_WIFI_ON);
+                    vTaskDelay(50);
+            }
 
     
             }
@@ -458,6 +468,7 @@ void WiFiEvent(arduino_event_id_t event, arduino_event_info_t info){
                 modifyCharacteristic((uint8_t*)Coms.Wifi.AP[16], 16, COMS_CONFIGURATION_WIFI_SSID_2);
             }
             if(Coms.Provisioning){
+                delay(7000);
                 MAIN_RESET_Write(0);
                 ESP.restart();
             }
@@ -601,7 +612,7 @@ void ComsTask(void *args){
                     server.end();
                     ServidorArrancado = false;
                 }
-                if(wifi_connected){
+                if(wifi_connected || Coms.Provisioning){
                     WiFiProv.StopProvision();
                 }
                 else{
