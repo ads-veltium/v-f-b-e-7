@@ -72,6 +72,7 @@ uint8 PSOC5_version_firmware[11] ;
 
 uint8 systemStarted = 0;
 uint8 Record_Num =4;
+int TimeoutMainDisconnect = 0;
 
 void startSystem(void);
 
@@ -219,11 +220,16 @@ void controlTask(void *arg)
 								buffer_tx_local[1] = (uint8)(BLOQUE_STATUS >> 8);
 								buffer_tx_local[2] = (uint8)BLOQUE_STATUS;
 								buffer_tx_local[3] = 1;
-								buffer_tx_local[4] = serverbleGetConnected();
+								buffer_tx_local[4] = serverbleGetConnected() || ConfigFirebase.ClientConnected;
 								buffer_tx_local[5] = ESTADO_NORMAL;
 								serialLocal.write(buffer_tx_local, 6);
 							}
 
+						}
+						if(++TimeoutMainDisconnect>1500){
+							Serial.println("Main reset detected");
+							MAIN_RESET_Write(0);						
+							ESP.restart();
 						}
 						else
 							cnt_timeout_tx--;
@@ -452,8 +458,10 @@ void procesar_bloque(uint16 tipo_bloque){
 			modifyCharacteristic(&buffer_rx_local[213], 1, RECORDING_REC_LAPS_CHAR_HANDLE);
 		}	
 	}
-	else if(BLOQUE_STATUS == tipo_bloque){		
+	else if(BLOQUE_STATUS == tipo_bloque){	
+		
 		if(buffer_rx_local[89]==0x36){
+			TimeoutMainDisconnect = 0;	
 			//Leds
 			modifyCharacteristic(buffer_rx_local, 1, LED_LUMIN_COLOR_LUMINOSITY_LEVEL_CHAR_HANDLE);
 			modifyCharacteristic(&buffer_rx_local[1], 1, LED_LUMIN_COLOR_R_LED_COLOUR_CHAR_HANDLE);
