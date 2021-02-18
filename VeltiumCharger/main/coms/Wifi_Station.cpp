@@ -506,7 +506,6 @@ void WiFiEvent(arduino_event_id_t event, arduino_event_info_t info){
                 Serial.println(Coms.ETH.Gateway);
                 Coms.ETH.Mask    = ETH.subnetMask();
                 Serial.println(Coms.ETH.Mask);
-                ConfigFirebase.WriteComs = true;
             }
             eth_connected = true;
             eth_connecting = false;
@@ -616,11 +615,13 @@ void ComsTask(void *args){
                     WiFiProv.StopProvision();
                 }
                 else{
+                    WiFi.begin();
                     wifi_config_t conf;
                     memset(&conf, 0, sizeof(wifi_config_t));
                     if(esp_wifi_set_config(WIFI_IF_STA, &conf)){
                         log_e("clear config failed!");
                     }
+                    WiFiProv.StopProvision();
                 }
 
                 if(Coms.ETH.ON){

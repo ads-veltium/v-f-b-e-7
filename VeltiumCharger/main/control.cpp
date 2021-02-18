@@ -226,7 +226,7 @@ void controlTask(void *arg)
 							}
 
 						}
-						if(++TimeoutMainDisconnect>1500){
+						if(++TimeoutMainDisconnect>5000){
 							Serial.println("Main reset detected");
 							MAIN_RESET_Write(0);						
 							ESP.restart();
@@ -419,8 +419,8 @@ void procesar_bloque(uint16 tipo_bloque){
 			luminosidad=buffer_rx_local[229];
 			modifyCharacteristic(&buffer_rx_local[230], 1, DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE);
 			modifyCharacteristic(&buffer_rx_local[231], 1, MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[234], 1, COMS_CONFIGURATION_WIFI_ON);
-			modifyCharacteristic(&buffer_rx_local[235], 1, COMS_CONFIGURATION_ETH_ON);						
+			modifyCharacteristic(&buffer_rx_local[233], 1, COMS_CONFIGURATION_WIFI_ON);
+			modifyCharacteristic(&buffer_rx_local[234], 1, COMS_CONFIGURATION_ETH_ON);						
 
 			#ifdef CONNECTED
 				/************************ Set firebase Params **********************/
@@ -430,9 +430,11 @@ void procesar_bloque(uint16 tipo_bloque){
 				Params.CDP 	  =  buffer_rx_local[230];
 				memcpy(Params.Fw_Update_mode, &buffer_rx_local[232],2);
 				Comands.desired_current = buffer_rx_local[231];
-
-				Coms.Wifi.ON = buffer_rx_local[234];
-				Coms.ETH.ON = buffer_rx_local[235];				
+				Serial.println(Coms.Wifi.ON);
+				Coms.Wifi.ON = buffer_rx_local[233];
+				Serial.println(Coms.Wifi.ON);
+				Coms.ETH.ON = buffer_rx_local[234];		
+				Serial.println(Coms.ETH.ON);		
 
 				//Params.Sensor_Conectado = (buffer_rx_local[232]  >> 0) & 0x01;
 				//Params.CDP_On           = (buffer_rx_local[232]  >> 1) & 0x01;
@@ -446,11 +448,14 @@ void procesar_bloque(uint16 tipo_bloque){
 			dispositivo_inicializado = 1;
 		}
 		else{
-			modifyCharacteristic(&buffer_rx_local[12], 6, TIME_DATE_CHARGING_START_TIME_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[18], 6, TIME_DATE_CHARGING_STOP_TIME_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[207], 2, RECORDING_REC_CAPACITY_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[209], 2, RECORDING_REC_LAST_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[211], 1, RECORDING_REC_LAPS_CHAR_HANDLE);
+			if((buffer_rx_local[209] + buffer_rx_local[210]*0x100)<=200){
+				modifyCharacteristic(&buffer_rx_local[12], 6, TIME_DATE_CHARGING_START_TIME_CHAR_HANDLE);
+				modifyCharacteristic(&buffer_rx_local[18], 6, TIME_DATE_CHARGING_STOP_TIME_CHAR_HANDLE);
+				modifyCharacteristic(&buffer_rx_local[209], 2, RECORDING_REC_LAST_CHAR_HANDLE);
+				modifyCharacteristic(&buffer_rx_local[211], 1, RECORDING_REC_LAPS_CHAR_HANDLE);
+				Serial.println(buffer_rx_local[209] + buffer_rx_local[210]*0x100);
+			}
+
 		}	
 	}
 	else if(BLOQUE_STATUS == tipo_bloque){	
@@ -592,7 +597,8 @@ void procesar_bloque(uint16 tipo_bloque){
 	{
 		
 		modifyCharacteristic(buffer_rx_local, 1, MEASURES_INSTALATION_CURRENT_LIMIT_CHAR_HANDLE);
-
+		Serial.println("Instalation current limit Changed to" );
+		Serial.print(buffer_rx_local[0]);
 		#ifdef CONNECTED
 			Params.inst_current_limit = buffer_rx_local[0];
 		#endif
@@ -702,11 +708,6 @@ void procesar_bloque(uint16 tipo_bloque){
 	{
 		memcpy(&record_buffer[504],buffer_rx_local,8);
 		modifyCharacteristic(record_buffer, 512, ENERGY_RECORD_RECORD_CHAR_HANDLE);
-	}
-	else if(RECORDING_REC_CAPACITY_CHAR_HANDLE == tipo_bloque)
-	{
-		modifyCharacteristic(buffer_rx_local, 2, RECORDING_REC_CAPACITY_CHAR_HANDLE);
-		
 	}
 	else if(RECORDING_REC_LAST_CHAR_HANDLE == tipo_bloque)
 	{

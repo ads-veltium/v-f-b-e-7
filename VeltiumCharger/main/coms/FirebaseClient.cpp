@@ -150,8 +150,12 @@ bool WriteFirebaseComs(String Path){
   Serial.println("Write Coms CALLED");
   Escritura.clear();
 
-    Escritura["wifi/apn"]    = Coms.Wifi.AP;
-    Escritura["wifi/passwd"] = Coms.Wifi.Pass;
+
+      Escritura["wifi/on"]    = Coms.Wifi.ON;
+      Escritura["wifi/ssid"]    = Coms.Wifi.AP;
+      Escritura["eth/on"]    = Coms.ETH.ON;
+      Escritura["eth/auto"]    = Coms.ETH.Auto;
+    //Escritura["wifi/passwd"] = Coms.Wifi.Pass;
 
     if(Coms.ETH.Auto){
       Escritura["eth/ip1"]      = Coms.ETH.IP1.toString();
@@ -554,6 +558,8 @@ void Firebase_Conn_Task(void *args){
         ConfigFirebase.ClientConnected  = true;
         xStarted = xTaskGetTickCount();
         Serial.println("User connected!");
+        ConnectionState = WRITTING_COMS;
+        break;
       }
  
       if(ConfigFirebase.ClientConnected){
@@ -576,12 +582,6 @@ void Firebase_Conn_Task(void *args){
         else if(ConfigFirebase.WriteParams){
           ConfigFirebase.WriteParams=false;
           ConnectionState = WRITTING_PARAMS;
-          break;
-        }
-
-        else if(ConfigFirebase.WriteComs){
-          ConfigFirebase.WriteComs=false;
-          ConnectionState = WRITTING_COMS;
           break;
         }
 
