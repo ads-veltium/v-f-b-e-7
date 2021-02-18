@@ -194,6 +194,18 @@ bool WriteFirebaseControl(String Path){
 
   return false;
 }
+bool WriteFirebaseFW(String Path){
+  Escritura.clear();
+
+  Escritura["VBLE2"] = "VBLE2_"+String(UpdateStatus.ESP_Act_Ver);
+  Escritura["VELT2"] = "VELT2_"+String(UpdateStatus.PSOC5_Act_Ver);
+
+  if(Database.RTDB.Send_Command(Path,&Escritura,WRITE)){
+    return true;
+  }
+
+  return false;
+}
 /***************************************************
   Funciones de lectura
 ***************************************************/
@@ -335,7 +347,8 @@ bool CheckForUpdate(){
       uint16 VELT_int_Version=ParseFirmwareVersion(PSOC5_Ver);
 
       if(VELT_int_Version>UpdateStatus.PSOC5_Act_Ver){
-        Serial.println("Updating PSOC5!");
+        Serial.println("Actualizando PSOC5 a version beta");
+        Serial.print(PSOC5_Ver);
         UpdateStatus.PSOC5_UpdateAvailable= true;
         url = Lectura["VELT2"]["url"].as<String>();
         return true;
@@ -345,7 +358,8 @@ bool CheckForUpdate(){
       uint16 ESP_int_Version=ParseFirmwareVersion(ESP_Ver);
 
       if(ESP_int_Version>UpdateStatus.ESP_Act_Ver){
-        Serial.println("Updating ESP!");
+        Serial.println("Actualizando ESP32 a version beta");
+        Serial.print(ESP_Ver);
         UpdateStatus.ESP_UpdateAvailable= true;
         url = Lectura["VBLE2"]["url"].as<String>();
         return true;
@@ -360,7 +374,8 @@ bool CheckForUpdate(){
     uint16 VELT_int_Version=ParseFirmwareVersion(PSOC5_Ver);
 
     if(VELT_int_Version>UpdateStatus.PSOC5_Act_Ver){
-      Serial.println("Updating PSOC5!");
+      Serial.println("Actualizando PSOC5 a version ");
+      Serial.print(PSOC5_Ver);
       UpdateStatus.PSOC5_UpdateAvailable= true;
       url = Lectura["VELT2"]["url"].as<String>();
       return true;
@@ -370,7 +385,8 @@ bool CheckForUpdate(){
     uint16 ESP_int_Version=ParseFirmwareVersion(ESP_Ver);
 
     if(ESP_int_Version>UpdateStatus.ESP_Act_Ver){
-      Serial.println("Updating ESP!");
+      Serial.println("Actualizando ESP32 a version ");
+      Serial.print(ESP_Ver);
       UpdateStatus.ESP_UpdateAvailable= true;
       url = Lectura["VBLE2"]["url"].as<String>();
       return true;
@@ -504,6 +520,8 @@ void Firebase_Conn_Task(void *args){
       Comands.last_ts_app_req = Database.RTDB.Get_Timestamp("/control/ts_app_req",&Lectura);
       Coms.last_ts_app_req    = Database.RTDB.Get_Timestamp("/coms/ts_app_req",&Lectura);
       Serial.println("Conectado a firebase!");
+      Error_Count+=!WriteFirebaseFW("/fw/current");
+
       ConnectionState=IDLE;
       break;
 

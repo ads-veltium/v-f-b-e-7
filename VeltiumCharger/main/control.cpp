@@ -209,8 +209,7 @@ void controlTask(void *arg)
 								SendToPSOC5(Comands.desired_current, MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
 							}
 							else if (Comands.reset){
-								Serial.println("Reiniciando en 4 segundos!"); 
-								vTaskDelay(pdMS_TO_TICKS(4000));
+								Serial.println("Reiniciando por comando externo! No preocuparse");
 								MAIN_RESET_Write(0);						
 								ESP.restart();
 							}	
@@ -226,7 +225,7 @@ void controlTask(void *arg)
 							}
 
 						}
-						if(++TimeoutMainDisconnect>5000){
+						if(++TimeoutMainDisconnect>10000){
 							Serial.println("Main reset detected");
 							MAIN_RESET_Write(0);						
 							ESP.restart();
@@ -413,28 +412,25 @@ void procesar_bloque(uint16 tipo_bloque){
 			modifyCharacteristic(&buffer_rx_local[211], 1, RECORDING_REC_LAPS_CHAR_HANDLE);
 
 			modifyCharacteristic(&buffer_rx_local[212], 2, CONFIGURACION_AUTENTICATION_MODES_CHAR_HANDLE);
-			memcpy(deviceSerNum, &buffer_rx_local[217], 10);			
-			modifyCharacteristic(&buffer_rx_local[227], 2, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[229], 1, LED_LUMIN_COLOR_LUMINOSITY_LEVEL_CHAR_HANDLE);
-			luminosidad=buffer_rx_local[229];
-			modifyCharacteristic(&buffer_rx_local[230], 1, DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[231], 1, MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[233], 1, COMS_CONFIGURATION_WIFI_ON);
-			modifyCharacteristic(&buffer_rx_local[234], 1, COMS_CONFIGURATION_ETH_ON);						
+			memcpy(deviceSerNum, &buffer_rx_local[219], 10);			
+			modifyCharacteristic(&buffer_rx_local[229], 2, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[231], 1, LED_LUMIN_COLOR_LUMINOSITY_LEVEL_CHAR_HANDLE);
+			luminosidad=buffer_rx_local[231];
+			modifyCharacteristic(&buffer_rx_local[232], 1, DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[233], 1, MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[236], 1, COMS_CONFIGURATION_WIFI_ON);
+			modifyCharacteristic(&buffer_rx_local[237], 1, COMS_CONFIGURATION_ETH_ON);						
 
 			#ifdef CONNECTED
 				/************************ Set firebase Params **********************/
 				memcpy(Params.autentication_mode, &buffer_rx_local[212],2);
 				Params.inst_current_limit = buffer_rx_local[11];
-				Params.potencia_contratada=buffer_rx_local[227]+buffer_rx_local[228]*0x100;
-				Params.CDP 	  =  buffer_rx_local[230];
-				memcpy(Params.Fw_Update_mode, &buffer_rx_local[232],2);
-				Comands.desired_current = buffer_rx_local[231];
-				Serial.println(Coms.Wifi.ON);
-				Coms.Wifi.ON = buffer_rx_local[233];
-				Serial.println(Coms.Wifi.ON);
-				Coms.ETH.ON = buffer_rx_local[234];		
-				Serial.println(Coms.ETH.ON);		
+				Params.potencia_contratada=buffer_rx_local[229]+buffer_rx_local[230]*0x100;
+				Params.CDP 	  =  buffer_rx_local[232];
+				memcpy(Params.Fw_Update_mode, &buffer_rx_local[234],2);
+				Comands.desired_current = buffer_rx_local[233];
+				Coms.Wifi.ON = buffer_rx_local[236];
+				Coms.ETH.ON = buffer_rx_local[237];			
 
 				//Params.Sensor_Conectado = (buffer_rx_local[232]  >> 0) & 0x01;
 				//Params.CDP_On           = (buffer_rx_local[232]  >> 1) & 0x01;
@@ -448,12 +444,12 @@ void procesar_bloque(uint16 tipo_bloque){
 			dispositivo_inicializado = 1;
 		}
 		else{
+			Serial.println((buffer_rx_local[209] + buffer_rx_local[210]*0x100));
 			if((buffer_rx_local[209] + buffer_rx_local[210]*0x100)<=200){
 				modifyCharacteristic(&buffer_rx_local[12], 6, TIME_DATE_CHARGING_START_TIME_CHAR_HANDLE);
 				modifyCharacteristic(&buffer_rx_local[18], 6, TIME_DATE_CHARGING_STOP_TIME_CHAR_HANDLE);
 				modifyCharacteristic(&buffer_rx_local[209], 2, RECORDING_REC_LAST_CHAR_HANDLE);
 				modifyCharacteristic(&buffer_rx_local[211], 1, RECORDING_REC_LAPS_CHAR_HANDLE);
-				Serial.println(buffer_rx_local[209] + buffer_rx_local[210]*0x100);
 			}
 
 		}	
@@ -513,6 +509,11 @@ void procesar_bloque(uint16 tipo_bloque){
 				cnt_diferencia = 2; // A.D.S. Cambiado de 30 a 5
 				inst_current_anterior = Status.Measures.instant_current;
 				serverbleNotCharacteristic(&buffer_rx_local[17], 2, MEASURES_INST_CURRENT_CHAR_HANDLE); 
+				if(Status.Trifasico){
+					serverbleNotCharacteristic(&buffer_rx_local[27],2,MEASURES_INST_CURRENTB_CHAR_HANDLE);
+					serverbleNotCharacteristic(&buffer_rx_local[37],2,MEASURES_INST_CURRENTB_CHAR_HANDLE);
+				}
+
 				#ifdef CONNECTED
 					ConfigFirebase.WriteStatus=true;
 				#endif
@@ -540,7 +541,7 @@ void procesar_bloque(uint16 tipo_bloque){
 
 
 				Status.error_code = buffer_rx_local[16];
-				Status.Trifasico= buffer_rx_local[51]==3;
+				Status.Trifasico= buffer_rx_local[47]==3;
 
 
 				if(Status.Trifasico){
@@ -732,8 +733,8 @@ void procesar_bloque(uint16 tipo_bloque){
 	else if(DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_CHAR_HANDLE == tipo_bloque)
 	{
 		modifyCharacteristic(buffer_rx_local, 2, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_CHAR_HANDLE);
-		Serial.println(buffer_rx_local[0]);
-			Serial.println(buffer_rx_local[1]);
+		Serial.println("Potencia contratada cambiada a: ");
+		Serial.print(buffer_rx_local[0]+buffer_rx_local[1]*100);
 
 		#ifdef CONNECTED
 			Params.potencia_contratada=buffer_rx_local[0]+buffer_rx_local[1]*100;
@@ -852,6 +853,7 @@ void deviceConnectInd ( void ){
 	modifyCharacteristic(authChallengeQuery, 8, AUTENTICACION_MATRIX_CHAR_HANDLE);
 	Serial.print("Sending authentication");
 	vTaskDelay(pdMS_TO_TICKS(250));
+	Led_color=VERDE;
 
 }
 
@@ -864,6 +866,7 @@ void deviceDisconnectInd ( void )
 	//memset(authChallengeQuery, 0x00, 8);
 	modifyCharacteristic(authChallengeQuery, 10, AUTENTICACION_MATRIX_CHAR_HANDLE);
 	vTaskDelay(pdMS_TO_TICKS(500));
+	Led_color=VERDE;
 }
 
 uint8_t isMainFwUpdateActive (void)

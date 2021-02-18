@@ -415,7 +415,7 @@ void InitServer(void) {
 }
 /********************* Conection Functions **************************/
 void WiFiEvent(arduino_event_id_t event, arduino_event_info_t info){ 
-    //Serial.println(event);
+    Serial.println(event);
 	switch (event) {
 
 //********************** WIFI Cases **********************//
@@ -629,7 +629,10 @@ void ComsTask(void *args){
                     Coms.ETH.ON=false;
                 }
                 Station_Begin();
-                Coms.Wifi.ON=true;
+                while(Coms.Wifi.ON != true){
+                    SendToPSOC5(true,COMS_CONFIGURATION_WIFI_ON);
+                    delay(25);
+                }
                 SendToPSOC5(Coms.Wifi.ON,COMS_CONFIGURATION_WIFI_ON);
                 Coms.StartProvisioning = false;
                 Coms.Provisioning = true;
