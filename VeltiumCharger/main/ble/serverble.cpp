@@ -14,6 +14,7 @@ uint8_t UpdateType=0;
 extern carac_Update_Status 			UpdateStatus;
 extern carac_Firebase_Configuration ConfigFirebase;
 extern carac_Comands                Comands;
+extern carac_Coms					Coms;
 
 /* milestone: one-liner for reporting memory usage */
 void milestone(const char* mname)
@@ -66,14 +67,16 @@ BLECharacteristic *pbleCharacteristics[NUMBER_OF_CHARACTERISTICS];
 
 BLE_FIELD blefields[MAX_BLE_FIELDS] =
 {
-	{TYPE_SERV, SERV_STATUS, BLEUUID((uint16_t)0xCD01),6, 0, 0, (indexCharacteristicsAll)0, (indexCharacteristics)0, 0},
-	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC001),6, PROP_RW, 0, SELECTOR,     BLE_CHA_SELECTOR,    0},
-	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC002),6, PROP_RW, 0, OMNIBUS,      BLE_CHA_OMNIBUS,     0},
-	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC003),6, PROP_RN, 0, RCS_HPT_STAT, BLE_CHA_HPT_STAT,    1},
-	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC004),6, PROP_RN, 0, RCS_INS_CURR, BLE_CHA_INS_CURR,    1},
-	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC005),6, PROP_R,  0, RCS_RECORD,   BLE_CHA_RCS_RECORD,  0},
-	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC006),6, PROP_RW, 0, RCS_SCH_MAT,  BLE_CHA_RCS_SCH_MAT, 0},
-	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC007),6, PROP_WN, 0, FW_DATA,      BLE_CHA_FW_DATA,     1}
+	{TYPE_SERV, SERV_STATUS, BLEUUID((uint16_t)0xCD01),NUMBER_OF_CHARACTERISTICS, 0, 0, (indexCharacteristicsAll)0, (indexCharacteristics)0, 0},
+	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC001),NUMBER_OF_CHARACTERISTICS, PROP_RW, 0, SELECTOR,      BLE_CHA_SELECTOR,    0},
+	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC002),NUMBER_OF_CHARACTERISTICS, PROP_RW, 0, OMNIBUS,       BLE_CHA_OMNIBUS,     0},
+	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC003),NUMBER_OF_CHARACTERISTICS, PROP_RN, 0, RCS_HPT_STAT,  BLE_CHA_HPT_STAT,    1},
+	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC004),NUMBER_OF_CHARACTERISTICS, PROP_RN, 0, RCS_INS_CURR,  BLE_CHA_INS_CURR,    1},
+	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC005),NUMBER_OF_CHARACTERISTICS, PROP_R,  0, RCS_RECORD,    BLE_CHA_RCS_RECORD,  0},
+	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC006),NUMBER_OF_CHARACTERISTICS, PROP_RW, 0, RCS_SCH_MAT,   BLE_CHA_RCS_SCH_MAT, 0},
+	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC007),NUMBER_OF_CHARACTERISTICS, PROP_WN, 0, FW_DATA,       BLE_CHA_FW_DATA,     1},
+	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC008),NUMBER_OF_CHARACTERISTICS, PROP_RN, 0, RCS_INSB_CURR, BLE_CHA_INSB_CURR,   1},
+	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC009),NUMBER_OF_CHARACTERISTICS, PROP_RN, 0, RCS_INSC_CURR, BLE_CHA_INSC_CURR,   1},
 } ;
 
 
@@ -88,6 +91,16 @@ void serverbleNotCharacteristic ( uint8_t *data, int len, uint16_t handle )
 	if (handle == MEASURES_INST_CURRENT_CHAR_HANDLE) {
 		pbleCharacteristics[BLE_CHA_INS_CURR]->setValue(data, len);
 		pbleCharacteristics[BLE_CHA_INS_CURR]->notify();
+		return;
+	}
+	if (handle == MEASURES_INST_CURRENTB_CHAR_HANDLE) {
+		pbleCharacteristics[BLE_CHA_INSB_CURR]->setValue(data, len);
+		pbleCharacteristics[BLE_CHA_INSB_CURR]->notify();
+		return;
+	}
+	if (handle == MEASURES_INST_CURRENTC_CHAR_HANDLE) {
+		pbleCharacteristics[BLE_CHA_INSC_CURR]->setValue(data, len);
+		pbleCharacteristics[BLE_CHA_INSC_CURR]->notify();
 		return;
 	}
 	if (handle == FWUPDATE_BIRD_DATA_PSEUDO_CHAR_HANDLE) {
@@ -108,6 +121,14 @@ void serverbleSetCharacteristic ( uint8_t *data, int len, uint16_t handle )
 		pbleCharacteristics[BLE_CHA_INS_CURR]->setValue(data, len);
 		return;
 	}
+	if (handle == MEASURES_INST_CURRENTB_CHAR_HANDLE) {
+		pbleCharacteristics[BLE_CHA_INSB_CURR]->setValue(data, len);
+		return;
+	}
+	if (handle == MEASURES_INST_CURRENTC_CHAR_HANDLE) {
+		pbleCharacteristics[BLE_CHA_INSC_CURR]->setValue(data, len);
+		return;
+	}
 	if (handle == ENERGY_RECORD_RECORD_CHAR_HANDLE) {
 		pbleCharacteristics[BLE_CHA_RCS_RECORD]->setValue(data, len);
 		return;
@@ -117,10 +138,6 @@ void serverbleSetCharacteristic ( uint8_t *data, int len, uint16_t handle )
 		return;
 	}
 	// set characteristic value using selector mechanism
-	if(handle==0x00A0u){
-        Serial.println(data[0]);
-		Serial.println(data[1]);
-    }
 	rcs_server_set_chr_value(handle, data, len);
 }
 
@@ -280,7 +297,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 
 				uint32_t successCode = 0x00000000;
 				//Empezar el sistema de actualizacion
-				#ifdef USE_COMS
+				#ifdef USE_
 					if(getfirebaseClientStatus())ConfigFirebase.StopSistem=true;
 				#endif
 				UpdateStatus.DescargandoArchivo=1;
@@ -306,9 +323,9 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 				else if(strstr (signature,"VELT")){
 					Serial.println("Updating VELT");
 					UpdateType= VELT_UPDATE;
-
+					SPIFFS.end();
 					if(!SPIFFS.begin(1,"/spiffs",1,"PSOC5")){
-						SPIFFS.end();
+						SPIFFS.end();					
 						SPIFFS.begin(1,"/spiffs",1,"PSOC5");
 					}
 					if(SPIFFS.exists("/FreeRTOS_V6.cyacd")){
@@ -370,6 +387,22 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 				return;
 			}
 
+			if(handle == COMS_CONFIGURATION_WIFI_START_PROV){
+				Coms.StartProvisioning = true;
+				return;
+			}
+			else if(handle == COMS_CONFIGURATION_ETH_ON){
+				while(Coms.ETH.ON != payload[0]){
+					SendToPSOC5(payload[0],COMS_CONFIGURATION_ETH_ON);
+					delay(50);
+				}
+			}
+			else if(handle == COMS_CONFIGURATION_WIFI_ON){
+				while(Coms.Wifi.ON != payload[0]){
+					SendToPSOC5(payload[0],COMS_CONFIGURATION_WIFI_ON);
+					delay(50);
+				}
+			}
 			
 			// if we are here, we are authenticated.
 			// send payload downstream.
@@ -506,9 +539,11 @@ void serverbleInit() {
 		}
 		else if ( blefields[i].type == TYPE_CHAR )
 		{
+			
 			pbleCharacteristics[indexCharacteristic] = pbleServices[blefields[i].indexServ]->createCharacteristic( blefields[i].uuid, blefields[i].properties );
 			if ( blefields[i].descriptor2902 == 1 )
 			{
+				Serial.println(blefields[i].indexCharacteristic);
 				pbleCharacteristics[indexCharacteristic]->addDescriptor(new BLE2902());
 			}
 			pbleCharacteristics[indexCharacteristic]->setCallbacks(&pbleCharacteristicCallbacks);

@@ -19,6 +19,22 @@
 
 #include "WiFi.h"
 #include "wifi_provisioning/manager.h"
+
+#include <stdio.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include <string.h>
+#include <esp_err.h>
+#include <esp_wifi.h>
+#include <esp_event.h>
+#include <esp32-hal.h>
+
+#include <nvs_flash.h>
+
+#include <wifi_provisioning/scheme_softap.h>
+#include <wifi_provisioning/manager.h>
+#undef IPADDR_NONE
+
 //Select the scheme using which you want to provision
 typedef enum {
     WIFI_PROV_SCHEME_SOFTAP,
@@ -34,9 +50,9 @@ typedef enum {
 class WiFiProvClass
 {  
     public:
-
-        void beginProvision(prov_scheme_t prov_scheme = WIFI_PROV_SCHEME_SOFTAP, scheme_handler_t scheme_handler = WIFI_PROV_SCHEME_HANDLER_NONE,
-        		wifi_prov_security_t security = WIFI_PROV_SECURITY_1, const char * pop = "abcd1234", const char * service_name = NULL, const char * service_key = NULL, uint8_t *uuid = NULL);
+        bool StopProvision();
+        uint8_t beginProvision(prov_scheme_t prov_scheme = WIFI_PROV_SCHEME_SOFTAP, scheme_handler_t scheme_handler = WIFI_PROV_SCHEME_HANDLER_NONE,
+        		wifi_prov_security_t security = WIFI_PROV_SECURITY_1, const char * pop = "abcd1234", const char * service_name = NULL, bool provisioning = false, const char * service_key = NULL, uint8_t *uuid = NULL);
 };
 
 extern WiFiProvClass WiFiProv;

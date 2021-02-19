@@ -49,6 +49,7 @@ uint8 cnt_fin_bloque = 0;
 int estado_recepcion = 0;
 uint8 buffer_tx_local[550]  EXT_RAM_ATTR;
 uint8 buffer_rx_local[550]  EXT_RAM_ATTR;
+uint8 record_buffer[550] EXT_RAM_ATTR;
 uint16 puntero_rx_local = 0;
 uint8 updateTaskrunning=0;
 uint8 cnt_timeout_tx = 0;
@@ -66,10 +67,12 @@ uint8 status_hpt_anterior[2] = {'0','V' };
 uint16 inst_current_anterior = 0x0000;
 uint16 cnt_diferencia = 30;
 
-uint8 version_firmware[11] = {"VBLE2_0502"};	
+uint8 version_firmware[11] = {"VBLE2_0504"};	
 uint8 PSOC5_version_firmware[11] ;		
 
 uint8 systemStarted = 0;
+uint8 Record_Num =4;
+int TimeoutMainDisconnect = 0;
 
 void startSystem(void);
 
@@ -192,14 +195,40 @@ void controlTask(void *arg)
 						proceso_recepcion();	
 						if(cnt_timeout_tx == 0)
 						{
-							cnt_timeout_tx = TIMEOUT_TX_BLOQUE;
-							buffer_tx_local[0] = HEADER_TX;
-							buffer_tx_local[1] = (uint8)(BLOQUE_STATUS >> 8);
-							buffer_tx_local[2] = (uint8)BLOQUE_STATUS;
-							buffer_tx_local[3] = 1;
-							buffer_tx_local[4] = serverbleGetConnected();
-							buffer_tx_local[5] = ESTADO_NORMAL;
-							serialLocal.write(buffer_tx_local, 6);
+							if (Comands.start){
+								SendToPSOC5(1, CHARGING_BLE_MANUAL_START_CHAR_HANDLE);   
+								Serial.println("Sending START");         
+							}
+
+							else if (Comands.stop){
+								SendToPSOC5(1, CHARGING_BLE_MANUAL_STOP_CHAR_HANDLE);
+								Serial.println("Sending STOP");
+							}
+
+							else if (Comands.Newdata){
+								SendToPSOC5(Comands.desired_current, MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
+							}
+							else if (Comands.reset){
+								Serial.println("Reiniciando por comando externo! No preocuparse");
+								MAIN_RESET_Write(0);						
+								ESP.restart();
+							}	
+							else{
+								cnt_timeout_tx = TIMEOUT_TX_BLOQUE;
+								buffer_tx_local[0] = HEADER_TX;
+								buffer_tx_local[1] = (uint8)(BLOQUE_STATUS >> 8);
+								buffer_tx_local[2] = (uint8)BLOQUE_STATUS;
+								buffer_tx_local[3] = 1;
+								buffer_tx_local[4] = serverbleGetConnected() || ConfigFirebase.ClientConnected;
+								buffer_tx_local[5] = ESTADO_NORMAL;
+								serialLocal.write(buffer_tx_local, 6);
+							}
+
+						}
+						if(++TimeoutMainDisconnect>10000){
+							Serial.println("Main reset detected");
+							MAIN_RESET_Write(0);						
+							ESP.restart();
 						}
 						else
 							cnt_timeout_tx--;
@@ -231,22 +260,6 @@ void controlTask(void *arg)
 		// Eventos 1 Seg (Enviar ordenes recibidas desde firebase o el servidor interno)
 		if(cont_seg != cont_seg_ant){
 			cont_seg_ant = cont_seg;
-
-			if (Comands.start){
-				SendToPSOC5(1, CHARGING_BLE_MANUAL_START_CHAR_HANDLE);   
-				Comands.start=false;          
-			}
-
-			else if (Comands.stop){
-				SendToPSOC5(1, CHARGING_BLE_MANUAL_STOP_CHAR_HANDLE);
-				Comands.stop=false;
-			}
-			else if (Comands.reset){
-				Serial.println("Reiniciando en 4 segundos!"); 
-				vTaskDelay(pdMS_TO_TICKS(4000));
-				MAIN_RESET_Write(0);						
-				ESP.restart();
-			}	
 		}
 
 		// Eventos 1 minuto
@@ -382,27 +395,25 @@ void procesar_bloque(uint16 tipo_bloque){
 			printf("Change name set device name to %s\r\n",device_ID);
 			modifyCharacteristic(device_ID, 11, VCD_NAME_USERS_CHARGER_DEVICE_ID_CHAR_HANDLE);
 			modifyCharacteristic(&buffer_rx_local[11], 1, MEASURES_INSTALATION_CURRENT_LIMIT_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[12], 2, TIME_DATE_DELTA_DELAY_FOR_CHARGING_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[14], 6, TIME_DATE_CHARGING_START_TIME_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[20], 6, TIME_DATE_CHARGING_STOP_TIME_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[26], 1, CHARGING_INSTANT_DELAYED_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[27], 1, CHARGING_START_STOP_START_MODE_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[28], 168, SCHED_CHARGING_SCHEDULE_MATRIX_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[196], 1, VCD_NAME_USERS_USERS_NUMBER_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[197], 1, VCD_NAME_USERS_UI_X_USER_ID_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[198], 1, VCD_NAME_USERS_USER_INDEX_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[199], 10, VERSIONES_VERSION_FIRMWARE_CHAR_HANDLE);
-			memcpy(PSOC5_version_firmware, &buffer_rx_local[199],10);
+			modifyCharacteristic(&buffer_rx_local[12], 6, TIME_DATE_CHARGING_START_TIME_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[18], 6, TIME_DATE_CHARGING_STOP_TIME_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[24], 1, CHARGING_INSTANT_DELAYED_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[25], 1, CHARGING_START_STOP_START_MODE_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[26], 168, SCHED_CHARGING_SCHEDULE_MATRIX_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[194], 1, VCD_NAME_USERS_USERS_NUMBER_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[195], 1, VCD_NAME_USERS_UI_X_USER_ID_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[196], 1, VCD_NAME_USERS_USER_INDEX_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[197], 10, VERSIONES_VERSION_FIRMWARE_CHAR_HANDLE);
+			memcpy(PSOC5_version_firmware, &buffer_rx_local[197],10);
 			modifyCharacteristic(version_firmware, 10, VERSIONES_VERSION_FIRM_BLE_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[209], 2, RECORDING_REC_CAPACITY_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[211], 2, RECORDING_REC_LAST_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[213], 1, RECORDING_REC_LAPS_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[214], 2, CONFIGURACION_AUTENTICATION_MODES_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[216], 1, DOMESTIC_CONSUMPTION_KS_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[217], 1, DOMESTIC_CONSUMPTION_FCT_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[218], 1, DOMESTIC_CONSUMPTION_FS_CHAR_HANDLE);
+
+			modifyCharacteristic(&buffer_rx_local[207], 2, RECORDING_REC_CAPACITY_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[209], 2, RECORDING_REC_LAST_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[211], 1, RECORDING_REC_LAPS_CHAR_HANDLE);
+
+			modifyCharacteristic(&buffer_rx_local[212], 2, CONFIGURACION_AUTENTICATION_MODES_CHAR_HANDLE);
 			memcpy(deviceSerNum, &buffer_rx_local[219], 10);			
-			modifyCharacteristic(&buffer_rx_local[229], 1, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[229], 2, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_CHAR_HANDLE);
 			modifyCharacteristic(&buffer_rx_local[231], 1, LED_LUMIN_COLOR_LUMINOSITY_LEVEL_CHAR_HANDLE);
 			luminosidad=buffer_rx_local[231];
 			Serial.println("CDP");
@@ -410,24 +421,19 @@ void procesar_bloque(uint16 tipo_bloque){
 			modifyCharacteristic(&buffer_rx_local[232], 1, DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE);
 			modifyCharacteristic(&buffer_rx_local[233], 1, MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
 			modifyCharacteristic(&buffer_rx_local[236], 1, COMS_CONFIGURATION_WIFI_ON);
-			modifyCharacteristic(&buffer_rx_local[237], 1, COMS_CONFIGURATION_ETH_ON);
-						
+			modifyCharacteristic(&buffer_rx_local[237], 1, COMS_CONFIGURATION_ETH_ON);						
 
 			#ifdef CONNECTED
 				/************************ Set firebase Params **********************/
-				memcpy(Params.autentication_mode, &buffer_rx_local[214],2);
+				memcpy(Params.autentication_mode, &buffer_rx_local[212],2);
 				Params.inst_current_limit = buffer_rx_local[11];
-				Params.potencia_contratada=buffer_rx_local[229];
+				Params.potencia_contratada=buffer_rx_local[229]+buffer_rx_local[230]*0x100;
 				Params.CDP 	  =  buffer_rx_local[232];
 
 				memcpy(Params.Fw_Update_mode, &buffer_rx_local[234],2);
 				Comands.desired_current = buffer_rx_local[233];
-
 				Coms.Wifi.ON = buffer_rx_local[236];
-				Serial.println(Coms.Wifi.ON);
-				Coms.ETH.ON = buffer_rx_local[237];
-				Serial.println(Coms.ETH.ON);
-				
+				Coms.ETH.ON = buffer_rx_local[237];			
 
 				//Params.Sensor_Conectado = (buffer_rx_local[232]  >> 0) & 0x01;
 				//Params.CDP_On           = (buffer_rx_local[232]  >> 1) & 0x01;
@@ -439,11 +445,22 @@ void procesar_bloque(uint16 tipo_bloque){
 
 			cnt_timeout_inicio = TIMEOUT_INICIO;
 			dispositivo_inicializado = 1;
+		}
+		else{
+			Serial.println((buffer_rx_local[209] + buffer_rx_local[210]*0x100));
+			if((buffer_rx_local[209] + buffer_rx_local[210]*0x100)<=200){
+				modifyCharacteristic(&buffer_rx_local[12], 6, TIME_DATE_CHARGING_START_TIME_CHAR_HANDLE);
+				modifyCharacteristic(&buffer_rx_local[18], 6, TIME_DATE_CHARGING_STOP_TIME_CHAR_HANDLE);
+				modifyCharacteristic(&buffer_rx_local[209], 2, RECORDING_REC_LAST_CHAR_HANDLE);
+				modifyCharacteristic(&buffer_rx_local[211], 1, RECORDING_REC_LAPS_CHAR_HANDLE);
+			}
+
 		}	
 	}
-	else if(BLOQUE_STATUS == tipo_bloque)
-	{		
-		if(buffer_rx_local[89]==0x36){
+	else if(BLOQUE_STATUS == tipo_bloque){	
+	
+		if(buffer_rx_local[48]==0x36){
+			TimeoutMainDisconnect = 0;	
 			//Leds
 			modifyCharacteristic(buffer_rx_local, 1, LED_LUMIN_COLOR_LUMINOSITY_LEVEL_CHAR_HANDLE);
 			modifyCharacteristic(&buffer_rx_local[1], 1, LED_LUMIN_COLOR_R_LED_COLOUR_CHAR_HANDLE);
@@ -475,58 +492,74 @@ void procesar_bloque(uint16 tipo_bloque){
 					serverbleNotCharacteristic(&buffer_rx_local[4], 2, STATUS_HPT_STATUS_CHAR_HANDLE); 
 				}
 				#ifdef CONNECTED
-					if(ConfigFirebase.FirebaseConnected){
-						ConfigFirebase.WriteStatus=true;
-					}
+					ConfigFirebase.WriteStatus=true;
 				#endif
 			}
 
 			//Medidas
-			modifyCharacteristic(&buffer_rx_local[6],  2,  STATUS_ICP_STATUS_CHAR_HANDLE);						
-			modifyCharacteristic(&buffer_rx_local[10], 2, STATUS_RCD_STATUS_CHAR_HANDLE);			
-			modifyCharacteristic(&buffer_rx_local[12], 2, STATUS_CONN_LOCK_STATUS_CHAR_HANDLE);			
-			modifyCharacteristic(&buffer_rx_local[14], 1, MEASURES_MAX_CURRENT_CABLE_CHAR_HANDLE);	
-			modifyCharacteristic(&buffer_rx_local[16], 2, MEASURES_INST_CURRENT_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[6],  2, STATUS_ICP_STATUS_CHAR_HANDLE);						
+			modifyCharacteristic(&buffer_rx_local[8],  2, STATUS_RCD_STATUS_CHAR_HANDLE);			
+			modifyCharacteristic(&buffer_rx_local[10], 2, STATUS_CONN_LOCK_STATUS_CHAR_HANDLE);			
+			modifyCharacteristic(&buffer_rx_local[12], 1, MEASURES_MAX_CURRENT_CABLE_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[13], 2, DOMESTIC_CONSUMPTION_DOMESTIC_CURRENT_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[15], 1, DOMESTIC_CONSUMPTION_REAL_CURRENT_LIMIT_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[16], 1, ERROR_STATUS_ERROR_CODE_CHAR_HANDLE);	
+
+			//FaseA	
+			modifyCharacteristic(&buffer_rx_local[17], 2, MEASURES_INST_CURRENT_CHAR_HANDLE);
 			if(((Status.Measures.instant_current) != (inst_current_anterior)) && (serverbleGetConnected())&& (--cnt_diferencia == 0))
 			{
 				cnt_diferencia = 2; // A.D.S. Cambiado de 30 a 5
 				inst_current_anterior = Status.Measures.instant_current;
-				serverbleNotCharacteristic(&buffer_rx_local[16], 2, MEASURES_INST_CURRENT_CHAR_HANDLE); 
+				serverbleNotCharacteristic(&buffer_rx_local[17], 2, MEASURES_INST_CURRENT_CHAR_HANDLE); 
+				if(Status.Trifasico){
+					serverbleNotCharacteristic(&buffer_rx_local[27],2,MEASURES_INST_CURRENTB_CHAR_HANDLE);
+					serverbleNotCharacteristic(&buffer_rx_local[37],2,MEASURES_INST_CURRENTB_CHAR_HANDLE);
+				}
 
+				#ifdef CONNECTED
+					ConfigFirebase.WriteStatus=true;
+				#endif
 			}
 
-			modifyCharacteristic(&buffer_rx_local[18], 2, MEASURES_INST_VOLTAGE_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[20], 2, MEASURES_ACTIVE_POWER_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[22], 2, MEASURES_REACTIVE_POWER_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[24], 4, MEASURES_ACTIVE_ENERGY_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[28], 4, MEASURES_REACTIVE_ENERGY_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[32], 4, MEASURES_APPARENT_POWER_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[36], 1, MEASURES_POWER_FACTOR_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[38], 2, DOMESTIC_CONSUMPTION_DOMESTIC_CURRENT_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[40], 1, DOMESTIC_CONSUMPTION_REAL_CURRENT_LIMIT_CHAR_HANDLE);
-			modifyCharacteristic(&buffer_rx_local[41], 1, ERROR_STATUS_ERROR_CODE_CHAR_HANDLE);		
+			modifyCharacteristic(&buffer_rx_local[19], 2, MEASURES_INST_VOLTAGE_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[21], 2, MEASURES_ACTIVE_POWER_CHAR_HANDLE);
+			modifyCharacteristic(&buffer_rx_local[23], 4, MEASURES_ACTIVE_ENERGY_CHAR_HANDLE);
 			
 			#ifdef CONNECTED
+			
 				//Pasar datos a Status
 				memcpy(Status.HPT_status, &buffer_rx_local[4], 2);
 				
 				Status.ICP_status 		= (memcmp(&buffer_rx_local[6],  "CL" ,2) == 0 )? true : false;
-				Status.Con_Lock   		= (memcmp(&buffer_rx_local[12], "LOC",3) == 0 )? true : false;
-				Status.DC_Leack_status  = (memcmp(&buffer_rx_local[12], "TR" ,2) >  0 )? true : false;
+				Status.DC_Leack_status  = (memcmp(&buffer_rx_local[8], "TR" ,2) >  0 )? true : false;
+				Status.Con_Lock   		= (memcmp(&buffer_rx_local[10], "UL",3) == 0 )? true : false;
+				
 
-				Status.Measures.max_current_cable=buffer_rx_local[14];
-				Status.Measures.instant_current = buffer_rx_local[16] + (buffer_rx_local[17] * 0x100);
-				Status.Measures.instant_voltage = buffer_rx_local[18] + (buffer_rx_local[19] * 0x100);
-				Status.Measures.active_power = buffer_rx_local[20] + (buffer_rx_local[21] * 0x100);
-				Status.Measures.reactive_power = buffer_rx_local[22] + (buffer_rx_local[23] * 0x100);
-				Status.Measures.active_energy = buffer_rx_local[24] + (buffer_rx_local[25] * 0x100) +(buffer_rx_local[26] * 0x1000) +(buffer_rx_local[27] * 0x10000);
-				Status.Measures.active_energy = buffer_rx_local[28] + (buffer_rx_local[29] * 0x100) +(buffer_rx_local[30] * 0x1000) +(buffer_rx_local[32] * 0x10000);			
-				Status.Measures.active_energy = buffer_rx_local[32] + (buffer_rx_local[33] * 0x100) +(buffer_rx_local[34] * 0x1000) +(buffer_rx_local[35] * 0x10000);		
-				Status.Measures.power_factor = buffer_rx_local[36];
-				Status.Measures.active_power = buffer_rx_local[38] + (buffer_rx_local[39] * 0x100);
-				Status.error_code = buffer_rx_local[41];
+				Status.Measures.max_current_cable=buffer_rx_local[12];
+				Status.Measures.instant_current = buffer_rx_local[17] + (buffer_rx_local[18] * 0x100);
+				Status.Measures.instant_voltage = buffer_rx_local[19] + (buffer_rx_local[20] * 0x100);
+				Status.Measures.active_power = buffer_rx_local[21] + (buffer_rx_local[22] * 0x100);
+				Status.Measures.active_energy = buffer_rx_local[23] + (buffer_rx_local[24] * 0x100) +(buffer_rx_local[25] * 0x1000) +(buffer_rx_local[26] * 0x10000);
 
 
+				Status.error_code = buffer_rx_local[16];
+				Status.Trifasico= buffer_rx_local[47]==3;
+
+
+				if(Status.Trifasico){
+					Status.MeasuresB.instant_current = buffer_rx_local[27] + (buffer_rx_local[28] * 0x100);
+					Status.MeasuresB.instant_voltage = buffer_rx_local[29] + (buffer_rx_local[30] * 0x100);
+					Status.MeasuresB.active_power = buffer_rx_local[31] + (buffer_rx_local[32] * 0x100);
+					Status.MeasuresB.active_energy = buffer_rx_local[33] + (buffer_rx_local[34] * 0x100) +(buffer_rx_local[35] * 0x1000) +(buffer_rx_local[36] * 0x10000);
+
+
+					Status.MeasuresC.instant_current = buffer_rx_local[37] + (buffer_rx_local[38] * 0x100);
+					Status.MeasuresC.instant_voltage = buffer_rx_local[39] + (buffer_rx_local[40] * 0x100);
+					Status.MeasuresC.active_power = buffer_rx_local[41] + (buffer_rx_local[42] * 0x100);
+					Status.MeasuresC.active_energy = buffer_rx_local[43] + (buffer_rx_local[44] * 0x100) +(buffer_rx_local[45] * 0x1000) +(buffer_rx_local[46] * 0x10000);
+
+				}
 
 			#endif
 		}
@@ -541,7 +574,7 @@ void procesar_bloque(uint16 tipo_bloque){
 		modifyCharacteristic(&buffer_rx_local[24], 6, TIME_DATE_CHARGING_STOP_TIME_CHAR_HANDLE);
 
 		#ifdef CONNECTED
-			int TimeStamp = Convert_To_Epoch(&buffer_rx_local[6]);
+			int TimeStamp = (Convert_To_Epoch(&buffer_rx_local[6]));
 			if(TimeStamp!=Status.Time.connect_date_time){
 				Status.Time.connect_date_time = TimeStamp;
 				ConfigFirebase.WriteTime = true;
@@ -568,20 +601,19 @@ void procesar_bloque(uint16 tipo_bloque){
 	{
 		
 		modifyCharacteristic(buffer_rx_local, 1, MEASURES_INSTALATION_CURRENT_LIMIT_CHAR_HANDLE);
-
+		Serial.println("Instalation current limit Changed to" );
+		Serial.print(buffer_rx_local[0]);
 		#ifdef CONNECTED
 			Params.inst_current_limit = buffer_rx_local[0];
 		#endif
 	}
 	else if(MEASURES_CURRENT_COMMAND_CHAR_HANDLE == tipo_bloque)
 	{
-		Comands.Newdata = false;
 		Comands.desired_current = buffer_rx_local[0];
+		Comands.Newdata = false;
+		Serial.println("Current command received");
+		Serial.println(Comands.desired_current);
 		modifyCharacteristic(buffer_rx_local, 1, MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
-	}
-	else if(TIME_DATE_DELTA_DELAY_FOR_CHARGING_CHAR_HANDLE == tipo_bloque)
-	{
-		modifyCharacteristic(buffer_rx_local, 2, TIME_DATE_DELTA_DELAY_FOR_CHARGING_CHAR_HANDLE);
 	}
 	else if(TIME_DATE_CHARGING_START_TIME_CHAR_HANDLE == tipo_bloque)
 	{
@@ -641,14 +673,6 @@ void procesar_bloque(uint16 tipo_bloque){
 	{
 		modifyCharacteristic(buffer_rx_local, 1, TEST_RCD_PE_TEST_RESULT_CHAR_HANDLE);
 	}
-	else if(TEST_LAUNCH_MCB_TEST_CHAR_HANDLE == tipo_bloque)
-	{
-		modifyCharacteristic(buffer_rx_local, 1, TEST_LAUNCH_MCB_TEST_CHAR_HANDLE);
-	}
-	else if(TEST_MCB_TEST_RESULT_CHAR_HANDLE == tipo_bloque)
-	{
-		modifyCharacteristic(buffer_rx_local, 1, TEST_MCB_TEST_RESULT_CHAR_HANDLE);
-	}
 	else if(MAN_LOCK_UNLOCK_LOCKING_MECHANISM_ON_OFF_CHAR_HANDLE == tipo_bloque)
 	{
 		modifyCharacteristic(buffer_rx_local, 1, MAN_LOCK_UNLOCK_LOCKING_MECHANISM_ON_OFF_CHAR_HANDLE);
@@ -678,14 +702,16 @@ void procesar_bloque(uint16 tipo_bloque){
 		ESP.restart();
 		//modifyCharacteristic(&buffer_rx_local[0], 1, RESET_RESET_CHAR_HANDLE);
 	}
+	else if(ENERGY_PARTIAL_RECORD_1 == tipo_bloque){
+		memcpy(record_buffer,buffer_rx_local,252);
+	}
+	else if(ENERGY_PARTIAL_RECORD_2 == tipo_bloque){
+		memcpy(&record_buffer[252],buffer_rx_local,252);
+	}
 	else if(ENERGY_RECORD_RECORD_CHAR_HANDLE == tipo_bloque)
 	{
-		modifyCharacteristic(buffer_rx_local, 512, ENERGY_RECORD_RECORD_CHAR_HANDLE);
-	}
-	else if(RECORDING_REC_CAPACITY_CHAR_HANDLE == tipo_bloque)
-	{
-		modifyCharacteristic(buffer_rx_local, 2, RECORDING_REC_CAPACITY_CHAR_HANDLE);
-		
+		memcpy(&record_buffer[504],buffer_rx_local,8);
+		modifyCharacteristic(record_buffer, 512, ENERGY_RECORD_RECORD_CHAR_HANDLE);
 	}
 	else if(RECORDING_REC_LAST_CHAR_HANDLE == tipo_bloque)
 	{
@@ -702,31 +728,19 @@ void procesar_bloque(uint16 tipo_bloque){
 	else if(CONFIGURACION_AUTENTICATION_MODES_CHAR_HANDLE == tipo_bloque)
 	{
 		modifyCharacteristic(buffer_rx_local, 2, CONFIGURACION_AUTENTICATION_MODES_CHAR_HANDLE);
-
+		
 		#ifdef CONNECTED
 			memcpy(Params.autentication_mode,buffer_rx_local,2);
 		#endif
 	}
-	else if(DOMESTIC_CONSUMPTION_KS_CHAR_HANDLE == tipo_bloque)
-	{
-		modifyCharacteristic(buffer_rx_local, 1, DOMESTIC_CONSUMPTION_KS_CHAR_HANDLE);
-	}
-	else if(DOMESTIC_CONSUMPTION_FCT_CHAR_HANDLE == tipo_bloque)
-	{
-		modifyCharacteristic(buffer_rx_local, 1, DOMESTIC_CONSUMPTION_FCT_CHAR_HANDLE);
-	}
-	else if(DOMESTIC_CONSUMPTION_FS_CHAR_HANDLE == tipo_bloque)
-	{
-		modifyCharacteristic(buffer_rx_local, 1, DOMESTIC_CONSUMPTION_FS_CHAR_HANDLE);
-	}
 	else if(DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_CHAR_HANDLE == tipo_bloque)
 	{
-		modifyCharacteristic(buffer_rx_local, 1, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_CHAR_HANDLE);
+		modifyCharacteristic(buffer_rx_local, 2, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_CHAR_HANDLE);
+		Serial.println("Potencia contratada cambiada a: ");
+		Serial.print(buffer_rx_local[0]+buffer_rx_local[1]*100);
 
 		#ifdef CONNECTED
-			Params.potencia_contratada=buffer_rx_local[0];
-			Serial.println("Potencia contratatda");
-			Serial.println(Params.potencia_contratada);
+			Params.potencia_contratada=buffer_rx_local[0]+buffer_rx_local[1]*100;
 		#endif
 	}
 	else if(ERROR_STATUS_ERROR_CODE_CHAR_HANDLE == tipo_bloque)
@@ -758,10 +772,6 @@ void procesar_bloque(uint16 tipo_bloque){
 			Serial.print("WIFI ON:");
 			Serial.println(Coms.Wifi.ON);
 			modifyCharacteristic(buffer_rx_local , 1, COMS_CONFIGURATION_WIFI_ON);
-		}
-		else if(COMS_CONFIGURATION_WIFI_START_PROV== tipo_bloque){
-			Serial.println("Starting Provisioning!");
-			Coms.StartProvisioning = true;
 		}
 		else if(COMS_CONFIGURATION_ETH_ON== tipo_bloque){
 			Coms.ETH.ON     =  buffer_rx_local[0];
@@ -846,6 +856,7 @@ void deviceConnectInd ( void ){
 	modifyCharacteristic(authChallengeQuery, 8, AUTENTICACION_MATRIX_CHAR_HANDLE);
 	Serial.print("Sending authentication");
 	vTaskDelay(pdMS_TO_TICKS(250));
+	Led_color=VERDE;
 
 }
 
@@ -858,6 +869,7 @@ void deviceDisconnectInd ( void )
 	//memset(authChallengeQuery, 0x00, 8);
 	modifyCharacteristic(authChallengeQuery, 10, AUTENTICACION_MATRIX_CHAR_HANDLE);
 	vTaskDelay(pdMS_TO_TICKS(500));
+	Led_color=VERDE;
 }
 
 uint8_t isMainFwUpdateActive (void)
@@ -941,15 +953,20 @@ void UpdateTask(void *arg){
 	unsigned char checksum ;
 	unsigned long blVer=0;
 	unsigned char rowData[512];
-	SPIFFS.begin(1,"/spiffs",1,"PSOC5");
-	File file = SPIFFS.open("/FreeRTOS_V6.cyacd"); 
+	SPIFFS.begin();
+	File file;
+	file = SPIFFS.open("/FreeRTOS_V6.cyacd"); 	
 	if(!file || file.size() == 0){ 
-		Serial.println("Failed to open file for reading , intentandolo otra vez"); 		
+		file.close();
+		SPIFFS.end();
+		Serial.println("El spiffs parece cerrado, intentandolo otra vez"); 		
+		SPIFFS.begin(0,"/spiffs",1,"PSOC5");
 		file = SPIFFS.open("/FreeRTOS_V6.cyacd");
 		if(!file || file.size() == 0){
 			Serial.println("Imposible abrir");
 		}
 	}
+	Serial.println(file.size());
 	if(file){
 		//Leer la primera linea y obtener los datos del chip
 		Buffer=file.readStringUntil('\n'); 
@@ -1046,6 +1063,7 @@ void SendToPSOC5(uint8 data, uint16 attrHandle){
   buffer_tx_local[3] = 5; //size
   buffer_tx_local[4] = data;
   controlSendToSerialLocal(buffer_tx_local, 5);
+  delay(5);
 }
 
 void SendToPSOC5(uint8 *data, uint16 len, uint16 attrHandle){
@@ -1057,6 +1075,7 @@ void SendToPSOC5(uint8 *data, uint16 len, uint16 attrHandle){
   buffer_tx_local[3] = len+4; //size
   memcpy(&buffer_tx_local[4],data,len);
   controlSendToSerialLocal(buffer_tx_local, len+4);
+  delay(5);
 }
 
 void SendToPSOC5(uint16 attrHandle){

@@ -139,16 +139,22 @@ ETHClass::~ETHClass()
 {}
 
 #ifdef ESP_IDF_VERSION_MAJOR
+bool ETHClass::Kill(){
+    esp_eth_stop(eth_handle);
+    esp_eth_driver_uninstall(eth_handle);
+    //tcpip_adapter_dhcpc_stop();
+    return false;
+}
 bool ETHClass::end(){
     if(esp_eth_stop(eth_handle) != ESP_OK){
-        log_e("esp_eth_start failed");
+        log_e("esp_eth_stop failed");
         return false;
     }
     return true;
 }
 bool ETHClass::restart(){
     if(esp_eth_start(eth_handle) != ESP_OK){
-        log_e("esp_eth_start failed");
+        log_e("esp_eth_restart failed");
         return false;
     }
     return true;

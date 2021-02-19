@@ -83,10 +83,10 @@ typedef struct{
 
 typedef struct{
 
-	int connect_date_time;
-	int disconnect_date_time;
-	int charge_start_time;
-	int charge_stop_time;
+	long long connect_date_time;
+	long long disconnect_date_time;
+	long long charge_start_time;
+	long long charge_stop_time;
 } caract_date_time;
 
 typedef struct{
@@ -130,12 +130,14 @@ typedef struct{
 	bool ICP_status;
 	bool DC_Leack_status;
 	bool Con_Lock;
-
+	bool Trifasico = false;
 	uint8  error_code;
 
 	char HPT_status[2];
 	
 	caract_measures Measures;
+	caract_measures MeasuresB;
+	caract_measures MeasuresC;
 	caract_date_time Time;
 
 	long long last_ts_app_req= 0;
@@ -183,10 +185,11 @@ typedef struct{
 }carac_MODEM;
 
 typedef struct{
-	bool StartConnection   = false;;
+	bool StartConnection   = false;
 	bool StartProvisioning = false;
 	bool RemoveCredentials = false;
 	bool RestartConection  = false;
+	bool Provisioning 	   = false;
 	carac_WIFI   Wifi;
 	carac_ETH     ETH;
 	carac_MODEM   GSM;
@@ -550,6 +553,12 @@ typedef struct{
 #define COMS_CONFIGURATION_LAN_IP2	       (0x00BDu)
 
 #define COMS_FW_UPDATEMODE_CHAR_HANDLE     (0x00BFu)
+#define MEASURES_INST_CURRENTB_CHAR_HANDLE (0x00C1u)
+#define MEASURES_INST_CURRENTC_CHAR_HANDLE (0x00C3u)
+
+
+#define ENERGY_PARTIAL_RECORD_1			   (0x00D0u)
+#define ENERGY_PARTIAL_RECORD_2			   (0x00D1u)
 
 
 #endif

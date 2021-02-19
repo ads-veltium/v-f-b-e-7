@@ -83,6 +83,7 @@ class ETHClass {
         
         bool config(IPAddress local_ip, IPAddress gateway, IPAddress subnet, IPAddress dns1 = (uint32_t)0x00000000, IPAddress dns2 = (uint32_t)0x00000000);
         bool end();
+        bool Kill();
         bool restart();
         const char * getHostname();
         bool setHostname(const char * hostname);

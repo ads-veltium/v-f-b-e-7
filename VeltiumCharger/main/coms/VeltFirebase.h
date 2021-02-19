@@ -1,14 +1,17 @@
 #ifndef VeltFirebase_h
 #define VeltFirebase_h
 
+#define ARDUINOJSON_USE_LONG_LONG 1
 #include "HTTPClient.h"
 #include "ArduinoJson.h"
 #include "Update.h"
 #include "../control.h"
 #include "esp32-hal-psram.h"
 
-#define FIREBASE_API_KEY "AIzaSyCYZpVNUOQvrXvc3qETxCqX4DPfp3Fwe3w"
-#define FIREBASE_PROJECT "veltiumdev-default-rtdb.firebaseio.com"
+#define FIREBASE_API_KEY "AIzaSyBaJA88_Y3ViCzNF_J08f4LBMAM771aZLs"
+#define FIREBASE_PROJECT "veltiumbackend.firebaseio.com"
+#define FIREBASE_DEV_API_KEY "AIzaSyCYZpVNUOQvrXvc3qETxCqX4DPfp3Fwe3w"
+#define FIREBASE_DEV_PROJECT "veltiumdev-default-rtdb.firebaseio.com"
 
 #define DISCONNECTED      0
 #define CONNECTING        5
