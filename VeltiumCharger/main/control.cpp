@@ -225,7 +225,7 @@ void controlTask(void *arg)
 							}
 
 						}
-						if(++TimeoutMainDisconnect>10000){
+						if(++TimeoutMainDisconnect>30000){
 							Serial.println("Main reset detected");
 							MAIN_RESET_Write(0);						
 							ESP.restart();
@@ -274,7 +274,7 @@ void controlTask(void *arg)
 			cont_hour_ant = cont_hour;
 		}
 
-		vTaskDelay(pdMS_TO_TICKS(15));	
+		delay(5);	
 	}
 }
 
@@ -388,7 +388,7 @@ void proceso_recepcion(void)
 
 void procesar_bloque(uint16 tipo_bloque){
 	if(BLOQUE_INICIALIZACION == tipo_bloque){	
-		if (!systemStarted) {
+		if (!systemStarted && buffer_rx_local[238]==0x36) {
 			memcpy(device_ID, buffer_rx_local, 11);
 			esp_ble_gap_set_device_name((const char *)device_ID);
 			changeAdvName(device_ID);
@@ -446,16 +446,6 @@ void procesar_bloque(uint16 tipo_bloque){
 			cnt_timeout_inicio = TIMEOUT_INICIO;
 			dispositivo_inicializado = 1;
 		}
-		else{
-			Serial.println((buffer_rx_local[209] + buffer_rx_local[210]*0x100));
-			if((buffer_rx_local[209] + buffer_rx_local[210]*0x100)<=200){
-				modifyCharacteristic(&buffer_rx_local[12], 6, TIME_DATE_CHARGING_START_TIME_CHAR_HANDLE);
-				modifyCharacteristic(&buffer_rx_local[18], 6, TIME_DATE_CHARGING_STOP_TIME_CHAR_HANDLE);
-				modifyCharacteristic(&buffer_rx_local[209], 2, RECORDING_REC_LAST_CHAR_HANDLE);
-				modifyCharacteristic(&buffer_rx_local[211], 1, RECORDING_REC_LAPS_CHAR_HANDLE);
-			}
-
-		}	
 	}
 	else if(BLOQUE_STATUS == tipo_bloque){	
 	
@@ -703,13 +693,16 @@ void procesar_bloque(uint16 tipo_bloque){
 		//modifyCharacteristic(&buffer_rx_local[0], 1, RESET_RESET_CHAR_HANDLE);
 	}
 	else if(ENERGY_PARTIAL_RECORD_1 == tipo_bloque){
+		Serial.println("Record1");
 		memcpy(record_buffer,buffer_rx_local,252);
 	}
 	else if(ENERGY_PARTIAL_RECORD_2 == tipo_bloque){
+		Serial.println("Record2");
 		memcpy(&record_buffer[252],buffer_rx_local,252);
 	}
 	else if(ENERGY_RECORD_RECORD_CHAR_HANDLE == tipo_bloque)
 	{
+		Serial.println("Total record received");
 		memcpy(&record_buffer[504],buffer_rx_local,8);
 		modifyCharacteristic(record_buffer, 512, ENERGY_RECORD_RECORD_CHAR_HANDLE);
 	}

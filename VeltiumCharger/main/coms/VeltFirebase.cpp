@@ -3,7 +3,12 @@
 /*********** Clase autenticacion ************/
 void Real_Time_Database::beginAuth (void) {
   AutenticationClient.setTimeout(1000);
-  AutenticationClient.begin(Auth_url+FIREBASE_API_KEY);
+  #ifdef DEVELOPMENT
+  AutenticationClient.begin(Auth_url+FIREBASE_DEV_API_KEY);
+  #else
+    AutenticationClient.begin(Auth_url+FIREBASE_API_KEY);
+  #endif
+
   AutenticationClient.addHeader("Content-Type", "application/json");
 }
 

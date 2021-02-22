@@ -4,6 +4,7 @@
 //configuration
 #define USE_COMS
 #define USE_DRACO_BLE
+#define DEVELOPMENT
 
 #include "Arduino.h"
 #include "ble/serverble.h"

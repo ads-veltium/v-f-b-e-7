@@ -415,7 +415,7 @@ void InitServer(void) {
 }
 /********************* Conection Functions **************************/
 void WiFiEvent(arduino_event_id_t event, arduino_event_info_t info){ 
-    Serial.println(event);
+    //Serial.println(event);
 	switch (event) {
 
 //********************** WIFI Cases **********************//
@@ -533,6 +533,23 @@ void Delete_Credentials(){
     nvs_flash_init();
 }
 
+void StartSmarConfig(){
+    //Init WiFi as Station, start SmartConfig
+    WiFi.mode(WIFI_AP_STA);
+    WiFi.beginSmartConfig();
+
+    //Wait for WiFi to connect to AP
+    Serial.println("Waiting for WiFi");
+    while (WiFi.status() != WL_CONNECTED) {
+        delay(300);
+    }
+
+    Serial.println("WiFi Connected.");
+
+    Serial.print("IP Address: ");
+    Serial.println(WiFi.localIP());
+}
+
 
 void Station_Begin(){
     
@@ -602,10 +619,9 @@ void ComsTask(void *args){
     bool ServidorArrancado = false;
     WiFi.onEvent(WiFiEvent);
     while (1){
-
         if(Coms.StartConnection){
             //Arranque del provisioning
-            if(Coms.StartProvisioning){
+            if(Coms.StartProvisioning || Coms.StartSmartconfig){
                 Serial.println("Starting provisioning sistem");
                 if(ServidorArrancado){
                     server.end();
@@ -623,19 +639,24 @@ void ComsTask(void *args){
                     }
                     WiFiProv.StopProvision();
                 }
-
                 if(Coms.ETH.ON){
                     ETH_Stop();
                     Coms.ETH.ON=false;
                 }
-                Station_Begin();
+
+                if(Coms.StartSmartconfig){
+                    StartSmarConfig();
+                }
+                else{Coms.Provisioning = true;
+                    Station_Begin();}
                 while(Coms.Wifi.ON != true){
                     SendToPSOC5(true,COMS_CONFIGURATION_WIFI_ON);
                     delay(25);
                 }
                 SendToPSOC5(Coms.Wifi.ON,COMS_CONFIGURATION_WIFI_ON);
                 Coms.StartProvisioning = false;
-                Coms.Provisioning = true;
+                Coms.StartSmartconfig=false;
+                
                 ComsMachineState=CONNECTING;
             }
 

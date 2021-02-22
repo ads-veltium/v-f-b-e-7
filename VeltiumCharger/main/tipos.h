@@ -187,6 +187,7 @@ typedef struct{
 typedef struct{
 	bool StartConnection   = false;
 	bool StartProvisioning = false;
+	bool StartSmartconfig = false;
 	bool RemoveCredentials = false;
 	bool RestartConection  = false;
 	bool Provisioning 	   = false;

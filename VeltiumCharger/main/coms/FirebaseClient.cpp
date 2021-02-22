@@ -44,8 +44,11 @@ bool initFirebaseClient(){
     if(!Database.RTDB.LogIn()){
       return false;
     }
-
+    #ifdef DEVELOPMENT
+    String project = FIREBASE_DEV_PROJECT;
+    #else
     String project = FIREBASE_PROJECT;
+    #endif
     project += "/";
     Database.RTDB.begin(project, ConfigFirebase.Device_Db_ID);
     UpdateStatus.BetaPermission = Database.RTDB.checkPermisions();

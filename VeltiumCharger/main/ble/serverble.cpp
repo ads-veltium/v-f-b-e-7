@@ -388,7 +388,14 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 			}
 
 			if(handle == COMS_CONFIGURATION_WIFI_START_PROV){
-				Coms.StartProvisioning = true;
+				if(payload[0]==1){
+					Serial.println("Star provisioning received");
+					Coms.StartProvisioning = true;
+				}
+				else if(payload[0]==2){
+					Serial.println("Star Smartconfig received");
+					Coms.StartSmartconfig = true;
+				}
 				return;
 			}
 			else if(handle == COMS_CONFIGURATION_ETH_ON){
@@ -543,7 +550,6 @@ void serverbleInit() {
 			pbleCharacteristics[indexCharacteristic] = pbleServices[blefields[i].indexServ]->createCharacteristic( blefields[i].uuid, blefields[i].properties );
 			if ( blefields[i].descriptor2902 == 1 )
 			{
-				Serial.println(blefields[i].indexCharacteristic);
 				pbleCharacteristics[indexCharacteristic]->addDescriptor(new BLE2902());
 			}
 			pbleCharacteristics[indexCharacteristic]->setCallbacks(&pbleCharacteristicCallbacks);
