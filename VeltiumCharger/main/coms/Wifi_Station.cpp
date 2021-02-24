@@ -432,7 +432,8 @@ void WiFiEvent(arduino_event_id_t event, arduino_event_info_t info){
                     SendToPSOC5(Coms.Wifi.ON,COMS_CONFIGURATION_WIFI_ON);
                     vTaskDelay(50);
                 }
-            if(info.wifi_sta_disconnected.reason == WIFI_REASON_AUTH_EXPIRE){
+            }
+            else if(info.wifi_sta_disconnected.reason == WIFI_REASON_AUTH_EXPIRE){
                     AuthErrorCount=0;
                     Serial.println("Contraseña incorrecta, deteniendo sistema");  
                     WiFiProv.StopProvision();
@@ -440,17 +441,16 @@ void WiFiEvent(arduino_event_id_t event, arduino_event_info_t info){
                     wifi_connecting = false;
                     Coms.Wifi.ON = 0;
                     SendToPSOC5(Coms.Wifi.ON,COMS_CONFIGURATION_WIFI_ON);
+                    Serial.println("Reconectando...");
+                    
                     vTaskDelay(50);
-            }
-
-    
-            }
-            else if(info.wifi_sta_disconnected.reason!=WIFI_REASON_ASSOC_LEAVE ){
+            }    
+            
+            if(info.wifi_sta_disconnected.reason!=WIFI_REASON_ASSOC_LEAVE ){
                 Serial.println("Reconectando...");
 			    WiFi.reconnect();
             }
             else{
-                Serial.println(event);
                 Serial.println(info.wifi_sta_disconnected.reason);
             }
 		break;
@@ -460,12 +460,14 @@ void WiFiEvent(arduino_event_id_t event, arduino_event_info_t info){
 			Serial.println(WiFi.localIP());
             Coms.Wifi.IP=WiFi.localIP();
 
-            uint8_t len=WiFi.SSID().length();
+            uint8_t len= WiFi.SSID().length() <=32 ? WiFi.SSID().length():32;
             memcpy(Coms.Wifi.AP,WiFi.SSID().c_str(),len);
+
             Serial.println((char*)Coms.Wifi.AP);
             modifyCharacteristic((uint8_t*)Coms.Wifi.AP, 16, COMS_CONFIGURATION_WIFI_SSID_1);
+
             if(len>16){
-                modifyCharacteristic((uint8_t*)Coms.Wifi.AP[16], 16, COMS_CONFIGURATION_WIFI_SSID_2);
+                modifyCharacteristic(&Coms.Wifi.AP[15], 16, COMS_CONFIGURATION_WIFI_SSID_2);
             }
             if(Coms.Provisioning){
                 delay(7000);
