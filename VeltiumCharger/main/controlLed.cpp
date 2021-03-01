@@ -119,8 +119,6 @@ void LedControl_Task(void *arg){
 
 		Efectos=UpdateStatus.InstalandoArchivo;
 
-
-
 		//Descarga:
 		if(Efectos){			
 			LedPointer++;
@@ -171,26 +169,26 @@ void LedControl_Task(void *arg){
 					if(!memcmp(Status.HPT_status, "B", 1 )){
 						_LED_COLOR = HUE_BLUE;
 					}
-					if(Actualcolor!=_LED_COLOR){
-						displayAll(luminosidad_Actual,_LED_COLOR);
-						delay(10);
-						displayAll(luminosidad_Actual,_LED_COLOR);
-						delay(10);
-						displayAll(luminosidad_Actual,_LED_COLOR);
-						delay(10);
-					}	
 					//control de saltos entre luminosidad
-					if(luminosidad-luminosidad_Actual>=1){
+					if(luminosidad-luminosidad_Actual>=3){
 						luminosidad_Actual++;
 						displayAll(luminosidad_Actual,_LED_COLOR);
 					}
-					else if (luminosidad_Actual-luminosidad>=1){
+					else if (luminosidad_Actual-luminosidad>=3){
 						luminosidad_Actual--;
 						displayAll(luminosidad_Actual,_LED_COLOR);	
 					}
 					else{
 						luminosidad_carga = luminosidad;
 						luminosidad_Actual=luminosidad;
+						if(Actualcolor!=_LED_COLOR){
+							displayAll(luminosidad_Actual,_LED_COLOR);
+							delay(10);
+							displayAll(luminosidad_Actual,_LED_COLOR);
+							delay(10);
+							displayAll(luminosidad_Actual,_LED_COLOR);
+							delay(10);
+						}	
 					}
 					
 					

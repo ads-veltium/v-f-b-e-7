@@ -388,10 +388,7 @@ void proceso_recepcion(void)
 }
 
 void procesar_bloque(uint16 tipo_bloque){
-	if(!systemStarted){
-		Serial.println("Procesando bloque ");
-		Serial.print(tipo_bloque);
-	}
+
 	switch(tipo_bloque){
 		case BLOQUE_INICIALIZACION:
 			if (!systemStarted && buffer_rx_local[238]==0x36) {
