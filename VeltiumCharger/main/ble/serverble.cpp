@@ -75,8 +75,10 @@ BLE_FIELD blefields[MAX_BLE_FIELDS] =
 	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC005),NUMBER_OF_CHARACTERISTICS, PROP_R,  0, RCS_RECORD,    BLE_CHA_RCS_RECORD,  0},
 	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC006),NUMBER_OF_CHARACTERISTICS, PROP_RW, 0, RCS_SCH_MAT,   BLE_CHA_RCS_SCH_MAT, 0},
 	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC007),NUMBER_OF_CHARACTERISTICS, PROP_WN, 0, FW_DATA,       BLE_CHA_FW_DATA,     1},
+	#ifdef CONNECTED
 	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC008),NUMBER_OF_CHARACTERISTICS, PROP_RN, 0, RCS_INSB_CURR, BLE_CHA_INSB_CURR,   1},
 	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC009),NUMBER_OF_CHARACTERISTICS, PROP_RN, 0, RCS_INSC_CURR, BLE_CHA_INSC_CURR,   1},
+	#endif
 } ;
 
 
@@ -93,6 +95,7 @@ void serverbleNotCharacteristic ( uint8_t *data, int len, uint16_t handle )
 		pbleCharacteristics[BLE_CHA_INS_CURR]->notify();
 		return;
 	}
+#ifdef CONNECTED
 	if (handle == MEASURES_INST_CURRENTB_CHAR_HANDLE) {
 		pbleCharacteristics[BLE_CHA_INSB_CURR]->setValue(data, len);
 		pbleCharacteristics[BLE_CHA_INSB_CURR]->notify();
@@ -103,6 +106,7 @@ void serverbleNotCharacteristic ( uint8_t *data, int len, uint16_t handle )
 		pbleCharacteristics[BLE_CHA_INSC_CURR]->notify();
 		return;
 	}
+#endif
 	if (handle == FWUPDATE_BIRD_DATA_PSEUDO_CHAR_HANDLE) {
 		pbleCharacteristics[BLE_CHA_FW_DATA]->setValue(data, len);
 		pbleCharacteristics[BLE_CHA_FW_DATA]->notify();
@@ -121,6 +125,7 @@ void serverbleSetCharacteristic ( uint8_t *data, int len, uint16_t handle )
 		pbleCharacteristics[BLE_CHA_INS_CURR]->setValue(data, len);
 		return;
 	}
+#ifdef CONNECTED
 	if (handle == MEASURES_INST_CURRENTB_CHAR_HANDLE) {
 		pbleCharacteristics[BLE_CHA_INSB_CURR]->setValue(data, len);
 		return;
@@ -129,6 +134,7 @@ void serverbleSetCharacteristic ( uint8_t *data, int len, uint16_t handle )
 		pbleCharacteristics[BLE_CHA_INSC_CURR]->setValue(data, len);
 		return;
 	}
+#endif
 	if (handle == ENERGY_RECORD_RECORD_CHAR_HANDLE) {
 		pbleCharacteristics[BLE_CHA_RCS_RECORD]->setValue(data, len);
 		return;
@@ -386,7 +392,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 			if (!authorizedOK()) {
 				return;
 			}
-
+#ifdef CONNECTED
 			if(handle == COMS_CONFIGURATION_WIFI_START_PROV){
 				if(payload[0]==1){
 					Serial.println("Star provisioning received");
@@ -410,7 +416,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 					delay(50);
 				}
 			}
-			
+#endif			
 			// if we are here, we are authenticated.
 			// send payload downstream.
 			buffer_tx[0] = HEADER_TX;
@@ -607,7 +613,7 @@ void serverbleTask(void *arg)
 			// do stuff here on connecting
 			oldDeviceBleConnected = deviceBleConnected;
 		}
-		vTaskDelay(pdMS_TO_TICKS(500));	
+		vTaskDelay(pdMS_TO_TICKS(250));	
 	}
 }
 

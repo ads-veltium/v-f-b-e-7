@@ -160,7 +160,7 @@ typedef struct{
 typedef struct{
 	bool ON;
 	bool Auto;
-	uint8_t AP[32]={'\0'};
+	uint8_t AP[34]={'\0'};
 	String Pass;
 	IPAddress IP;
 }carac_WIFI;

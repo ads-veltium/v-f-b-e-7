@@ -2,7 +2,7 @@
 #define __CONTROL_MAIN
 
 //configuration
-#define USE_COMS
+//#define USE_COMS
 #define USE_DRACO_BLE
 #define DEVELOPMENT
 
@@ -39,13 +39,11 @@
 #endif
 
 //Prioridades FreeRTOS
-#define PRIORIDAD_LEDS     3
-#define PRIORIDAD_CONTROL  1
-#define PRIORIDAD_BLE      1
-#define PRIORIDAD_DESCARGA 5
-#define PRIORIDAD_UPDATE   2
-#define PRIORIDAD_FIREBASE 4
-#define PRIORIDAD_COMS	   3
+#define PRIORIDAD_LEDS     1
+#define PRIORIDAD_CONTROL  4
+#define PRIORIDAD_BLE      2
+#define PRIORIDAD_FIREBASE 2
+#define PRIORIDAD_COMS	   1
 
 // ESTADO GENERAL
 #define	ESTADO_ARRANQUE			0
@@ -60,7 +58,7 @@
 #define RECIBIENDO_BLOQUE	3
 
 // TIMEOUTS
-#define TIMEOUT_TX_BLOQUE	10
+#define TIMEOUT_TX_BLOQUE	75
 #define TIMEOUT_RX_BLOQUE	10
 #define TIMEOUT_INICIO		10
 #define TIME_PARPADEO		50

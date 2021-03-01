@@ -460,14 +460,18 @@ void WiFiEvent(arduino_event_id_t event, arduino_event_info_t info){
 			Serial.println(WiFi.localIP());
             Coms.Wifi.IP=WiFi.localIP();
 
+
             uint8_t len= WiFi.SSID().length() <=32 ? WiFi.SSID().length():32;
             memcpy(Coms.Wifi.AP,WiFi.SSID().c_str(),len);
 
+            /*String longWifi = "EthErEAlm6-24G-with-a-loong-name";
+            uint8_t len= longWifi.length() <=32 ? longWifi.length():32;
+            memcpy(Coms.Wifi.AP,longWifi.c_str(),len);     */  
             Serial.println((char*)Coms.Wifi.AP);
             modifyCharacteristic((uint8_t*)Coms.Wifi.AP, 16, COMS_CONFIGURATION_WIFI_SSID_1);
 
             if(len>16){
-                modifyCharacteristic(&Coms.Wifi.AP[15], 16, COMS_CONFIGURATION_WIFI_SSID_2);
+                modifyCharacteristic(&Coms.Wifi.AP[16], 16, COMS_CONFIGURATION_WIFI_SSID_2);
             }
             if(Coms.Provisioning){
                 delay(7000);
