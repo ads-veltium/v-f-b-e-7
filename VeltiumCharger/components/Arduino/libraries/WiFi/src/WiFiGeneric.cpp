@@ -342,7 +342,7 @@ const char * system_event_reasons[] = { "UNSPECIFIED", "AUTH_EXPIRE", "AUTH_LEAV
 esp_err_t WiFiGenericClass::_eventCallback(arduino_event_t *event)
 {
     if(event->event_id < ARDUINO_EVENT_MAX) {
-        log_d("Arduino Event: %d - %s", event->event_id, arduino_event_names[event->event_id]);
+        //log_d("Arduino Event: %d - %s", event->event_id, arduino_event_names[event->event_id]);
     }
     if(event->event_id == ARDUINO_EVENT_WIFI_SCAN_DONE) {
         WiFiScanClass::_scanDone();

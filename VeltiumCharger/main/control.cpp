@@ -65,7 +65,7 @@ uint16 cnt_repeticiones_inicio = 500;	//1000;
 
 uint8 status_hpt_anterior[2] = {'0','V' };
 uint16 inst_current_anterior = 0x0000;
-uint16 cnt_diferencia = 30;
+uint16 cnt_diferencia = 1;
 
 uint8 version_firmware[11] = {"VBLE2_0504"};	
 uint8 PSOC5_version_firmware[11] ;		
@@ -488,6 +488,7 @@ void procesar_bloque(uint16 tipo_bloque){
 
 				//FaseA	
 				modifyCharacteristic(&buffer_rx_local[14], 2, MEASURES_INST_CURRENT_CHAR_HANDLE);
+				Status.Measures.instant_current = buffer_rx_local[14] + (buffer_rx_local[15] * 0x100);
 				if(((Status.Measures.instant_current) != (inst_current_anterior)) && (serverbleGetConnected())&& (--cnt_diferencia == 0))
 				{
 					cnt_diferencia = 2; // A.D.S. Cambiado de 30 a 5
@@ -511,7 +512,7 @@ void procesar_bloque(uint16 tipo_bloque){
 					//Pasar datos a Status
 					memcpy(Status.HPT_status, &buffer_rx_local[1], 2);
 					Status.error_code = buffer_rx_local[13];
-					Status.Measures.instant_current = buffer_rx_local[14] + (buffer_rx_local[15] * 0x100);
+					
 #ifdef CONNECTED					
 					Status.ICP_status 		= (memcmp(&buffer_rx_local[3],  "CL" ,2) == 0 )? true : false;
 					Status.DC_Leack_status  = (memcmp(&buffer_rx_local[5], "TR" ,2) >  0 )? true : false;
