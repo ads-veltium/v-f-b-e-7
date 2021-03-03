@@ -52,10 +52,10 @@ BLEService *pbleServices[NUMBER_OF_SERVICES];
 
 BLECharacteristic *pbleCharacteristics[NUMBER_OF_CHARACTERISTICS];
 
-#define PROP_RW BLECharacteristic::PROPERTY_READ|BLECharacteristic::PROPERTY_WRITE
-#define PROP_RN BLECharacteristic::PROPERTY_READ|BLECharacteristic::PROPERTY_NOTIFY
-#define PROP_R  BLECharacteristic::PROPERTY_READ
-#define PROP_WN BLECharacteristic::PROPERTY_WRITE|BLECharacteristic::PROPERTY_NOTIFY
+#define PROP_RW NIMBLE_PROPERTY::READ |NIMBLE_PROPERTY::WRITE
+#define PROP_RN NIMBLE_PROPERTY::READ |NIMBLE_PROPERTY::NOTIFY
+#define PROP_R  NIMBLE_PROPERTY::READ
+#define PROP_WN NIMBLE_PROPERTY::WRITE |NIMBLE_PROPERTY::NOTIFY
 
 
 // VSC_SELECTOR     RW 16
@@ -510,8 +510,20 @@ BLEAdvertising *pAdvertising;
 void changeAdvName( uint8_t * name ){
 	pAdvertising = pServer->getAdvertising();
 	pAdvertising->stop();
+
+	advert.setFlags(0x06);
 	advert.setName(std::string((char*)name));
+	advert.setCompleteServices((BLEUUID((uint16_t)0xCD01)));
+	advert.setPreferredParams(36,36);
+	Serial.println(advert.getPayload().c_str());
+
 	pAdvertising->setAdvertisementData(advert);
+	pAdvertising->setName(std::string((char*)name));
+	pAdvertising->setMaxInterval(36);
+	pAdvertising->setMinInterval(36);
+	pAdvertising->setMaxPreferred(36);
+	pAdvertising->setMinPreferred(36);
+	pAdvertising->addServiceUUID(BLEUUID((uint16_t)0xCD01));
 	pAdvertising->start();
 
 	return;
@@ -523,7 +535,6 @@ void serverbleInit() {
 	Serial.printf("sizeof(BLEService): %d, NUM: %d, total:%d\n", sizeof(BLEService), NUMBER_OF_SERVICES, sizeof(BLEService) * NUMBER_OF_SERVICES);
 	Serial.printf("sizeof(BLECharacteristic): %d, NUM: %d, total:%d\n", sizeof(BLECharacteristic), NUMBER_OF_CHARACTERISTICS, sizeof(BLECharacteristic) * NUMBER_OF_CHARACTERISTICS);
 	Serial.printf("sizeof(BLE_FIELD): %d, NUM: %d, total:%d\n", sizeof(BLEService), MAX_BLE_FIELDS, sizeof(BLEService) * MAX_BLE_FIELDS);
-	Serial.printf("sizeof(BLE2902): %d\n", sizeof(BLE2902));
 
 	milestone("at the beginning of serverbleInit");
 
@@ -556,7 +567,7 @@ void serverbleInit() {
 			pbleCharacteristics[indexCharacteristic] = pbleServices[blefields[i].indexServ]->createCharacteristic( blefields[i].uuid, blefields[i].properties );
 			if ( blefields[i].descriptor2902 == 1 )
 			{
-				pbleCharacteristics[indexCharacteristic]->addDescriptor(new BLE2902());
+				pbleCharacteristics[indexCharacteristic]->createDescriptor (blefields[i].uuid, blefields[i].properties);
 			}
 			pbleCharacteristics[indexCharacteristic]->setCallbacks(&pbleCharacteristicCallbacks);
 			indexCharacteristic++;
@@ -602,6 +613,8 @@ void serverbleTask(void *arg)
 
 		// disconnecting
 		if (!deviceBleConnected && oldDeviceBleConnected) {
+
+			pServer->stopAdvertising();
 			pServer->startAdvertising(); // restart advertising
 			printf(" disconnecting \r\n");
 			printf("start advertising again\r\n");

@@ -22,6 +22,7 @@
 #include "HardwareSerialMOD.h"
 #include <math.h>
 #include "SPIFFS.h"
+//#include "NimBLEDevice.h"
 
 /*********** Pruebas tar.gz **************/
 //Descomentar para probar el sistema de actualizacion con firmware comprimido

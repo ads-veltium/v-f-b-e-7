@@ -359,7 +359,7 @@ static int32_t task_create_wrapper(void *task_func, const char *name, uint32_t s
 
 static int32_t IRAM_ATTR task_ms_to_tick_wrapper(uint32_t ms)
 {
-    return (int32_t)(ms / portTICK_PERIOD_MS);
+    return (int32_t)(pdMS_TO_TICKS(ms));
 }
 
 static int32_t task_get_max_priority_wrapper(void)
@@ -401,10 +401,10 @@ static void IRAM_ATTR timer_arm_us_wrapper(void *ptimer, uint32_t us, bool repea
     ets_timer_arm_us(ptimer, us, repeat);
 }
 
-static int get_time_wrapper(void *t)
+/*static int get_time_wrapper(void *t)
 {
     return os_get_time(t);
-}
+}*/
 
 static void * IRAM_ATTR malloc_internal_wrapper(size_t size)
 {
@@ -584,9 +584,9 @@ wifi_osi_funcs_t g_wifi_osi_funcs = {
     ._nvs_set_blob = nvs_set_blob,
     ._nvs_get_blob = nvs_get_blob,
     ._nvs_erase_key = nvs_erase_key,
-    ._get_random = os_get_random,
-    ._get_time = get_time_wrapper,
-    ._random = os_random,
+    //._get_random = os_get_random,
+    //._get_time = get_time_wrapper,
+    ._random = esp_random,
     ._log_write = esp_log_write,
     ._log_writev = esp_log_writev,
     ._log_timestamp = esp_log_timestamp,

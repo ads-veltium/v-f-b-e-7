@@ -55,6 +55,57 @@ typedef uint32_t os_sr_t;
 #include "os/os_error.h"
 #include "os/os_mbuf.h"
 #include "os/os_mempool.h"
+#include "esp_types.h"
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include "esp_err.h"
+#include "esp32/rom/ets_sys.h"
+typedef long os_time_t;
+struct os_time {
+	os_time_t sec;
+	os_time_t usec;
+};
+
+/**
+ * os_get_time - Get current time (sec, usec)
+ * @t: Pointer to buffer for the time
+ * Returns: 0 on success, -1 on failure
+ */
+int os_get_time(struct os_time *t);
+
+
+/* Helper macros for handling struct os_time */
+
+#define os_time_before(a, b) \
+	((a)->sec < (b)->sec || \
+	 ((a)->sec == (b)->sec && (a)->usec < (b)->usec))
+
+#define os_time_sub(a, b, res) do { \
+	(res)->sec = (a)->sec - (b)->sec; \
+	(res)->usec = (a)->usec - (b)->usec; \
+	if ((res)->usec < 0) { \
+		(res)->sec--; \
+		(res)->usec += 1000000; \
+	} \
+} while (0)
+
+
+
+/**
+ * os_get_random - Get cryptographically strong pseudo random data
+ * @buf: Buffer for pseudo random data
+ * @len: Length of the buffer
+ * Returns: 0 on success, -1 on failure
+ */
+int os_get_random(unsigned char *buf, size_t len);
+
+/**
+ * os_random - Get pseudo random value (not necessarily very strong)
+ * Returns: Pseudo random value
+ */
+unsigned long os_random(void);
+
 
 #ifdef __cplusplus
 }

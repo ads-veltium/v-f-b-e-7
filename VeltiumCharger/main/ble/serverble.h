@@ -2,10 +2,10 @@
 #define __SERVER_BLE_H
 
 
-#include <BLEDevice.h>
-#include <BLEServer.h>
-#include <BLEUtils.h>
-#include <BLE2902.h>
+#include "NimBLEDevice.h"
+#include <NimBLEServer.h>
+#include <NimBLEUtils.h>
+#include "NimBLE2904.h"
 
 #define NUMBER_OF_SERVICES 		  1
 

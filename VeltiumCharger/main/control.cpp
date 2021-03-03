@@ -393,7 +393,7 @@ void procesar_bloque(uint16 tipo_bloque){
 		case BLOQUE_INICIALIZACION:
 			if (!systemStarted && buffer_rx_local[238]==0x36) {
 				memcpy(device_ID, buffer_rx_local, 11);
-				esp_ble_gap_set_device_name((const char *)device_ID);
+				//esp_ble_gap_set_device_name((const char *)device_ID);
 				changeAdvName(device_ID);
 				printf("Change name set device name to %s\r\n",device_ID);
 				modifyCharacteristic(device_ID, 11, VCD_NAME_USERS_CHARGER_DEVICE_ID_CHAR_HANDLE);
@@ -544,7 +544,7 @@ void procesar_bloque(uint16 tipo_bloque){
 #endif
 			}
 		break;
-		case BLOQUE_DATE_TIME:
+		case BLOQUE_DATE_TIME:{
 			modifyCharacteristic(buffer_rx_local, 6, TIME_DATE_DATE_TIME_CHAR_HANDLE);
 			aut_semilla = (((int)buffer_rx_local[4]) * 0x100) + (int)buffer_rx_local[5];
 			modifyCharacteristic(&buffer_rx_local[6], 6, TIME_DATE_CONNECTION_DATE_TIME_CHAR_HANDLE);
@@ -575,7 +575,9 @@ void procesar_bloque(uint16 tipo_bloque){
 				}
 				
 			#endif
+		
 		break;
+		}
 		default:
 
 		break;
@@ -631,7 +633,6 @@ void procesar_bloque(uint16 tipo_bloque){
 	else if(VCD_NAME_USERS_CHARGER_DEVICE_ID_CHAR_HANDLE == tipo_bloque)
 	{
 		memcpy(device_ID, buffer_rx_local, 11);
-		esp_ble_gap_set_device_name((const char *)device_ID);
 		changeAdvName(device_ID);
 
 		updateCharacteristic(device_ID, 11, VCD_NAME_USERS_CHARGER_DEVICE_ID_CHAR_HANDLE);
@@ -855,7 +856,7 @@ void deviceConnectInd ( void ){
 	//Delay para dar tiempo a conectar
 	vTaskDelay(pdMS_TO_TICKS(250));
 	modifyCharacteristic(authChallengeQuery, 8, AUTENTICACION_MATRIX_CHAR_HANDLE);
-	Serial.print("Sending authentication");
+	Serial.println("Sending authentication");
 	vTaskDelay(pdMS_TO_TICKS(250));
 
 }

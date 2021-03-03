@@ -31,8 +31,8 @@
 #endif
 
 #define MODLOG_MODULE_DFLT 255
-
-#if (MYNEWT_VAL(LOG_LEVEL) > 0)
+#define A  5
+#if (MYNEWT_VAL(A) > 0)
 static inline void
 modlog_dummy(const char *msg, ...)
 {
@@ -62,7 +62,7 @@ modlog_dummy(const char *msg, ...)
 
 #else
 
-#if (MYNEWT_VAL(LOG_LEVEL) > 1)
+#if (MYNEWT_VAL(A) > 1)
 #define MODLOG_INFO(ml_mod_, ml_msg_, ...) \
         modlog_dummy((ml_msg_), ##__VA_ARGS__)
 #else
@@ -70,7 +70,7 @@ modlog_dummy(const char *msg, ...)
         printf((ml_msg_), ##__VA_ARGS__);
 #endif
 
-#if (MYNEWT_VAL(LOG_LEVEL) > 2)
+#if (MYNEWT_VAL(A) > 2)
 #define MODLOG_WARN(ml_mod_, ml_msg_, ...) \
         modlog_dummy((ml_msg_), ##__VA_ARGS__)
 #else
@@ -78,7 +78,7 @@ modlog_dummy(const char *msg, ...)
         printf((ml_msg_), ##__VA_ARGS__);
 #endif
 
-#if (MYNEWT_VAL(LOG_LEVEL) > 3)
+#if (MYNEWT_VAL(A) > 3)
 #define MODLOG_ERROR(ml_mod_, ml_msg_, ...) \
         modlog_dummy((ml_msg_), ##__VA_ARGS__)
 #else
@@ -86,7 +86,7 @@ modlog_dummy(const char *msg, ...)
         printf((ml_msg_), ##__VA_ARGS__);
 #endif
 
-#if (MYNEWT_VAL(LOG_LEVEL) > 4)
+#if (MYNEWT_VAL(A) > 4)
 #define MODLOG_CRITICAL(ml_mod_, ml_msg_, ...) \
         modlog_dummy((ml_msg_), ##__VA_ARGS__)
 #else

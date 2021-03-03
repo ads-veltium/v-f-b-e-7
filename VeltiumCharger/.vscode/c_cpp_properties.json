@@ -136,7 +136,12 @@
                 "${workspaceFolder}/components/Arduino/tools/sdk/include",
                 "${workspaceFolder}/components/Arduino/cores/esp32",
                 "${workspaceFolder}/components/Arduino/libraries/AsyncTCP/src",
-                "${workspaceFolder}/components/Arduino/libraries/Update/src"
+                "${workspaceFolder}/components/Arduino/libraries/Update/src",
+                "/home/joel/Documents/fw-bird-esp32/SDK/esp-idf/components/bt/host/nimble/nimble/nimble/host/include",
+                "/home/joel/Documents/fw-bird-esp32/SDK/esp-idf/components/bt/host/nimble/nimble/nimble/include",
+                "/home/joel/Documents/fw-bird-esp32/SDK/esp-idf/components/bt/host/nimble/nimble/porting/nimble/include",
+                "/home/joel/Documents/fw-bird-esp32/SDK/esp-idf/components/bt/host/nimble/nimble/porting/npl/riot/include",
+                "${workspaceFolder}/components/Arduino/libraries/NimBLE/src"
             ],
             "intelliSenseMode": "clang-x64",
             "browse": {
