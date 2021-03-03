@@ -50,6 +50,7 @@ void displayAll( uint8_t i, uint8_t color)
 		s=0;
 	}
 	FastLED.showColor(CHSV(color, s, i));
+	FastLED.showColor(CHSV(color, s, i));
 	Actualcolor=color;
 }
 
@@ -179,8 +180,6 @@ void LedControl_Task(void *arg){
 						displayAll(luminosidad_Actual,_LED_COLOR);	
 					}
 					else{
-						luminosidad_carga = luminosidad;
-						luminosidad_Actual=luminosidad;
 						if(Actualcolor!=_LED_COLOR){
 							displayAll(luminosidad_Actual,_LED_COLOR);
 							delay(10);
@@ -189,6 +188,9 @@ void LedControl_Task(void *arg){
 							displayAll(luminosidad_Actual,_LED_COLOR);
 							delay(10);
 						}	
+						luminosidad_carga = luminosidad;
+						luminosidad_Actual=luminosidad;
+						
 					}
 					
 					

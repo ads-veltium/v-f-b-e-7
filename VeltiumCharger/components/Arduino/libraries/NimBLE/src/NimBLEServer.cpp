@@ -260,7 +260,7 @@ size_t NimBLEServer::getConnectedCount() {
  */
 /*STATIC*/int NimBLEServer::handleGapEvent(struct ble_gap_event *event, void *arg) {
     NimBLEServer* server = (NimBLEServer*)arg;
-    Serial.printf(">> handleGapEvent: %i \n", event->type);
+    NIMBLE_LOGD(LOG_TAG, ">> handleGapEvent: %i \n", event->type);
     int rc = 0;
     struct ble_gap_conn_desc desc;
 
@@ -269,7 +269,7 @@ size_t NimBLEServer::getConnectedCount() {
         case BLE_GAP_EVENT_CONNECT: {
             if (event->connect.status != 0) {
                 /* Connection failed; resume advertising */
-                Serial.printf("Connection failed \n");
+                NIMBLE_LOGD(LOG_TAG, "Connection failed \n");
                 NimBLEDevice::startAdvertising();
             }
             else {
@@ -320,7 +320,7 @@ size_t NimBLEServer::getConnectedCount() {
         } // BLE_GAP_EVENT_DISCONNECT
 
         case BLE_GAP_EVENT_SUBSCRIBE: {
-            Serial.printf("subscribe event; attr_handle=%d, subscribed: %s \n",event->subscribe.attr_handle,(event->subscribe.cur_notify ? "true":"false"));
+            NIMBLE_LOGD(LOG_TAG, "subscribe event; attr_handle=%d, subscribed: %s ",event->subscribe.attr_handle,(event->subscribe.cur_notify ? "true":"false"));
 
             for(auto &it : server->m_notifyChrVec) {
                 if(it->getHandle() == event->subscribe.attr_handle) {
@@ -345,7 +345,7 @@ size_t NimBLEServer::getConnectedCount() {
         } // BLE_GAP_EVENT_SUBSCRIBE
 
         case BLE_GAP_EVENT_MTU: {
-            Serial.printf("mtu update event; conn_handle=%d mtu=%d \n",event->mtu.conn_handle,event->mtu.value);
+            NIMBLE_LOGD(LOG_TAG, "mtu update event; conn_handle=%d mtu=%d \n",event->mtu.conn_handle,event->mtu.value);
             return 0;
         } // BLE_GAP_EVENT_MTU
 
@@ -366,19 +366,19 @@ size_t NimBLEServer::getConnectedCount() {
         } // BLE_GAP_EVENT_NOTIFY_TX
 
         case BLE_GAP_EVENT_ADV_COMPLETE: {
-            Serial.printf("Advertising Complete\n");
+            NIMBLE_LOGD(LOG_TAG, "Advertising Complete\n");
             NimBLEDevice::getAdvertising()->advCompleteCB();
             return 0;
         }
 
         case BLE_GAP_EVENT_CONN_UPDATE: {
-            Serial.printf("Connection parameters updated.\n");
+            NIMBLE_LOGD(LOG_TAG, "Connection parameters updated.\n");
             return 0;
         } // BLE_GAP_EVENT_CONN_UPDATE
 
         case BLE_GAP_EVENT_CONN_UPDATE_REQ:{
-                Serial.printf("Peer requesting to update connection parameters");
-                Serial.printf("MinInterval: %d, MaxInterval: %d, Latency: %d, Timeout: %d",
+                NIMBLE_LOGD(LOG_TAG, "Peer requesting to update connection parameters");
+                NIMBLE_LOGD(LOG_TAG, "MinInterval: %d, MaxInterval: %d, Latency: %d, Timeout: %d",
                         event->conn_update_req.peer_params->itvl_min,
                         event->conn_update_req.peer_params->itvl_max,
                         event->conn_update_req.peer_params->latency,
@@ -671,25 +671,25 @@ void NimBLEServer::updateConnParams(uint16_t conn_handle,
 /** Default callback handlers */
 
 void NimBLEServerCallbacks::onConnect(NimBLEServer* pServer) {
-    Serial.println( "onConnect(): Default1");
+    NIMBLE_LOGD(LOG_TAG, "onConnect(): Default1");
 } // onConnect
 
 
 void NimBLEServerCallbacks::onConnect(NimBLEServer* pServer, ble_gap_conn_desc* desc) {
-    Serial.println( "onConnect(): Default2");
+    NIMBLE_LOGD(LOG_TAG, "onConnect(): Default2");
 } // onConnect
 
 
 void NimBLEServerCallbacks::onDisconnect(NimBLEServer* pServer) {
-    Serial.println( "onDisconnect(): Default");
+    NIMBLE_LOGD(LOG_TAG, "onDisconnect(): Default");
 } // onDisconnect
 
 void NimBLEServerCallbacks::onDisconnect(NimBLEServer* pServer, ble_gap_conn_desc* desc) {
-    Serial.println( "onDisconnect(): Default");
+    NIMBLE_LOGD(LOG_TAG, "onDisconnect(): Default");
 } // onDisconnect
 
 uint32_t NimBLEServerCallbacks::onPassKeyRequest(){
-    Serial.println( "onPassKeyRequest: default: 123456");
+    NIMBLE_LOGD(LOG_TAG,"onPassKeyRequest: default: 123456");
     return 123456;
 }
 /*
@@ -703,10 +703,10 @@ bool NimBLEServerCallbacks::onSecurityRequest(){
 }
 */
 void NimBLEServerCallbacks::onAuthenticationComplete(ble_gap_conn_desc*){
-    Serial.println( "onAuthenticationComplete: default");
+    NIMBLE_LOGD(LOG_TAG,"onAuthenticationComplete: default");
 }
 bool NimBLEServerCallbacks::onConfirmPIN(uint32_t pin){
-    Serial.println( "onConfirmPIN: default: true");
+    NIMBLE_LOGD(LOG_TAG, "onConfirmPIN: default: true");
     return true;
 }
 

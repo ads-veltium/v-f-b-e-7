@@ -13,12 +13,14 @@
 
 StaticTask_t xControlBuffer ;
 StaticTask_t xLEDBuffer ;
-StaticTask_t xFirebaseBuffer ;
-StaticTask_t xComsBuffer ;
 
 static StackType_t xControlStack  [4096*6]     EXT_RAM_ATTR;
 static StackType_t xLEDStack      [4096*2]     EXT_RAM_ATTR;
+
+#ifdef CONNECTED
 static StackType_t xFirebaseStack [4096*6]     EXT_RAM_ATTR;
+StaticTask_t xFirebaseBuffer ;
+#endif
 
 //Variables Firebase
 carac_Update_Status UpdateStatus EXT_RAM_ATTR;

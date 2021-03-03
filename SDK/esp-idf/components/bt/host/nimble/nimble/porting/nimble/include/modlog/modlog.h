@@ -31,7 +31,7 @@
 #endif
 
 #define MODLOG_MODULE_DFLT 255
-#define A  5
+#define A  0
 #if (MYNEWT_VAL(A) > 0)
 static inline void
 modlog_dummy(const char *msg, ...)
