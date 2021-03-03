@@ -143,7 +143,7 @@ void controlTask(void *arg)
 	
 	// Inicia el timer de 10mS i 1 segundo
 	configTimers();
-
+	bool LastUserCon = false;
 	serialLocal.begin(115200, SERIAL_8N1, 34, 4); // pins: rx, tx
 
 	// INICIALIZO ELEMENTOS PARA AUTENTICACION
@@ -192,9 +192,29 @@ void controlTask(void *arg)
 						//startSystem();
 						cnt_timeout_tx = TIMEOUT_TX_BLOQUE;
 						estado_actual = ESTADO_NORMAL;
+						buffer_tx_local[0] = HEADER_TX;
+						buffer_tx_local[1] = (uint8)(BLOQUE_STATUS >> 8);
+						buffer_tx_local[2] = (uint8)BLOQUE_STATUS;
+						buffer_tx_local[3] = 2;
+						buffer_tx_local[4] = serverbleGetConnected() || ConfigFirebase.ClientConnected;
+						buffer_tx_local[5] = ESTADO_NORMAL;
+						serialLocal.write(buffer_tx_local, 6);
 						break;
 					case ESTADO_NORMAL:
 						proceso_recepcion();	
+
+						if(LastUserCon != serverbleGetConnected()){
+							cnt_timeout_tx = TIMEOUT_TX_BLOQUE2 ;
+							buffer_tx_local[0] = HEADER_TX;
+							buffer_tx_local[1] = (uint8)(BLOQUE_STATUS >> 8);
+							buffer_tx_local[2] = (uint8)BLOQUE_STATUS;
+							buffer_tx_local[3] = 2;
+							buffer_tx_local[4] = serverbleGetConnected();
+							buffer_tx_local[5] = ESTADO_NORMAL;
+							serialLocal.write(buffer_tx_local, 6);
+							LastUserCon = serverbleGetConnected();
+						}
+
 						if(cnt_timeout_tx == 0)
 						{
 #ifdef CONNECTED
@@ -216,19 +236,6 @@ void controlTask(void *arg)
 								MAIN_RESET_Write(0);						
 								ESP.restart();
 							}	
-
-							else{
-#endif
-								cnt_timeout_tx = TIMEOUT_TX_BLOQUE ;
-								buffer_tx_local[0] = HEADER_TX;
-								buffer_tx_local[1] = (uint8)(BLOQUE_STATUS >> 8);
-								buffer_tx_local[2] = (uint8)BLOQUE_STATUS;
-								buffer_tx_local[3] = 2;
-								buffer_tx_local[4] = serverbleGetConnected() || ConfigFirebase.ClientConnected;
-								buffer_tx_local[5] = ESTADO_NORMAL;
-								serialLocal.write(buffer_tx_local, 6);
-#ifdef CONNECTED
-							}
 #endif
 						}
 						if(++TimeoutMainDisconnect>30000){
@@ -454,7 +461,7 @@ void procesar_bloque(uint16 tipo_bloque){
 
 		case BLOQUE_STATUS:
 #ifdef CONNECTED
-			if(buffer_rx_local[48]==0x36){
+			if(buffer_rx_local[45]==0x36){
 #else
 			if(buffer_rx_local[25]==0x36){
 #endif
@@ -1056,11 +1063,11 @@ void controlInit(void){
 ***************************************************/
 void SendToPSOC5(uint8 data, uint16 attrHandle){
 
-  cnt_timeout_tx = TIMEOUT_TX_BLOQUE;
+  cnt_timeout_tx = TIMEOUT_TX_BLOQUE2;
   buffer_tx_local[0] = HEADER_TX;
   buffer_tx_local[1] = (uint8)(attrHandle >> 8);
   buffer_tx_local[2] = (uint8)(attrHandle);
-  buffer_tx_local[3] = 5; //size
+  buffer_tx_local[3] = 1; //size
   buffer_tx_local[4] = data;
   controlSendToSerialLocal(buffer_tx_local, 5);
   delay(5);
@@ -1068,11 +1075,11 @@ void SendToPSOC5(uint8 data, uint16 attrHandle){
 
 void SendToPSOC5(uint8 *data, uint16 len, uint16 attrHandle){
 
-  cnt_timeout_tx = TIMEOUT_TX_BLOQUE;
+  cnt_timeout_tx = TIMEOUT_TX_BLOQUE2;
   buffer_tx_local[0] = HEADER_TX;
   buffer_tx_local[1] = (uint8)(attrHandle >> 8);
   buffer_tx_local[2] = (uint8)(attrHandle);
-  buffer_tx_local[3] = len+4; //size
+  buffer_tx_local[3] = len; //size
   memcpy(&buffer_tx_local[4],data,len);
   controlSendToSerialLocal(buffer_tx_local, len+4);
   delay(5);
@@ -1095,11 +1102,11 @@ void SendToPSOC5(uint16 attrHandle){
   }
 
   
-  cnt_timeout_tx = TIMEOUT_TX_BLOQUE;
+  cnt_timeout_tx = TIMEOUT_TX_BLOQUE2;
   buffer_tx_local[0] = HEADER_TX;
   buffer_tx_local[1] = (uint8)(attrHandle >> 8);
   buffer_tx_local[2] = (uint8)(attrHandle);
-  buffer_tx_local[3] = len+4; //size
+  buffer_tx_local[3] = len; //size
   memcpy(&buffer_tx_local[4],data,len);
   controlSendToSerialLocal(buffer_tx_local, len+4);
 }

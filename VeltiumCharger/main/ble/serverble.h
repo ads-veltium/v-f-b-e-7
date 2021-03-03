@@ -2,6 +2,7 @@
 #define __SERVER_BLE_H
 
 
+#include "../control.h"
 #include "NimBLEDevice.h"
 #include <NimBLEServer.h>
 #include <NimBLEUtils.h>

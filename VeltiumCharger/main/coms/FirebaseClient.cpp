@@ -271,7 +271,7 @@ bool ReadFirebaseParams(String Path){
       
       Params.last_ts_app_req=ts_app_req;
 
-      if(!memcmp(Params.autentication_mode,Lectura["auth_mode"].as<String>().c_str(),2)){
+      if(memcmp(Params.autentication_mode,Lectura["auth_mode"].as<String>().c_str(),2)){
         memcpy(Params.autentication_mode, Lectura["auth_mode"].as<String>().c_str(),2);
         SendToPSOC5(CONFIGURACION_AUTENTICATION_MODES_CHAR_HANDLE);
       }     

@@ -2,11 +2,20 @@
 #define __CONTROL_MAIN
 
 //configuration
-//#define USE_COMS
+#define USE_COMS
 #define USE_DRACO_BLE
 #define DEVELOPMENT
 
 #include "Arduino.h"
+#include "tipos.h"
+
+#ifdef USE_COMS	
+	#include "coms/Wifi_Station.h"
+	#ifndef CONNECTED
+		#define CONNECTED
+	#endif
+#endif
+
 #include "ble/serverble.h"
 #include "controlLed.h"
 #include "DRACO_IO.h"
@@ -14,7 +23,7 @@
 #include "cybtldr/cybtldr_parse.h"
 #include "cybtldr/cybtldr_api.h"
 
-#include "tipos.h"
+
 #include "ble/dev_auth.h"
 #include "Update.h"
 #include <stdio.h>
@@ -32,12 +41,7 @@
 	#include "ESP32-targz.h"
 #endif
 
-#ifdef USE_COMS	
-	#include "coms/Wifi_Station.h"
-	#ifndef CONNECTED
-		#define CONNECTED
-	#endif
-#endif
+
 
 //Prioridades FreeRTOS
 #define PRIORIDAD_LEDS     1
@@ -60,6 +64,7 @@
 
 // TIMEOUTS
 #define TIMEOUT_TX_BLOQUE	75
+#define TIMEOUT_TX_BLOQUE2	20
 #define TIMEOUT_RX_BLOQUE	10
 #define TIMEOUT_INICIO		10
 #define TIME_PARPADEO		50

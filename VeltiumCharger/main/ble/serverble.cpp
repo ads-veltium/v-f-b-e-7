@@ -1,5 +1,5 @@
-#include "../control.h"
 
+#include "../control.h"
 #include "ble_rcs.h"
 #include "ble_rcs_server.h"
 
@@ -158,12 +158,28 @@ class serverCallbacks: public BLEServerCallbacks
 	{
 		deviceBleConnected = true;
 		deviceConnectInd();
+
+		buffer_tx[0] = HEADER_TX;
+		buffer_tx[1] = (uint8)(BLOQUE_STATUS >> 8);
+		buffer_tx[2] = (uint8)(BLOQUE_STATUS);
+		buffer_tx[3] = 2;
+		buffer_tx[4] = deviceBleConnected;
+		buffer_tx[5] = ESTADO_NORMAL;
+		controlSendToSerialLocal(buffer_tx, 6);
+
 	};
 
 	void onDisconnect(BLEServer* pServer) 
 	{
 		deviceBleConnected = false;
 		deviceDisconnectInd();
+		buffer_tx[0] = HEADER_TX;
+		buffer_tx[1] = (uint8)(BLOQUE_STATUS >> 8);
+		buffer_tx[2] = (uint8)(BLOQUE_STATUS);
+		buffer_tx[3] = 2;
+		buffer_tx[4] = deviceBleConnected;
+		buffer_tx[5] = ESTADO_NORMAL;
+		controlSendToSerialLocal(buffer_tx, 6);
 	}
 };
 
@@ -514,15 +530,15 @@ void changeAdvName( uint8_t * name ){
 	advert.setFlags(0x06);
 	advert.setName(std::string((char*)name));
 	advert.setCompleteServices((BLEUUID((uint16_t)0xCD01)));
-	advert.setPreferredParams(36,36);
+	advert.setPreferredParams(6,128);
 	Serial.println(advert.getPayload().c_str());
 
 	pAdvertising->setAdvertisementData(advert);
 	pAdvertising->setName(std::string((char*)name));
-	pAdvertising->setMaxInterval(36);
-	pAdvertising->setMinInterval(36);
-	pAdvertising->setMaxPreferred(36);
-	pAdvertising->setMinPreferred(36);
+	pAdvertising->setMaxInterval(1600);
+	pAdvertising->setMinInterval(32);
+	pAdvertising->setMaxPreferred(128);
+	pAdvertising->setMinPreferred(6);
 	pAdvertising->addServiceUUID(BLEUUID((uint16_t)0xCD01));
 	pAdvertising->start();
 
@@ -618,6 +634,7 @@ void serverbleTask(void *arg)
 			pServer->startAdvertising(); // restart advertising
 			printf(" disconnecting \r\n");
 			printf("start advertising again\r\n");
+			UpdateStatus.DescargandoArchivo=0;
 			oldDeviceBleConnected = deviceBleConnected;
 		}
 		// connecting

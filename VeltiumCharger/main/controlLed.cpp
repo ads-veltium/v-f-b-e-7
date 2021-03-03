@@ -105,25 +105,10 @@ void LedControl_Task(void *arg){
 			vTaskDelay(pdMS_TO_TICKS(500));
 			LastBle=serverbleGetConnected();
 		}
-		if(UpdateStatus.InstalandoArchivo && !Efectos){
-			Efectos=1;
+		if(UpdateStatus.InstalandoArchivo){
 			LedPointer=0;
 			Delay=150;
-			luminosidad=100;
-			_LED_COLOR=HUE_AQUA;
-		}
-		else if(UpdateStatus.DescargandoArchivo){
-			Delay=75;
-			luminosidad |= 0x80;
-			_LED_COLOR=HUE_PURPLE;
-		}
-
-		Efectos=UpdateStatus.InstalandoArchivo;
-
-		//Descarga:
-		if(Efectos){			
-			LedPointer++;
-			
+			LedPointer++;			
 			if(LedPointer>=7){
 				if(luminosidad==100){
 					_LED_COLOR=0;
@@ -137,6 +122,23 @@ void LedControl_Task(void *arg){
 			} 
 			changeOne(luminosidad,_LED_COLOR,LedPointer);
 		}
+		else if(UpdateStatus.DescargandoArchivo){
+			Delay=25;
+			if(subiendo){
+				luminosidad_carga++;
+				if(luminosidad_carga>=100){
+					subiendo=0;
+				}
+			}
+			else{
+				luminosidad_carga--;
+				if(luminosidad_carga<=30){
+					subiendo=1;
+				}
+			}
+			displayAll(luminosidad_carga,HUE_PURPLE);
+		}
+
 		else{
 			
 			//Funcionamiento normal

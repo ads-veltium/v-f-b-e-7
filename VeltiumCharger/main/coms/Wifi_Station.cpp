@@ -421,32 +421,32 @@ void WiFiEvent(arduino_event_id_t event, arduino_event_info_t info){
 //********************** WIFI Cases **********************//
 		case ARDUINO_EVENT_WIFI_STA_DISCONNECTED:
             wifi_connected = false;
-            if (info.wifi_sta_disconnected.reason == WIFI_REASON_AUTH_FAIL || info.wifi_sta_disconnected.reason == WIFI_REASON_CONNECTION_FAIL){
-                if(++AuthErrorCount > 3){
-                    AuthErrorCount=0;
-                    Serial.println("Contraseña incorrecta, deteniendo sistema");  
-                    WiFiProv.StopProvision();
-                    wifi_connected = false;
-                    wifi_connecting = false;
-                    Coms.Wifi.ON = 0;
-                    SendToPSOC5(Coms.Wifi.ON,COMS_CONFIGURATION_WIFI_ON);
-                    vTaskDelay(50);
+            if(Coms.Provisioning){
+                if (info.wifi_sta_disconnected.reason == WIFI_REASON_AUTH_FAIL || info.wifi_sta_disconnected.reason == WIFI_REASON_CONNECTION_FAIL){
+                    if(++AuthErrorCount > 3){
+                        AuthErrorCount=0;
+                        Serial.println("Contraseña incorrecta, deteniendo sistema");  
+                        WiFiProv.StopProvision();
+                        wifi_connected = false;
+                        wifi_connecting = false;
+                        Coms.Wifi.ON = 0;
+                        SendToPSOC5(Coms.Wifi.ON,COMS_CONFIGURATION_WIFI_ON);
+                        vTaskDelay(50);
+                    }
                 }
+                else if(info.wifi_sta_disconnected.reason == WIFI_REASON_AUTH_EXPIRE){
+                        AuthErrorCount=0;
+                        Serial.println("autorizacion expirada, deteniendo sistema");  
+                        WiFiProv.StopProvision();
+                        wifi_connected = false;
+                        wifi_connecting = false;
+                        Coms.Wifi.ON = 0;
+                        SendToPSOC5(Coms.Wifi.ON,COMS_CONFIGURATION_WIFI_ON);                   
+                        vTaskDelay(50);
+                }   
             }
-            else if(info.wifi_sta_disconnected.reason == WIFI_REASON_AUTH_EXPIRE){
-                    AuthErrorCount=0;
-                    Serial.println("Contraseña incorrecta, deteniendo sistema");  
-                    WiFiProv.StopProvision();
-                    wifi_connected = false;
-                    wifi_connecting = false;
-                    Coms.Wifi.ON = 0;
-                    SendToPSOC5(Coms.Wifi.ON,COMS_CONFIGURATION_WIFI_ON);
-                    Serial.println("Reconectando...");
-                    
-                    vTaskDelay(50);
-            }    
-            
-            if(info.wifi_sta_disconnected.reason!=WIFI_REASON_ASSOC_LEAVE ){
+             
+            else if(info.wifi_sta_disconnected.reason!=WIFI_REASON_ASSOC_LEAVE ){
                 Serial.println("Reconectando...");
 			    WiFi.reconnect();
             }
