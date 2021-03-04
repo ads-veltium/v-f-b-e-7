@@ -44,7 +44,7 @@ const char* POT_CONT = "potencia_cont";
 const char* UBI_CDP = "ubi_cdp";
 
 uint8 AuthErrorCount =0;
-
+uint8 ZeroBuffer[10] ={'0'};
 
 /************* Internal server configuration ****************/
 void notFound(AsyncWebServerRequest *request) {
@@ -495,18 +495,30 @@ void WiFiEvent(arduino_event_id_t event, arduino_event_info_t info){
             if(Coms.Wifi.ON){
                 Station_Stop();
             }
-            ETH.linkUp();
+            Coms.ETH.Puerto = ETH.linkUp();
             eth_link_up    = true;
             break;
         case SYSTEM_EVENT_ETH_GOT_IP:
             Serial.print("ETH MAC: ");
             Serial.print(ETH.macAddress());
             Serial.print(", IPv4: ");
-            Serial.print(ETH.localIP());
+            Serial.print(ETH.localIP()[0]);
             Serial.println();
-            Coms.ETH.IP1 = ETH.localIP();
-            modifyCharacteristic(&Coms.ETH.IP1[0], 4, COMS_CONFIGURATION_LAN_IP1);
-            modifyCharacteristic(&Coms.ETH.IP2[0], 4, COMS_CONFIGURATION_LAN_IP2);
+            uint8 IpBuffer[4];
+            IpBuffer[0]= ETH.localIP()[0];
+            IpBuffer[1]= ETH.localIP()[1];
+            IpBuffer[2]= ETH.localIP()[2];
+            IpBuffer[3]= ETH.localIP()[3];
+            if(Coms.ETH.Puerto==1){
+                Coms.ETH.IP1 = ETH.localIP();               
+                modifyCharacteristic(IpBuffer, 4, COMS_CONFIGURATION_LAN_IP1);
+                modifyCharacteristic(ZeroBuffer, 4, COMS_CONFIGURATION_LAN_IP2);
+            }
+            else if(Coms.ETH.Puerto==2){
+                Coms.ETH.IP2 = ETH.localIP();
+                modifyCharacteristic(IpBuffer, 4, COMS_CONFIGURATION_LAN_IP2);
+                modifyCharacteristic(ZeroBuffer, 4, COMS_CONFIGURATION_LAN_IP1);
+            }
             if(Coms.ETH.Auto){
                 Coms.ETH.Gateway = ETH.gatewayIP();
                 Serial.println(Coms.ETH.Gateway);

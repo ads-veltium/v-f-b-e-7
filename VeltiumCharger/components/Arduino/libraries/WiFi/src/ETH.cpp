@@ -69,17 +69,17 @@ static bool once = false;
 //}
 
 
-
 // Event handler for Ethernet
 void ETHClass::eth_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
 {
     arduino_event_t event;
+
     switch (event_id) {
-    case ETHERNET_EVENT_CONNECTED:
+    case ETHERNET_EVENT_CONNECTED:{
         event.event_id = ARDUINO_EVENT_ETH_CONNECTED;
-        //if(eth_phy)
-        ((ETHClass*)(arg))->eth_link = ETH_LINK_UP;
-        ((ETHClass*)(arg))->eth_link2 = ETH_LINK_UP;
+        Serial.println("Conectado desde event handler");
+
+    }
         break;
     case ETHERNET_EVENT_DISCONNECTED:
         event.event_id = ARDUINO_EVENT_ETH_DISCONNECTED;
@@ -197,27 +197,7 @@ bool ETHClass::begin(uint8_t phy_addr, int power, int mdc, int mdio, eth_phy_typ
     phy_config.reset_gpio_num = power;
     eth_phy = NULL;
 
-    switch(type){
-        case ETH_PHY_LAN8720:
-            eth_phy = esp_eth_phy_new_lan8720(&phy_config);
-            break;
-        case ETH_PHY_TLK110:
-            eth_phy = esp_eth_phy_new_ip101(&phy_config);
-            break;
-        case ETH_PHY_RTL8201:
-            eth_phy = esp_eth_phy_new_rtl8201(&phy_config);
-            break;
-        case ETH_PHY_DP83848:
-            eth_phy = esp_eth_phy_new_dp83848(&phy_config);
-            break;
-#if CONFIG_ETH_SPI_ETHERNET_DM9051
-        case ETH_PHY_DM9051:
-            eth_phy = esp_eth_phy_new_dm9051(&phy_config);
-            break;
-#endif
-        default:
-            break;
-    }
+    eth_phy = esp_eth_phy_new_lan8720(&phy_config);
     if(eth_phy == NULL){
         log_e("esp_eth_phy_new failed");
         return false;
@@ -435,16 +415,15 @@ bool ETHClass::fullDuplex()
 uint8_t ETHClass::linkUp()
 {
 #ifdef ESP_IDF_VERSION_MAJOR
-    if(eth_link2== ETH_LINK_UP && eth_link== ETH_LINK_UP){
-        return 1;
-    }
-    else if(eth_link2== ETH_LINK_UP){
-        return 2;
-    }
-    else if(eth_link2== ETH_LINK_UP){
+    if(eth_phy->link1==ETH_LINK_UP &&eth_phy->link2==ETH_LINK_UP){
         return 3;
     }
-    
+    else if(eth_phy->link1 == ETH_LINK_UP){
+        return 1;
+    }
+    else if(eth_phy->link2 == ETH_LINK_UP){
+        return 2;
+    }
     return 0;
     
 #else

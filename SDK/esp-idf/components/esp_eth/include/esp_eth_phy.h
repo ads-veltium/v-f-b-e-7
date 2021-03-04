@@ -27,11 +27,14 @@ extern "C" {
 */
 typedef struct esp_eth_phy_s esp_eth_phy_t;
 
+
 /**
 * @brief Ethernet PHY
 *
 */
 struct esp_eth_phy_s {
+    uint8_t link1;
+    uint8_t link2;
     /**
     * @brief Set mediator for PHY
     *
@@ -227,6 +230,9 @@ esp_eth_phy_t *esp_eth_phy_new_rtl8201(const eth_phy_config_t *config);
 *      - instance: create PHY instance successfully
 *      - NULL: create PHY instance failed because some error occurred
 */
+
+
+
 esp_eth_phy_t *esp_eth_phy_new_lan8720(const eth_phy_config_t *config);
 
 /**
