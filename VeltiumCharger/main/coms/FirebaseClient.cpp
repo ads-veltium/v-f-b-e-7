@@ -719,7 +719,7 @@ void Firebase_Conn_Task(void *args){
       LastStatus= ConnectionState;
     }
     
-    vTaskDelay(pdMS_TO_TICKS(ConfigFirebase.ClientConnected ? 400:5000));
+    vTaskDelay(pdMS_TO_TICKS(ConfigFirebase.ClientConnected ? 100:2500));
 
   }
 }

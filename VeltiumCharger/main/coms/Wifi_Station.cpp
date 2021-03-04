@@ -495,6 +495,7 @@ void WiFiEvent(arduino_event_id_t event, arduino_event_info_t info){
             if(Coms.Wifi.ON){
                 Station_Stop();
             }
+            ETH.linkUp();
             eth_link_up    = true;
             break;
         case SYSTEM_EVENT_ETH_GOT_IP:
@@ -503,11 +504,10 @@ void WiFiEvent(arduino_event_id_t event, arduino_event_info_t info){
             Serial.print(", IPv4: ");
             Serial.print(ETH.localIP());
             Serial.println();
+            Coms.ETH.IP1 = ETH.localIP();
+            modifyCharacteristic(&Coms.ETH.IP1[0], 4, COMS_CONFIGURATION_LAN_IP1);
+            modifyCharacteristic(&Coms.ETH.IP2[0], 4, COMS_CONFIGURATION_LAN_IP2);
             if(Coms.ETH.Auto){
-                Coms.ETH.IP1 = ETH.localIP();
-                modifyCharacteristic(&Coms.ETH.IP1[0], 4, COMS_CONFIGURATION_LAN_IP1);
-                modifyCharacteristic(&Coms.ETH.IP2[0], 4, COMS_CONFIGURATION_LAN_IP2);
-
                 Coms.ETH.Gateway = ETH.gatewayIP();
                 Serial.println(Coms.ETH.Gateway);
                 Coms.ETH.Mask    = ETH.subnetMask();

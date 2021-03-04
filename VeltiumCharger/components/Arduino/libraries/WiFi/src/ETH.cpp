@@ -77,11 +77,14 @@ void ETHClass::eth_event_handler(void *arg, esp_event_base_t event_base, int32_t
     switch (event_id) {
     case ETHERNET_EVENT_CONNECTED:
         event.event_id = ARDUINO_EVENT_ETH_CONNECTED;
+        //if(eth_phy)
         ((ETHClass*)(arg))->eth_link = ETH_LINK_UP;
+        ((ETHClass*)(arg))->eth_link2 = ETH_LINK_UP;
         break;
     case ETHERNET_EVENT_DISCONNECTED:
         event.event_id = ARDUINO_EVENT_ETH_DISCONNECTED;
         ((ETHClass*)(arg))->eth_link = ETH_LINK_DOWN;
+        ((ETHClass*)(arg))->eth_link2 = ETH_LINK_DOWN;
         break;
     case ETHERNET_EVENT_START:
         event.event_id = ARDUINO_EVENT_ETH_START;
@@ -192,7 +195,8 @@ bool ETHClass::begin(uint8_t phy_addr, int power, int mdc, int mdio, eth_phy_typ
     phy_config.phy_addr1 = 1;
     phy_config.phy_addr2 = 2;
     phy_config.reset_gpio_num = power;
-    esp_eth_phy_t *eth_phy = NULL;
+    eth_phy = NULL;
+
     switch(type){
         case ETH_PHY_LAN8720:
             eth_phy = esp_eth_phy_new_lan8720(&phy_config);
@@ -428,10 +432,20 @@ bool ETHClass::fullDuplex()
 #endif
 }
 
-bool ETHClass::linkUp()
+uint8_t ETHClass::linkUp()
 {
 #ifdef ESP_IDF_VERSION_MAJOR
-    return eth_link == ETH_LINK_UP;
+    if(eth_link2== ETH_LINK_UP && eth_link== ETH_LINK_UP){
+        return 1;
+    }
+    else if(eth_link2== ETH_LINK_UP){
+        return 2;
+    }
+    else if(eth_link2== ETH_LINK_UP){
+        return 3;
+    }
+    
+    return 0;
     
 #else
     return eth_config.phy_check_link();

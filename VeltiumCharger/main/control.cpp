@@ -675,33 +675,10 @@ void procesar_bloque(uint16 tipo_bloque){
 		luminosidad = buffer_rx_local[0];
 		modifyCharacteristic(&buffer_rx_local[0], 1, LED_LUMIN_COLOR_LUMINOSITY_LEVEL_CHAR_HANDLE);
 	}
-	else if(LED_LUMIN_COLOR_R_LED_COLOUR_CHAR_HANDLE == tipo_bloque)
-	{
-		rojo = buffer_rx_local[0];
-		modifyCharacteristic(&buffer_rx_local[0], 1, LED_LUMIN_COLOR_R_LED_COLOUR_CHAR_HANDLE);
-	}
-	else if(LED_LUMIN_COLOR_G_LED_COLOUR_CHAR_HANDLE == tipo_bloque)
-	{
-		verde = buffer_rx_local[0];
-		modifyCharacteristic(&buffer_rx_local[0], 1, LED_LUMIN_COLOR_G_LED_COLOUR_CHAR_HANDLE);
-	}
-	else if(LED_LUMIN_COLOR_B_LED_COLOUR_CHAR_HANDLE == tipo_bloque)
-	{
-		azul = buffer_rx_local[0];
-		modifyCharacteristic(&buffer_rx_local[0], 1, LED_LUMIN_COLOR_B_LED_COLOUR_CHAR_HANDLE);
-	}
 	else if(RESET_RESET_CHAR_HANDLE == tipo_bloque)
 	{	
 		ESP.restart();
 		//modifyCharacteristic(&buffer_rx_local[0], 1, RESET_RESET_CHAR_HANDLE);
-	}
-	else if(ENERGY_PARTIAL_RECORD_1 == tipo_bloque){
-		Serial.println("Record1");
-		memcpy(record_buffer,buffer_rx_local,252);
-	}
-	else if(ENERGY_PARTIAL_RECORD_2 == tipo_bloque){
-		Serial.println("Record2");
-		memcpy(&record_buffer[252],buffer_rx_local,252);
 	}
 	else if(ENERGY_RECORD_RECORD_CHAR_HANDLE == tipo_bloque)
 	{
@@ -709,22 +686,35 @@ void procesar_bloque(uint16 tipo_bloque){
 		memcpy(record_buffer,buffer_rx_local,20);
 
 		int j = 20;
-		for(int i =20;i<512;i+=4){
+		bool end = false;
+		for(int i =20;i<512;i+=4){		
 			if(j<252){
-				record_buffer[i]  = buffer_rx_local[j];
-				record_buffer[i+1] = buffer_rx_local[j+1];
-				record_buffer[i+2] = 23;
-				record_buffer[i+3] = 12;
+				if(buffer_rx_local[j]==255 && buffer_rx_local[j+1]==255){
+					end = true;
+				}
+				int PotLeida=buffer_rx_local[j]*0x100+buffer_rx_local[j+1];
+				if(PotLeida >0 && PotLeida < 5500 && !end){
+					record_buffer[i]   = buffer_rx_local[j];
+					record_buffer[i+1] = buffer_rx_local[j+1];
+					record_buffer[i+2] = 0;
+					record_buffer[i+3] = 0;
+				}
+				else{
+					record_buffer[i]   = 0;
+					record_buffer[i+1] = 0;
+					record_buffer[i+2] = 0;
+					record_buffer[i+3] = 0;
+				}
+
 				j+=2;
 			}
 			else{
-				record_buffer[i]  = 0;
+				record_buffer[i]   = 0;
 				record_buffer[i+1] = 0;
-				record_buffer[i+2] = 23;
-				record_buffer[i+3] = 12;
+				record_buffer[i+2] = 0;
+				record_buffer[i+3] = 0;
 			}				
 		}
-		//memcpy(&record_buffer[504],buffer_rx_local,8);
 		modifyCharacteristic(record_buffer, 512, ENERGY_RECORD_RECORD_CHAR_HANDLE);
 	}
 	else if(RECORDING_REC_LAST_CHAR_HANDLE == tipo_bloque)

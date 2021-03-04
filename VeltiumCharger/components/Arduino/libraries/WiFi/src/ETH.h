@@ -66,6 +66,8 @@ class ETHClass {
     protected:
         bool started;
         eth_link_t eth_link;
+        eth_link_t eth_link2;
+        esp_eth_phy_t *eth_phy = NULL;
         static void eth_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data);
 #else
         bool started;
@@ -89,7 +91,7 @@ class ETHClass {
         bool setHostname(const char * hostname);
 
         bool fullDuplex();
-        bool linkUp();
+        uint8_t linkUp();
         uint8_t linkSpeed();
 
         bool enableIpV6();
