@@ -77,27 +77,21 @@ bool WriteFirebaseStatus(String Path){
   Escritura["measures_phase_A/inst_current"]    = Status.Measures.instant_current;
   Escritura["measures_phase_A/inst_voltage"]    = Status.Measures.instant_voltage;
   Escritura["measures_phase_A/active_power"]    = Status.Measures.active_power;
-  Escritura["measures_phase_A/reactive_power"]  = Status.Measures.reactive_power;
-  Escritura["measures_phase_A/apparent_power"]  = Status.Measures.apparent_power;
-  Escritura["measures_phase_A/power_factor"]    = Status.Measures.power_factor;
   Escritura["measures_phase_A/home_current"]    = Status.Measures.consumo_domestico;    
+  Escritura["measures_phase_A/active_energy"]   = Status.Measures.active_energy;    
 
   if(Status.Trifasico){
     Escritura["measures_phase_B/inst_current"]    = Status.MeasuresB.instant_current;
     Escritura["measures_phase_B/inst_voltage"]    = Status.MeasuresB.instant_voltage;
     Escritura["measures_phase_B/active_power"]    = Status.MeasuresB.active_power;
-    Escritura["measures_phase_B/reactive_power"]  = Status.MeasuresB.reactive_power;
-    Escritura["measures_phase_B/apparent_power"]  = Status.MeasuresB.apparent_power;
-    Escritura["measures_phase_B/power_factor"]    = Status.MeasuresB.power_factor;
     Escritura["measures_phase_B/home_current"]    = Status.MeasuresB.consumo_domestico; 
+    Escritura["measures_phase_B/active_energy"]   = Status.MeasuresB.active_energy; 
 
     Escritura["measures_phase_C/inst_current"]    = Status.MeasuresC.instant_current;
     Escritura["measures_phase_C/inst_voltage"]    = Status.MeasuresC.instant_voltage;
     Escritura["measures_phase_C/active_power"]    = Status.MeasuresC.active_power;
-    Escritura["measures_phase_C/reactive_power"]  = Status.MeasuresC.reactive_power;
-    Escritura["measures_phase_C/apparent_power"]  = Status.MeasuresC.apparent_power;
-    Escritura["measures_phase_C/power_factor"]    = Status.MeasuresC.power_factor;
-    Escritura["measures_phase_C/home_current"]    = Status.MeasuresC.consumo_domestico;    
+    Escritura["measures_phase_C/home_current"]    = Status.MeasuresC.consumo_domestico;  
+    Escritura["measures_phase_C/active_energy"]   = Status.MeasuresC.active_energy;   
   }
   
   Escritura["error_code"] = Status.error_code;
