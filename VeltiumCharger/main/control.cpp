@@ -717,6 +717,7 @@ void procesar_bloque(uint16 tipo_bloque){
 		}
 		modifyCharacteristic(record_buffer, 512, ENERGY_RECORD_RECORD_CHAR_HANDLE);
 	}
+	
 	else if(RECORDING_REC_LAST_CHAR_HANDLE == tipo_bloque)
 	{
 		modifyCharacteristic(buffer_rx_local, 2, RECORDING_REC_LAST_CHAR_HANDLE);

@@ -77,7 +77,6 @@ void ETHClass::eth_event_handler(void *arg, esp_event_base_t event_base, int32_t
     switch (event_id) {
     case ETHERNET_EVENT_CONNECTED:{
         event.event_id = ARDUINO_EVENT_ETH_CONNECTED;
-        Serial.println("Conectado desde event handler");
 
     }
         break;

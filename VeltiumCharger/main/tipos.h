@@ -188,10 +188,11 @@ typedef struct{
 typedef struct{
 	bool StartConnection   = false;
 	bool StartProvisioning = false;
-	bool StartSmartconfig = false;
+	bool StartSmartconfig  = false;
 	bool RemoveCredentials = false;
 	bool RestartConection  = false;
 	bool Provisioning 	   = false;
+	bool ContadorConectado = false;
 	carac_WIFI   Wifi;
 	carac_ETH     ETH;
 	carac_MODEM   GSM;

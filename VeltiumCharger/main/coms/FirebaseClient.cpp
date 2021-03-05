@@ -12,6 +12,7 @@
 #include "VeltFirebase.h"
 
 Firebase Database   EXT_RAM_ATTR;
+Contador Counter   EXT_RAM_ATTR;
 
 StaticJsonDocument<1024>  Lectura        EXT_RAM_ATTR;
 StaticJsonDocument<1024>  Escritura      EXT_RAM_ATTR;
@@ -53,6 +54,7 @@ bool initFirebaseClient(){
     Database.RTDB.begin(project, ConfigFirebase.Device_Db_ID);
     UpdateStatus.BetaPermission = Database.RTDB.checkPermisions();
     Serial.printf("Usuario tiene permiso de firmware beta : %s \n", UpdateStatus.BetaPermission ? "Si" : "No");
+    
     return true;
 
 }
@@ -183,7 +185,6 @@ bool WriteFirebaseComs(String Path){
   return false;
 }
 
-
 bool WriteFirebaseControl(String Path){
   Escritura.clear();
 
@@ -197,6 +198,7 @@ bool WriteFirebaseControl(String Path){
 
   return false;
 }
+
 bool WriteFirebaseFW(String Path){
   Escritura.clear();
 
@@ -634,6 +636,9 @@ void Firebase_Conn_Task(void *args){
         ConnectionState=READING_CONTROL;
       }
       
+      else{
+        Counter.read();
+      }
       break;
 
     /*********************** WRITTING states **********************/
