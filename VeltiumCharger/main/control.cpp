@@ -69,7 +69,7 @@ uint8 status_hpt_anterior[2] = {'0','V' };
 uint16 inst_current_anterior = 0x0000;
 uint16 cnt_diferencia = 1;
 
-uint8 version_firmware[11] = {"VBLE2_0507"};	
+uint8 version_firmware[11] = {"VBLE2_0504"};	
 uint8 PSOC5_version_firmware[11] ;		
 
 uint8 systemStarted = 0;
@@ -505,12 +505,12 @@ void procesar_bloque(uint16 tipo_bloque){
 					serverbleNotCharacteristic(&buffer_rx_local[14], 2, MEASURES_INST_CURRENT_CHAR_HANDLE); 
 #ifdef CONNECTED
 					if(Status.Trifasico){
-						modifyCharacteristic(&buffer_rx_local[24], 2, MEASURES_INST_CURRENTB_CHAR_HANDLE);
-						modifyCharacteristic(&buffer_rx_local[34], 2, MEASURES_INST_CURRENTC_CHAR_HANDLE);
 						serverbleNotCharacteristic(&buffer_rx_local[24],2,MEASURES_INST_CURRENTB_CHAR_HANDLE);
 						serverbleNotCharacteristic(&buffer_rx_local[34],2,MEASURES_INST_CURRENTC_CHAR_HANDLE);
 					}
-					ConfigFirebase.WriteStatus=true;
+
+
+						ConfigFirebase.WriteStatus=true;
 #endif
 				}
 
@@ -549,7 +549,8 @@ void procesar_bloque(uint16 tipo_bloque){
 						Status.MeasuresC.active_energy = buffer_rx_local[40] + (buffer_rx_local[41] * 0x100) +(buffer_rx_local[42] * 0x1000) +(buffer_rx_local[43] * 0x10000);
 
 					}
-
+					Serial.println(Status.MeasuresB.instant_current);
+					Serial.println(Status.MeasuresC.instant_current);
 #endif
 			}
 		break;
