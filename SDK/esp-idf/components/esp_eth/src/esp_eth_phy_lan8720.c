@@ -153,7 +153,6 @@ typedef union {
     };
     uint32_t val;
 } pscsr_reg_t;
-#define ETH_PHY_PSCSR_REG_ADDR (0x1F)
 
 typedef struct {
     esp_eth_phy_t parent;
@@ -164,10 +163,12 @@ typedef struct {
     uint32_t reset_timeout_ms;
     uint32_t autonego_timeout_ms;
     eth_link_t link_status;
-    eth_link_t link_1_status;
-    eth_link_t link_2_status;
     int reset_gpio_num;
 } phy_lan8720_t;
+
+#define ETH_PHY_PSCSR_REG_ADDR (0x1F)
+
+
 
 static esp_err_t lan8720_update_link_duplex_speed(phy_lan8720_t *lan8720)
 {
@@ -223,8 +224,8 @@ static esp_err_t lan8720_update_link_duplex_speed(phy_lan8720_t *lan8720)
         PHY_CHECK(eth->on_state_changed(eth, ETH_STATE_LINK, (void *)link) == ESP_OK,
                   "change link failed", err);
         lan8720->link_status = link;
-        lan8720->link_1_status = link1;
-        lan8720->link_2_status = link2;
+        lan8720->parent.link1  = link1;
+        lan8720->parent.link2  = link2;
         
     }
     return ESP_OK;
@@ -242,7 +243,7 @@ err:
     return ESP_ERR_INVALID_ARG;
 }
 
-static esp_err_t lan8720_get_link(esp_eth_phy_t *phy)
+static uint8_t lan8720_get_link(esp_eth_phy_t *phy)
 {
     phy_lan8720_t *lan8720 = __containerof(phy, phy_lan8720_t, parent);
     /* Updata information about link, speed, duplex */
@@ -256,8 +257,8 @@ static esp_err_t lan8720_reset(esp_eth_phy_t *phy)
 {
     phy_lan8720_t *lan8720 = __containerof(phy, phy_lan8720_t, parent);
     lan8720->link_status = ETH_LINK_DOWN;
-    lan8720->link_1_status = ETH_LINK_DOWN;
-    lan8720->link_2_status = ETH_LINK_DOWN;
+    lan8720->parent.link1  = ETH_LINK_DOWN;
+    lan8720->parent.link2  = ETH_LINK_DOWN;
     esp_eth_mediator_t *eth = lan8720->eth;
     bmcr_reg_t bmcr = {.reset = 1};
     PHY_CHECK(eth->phy_reg_write(eth, lan8720->addr, ETH_PHY_BMCR_REG_ADDR, bmcr.val) == ESP_OK,
@@ -422,8 +423,8 @@ esp_eth_phy_t *esp_eth_phy_new_lan8720(const eth_phy_config_t *config)
     lan8720->reset_gpio_num = config->reset_gpio_num;
     lan8720->reset_timeout_ms = config->reset_timeout_ms;
     lan8720->link_status = ETH_LINK_DOWN;
-    lan8720->link_1_status = ETH_LINK_DOWN;
-    lan8720->link_2_status = ETH_LINK_DOWN;
+    lan8720->parent.link1 = ETH_LINK_DOWN;
+    lan8720->parent.link2 = ETH_LINK_DOWN;
     lan8720->autonego_timeout_ms = config->autonego_timeout_ms;
     lan8720->parent.reset = lan8720_reset;
     lan8720->parent.reset_hw = lan8720_reset_hw;

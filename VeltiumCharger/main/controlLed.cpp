@@ -105,8 +105,7 @@ void LedControl_Task(void *arg){
 			vTaskDelay(pdMS_TO_TICKS(500));
 			LastBle=serverbleGetConnected();
 		}
-		if(UpdateStatus.InstalandoArchivo){
-			LedPointer=0;
+		else if(UpdateStatus.InstalandoArchivo){			
 			Delay=150;
 			LedPointer++;			
 			if(LedPointer>=7){

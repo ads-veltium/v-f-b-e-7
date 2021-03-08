@@ -57,6 +57,7 @@ class ETHClass {
     private:
         bool initialized;
         bool staticIP;
+        esp_eth_phy_t *eth_phy = NULL;
 #if ESP_IDF_VERSION_MAJOR > 3
         esp_eth_handle_t eth_handle = NULL;
         esp_eth_handle_t eth_handle1 = NULL;
@@ -67,7 +68,7 @@ class ETHClass {
         bool started;
         eth_link_t eth_link;
         eth_link_t eth_link2;
-        esp_eth_phy_t *eth_phy = NULL;
+        
         static void eth_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data);
 #else
         bool started;

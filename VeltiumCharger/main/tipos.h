@@ -173,6 +173,7 @@ typedef struct{
 	IPAddress IP2;
 	IPAddress Gateway;
 	IPAddress Mask;
+	uint8_t Puerto;
 }carac_ETH;
 
 typedef struct{
