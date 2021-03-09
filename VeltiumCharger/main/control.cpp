@@ -506,7 +506,7 @@ void procesar_bloque(uint16 tipo_bloque){
 #ifdef CONNECTED
 					if(Status.Trifasico){
 						serverbleNotCharacteristic(&buffer_rx_local[24],2,MEASURES_INST_CURRENTB_CHAR_HANDLE);
-						serverbleNotCharacteristic(&buffer_rx_local[34],2,MEASURES_INST_CURRENTB_CHAR_HANDLE);
+						serverbleNotCharacteristic(&buffer_rx_local[34],2,MEASURES_INST_CURRENTC_CHAR_HANDLE);
 					}
 
 
@@ -534,7 +534,7 @@ void procesar_bloque(uint16 tipo_bloque){
 					Status.Measures.active_energy = buffer_rx_local[20] + (buffer_rx_local[21] * 0x100) +(buffer_rx_local[22] * 0x1000) +(buffer_rx_local[23] * 0x10000);
 					
 					Status.Trifasico= buffer_rx_local[44]==3;
-
+					
 
 					if(Status.Trifasico){
 						Status.MeasuresB.instant_current = buffer_rx_local[24] + (buffer_rx_local[25] * 0x100);
@@ -549,7 +549,8 @@ void procesar_bloque(uint16 tipo_bloque){
 						Status.MeasuresC.active_energy = buffer_rx_local[40] + (buffer_rx_local[41] * 0x100) +(buffer_rx_local[42] * 0x1000) +(buffer_rx_local[43] * 0x10000);
 
 					}
-
+					Serial.println(Status.MeasuresB.instant_current);
+					Serial.println(Status.MeasuresC.instant_current);
 #endif
 			}
 		break;
