@@ -72,7 +72,7 @@ static esp_err_t _network_event_cb(void *arg, system_event_t *event){
     return ESP_OK;
 }
 
-static bool _start_network_event_task(){
+bool _start_network_event_task(){
     if(!_network_event_group){
         _network_event_group = xEventGroupCreate();
         if(!_network_event_group){

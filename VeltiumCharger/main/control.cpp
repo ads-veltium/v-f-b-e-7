@@ -472,14 +472,19 @@ void procesar_bloque(uint16 tipo_bloque){
 				luminosidad = buffer_rx_local[0];
 
 				//Hilo piloto
-				modifyCharacteristic(&buffer_rx_local[1], 2, STATUS_HPT_STATUS_CHAR_HANDLE);
-
 				if((memcmp(&buffer_rx_local[1], status_hpt_anterior, 2) != 0))
 				{
 					Serial.printf("%c %c \n",buffer_rx_local[1],buffer_rx_local[2]);
 					memcpy(status_hpt_anterior, &buffer_rx_local[1], 2);
 					if(serverbleGetConnected()){
-						serverbleNotCharacteristic(&buffer_rx_local[1], 2, STATUS_HPT_STATUS_CHAR_HANDLE); 
+						if(buffer_rx_local[1]!= 'E' && buffer_rx_local[1]!= 'F'){
+							modifyCharacteristic(&buffer_rx_local[1], 2, STATUS_HPT_STATUS_CHAR_HANDLE);
+							serverbleNotCharacteristic(&buffer_rx_local[1], 2, STATUS_HPT_STATUS_CHAR_HANDLE); 
+						}
+						else{
+							modifyCharacteristic(&buffer_rx_local[1], 1, STATUS_HPT_STATUS_CHAR_HANDLE);
+							serverbleNotCharacteristic(&buffer_rx_local[1], 1, STATUS_HPT_STATUS_CHAR_HANDLE); 
+						}
 					}
 					#ifdef CONNECTED
 						ConfigFirebase.WriteStatus=true;

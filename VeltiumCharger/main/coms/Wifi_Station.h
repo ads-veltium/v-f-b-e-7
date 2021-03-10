@@ -6,7 +6,7 @@
 #include "../control.h"
 #include "FirebaseClient.h"
 #include "ESPAsyncWebServer.h"
-#include <ETH.h>
+#include "Eth_Station.h"
 #include "WiFiProv.h"
 
 //#define ETH_CLK_MODE    ETH_CLOCK_GPIO0_IN

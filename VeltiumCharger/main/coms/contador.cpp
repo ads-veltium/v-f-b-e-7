@@ -2,6 +2,8 @@
 
 extern carac_Status Status;
 
+
+//Contador de Iskra
 /*********** Clase Contador ************/
 void Contador::begin(String Host){
     CounterUrl = "http://";
@@ -68,3 +70,5 @@ void Contador::parse(){
     Status.MeasuresC.active_power = medida.toFloat() *100;*/
 
 }
+
+//Contador de Carlo Gavazzi

@@ -4,10 +4,10 @@
 
 /*********************** Globals ************************/
 
-static bool eth_link_up     = false;
-static bool eth_connected   = false;
-static bool eth_connecting  = false;
-static bool eth_started     = false;
+extern bool eth_link_up     ;
+extern bool eth_connected   ;
+extern bool eth_connecting  ;
+extern bool eth_started     ;
 static bool wifi_connected  = false;
 static bool wifi_connecting = false;
 
@@ -483,64 +483,6 @@ void WiFiEvent(arduino_event_id_t event, arduino_event_info_t info){
             ConfigFirebase.InternetConection=1;
         }
 		break;
-
-//********************** ETH Cases **********************//
-        case ARDUINO_EVENT_ETH_START:
-            Serial.println("ETH Started");
-            //set eth hostname here
-            ETH.setHostname("velitum-ethernet");
-            break;
-        case ARDUINO_EVENT_ETH_CONNECTED:
-            Serial.println("ETH Connected");
-            if(Coms.Wifi.ON){
-                Station_Stop();
-            }
-            Coms.ETH.Puerto = ETH.linkUp();
-            eth_link_up    = true;
-            break;
-        case SYSTEM_EVENT_ETH_GOT_IP:
-            Serial.print("ETH MAC: ");
-            Serial.print(ETH.macAddress());
-            Serial.print(", IPv4: ");
-            Serial.print(ETH.localIP()[0]);
-            Serial.println();
-            uint8 IpBuffer[4];
-            IpBuffer[0]= ETH.localIP()[0];
-            IpBuffer[1]= ETH.localIP()[1];
-            IpBuffer[2]= ETH.localIP()[2];
-            IpBuffer[3]= ETH.localIP()[3];
-            if(Coms.ETH.Puerto==1){
-                Coms.ETH.IP1 = ETH.localIP();               
-                modifyCharacteristic(IpBuffer, 4, COMS_CONFIGURATION_LAN_IP1);
-                modifyCharacteristic(ZeroBuffer, 4, COMS_CONFIGURATION_LAN_IP2);
-            }
-            else if(Coms.ETH.Puerto==2){
-                Coms.ETH.IP2 = ETH.localIP();
-                modifyCharacteristic(IpBuffer, 4, COMS_CONFIGURATION_LAN_IP2);
-                modifyCharacteristic(ZeroBuffer, 4, COMS_CONFIGURATION_LAN_IP1);
-            }
-            if(Coms.ETH.Auto){
-                Coms.ETH.Gateway = ETH.gatewayIP();
-                Serial.println(Coms.ETH.Gateway);
-                Coms.ETH.Mask    = ETH.subnetMask();
-                Serial.println(Coms.ETH.Mask);
-            }
-            eth_connected = true;
-            eth_connecting = false;
-            ConfigFirebase.InternetConection=true; 
-            break;
-        case ARDUINO_EVENT_ETH_DISCONNECTED:
-            eth_connected = false;
-            eth_link_up = false;
-            Serial.println("ETH Disconnected");
-            
-            break;
-
-        case ARDUINO_EVENT_ETH_STOP:
-            Serial.println("ETH Stopped");
-            eth_connected = false;
-            break;
-
 	    default:
 		    break;
 	}
@@ -569,8 +511,7 @@ void StartSmarConfig(){
 }
 
 
-void Station_Begin(){
-    
+void Station_Begin(){   
     //Comprobar si esta encendida ya
     Serial.println("Station begin");
     if(wifi_connecting || wifi_connected){
@@ -599,38 +540,6 @@ void Station_Stop(){
     Serial.println("Error Disconecting");
 } 
 
-void ETH_Stop(){
-    eth_connected  = false;
-    eth_connecting = false;
-    ETH.end();
-    delay(500);
-
-}
-
-void ETH_Restart(){
-    ETH.restart();
-    eth_connecting = true;
-    delay(100);
-}
-
-void ETH_begin(){
-    if(eth_connected || eth_connecting){
-        ETH_Stop();
-    }
-    
-    if(Coms.ETH.Auto){
-        ETH.begin(ETH_ADDR, ETH_POWER_PIN, ETH_MDC_PIN, ETH_MDIO_PIN, ETH_TYPE);
-    }
-	else{   
-        ETH.begin(ETH_ADDR, ETH_POWER_PIN, ETH_MDC_PIN, ETH_MDIO_PIN, ETH_TYPE);
-        IPAddress primaryDNS(8, 8, 8, 8); //optional
-        IPAddress secondaryDNS(8, 8, 4, 4); //optional
-        ETH.config(Coms.ETH.IP1,Coms.ETH.Gateway,Coms.ETH.Mask, primaryDNS, secondaryDNS);
-    }
-	eth_connecting = true;
-    eth_started = true;
-}
-
 void ComsTask(void *args){
     uint8_t ComsMachineState =DISCONNECTED;
     uint8_t LastStatus = DISCONNECTED;
@@ -658,7 +567,7 @@ void ComsTask(void *args){
                     WiFiProv.StopProvision();
                 }
                 if(Coms.ETH.ON){
-                    ETH_Stop();
+                    stop_ethernet();
                     Coms.ETH.ON=false;
                 }
 
@@ -693,15 +602,15 @@ void ComsTask(void *args){
             }
             if(Coms.ETH.ON){
                 if(!eth_started){
-                    ETH_begin();
+                    initialize_ethernet();
                 }
                 else if((!eth_connected && !eth_connecting && eth_link_up) || Coms.RestartConection){
-                    ETH_Restart();
+                    restart_ethernet();
                     Coms.RestartConection = false;
                 }
             }
             else if(eth_connected){
-                ETH_Stop();
+                stop_ethernet();
             }
             if(ConfigFirebase.InternetConection && !ServidorArrancado){
                 //SPIFFS.begin();

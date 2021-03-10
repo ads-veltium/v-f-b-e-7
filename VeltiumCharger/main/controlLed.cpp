@@ -198,9 +198,8 @@ void LedControl_Task(void *arg){
 				}
 			}
 			else{//Si hay algun error
-				//Error transitorio	
-				Serial.println("Error!");			
-				if(Status.error_code <= (uint8)0x33 && Status.error_code != (uint8)0x30){
+				//Error transitorio			 
+				if((Status.error_code <= (uint8)0x33 && Status.error_code != (uint8)0x30) || Status.error_code == (uint8)0x80){
 					Delay=40;
 					if(++cnt_parpadeo >= TIME_PARPADEO){
 						cnt_parpadeo = 0;
