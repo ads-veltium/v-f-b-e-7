@@ -68,11 +68,12 @@ void Contador::parse(){
     medida = Measurements["measurements"]["I3"].as<String>();
     Status.MeasuresC.instant_current = medida.toFloat() *100;
 
-    Serial.println(Status.Measures.instant_current);
     
-    /*medida = Measurements["measurements"]["U1"].as<String>();
+    
+    medida = Measurements["measurements"]["U1"].as<String>();
     Status.Measures.instant_voltage = medida.toFloat() *100;
-    medida = Measurements["measurements"]["P1"].as<String>();
+    Serial.println(Status.Measures.instant_voltage);
+    /*medida = Measurements["measurements"]["P1"].as<String>();
     Status.Measures.active_power = medida.toFloat() *100;
 
     medida = Measurements["measurements"]["U2"].as<String>();
