@@ -15,6 +15,7 @@ class Contador{
     StaticJsonDocument<2048> Measurements;
   public:
     bool Inicializado = false;
+
     void find();
     void begin(String Host);
     bool read();

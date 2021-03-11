@@ -195,6 +195,7 @@ typedef struct{
 	bool RestartConection  = false;
 	bool Provisioning 	   = false;
 	bool ContadorConectado = false;
+
 	char ContadorIp[15] ={"0"};
 	carac_WIFI   Wifi;
 	carac_ETH     ETH;

@@ -31,7 +31,7 @@ typedef struct Parametros_Ping
   bool Found    = false;
   bool Finished = false;
   bool CheckingConn = false;
-  uint8 max;
+
   ip4_addr_t BaseAdress;
   uint32_t ping_count = 2;      //how many pings per report
   uint32_t ping_timeout = 200; //mS till we consider it timed out

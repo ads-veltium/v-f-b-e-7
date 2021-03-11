@@ -37,8 +37,7 @@ bool CheckContador(int ip4){
             else{
                 ContadorCheck.end();
                 return false;
-            }
-            
+            } 
         }
     }
     ContadorCheck.end();
@@ -72,13 +71,36 @@ void BuscarContador_Task(void *args){
 
     ip4_addr_t BaseAdress = ParametrosPing.BaseAdress;
     uint8 i = 100;
+    uint8 Sup = 1, inf = 1 ;
+    bool Sentido = 0;
    
     i = ip4_addr4(&BaseAdress);
     ParametrosPing.Found = false;
     ParametrosPing.NextOne =true;
 
-    while(i <= ParametrosPing.max){
+    while(Sup != 255 && inf!=0){
         if(ParametrosPing.NextOne){
+            if(Sentido){ //Pabajo
+                i = ip4_addr4(&ParametrosPing.BaseAdress) - inf > 1 ? ip4_addr4(&ParametrosPing.BaseAdress) - inf : 0;
+                if(i != 0 ){
+                    inf++;
+                    Sentido = false;
+                }
+                else{
+                    continue;
+                }
+            }
+            else{ //Parriba
+                i = ip4_addr4(&ParametrosPing.BaseAdress) + Sup < 255 ? ip4_addr4(&ParametrosPing.BaseAdress) + Sup : 255;
+                if(i != 255 ){
+                    Sup++;
+                    Sentido = true;
+                }
+                else{
+                    continue;
+                }
+            }
+            
             printf("Buscando en %i \n", i);
             ParametrosPing.NextOne = false;
             esp_ping_set_target(PING_TARGET_RES_RESET, &BaseAdress, sizeof(uint32_t));
@@ -95,18 +117,20 @@ void BuscarContador_Task(void *args){
         else if(ParametrosPing.Found ){
             Serial.println("Hemos encontrado algo, a ver si es un contador");
             if(CheckContador(i-1)){
+                Serial.println("Busqueda finalizada!");
+                Serial.printf("Contador encontrado en %d %d %d %d \n", ip4_addr1(&BaseAdress), ip4_addr2(&BaseAdress), ip4_addr3(&BaseAdress), i-1);
+	            Coms.ContadorConectado = true;
                 break;
             }
             else{
+                Serial.println("Nada, seguimos buscando");
                 ParametrosPing.Found= false;
                 ParametrosPing.NextOne = true;
             }
         }
-        delay(50);
+        delay(20);
     }
-    Serial.println("Busqueda finalizada!");
-    Serial.printf("Contador encontrado en %d %d %d %d \n", ip4_addr1(&BaseAdress), ip4_addr2(&BaseAdress), ip4_addr3(&BaseAdress), i-1);
-	Coms.ContadorConectado = true;
+
     vTaskDelete(NULL);
 }
 
@@ -160,13 +184,19 @@ static void eth_event_handler(void *arg, esp_event_base_t event_base, int32_t ev
         Serial.printf( "ETHIP: %d %d %d %d\n",IP2STR(&ip_info->ip));
 
         if(Coms.ETH.Puerto==1){
-            //Coms.ETH.IP1 = ETH.localIP();               
-            //modifyCharacteristic(ip_info->ip, 4, COMS_CONFIGURATION_LAN_IP1);
+            Coms.ETH.IP1[0] =ip4_addr1(&ip_info->ip);
+            Coms.ETH.IP1[1] =ip4_addr2(&ip_info->ip);
+            Coms.ETH.IP1[2] =ip4_addr3(&ip_info->ip);
+            Coms.ETH.IP1[3] =ip4_addr4(&ip_info->ip);               
+            modifyCharacteristic(&Coms.ETH.IP1[0], 4, COMS_CONFIGURATION_LAN_IP1);
             modifyCharacteristic(ZeroBuffer, 4, COMS_CONFIGURATION_LAN_IP2);
         }
         else if(Coms.ETH.Puerto==2){
-            //Coms.ETH.IP2 = ETH.localIP();
-            //modifyCharacteristic(&ip_info->ip, 4, COMS_CONFIGURATION_LAN_IP2);
+            Coms.ETH.IP2[0] =ip4_addr1(&ip_info->ip);
+            Coms.ETH.IP2[1] =ip4_addr2(&ip_info->ip);
+            Coms.ETH.IP2[2] =ip4_addr3(&ip_info->ip);
+            Coms.ETH.IP2[3] =ip4_addr4(&ip_info->ip); 
+            modifyCharacteristic(&Coms.ETH.IP2[0], 4, COMS_CONFIGURATION_LAN_IP2);
             modifyCharacteristic(ZeroBuffer, 4, COMS_CONFIGURATION_LAN_IP1);
         }
 

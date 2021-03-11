@@ -2,18 +2,18 @@
 
 extern carac_Status Status;
 extern xParametrosPing ParametrosPing;
+extern carac_Coms Coms;
 
 //Contador de Iskra
 /*********** Clase Contador ************/
 
 //Buscar el contador
 void Contador::find(){
-
-    IP4_ADDR(&ParametrosPing.BaseAdress , 192,168,20,100);
-    ParametrosPing.max = 220;
-    xTaskCreate( BuscarContador_Task, "BuscarContador", 4096*4, NULL, 5, NULL);
-
+    Serial.println("Iniciando fase busqueda ");
+    IP4_ADDR(&ParametrosPing.BaseAdress , Coms.ETH.IP1[0],Coms.ETH.IP1[1],Coms.ETH.IP1[2],Coms.ETH.IP1[3]);
+    xTaskCreate( BuscarContador_Task, "BuscarContador", 4096*4, NULL, 5, NULL);   
 }
+
 void Contador::begin(String Host){
     CounterUrl = "http://";
     CounterUrl+=Host+"/get_command?command=get_measurements";
