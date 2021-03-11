@@ -43,7 +43,10 @@
 #if LWIP_IPV4 && LWIP_RAW /* don't build if not configured for use in lwipopts.h */
 
 #include "ping/ping.h"
+//#include "sockets.h"
 
+//#define PING_USE_SOCKETS 1
+//#define ESP_PING
 #include "lwip/mem.h"
 #include "lwip/raw.h"
 #include "lwip/icmp.h"
@@ -51,7 +54,8 @@
 #include "lwip/sys.h"
 #include "lwip/timeouts.h"
 #include "lwip/inet_chksum.h"
-
+#include "esp_log.h"
+static const char *TAG = "PING";
 #if PING_USE_SOCKETS
 #include "lwip/sockets.h"
 #include "lwip/inet.h"
@@ -80,7 +84,7 @@
 
 /** ping delay - in milliseconds */
 #ifndef PING_DELAY
-#define PING_DELAY     1000
+#define PING_DELAY     70
 #endif
 
 /** ping identifier - must fit on a u16_t */
@@ -111,7 +115,8 @@ static struct raw_pcb *ping_pcb;
 
 #define PING_TIME_DIFF_MS(_end, _start)  ((uint32_t)(((_end).tv_sec - (_start).tv_sec) * 1000 + (_end.tv_usec - _start.tv_usec)/1000))
 #define PING_TIME_DIFF_SEC(_end, _start) ((uint32_t)((_end).tv_sec - (_start).tv_sec))
-
+  int s;
+  xTaskHandle created_task;
 /** Prepare a echo ICMP request */
 static void
 ping_prepare_echo( struct icmp_echo_hdr *iecho, u16_t len)
@@ -241,7 +246,7 @@ ping_thread(void *arg)
   uint32_t ping_delay = PING_DELAY;
   ip_addr_t ping_target;
   int ret;
-  int s;
+
 
 #ifdef ESP_PING
   uint32_t ping_count_cur = 0;
@@ -288,6 +293,7 @@ ping_thread(void *arg)
 #endif
 
   while (1) {
+
 #ifdef ESP_PING
     if (ping_count_cur++ >= ping_count_max) {
       goto _exit;
@@ -296,7 +302,10 @@ ping_thread(void *arg)
     if (ping_init_flag == false) {
       goto _exit;
     }
-#endif    
+#endif  
+    if (ping_init_flag == false) {
+      goto _exit;
+    }  
     if (ping_send(s, &ping_target) == ERR_OK) {
       LWIP_DEBUGF( PING_DEBUG, ("ping: send seq=%d ", ping_seq_num));
       ip_addr_debug_print(PING_DEBUG, &ping_target);
@@ -313,14 +322,16 @@ ping_thread(void *arg)
   }
 
 #ifdef ESP_PING
+
 _exit:
-  close(s);
+ESP_LOGE(TAG,"Cerrando socket");
+close(s); 
 
 _exit_new_socket_failed:
   esp_ping_result(PING_RES_FINISH, 0, 0);
   SYS_ARCH_PROTECT(lev);
   if (ping_init_flag) { /* Ping closed by this thread */
-    LWIP_DEBUGF( PING_DEBUG, ("ping: closed by self "));
+
     if (ping_sem) {
       sys_sem_free(&ping_sem);
     }
@@ -328,12 +339,13 @@ _exit_new_socket_failed:
     ping_init_flag = false;
     SYS_ARCH_UNPROTECT(lev);
   } else { /* Ping closed by task calls ping_deinit */
-    LWIP_DEBUGF( PING_DEBUG, ("ping: closed by other"));
+
     SYS_ARCH_UNPROTECT(lev);
     if (ping_sem) {
       sys_sem_signal(&ping_sem);
     }
   }
+   ESP_LOGE(TAG,"Borrando tarea del piing");
   vTaskDelete(NULL);
 #endif
 }
@@ -456,8 +468,9 @@ ping_init(void)
   ping_init_flag = true;
   SYS_ARCH_UNPROTECT(lev);
 #if PING_USE_SOCKETS
-  sys_thread_new("ping_thread", ping_thread, NULL, DEFAULT_THREAD_STACKSIZE, DEFAULT_THREAD_PRIO);
+  created_task=sys_thread_new("ping_thread", ping_thread, NULL, DEFAULT_THREAD_STACKSIZE, DEFAULT_THREAD_PRIO);
 #else /* PING_USE_SOCKETS */
+  
   ping_raw_init();
 #endif /* PING_USE_SOCKETS */
   return ERR_OK;
@@ -467,7 +480,7 @@ void
 ping_deinit(void)
 {
   int lev;
-
+  
   SYS_ARCH_PROTECT(lev);
   if (ping_init_flag == false) {
     SYS_ARCH_UNPROTECT(lev);
@@ -477,13 +490,15 @@ ping_deinit(void)
   ping_init_flag = false;
   SYS_ARCH_UNPROTECT(lev);
   if (ping_sem) {
-    sys_sem_wait(&ping_sem);
+    //sys_sem_wait(&ping_sem);
 
     SYS_ARCH_PROTECT(lev);
     sys_sem_free(&ping_sem);
     ping_sem = NULL;
     SYS_ARCH_UNPROTECT(lev);
   }
+  close(s);
+  vTaskDelete(created_task);
 }
 
 #endif /* LWIP_IPV4 && LWIP_RAW */

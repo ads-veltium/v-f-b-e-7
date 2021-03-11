@@ -55,7 +55,7 @@ uint8 buffer_tx_local[256]  EXT_RAM_ATTR;
 uint8 buffer_rx_local[256]  EXT_RAM_ATTR;
 uint8 record_buffer[550] EXT_RAM_ATTR;
 uint16 puntero_rx_local = 0;
-uint32 TimeFromStart = 60; //tiempo para buscar el contador, hay que darle tiempo a conectarse
+uint32 TimeFromStart = 5; //tiempo para buscar el contador, hay que darle tiempo a conectarse
 uint8 updateTaskrunning=0;
 uint8 cnt_timeout_tx = 0;
 

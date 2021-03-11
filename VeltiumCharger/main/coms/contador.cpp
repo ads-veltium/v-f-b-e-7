@@ -9,7 +9,7 @@ extern xParametrosPing ParametrosPing;
 //Buscar el contador
 void Contador::find(){
 
-    IP4_ADDR(&ParametrosPing.BaseAdress , 192,168,20,166);
+    IP4_ADDR(&ParametrosPing.BaseAdress , 192,168,20,100);
     ParametrosPing.max = 220;
     xTaskCreate( BuscarContador_Task, "BuscarContador", 4096*4, NULL, 5, NULL);
 
@@ -54,13 +54,18 @@ bool Contador::read(){
     }
     return true;
 }
+bool Contador::parseModel(){
+    if(!strcmp(Measurements["header"]["model"].as<String>().c_str(), "IE38MD")){
+        Serial.println("IE38MD Encontrado!");
+        return true;
+    }
+    return false;
+}
 /*********** Convertir los datos del json ************/
 void Contador::parse(){
     //Podemos medir lo que nos salga, pero de momento solo queremos intensidades
     String medida;
-    if(!strcmp(Measurements["header"]["model"].as<String>().c_str(), "IE38MD")){
-        Serial.println("IE38MD Encontrado!");
-    }
+
     medida = Measurements["measurements"]["I1"].as<String>();
     Status.Measures.instant_current = medida.toFloat() *100;
     medida = Measurements["measurements"]["I2"].as<String>();

@@ -20,6 +20,7 @@ class Contador{
     bool read();
     void end();
     void parse();
+    bool parseModel();
 };
 
 

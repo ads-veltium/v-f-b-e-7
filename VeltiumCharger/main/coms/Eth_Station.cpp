@@ -28,10 +28,17 @@ bool CheckContador(int ip4){
     sprintf(ip,"%i.%i.%i.%i", ip4_addr1(&ParametrosPing.BaseAdress),ip4_addr2(&ParametrosPing.BaseAdress),ip4_addr3(&ParametrosPing.BaseAdress),ip4);
     ContadorCheck.begin(ip);
     for (int i=0; i<=2;i++){
-        if(ContadorCheck.read()){
-            ContadorCheck.end();
-            memcpy(Coms.ContadorIp, ip,15);
-            return true;
+        if(ContadorCheck.read()){           
+            if(ContadorCheck.parseModel()){
+                ContadorCheck.end();
+                memcpy(Coms.ContadorIp, ip,15);
+                return true;
+            }
+            else{
+                ContadorCheck.end();
+                return false;
+            }
+            
         }
     }
     ContadorCheck.end();
@@ -43,7 +50,6 @@ void pingResults(ping_target_id_t msgType, esp_ping_found * pf){
     if(pf->timeout_count == ParametrosPing.ping_count){     
 
         ParametrosPing.NextOne=true;
-        Serial.println("Intentadolo con el siguiente!");
         ping_deinit();
     }
     if(pf->max_time != 0){      
@@ -70,7 +76,7 @@ void BuscarContador_Task(void *args){
     i = ip4_addr4(&BaseAdress);
     ParametrosPing.Found = false;
     ParametrosPing.NextOne =true;
-    
+
     while(i <= ParametrosPing.max){
         if(ParametrosPing.NextOne){
             printf("Buscando en %i \n", i);
@@ -87,6 +93,7 @@ void BuscarContador_Task(void *args){
             i++;
         }
         else if(ParametrosPing.Found ){
+            Serial.println("Hemos encontrado algo, a ver si es un contador");
             if(CheckContador(i-1)){
                 break;
             }
@@ -95,7 +102,7 @@ void BuscarContador_Task(void *args){
                 ParametrosPing.NextOne = true;
             }
         }
-        delay(70);
+        delay(50);
     }
     Serial.println("Busqueda finalizada!");
     Serial.printf("Contador encontrado en %d %d %d %d \n", ip4_addr1(&BaseAdress), ip4_addr2(&BaseAdress), ip4_addr3(&BaseAdress), i-1);
