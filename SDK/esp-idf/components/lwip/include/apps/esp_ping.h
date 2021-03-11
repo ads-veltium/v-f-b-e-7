@@ -63,8 +63,8 @@ typedef enum {
     PING_RES_FINISH  = 2,
 } ping_res_t;
 
-typedef void (* esp_ping_found_fn)(ping_target_id_t found_id, esp_ping_found *found_val);
-
+typedef void ( *esp_ping_found_fn)(ping_target_id_t found_id, esp_ping_found *found_val);
+void func ( void (*f)(ping_target_id_t, esp_ping_found*) );
 /**
  * @brief  Set PING function option
  *

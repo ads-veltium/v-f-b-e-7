@@ -5,6 +5,7 @@
 #include "HTTPClient.h"
 #include "ArduinoJson.h"
 #include "../control.h"
+#include "Eth_Station.h"
 #include "WiFi.h"
 
 class Contador{
@@ -13,9 +14,10 @@ class Contador{
     String CounterUrl= "http://";
     StaticJsonDocument<2048> Measurements;
   public:
-
+    bool Inicializado = false;
+    void find();
     void begin(String Host);
-    void read();
+    bool read();
     void end();
     void parse();
 };

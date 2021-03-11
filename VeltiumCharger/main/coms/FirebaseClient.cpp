@@ -12,7 +12,6 @@
 #include "VeltFirebase.h"
 
 Firebase Database   EXT_RAM_ATTR;
-Contador Counter   EXT_RAM_ATTR;
 
 StaticJsonDocument<1024>  Lectura        EXT_RAM_ATTR;
 StaticJsonDocument<1024>  Escritura      EXT_RAM_ATTR;
@@ -520,7 +519,6 @@ void Firebase_Conn_Task(void *args){
       Coms.last_ts_app_req    = Database.RTDB.Get_Timestamp("/coms/ts_app_req",&Lectura);
       Serial.println("Conectado a firebase!");
       Error_Count+=!WriteFirebaseFW("/fw/current");
-
       ConnectionState=IDLE;
       break;
 
@@ -630,9 +628,6 @@ void Firebase_Conn_Task(void *args){
         ConnectionState=READING_CONTROL;
       }
       
-      else{
-        Counter.read();
-      }
       break;
 
     /*********************** WRITTING states **********************/

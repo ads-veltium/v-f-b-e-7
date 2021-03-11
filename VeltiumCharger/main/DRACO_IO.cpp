@@ -11,16 +11,15 @@
 
 
 unsigned char DRACO_GPIO_Init(void) {
-
+	/*
 	//INPUTS
-
 	pinMode( GPIO_MODEM_PWRMON, INPUT_PULLUP);
 	digitalWrite(GPIO_MODEM_PWRMON, LOW);
 
 	//OUTPUTS
 	pinMode ( GPIO_MODEM_PWR_EN,OUTPUT);
 	digitalWrite(GPIO_MODEM_PWR_EN, LOW);
-            
+    */
     pinMode ( EMAC_nRESET,OUTPUT);
 	digitalWrite(EMAC_nRESET,LOW);
             

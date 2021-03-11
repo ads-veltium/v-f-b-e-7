@@ -30,6 +30,8 @@ carac_Status  Status       EXT_RAM_ATTR;
 carac_Params  Params       EXT_RAM_ATTR;
 carac_Coms    Coms         EXT_RAM_ATTR;
 
+//Contador trifasico
+Contador Counter   EXT_RAM_ATTR;
 /* VARIABLES BLE */
 uint8 device_ID[16] = {"VCD17010001"};
 uint8 deviceSerNum[10] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};     //{0x00, 0x00, 0x00, 0x00, 0x0B, 0xCD, 0x17, 0x01, 0x00, 0x05};
@@ -53,6 +55,7 @@ uint8 buffer_tx_local[256]  EXT_RAM_ATTR;
 uint8 buffer_rx_local[256]  EXT_RAM_ATTR;
 uint8 record_buffer[550] EXT_RAM_ATTR;
 uint16 puntero_rx_local = 0;
+uint32 TimeFromStart = 30; //tiempo para buscar el contador, hay que darle tiempo a conextarse
 uint8 updateTaskrunning=0;
 uint8 cnt_timeout_tx = 0;
 
@@ -65,7 +68,7 @@ uint8 dispositivo_inicializado = 0;
 uint8 cnt_timeout_inicio = 0;
 uint16 cnt_repeticiones_inicio = 500;	//1000;
 
-uint8 status_hpt_anterior[2] = {'0','V' };
+uint8 status_hpt_anterior[2] = {'F','F' };
 uint16 inst_current_anterior = 0x0000;
 uint16 cnt_diferencia = 1;
 
@@ -243,6 +246,7 @@ void controlTask(void *arg)
 							MAIN_RESET_Write(0);						
 							ESP.restart();
 						}
+						
 						else
 							cnt_timeout_tx--;
 						break;
@@ -273,6 +277,21 @@ void controlTask(void *arg)
 		// Eventos 1 Seg (Enviar ordenes recibidas desde firebase o el servidor interno)
 		if(cont_seg != cont_seg_ant){
 			cont_seg_ant = cont_seg;
+
+#ifdef CONNECTED
+			//Si el equipo es trifasico, buscamos el contador
+			if(/*Status.Trifasico &&*/ Coms.ETH.conectado && !Coms.ContadorConectado){
+				if(--TimeFromStart <=0){
+					Counter.find();
+				}
+			}
+			if(Coms.ContadorConectado){
+				if(!Counter.Inicializado){
+					Counter.begin(Coms.ContadorIp);
+				}
+				Counter.read();
+			}
+#endif
 		}
 
 		// Eventos 1 minuto
@@ -287,7 +306,7 @@ void controlTask(void *arg)
 			cont_hour_ant = cont_hour;
 		}
 
-		delay(5);	
+		delay(10);	
 	}
 }
 

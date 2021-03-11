@@ -1,10 +1,19 @@
 #include "contador.h"
 
 extern carac_Status Status;
-
+extern xParametrosPing ParametrosPing;
 
 //Contador de Iskra
 /*********** Clase Contador ************/
+
+//Buscar el contador
+void Contador::find(){
+
+    IP4_ADDR(&ParametrosPing.BaseAdress , 192,168,20,166);
+    ParametrosPing.max = 220;
+    xTaskCreate( BuscarContador_Task, "BuscarContador", 4096*4, NULL, 5, NULL);
+
+}
 void Contador::begin(String Host){
     CounterUrl = "http://";
     CounterUrl+=Host+"/get_command?command=get_measurements";
@@ -15,13 +24,14 @@ void Contador::begin(String Host){
     CounterClient.setTimeout(10000);
     CounterClient.setConnectTimeout(2000);
     CounterClient.setReuse(true);
+    Inicializado = true;
 }
 
 void Contador::end(){
     CounterClient.end();
 }
 
-void Contador::read(){
+bool Contador::read(){
     int response;
 
     response = CounterClient.GET();
@@ -30,6 +40,7 @@ void Contador::read(){
         Serial.println(response);
         Serial.printf("Counter reading error: %s\n", 
         CounterClient.errorToString(response).c_str());
+        return false;
     }
 
     String payload = CounterClient.getString();
@@ -39,20 +50,25 @@ void Contador::read(){
     //conection refused
     if(response == -1){
         Serial.println("Counter conection refused");
-        return ;
+        return false;
     }
+    return true;
 }
 /*********** Convertir los datos del json ************/
 void Contador::parse(){
     //Podemos medir lo que nos salga, pero de momento solo queremos intensidades
     String medida;
-
+    if(!strcmp(Measurements["header"]["model"].as<String>().c_str(), "IE38MD")){
+        Serial.println("IE38MD Encontrado!");
+    }
     medida = Measurements["measurements"]["I1"].as<String>();
     Status.Measures.instant_current = medida.toFloat() *100;
     medida = Measurements["measurements"]["I2"].as<String>();
     Status.MeasuresB.instant_current = medida.toFloat() *100;
     medida = Measurements["measurements"]["I3"].as<String>();
     Status.MeasuresC.instant_current = medida.toFloat() *100;
+
+    Serial.println(Status.Measures.instant_current);
     
     /*medida = Measurements["measurements"]["U1"].as<String>();
     Status.Measures.instant_voltage = medida.toFloat() *100;

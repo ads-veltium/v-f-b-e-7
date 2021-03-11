@@ -19,7 +19,6 @@ extern carac_Params                 Params;
 extern carac_Coms                   Coms;
 
 void WiFiEvent(arduino_event_id_t event, arduino_event_info_t info);
-void Station_Stop();
 AsyncWebServer server(80);
 /*************** Wifi and ETH event handlers *****************/
 
@@ -44,7 +43,6 @@ const char* POT_CONT = "potencia_cont";
 const char* UBI_CDP = "ubi_cdp";
 
 uint8 AuthErrorCount =0;
-uint8 ZeroBuffer[10] ={'0'};
 
 /************* Internal server configuration ****************/
 void notFound(AsyncWebServerRequest *request) {
@@ -600,6 +598,7 @@ void ComsTask(void *args){
             else if(wifi_connected && !Coms.Wifi.ON){
                 Station_Stop();
             }
+
             if(Coms.ETH.ON){
                 if(!eth_started){
                     initialize_ethernet();
@@ -612,6 +611,7 @@ void ComsTask(void *args){
             else if(eth_connected){
                 stop_ethernet();
             }
+
             if(ConfigFirebase.InternetConection && !ServidorArrancado){
                 //SPIFFS.begin();
                 SPIFFS.begin(false,"/spiffs",1,"WebServer");

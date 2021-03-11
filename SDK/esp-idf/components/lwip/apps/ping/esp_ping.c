@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <string.h>
+#include "ping/ping.h"
 #include "esp_ping.h"
 
 #include "lwip/ip_addr.h"
@@ -31,6 +32,10 @@ typedef struct _ping_option {
 } ping_option;
 
 static ping_option ping_option_info[1];
+
+void func ( void (*f)(ping_target_id_t, esp_ping_found*) ){
+     ping_option_info->ping_res_fn = f;
+}
 
 esp_err_t esp_ping_set_target(ping_target_id_t opt_id, void *opt_val, uint32_t opt_len)
 {
@@ -73,6 +78,7 @@ esp_err_t esp_ping_set_target(ping_target_id_t opt_id, void *opt_val, uint32_t o
         ping_option_info->ping_res_fn = opt_val;
         break;
     case PING_TARGET_RES_RESET:
+        memset(&ping_option_info, 0, sizeof(ping_option_info));
         memset(&ping_option_info->ping_res, 0, sizeof(ping_option_info->ping_res));
         break;
     default:

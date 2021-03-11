@@ -174,6 +174,8 @@ typedef struct{
 	IPAddress Gateway;
 	IPAddress Mask;
 	uint8_t Puerto;
+
+	bool conectado;
 }carac_ETH;
 
 typedef struct{
@@ -193,9 +195,11 @@ typedef struct{
 	bool RestartConection  = false;
 	bool Provisioning 	   = false;
 	bool ContadorConectado = false;
+	char ContadorIp[15] ={"0"};
 	carac_WIFI   Wifi;
 	carac_ETH     ETH;
 	carac_MODEM   GSM;
+
 	long long last_ts_app_req= 0;
 } carac_Coms;
 
