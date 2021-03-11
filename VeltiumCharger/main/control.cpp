@@ -25,10 +25,11 @@ StaticTask_t xFirebaseBuffer ;
 //Variables Firebase
 carac_Update_Status UpdateStatus EXT_RAM_ATTR;
 carac_Firebase_Configuration ConfigFirebase EXT_RAM_ATTR;
-carac_Comands Comands      EXT_RAM_ATTR;
-carac_Status  Status       EXT_RAM_ATTR;
-carac_Params  Params       EXT_RAM_ATTR;
-carac_Coms    Coms         EXT_RAM_ATTR;
+carac_Comands  Comands      EXT_RAM_ATTR;
+carac_Status   Status       EXT_RAM_ATTR;
+carac_Params   Params       EXT_RAM_ATTR;
+carac_Coms     Coms         EXT_RAM_ATTR;
+carac_Contador ContadorExt  EXT_RAM_ATTR;
 
 //Contador trifasico
 Contador Counter   EXT_RAM_ATTR;
@@ -278,17 +279,32 @@ void controlTask(void *arg)
 
 #ifdef CONNECTED
 			//Si el equipo es trifasico, buscamos el contador, si lo encontramos lo leemos
-			if(/*Status.Trifasico &&*/ Coms.ETH.conectado && !Coms.ContadorConectado){
+			if(/*Status.Trifasico &&*/ Coms.ETH.conectado && !ContadorExt.ContadorConectado){
 				if(--TimeFromStart == 0){
 					Counter.find();
 				}
 			}
-			if(Coms.ContadorConectado){
+			if(ContadorExt.ContadorConectado){
 				if(!Counter.Inicializado){
-					Counter.begin(Coms.ContadorIp);
+					Counter.begin(ContadorExt.ContadorIp);
 				}
 				Counter.read();
 				Counter.parse();
+				uint8 buffer_contador[7] = {0}; 
+
+				buffer_contador[0] = ContadorExt.ContadorConectado;
+				buffer_contador[1] = (uint8)(ContadorExt.DomesticCurrentA& 0x00FF);
+				buffer_contador[2] = (uint8)((ContadorExt.DomesticCurrentA >> 8) & 0x00FF);
+
+				if(Status.Trifasico){
+					buffer_contador[3] = (uint8)(ContadorExt.DomesticCurrentB & 0x00FF);
+					buffer_contador[4] = (uint8)((ContadorExt.DomesticCurrentB >> 8) & 0x00FF);
+
+					buffer_contador[5] = (uint8)(ContadorExt.DomesticCurrentC & 0x00FF);
+					buffer_contador[6] = (uint8)((ContadorExt.DomesticCurrentC >> 8) & 0x00FF);
+				}
+
+				SendToPSOC5(buffer_contador,7,MEASURES_EXTERNAL_COUNTER);
 			}
 #endif
 		}

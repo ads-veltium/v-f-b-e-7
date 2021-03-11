@@ -10,6 +10,7 @@ bool eth_started     = false;
 
 extern carac_Coms  Coms;
 extern carac_Firebase_Configuration ConfigFirebase;
+extern carac_Contador   ContadorExt;
 
 static esp_eth_handle_t s_eth_handle = NULL;
 static uint8_t s_eth_mac[6];
@@ -31,7 +32,7 @@ bool CheckContador(int ip4){
         if(ContadorCheck.read()){           
             if(ContadorCheck.parseModel()){
                 ContadorCheck.end();
-                memcpy(Coms.ContadorIp, ip,15);
+                memcpy(ContadorExt.ContadorIp, ip,15);
                 return true;
             }
             else{
@@ -119,7 +120,7 @@ void BuscarContador_Task(void *args){
             if(CheckContador(i-1)){
                 Serial.println("Busqueda finalizada!");
                 Serial.printf("Contador encontrado en %d %d %d %d \n", ip4_addr1(&BaseAdress), ip4_addr2(&BaseAdress), ip4_addr3(&BaseAdress), i-1);
-	            Coms.ContadorConectado = true;
+	            ContadorExt.ContadorConectado = true;
                 break;
             }
             else{

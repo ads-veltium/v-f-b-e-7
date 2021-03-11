@@ -3,6 +3,7 @@
 extern carac_Status Status;
 extern xParametrosPing ParametrosPing;
 extern carac_Coms Coms;
+extern carac_Contador   ContadorExt;
 
 //Contador de Iskra
 /*********** Clase Contador ************/
@@ -67,18 +68,18 @@ void Contador::parse(){
     String medida;
 
     medida = Measurements["measurements"]["I1"].as<String>();
-    Status.Measures.instant_current = medida.toFloat() *100;
+    ContadorExt.DomesticCurrentA = medida.toFloat() *100;
     medida = Measurements["measurements"]["I2"].as<String>();
-    Status.MeasuresB.instant_current = medida.toFloat() *100;
+    ContadorExt.DomesticCurrentB = medida.toFloat() *100;
     medida = Measurements["measurements"]["I3"].as<String>();
-    Status.MeasuresC.instant_current = medida.toFloat() *100;
+    ContadorExt.DomesticCurrentC = medida.toFloat() *100;
 
     
     
-    medida = Measurements["measurements"]["U1"].as<String>();
+    /*medida = Measurements["measurements"]["U1"].as<String>();
     Status.Measures.instant_voltage = medida.toFloat() *100;
     Serial.println(Status.Measures.instant_voltage);
-    /*medida = Measurements["measurements"]["P1"].as<String>();
+    medida = Measurements["measurements"]["P1"].as<String>();
     Status.Measures.active_power = medida.toFloat() *100;
 
     medida = Measurements["measurements"]["U2"].as<String>();

@@ -194,15 +194,26 @@ typedef struct{
 	bool RemoveCredentials = false;
 	bool RestartConection  = false;
 	bool Provisioning 	   = false;
-	bool ContadorConectado = false;
 
-	char ContadorIp[15] ={"0"};
 	carac_WIFI   Wifi;
 	carac_ETH     ETH;
 	carac_MODEM   GSM;
 
 	long long last_ts_app_req= 0;
 } carac_Coms;
+
+typedef struct{
+	
+	bool      ContadorConectado = false;
+
+	char      ContadorIp[15] ={"0"};
+	
+	uint16    DomesticCurrentA;
+	uint16    DomesticCurrentB;
+	uint16    DomesticCurrentC;
+
+	long long last_ts_app_req= 0;
+} carac_Contador;
 
 typedef struct{
 	//Machine state orders
@@ -561,9 +572,11 @@ typedef struct{
 #define COMS_CONFIGURATION_LAN_IP2	       (0x00BDu)
 
 #define COMS_FW_UPDATEMODE_CHAR_HANDLE     (0x00BFu)
+
+//Handlers para el medidor trifásico 
 #define MEASURES_INST_CURRENTB_CHAR_HANDLE (0x00C1u)
 #define MEASURES_INST_CURRENTC_CHAR_HANDLE (0x00C3u)
-
+#define MEASURES_EXTERNAL_COUNTER		   (0x00C5u)
 
 #define ENERGY_PARTIAL_RECORD_1			   (0x00D0u)
 #define ENERGY_PARTIAL_RECORD_2			   (0x00D1u)
