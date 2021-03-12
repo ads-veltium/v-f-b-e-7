@@ -1105,6 +1105,7 @@ esp_err_t wifi_prov_mgr_is_provisioned(bool *provisioned)
     /* Get Wi-Fi Station configuration */
     wifi_config_t wifi_cfg;
     if (esp_wifi_get_config(ESP_IF_WIFI_STA, &wifi_cfg) != ESP_OK) {
+        printf("Error buscando credenciales: %i\n ",esp_wifi_get_config(ESP_IF_WIFI_STA, &wifi_cfg));
         return ESP_FAIL;
     }
 

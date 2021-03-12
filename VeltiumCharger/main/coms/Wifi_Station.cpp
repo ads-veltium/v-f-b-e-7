@@ -552,18 +552,7 @@ void ComsTask(void *args){
                     server.end();
                     ServidorArrancado = false;
                 }
-                if(wifi_connected || Coms.Provisioning){
-                    WiFiProv.StopProvision();
-                }
-                else{
-                    WiFi.begin();
-                    wifi_config_t conf;
-                    memset(&conf, 0, sizeof(wifi_config_t));
-                    if(esp_wifi_set_config(WIFI_IF_STA, &conf)){
-                        log_e("clear config failed!");
-                    }
-                    WiFiProv.StopProvision();
-                }
+                WiFiProv.StopProvision();
                 if(Coms.ETH.ON){
                     stop_ethernet();
                     Coms.ETH.ON=false;

@@ -63,15 +63,17 @@ uint8_t WiFiProvClass :: beginProvision(prov_scheme_t prov_scheme, scheme_handle
 
     config.app_event_handler.event_cb = NULL;
     config.app_event_handler.user_data = NULL;
+
     wifiLowLevelInit(true);
+    //esp_netif_create_default_wifi_sta();
+
     if(wifi_prov_mgr_init(config) != ESP_OK){
     	log_e("wifi_prov_mgr_init failed!");
     	return 0;
     }
     
     if(wifi_prov_mgr_is_provisioned(&provisioned) != ESP_OK){
-        log_e("%i",wifi_prov_mgr_is_provisioned(&provisioned));
-    	log_e("wifi_prov_mgr_is_provisioned failed!");
+        Serial.printf("wifi_prov_mgr_is_provisioned failed! : %i",wifi_prov_mgr_is_provisioned(&provisioned));
     	wifi_prov_mgr_deinit();
     	return 0;
     }
@@ -113,12 +115,15 @@ uint8_t WiFiProvClass :: beginProvision(prov_scheme_t prov_scheme, scheme_handle
 }
 
 bool WiFiProvClass::StopProvision(){
-
+    wifi_config_t conf;
+    memset(&conf, 0, sizeof(wifi_config_t));
+    if(esp_wifi_set_config(WIFI_IF_STA, &conf)){
+        Serial.println(esp_wifi_set_config(WIFI_IF_STA, &conf));
+        log_e("clear config failed!");
+    }
     wifi_prov_mgr_stop_provisioning();
-    WiFi.disconnect(true,true);
-    esp_wifi_stop();
+    wifi_prov_mgr_deinit(); 
     wifiLowLevelDeinit();
-    wifi_prov_mgr_deinit();  
     delay(150);
     return false;
 }
