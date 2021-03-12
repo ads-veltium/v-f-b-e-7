@@ -19,10 +19,10 @@
 如需自行编译工具链，请查看以下文档：
 
 .. toctree::
-    :maxdepth: 1
+	:maxdepth: 1
 
-    windows-setup-scratch
-    linux-setup-scratch
-    macos-setup-scratch
+	windows-setup-scratch
+	linux-setup-scratch
+	macos-setup-scratch
 
 

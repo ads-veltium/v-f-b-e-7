@@ -11,7 +11,6 @@
 #include "freertos/task.h"
 #include "esp_system.h"
 #include "esp_event.h"
-#include "esp_event_loop.h"
 #include "esp_log.h"
 #include "esp_ota_ops.h"
 #include "esp_http_client.h"
@@ -44,7 +43,7 @@ static void http_cleanup(esp_http_client_handle_t client)
     esp_http_client_cleanup(client);
 }
 
-static void __attribute__((noreturn)) task_fatal_error()
+static void __attribute__((noreturn)) task_fatal_error(void)
 {
     ESP_LOGE(TAG, "Exiting task due to fatal error...");
     (void)vTaskDelete(NULL);
@@ -266,7 +265,7 @@ static bool diagnostic(void)
     return diagnostic_is_ok;
 }
 
-void app_main()
+void app_main(void)
 {
     uint8_t sha_256[HASH_LEN] = { 0 };
     esp_partition_t partition;
@@ -316,7 +315,7 @@ void app_main()
     }
     ESP_ERROR_CHECK( err );
 
-    tcpip_adapter_init();
+    ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
     /* This helper function configures Wi-Fi or Ethernet, as selected in menuconfig.

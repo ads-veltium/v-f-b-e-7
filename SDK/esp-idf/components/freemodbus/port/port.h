@@ -27,10 +27,16 @@
 
 #define MB_PORT_TAG "MB_PORT_COMMON"
 
+// common definitions for serial port implementations
+#define MB_SERIAL_TX_TOUT_MS        (100)
+#define MB_SERIAL_TX_TOUT_TICKS     pdMS_TO_TICKS(MB_SERIAL_TX_TOUT_MS) // timeout for transmission
+#define MB_SERIAL_RX_TOUT_TICKS     pdMS_TO_TICKS(1) // timeout for rx from buffer
+#define MB_SERIAL_RESP_LEN_MIN      (4)
+
 #define MB_PORT_CHECK(a, ret_val, str, ...) \
     if (!(a)) { \
         ESP_LOGE(MB_PORT_TAG, "%s(%u): " str, __FUNCTION__, __LINE__, ##__VA_ARGS__); \
-        return (ret_val); \
+        return ret_val; \
     }
 
 #ifdef __cplusplus
@@ -56,8 +62,8 @@ typedef short   SHORT;
 typedef unsigned long ULONG;
 typedef long    LONG;
 
-void vMBPortEnterCritical( );
-void vMBPortExitCritical( );
+void vMBPortEnterCritical(void);
+void vMBPortExitCritical(void);
 
 #define ENTER_CRITICAL_SECTION( ) { ESP_LOGD(MB_PORT_TAG,"%s: Port enter critical.", __func__); \
                                     vMBPortEnterCritical(); }
@@ -65,6 +71,11 @@ void vMBPortExitCritical( );
 #define EXIT_CRITICAL_SECTION( )  { vMBPortExitCritical(); \
                                     ESP_LOGD(MB_PORT_TAG,"%s: Port exit critical", __func__); }
 
+#define MB_PORT_CHECK_EVENT( event, mask ) ( event & mask )
+#define MB_PORT_CLEAR_EVENT( event, mask ) do { event &= ~mask; } while(0)
+
+#define MB_PORT_PARITY_GET(parity) ((parity != UART_PARITY_DISABLE) ? \
+                                        ((parity == UART_PARITY_ODD) ? MB_PAR_ODD : MB_PAR_EVEN) : MB_PAR_NONE)
 #ifdef __cplusplus
 PR_END_EXTERN_C
 #endif /* __cplusplus */

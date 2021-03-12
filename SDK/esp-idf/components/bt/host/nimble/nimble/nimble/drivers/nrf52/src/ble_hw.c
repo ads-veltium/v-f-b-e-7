@@ -45,7 +45,7 @@ static uint8_t g_ble_hw_whitelist_mask;
 ble_rng_isr_cb_t g_ble_rng_isr_cb;
 
 /* If LL privacy is enabled, allocate memory for AAR */
-#if (MYNEWT_VAL(BLE_LL_CFG_FEAT_LL_PRIVACY) == 1)
+#if MYNEWT_VAL(BLE_LL_CFG_FEAT_LL_PRIVACY)
 
 /* The NRF51 supports up to 16 IRK entries */
 #if (MYNEWT_VAL(BLE_LL_RESOLV_LIST_SIZE) < 16)
@@ -319,7 +319,9 @@ ble_hw_rng_init(ble_rng_isr_cb_t cb, int bias)
 
     /* If we were passed a function pointer we need to enable the interrupt */
     if (cb != NULL) {
+#ifndef RIOT_VERSION
         NVIC_SetPriority(RNG_IRQn, (1 << __NVIC_PRIO_BITS) - 1);
+#endif
 #if MYNEWT
         NVIC_SetVector(RNG_IRQn, (uint32_t)ble_rng_isr);
 #else
@@ -394,7 +396,7 @@ ble_hw_rng_read(void)
     return rnum;
 }
 
-#if (MYNEWT_VAL(BLE_LL_CFG_FEAT_LL_PRIVACY))
+#if MYNEWT_VAL(BLE_LL_CFG_FEAT_LL_PRIVACY)
 /**
  * Clear the resolving list
  *

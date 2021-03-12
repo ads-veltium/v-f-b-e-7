@@ -10,9 +10,8 @@
 #include <string.h>
 #include <errno.h>
 
-#define BT_DBG_ENABLED IS_ENABLED(CONFIG_BLE_MESH_DEBUG)
-
 #include "adv.h"
+#include "scan.h"
 #include "prov.h"
 #include "beacon.h"
 #include "lpn.h"
@@ -31,9 +30,14 @@
 
 static bool mesh_init = false;
 
-int bt_mesh_provision(const u8_t net_key[16], u16_t net_idx,
-                      u8_t flags, u32_t iv_index, u16_t addr,
-                      const u8_t dev_key[16])
+bool bt_mesh_is_initialized(void)
+{
+    return mesh_init;
+}
+
+int bt_mesh_provision(const uint8_t net_key[16], uint16_t net_idx,
+                      uint8_t flags, uint32_t iv_index, uint16_t addr,
+                      const uint8_t dev_key[16])
 {
     bool pb_gatt_enabled = false;
     int err = 0;
@@ -100,9 +104,9 @@ void bt_mesh_node_reset(void)
 
     k_delayed_work_cancel(&bt_mesh.ivu_timer);
 
-    bt_mesh_cfg_reset();
+    bt_mesh_cfg_reset(true);
 
-    bt_mesh_rx_reset();
+    bt_mesh_rx_reset(true);
     bt_mesh_tx_reset();
 
     if (IS_ENABLED(CONFIG_BLE_MESH_LOW_POWER)) {
@@ -117,10 +121,6 @@ void bt_mesh_node_reset(void)
         bt_mesh_proxy_server_gatt_disable();
     }
 
-    if (IS_ENABLED(CONFIG_BLE_MESH_SETTINGS)) {
-        bt_mesh_clear_net();
-    }
-
     (void)memset(bt_mesh.dev_key, 0, sizeof(bt_mesh.dev_key));
 
     bt_mesh_scan_disable();
@@ -129,6 +129,7 @@ void bt_mesh_node_reset(void)
     bt_mesh_comp_unprovision();
 
     if (IS_ENABLED(CONFIG_BLE_MESH_SETTINGS)) {
+        bt_mesh_clear_net();
         bt_mesh_clear_seq();
         bt_mesh_clear_role();
     }
@@ -194,10 +195,27 @@ int bt_mesh_prov_enable(bt_mesh_prov_bearer_t bearers)
         return -EINVAL;
     }
 
-    bt_mesh_atomic_set_bit(bt_mesh.flags, BLE_MESH_NODE);
+    /* Add this judgement here in case the device worked as a
+     * Provisioner previously. Before the corresponding info
+     * of Provisioner is erased from flash, users try to use
+     * the device as a node, which will cause the information
+     * in NVS been handled incorrectly.
+     */
+    uint8_t role = bt_mesh_atomic_get(bt_mesh.flags) & BLE_MESH_SETTINGS_ROLE_BIT_MASK;
+    if (role != BLE_MESH_SETTINGS_ROLE_NONE &&
+        role != BLE_MESH_SETTINGS_ROLE_NODE) {
+        BT_ERR("%s, Mismatch role %u", __func__, role);
+        return -EIO;
+    }
 
-    if (IS_ENABLED(CONFIG_BLE_MESH_SETTINGS)) {
-        bt_mesh_store_role();
+    if (role == BLE_MESH_SETTINGS_ROLE_NONE) {
+        bt_mesh_atomic_set_bit(bt_mesh.flags, BLE_MESH_NODE);
+    }
+    if (IS_ENABLED(CONFIG_BLE_MESH_SETTINGS_BACKWARD_COMPATIBILITY) ||
+        role == BLE_MESH_SETTINGS_ROLE_NONE) {
+        if (IS_ENABLED(CONFIG_BLE_MESH_SETTINGS)) {
+            bt_mesh_store_role();
+        }
     }
 
     if (IS_ENABLED(CONFIG_BLE_MESH_PB_ADV) &&
@@ -220,6 +238,7 @@ int bt_mesh_prov_enable(bt_mesh_prov_bearer_t bearers)
 int bt_mesh_prov_disable(bt_mesh_prov_bearer_t bearers)
 {
     if (bt_mesh_is_provisioned()) {
+        BT_WARN("%s, Already provisioned", __func__);
         return -EALREADY;
     }
 
@@ -290,7 +309,7 @@ static void model_resume(struct bt_mesh_model *mod, struct bt_mesh_elem *elem,
                          bool vnd, bool primary, void *user_data)
 {
     if (mod->pub && mod->pub->update) {
-        s32_t period_ms = bt_mesh_model_pub_period_get(mod);
+        int32_t period_ms = bt_mesh_model_pub_period_get(mod);
 
         if (period_ms) {
             k_delayed_work_submit(&mod->pub->timer, period_ms);
@@ -385,8 +404,8 @@ int bt_mesh_init(const struct bt_mesh_prov *prov,
 
     /* Changed by Espressif, add a random delay (0 ~ 3s) */
     if (IS_ENABLED(CONFIG_BLE_MESH_FAST_PROV)) {
-        u32_t delay = 0;
-        bt_mesh_rand(&delay, sizeof(u32_t));
+        uint32_t delay = 0;
+        bt_mesh_rand(&delay, sizeof(uint32_t));
         vTaskDelay((delay % 3000) / portTICK_PERIOD_MS);
     }
 
@@ -406,6 +425,7 @@ int bt_mesh_init(const struct bt_mesh_prov *prov,
     return 0;
 }
 
+#if CONFIG_BLE_MESH_DEINIT
 int bt_mesh_deinit(struct bt_mesh_deinit_param *param)
 {
     int err = 0;
@@ -420,14 +440,25 @@ int bt_mesh_deinit(struct bt_mesh_deinit_param *param)
         return -EALREADY;
     }
 
-    if (IS_ENABLED(CONFIG_BLE_MESH_NODE) && bt_mesh_is_provisioned()) {
-        if (IS_ENABLED(CONFIG_BLE_MESH_PB_ADV)) {
-            bt_mesh_beacon_disable();
-            bt_mesh_scan_disable();
+    bt_mesh_scan_disable();
+    bt_mesh_beacon_disable();
+
+    if (IS_ENABLED(CONFIG_BLE_MESH_NODE) && bt_mesh_is_node()) {
+        if (IS_ENABLED(CONFIG_BLE_MESH_PB_GATT) &&
+            !bt_mesh_is_provisioned()) {
+            bt_mesh_proxy_server_prov_disable(true);
         }
 
-        if (IS_ENABLED(CONFIG_BLE_MESH_PB_GATT)) {
-            bt_mesh_proxy_server_prov_disable(true);
+        if (IS_ENABLED(CONFIG_BLE_MESH_GATT_PROXY_SERVER) &&
+            bt_mesh_is_provisioned()) {
+            bt_mesh_proxy_server_gatt_disable();
+        }
+
+        if (bt_mesh_is_provisioned()) {
+            /* Clear valid flag here in order to perform settings erase */
+            bt_mesh_atomic_clear_bit(bt_mesh.flags, BLE_MESH_VALID);
+
+            bt_mesh_cfg_reset(param->erase);
         }
     }
 
@@ -436,7 +467,7 @@ int bt_mesh_deinit(struct bt_mesh_deinit_param *param)
             bt_mesh_proxy_client_prov_disable();
         }
 
-        bt_mesh_scan_disable();
+        /* Clear valid flag here in order to perform settings erase */
         bt_mesh_atomic_clear_bit(bt_mesh.flags, BLE_MESH_VALID_PROV);
     }
 
@@ -447,8 +478,14 @@ int bt_mesh_deinit(struct bt_mesh_deinit_param *param)
                 return err;
             }
         }
+
         if (IS_ENABLED(CONFIG_BLE_MESH_PROVISIONER)) {
             err = bt_mesh_provisioner_prov_deinit(param->erase);
+            if (err) {
+                return err;
+            }
+
+            err = bt_mesh_provisioner_deinit(param->erase);
             if (err) {
                 return err;
             }
@@ -456,7 +493,7 @@ int bt_mesh_deinit(struct bt_mesh_deinit_param *param)
     }
 
     bt_mesh_trans_deinit(param->erase);
-    bt_mesh_net_deinit(param->erase);
+    bt_mesh_net_deinit();
 
     bt_mesh_beacon_deinit();
 
@@ -474,13 +511,6 @@ int bt_mesh_deinit(struct bt_mesh_deinit_param *param)
 
     bt_mesh_gatt_deinit();
 
-    if (IS_ENABLED(CONFIG_BLE_MESH_PROVISIONER)) {
-        err = bt_mesh_provisioner_deinit(param->erase);
-        if (err) {
-            return err;
-        }
-    }
-
     if (IS_ENABLED(CONFIG_BLE_MESH_FRIEND)) {
         bt_mesh_friend_deinit();
     }
@@ -491,17 +521,18 @@ int bt_mesh_deinit(struct bt_mesh_deinit_param *param)
 
     bt_mesh_adv_deinit();
 
+    if (IS_ENABLED(CONFIG_BLE_MESH_SETTINGS)) {
+        bt_mesh_settings_deinit(param->erase);
+    }
+
     err = bt_mesh_comp_deregister();
     if (err) {
         return err;
     }
 
-    if (IS_ENABLED(CONFIG_BLE_MESH_SETTINGS)) {
-        if (param->erase) {
-            bt_mesh_clear_role();
-        }
-        bt_mesh_settings_deinit();
-    }
+    bt_mesh_comp_unprovision();
+
+    memset(bt_mesh.flags, 0, sizeof(bt_mesh.flags));
 
     bt_mesh_timer_deinit();
 
@@ -510,11 +541,63 @@ int bt_mesh_deinit(struct bt_mesh_deinit_param *param)
     mesh_init = false;
     return 0;
 }
+#endif /* CONFIG_BLE_MESH_DEINIT */
 
 #if defined(CONFIG_BLE_MESH_PROVISIONER)
-int bt_mesh_provisioner_net_start(bt_mesh_prov_bearer_t bearers)
+int bt_mesh_provisioner_enable(bt_mesh_prov_bearer_t bearers)
 {
+    int err = 0;
+
+    if (bt_mesh_is_provisioner_en()) {
+        BT_WARN("%s, Already", __func__);
+        return -EALREADY;
+    }
+
+    if (prov_bearers_valid(bearers) == false) {
+        return -EINVAL;
+    }
+
+    /* Add this judgement here in case the device worked as a
+     * node previously. Before the corresponding information
+     * of the node is erased from flash, users try to use the
+     * device as a Provisioner, which will cause the information
+     * in NVS been handled incorrectly.
+     */
+    uint8_t role = bt_mesh_atomic_get(bt_mesh.flags) & BLE_MESH_SETTINGS_ROLE_BIT_MASK;
+    if (role != BLE_MESH_SETTINGS_ROLE_NONE &&
+        role != BLE_MESH_SETTINGS_ROLE_PROV) {
+        BT_ERR("%s, Mismatch role %u", __func__, role);
+        return -EIO;
+    }
+
+    if (role == BLE_MESH_SETTINGS_ROLE_NONE) {
+        bt_mesh_atomic_set_bit(bt_mesh.flags, BLE_MESH_PROVISIONER);
+
+        if (IS_ENABLED(CONFIG_BLE_MESH_SETTINGS)) {
+            bt_mesh_store_role();
+        }
+    }
+
+    /* Enable Provisioner here, because during the following net
+     * creation, some information needs to be stored in flash.
+     */
+    bt_mesh_atomic_set_bit(bt_mesh.flags, BLE_MESH_VALID_PROV);
+
+    err = bt_mesh_provisioner_net_create();
+    if (err) {
+        BT_ERR("Failed to create network");
+        return err;
+    }
+
+    err = bt_mesh_provisioner_init_prov_info();
+    if (err) {
+        BT_ERR("Failed to init prov info");
+        return err;
+    }
+
     bt_mesh_provisioner_set_prov_bearer(bearers, false);
+
+    bt_mesh_comp_provision(bt_mesh_provisioner_get_primary_elem_addr());
 
 #if defined(CONFIG_BLE_MESH_USE_DUPLICATE_SCAN)
     if (IS_ENABLED(CONFIG_BLE_MESH_PB_ADV) &&
@@ -535,8 +618,6 @@ int bt_mesh_provisioner_net_start(bt_mesh_prov_bearer_t bearers)
         bt_mesh_proxy_client_prov_enable();
     }
 
-    bt_mesh_atomic_set_bit(bt_mesh.flags, BLE_MESH_VALID_PROV);
-
     if (IS_ENABLED(CONFIG_BLE_MESH_FRIEND)) {
         bt_mesh_friend_init();
     }
@@ -548,40 +629,6 @@ int bt_mesh_provisioner_net_start(bt_mesh_prov_bearer_t bearers)
     bt_mesh_scan_enable();
 
     return 0;
-}
-
-int bt_mesh_provisioner_enable(bt_mesh_prov_bearer_t bearers)
-{
-    int err = 0;
-
-    if (bt_mesh_is_provisioner_en()) {
-        BT_WARN("%s, Already", __func__);
-        return -EALREADY;
-    }
-
-    if (prov_bearers_valid(bearers) == false) {
-        return -EINVAL;
-    }
-
-    err = bt_mesh_provisioner_set_prov_info();
-    if (err) {
-        BT_ERR("Failed to set provisioning info");
-        return err;
-    }
-
-    err = bt_mesh_provisioner_net_create();
-    if (err) {
-        BT_ERR("Failed to create network");
-        return err;
-    }
-
-    bt_mesh_atomic_set_bit(bt_mesh.flags, BLE_MESH_PROVISIONER);
-
-    if (IS_ENABLED(CONFIG_BLE_MESH_SETTINGS)) {
-        bt_mesh_store_role();
-    }
-
-    return bt_mesh_provisioner_net_start(bearers);
 }
 
 int bt_mesh_provisioner_disable(bt_mesh_prov_bearer_t bearers)

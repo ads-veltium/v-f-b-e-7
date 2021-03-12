@@ -202,6 +202,17 @@ STATS_SECT_START(ble_ll_stats)
     STATS_SECT_ENTRY(adv_evt_dropped)
     STATS_SECT_ENTRY(scan_timer_stopped)
     STATS_SECT_ENTRY(scan_timer_restarted)
+    STATS_SECT_ENTRY(periodic_adv_drop_event)
+    STATS_SECT_ENTRY(periodic_chain_drop_event)
+    STATS_SECT_ENTRY(sync_event_failed)
+    STATS_SECT_ENTRY(sync_received)
+    STATS_SECT_ENTRY(sync_chain_failed)
+    STATS_SECT_ENTRY(sync_missed_err)
+    STATS_SECT_ENTRY(sync_crc_err)
+    STATS_SECT_ENTRY(sync_rx_buf_err)
+    STATS_SECT_ENTRY(sync_scheduled)
+    STATS_SECT_ENTRY(sched_state_sync_errs)
+    STATS_SECT_ENTRY(sched_invalid_pdu)
 STATS_SECT_END
 extern STATS_SECT_DECL(ble_ll_stats) ble_ll_stats;
 
@@ -212,6 +223,7 @@ extern STATS_SECT_DECL(ble_ll_stats) ble_ll_stats;
 #define BLE_LL_STATE_INITIATING     (3)
 #define BLE_LL_STATE_CONNECTION     (4)
 #define BLE_LL_STATE_DTM            (5)
+#define BLE_LL_STATE_SYNC           (6)
 
 /* LL Features */
 #define BLE_LL_FEAT_LE_ENCRYPTION    (0x00000001)
@@ -300,14 +312,14 @@ struct ble_dev_addr
 #define BLE_ADV_PDU_TYPE_ADV_NONCONN_IND    (2)
 #define BLE_ADV_PDU_TYPE_SCAN_REQ           (3)
 #define BLE_ADV_PDU_TYPE_SCAN_RSP           (4)
-#define BLE_ADV_PDU_TYPE_CONNECT_REQ        (5)
+#define BLE_ADV_PDU_TYPE_CONNECT_IND        (5)
 #define BLE_ADV_PDU_TYPE_ADV_SCAN_IND       (6)
 #define BLE_ADV_PDU_TYPE_ADV_EXT_IND        (7)
 #define BLE_ADV_PDU_TYPE_AUX_ADV_IND        BLE_ADV_PDU_TYPE_ADV_EXT_IND
 #define BLE_ADV_PDU_TYPE_AUX_SCAN_RSP       BLE_ADV_PDU_TYPE_ADV_EXT_IND
 #define BLE_ADV_PDU_TYPE_AUX_SYNC_IND       BLE_ADV_PDU_TYPE_ADV_EXT_IND
 #define BLE_ADV_PDU_TYPE_AUX_CHAIN_IND      BLE_ADV_PDU_TYPE_ADV_EXT_IND
-#define BLE_ADV_PDU_TYPE_AUX_CONNECT_REQ    BLE_ADV_PDU_TYPE_CONNECT_REQ
+#define BLE_ADV_PDU_TYPE_AUX_CONNECT_REQ    BLE_ADV_PDU_TYPE_CONNECT_IND
 #define BLE_ADV_PDU_TYPE_AUX_SCAN_REQ       BLE_ADV_PDU_TYPE_SCAN_REQ
 #define BLE_ADV_PDU_TYPE_AUX_CONNECT_RSP    (8)
 
@@ -426,6 +438,9 @@ uint16_t ble_ll_pdu_max_tx_octets_get(uint32_t usecs, int phy_mode);
 /* Is this address a resolvable private address? */
 int ble_ll_is_rpa(uint8_t *addr, uint8_t addr_type);
 
+/* Is this address an identity address? */
+int ble_ll_addr_is_id(uint8_t *addr, uint8_t addr_type);
+
 /* Is 'addr' our device address? 'addr_type' is public (0) or random (!=0) */
 int ble_ll_is_our_devaddr(uint8_t *addr, int addr_type);
 
@@ -440,12 +455,16 @@ uint8_t *ble_ll_get_our_devaddr(uint8_t addr_type);
 void ble_ll_acl_data_in(struct os_mbuf *txpkt);
 
 /**
- * Allocate a pdu (chain) for reception.
+ * Allocates mbuf for received PDU
  *
- * @param len Length of PDU. This includes the PDU header as well as payload.
- * Does not include MIC if encrypted.
+ * This allocated mbuf (may be chained if necessary) that has capacity large
+ * enough to store received PDU of given length. It does not set mbufs length
+ * as this has to be done by PHY when copying data.
  *
- * @return struct os_mbuf* Pointer to mbuf chain to hold received packet
+ * @param len  Length of PDU, including PDU header and excluding MIC (if encrypted)
+ *
+ * @return mbuf large enough to store received PDU on success
+ *         NULL on failure (oom)
  */
 struct os_mbuf *ble_ll_rxpdu_alloc(uint16_t len);
 
@@ -537,7 +556,7 @@ ble_ll_usecs_to_ticks_round_up(uint32_t usecs)
     return os_cputime_usecs_to_ticks(usecs + 30);
 }
 
-#if (MYNEWT_VAL(BLE_LL_CFG_FEAT_LE_ENCRYPTION) == 1)
+#if MYNEWT_VAL(BLE_LL_CFG_FEAT_LE_ENCRYPTION)
 /* LTK 0x4C68384139F574D836BCF34E9DFB01BF */
 extern const uint8_t g_bletest_LTK[];
 extern uint16_t g_bletest_EDIV;

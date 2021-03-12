@@ -220,7 +220,7 @@ typedef struct {
     wifi_auth_mode_t authmode;  /**< Auth mode of ESP32 soft-AP. Do not support AUTH_WEP in soft-AP mode */
     uint8_t ssid_hidden;        /**< Broadcast SSID or not, default 0, broadcast the SSID */
     uint8_t max_connection;     /**< Max number of stations allowed to connect in, default 4, max 10 */
-    uint16_t beacon_interval;   /**< Beacon interval, 100 ~ 60000 ms, default 100 ms */
+    uint16_t beacon_interval;   /**< Beacon interval which should be multiples of 100. Unit: TU(time unit, 1 TU = 1024 us). Range: 100 ~ 60000. Default value: 100 */
 } wifi_ap_config_t;
 
 /** @brief STA configuration settings for the ESP32 */
@@ -327,7 +327,11 @@ typedef struct {
     unsigned stbc:2;              /**< Space Time Block Code(STBC). 0: non STBC packet; 1: STBC packet */
     unsigned fec_coding:1;        /**< Flag is set for 11n packets which are LDPC */
     unsigned sgi:1;               /**< Short Guide Interval(SGI). 0: Long GI; 1: Short GI */
+#if CONFIG_IDF_TARGET_ESP32
     signed noise_floor:8;         /**< noise floor of Radio Frequency Module(RF). unit: 0.25dBm*/
+#elif CONFIG_IDF_TARGET_ESP32S2BETA
+    unsigned :8;
+#endif
     unsigned ampdu_cnt:8;         /**< ampdu cnt */
     unsigned channel:4;           /**< primary channel on which this packet is received */
     unsigned secondary_channel:4; /**< secondary channel on which this packet is received. 0: none; 1: above; 2: below */
@@ -336,6 +340,10 @@ typedef struct {
     unsigned :32;                 /**< reserve */
     unsigned :31;                 /**< reserve */
     unsigned ant:1;               /**< antenna number from which this packet is received. 0: WiFi antenna 0; 1: WiFi antenna 1 */
+#if CONFIG_IDF_TARGET_ESP32S2BETA
+    signed noise_floor:8;         /**< noise floor of Radio Frequency Module(RF). unit: 0.25dBm*/
+    unsigned :24;
+#endif
     unsigned sig_len:12;          /**< length of packet including Frame Check Sequence(FCS) */
     unsigned :12;                 /**< reserve */
     unsigned rx_state:8;          /**< state of the packet. 0: no error; others: error numbers which are not public */
@@ -518,8 +526,9 @@ typedef enum {
     WIFI_EVENT_AP_STOP,                  /**< ESP32 soft-AP stop */
     WIFI_EVENT_AP_STACONNECTED,          /**< a station connected to ESP32 soft-AP */
     WIFI_EVENT_AP_STADISCONNECTED,       /**< a station disconnected from ESP32 soft-AP */
-
     WIFI_EVENT_AP_PROBEREQRECVED,        /**< Receive probe request packet in soft-AP interface */
+
+    WIFI_EVENT_MAX,                      /**< Invalid WiFi event ID */
 } wifi_event_t;
 
 /** @cond **/
@@ -569,6 +578,19 @@ typedef enum {
     WPS_FAIL_REASON_MAX
 } wifi_event_sta_wps_fail_reason_t;
 
+#define MAX_SSID_LEN        32
+#define MAX_PASSPHRASE_LEN  64
+#define MAX_WPS_AP_CRED     3
+
+/** Argument structure for WIFI_EVENT_STA_WPS_ER_SUCCESS event */
+typedef struct {
+    uint8_t ap_cred_cnt;                        /**< Number of AP credentials received */
+    struct {
+        uint8_t ssid[MAX_SSID_LEN];             /**< SSID of AP */
+        uint8_t passphrase[MAX_PASSPHRASE_LEN]; /**< Passphrase for the AP */
+    } ap_cred[MAX_WPS_AP_CRED];                 /**< All AP credentials received from WPS handshake */
+} wifi_event_sta_wps_er_success_t;
+
 /** Argument structure for WIFI_EVENT_AP_STACONNECTED event */
 typedef struct {
     uint8_t mac[6];           /**< MAC address of the station connected to ESP32 soft-AP */
@@ -586,6 +608,12 @@ typedef struct {
     int rssi;                 /**< Received probe request signal strength */
     uint8_t mac[6];           /**< MAC address of the station which send probe request */
 } wifi_event_ap_probe_req_rx_t;
+
+#define WIFI_STATIS_BUFFER    (1<<0)
+#define WIFI_STATIS_RXTX      (1<<1)
+#define WIFI_STATIS_HW        (1<<2)
+#define WIFI_STATIS_DIAG      (1<<3)
+#define WIFI_STATIS_ALL       (-1)
 
 #ifdef __cplusplus
 }

@@ -54,6 +54,9 @@ static unsigned int ping_seconds = 0;
 /* reading is done when this flag is set */
 static int ready = 0;
 
+/* processing a block response when this flag is set */
+static int doing_getting_block = 0;
+
 static coap_string_t output_file = { 0, NULL };   /* output file name */
 static FILE *file = NULL;               /* output file stream */
 
@@ -165,8 +168,15 @@ coap_new_request(coap_context_t *ctx,
   if (length) {
     if ((flags & FLAGS_BLOCK) == 0)
       coap_add_data(pdu, length, data);
-    else
+    else {
+      unsigned char buf[4];
+      coap_add_option(pdu,
+                      COAP_OPTION_SIZE1,
+                      coap_encode_var_safe(buf, sizeof(buf), length),
+                      buf);
+
       coap_add_block(pdu, length, data, block.num, block.szx);
+    }
   }
 
   return pdu;
@@ -325,6 +335,26 @@ event_handler(coap_context_t *ctx UNUSED_PARAM,
 }
 
 static void
+nack_handler(coap_context_t *context UNUSED_PARAM,
+             coap_session_t *session UNUSED_PARAM,
+             coap_pdu_t *sent UNUSED_PARAM,
+             coap_nack_reason_t reason,
+             const coap_tid_t id UNUSED_PARAM) {
+
+  switch(reason) {
+  case COAP_NACK_TOO_MANY_RETRIES:
+  case COAP_NACK_NOT_DELIVERABLE:
+  case COAP_NACK_RST:
+  case COAP_NACK_TLS_FAILED:
+    quit = 1;
+    break;
+  default:
+    break;
+  }
+  return;
+}
+
+static void
 message_handler(struct coap_context_t *ctx,
                 coap_session_t *session,
                 coap_pdu_t *sent,
@@ -430,11 +460,14 @@ message_handler(struct coap_context_t *ctx,
           } else {
             wait_ms = wait_seconds * 1000;
             wait_ms_reset = 1;
+            doing_getting_block = 1;
           }
 
           return;
         }
       }
+      /* Failure of some sort */
+      doing_getting_block = 0;
       return;
     } else { /* no Block2 option */
       block_opt = coap_check_option(received, COAP_OPTION_BLOCK1, &opt_iter);
@@ -512,6 +545,11 @@ message_handler(struct coap_context_t *ctx,
                           COAP_OPTION_BLOCK1,
                           coap_encode_var_safe(buf, sizeof(buf),
                           (block.num << 4) | (block.m << 3) | block.szx), buf);
+
+          coap_add_option(pdu,
+                          COAP_OPTION_SIZE1,
+                          coap_encode_var_safe(buf, sizeof(buf), payload.length),
+                          buf);
 
           coap_add_block(pdu,
                          payload.length,
@@ -718,7 +756,7 @@ get_default_port(const coap_uri_t *u) {
 static int
 cmdline_uri(char *arg, int create_uri_opts) {
   unsigned char portbuf[2];
-#define BUFSIZE 40
+#define BUFSIZE 100
   unsigned char _buf[BUFSIZE];
   unsigned char *buf = _buf;
   size_t buflen;
@@ -769,6 +807,8 @@ cmdline_uri(char *arg, int create_uri_opts) {
 
     if (uri.path.length) {
       buflen = BUFSIZE;
+      if (uri.path.length > BUFSIZE)
+        coap_log(LOG_WARNING, "URI path will be truncated (max buffer %d)\n", BUFSIZE);
       res = coap_split_path(uri.path.s, uri.path.length, buf, &buflen);
 
       while (res--) {
@@ -1236,7 +1276,9 @@ main(int argc, char **argv) {
   unsigned char user[MAX_USER + 1], key[MAX_KEY];
   ssize_t user_length = 0, key_length = 0;
   int create_uri_opts = 1;
+#ifndef _WIN32
   struct sigaction sa;
+#endif
 
   while ((opt = getopt(argc, argv, "NrUa:b:c:e:f:k:m:p:s:t:o:v:A:B:C:O:P:R:T:u:l:K:")) != -1) {
     switch (opt) {
@@ -1423,6 +1465,7 @@ main(int argc, char **argv) {
   coap_register_option(ctx, COAP_OPTION_BLOCK2);
   coap_register_response_handler(ctx, message_handler);
   coap_register_event_handler(ctx, event_handler);
+  coap_register_nack_handler(ctx, nack_handler);
 
   /* construct CoAP message */
 
@@ -1458,14 +1501,18 @@ main(int argc, char **argv) {
   wait_ms = wait_seconds * 1000;
   coap_log(LOG_DEBUG, "timeout is set to %u seconds\n", wait_seconds);
 
+#ifdef _WIN32
+  signal(SIGINT, handle_sigint);
+#else
   memset (&sa, 0, sizeof(sa));
   sigemptyset(&sa.sa_mask);
   sa.sa_handler = handle_sigint;
   sa.sa_flags = 0;
   sigaction (SIGINT, &sa, NULL);
   sigaction (SIGTERM, &sa, NULL);
+#endif
 
-  while (!quit && !(ready && coap_can_exit(ctx)) ) {
+  while (!quit && !(ready && !doing_getting_block && coap_can_exit(ctx)) ) {
 
     result = coap_run_once( ctx, wait_ms == 0 ?
                                  obs_ms : obs_ms == 0 ?

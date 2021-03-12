@@ -40,6 +40,7 @@ If they using different port then need to implement their DUTPort class as well.
 from __future__ import print_function
 import time
 import re
+import sys
 import threading
 import copy
 import functools
@@ -78,11 +79,15 @@ def _expect_lock(func):
 def _decode_data(data):
     """ for python3, if the data is bytes, then decode it to string """
     if isinstance(data, bytes):
-        # convert bytes to string
+        # convert bytes to string. This is a bit of a hack, we know that we want to log this
+        # later so encode to the stdout encoding with backslash escapes for anything non-encodable
+        encoding = sys.stdout.encoding
+        if encoding is None:
+            encoding = 'ascii'
         try:
-            data = data.decode("utf-8", "ignore")
-        except UnicodeDecodeError:
-            data = data.decode("iso8859-1", )
+            return data.decode(encoding, "backslashreplace")
+        except (UnicodeDecodeError, TypeError):  # Python <3.5 doesn't support backslashreplace
+            return data.decode(encoding, "replace")
     return data
 
 
@@ -766,7 +771,7 @@ class SerialDUT(BaseDUT):
         return formatted_data
 
     def _port_open(self):
-        self.port_inst = serial.Serial(self.port, **self.serial_configs)
+        self.port_inst = serial.serial_for_url(self.port, **self.serial_configs)
 
     def _port_close(self):
         self.port_inst.close()

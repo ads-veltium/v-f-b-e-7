@@ -172,9 +172,19 @@ tBTM_CMPL_CB        *p_switch_role_cb;  /* Callback function to be called when  
 TIMER_LIST_ENT       tx_power_timer;
 tBTM_CMPL_CB        *p_tx_power_cmpl_cb;/* Callback function to be called       */
 
+#if CLASSIC_BT_INCLUDED == TRUE
+TIMER_LIST_ENT       afh_channels_timer;
+tBTM_CMPL_CB        *p_afh_channels_cmpl_cb; /* Callback function to be called  When */
+/* set AFH channels is completed   */
+#endif
+
 DEV_CLASS            dev_class;         /* Local device class                   */
 
 #if BLE_INCLUDED == TRUE
+
+TIMER_LIST_ENT       ble_channels_timer;
+tBTM_CMPL_CB        *p_ble_channels_cmpl_cb; /* Callback function to be called  When
+                                                ble set host channels is completed   */
 
 tBTM_CMPL_CB        *p_le_test_cmd_cmpl_cb;   /* Callback function to be called when
                                                   LE test mode command has been sent successfully */
@@ -379,7 +389,8 @@ typedef struct {
 typedef struct {
     tBTM_ESCO_INFO   esco;              /* Current settings             */
 #if BTM_SCO_HCI_INCLUDED == TRUE
-#define BTM_SCO_XMIT_QUEUE_THRS     20
+#define BTM_SCO_XMIT_QUEUE_THRS     30
+#define BTM_SCO_XMIT_QUEUE_HIGH_WM  20
     fixed_queue_t   *xmit_data_q;       /* SCO data transmitting queue  */
     INT16           sent_not_acked;
 #endif
@@ -550,6 +561,7 @@ typedef struct {
 #define BTM_SEC_ROLE_SWITCHED   0x40
 #define BTM_SEC_IN_USE          0x80
     /* LE link security flag */
+#define BTM_SEC_LE_AUTHORIZATION   0x0100   /* LE link is authorized */
 #define BTM_SEC_LE_AUTHENTICATED   0x0200   /* LE link is encrypted after pairing with MITM */
 #define BTM_SEC_LE_ENCRYPTED       0x0400   /* LE link is encrypted */
 #define BTM_SEC_LE_NAME_KNOWN      0x0800   /* not used */
@@ -738,7 +750,7 @@ enum {
     BTM_PAIR_STATE_WAIT_LOCAL_OOB_RSP,          /* Waiting for local response to peer OOB data  */
     BTM_PAIR_STATE_WAIT_LOCAL_IOCAPS,           /* Waiting for local IO capabilities and OOB data */
     BTM_PAIR_STATE_INCOMING_SSP,                /* Incoming SSP (got peer IO caps when idle)    */
-    BTM_PAIR_STATE_WAIT_AUTH_COMPLETE,          /* All done, waiting authentication cpmplete    */
+    BTM_PAIR_STATE_WAIT_AUTH_COMPLETE,          /* All done, waiting authentication complete    */
     BTM_PAIR_STATE_WAIT_DISCONNECT              /* Waiting to disconnect the ACL                */
 };
 typedef UINT8 tBTM_PAIRING_STATE;
@@ -1077,7 +1089,8 @@ void btm_inq_db_reset (void);
 void btm_vendor_specific_evt (UINT8 *p, UINT8 evt_len);
 void btm_delete_stored_link_key_complete (UINT8 *p);
 void btm_report_device_status (tBTM_DEV_STATUS status);
-
+void btm_set_afh_channels_complete (UINT8 *p);
+void btm_ble_set_channels_complete (UINT8 *p);
 
 /* Internal functions provided by btm_dev.c
 **********************************************
@@ -1169,6 +1182,8 @@ void btm_ble_lock_free(void);
 void btm_sec_handle_remote_legacy_auth_cmp(UINT16 handle);
 void btm_sec_update_legacy_auth_state(tACL_CONN *p_acl_cb, UINT8 legacy_auth_state);
 BOOLEAN btm_sec_legacy_authentication_mutual (tBTM_SEC_DEV_REC *p_dev_rec);
+
+BOOLEAN btm_sec_dev_authorization(BD_ADDR bd_addr, BOOLEAN authorized);
 
 /*
 #ifdef __cplusplus

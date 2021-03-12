@@ -52,6 +52,7 @@ typedef bool BOOLEAN;
 #define BT_EVT_MASK                 0xFF00
 #define BT_SUB_EVT_MASK             0x00FF
 #define BT_STATIC_RAND_ADDR_MASK    0xC0
+#define BT_NON_RPA_MASK             0x3F
 /* To Bluetooth Upper Layers        */
 /************************************/
 #define BT_EVT_TO_BTU_L2C_EVT       0x0900      /* L2CAP event */
@@ -353,6 +354,11 @@ typedef UINT8 ACO[ACO_LEN];                 /* Authenticated ciphering offset */
 
 #define COF_LEN         12
 typedef UINT8 COF[COF_LEN];                 /* ciphering offset number */
+
+#define AFH_CHANNELS_LEN    10
+typedef UINT8 AFH_CHANNELS[AFH_CHANNELS_LEN];
+#define BLE_CHANNELS_LEN    5
+typedef UINT8 BLE_CHANNELS[BLE_CHANNELS_LEN];
 
 typedef struct {
     UINT8               qos_flags;          /* TBD */

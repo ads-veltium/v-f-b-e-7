@@ -63,6 +63,7 @@
 #include "esp_wifi_types.h"
 #include "esp_event.h"
 #include "esp_private/esp_wifi_private.h"
+#include "esp_wifi_default.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -194,7 +195,7 @@ extern uint64_t g_wifi_feature_caps;
 #define CONFIG_FEATURE_WPA3_SAE_BIT     (1<<0)
 
 #define WIFI_INIT_CONFIG_DEFAULT() { \
-    .event_handler = &esp_event_send, \
+    .event_handler = &esp_event_send_internal, \
     .osi_funcs = &g_wifi_osi_funcs, \
     .wpa_crypto_funcs = g_wifi_default_wpa_crypto_funcs, \
     .static_rx_buf_num = CONFIG_ESP32_WIFI_STATIC_RX_BUFFER_NUM,\
@@ -335,7 +336,7 @@ esp_err_t esp_wifi_restore(void);
   * @return 
   *    - ESP_OK: succeed
   *    - ESP_ERR_WIFI_NOT_INIT: WiFi is not initialized by esp_wifi_init
-  *    - ESP_ERR_WIFI_NOT_START: WiFi is not started by esp_wifi_start
+  *    - ESP_ERR_WIFI_NOT_STARTED: WiFi is not started by esp_wifi_start
   *    - ESP_ERR_WIFI_CONN: WiFi internal error, station or soft-AP control block wrong
   *    - ESP_ERR_WIFI_SSID: SSID of AP which station connects is invalid
   */
@@ -1089,6 +1090,50 @@ esp_err_t esp_wifi_set_ant(const wifi_ant_config_t *config);
   *    - ESP_ERR_WIFI_ARG: invalid argument, e.g. parameter is NULL
   */
 esp_err_t esp_wifi_get_ant(wifi_ant_config_t *config);
+
+/**
+  * @brief     Set the inactive time of the ESP32 STA or AP
+  *
+  * @attention 1. For Station, If the station does not receive a beacon frame from the connected SoftAP during the inactive time,
+  *               disconnect from SoftAP. Default 6s.
+  * @attention 2. For SoftAP, If the softAP doesn't receive any data from the connected STA during inactive time,
+  *               the softAP will force deauth the STA. Default is 300s.
+  * @attention 3. The inactive time configuration is not stored into flash
+  *
+  * @param     ifx  interface to be configured.
+  * @param     sec  Inactive time. Unit seconds.
+  *
+  * @return
+  *    - ESP_OK: succeed
+  *    - ESP_ERR_WIFI_NOT_INIT: WiFi is not initialized by esp_wifi_init
+  *    - ESP_ERR_WIFI_NOT_STARTED: WiFi is not started by esp_wifi_start
+  *    - ESP_ERR_WIFI_ARG: invalid argument, For Station, if sec is less than 3. For SoftAP, if sec is less than 10.
+  */
+esp_err_t esp_wifi_set_inactive_time(wifi_interface_t ifx, uint16_t sec);
+
+/**
+  * @brief     Get inactive time of specified interface
+  *
+  * @param     ifx  Interface to be configured.
+  * @param     sec  Inactive time. Unit seconds.
+  *
+  * @return
+  *    - ESP_OK: succeed
+  *    - ESP_ERR_WIFI_NOT_INIT: WiFi is not initialized by esp_wifi_init
+  *    - ESP_ERR_WIFI_ARG: invalid argument
+  */
+esp_err_t esp_wifi_get_inactive_time(wifi_interface_t ifx, uint16_t *sec);
+
+/**
+  * @brief     Dump WiFi statistics
+  *
+  * @param     modules statistic modules to be dumped
+  *
+  * @return
+  *    - ESP_OK: succeed
+  *    - others: failed
+  */
+esp_err_t esp_wifi_statis_dump(uint32_t modules);
 
 #ifdef __cplusplus
 }

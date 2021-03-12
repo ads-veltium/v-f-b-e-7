@@ -37,7 +37,7 @@
 #include "driver/periph_ctrl.h"
 #include "bootloader_common.h"
 
-#if CONFIG_ESP32_SPIRAM_SUPPORT
+#if CONFIG_SPIRAM
 #include "soc/rtc.h"
 
 //Commands for PSRAM chip
@@ -774,7 +774,7 @@ static void IRAM_ATTR psram_gpio_config(psram_io_t *psram_io, psram_cache_mode_t
     }
 }
 
-psram_size_t psram_get_size()
+psram_size_t psram_get_size(void)
 {
     if ((PSRAM_SIZE_ID(s_psram_id) == PSRAM_EID_SIZE_64MBITS) || PSRAM_IS_64MBIT_TRIAL(s_psram_id)) {
         return s_2t_mode_enabled ? PSRAM_SIZE_32MBITS : PSRAM_SIZE_64MBITS;
@@ -1067,4 +1067,4 @@ static void IRAM_ATTR psram_cache_init(psram_cache_mode_t psram_cache_mode, psra
     CLEAR_PERI_REG_MASK(SPI_PIN_REG(0), SPI_CS1_DIS_M); //ENABLE SPI0 CS1 TO PSRAM(CS0--FLASH; CS1--SRAM)
 }
 
-#endif // CONFIG_ESP32_SPIRAM_SUPPORT
+#endif // CONFIG_SPIRAM

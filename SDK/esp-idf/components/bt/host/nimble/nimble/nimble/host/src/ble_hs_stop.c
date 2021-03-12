@@ -58,10 +58,47 @@ ble_hs_stop_done(int status)
     }
 }
 
+#if MYNEWT_VAL(BLE_PERIODIC_ADV)
+/**
+ * Terminates all active periodic sync handles
+ *
+ * If there are no active periodic sync handles, signals completion of the
+ * close procedure.
+ */
+static int
+ble_hs_stop_terminate_all_periodic_sync(void)
+{
+    int rc = 0;
+    struct ble_hs_periodic_sync *psync;
+    uint16_t sync_handle;
+
+    while((psync = ble_hs_periodic_sync_first())){
+        /* Terminate sync command waits a command complete event, so there
+         * is no need to wait for GAP event, as the calling thread will be
+         * blocked on the hci semaphore until the command complete is received.
+         *
+         * Also, once the sync is terminated, the psync will be freed and
+         * removed from the list such that the next call to
+         * ble_hs_periodic_sync_first yields the next psync handle
+         */
+        sync_handle = psync->sync_handle;
+        rc = ble_gap_periodic_adv_terminate_sync(sync_handle);
+        if (rc != 0 && rc != BLE_HS_ENOTCONN) {
+            BLE_HS_LOG(ERROR, "failed to terminate periodic sync=0x%04x, rc=%d\n",
+                       sync_handle, rc);
+            return rc;
+        }
+    }
+
+    return 0;
+}
+#endif
+
 /**
  * Terminates the first open connection.
  *
- * If there are no open connections, signals completion of the close procedure.
+ * If there are no open connections, Check for any active periodic sync
+ * handles.
  */
 static void
 ble_hs_stop_terminate_next_conn(void)
@@ -201,6 +238,14 @@ ble_hs_stop(struct ble_hs_stop_listener *listener,
     if (rc != 0) {
         return rc;
     }
+
+#if MYNEWT_VAL(BLE_PERIODIC_ADV)
+    /* Check for active periodic sync first and terminate it all */
+    rc = ble_hs_stop_terminate_all_periodic_sync();
+    if (rc != 0) {
+        return rc;
+    }
+#endif
 
     /* Schedule termination of all open connections in the host task.  This is
      * done even if there are no open connections so that the result of the

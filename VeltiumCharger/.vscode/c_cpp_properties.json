@@ -143,7 +143,8 @@
                 "/home/joel/Documents/fw-bird-esp32/SDK/esp-idf/components/bt/host/nimble/nimble/porting/npl/riot/include",
                 "${workspaceFolder}/components/Arduino/libraries/NimBLE/src",
                 "${workspaceFolder}/components/esp-nimble-cpp/src",
-                "${workspaceFolder}/main/coms"
+                "${workspaceFolder}/main/coms",
+                "/home/joel/Documents/fw-bird-esp32/SDK/esp-idf/components/esp_netif/include"
             ],
             "intelliSenseMode": "clang-x64",
             "browse": {

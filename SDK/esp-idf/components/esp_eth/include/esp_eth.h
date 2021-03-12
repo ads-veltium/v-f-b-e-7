@@ -172,6 +172,26 @@ esp_err_t esp_eth_stop(esp_eth_handle_t hdl);
 *       - ESP_ERR_INVALID_ARG: transmit frame buffer failed because of some invalid argument
 *       - ESP_FAIL: transmit frame buffer failed because some other error occurred
 */
+
+/**
+* @brief Update Ethernet data input path (i.e. specify where to pass the input buffer)
+*
+* @note After install driver, Ethernet still don't know where to deliver the input buffer.
+*       In fact, this API registers a callback function which get invoked when Ethernet received new packets.
+*
+* @param[in] hdl handle of Ethernet driver
+* @param[in] stack_input function pointer, which does the actual process on incoming packets
+* @param[in] priv private resource, which gets passed to `stack_input` callback without any modification
+* @return
+*       - ESP_OK: update input path successfully
+*       - ESP_ERR_INVALID_ARG: update input path failed because of some invalid argument
+*       - ESP_FAIL: update input path failed because some other error occurred
+*/
+esp_err_t esp_eth_update_input_path(
+    esp_eth_handle_t hdl,
+    esp_err_t (*stack_input)(esp_eth_handle_t hdl, uint8_t *buffer, uint32_t length, void *priv),
+    void *priv);
+    
 esp_err_t esp_eth_transmit(esp_eth_handle_t hdl, uint8_t *buf, uint32_t length);
 
 /**

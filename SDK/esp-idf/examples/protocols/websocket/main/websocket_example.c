@@ -12,7 +12,7 @@
 #include "esp_wifi.h"
 #include "esp_system.h"
 #include "nvs_flash.h"
-#include "esp_event_loop.h"
+#include "esp_event.h"
 #include "protocol_examples_common.h"
 
 #include "freertos/FreeRTOS.h"
@@ -23,7 +23,6 @@
 #include "esp_log.h"
 #include "esp_websocket_client.h"
 #include "esp_event.h"
-#include "esp_event_loop.h"
 
 #define NO_DATA_TIMEOUT_SEC 10
 
@@ -127,7 +126,7 @@ static void websocket_app_start(void)
     esp_websocket_client_destroy(client);
 }
 
-void app_main()
+void app_main(void)
 {
     ESP_LOGI(TAG, "[APP] Startup..");
     ESP_LOGI(TAG, "[APP] Free memory: %d bytes", esp_get_free_heap_size());
@@ -137,7 +136,7 @@ void app_main()
     esp_log_level_set("TRANS_TCP", ESP_LOG_DEBUG);
 
     ESP_ERROR_CHECK(nvs_flash_init());
-    tcpip_adapter_init();
+    ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
     /* This helper function configures Wi-Fi or Ethernet, as selected in menuconfig.

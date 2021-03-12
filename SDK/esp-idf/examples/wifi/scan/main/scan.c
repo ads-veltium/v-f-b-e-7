@@ -22,17 +22,6 @@
 
 static const char *TAG = "scan";
 
-static bool scan_done = false;
-static void display_scan_result(void);
-
-static void event_handler(void* arg, esp_event_base_t event_base,
-                                int32_t event_id, void* event_data)
-{
-    if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_SCAN_DONE) {
-        scan_done = true;
-    }
-}
-
 static void print_auth_mode(int authmode)
 {
     switch (authmode) {
@@ -117,13 +106,25 @@ static void print_cipher_type(int pairwise_cipher, int group_cipher)
     }
 }
 
-/* Initialise a wifi_ap_record_t, get it populated and display scanned data */
-static void display_scan_result(void)
+/* Initialize Wi-Fi as sta and set scan method */
+static void wifi_scan(void)
 {
+    ESP_ERROR_CHECK(esp_netif_init());
+    ESP_ERROR_CHECK(esp_event_loop_create_default());
+    esp_netif_t *sta_netif = esp_netif_create_default_wifi_sta();
+    assert(sta_netif);
+
+    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+
     uint16_t number = DEFAULT_SCAN_LIST_SIZE;
     wifi_ap_record_t ap_info[DEFAULT_SCAN_LIST_SIZE];
     uint16_t ap_count = 0;
     memset(ap_info, 0, sizeof(ap_info));
+
+    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
+    ESP_ERROR_CHECK(esp_wifi_start());
+    ESP_ERROR_CHECK(esp_wifi_scan_start(NULL, true));
     ESP_ERROR_CHECK(esp_wifi_scan_get_ap_records(&number, ap_info));
     ESP_ERROR_CHECK(esp_wifi_scan_get_ap_num(&ap_count));
     ESP_LOGI(TAG, "Total APs scanned = %u", ap_count);
@@ -136,35 +137,10 @@ static void display_scan_result(void)
         }
         ESP_LOGI(TAG, "Channel \t\t%d\n", ap_info[i].primary);
     }
+
 }
 
-/* Initialize Wi-Fi as sta and start scan */
-static void init_wifi(void)
-{
-    tcpip_adapter_init();
-    ESP_ERROR_CHECK(esp_event_loop_create_default());
-
-    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
-
-    ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL));
-    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
-    ESP_ERROR_CHECK(esp_wifi_start());
-
-    ESP_ERROR_CHECK(esp_wifi_scan_start(NULL, true));
-
-    while (1) {
-        if (scan_done == true) {
-            display_scan_result();
-            scan_done = false;
-        } else { 
-            vTaskDelay(100 / portTICK_RATE_MS);
-            continue;
-        }
-    }
-}
-
-void app_main()
+void app_main(void)
 {
     // Initialize NVS
     esp_err_t ret = nvs_flash_init();
@@ -174,5 +150,5 @@ void app_main()
     }
     ESP_ERROR_CHECK( ret );
 
-    init_wifi();
+    wifi_scan();
 }

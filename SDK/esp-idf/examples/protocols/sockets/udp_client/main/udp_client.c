@@ -16,7 +16,7 @@
 #include "esp_event.h"
 #include "esp_log.h"
 #include "nvs_flash.h"
-#include "tcpip_adapter.h"
+#include "esp_netif.h"
 #include "protocol_examples_common.h"
 
 #include "lwip/err.h"
@@ -82,7 +82,7 @@ static void udp_client_task(void *pvParameters)
             }
             ESP_LOGI(TAG, "Message sent");
 
-            struct sockaddr_in source_addr; // Large enough for both IPv4 or IPv6
+            struct sockaddr_storage source_addr; // Large enough for both IPv4 or IPv6
             socklen_t socklen = sizeof(source_addr);
             int len = recvfrom(sock, rx_buffer, sizeof(rx_buffer) - 1, 0, (struct sockaddr *)&source_addr, &socklen);
 
@@ -110,10 +110,10 @@ static void udp_client_task(void *pvParameters)
     vTaskDelete(NULL);
 }
 
-void app_main()
+void app_main(void)
 {
     ESP_ERROR_CHECK(nvs_flash_init());
-    tcpip_adapter_init();
+    ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
     /* This helper function configures Wi-Fi or Ethernet, as selected in menuconfig.

@@ -23,6 +23,7 @@
 #include <stdarg.h>
 #include <errno.h>
 #include <assert.h>
+#include <ctype.h>
 #include "console/console.h"
 #include "host/ble_hs.h"
 #include "host/ble_uuid.h"
@@ -278,6 +279,90 @@ parse_arg_uint32_dflt(char *name, uint32_t dflt, int *out_status)
     return val;
 }
 
+static uint32_t
+parse_time_unit_mult(const char *str)
+{
+    if (!strcasecmp(str, "us")) {
+        return 1;
+    } else if (!strcasecmp(str, "ms")) {
+        return 1000;
+    } else if (!strcasecmp(str, "s")) {
+        return 1000000;
+    }
+
+    return 0;
+}
+
+static uint32_t
+parse_time_us(const char *str, int *out_status)
+{
+    uint32_t val = 0;
+    uint32_t val_div = 1;
+    uint32_t val_mult = 1;
+    uint32_t val_us;
+
+    while (isdigit(*str)) {
+        val *= 10;
+        val += *str - '0';
+        str++;
+    }
+
+    if (*str == '.') {
+        str++;
+        while (isdigit(*str)) {
+            val *= 10;
+            val += *str - '0';
+            val_div *= 10;
+            str++;
+        }
+    }
+
+    val_mult = parse_time_unit_mult(str);
+    if (val_mult == 0) {
+        *out_status = EINVAL;
+        return 0;
+    }
+
+    if (val_mult > val_div) {
+        val_us = val * (val_mult / val_div);
+    } else {
+        val_us = val * (val_div / val_mult);
+    }
+
+    *out_status = 0;
+
+    return val_us;
+}
+
+uint32_t
+parse_arg_time_dflt(char *name, int step_us, uint32_t dflt, int *out_status)
+{
+    const char *arg;
+    uint32_t val;
+    int rc;
+
+    arg = parse_arg_peek(name);
+    if (!arg) {
+        *out_status = 0;
+        return dflt;
+    }
+
+    val = parse_time_us(arg, &rc);
+    if (rc) {
+        val = parse_arg_uint32(name, &rc);
+        if (rc == ENOENT) {
+            *out_status = 0;
+            return dflt;
+        }
+    } else {
+        val /= step_us;
+        parse_arg_extract(name);
+    }
+
+    *out_status = rc;
+    return val;
+}
+
 const struct kv_pair *
 parse_kv_find(const struct kv_pair *kvs, char *name)
 {
@@ -424,6 +509,54 @@ parse_arg_mac(char *name, uint8_t *dst)
     parse_reverse_bytes(dst, 6);
 
     return 0;
+}
+
+int
+parse_arg_addr(char *name, ble_addr_t *addr)
+{
+    char *arg;
+    size_t len;
+    uint8_t addr_type;
+    bool addr_type_found;
+    int rc;
+
+    arg = parse_arg_peek(name);
+    if (!arg) {
+        return ENOENT;
+    }
+
+    len = strlen(arg);
+    if (len < 2) {
+        return EINVAL;
+    }
+
+    addr_type_found = false;
+    if ((arg[len - 2] == ':') || (arg[len - 2] == '-')) {
+        if (tolower(arg[len - 1]) == 'p') {
+            addr_type = BLE_ADDR_PUBLIC;
+            addr_type_found = true;
+        } else if (tolower(arg[len - 1]) == 'r') {
+            addr_type = BLE_ADDR_RANDOM;
+            addr_type_found = true;
+        }
+
+        if (addr_type_found) {
+            arg[len - 2] = '\0';
+        }
+}
+
+    rc = parse_arg_mac(name, addr->val);
+    if (rc != 0) {
+        return rc;
+    }
+
+    if (addr_type_found) {
+        addr->type = addr_type;
+    } else {
+        rc = EAGAIN;
+    }
+
+    return rc;
 }
 
 int

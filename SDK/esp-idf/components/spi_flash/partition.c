@@ -54,7 +54,7 @@ typedef struct esp_partition_iterator_opaque_ {
 
 
 static esp_partition_iterator_opaque_t* iterator_create(esp_partition_type_t type, esp_partition_subtype_t subtype, const char* label);
-static esp_err_t load_partitions();
+static esp_err_t load_partitions(void);
 static esp_err_t ensure_partitions_loaded(void);
 
 
@@ -157,7 +157,7 @@ static esp_partition_iterator_opaque_t* iterator_create(esp_partition_type_t typ
 
 // Create linked list of partition_list_item_t structures.
 // This function is called only once, with s_partition_list_lock taken.
-static esp_err_t load_partitions()
+static esp_err_t load_partitions(void)
 {
     const uint32_t* ptr;
     spi_flash_mmap_handle_t handle;
@@ -349,7 +349,7 @@ esp_err_t esp_partition_read(const esp_partition_t* partition,
         return spi_flash_read(partition->address + src_offset, dst, size);
 #endif // CONFIG_SPI_FLASH_USE_LEGACY_IMPL
     } else {
-#if CONFIG_SECURE_FLASH_ENC_ENABLED
+#if CONFIG_SPI_FLASH_ENABLE_ENCRYPTED_READ_WRITE
         if (partition->flash_chip != esp_flash_default_chip) {
             return ESP_ERR_NOT_SUPPORTED;
         }
@@ -369,7 +369,7 @@ esp_err_t esp_partition_read(const esp_partition_t* partition,
         return ESP_OK;
 #else
         return ESP_ERR_NOT_SUPPORTED;
-#endif // CONFIG_SECURE_FLASH_ENC_ENABLED
+#endif // CONFIG_SPI_FLASH_ENABLE_ENCRYPTED_READ_WRITE
     }
 }
 
@@ -391,14 +391,14 @@ esp_err_t esp_partition_write(const esp_partition_t* partition,
         return spi_flash_write(dst_offset, src, size);
 #endif // CONFIG_SPI_FLASH_USE_LEGACY_IMPL
     } else {
-#if CONFIG_SECURE_FLASH_ENC_ENABLED
+#if CONFIG_SPI_FLASH_ENABLE_ENCRYPTED_READ_WRITE
         if (partition->flash_chip != esp_flash_default_chip) {
             return ESP_ERR_NOT_SUPPORTED;
         }
         return spi_flash_write_encrypted(dst_offset, src, size);
 #else
         return ESP_ERR_NOT_SUPPORTED;
-#endif // CONFIG_SECURE_FLASH_ENC_ENABLED
+#endif // CONFIG_SPI_FLASH_ENABLE_ENCRYPTED_READ_WRITE
     }
 }
 

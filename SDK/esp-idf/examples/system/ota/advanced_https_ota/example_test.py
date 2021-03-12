@@ -1,8 +1,6 @@
 import re
 import os
 import socket
-import BaseHTTPServer
-import SimpleHTTPServer
 from threading import Thread
 import ssl
 
@@ -10,6 +8,13 @@ from tiny_test_fw import DUT
 import ttfw_idf
 import random
 import subprocess
+
+try:
+    import BaseHTTPServer
+    from SimpleHTTPServer import SimpleHTTPRequestHandler
+except ImportError:
+    import http.server as BaseHTTPServer
+    from http.server import SimpleHTTPRequestHandler
 
 server_cert = "-----BEGIN CERTIFICATE-----\n" \
               "MIIDXTCCAkWgAwIBAgIJAP4LF7E72HakMA0GCSqGSIb3DQEBCwUAMEUxCzAJBgNV\n"\
@@ -98,7 +103,7 @@ def get_ca_cert(ota_image_dir):
 def start_https_server(ota_image_dir, server_ip, server_port):
     server_file, key_file = get_ca_cert(ota_image_dir)
     httpd = BaseHTTPServer.HTTPServer((server_ip, server_port),
-                                      SimpleHTTPServer.SimpleHTTPRequestHandler)
+                                      SimpleHTTPRequestHandler)
 
     httpd.socket = ssl.wrap_socket(httpd.socket,
                                    keyfile=key_file,
@@ -116,7 +121,7 @@ def redirect_handler_factory(url):
     """
     Returns a request handler class that redirects to supplied `url`
     """
-    class RedirectHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
+    class RedirectHandler(SimpleHTTPRequestHandler):
         def do_GET(self):
             print("Sending resp, URL: " + url)
             self.send_response(301)
@@ -150,7 +155,7 @@ def test_examples_protocol_advanced_https_ota_example(env, extra_data):
       2. Fetch OTA image over HTTPS
       3. Reboot with the new OTA image
     """
-    dut1 = env.get_dut("advanced_https_ota_example", "examples/system/ota/advanced_https_ota")
+    dut1 = env.get_dut("advanced_https_ota_example", "examples/system/ota/advanced_https_ota", dut_class=ttfw_idf.ESP32DUT)
     # Number of iterations to validate OTA
     iterations = 3
     server_port = 8001
@@ -196,7 +201,7 @@ def test_examples_protocol_advanced_https_ota_example_truncated_bin(env, extra_d
       3. Fetch OTA image over HTTPS
       4. Check working of code if bin is truncated
     """
-    dut1 = env.get_dut("advanced_https_ota_example", "examples/system/ota/advanced_https_ota")
+    dut1 = env.get_dut("advanced_https_ota_example", "examples/system/ota/advanced_https_ota", dut_class=ttfw_idf.ESP32DUT)
     server_port = 8001
     # Original binary file generated after compilation
     bin_name = "advanced_https_ota.bin"
@@ -248,7 +253,7 @@ def test_examples_protocol_advanced_https_ota_example_truncated_header(env, extr
       3. Fetch OTA image over HTTPS
       4. Check working of code if headers are not sent completely
     """
-    dut1 = env.get_dut("advanced_https_ota_example", "examples/system/ota/advanced_https_ota")
+    dut1 = env.get_dut("advanced_https_ota_example", "examples/system/ota/advanced_https_ota", dut_class=ttfw_idf.ESP32DUT)
     server_port = 8001
     # Original binary file generated after compilation
     bin_name = "advanced_https_ota.bin"
@@ -299,7 +304,7 @@ def test_examples_protocol_advanced_https_ota_example_random(env, extra_data):
       3. Fetch OTA image over HTTPS
       4. Check working of code for random binary file
     """
-    dut1 = env.get_dut("advanced_https_ota_example", "examples/system/ota/advanced_https_ota")
+    dut1 = env.get_dut("advanced_https_ota_example", "examples/system/ota/advanced_https_ota", dut_class=ttfw_idf.ESP32DUT)
     server_port = 8001
     # Random binary file to be generated
     random_bin_name = "random.bin"
@@ -348,7 +353,7 @@ def test_examples_protocol_advanced_https_ota_example_chunked(env, extra_data):
       2. Fetch OTA image over HTTPS
       3. Reboot with the new OTA image
     """
-    dut1 = env.get_dut("advanced_https_ota_example", "examples/system/ota/advanced_https_ota")
+    dut1 = env.get_dut("advanced_https_ota_example", "examples/system/ota/advanced_https_ota", dut_class=ttfw_idf.ESP32DUT)
     # File to be downloaded. This file is generated after compilation
     bin_name = "advanced_https_ota.bin"
     # check and log bin size
@@ -388,7 +393,7 @@ def test_examples_protocol_advanced_https_ota_example_redirect_url(env, extra_da
       2. Fetch OTA image over HTTPS
       3. Reboot with the new OTA image
     """
-    dut1 = env.get_dut("advanced_https_ota_example", "examples/system/ota/advanced_https_ota")
+    dut1 = env.get_dut("advanced_https_ota_example", "examples/system/ota/advanced_https_ota", dut_class=ttfw_idf.ESP32DUT)
     server_port = 8001
     # Port to which the request should be redirecetd
     redirection_server_port = 8081

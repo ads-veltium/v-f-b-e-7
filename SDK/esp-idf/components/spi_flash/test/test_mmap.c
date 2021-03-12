@@ -177,15 +177,23 @@ TEST_CASE("Can mmap into instruction address space", "[spi_flash][mmap]")
     printf("Mapping %x (+%x)\n", start - 0x10000, 0x20000);
     spi_flash_mmap_handle_t handle2;
     const void *ptr2;
-    ESP_ERROR_CHECK( spi_flash_mmap(start - 0x10000, 0x20000, SPI_FLASH_MMAP_DATA, &ptr2, &handle2) );
+    ESP_ERROR_CHECK( spi_flash_mmap(start - 0x10000, 0x20000, SPI_FLASH_MMAP_INST, &ptr2, &handle2) );
     printf("mmap_res: handle=%d ptr=%p\n", handle2, ptr2);
+
+    TEST_ASSERT_EQUAL_HEX32(start - 0x10000, spi_flash_cache2phys(ptr2));
+    TEST_ASSERT_EQUAL_PTR(ptr2, spi_flash_phys2cache(start - 0x10000, SPI_FLASH_MMAP_INST));
+
     spi_flash_mmap_dump();
 
     printf("Mapping %x (+%x)\n", start, 0x10000);
     spi_flash_mmap_handle_t handle3;
     const void *ptr3;
-    ESP_ERROR_CHECK( spi_flash_mmap(start, 0x10000, SPI_FLASH_MMAP_DATA, &ptr3, &handle3) );
+    ESP_ERROR_CHECK( spi_flash_mmap(start, 0x10000, SPI_FLASH_MMAP_INST, &ptr3, &handle3) );
     printf("mmap_res: handle=%d ptr=%p\n", handle3, ptr3);
+
+    TEST_ASSERT_EQUAL_HEX32(start, spi_flash_cache2phys(ptr3));
+    TEST_ASSERT_EQUAL_PTR(ptr3, spi_flash_phys2cache(start, SPI_FLASH_MMAP_INST));
+
     spi_flash_mmap_dump();
 
     printf("Unmapping handle1\n");
@@ -242,7 +250,6 @@ TEST_CASE("Can mmap unordered pages into contiguous memory", "[spi_flash][mmap]"
     spi_flash_munmap(handle1);
     spi_flash_mmap_dump();
 }
-
 
 TEST_CASE("flash_mmap invalidates just-written data", "[spi_flash][mmap]")
 {
@@ -317,9 +324,8 @@ TEST_CASE("flash_mmap can mmap after get enough free MMU pages", "[spi_flash][mm
         }
     }
     uint32_t free_pages = spi_flash_mmap_get_free_pages(SPI_FLASH_MMAP_DATA);
-    if (spi_flash_get_chip_size() <= 0x200000) {
-        free_pages -= 0x200000/0x10000;
-    }
+    uint32_t flash_pages = spi_flash_get_chip_size() / SPI_FLASH_MMU_PAGE_SIZE;
+    free_pages = (free_pages > flash_pages) ? flash_pages : free_pages;
 
     printf("Mapping %x (+%x)\n", 0, free_pages * SPI_FLASH_MMU_PAGE_SIZE);
     const void *ptr2;

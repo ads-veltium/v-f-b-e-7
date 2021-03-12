@@ -45,6 +45,11 @@ static const char *TAG = "WEBSOCKET_CLIENT";
         action;                                                                                     \
         }
 
+#define ESP_WS_CLIENT_STATE_CHECK(TAG, a, action) if ((a->state) < WEBSOCKET_STATE_INIT) {           \
+        ESP_LOGE(TAG,"%s:%d (%s): %s", __FILE__, __LINE__, __FUNCTION__, "Websocket already stop");  \
+        action;                                                                                      \
+        }
+
 const static int STOPPED_BIT = BIT0;
 
 ESP_EVENT_DEFINE_BASE(WEBSOCKET_EVENTS);
@@ -63,6 +68,8 @@ typedef struct {
     void                        *user_context;
     int                         network_timeout_ms;
     char                        *subprotocol;
+    char                        *user_agent;
+    char                        *headers;
 } websocket_config_storage_t;
 
 typedef enum {
@@ -75,6 +82,7 @@ typedef enum {
 
 struct esp_websocket_client {
     esp_event_loop_handle_t     event_handle;
+    TaskHandle_t                task_handle;
     esp_transport_list_handle_t transport_list;
     esp_transport_handle_t      transport;
     websocket_config_storage_t *config;
@@ -101,16 +109,15 @@ static uint64_t _tick_get_ms(void)
 }
 
 static esp_err_t esp_websocket_client_dispatch_event(esp_websocket_client_handle_t client,
-                                                     esp_websocket_event_id_t event,
-                                                     const char *data,
-                                                     int data_len)
+        esp_websocket_event_id_t event,
+        const char *data,
+        int data_len)
 {
     esp_err_t err;
     esp_websocket_event_data_t event_data;
 
     event_data.client = client;
     event_data.user_context = client->config->user_context;
-
     event_data.data_ptr = data;
     event_data.data_len = data_len;
     event_data.op_code = client->last_opcode;
@@ -129,11 +136,15 @@ static esp_err_t esp_websocket_client_dispatch_event(esp_websocket_client_handle
 
 static esp_err_t esp_websocket_client_abort_connection(esp_websocket_client_handle_t client)
 {
+    ESP_WS_CLIENT_STATE_CHECK(TAG, client, return ESP_FAIL);
     esp_transport_close(client->transport);
-    client->wait_timeout_ms = WEBSOCKET_RECONNECT_TIMEOUT_MS;
-    client->reconnect_tick_ms = _tick_get_ms();
+
+    if (client->config->auto_reconnect) {
+        client->wait_timeout_ms = WEBSOCKET_RECONNECT_TIMEOUT_MS;
+        client->reconnect_tick_ms = _tick_get_ms();
+        ESP_LOGI(TAG, "Reconnect after %d ms", client->wait_timeout_ms);
+    }
     client->state = WEBSOCKET_STATE_WAIT_TIMEOUT;
-    ESP_LOGI(TAG, "Reconnect after %d ms", client->wait_timeout_ms);
     esp_websocket_client_dispatch_event(client, WEBSOCKET_EVENT_DISCONNECTED, NULL, 0);
     return ESP_OK;
 }
@@ -187,6 +198,16 @@ static esp_err_t esp_websocket_client_set_config(esp_websocket_client_handle_t c
         cfg->subprotocol = strdup(config->subprotocol);
         ESP_WS_CLIENT_MEM_CHECK(TAG, cfg->subprotocol, return ESP_ERR_NO_MEM);
     }
+    if (config->user_agent) {
+        free(cfg->user_agent);
+        cfg->user_agent = strdup(config->user_agent);
+        ESP_WS_CLIENT_MEM_CHECK(TAG, cfg->user_agent, return ESP_ERR_NO_MEM);
+    }
+    if (config->headers) {
+        free(cfg->headers);
+        cfg->headers = strdup(config->headers);
+        ESP_WS_CLIENT_MEM_CHECK(TAG, cfg->headers, return ESP_ERR_NO_MEM);
+    }
 
     cfg->network_timeout_ms = WEBSOCKET_NETWORK_TIMEOUT_MS;
     cfg->user_context = config->user_context;
@@ -215,6 +236,8 @@ static esp_err_t esp_websocket_client_destroy_config(esp_websocket_client_handle
     free(cfg->username);
     free(cfg->password);
     free(cfg->subprotocol);
+    free(cfg->user_agent);
+    free(cfg->headers);
     memset(cfg, 0, sizeof(websocket_config_storage_t));
     free(client->config);
     client->config = NULL;
@@ -228,6 +251,12 @@ static void set_websocket_transport_optional_settings(esp_websocket_client_handl
     }
     if (trans && client->config->subprotocol) {
         esp_transport_ws_set_subprotocol(trans, client->config->subprotocol);
+    }
+    if (trans && client->config->user_agent) {
+        esp_transport_ws_set_user_agent(trans, client->config->user_agent);
+    }
+    if (trans && client->config->headers) {
+        esp_transport_ws_set_headers(trans, client->config->headers);
     }
 }
 
@@ -438,7 +467,6 @@ static esp_err_t esp_websocket_client_recv(esp_websocket_client_handle_t client)
         rlen = esp_transport_read(client->transport, client->rx_buffer, client->buffer_size, client->config->network_timeout_ms);
         if (rlen < 0) {
             ESP_LOGE(TAG, "Error read data");
-            esp_websocket_client_abort_connection(client);
             return ESP_FAIL;
         }
         client->payload_len = esp_transport_ws_get_read_payload_len(client->transport);
@@ -512,7 +540,6 @@ static void esp_websocket_client_task(void *pv)
                     ESP_LOGD(TAG, "Sending PING...");
                     esp_transport_ws_send_raw(client->transport, WS_TRANSPORT_OPCODES_PING | WS_TRANSPORT_OPCODES_FIN, NULL, 0, client->config->network_timeout_ms);
                 }
-
                 if (read_select == 0) {
                     ESP_LOGV(TAG, "Read poll timeout: skipping esp_transport_read()...");
                     break;
@@ -526,6 +553,7 @@ static void esp_websocket_client_task(void *pv)
                 }
                 break;
             case WEBSOCKET_STATE_WAIT_TIMEOUT:
+
                 if (!client->config->auto_reconnect) {
                     client->run = false;
                     break;
@@ -565,7 +593,7 @@ esp_err_t esp_websocket_client_start(esp_websocket_client_handle_t client)
         ESP_LOGE(TAG, "The client has started");
         return ESP_FAIL;
     }
-    if (xTaskCreate(esp_websocket_client_task, "websocket_task", client->config->task_stack, client, client->config->task_prio, NULL) != pdTRUE) {
+    if (xTaskCreate(esp_websocket_client_task, "websocket_task", client->config->task_stack, client, client->config->task_prio, &client->task_handle) != pdTRUE) {
         ESP_LOGE(TAG, "Error create websocket task");
         return ESP_FAIL;
     }
@@ -582,6 +610,15 @@ esp_err_t esp_websocket_client_stop(esp_websocket_client_handle_t client)
         ESP_LOGW(TAG, "Client was not started");
         return ESP_FAIL;
     }
+
+    /* A running client cannot be stopped from the websocket task/event handler */
+    TaskHandle_t running_task = xTaskGetCurrentTaskHandle();
+    if (running_task == client->task_handle) {
+        ESP_LOGE(TAG, "Client cannot be stopped from websocket task");
+        return ESP_FAIL;
+    }
+
+
     client->run = false;
     xEventGroupWaitBits(client->status_bits, STOPPED_BIT, false, true, portMAX_DELAY);
     client->state = WEBSOCKET_STATE_UNKNOW;

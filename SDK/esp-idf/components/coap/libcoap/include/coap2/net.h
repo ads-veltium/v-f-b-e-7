@@ -178,13 +178,6 @@ typedef struct coap_context_t {
                                    *   context, otherwise 0. */
 #endif /* WITH_LWIP */
 
-  /**
-   * The last message id that was used is stored in this field. The initial
-   * value is set by coap_new_context() and is usually a random value. A new
-   * message id can be created with coap_new_message_id().
-   */
-  uint16_t message_id;
-
   coap_response_handler_t response_handler;
   coap_nack_handler_t nack_handler;
   coap_ping_handler_t ping_handler;
@@ -738,5 +731,16 @@ coap_pdu_t *coap_wellknown_response(coap_context_t *context,
  *           (1 + ('ack_random_factor' - 1) * r)
  */
 unsigned int coap_calc_timeout(coap_session_t *session, unsigned char r);
+
+/**
+ * Function interface for joining a multicast group for listening
+ *
+ * @param ctx   The current context
+ * @param groupname The name of the group that is to be joined for listening
+ *
+ * @return       0 on success, -1 on error
+ */
+int
+coap_join_mcast_group(coap_context_t *ctx, const char *groupname);
 
 #endif /* COAP_NET_H_ */

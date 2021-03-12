@@ -48,6 +48,7 @@
 #define WPA_TX_MSG_BUFF_MAXLEN 200
 
 #define ASSOC_IE_LEN 24 + 2 + PMKID_LEN + RSN_SELECTOR_LEN
+#define MAX_EAPOL_RETRIES 3
 u8 assoc_ie_buf[ASSOC_IE_LEN+2]; 
 
 void set_assoc_ie(u8 * assoc_buf);
@@ -1938,6 +1939,14 @@ int   wpa_sm_rx_eapol(u8 *src_addr, u8 *buf, u32 len)
             wpa_supplicant_process_3_of_4(sm, key, ver);
         } else {
             /* 1/4 4-Way Handshake */
+            sm->eapol1_count++;
+            if (sm->eapol1_count > MAX_EAPOL_RETRIES) {
+#ifdef DEBUG_PRINT
+                wpa_printf(MSG_INFO, "EAPOL1 received for %d times, sending deauth", sm->eapol1_count);
+#endif
+                esp_wifi_internal_issue_disconnect(WLAN_REASON_4WAY_HANDSHAKE_TIMEOUT);
+                goto out;
+            }
             wpa_supplicant_process_1_of_4(sm, src_addr, key,
                               ver);
         }
@@ -2133,7 +2142,8 @@ int wpa_set_bss(char *macddr, char * bssid, u8 pairwise_cipher, u8 group_cipher,
             }
         }
     }
- 
+
+    sm->eapol1_count = 0;
 #ifdef CONFIG_IEEE80211W
     if (esp_wifi_sta_pmf_enabled()) {
         wifi_config_t wifi_cfg;
@@ -2146,7 +2156,6 @@ int wpa_set_bss(char *macddr, char * bssid, u8 pairwise_cipher, u8 group_cipher,
         sm->mgmt_group_cipher = WPA_CIPHER_NONE;
     }
 #endif
- 
     set_assoc_ie(assoc_ie_buf); /* use static buffer */
     res = wpa_gen_wpa_ie(sm, sm->assoc_wpa_ie, sm->assoc_wpa_ie_len);
     if (res < 0) 

@@ -1,13 +1,18 @@
 import re
 import os
 import socket
-import BaseHTTPServer
-import SimpleHTTPServer
 from threading import Thread
 import ssl
 
 from tiny_test_fw import DUT
 import ttfw_idf
+
+try:
+    import BaseHTTPServer
+    from SimpleHTTPServer import SimpleHTTPRequestHandler
+except ImportError:
+    import http.server as BaseHTTPServer
+    from http.server import SimpleHTTPRequestHandler
 
 server_cert = "-----BEGIN CERTIFICATE-----\n" \
               "MIIDXTCCAkWgAwIBAgIJAP4LF7E72HakMA0GCSqGSIb3DQEBCwUAMEUxCzAJBgNV\n"\
@@ -87,7 +92,7 @@ def start_https_server(ota_image_dir, server_ip, server_port):
     key_file_handle.close()
 
     httpd = BaseHTTPServer.HTTPServer((server_ip, server_port),
-                                      SimpleHTTPServer.SimpleHTTPRequestHandler)
+                                      SimpleHTTPRequestHandler)
 
     httpd.socket = ssl.wrap_socket(httpd.socket,
                                    keyfile=key_file,
@@ -103,7 +108,7 @@ def test_examples_protocol_simple_ota_example(env, extra_data):
       2. Fetch OTA image over HTTPS
       3. Reboot with the new OTA image
     """
-    dut1 = env.get_dut("simple_ota_example", "examples/system/ota/simple_ota_example")
+    dut1 = env.get_dut("simple_ota_example", "examples/system/ota/simple_ota_example", dut_class=ttfw_idf.ESP32DUT)
     # check and log bin size
     binary_file = os.path.join(dut1.app.binary_path, "simple_ota.bin")
     bin_size = os.path.getsize(binary_file)

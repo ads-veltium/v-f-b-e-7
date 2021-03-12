@@ -45,7 +45,6 @@
 #include "esp_spi_flash.h"
 #include "esp_flash_internal.h"
 #include "nvs_flash.h"
-#include "esp_event.h"
 #include "esp_spi_flash.h"
 #include "esp_private/crosscore_int.h"
 #include "esp_log.h"
@@ -72,13 +71,18 @@
 #include "esp_efuse.h"
 #include "bootloader_flash_config.h"
 
+#ifdef CONFIG_APP_BUILD_TYPE_ELF_RAM
+#include "esp32/rom/efuse.h"
+#include "esp32/rom/spi_flash.h"
+#endif // CONFIG_APP_BUILD_TYPE_ELF_RAM
+
 #define STRINGIFY(s) STRINGIFY2(s)
 #define STRINGIFY2(s) #s
 
 void start_cpu0(void) __attribute__((weak, alias("start_cpu0_default"))) __attribute__((noreturn));
 void start_cpu0_default(void) IRAM_ATTR __attribute__((noreturn));
 #if !CONFIG_FREERTOS_UNICORE
-static void IRAM_ATTR call_start_cpu1() __attribute__((noreturn));
+static void IRAM_ATTR call_start_cpu1(void) __attribute__((noreturn));
 void start_cpu1(void) __attribute__((weak, alias("start_cpu1_default"))) __attribute__((noreturn));
 void start_cpu1_default(void) IRAM_ATTR __attribute__((noreturn));
 static bool app_cpu_started = false;
@@ -108,6 +112,11 @@ struct object { long placeholder[ 10 ]; };
 void __register_frame_info (const void *begin, struct object *ob);
 extern char __eh_frame[];
 
+#ifdef CONFIG_COMPILER_CXX_EXCEPTIONS
+// workaround for C++ exception large memory allocation
+void _Unwind_SetEnableExceptionFdeSorting(unsigned char enable);
+#endif // CONFIG_COMPILER_CXX_EXCEPTIONS
+
 //If CONFIG_SPIRAM_IGNORE_NOTFOUND is set and external RAM is not found or errors out on testing, this is set to false.
 static bool s_spiram_okay=true;
 
@@ -116,7 +125,7 @@ static bool s_spiram_okay=true;
  * and the app CPU is in reset. We do have a stack, so we can do the initialization in C.
  */
 
-void IRAM_ATTR call_start_cpu0()
+void IRAM_ATTR call_start_cpu0(void)
 {
 #if CONFIG_FREERTOS_UNICORE
     RESET_REASON rst_reas[1];
@@ -263,7 +272,7 @@ static void wdt_reset_cpu1_info_enable(void)
     DPORT_REG_CLR_BIT(DPORT_APP_CPU_RECORD_CTRL_REG, DPORT_APP_CPU_RECORD_ENABLE);
 }
 
-void IRAM_ATTR call_start_cpu1()
+void IRAM_ATTR call_start_cpu1(void)
 {
     asm volatile (\
                   "wsr    %0, vecbase\n" \
@@ -345,6 +354,14 @@ void start_cpu0_default(void)
 #if CONFIG_ESP32_BROWNOUT_DET
     esp_brownout_init();
 #endif
+
+#if CONFIG_ESP32_DISABLE_BASIC_ROM_CONSOLE
+    esp_efuse_disable_basic_rom_console();
+#endif
+#if CONFIG_SECURE_DISABLE_ROM_DL_MODE
+    esp_efuse_disable_rom_download_mode();
+#endif
+
     rtc_gpio_force_hold_dis_all();
     esp_vfs_dev_uart_register();
     esp_reent_init(_GLOBAL_REENT);
@@ -368,20 +385,26 @@ void start_cpu0_default(void)
 #endif
     esp_timer_init();
     esp_set_time_from_rtc();
-#if CONFIG_ESP32_APPTRACE_ENABLE
+#if CONFIG_APPTRACE_ENABLE
     err = esp_apptrace_init();
     assert(err == ESP_OK && "Failed to init apptrace module on PRO CPU!");
 #endif
 #if CONFIG_SYSVIEW_ENABLE
     SEGGER_SYSVIEW_Conf();
 #endif
-#if CONFIG_ESP32_DEBUG_STUBS_ENABLE
+#if CONFIG_ESP_DEBUG_STUBS_ENABLE
     esp_dbg_stubs_init();
 #endif
     err = esp_pthread_init();
     assert(err == ESP_OK && "Failed to init pthread module!");
 
     do_global_ctors();
+
+#ifdef CONFIG_COMPILER_CXX_EXCEPTIONS
+    ESP_EARLY_LOGD(TAG, "Setting C++ exception workarounds.");
+    _Unwind_SetEnableExceptionFdeSorting(0);
+#endif // CONFIG_COMPILER_CXX_EXCEPTIONS
+
 #if CONFIG_ESP_INT_WDT
     esp_int_wdt_init();
     //Initialize the interrupt watch dog for CPU0.
@@ -396,6 +419,41 @@ void start_cpu0_default(void)
 #ifndef CONFIG_FREERTOS_UNICORE
     esp_dport_access_int_init();
 #endif
+
+    bootloader_flash_update_id();
+    // Read the application binary image header. This will also decrypt the header if the image is encrypted.
+    __attribute__((unused)) esp_image_header_t fhdr = {0};
+#ifdef CONFIG_APP_BUILD_TYPE_ELF_RAM
+    fhdr.spi_mode = ESP_IMAGE_SPI_MODE_DIO;
+    fhdr.spi_speed = ESP_IMAGE_SPI_SPEED_40M;
+    fhdr.spi_size = ESP_IMAGE_FLASH_SIZE_4MB;
+
+    extern void esp_rom_spiflash_attach(uint32_t, bool);
+    esp_rom_spiflash_attach(ets_efuse_get_spiconfig(), false);
+    esp_rom_spiflash_unlock();
+#else
+    // This assumes that DROM is the first segment in the application binary, i.e. that we can read
+    // the binary header through cache by accessing SOC_DROM_LOW address.
+    memcpy(&fhdr, (void*) SOC_DROM_LOW, sizeof(fhdr));
+#endif // CONFIG_APP_BUILD_TYPE_ELF_RAM
+
+#if !CONFIG_SPIRAM_BOOT_INIT
+    // If psram is uninitialized, we need to improve some flash configuration.
+    bootloader_flash_clock_config(&fhdr);
+    bootloader_flash_gpio_config(&fhdr);
+    bootloader_flash_dummy_config(&fhdr);
+    bootloader_flash_cs_timing_config();
+#endif //!CONFIG_SPIRAM_BOOT_INIT
+
+#if CONFIG_SPI_FLASH_SIZE_OVERRIDE
+    int app_flash_size = esp_image_get_flash_size(fhdr.spi_size);
+    if (app_flash_size < 1 * 1024 * 1024) {
+        ESP_LOGE(TAG, "Invalid flash size in app image header.");
+        abort();
+    }
+    bootloader_flash_update_size(app_flash_size);
+#endif //CONFIG_SPI_FLASH_SIZE_OVERRIDE
+
     spi_flash_init();
     /* init default OS-aware flash access critical section */
     spi_flash_guard_set(&g_flash_guard_default_ops);
@@ -418,30 +476,11 @@ void start_cpu0_default(void)
 
 #if CONFIG_ESP32_ENABLE_COREDUMP
     esp_core_dump_init();
-    size_t core_data_sz = 0;
-    size_t core_data_addr = 0;
-    if (esp_core_dump_image_get(&core_data_addr, &core_data_sz) == ESP_OK && core_data_sz > 0) {
-        ESP_LOGI(TAG, "Found core dump %d bytes in flash @ 0x%x", core_data_sz, core_data_addr);
-    }
 #endif
 
 #if CONFIG_ESP32_WIFI_SW_COEXIST_ENABLE
     esp_coex_adapter_register(&g_coex_adapter_funcs);
     coex_pre_init();
-#endif
-
-    bootloader_flash_update_id();
-#if !CONFIG_SPIRAM_BOOT_INIT
-    // Read the application binary image header. This will also decrypt the header if the image is encrypted.
-    esp_image_header_t fhdr = {0};
-    // This assumes that DROM is the first segment in the application binary, i.e. that we can read
-    // the binary header through cache by accessing SOC_DROM_LOW address.
-    memcpy(&fhdr, (void*) SOC_DROM_LOW, sizeof(fhdr));
-    // If psram is uninitialized, we need to improve some flash configuration.
-    bootloader_flash_clock_config(&fhdr);
-    bootloader_flash_gpio_config(&fhdr);
-    bootloader_flash_dummy_config(&fhdr);
-    bootloader_flash_cs_timing_config();
 #endif
 
     portBASE_TYPE res = xTaskCreatePinnedToCore(&main_task, "main",
@@ -463,7 +502,7 @@ void start_cpu1_default(void)
 #if CONFIG_ESP32_TRAX_TWOBANKS
     trax_start_trace(TRAX_DOWNCOUNT_WORDS);
 #endif
-#if CONFIG_ESP32_APPTRACE_ENABLE
+#if CONFIG_APPTRACE_ENABLE
     esp_err_t err = esp_apptrace_init();
     assert(err == ESP_OK && "Failed to init apptrace module on APP CPU!");
 #endif
@@ -484,7 +523,7 @@ void start_cpu1_default(void)
 #endif //!CONFIG_FREERTOS_UNICORE
 
 #ifdef CONFIG_COMPILER_CXX_EXCEPTIONS
-size_t __cxx_eh_arena_size_get()
+size_t __cxx_eh_arena_size_get(void)
 {
     return CONFIG_COMPILER_CXX_EXCEPTIONS_EMG_POOL_SIZE;
 }

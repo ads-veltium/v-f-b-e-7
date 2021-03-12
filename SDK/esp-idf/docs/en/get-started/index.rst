@@ -1,8 +1,10 @@
-﻿***********
+***********
 Get Started
 ***********
 
 :link_to_translation:`zh_CN:[中文]`
+
+.. Please keep README.md in sync with these instructions.
 
 This document is intended to help you set up the software development environment for the hardware based on the ESP32 chip by Espressif.
 
@@ -62,7 +64,7 @@ If you have one of ESP32 development boards listed below, you can click on the l
     ESP-WROVER-KIT <../hw-reference/get-started-wrover-kit>
     ESP32-PICO-KIT <../hw-reference/get-started-pico-kit>
     ESP32-Ethernet-Kit <../hw-reference/get-started-ethernet-kit>
-    
+
 
 .. _get-started-step-by-step:
 
@@ -107,7 +109,7 @@ Some tools need to be installed on the computer before proceeding to the next st
 +-------------------+-------------------+-------------------+
 | |windows-logo|    | |linux-logo|      | |macos-logo|      |
 +-------------------+-------------------+-------------------+
-| `Windows`_        | `Linux`_          | `Mac OS`_         |
+| `Windows`_        | `Linux`_          | `macOS`_          |
 +-------------------+-------------------+-------------------+
 
 .. |windows-logo| image:: ../../_static/windows-logo.png
@@ -121,7 +123,7 @@ Some tools need to be installed on the computer before proceeding to the next st
 
 .. _Windows: ../get-started/windows-setup.html
 .. _Linux: ../get-started/linux-setup.html
-.. _Mac OS: ../get-started/macos-setup.html
+.. _macOS: ../get-started/macos-setup.html
 
 .. _get-started-get-esp-idf:
 
@@ -175,6 +177,13 @@ If you want to install the tools without the help of ESP-IDF Tools Installer, op
     cd %userprofile%\esp\esp-idf
     install.bat
 
+or with Windows PowerShell
+
+.. code-block:: powershell
+
+    cd ~/esp/esp-idf
+    ./install.ps1
+
 Linux and macOS
 ~~~~~~~~~~~~~~~
 
@@ -188,7 +197,7 @@ Customizing the tools installation path
 
 The scripts introduced in this step install compilation tools required by ESP-IDF inside the user home directory: ``$HOME/.espressif`` on Linux and macOS, ``%USERPROFILE%\.espressif`` on Windows. If you wish to install the tools into a different directory, set the environment variable ``IDF_TOOLS_PATH`` before running the installation scripts. Make sure that your user has sufficient permissions to read and write this path.
 
-If changing the ``IDF_TOOLS_PATH``, make sure it is set to the same value every time the ``install.bat``/``install.sh`` and ``export.bat``/``export.sh`` scripts are executed.
+If changing the ``IDF_TOOLS_PATH``, make sure it is set to the same value every time the Install script (``install.bat``, ``install.ps1`` or ``install.sh``) and an Export script (``export.bat``, ``export.ps1`` or ``export.sh``) are executed.
 
 .. _get-started-set-up-env:
 
@@ -208,6 +217,12 @@ Alternatively, if you want to use ESP-IDF in an existing Command Prompt window, 
 
     %userprofile%\esp\esp-idf\export.bat
 
+or with Windows PowerShell
+
+.. code-block:: powershell
+
+    .$HOME/esp/esp-idf/export.ps1
+
 Linux and macOS
 ~~~~~~~~~~~~~~~
 
@@ -219,13 +234,19 @@ In the terminal where you are going to use ESP-IDF, run:
 
 Note the space between the leading dot and the path!
 
-You can also create an alias for the export script to your ``.profile`` or ``.bash_profile`` script. This way you can set up the environment in a new terminal window by typing ``get_idf``:
+If you plan to use esp-idf frequently, you can create an alias for executing ``export.sh``:
 
-.. code-block:: bash
+1.  Copy and paste the following command to your shell's profile (``.profile``, ``.bashrc``, ``.zprofile``, etc.)
 
-    alias get_idf='. $HOME/esp/esp-idf/export.sh'
+    .. code-block:: bash
 
-Note that it is not recommended to source ``export.sh`` from the profile script directly. Doing so activates IDF virtual environment in every terminal session (even in those where IDF is not needed), defeating the purpose of the virtual environment and likely affecting other software.
+        alias get_idf='. $HOME/esp/esp-idf/export.sh'
+
+2.  Refresh the configuration by restarting the terminal session or by running ``source [path to profile]``, for example, ``source ~/.bashrc``.
+
+Now you can run ``get_idf`` to set up or refresh the esp-idf environment in any terminal session.
+
+Technically, you can add ``export.sh`` to your shell's profile directly; however, it is not recommended. Doing so activates IDF virtual environment in every terminal session (including those where IDF is not needed), defeating the purpose of the virtual environment and likely affecting other software.
 
 .. _get-started-start-project:
 
@@ -312,14 +333,18 @@ If the previous steps have been done correctly, the following menu appears:
 
     Project configuration - Home window
 
+.. note::
+
+    The colors of the menu could be different in your terminal. You can change the appearance with the option
+    ``--style``. Please run ``idf.py menuconfig --help`` for further information.
+
 To navigate and use ``menuconfig``, press the following keys:
 
 * Arrow keys for navigation
 * ``Enter`` to go into a submenu
 * ``Esc`` to go up one level or exit
-* ``?`` to see a help screen. Enter key exits the help screen
+* ``?`` to see a help screen for menu or configuration item. Enter key exits the help screen
 * ``Space``, or ``Y`` and ``N`` keys to enable (Yes) and disable (No) configuration items with checkboxes "``[*]``"
-* ``?`` while highlighting a configuration item to display help about that item
 * ``/`` to find configuration items
 
 .. attention::
@@ -358,7 +383,6 @@ This command will compile the application and all ESP-IDF components, then it wi
    or run 'idf.py -p PORT flash'
 
 If there are no errors, the build will finish by generating the firmware binary .bin file.
-
 
 .. _get-started-flash:
 
@@ -413,7 +437,6 @@ For more information on idf.py arguments, see :ref:`idf.py`.
 If there are no issues by the end of the flash process, the module will be reset and the “hello_world” application will be running.
 
 .. (Not currently supported) If you'd like to use the Eclipse IDE instead of running ``idf.py``, check out the :doc:`Eclipse guide <eclipse-setup>`.
-
 
 .. _get-started-build-monitor:
 
@@ -485,9 +508,9 @@ You should update ESP-IDF from time to time, as newer versions fix bugs and prov
 
 Another solution is to update only what has changed. :ref:`The update procedure depends on the version of ESP-IDF you are using <updating>`.
 
-After updating ESP-IDF, execute ``install.sh`` (``install.bat`` on Windows) again, in case the new ESP-IDF version requires different versions of tools. See instructions at :ref:`get-started-set-up-tools`.
+After updating ESP-IDF, execute the Install script again, in case the new ESP-IDF version requires different versions of tools. See instructions at :ref:`get-started-set-up-tools`.
 
-Once the new tools are installed, update the environment using ``export.sh`` (``export.bat`` on Windows). See instructions at :ref:`get-started-set-up-env`.
+Once the new tools are installed, update the environment using the Export script. See instructions at :ref:`get-started-set-up-env`.
 
 Related Documents
 =================

@@ -37,6 +37,7 @@
 #include "coap_debug.h"
 #include "encode.h"
 #include "net.h"
+#include "coap_mutex.h"
 
 #ifdef WITH_LWIP
 # define fprintf(fd, ...) LWIP_PLATFORM_DIAG((__VA_ARGS__))
@@ -173,11 +174,13 @@ coap_print_addr(const struct coap_address_t *addr, unsigned char *buf, size_t le
   const void *addrptr = NULL;
   in_port_t port;
   unsigned char *p = buf;
+  size_t need_buf;
 
   switch (addr->addr.sa.sa_family) {
   case AF_INET:
     addrptr = &addr->addr.sin.sin_addr;
     port = ntohs(addr->addr.sin.sin_port);
+    need_buf = INET_ADDRSTRLEN;
     break;
   case AF_INET6:
     if (len < 7) /* do not proceed if buffer is even too short for [::]:0 */
@@ -187,6 +190,7 @@ coap_print_addr(const struct coap_address_t *addr, unsigned char *buf, size_t le
 
     addrptr = &addr->addr.sin6.sin6_addr;
     port = ntohs(addr->addr.sin6.sin6_port);
+    need_buf = INET6_ADDRSTRLEN;
 
     break;
   default:
@@ -195,7 +199,8 @@ coap_print_addr(const struct coap_address_t *addr, unsigned char *buf, size_t le
   }
 
   /* Cast needed for Windows, since it doesn't have the correct API signature. */
-  if (inet_ntop(addr->addr.sa.sa_family, addrptr, (char *)p, len) == 0) {
+  if (inet_ntop(addr->addr.sa.sa_family, addrptr, (char *)p,
+                min(len, need_buf)) == 0) {
     perror("coap_print_addr");
     return 0;
   }
@@ -291,7 +296,7 @@ msg_code_string(uint16_t c) {
   } else if (c >= 224 && c - 224 < (int)(sizeof(signals)/sizeof(const char *))) {
     return signals[c-224];
   } else {
-    snprintf(buf, sizeof(buf), "%u.%02u", c >> 5, c & 0x1f);
+    snprintf(buf, sizeof(buf), "%u.%02u", (c >> 5) & 0x7, c & 0x1f);
     return buf;
   }
 }
@@ -459,7 +464,14 @@ is_binary(int content_format) {
 
 void
 coap_show_pdu(coap_log_t level, const coap_pdu_t *pdu) {
+#if COAP_CONSTRAINED_STACK
+  static coap_mutex_t static_show_pdu_mutex = COAP_MUTEX_INITIALIZER;
+  static unsigned char buf[1024]; /* need some space for output creation */
+  static char outbuf[COAP_DEBUG_BUF_SIZE];
+#else /* ! COAP_CONSTRAINED_STACK */
   unsigned char buf[1024]; /* need some space for output creation */
+  char outbuf[COAP_DEBUG_BUF_SIZE];
+#endif /* ! COAP_CONSTRAINED_STACK */
   size_t buf_len = 0; /* takes the number of bytes written to buf */
   int encode = 0, have_options = 0, i;
   coap_opt_iterator_t opt_iter;
@@ -467,12 +479,15 @@ coap_show_pdu(coap_log_t level, const coap_pdu_t *pdu) {
   int content_format = -1;
   size_t data_len;
   unsigned char *data;
-  char outbuf[COAP_DEBUG_BUF_SIZE];
   int outbuflen = 0;
 
   /* Save time if not needed */
   if (level > coap_get_log_level())
     return;
+
+#if COAP_CONSTRAINED_STACK
+  coap_mutex_lock(&static_show_pdu_mutex);
+#endif /* COAP_CONSTRAINED_STACK */
 
   snprintf(outbuf, sizeof(outbuf), "v:%d t:%s c:%s i:%04x {",
           COAP_DEFAULT_VERSION, msg_type_string(pdu->type),
@@ -646,6 +661,10 @@ coap_show_pdu(coap_log_t level, const coap_pdu_t *pdu) {
   outbuflen = strlen(outbuf);
   snprintf(&outbuf[outbuflen], sizeof(outbuf)-outbuflen,  "\n");
   COAP_DO_SHOW_OUTPUT_LINE;
+
+#if COAP_CONSTRAINED_STACK
+  coap_mutex_unlock(&static_show_pdu_mutex);
+#endif /* COAP_CONSTRAINED_STACK */
 }
 
 void coap_show_tls_version(coap_log_t level)
@@ -750,16 +769,24 @@ coap_log_impl(coap_log_t level, const char *format, ...) {
     return;
 
   if (log_handler) {
-#if defined(WITH_CONTIKI) || defined(WITH_LWIP)
-    char message[128];
-#else
-    char message[8 + 1024 * 2]; /* O/H + Max packet payload size * 2 */
-#endif
+#if COAP_CONSTRAINED_STACK
+    static coap_mutex_t static_log_mutex = COAP_MUTEX_INITIALIZER;
+    static char message[COAP_DEBUG_BUF_SIZE];
+#else /* ! COAP_CONSTRAINED_STACK */
+    char message[COAP_DEBUG_BUF_SIZE];
+#endif /* ! COAP_CONSTRAINED_STACK */
     va_list ap;
     va_start(ap, format);
+#if COAP_CONSTRAINED_STACK
+  coap_mutex_lock(&static_log_mutex);
+#endif /* COAP_CONSTRAINED_STACK */
+
     vsnprintf( message, sizeof(message), format, ap);
     va_end(ap);
     log_handler(level, message);
+#if COAP_CONSTRAINED_STACK
+    coap_mutex_unlock(&static_log_mutex);
+#endif /* COAP_CONSTRAINED_STACK */
   } else {
     char timebuf[32];
     coap_tick_t now;

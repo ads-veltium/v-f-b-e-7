@@ -2,13 +2,11 @@
 #include <string.h>
 #include <ctype.h>
 #include <sys/random.h>
-
 #include "esp_log.h"
 #include "esp_transport.h"
 #include "esp_transport_tcp.h"
 #include "esp_transport_ws.h"
 #include "esp_transport_utils.h"
-#include "transport_strcasestr.h"
 #include "mbedtls/base64.h"
 #include "mbedtls/sha1.h"
 
@@ -16,11 +14,13 @@ static const char *TAG = "TRANSPORT_WS";
 
 #define DEFAULT_WS_BUFFER (1024)
 #define WS_FIN            0x80
+#define WS_OPCODE_CONT    0x00
 #define WS_OPCODE_TEXT    0x01
 #define WS_OPCODE_BINARY  0x02
 #define WS_OPCODE_CLOSE   0x08
 #define WS_OPCODE_PING    0x09
 #define WS_OPCODE_PONG    0x0a
+
 // Second byte
 #define WS_MASK           0x80
 #define WS_SIZE16         126
@@ -40,6 +40,8 @@ typedef struct {
     char *path;
     char *buffer;
     char *sub_protocol;
+    char *user_agent;
+    char *headers;
     ws_transport_frame_state_t frame_state;
     esp_transport_handle_t parent;
 } transport_ws_t;
@@ -83,7 +85,7 @@ static char *trimwhitespace(const char *str)
 
 static char *get_http_header(const char *buffer, const char *key)
 {
-    char *found = transport_strcasestr(buffer, key);
+    char *found = strcasestr(buffer, key);
     if (found) {
         found += strlen(key);
         char *found_end = strstr(found, "\r\n");
@@ -110,29 +112,42 @@ static int ws_connect(esp_transport_handle_t t, const char *host, int port, int 
     // Size of base64 coded string is equal '((input_size * 4) / 3) + (input_size / 96) + 6' including Z-term
     unsigned char client_key[28] = {0};
 
+    const char *user_agent_ptr = (ws->user_agent)?(ws->user_agent):"ESP32 Websocket Client";
+
     size_t outlen = 0;
     mbedtls_base64_encode(client_key, sizeof(client_key), &outlen, random_key, sizeof(random_key));
     int len = snprintf(ws->buffer, DEFAULT_WS_BUFFER,
                          "GET %s HTTP/1.1\r\n"
                          "Connection: Upgrade\r\n"
                          "Host: %s:%d\r\n"
+                         "User-Agent: %s\r\n"
                          "Upgrade: websocket\r\n"
                          "Sec-WebSocket-Version: 13\r\n"
-                         "Sec-WebSocket-Key: %s\r\n"
-                         "User-Agent: ESP32 Websocket Client\r\n",
+                         "Sec-WebSocket-Key: %s\r\n",
                          ws->path,
-                         host, port,
+                         host, port, user_agent_ptr,
                          client_key);
     if (len <= 0 || len >= DEFAULT_WS_BUFFER) {
         ESP_LOGE(TAG, "Error in request generation, %d", len);
         return -1;
     }
     if (ws->sub_protocol) {
+        ESP_LOGD(TAG, "sub_protocol: %s", ws->sub_protocol);
         int r = snprintf(ws->buffer + len, DEFAULT_WS_BUFFER - len, "Sec-WebSocket-Protocol: %s\r\n", ws->sub_protocol);
         len += r;
         if (r <= 0 || len >= DEFAULT_WS_BUFFER) {
             ESP_LOGE(TAG, "Error in request generation"
                           "(snprintf of subprotocol returned %d, desired request len: %d, buffer size: %d", r, len, DEFAULT_WS_BUFFER);
+            return -1;
+        }
+    }
+    if (ws->headers) {
+        ESP_LOGD(TAG, "headers: %s", ws->headers);
+        int r = snprintf(ws->buffer + len, DEFAULT_WS_BUFFER - len, "%s", ws->headers);
+        len += r;
+        if (r <= 0 || len >= DEFAULT_WS_BUFFER) {
+            ESP_LOGE(TAG, "Error in request generation"
+                          "(strncpy of headers returned %d, desired request len: %d, buffer size: %d", r, len, DEFAULT_WS_BUFFER);
             return -1;
         }
     }
@@ -397,6 +412,7 @@ static int ws_read(esp_transport_handle_t t, char *buffer, int len, int timeout_
     return rlen;
 }
 
+
 static int ws_poll_read(esp_transport_handle_t t, int timeout_ms)
 {
     transport_ws_t *ws = esp_transport_get_context_data(t);
@@ -421,6 +437,8 @@ static esp_err_t ws_destroy(esp_transport_handle_t t)
     free(ws->buffer);
     free(ws->path);
     free(ws->sub_protocol);
+    free(ws->user_agent);
+    free(ws->headers);
     free(ws);
     return 0;
 }
@@ -473,6 +491,46 @@ esp_err_t esp_transport_ws_set_subprotocol(esp_transport_handle_t t, const char 
     }
     ws->sub_protocol = strdup(sub_protocol);
     if (ws->sub_protocol == NULL) {
+        return ESP_ERR_NO_MEM;
+    }
+    return ESP_OK;
+}
+
+esp_err_t esp_transport_ws_set_user_agent(esp_transport_handle_t t, const char *user_agent)
+{
+    if (t == NULL) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    transport_ws_t *ws = esp_transport_get_context_data(t);
+    if (ws->user_agent) {
+        free(ws->user_agent);
+    }
+    if (user_agent == NULL) {
+        ws->user_agent = NULL;
+        return ESP_OK;
+    }
+    ws->user_agent = strdup(user_agent);
+    if (ws->user_agent == NULL) {
+        return ESP_ERR_NO_MEM;
+    }
+    return ESP_OK;
+}
+
+esp_err_t esp_transport_ws_set_headers(esp_transport_handle_t t, const char *headers)
+{
+    if (t == NULL) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    transport_ws_t *ws = esp_transport_get_context_data(t);
+    if (ws->headers) {
+        free(ws->headers);
+    }
+    if (headers == NULL) {
+        ws->headers = NULL;
+        return ESP_OK;
+    }
+    ws->headers = strdup(headers);
+    if (ws->headers == NULL) {
         return ESP_ERR_NO_MEM;
     }
     return ESP_OK;

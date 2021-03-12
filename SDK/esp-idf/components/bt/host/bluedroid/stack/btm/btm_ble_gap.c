@@ -910,6 +910,34 @@ void BTM_BleConfigLocalIcon(uint16_t icon)
     BTM_TRACE_ERROR("%s\n", __func__);
 #endif
 }
+
+/*******************************************************************************
+**
+** Function         BTM_BleConfigConnParams
+**
+** Description      This function is called to set the connection parameters
+**
+** Parameters       int_min:  minimum connection interval
+**                  int_max:  maximum connection interval
+**                  latency:  slave latency
+**                  timeout:  supervision timeout
+**
+*******************************************************************************/
+void BTM_BleConfigConnParams(uint16_t int_min, uint16_t int_max, uint16_t latency, uint16_t timeout)
+{
+#if (defined(GAP_INCLUDED) && GAP_INCLUDED == TRUE && GATTS_INCLUDED == TRUE)
+    tGAP_BLE_ATTR_VALUE p_value;
+
+    p_value.conn_param.int_min = int_min;
+    p_value.conn_param.int_max = int_max;
+    p_value.conn_param.latency = latency;
+    p_value.conn_param.sp_tout = timeout;
+    GAP_BleAttrDBUpdate(GATT_UUID_GAP_PREF_CONN_PARAM, &p_value);
+#else
+    BTM_TRACE_ERROR("%s\n", __func__);
+#endif
+}
+
 /*******************************************************************************
 **
 ** Function          BTM_BleMaxMultiAdvInstanceCount
@@ -2011,7 +2039,7 @@ UINT8 *BTM_CheckAdvData( UINT8 *p_adv, UINT8 type, UINT8 *p_length)
 **                     BTM_BLE_GENRAL_DISCOVERABLE
 **
 *******************************************************************************/
-UINT16 BTM_BleReadDiscoverability()
+UINT16 BTM_BleReadDiscoverability(void)
 {
     BTM_TRACE_API("%s\n", __FUNCTION__);
 
@@ -2028,7 +2056,7 @@ UINT16 BTM_BleReadDiscoverability()
 ** Returns          BTM_BLE_NON_CONNECTABLE or BTM_BLE_CONNECTABLE
 **
 *******************************************************************************/
-UINT16 BTM_BleReadConnectability()
+UINT16 BTM_BleReadConnectability(void)
 {
     BTM_TRACE_API ("%s\n", __FUNCTION__);
 
@@ -4423,5 +4451,28 @@ BOOLEAN btm_ble_topology_check(tBTM_BLE_STATE_MASK request_state_mask)
     return rt;
 }
 
+/*******************************************************************************
+ **
+ ** Function         BTM_Ble_Authorization
+ **
+ ** Description      This function is used to authorize a specified device
+ **
+ ** Returns          TRUE or FALSE
+ **
+ *******************************************************************************/
+BOOLEAN BTM_Ble_Authorization(BD_ADDR bd_addr, BOOLEAN authorize)
+{
+    if (bd_addr == NULL) {
+        BTM_TRACE_ERROR("bd_addr is NULL");
+        return FALSE;
+    }
+
+    if (btm_sec_dev_authorization(bd_addr, authorize)) {
+        return TRUE;
+    }
+
+    BTM_TRACE_ERROR("Authorization fail");
+    return FALSE;
+}
 
 #endif  /* BLE_INCLUDED */

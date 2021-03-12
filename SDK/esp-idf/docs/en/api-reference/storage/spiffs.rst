@@ -1,6 +1,8 @@
 SPIFFS Filesystem
 =================
 
+:link_to_translation:`zh_CN:[中文]`
+
 Overview
 --------
 
@@ -89,7 +91,7 @@ in CMake::
 
     spiffs_create_partition_image(my_spiffs_partition my_folder DEPENDS dep)
 
-+For an example, see :example:`examples/storage/spiffsgen>`.
+For an example, see :example:`storage/spiffsgen`.
 
 
 mkspiffs

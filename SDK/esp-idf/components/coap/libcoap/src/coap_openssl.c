@@ -504,6 +504,7 @@ void *coap_dtls_new_context(struct coap_context_t *coap_context) {
     SSL_CTX_set_app_data(context->dtls.ctx, &context->dtls);
     SSL_CTX_set_read_ahead(context->dtls.ctx, 1);
     SSL_CTX_set_cipher_list(context->dtls.ctx, "TLSv1.2:TLSv1.0");
+    memset(cookie_secret, 0, sizeof(cookie_secret));
     if (!RAND_bytes(cookie_secret, (int)sizeof(cookie_secret))) {
       if (dtls_log_level >= LOG_WARNING)
         coap_log(LOG_WARNING,
@@ -1322,9 +1323,9 @@ tls_client_hello_call_back(SSL *ssl,
                           int *al,
                           void *arg UNUSED
 ) {
-  coap_session_t *session = (coap_session_t *)SSL_get_app_data(ssl);
-  coap_openssl_context_t *dtls_context = (coap_openssl_context_t *)session->context->dtls_context;
-  coap_dtls_pki_t *setup_data = &dtls_context->setup_data;
+  coap_session_t *session;
+  coap_openssl_context_t *dtls_context;
+  coap_dtls_pki_t *setup_data;
   int psk_requested = 0;
   const unsigned char *out;
   size_t outlen;
@@ -1333,11 +1334,17 @@ tls_client_hello_call_back(SSL *ssl,
     *al = SSL_AD_INTERNAL_ERROR;
     return SSL_CLIENT_HELLO_ERROR;
   }
+  session = (coap_session_t *)SSL_get_app_data(ssl);
+  assert(session != NULL);
+  assert(session->context != NULL);
+  assert(session->context->dtls_context != NULL);
+  dtls_context = (coap_openssl_context_t *)session->context->dtls_context;
+  setup_data = &dtls_context->setup_data;
 
   /*
    * See if PSK being requested
    */
-  if (session && session->context->psk_key && session->context->psk_key_len) {
+  if (session->context->psk_key && session->context->psk_key_len) {
     int len = SSL_client_hello_get0_ciphers(ssl, &out);
     STACK_OF(SSL_CIPHER) *peer_ciphers = NULL;
     STACK_OF(SSL_CIPHER) *scsvc = NULL;
@@ -1880,7 +1887,7 @@ coap_tick_t coap_dtls_get_context_timeout(void *dtls_context) {
   return 0;
 }
 
-coap_tick_t coap_dtls_get_timeout(coap_session_t *session) {
+coap_tick_t coap_dtls_get_timeout(coap_session_t *session, coap_tick_t now UNUSED) {
   SSL *ssl = (SSL *)session->tls;
   coap_ssl_data *ssl_data;
 

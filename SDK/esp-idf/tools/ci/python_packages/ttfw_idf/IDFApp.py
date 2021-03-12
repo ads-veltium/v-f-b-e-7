@@ -78,7 +78,9 @@ class Artifacts(object):
         for artifact_info in artifact_index:
             match_result = True
             if app_path:
-                match_result = app_path in artifact_info["app_dir"]
+                # We use endswith here to avoid issue like:
+                # examples_protocols_mqtt_ws but return a examples_protocols_mqtt_wss failure
+                match_result = artifact_info["app_dir"].endswith(app_path)
             if config_name:
                 match_result = match_result and config_name == artifact_info["config"]
             if target:
@@ -249,7 +251,7 @@ class IDFApp(App.BaseApp):
         flash_settings["encrypt"] = "CONFIG_SECURE_FLASH_ENCRYPTION_MODE_DEVELOPMENT" in sdkconfig_dict
 
         # make file offsets into integers, make paths absolute
-        flash_files = [(int(offs, 0), os.path.join(self.binary_path, path.strip())) for (offs, path) in flash_files]
+        flash_files = [(int(offs, 0), os.path.join(self.binary_path, file_path.strip())) for (offs, file_path) in flash_files]
 
         return flash_files, flash_settings
 
@@ -367,6 +369,34 @@ class Example(IDFApp):
                 raise OSError("Failed to find example binary")
 
 
+class LoadableElfExample(Example):
+    def __init__(self, app_path, app_files, config_name=None, target=None):
+        # add arg `app_files` for loadable elf example.
+        # Such examples only build elf files, so it doesn't generate flasher_args.json.
+        # So we can't get app files from config file. Test case should pass it to application.
+        super(IDFApp, self).__init__(app_path)
+        self.app_files = app_files
+        self.config_name = config_name
+        self.target = target
+        self.idf_path = self.get_sdk_path()
+        self.binary_path = self.get_binary_path(app_path, config_name, target)
+        self.elf_file = self._get_elf_file_path(self.binary_path)
+        assert os.path.exists(self.binary_path)
+
+    def get_binary_path(self, app_path, config_name=None, target=None):
+        path = self._try_get_binary_from_local_fs(app_path, config_name, target)
+        if path:
+            return path
+        else:
+            artifacts = Artifacts(self.idf_path, CIAssignExampleTest.ARTIFACT_INDEX_FILE,
+                                  app_path, config_name, target)
+            path = artifacts.download_artifact_files(self.app_files)
+            if path:
+                return os.path.join(self.idf_path, path)
+            else:
+                raise OSError("Failed to find example binary")
+
+
 class UT(IDFApp):
     def get_binary_path(self, app_path, config_name=None, target=None):
         if not config_name:
@@ -375,7 +405,7 @@ class UT(IDFApp):
         path = os.path.join(self.idf_path, app_path)
         default_build_path = os.path.join(path, "build")
         if os.path.exists(default_build_path):
-            return path
+            return default_build_path
 
         # first try to get from build folder of unit-test-app
         path = os.path.join(self.idf_path, "tools", "unit-test-app", "build")

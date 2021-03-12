@@ -92,7 +92,7 @@ struct ble_ll_scan_params
 #define BLE_LL_AUX_INCOMPLETE_BIT       0x02
 #define BLE_LL_AUX_INCOMPLETE_ERR_BIT   0x04
 #define BLE_LL_AUX_HAS_ADDRA            0x08
-#define BLE_LL_AUX_IGNORE_BIT           0x10
+#define BLE_LL_SENT_EVENT_TO_HOST       0x10
 #define BLE_LL_AUX_HAS_DIR_ADDRA        0x20
 #define BLE_LL_AUX_TRUNCATED_SENT       0x40
 #define BLE_LL_AUX_HAS_ADI              0x80
@@ -121,6 +121,16 @@ struct ble_ll_aux_data {
     struct ble_ll_ext_adv_report *evt;
 };
 
+struct ble_ll_scan_pdu_data {
+    uint8_t hdr_byte;
+    /* ScanA for SCAN_REQ and InitA for CONNECT_IND */
+    union {
+        uint8_t scana[BLE_DEV_ADDR_LEN];
+        uint8_t inita[BLE_DEV_ADDR_LEN];
+    };
+    uint8_t adva[BLE_DEV_ADDR_LEN];
+};
+
 struct ble_ll_scan_sm
 {
     uint8_t scan_enabled;
@@ -131,18 +141,19 @@ struct ble_ll_scan_sm
     uint8_t scan_rsp_cons_ok;
     int8_t scan_rpa_index;
     uint8_t scan_peer_rpa[BLE_DEV_ADDR_LEN];
-#if (MYNEWT_VAL(BLE_LL_CFG_FEAT_LL_PRIVACY) == 1)
+#if MYNEWT_VAL(BLE_LL_CFG_FEAT_LL_PRIVACY)
     ble_npl_time_t scan_nrpa_timer;
     uint8_t scan_nrpa[BLE_DEV_ADDR_LEN];
 #endif
+    struct ble_ll_scan_pdu_data pdu_data;
 
     /* XXX: Shall we count backoff per phy? */
     uint16_t upper_limit;
     uint16_t backoff_count;
     uint32_t scan_win_start_time;
-    struct os_mbuf *scan_req_pdu;
     struct ble_npl_event scan_sched_ev;
     struct hal_timer scan_timer;
+    struct ble_npl_event scan_interrupted_ev;
 
 #if MYNEWT_VAL(BLE_LL_CFG_FEAT_LL_EXT_ADV)
     struct hal_timer duration_timer;
@@ -206,8 +217,8 @@ struct hci_create_conn;
 int ble_ll_scan_initiator_start(struct hci_create_conn *hcc,
                                 struct ble_ll_scan_sm **sm);
 
-/* Returns the PDU allocated by the scanner */
-struct os_mbuf *ble_ll_scan_get_pdu(void);
+/* Returns storage for PDU data (for SCAN_REQ or CONNECT_IND) */
+struct ble_ll_scan_pdu_data *ble_ll_scan_get_pdu_data(void);
 
 /* Called to set the resolvable private address of the last connected peer */
 void ble_ll_scan_set_peer_rpa(uint8_t *rpa);
@@ -226,6 +237,9 @@ void ble_ll_scan_chk_resume(void);
 
 /* Called when wait for response timer expires in scanning mode */
 void ble_ll_scan_wfr_timer_exp(void);
+
+/* Called when scan could be interrupted  */
+void ble_ll_scan_interrupted(struct ble_ll_scan_sm *scansm);
 
 int ble_ll_scan_adv_decode_addr(uint8_t pdu_type, uint8_t *rxbuf,
                                 struct ble_mbuf_hdr *ble_hdr,
@@ -250,13 +264,13 @@ int ble_ll_scan_parse_ext_hdr(struct os_mbuf *om,
                               struct ble_mbuf_hdr *ble_hdr,
                               struct ble_ll_ext_adv_report *parsed_evt);
 
-void ble_ll_scan_aux_data_ref(struct ble_ll_aux_data *aux_scan);
-int ble_ll_scan_aux_data_unref(struct ble_ll_aux_data *aux_scan);
+struct ble_ll_aux_data *ble_ll_scan_aux_data_ref(struct ble_ll_aux_data *aux_scan);
+void ble_ll_scan_aux_data_unref(struct ble_ll_aux_data *aux_scan);
+void ble_ll_scan_end_adv_evt(struct ble_ll_aux_data *aux_data);
 #endif
 
 /* Called to clean up current aux data */
 void ble_ll_scan_clean_cur_aux_data(void);
-void ble_ll_scan_end_adv_evt(struct ble_ll_aux_data *aux_data);
 
 #ifdef __cplusplus
 }

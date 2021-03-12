@@ -48,7 +48,11 @@ static void modbus_slave_task(void *pvParameters)
         // Check if stack started then poll for data
         if (status & MB_EVENT_STACK_STARTED) {
             (void)eMBPoll(); // allow stack to process data
-            (void)xMBPortSerialTxPoll(); // Send response buffer if ready
+            // Send response buffer
+            BOOL xSentState = xMBPortSerialTxPoll();
+            if (xSentState) {
+                (void)xMBPortEventPost( EV_FRAME_SENT );
+            }
         }
     }
 }
@@ -71,7 +75,7 @@ static esp_err_t mbc_serial_slave_setup(void* comm_info)
                 (uint32_t)comm_settings->slave_addr);
     MB_SLAVE_CHECK((comm_settings->port < UART_NUM_MAX), ESP_ERR_INVALID_ARG,
                 "mb wrong port to set = (0x%x).", (uint32_t)comm_settings->port);
-    MB_SLAVE_CHECK((comm_settings->parity <= UART_PARITY_EVEN), ESP_ERR_INVALID_ARG,
+    MB_SLAVE_CHECK((comm_settings->parity <= UART_PARITY_ODD), ESP_ERR_INVALID_ARG,
                 "mb wrong parity option = (0x%x).", (uint32_t)comm_settings->parity);
 
     // Set communication options of the controller
@@ -87,18 +91,17 @@ static esp_err_t mbc_serial_slave_start(void)
                     "Slave interface is not correctly initialized.");
     mb_slave_options_t* mbs_opts = &mbs_interface_ptr->opts;
     eMBErrorCode status = MB_EIO;
+    const mb_communication_info_t* comm_info = (mb_communication_info_t*)&mbs_opts->mbs_comm;
+
     // Initialize Modbus stack using mbcontroller parameters
-    status = eMBInit((eMBMode)mbs_opts->mbs_comm.mode,
-                         (UCHAR)mbs_opts->mbs_comm.slave_addr,
-                         (UCHAR)mbs_opts->mbs_comm.port,
-                         (ULONG)mbs_opts->mbs_comm.baudrate,
-                         (eMBParity)mbs_opts->mbs_comm.parity);
+    status = eMBInit((eMBMode)comm_info->mode,
+                         (UCHAR)comm_info->slave_addr,
+                         (UCHAR)comm_info->port,
+                         (ULONG)comm_info->baudrate,
+                         MB_PORT_PARITY_GET(comm_info->parity));
+
     MB_SLAVE_CHECK((status == MB_ENOERR), ESP_ERR_INVALID_STATE,
             "mb stack initialization failure, eMBInit() returns (0x%x).", status);
-#ifdef CONFIG_FMB_CONTROLLER_SLAVE_ID_SUPPORT
-    status = eMBSetSlaveID(MB_SLAVE_ID_SHORT, TRUE, (UCHAR*)mb_slave_id, sizeof(mb_slave_id));
-    MB_SLAVE_CHECK((status == MB_ENOERR), ESP_ERR_INVALID_STATE, "mb stack set slave ID failure.");
-#endif
     status = eMBEnable();
     MB_SLAVE_CHECK((status == MB_ENOERR), ESP_ERR_INVALID_STATE,
             "mb stack set slave ID failure, eMBEnable() returned (0x%x).", (uint32_t)status);
@@ -133,7 +136,7 @@ static esp_err_t mbc_serial_slave_destroy(void)
     MB_SLAVE_CHECK((mb_error == MB_ENOERR), ESP_ERR_INVALID_STATE,
             "mb stack close failure returned (0x%x).", (uint32_t)mb_error);
     free(mbs_interface_ptr);
-
+    mbs_interface_ptr = NULL;
     return ESP_OK;
 }
 
@@ -156,7 +159,7 @@ esp_err_t mbc_serial_slave_set_descriptor(const mb_register_area_descriptor_t de
 }
 
 // The helper function to get time stamp in microseconds
-static uint64_t get_time_stamp()
+static uint64_t get_time_stamp(void)
 {
     uint64_t time_stamp = esp_timer_get_time();
     return time_stamp;

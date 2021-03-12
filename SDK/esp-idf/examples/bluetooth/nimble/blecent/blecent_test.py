@@ -45,7 +45,7 @@ def test_example_app_ble_central(env, extra_data):
     subprocess.check_output(['rm','-rf','/var/lib/bluetooth/*'])
     subprocess.check_output(['hciconfig','hci0','reset'])
     # Acquire DUT
-    dut = env.get_dut("blecent", "examples/bluetooth/nimble/blecent")
+    dut = env.get_dut("blecent", "examples/bluetooth/nimble/blecent", dut_class=ttfw_idf.ESP32DUT)
 
     # Get binary file
     binary_file = os.path.join(dut.app.binary_path, "blecent.bin")
@@ -87,21 +87,21 @@ def test_example_app_ble_central(env, extra_data):
     ble_client_obj.disconnect()
 
     # Check dut responses
-    dut.expect("Connection established", timeout=30)
+    dut.expect("Connection established", timeout=60)
 
-    dut.expect("Service discovery complete; status=0", timeout=30)
+    dut.expect("Service discovery complete; status=0", timeout=60)
     print("Service discovery passed\n\tService Discovery Status: 0")
 
-    dut.expect("GATT procedure initiated: read;", timeout=30)
-    dut.expect("Read complete; status=0", timeout=30)
+    dut.expect("GATT procedure initiated: read;", timeout=60)
+    dut.expect("Read complete; status=0", timeout=60)
     print("Read passed\n\tSupportedNewAlertCategoryCharacteristic\n\tRead Status: 0")
 
-    dut.expect("GATT procedure initiated: write;", timeout=30)
-    dut.expect("Write complete; status=0", timeout=30)
+    dut.expect("GATT procedure initiated: write;", timeout=60)
+    dut.expect("Write complete; status=0", timeout=60)
     print("Write passed\n\tAlertNotificationControlPointCharacteristic\n\tWrite Status: 0")
 
-    dut.expect("GATT procedure initiated: write;", timeout=30)
-    dut.expect("Subscribe complete; status=0", timeout=30)
+    dut.expect("GATT procedure initiated: write;", timeout=60)
+    dut.expect("Subscribe complete; status=0", timeout=60)
     print("Subscribe passed\n\tClientCharacteristicConfigurationDescriptor\n\tSubscribe Status: 0")
 
 

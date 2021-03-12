@@ -189,7 +189,7 @@ static int wpa3_parse_sae_commit(u8 *buf, u32 len, u16 status)
 static int wpa3_parse_sae_confirm(u8 *buf, u32 len)
 {
     if (g_sae_data.state != SAE_CONFIRMED) {
-        wpa_printf(MSG_ERROR, "wpa3: failed to parse SAE commit in state(%d)!",
+        wpa_printf(MSG_ERROR, "wpa3: failed to parse SAE confirm in state(%d)!",
                    g_sae_data.state);
         return ESP_FAIL;
     }

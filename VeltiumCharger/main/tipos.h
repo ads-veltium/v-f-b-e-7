@@ -168,6 +168,7 @@ typedef struct{
 typedef struct{
 	bool ON;
 	bool Auto;
+	bool Alone;
 
 	IPAddress IP1;
 	IPAddress IP2;

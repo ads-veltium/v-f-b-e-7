@@ -1,7 +1,7 @@
 /*
  *  Multi-precision integer library
  *
- *  Copyright (C) 2006-2015, ARM Limited, All Rights Reserved
+ *  Copyright The Mbed TLS Contributors
  *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
  *
  *  This file is provided under the Apache License 2.0, or the
@@ -42,8 +42,6 @@
  *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  *
  *  **********
- *
- *  This file is part of mbed TLS (https://tls.mbed.org)
  */
 
 /*
@@ -1368,7 +1366,10 @@ int mbedtls_mpi_sub_abs( mbedtls_mpi *X, const mbedtls_mpi *A, const mbedtls_mpi
         /* If we ran out of space for the carry, it means that the result
          * is negative. */
         if( n == X->n )
-            return( MBEDTLS_ERR_MPI_NEGATIVE_VALUE );
+        {
+            ret = MBEDTLS_ERR_MPI_NEGATIVE_VALUE;
+            goto cleanup;
+        }
         --X->p[n];
     }
 
@@ -2057,7 +2058,7 @@ int mbedtls_mpi_exp_mod( mbedtls_mpi *X, const mbedtls_mpi *A,
     size_t i, j, nblimbs;
     size_t bufsize, nbits;
     mbedtls_mpi_uint ei, mm, state;
-    mbedtls_mpi RR, T, W[ 2 << MBEDTLS_MPI_WINDOW_SIZE ], Apos;
+    mbedtls_mpi RR, T, W[ 1 << MBEDTLS_MPI_WINDOW_SIZE ], Apos;
     int neg;
 
     MPI_VALIDATE_RET( X != NULL );
@@ -2070,6 +2071,10 @@ int mbedtls_mpi_exp_mod( mbedtls_mpi *X, const mbedtls_mpi *A,
 
     if( mbedtls_mpi_cmp_int( E, 0 ) < 0 )
         return( MBEDTLS_ERR_MPI_BAD_INPUT_DATA );
+
+    if( mbedtls_mpi_bitlen( E ) > MBEDTLS_MPI_MAX_BITS ||
+        mbedtls_mpi_bitlen( N ) > MBEDTLS_MPI_MAX_BITS )
+        return ( MBEDTLS_ERR_MPI_BAD_INPUT_DATA );
 
     /*
      * Init temps and window size
@@ -2348,7 +2353,7 @@ int mbedtls_mpi_fill_random( mbedtls_mpi *X, size_t size,
     MBEDTLS_MPI_CHK( mbedtls_mpi_lset( X, 0 ) );
 
     Xp = (unsigned char*) X->p;
-    f_rng( p_rng, Xp + overhead, size );
+    MBEDTLS_MPI_CHK( f_rng( p_rng, Xp + overhead, size ) );
 
     mpi_bigendian_to_host( X->p, limbs );
 

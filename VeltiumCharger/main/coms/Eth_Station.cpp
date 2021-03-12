@@ -1,7 +1,6 @@
 #include "Eth_Station.h"
-
-
-
+#include "esp_netif.h"
+#include "esp_eth_netif_glue.h"
 static const char *TAG = "Eth_Controller";
 bool eth_link_up     = false;
 bool eth_connected   = false;
@@ -74,30 +73,35 @@ void BuscarContador_Task(void *args){
     uint8 i = 100;
     uint8 Sup = 1, inf = 1 ;
     bool Sentido = 0;
-   
+    bool TopeInf = false;
+    bool TopeSup = false;
     i = ip4_addr4(&BaseAdress);
     ParametrosPing.Found = false;
     ParametrosPing.NextOne =true;
 
-    while(Sup != 255 && inf!=0){
+    while(!TopeSup || !TopeInf){
         if(ParametrosPing.NextOne){
-            if(Sentido){ //Pabajo
+            if(Sentido && !TopeInf){ //Pabajo
                 i = ip4_addr4(&ParametrosPing.BaseAdress) - inf > 1 ? ip4_addr4(&ParametrosPing.BaseAdress) - inf : 0;
                 if(i != 0 ){
                     inf++;
                     Sentido = false;
                 }
                 else{
+                    TopeInf = true;
+                    Sentido = false;
                     continue;
                 }
             }
-            else{ //Parriba
+            else if(!Sentido && !TopeSup){ //Parriba
                 i = ip4_addr4(&ParametrosPing.BaseAdress) + Sup < 255 ? ip4_addr4(&ParametrosPing.BaseAdress) + Sup : 255;
                 if(i != 255 ){
                     Sup++;
                     Sentido = true;
                 }
                 else{
+                    TopeSup = true;
+                    Sentido = true;
                     continue;
                 }
             }
@@ -110,7 +114,6 @@ void BuscarContador_Task(void *args){
             esp_ping_set_target(PING_TARGET_RCV_TIMEO, &ParametrosPing.ping_timeout, sizeof(uint32_t));
             esp_ping_set_target(PING_TARGET_DELAY_TIME, &ParametrosPing.ping_delay, sizeof(uint32_t));
             esp_ping_set_target(PING_TARGET_IP_ADDRESS, &BaseAdress, sizeof(uint32_t));
-            
             func(pingResults);
             ping_init();
             i++;
@@ -131,7 +134,7 @@ void BuscarContador_Task(void *args){
         }
         delay(20);
     }
-
+    Serial.println("No he encontrado ningun medidor");
     vTaskDelete(NULL);
 }
 
@@ -179,10 +182,14 @@ static void eth_event_handler(void *arg, esp_event_base_t event_base, int32_t ev
         break;
     case IP_EVENT_ETH_GOT_IP:{
         ip_event_got_ip_t *event = (ip_event_got_ip_t *) event_data;
-        const tcpip_adapter_ip_info_t *ip_info = &event->ip_info;
+        const esp_netif_ip_info_t *ip_info = &event->ip_info;
 
         Serial.println( "Ethernet Got IP Address");
         Serial.printf( "ETHIP: %d %d %d %d\n",IP2STR(&ip_info->ip));
+        Coms.ETH.IP1[0] =ip4_addr1(&ip_info->ip);
+            Coms.ETH.IP1[1] =ip4_addr2(&ip_info->ip);
+            Coms.ETH.IP1[2] =ip4_addr3(&ip_info->ip);
+            Coms.ETH.IP1[3] =ip4_addr4(&ip_info->ip);
 
         if(Coms.ETH.Puerto==1){
             Coms.ETH.IP1[0] =ip4_addr1(&ip_info->ip);
@@ -221,19 +228,35 @@ void initialize_ethernet(void)
 {
 
     tcpipInit();
+    
+    Coms.ETH.Alone = 1;
+    Coms.ETH.Auto  = 1;
+    esp_netif_config_t cfg = ESP_NETIF_DEFAULT_ETH();
+    esp_netif_t *eth_netif = esp_netif_new(&cfg);
+    ESP_ERROR_CHECK(esp_netif_dhcps_stop(eth_netif));
 
-    Coms.ETH.Auto = 1;
+    esp_netif_ip_info_t DHCP_Server_IP;
+    IP4_ADDR(&DHCP_Server_IP.ip, 192, 168, 1, 1);
+    IP4_ADDR(&DHCP_Server_IP.gw, 192, 168, 1, 1);
+    IP4_ADDR(&DHCP_Server_IP.netmask, 255, 255, 255, 0);
+    ESP_ERROR_CHECK(esp_netif_set_ip_info(eth_netif, &DHCP_Server_IP)); 
+    ESP_ERROR_CHECK(esp_netif_dhcps_start(eth_netif));
+
+    //Si fijamos una IP estatica:
     if(!Coms.ETH.Auto){
-        ESP_ERROR_CHECK(tcpip_adapter_dhcpc_stop(TCPIP_ADAPTER_IF_ETH));
-        tcpip_adapter_ip_info_t  info;
+        ESP_ERROR_CHECK(esp_netif_dhcpc_stop(eth_netif));
+        esp_netif_ip_info_t  info;
         memset(&info, 0, sizeof(info));
-        IP4_ADDR(&info.ip, 192, 168, 1, 20);
+        IP4_ADDR(&info.ip, 192, 168, 1, 5);
 	    IP4_ADDR(&info.gw, 192, 168, 1, 1);
 	    IP4_ADDR(&info.netmask, 255, 255, 255, 0);
-	    ESP_ERROR_CHECK(tcpip_adapter_set_ip_info(TCPIP_ADAPTER_IF_ETH, &info));  
+	    ESP_ERROR_CHECK(esp_netif_set_ip_info(eth_netif, &info));  
     }
- 
-    ESP_ERROR_CHECK(tcpip_adapter_set_default_eth_handlers());
+     
+
+    //Arrancar el servidor DHCP
+    esp_event_handler_register(ETH_EVENT, ETHERNET_EVENT_START, esp_netif_action_start, eth_netif);
+    esp_event_handler_register(ETH_EVENT, ETHERNET_EVENT_STOP, esp_netif_action_stop, eth_netif);
 
     ESP_ERROR_CHECK(esp_event_handler_register(ETH_EVENT, ESP_EVENT_ANY_ID, eth_event_handler, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_ETH_GOT_IP, eth_event_handler, NULL));
@@ -252,8 +275,9 @@ void initialize_ethernet(void)
     phy = esp_eth_phy_new_lan8720(&phy_config);
 
     esp_eth_config_t config = ETH_DEFAULT_CONFIG(mac, phy);
+    esp_eth_handle_t eth_handle = NULL;
     ESP_ERROR_CHECK(esp_eth_driver_install(&config, &s_eth_handle));
-
+    ESP_ERROR_CHECK(esp_netif_attach(eth_netif, esp_eth_new_netif_glue(s_eth_handle)));
     esp_eth_ioctl(s_eth_handle, ETH_CMD_S_PROMISCUOUS, (void *)true);
     ESP_ERROR_CHECK(esp_eth_start(s_eth_handle));
 

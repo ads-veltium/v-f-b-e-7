@@ -300,12 +300,10 @@ esp_err_t esp_http_client_set_username(esp_http_client_handle_t client, const ch
         ESP_LOGE(TAG, "client must not be NULL");
         return ESP_ERR_INVALID_ARG;
     }
-    if (username == NULL && client->connection_info.username != NULL) {
+    if (client->connection_info.username != NULL) {
         free(client->connection_info.username);
-        client->connection_info.username = NULL;
-    } else if (username != NULL) {
-        client->connection_info.username = strdup(username);
     }
+    client->connection_info.username = username ? strdup(username) : NULL;
     return ESP_OK;
 }
 
@@ -325,13 +323,21 @@ esp_err_t esp_http_client_set_password(esp_http_client_handle_t client, char *pa
         ESP_LOGE(TAG, "client must not be NULL");
         return ESP_ERR_INVALID_ARG;
     }
-    if (password == NULL && client->connection_info.password != NULL) {
+    if (client->connection_info.password != NULL) {
         memset(client->connection_info.password, 0, strlen(client->connection_info.password));
         free(client->connection_info.password);
-        client->connection_info.password = NULL;
-    } else if (password != NULL) {
-        client->connection_info.password = strdup(password);
     }
+    client->connection_info.password = password ? strdup(password) : NULL;
+    return ESP_OK;
+}
+
+esp_err_t esp_http_client_set_authtype(esp_http_client_handle_t client, esp_http_client_auth_type_t auth_type)
+{
+    if (client == NULL) {
+        ESP_LOGE(TAG, "client must not be NULL");
+        return ESP_ERR_INVALID_ARG;
+    }
+    client->connection_info.auth_type = auth_type;
     return ESP_OK;
 }
 
@@ -563,9 +569,11 @@ esp_http_client_handle_t esp_http_client_init(const esp_http_client_config_t *co
         goto error;
     }
 
+    const char *user_agent = config->user_agent == NULL ? DEFAULT_HTTP_USER_AGENT : config->user_agent;
+
     if (config->host != NULL && config->path != NULL) {
         _success = (
-            (esp_http_client_set_header(client, "User-Agent", DEFAULT_HTTP_USER_AGENT) == ESP_OK) &&
+            (esp_http_client_set_header(client, "User-Agent", user_agent) == ESP_OK) &&
             (esp_http_client_set_header(client, "Host", client->connection_info.host) == ESP_OK)
         );
 
@@ -576,7 +584,7 @@ esp_http_client_handle_t esp_http_client_init(const esp_http_client_config_t *co
     } else if (config->url != NULL) {
         _success = (
                     (esp_http_client_set_url(client, config->url) == ESP_OK) &&
-                    (esp_http_client_set_header(client, "User-Agent", DEFAULT_HTTP_USER_AGENT) == ESP_OK) &&
+                    (esp_http_client_set_header(client, "User-Agent", user_agent) == ESP_OK) &&
                     (esp_http_client_set_header(client, "Host", client->connection_info.host) == ESP_OK)
                 );
 
@@ -650,6 +658,9 @@ esp_err_t esp_http_client_set_redirection(esp_http_client_handle_t client)
 
 static esp_err_t esp_http_check_response(esp_http_client_handle_t client)
 {
+    if (client->response->status_code >= HttpStatus_Ok && client->response->status_code < HttpStatus_MultipleChoices) {
+        return ESP_OK;
+    }
     if (client->redirect_counter >= client->max_redirection_count || client->disable_auto_redirect) {
         ESP_LOGE(TAG, "Error, reach max_redirection_count count=%d", client->redirect_counter);
         return ESP_ERR_HTTP_MAX_REDIRECT;
@@ -657,6 +668,7 @@ static esp_err_t esp_http_check_response(esp_http_client_handle_t client)
     switch (client->response->status_code) {
         case HttpStatus_MovedPermanently:
         case HttpStatus_Found:
+        case HttpStatus_TemporaryRedirect:
             esp_http_client_set_redirection(client);
             client->redirect_counter ++;
             client->process_again = 1;
@@ -947,6 +959,7 @@ esp_err_t esp_http_client_perform(esp_http_client_handle_t client)
                 }
                 http_dispatch_event(client, HTTP_EVENT_ON_FINISH, NULL, 0);
 
+                client->response->buffer->raw_len = 0;
                 if (!http_should_keep_alive(client->parser)) {
                     ESP_LOGD(TAG, "Close connection");
                     esp_http_client_close(client);

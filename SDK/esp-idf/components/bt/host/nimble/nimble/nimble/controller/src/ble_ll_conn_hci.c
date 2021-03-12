@@ -330,7 +330,7 @@ skip_conn:
     }
 }
 
-#if (MYNEWT_VAL(BLE_LL_CFG_FEAT_LE_PING) == 1)
+#if MYNEWT_VAL(BLE_LL_CFG_FEAT_LE_PING)
 /**
  * Send a authenticated payload timeout event
  *
@@ -1018,6 +1018,7 @@ ble_ll_conn_create_cancel(ble_ll_hci_post_cmd_complete_cb *post_cmd_cb)
 {
     int rc;
     struct ble_ll_conn_sm *connsm;
+    os_sr_t sr;
 
     /*
      * If we receive this command and we have not got a connection
@@ -1025,6 +1026,7 @@ ble_ll_conn_create_cancel(ble_ll_hci_post_cmd_complete_cb *post_cmd_cb)
      * what happens if the connection has already been established. We
      * return disallowed as well
      */
+    OS_ENTER_CRITICAL(sr);
     connsm = g_ble_ll_conn_create_sm;
     if (connsm && (connsm->conn_state == BLE_LL_CONN_STATE_IDLE)) {
         /* stop scanning and end the connection event */
@@ -1039,6 +1041,7 @@ ble_ll_conn_create_cancel(ble_ll_hci_post_cmd_complete_cb *post_cmd_cb)
         /* If we are not attempting to create a connection*/
         rc = BLE_ERR_CMD_DISALLOWED;
     }
+    OS_EXIT_CRITICAL(sr);
 
     return rc;
 }
@@ -1245,7 +1248,7 @@ ble_ll_conn_hci_set_chan_class(uint8_t *cmdbuf)
     return rc;
 }
 
-#if (MYNEWT_VAL(BLE_LL_CFG_FEAT_DATA_LEN_EXT) == 1)
+#if MYNEWT_VAL(BLE_LL_CFG_FEAT_DATA_LEN_EXT)
 int
 ble_ll_conn_hci_set_data_len(uint8_t *cmdbuf, uint8_t *rspbuf, uint8_t *rsplen)
 {
@@ -1290,7 +1293,7 @@ done:
 }
 #endif
 
-#if (MYNEWT_VAL(BLE_LL_CFG_FEAT_LE_ENCRYPTION) == 1)
+#if MYNEWT_VAL(BLE_LL_CFG_FEAT_LE_ENCRYPTION)
 /**
  * LE start encrypt command
  *
@@ -1432,7 +1435,7 @@ ltk_key_cmd_complete:
 }
 #endif
 
-#if (MYNEWT_VAL(BLE_LL_CFG_FEAT_LE_PING) == 1)
+#if MYNEWT_VAL(BLE_LL_CFG_FEAT_LE_PING)
 /**
  * Read authenticated payload timeout (OGF=3, OCF==0x007B)
  *

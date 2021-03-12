@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef _ESP_EFUSE_MANAGER_H_
-#define _ESP_EFUSE_MANAGER_H_
+#pragma once
 
 #ifdef __cplusplus
 extern "C" {
@@ -22,31 +21,18 @@ extern "C" {
 #include <stdint.h>
 #include "esp_err.h"
 #include "esp_log.h"
+#include "sdkconfig.h"
+#if CONFIG_IDF_TARGET_ESP32
+#include "esp32/esp_efuse.h"
+#elif CONFIG_IDF_TARGET_ESP32S2BETA
+#include "esp32s2beta/esp_efuse.h"
+#endif
 
 #define ESP_ERR_EFUSE                              0x1600                     /*!< Base error code for efuse api. */
 #define ESP_OK_EFUSE_CNT                          (ESP_ERR_EFUSE + 0x01)      /*!< OK the required number of bits is set. */
 #define ESP_ERR_EFUSE_CNT_IS_FULL                 (ESP_ERR_EFUSE + 0x02)      /*!< Error field is full. */
 #define ESP_ERR_EFUSE_REPEATED_PROG               (ESP_ERR_EFUSE + 0x03)      /*!< Error repeated programming of programmed bits is strictly forbidden. */
 #define ESP_ERR_CODING                            (ESP_ERR_EFUSE + 0x04)      /*!< Error while a encoding operation. */
-
-/**
- * @brief Type of eFuse blocks
- */
-typedef enum {
-    EFUSE_BLK0 = 0,     /**< Number of eFuse block. Reserved. */
-    EFUSE_BLK1 = 1,     /**< Number of eFuse block. Used for Flash Encryption. If not using that Flash Encryption feature, they can be used for another purpose. */
-    EFUSE_BLK2 = 2,     /**< Number of eFuse block. Used for Secure Boot. If not using that Secure Boot feature, they can be used for another purpose. */
-    EFUSE_BLK3 = 3      /**< Number of eFuse block. Uses for the purpose of the user. */
-} esp_efuse_block_t;
-
-/**
- * @brief Type of coding scheme
- */
-typedef enum {
-    EFUSE_CODING_SCHEME_NONE    = 0,    /**< None */
-    EFUSE_CODING_SCHEME_3_4     = 1,    /**< 3/4 coding */
-    EFUSE_CODING_SCHEME_REPEAT  = 2,    /**< Repeat coding */
-} esp_efuse_coding_scheme_t;
 
 /**
 * @brief Structure eFuse field
@@ -74,6 +60,23 @@ typedef struct {
  *    - ESP_ERR_INVALID_ARG: Error in the passed arguments.
  */
 esp_err_t esp_efuse_read_field_blob(const esp_efuse_desc_t* field[], void* dst, size_t dst_size_bits);
+
+
+/**
+ * @brief Read a single bit eFuse field as a boolean value.
+ *
+ * @note The value must exist and must be a single bit wide. If there is any possibility of an error
+ * in the provided arguments, call esp_efuse_read_field_blob() and check the returned value instead.
+ *
+ * @note If assertions are enabled and the parameter is invalid, execution will abort
+ *
+ * @param[in]  field          A pointer to the structure describing the fields of efuse.
+ * @return
+ *    - true: The field parameter is valid and the bit is set.
+ *    - false: The bit is not set, or the parameter is invalid and assertions are disabled.
+ *
+ */
+bool esp_efuse_read_field_bit(const esp_efuse_desc_t *field[]);
 
 /**
  * @brief   Reads bits from EFUSE field and returns number of bits programmed as "1".
@@ -122,6 +125,23 @@ esp_err_t esp_efuse_write_field_blob(const esp_efuse_desc_t* field[], const void
  *    - ESP_ERR_EFUSE_CNT_IS_FULL: Not all requested cnt bits is set.
  */
 esp_err_t esp_efuse_write_field_cnt(const esp_efuse_desc_t* field[], size_t cnt);
+
+/**
+ * @brief Write a single bit eFuse field to 1
+ *
+ * For use with eFuse fields that are a single bit. This function will write the bit to value 1 if
+ * it is not already set, or does nothing if the bit is already set.
+ *
+ * This is equivalent to calling esp_efuse_write_field_cnt() with the cnt parameter equal to 1,
+ * except that it will return ESP_OK if the field is already set to 1.
+ *
+ * @param[in] field Pointer to the structure describing the efuse field.
+ *
+ * @return
+ * - ESP_OK: The operation was successfully completed, or the bit was already set to value 1.
+ * - ESP_ERR_INVALID_ARG: Error in the passed arugments, including if the efuse field is not 1 bit wide.
+ */
+esp_err_t esp_efuse_write_field_bit(const esp_efuse_desc_t* field[]);
 
 /**
  * @brief   Sets a write protection for the whole block.
@@ -287,19 +307,22 @@ void esp_efuse_reset(void);
  */
 void esp_efuse_disable_basic_rom_console(void);
 
-/* @brief Encode one or more sets of 6 byte sequences into
- * 8 bytes suitable for 3/4 Coding Scheme.
+/* @brief Disable ROM Download Mode via eFuse
  *
- * This function is only useful if the CODING_SCHEME efuse
- * is set to value 1 for 3/4 Coding Scheme.
+ * Permanently disables the ROM Download Mode feature. Once disabled, if the SoC is booted with
+ * strapping pins set for ROM Download Mode then an error is printed instead.
  *
- * @param[in] in_bytes Pointer to a sequence of bytes to encode for 3/4 Coding Scheme. Must have length in_bytes_len. After being written to hardware, these bytes will read back as little-endian words.
- * @param[out] out_words Pointer to array of words suitable for writing to efuse write registers. Array must contain 2 words (8 bytes) for every 6 bytes in in_bytes_len. Can be a pointer to efuse write registers.
- * @param in_bytes_len. Length of array pointed to by in_bytes, in bytes. Must be a multiple of 6.
+ * @note Not all SoCs support this option. An error will be returned if called on an ESP32
+ * with a silicon revision lower than 3, as these revisions do not support this option.
  *
- * @return ESP_ERR_INVALID_ARG if either pointer is null or in_bytes_len is not a multiple of 6. ESP_OK otherwise.
+ * @note If ROM Download Mode is already disabled, this function does nothing and returns success.
+ *
+ * @return
+ * - ESP_OK If the eFuse was successfully burned, or had already been burned.
+ * - ESP_ERR_NOT_SUPPORTED (ESP32 only) This SoC is not capable of disabling UART download mode
+ * - ESP_ERR_INVALID_STATE (ESP32 only) This eFuse is write protected and cannot be written
  */
-esp_err_t esp_efuse_apply_34_encoding(const uint8_t *in_bytes, uint32_t *out_words, size_t in_bytes_len);
+esp_err_t esp_efuse_disable_rom_download_mode(void);
 
 /* @brief Write random data to efuse key block write registers
  *
@@ -322,7 +345,7 @@ void esp_efuse_write_random_key(uint32_t blk_wdata0_reg);
 /* @brief Return secure_version from efuse field.
  * @return Secure version from efuse field
  */
-uint32_t esp_efuse_read_secure_version();
+uint32_t esp_efuse_read_secure_version(void);
 
 /* @brief Check secure_version from app and secure_version and from efuse field.
  *
@@ -355,6 +378,59 @@ esp_err_t esp_efuse_update_secure_version(uint32_t secure_version);
  */
 void esp_efuse_init(uint32_t offset, uint32_t size);
 
+/* @brief Set the batch mode of writing fields.
+ *
+ * This mode allows you to write the fields in the batch mode.
+ * If this mode is enabled, esp_efuse_batch_write_commit() must be called
+ * to actually burn any written efuses.
+ * In this mode, reading efuse is not possible.
+ * This mode should be used when burning several efuses at one time.
+ *
+ * \code{c}
+ * // Example of using the batch writing mode.
+ *
+ * // set the batch writing mode
+ * esp_efuse_batch_write_begin();
+ *
+ * // use any writing functions as usual
+ * esp_efuse_write_field_blob(ESP_EFUSE_...);
+ * esp_efuse_write_field_cnt(ESP_EFUSE_...);
+ * esp_efuse_set_write_protect(EFUSE_BLKx);
+ * esp_efuse_write_reg(EFUSE_BLKx, ...);
+ * esp_efuse_write_block(EFUSE_BLKx, ...);
+ * ...
+ *
+ * // Write all of these fields to the efuse registers
+ * esp_efuse_batch_write_commit();
+ *
+ * \endcode
+ *
+ * @return
+ *          - ESP_OK: Successful.
+ */
+esp_err_t esp_efuse_batch_write_begin(void);
+
+/* @brief Reset the batch mode of writing fields.
+ *
+ * It will reset the batch writing mode and any written changes.
+ *
+ * @return
+ *          - ESP_OK: Successful.
+ *          - ESP_ERR_INVALID_STATE: Tha batch mode was not set.
+ */
+esp_err_t esp_efuse_batch_write_cancel(void);
+
+/* @brief Writes all prepared data for the batch mode.
+ *
+ * Must be called to ensure changes are written to the efuse registers.
+ * After this the batch writing mode will be reset.
+ *
+ * @return
+ *          - ESP_OK: Successful.
+ *          - ESP_ERR_INVALID_STATE: The deferred writing mode was not set.
+ */
+esp_err_t esp_efuse_batch_write_commit(void);
+
 inline static bool soc_has_cache_lock_bug(void)
 {
     return (esp_efuse_get_chip_ver() == 3);
@@ -363,5 +439,3 @@ inline static bool soc_has_cache_lock_bug(void)
 #ifdef __cplusplus
 }
 #endif
-
-#endif // _ESP_EFUSE_MANAGER_H_

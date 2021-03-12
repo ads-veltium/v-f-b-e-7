@@ -88,6 +88,7 @@
 #include "esp_wifi.h"
 #include "esp_wifi_types.h"
 #include "esp_mesh_internal.h"
+#include "lwip/ip_addr.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -124,6 +125,10 @@ extern "C" {
 #define ESP_ERR_MESH_DISCARD_DUPLICATE    (ESP_ERR_MESH_BASE + 20)   /**< discard the packet due to the duplicate sequence number */
 #define ESP_ERR_MESH_DISCARD              (ESP_ERR_MESH_BASE + 21)   /**< discard the packet */
 #define ESP_ERR_MESH_VOTING               (ESP_ERR_MESH_BASE + 22)   /**< vote in progress */
+#define ESP_ERR_MESH_XMIT                 (ESP_ERR_MESH_BASE + 23)   /**< XMIT */
+#define ESP_ERR_MESH_QUEUE_READ           (ESP_ERR_MESH_BASE + 24)   /**< error in reading queue */
+#define ESP_ERR_MESH_RECV_RELEASE         (ESP_ERR_MESH_BASE + 26)   /**< release esp_mesh_recv_toDS */
+
 
 /**
  * @brief Flags bitmap for esp_mesh_send() and esp_mesh_recv()
@@ -204,6 +209,7 @@ typedef enum {
     MESH_ROOT,    /**< the only sink of the mesh network. Has the ability to access external IP network */
     MESH_NODE,    /**< intermediate device. Has the ability to forward packets over the mesh network */
     MESH_LEAF,    /**< has no forwarding ability */
+    MESH_STA,     /**< connect to router with a standlone Wi-Fi station mode, no network expansion capability */
 } mesh_type_t;
 
 /**
@@ -281,7 +287,7 @@ typedef struct {
  * @brief Parent connected information
  */
 typedef struct {
-    system_event_sta_connected_t connected; /**< parent information, same as Wi-Fi event SYSTEM_EVENT_STA_CONNECTED does */
+    wifi_event_sta_connected_t connected; /**< parent information, same as Wi-Fi event SYSTEM_EVENT_STA_CONNECTED does */
     uint8_t self_layer;                     /**< layer */
 } mesh_event_connected_t;
 
@@ -325,11 +331,6 @@ typedef struct {
 } mesh_event_find_network_t;
 
 /**
- * @brief IP settings from LwIP stack
- */
-typedef system_event_sta_got_ip_t mesh_event_root_got_ip_t;
-
-/**
  * @brief Root address
  */
 typedef mesh_addr_t mesh_event_root_address_t;
@@ -337,17 +338,17 @@ typedef mesh_addr_t mesh_event_root_address_t;
 /**
  * @brief Parent disconnected information
  */
-typedef system_event_sta_disconnected_t mesh_event_disconnected_t;
+typedef wifi_event_sta_disconnected_t mesh_event_disconnected_t;
 
 /**
  * @brief Child connected information
  */
-typedef system_event_ap_staconnected_t mesh_event_child_connected_t;
+typedef wifi_event_ap_staconnected_t mesh_event_child_connected_t;
 
 /**
  * @brief Child disconnected information
  */
-typedef system_event_ap_stadisconnected_t mesh_event_child_disconnected_t;
+typedef wifi_event_ap_stadisconnected_t mesh_event_child_disconnected_t;
 
 /**
  * @brief Root switch request information
@@ -398,7 +399,7 @@ typedef struct {
 /**
  * @brief New router information
  */
-typedef system_event_sta_connected_t mesh_event_router_switch_t;
+typedef wifi_event_sta_connected_t mesh_event_router_switch_t;
 
 /**
  * @brief Mesh event information
@@ -417,7 +418,7 @@ typedef union {
                                                                 packets out. If not, devices had better to wait until this state changes to be
                                                                 MESH_TODS_REACHABLE. */
     mesh_event_vote_started_t vote_started;                /**< vote started */
-    mesh_event_root_got_ip_t got_ip;                       /**< root obtains IP address */
+    //mesh_event_root_got_ip_t got_ip;                       /**< root obtains IP address */
     mesh_event_root_address_t root_addr;                   /**< root address */
     mesh_event_root_switch_req_t switch_req;               /**< root switch request */
     mesh_event_root_conflict_t root_conflict;              /**< other powerful root */
@@ -717,6 +718,7 @@ esp_err_t esp_mesh_recv(mesh_addr_t *from, mesh_data_t *data, int timeout_ms,
  *    - ESP_ERR_MESH_NOT_START
  *    - ESP_ERR_MESH_TIMEOUT
  *    - ESP_ERR_MESH_DISCARD
+ *    - ESP_ERR_MESH_RECV_RELEASE
  */
 esp_err_t esp_mesh_recv_toDS(mesh_addr_t *from, mesh_addr_t *to,
                              mesh_data_t *data, int timeout_ms, int *flag, mesh_opt_t opt[],
@@ -812,8 +814,10 @@ esp_err_t esp_mesh_get_id(mesh_addr_t *id);
 
 /**
  * @brief      Designate device type over the mesh network
+ *            - MESH_IDLE: designates a device as a self-organized node for a mesh network
  *            - MESH_ROOT: designates the root node for a mesh network
- *            - MESH_LEAF: designates a device as a standalone Wi-Fi station
+ *            - MESH_LEAF: designates a device as a standalone Wi-Fi station that connects to a parent
+ *            - MESH_STA: designates a device as a standalone Wi-Fi station that connects to a router
  *
  * @param[in]  type  device type
  *

@@ -144,7 +144,7 @@ portMUX_TYPE s_time_update_lock = portMUX_INITIALIZER_UNLOCKED;
 #define TIMER_IS_AFTER_OVERFLOW(a) (ALARM_OVERFLOW_VAL < (a) && (a) <= FRC_TIMER_LOAD_VALUE(1))
 
 // Check if timer overflow has happened (but was not handled by ISR yet)
-static inline bool IRAM_ATTR timer_overflow_happened()
+static inline bool IRAM_ATTR timer_overflow_happened(void)
 {
     return ((REG_READ(FRC_TIMER_CTRL_REG(1)) & FRC_TIMER_INT_STATUS) != 0 &&
               ((REG_READ(FRC_TIMER_ALARM_REG(1)) == ALARM_OVERFLOW_VAL && TIMER_IS_AFTER_OVERFLOW(REG_READ(FRC_TIMER_COUNT_REG(1))) && !s_mask_overflow) ||
@@ -166,17 +166,17 @@ static inline void IRAM_ATTR timer_count_reload(void)
     REG_WRITE(FRC_TIMER_LOAD_REG(1), REG_READ(FRC_TIMER_COUNT_REG(1)) - ALARM_OVERFLOW_VAL);
 }
 
-void esp_timer_impl_lock()
+void esp_timer_impl_lock(void)
 {
     portENTER_CRITICAL(&s_time_update_lock);
 }
 
-void esp_timer_impl_unlock()
+void esp_timer_impl_unlock(void)
 {
     portEXIT_CRITICAL(&s_time_update_lock);
 }
 
-uint64_t IRAM_ATTR esp_timer_impl_get_time()
+uint64_t IRAM_ATTR esp_timer_impl_get_time(void)
 {
     uint32_t timer_val;
     uint64_t time_base;
@@ -211,7 +211,7 @@ uint64_t IRAM_ATTR esp_timer_impl_get_time()
 
 void IRAM_ATTR esp_timer_impl_set_alarm(uint64_t timestamp)
 {
-    portENTER_CRITICAL(&s_time_update_lock);
+    portENTER_CRITICAL_SAFE(&s_time_update_lock);
     // Use calculated alarm value if it is less than ALARM_OVERFLOW_VAL.
     // Note that if by the time we update ALARM_REG, COUNT_REG value is higher,
     // interrupt will not happen for another ALARM_OVERFLOW_VAL timer ticks,
@@ -253,7 +253,7 @@ void IRAM_ATTR esp_timer_impl_set_alarm(uint64_t timestamp)
             break;
         }
     } while (1);
-    portEXIT_CRITICAL(&s_time_update_lock);
+    portEXIT_CRITICAL_SAFE(&s_time_update_lock);
 }
 
 static void IRAM_ATTR timer_alarm_isr(void *arg)
@@ -382,7 +382,7 @@ esp_err_t esp_timer_impl_init(intr_handler_t alarm_handler)
     return ESP_OK;
 }
 
-void esp_timer_impl_deinit()
+void esp_timer_impl_deinit(void)
 {
     esp_intr_disable(s_timer_interrupt_handle);
 
@@ -397,13 +397,13 @@ void esp_timer_impl_deinit()
 // FIXME: This value is safe for 80MHz APB frequency.
 // Should be modified to depend on clock frequency.
 
-uint64_t IRAM_ATTR esp_timer_impl_get_min_period_us()
+uint64_t IRAM_ATTR esp_timer_impl_get_min_period_us(void)
 {
     return 50;
 }
 
 #ifdef ESP_TIMER_DYNAMIC_OVERFLOW_VAL
-uint32_t esp_timer_impl_get_overflow_val()
+uint32_t esp_timer_impl_get_overflow_val(void)
 {
     return s_alarm_overflow_val;
 }
