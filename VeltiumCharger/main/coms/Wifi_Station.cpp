@@ -1,4 +1,6 @@
 #include "Wifi_Station.h"
+#include "SmartConfig.h"
+#include "esp_wifi.h"
 
 
 
@@ -8,8 +10,8 @@ extern bool eth_link_up     ;
 extern bool eth_connected   ;
 extern bool eth_connecting  ;
 extern bool eth_started     ;
-static bool wifi_connected  = false;
-static bool wifi_connecting = false;
+extern bool wifi_connected  ;
+extern bool wifi_connecting ;
 
 extern carac_Firebase_Configuration ConfigFirebase;
 extern carac_Update_Status          UpdateStatus;
@@ -411,138 +413,13 @@ void InitServer(void) {
    Serial.println(ESP.getFreeHeap());
 
 }
-/********************* Conection Functions **************************/
-void WiFiEvent(arduino_event_id_t event, arduino_event_info_t info){ 
-    //Serial.println(event);
-	switch (event) {
-
-//********************** WIFI Cases **********************//
-		case ARDUINO_EVENT_WIFI_STA_DISCONNECTED:
-            wifi_connected = false;
-            if(Coms.Provisioning){
-                if (info.wifi_sta_disconnected.reason == WIFI_REASON_AUTH_FAIL || info.wifi_sta_disconnected.reason == WIFI_REASON_CONNECTION_FAIL){
-                    if(++AuthErrorCount > 3){
-                        AuthErrorCount=0;
-                        Serial.println("Contraseña incorrecta, deteniendo sistema");  
-                        WiFiProv.StopProvision();
-                        wifi_connected = false;
-                        wifi_connecting = false;
-                        Coms.Wifi.ON = 0;
-                        SendToPSOC5(Coms.Wifi.ON,COMS_CONFIGURATION_WIFI_ON);
-                        vTaskDelay(50);
-                    }
-                }
-                else if(info.wifi_sta_disconnected.reason == WIFI_REASON_AUTH_EXPIRE){
-                        AuthErrorCount=0;
-                        Serial.println("autorizacion expirada, deteniendo sistema");  
-                        WiFiProv.StopProvision();
-                        wifi_connected = false;
-                        wifi_connecting = false;
-                        Coms.Wifi.ON = 0;
-                        SendToPSOC5(Coms.Wifi.ON,COMS_CONFIGURATION_WIFI_ON);                   
-                        vTaskDelay(50);
-                }   
-            }
-             
-            else if(info.wifi_sta_disconnected.reason!=WIFI_REASON_ASSOC_LEAVE ){
-                Serial.println("Reconectando...");
-			    WiFi.reconnect();
-            }
-            else{
-                Serial.println(info.wifi_sta_disconnected.reason);
-            }
-		break;
-
-		case ARDUINO_EVENT_WIFI_STA_GOT_IP:{
-			Serial.print("Connected with IP: ");
-			Serial.println(WiFi.localIP());
-            Coms.Wifi.IP=WiFi.localIP();
-
-
-            uint8_t len= WiFi.SSID().length() <=32 ? WiFi.SSID().length():32;
-            memcpy(Coms.Wifi.AP,WiFi.SSID().c_str(),len);
-
-            /*String longWifi = "EthErEAlm6-24G-with-a-loong-name";
-            uint8_t len= longWifi.length() <=32 ? longWifi.length():32;
-            memcpy(Coms.Wifi.AP,longWifi.c_str(),len);     */  
-            Serial.println((char*)Coms.Wifi.AP);
-            modifyCharacteristic((uint8_t*)Coms.Wifi.AP, 16, COMS_CONFIGURATION_WIFI_SSID_1);
-
-            if(len>16){
-                modifyCharacteristic(&Coms.Wifi.AP[16], 16, COMS_CONFIGURATION_WIFI_SSID_2);
-            }
-            if(Coms.Provisioning){
-                delay(7000);
-                MAIN_RESET_Write(0);
-                ESP.restart();
-            }
-            wifi_connected = true;
-            wifi_connecting = false;
-            ConfigFirebase.InternetConection=1;
-        }
-		break;
-	    default:
-		    break;
-	}
-}
-
-void Delete_Credentials(){
-    nvs_flash_erase();
-    nvs_flash_init();
-}
-
-void StartSmarConfig(){
-    //Init WiFi as Station, start SmartConfig
-    WiFi.mode(WIFI_AP_STA);
-    WiFi.beginSmartConfig();
-
-    //Wait for WiFi to connect to AP
-    Serial.println("Waiting for WiFi");
-    while (WiFi.status() != WL_CONNECTED) {
-        delay(300);
-    }
-
-    Serial.println("WiFi Connected.");
-
-    Serial.print("IP Address: ");
-    Serial.println(WiFi.localIP());
-}
-
-
-void Station_Begin(){   
-    //Comprobar si esta encendida ya
-    Serial.println("Station begin");
-    if(wifi_connecting || wifi_connected){
-        Station_Stop();
-    }
-    wifi_connecting = true;
-    char POP [20] ="WF_";
-    strcat(POP,ConfigFirebase.Device_Id);
-    uint8 result = WiFiProv.beginProvision(WIFI_PROV_SCHEME_SOFTAP, WIFI_PROV_SCHEME_HANDLER_NONE, WIFI_PROV_SECURITY_1, ConfigFirebase.Device_Ser_num, POP,Coms.StartProvisioning);
-    if(result == 6){
-        Serial.println("Not provisioned and not provisioning!");
-        WiFiProv.StopProvision();
-        Coms.Wifi.ON=false;
-        SendToPSOC5(Coms.Wifi.ON,COMS_CONFIGURATION_WIFI_ON);
-    }
-} 
-
-void Station_Stop(){
-    if(WiFi.disconnect(true)){
-        Serial.println("Wifi Paused");
-        delay(500);
-        wifi_connecting = false;
-        wifi_connected  = false;
-        return;
-    }
-    Serial.println("Error Disconecting");
-} 
 
 void ComsTask(void *args){
-    uint8_t ComsMachineState =DISCONNECTED;
-    uint8_t LastStatus = DISCONNECTED;
     bool ServidorArrancado = false;
-    WiFi.onEvent(WiFiEvent);
+    while(!Coms.StartConnection){
+        vTaskDelay(pdMS_TO_TICKS(500));
+    }
+    start_wifi();        
     while (1){
         if(Coms.StartConnection){
             //Arranque del provisioning
@@ -552,17 +429,17 @@ void ComsTask(void *args){
                     server.end();
                     ServidorArrancado = false;
                 }
-                WiFiProv.StopProvision();
                 if(Coms.ETH.ON){
                     stop_ethernet();
                     Coms.ETH.ON=false;
                 }
 
                 if(Coms.StartSmartconfig){
-                    StartSmarConfig();
+                    wifi_connecting=true;
+                    initialise_smartconfig();
                 }
                 else{Coms.Provisioning = true;
-                    Station_Begin();}
+                    initialise_provisioning();}
                 while(Coms.Wifi.ON != true){
                     SendToPSOC5(true,COMS_CONFIGURATION_WIFI_ON);
                     delay(25);
@@ -570,8 +447,6 @@ void ComsTask(void *args){
                 SendToPSOC5(Coms.Wifi.ON,COMS_CONFIGURATION_WIFI_ON);
                 Coms.StartProvisioning = false;
                 Coms.StartSmartconfig=false;
-                
-                ComsMachineState=CONNECTING;
             }
 
             //Comprobar si hemos perdido todas las conexiones
@@ -581,11 +456,11 @@ void ComsTask(void *args){
             //Encendido de las interfaces          
             if(Coms.Wifi.ON && !wifi_connected && !wifi_connecting){
                 if(!Coms.ETH.ON || !eth_link_up){
-                    Station_Begin();
+                    //start_wifi();
                 }                    
             }
             else if(wifi_connected && !Coms.Wifi.ON){
-                Station_Stop();
+                esp_wifi_stop();
             }
 
             if(Coms.ETH.ON){

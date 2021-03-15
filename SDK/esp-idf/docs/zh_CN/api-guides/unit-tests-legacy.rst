@@ -92,14 +92,14 @@ GPIO、SPI）需要与其通信的其他设备，因此不能使用常规测试�
 
 DUT1（master）终端：
 
-.. code:: bash
+.. code::
 
    Waiting for signal: [output high level]!
    Please press "Enter" key once any board send this signal.
 
 DUT2（slave）终端：
 
-.. code:: bash
+.. code::
 
    Send signal: [output high level]!
 
@@ -113,9 +113,9 @@ DUT1 终端::
 
     Waiting for signal: [dut2 mac address]!
     Please input parameter value from any board send this signal and press "Enter" key.
+    
 
-
-DUT2 终端::
+DUT2 终端:: 
 
     Send signal: [dut2 mac address][10:20:30:40:50:60]!
 

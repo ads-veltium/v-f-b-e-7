@@ -1364,12 +1364,12 @@ PROVIDE ( esp_rom_spiflash_select_qio_pins = 0x40061ddc );
 PROVIDE ( esp_rom_spiflash_attach = 0x40062a6c );
 PROVIDE ( esp_rom_spiflash_config_clk = 0x40062bc8 );
 PROVIDE ( g_rom_spiflash_chip = 0x3ffae270 );
-
 PROVIDE ( hci_le_rd_rem_used_feats_cmd_handler = 0x400417b4 );
 PROVIDE ( llcp_length_req_handler = 0x40043808 );
 PROVIDE ( llcp_unknown_rsp_handler = 0x40043ba8 );
 PROVIDE ( llcp_channel_map_req_handler = 0x4004291c );
 PROVIDE ( llcp_con_up_req_handler = 0x400426f0 );
+
 /*
 These functions are xtos-related (or call xtos-related functions) and do not play well
 with multicore FreeRTOS. Where needed, we provide alternatives that are multicore

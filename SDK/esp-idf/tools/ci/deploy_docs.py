@@ -82,8 +82,8 @@ def main():
     print("Docs URLs:")
     doc_deploy_type = os.getenv('TYPE')
     for vurl in version_urls:
-        language, _,  = vurl.split('/')
-        tag = '{}'.format(language)
+        language, _, target = vurl.split('/')
+        tag = '{}_{}'.format(language, target)
         url = "{}/{}/index.html".format(url_base, vurl)  # (index.html needed for the preview server)
         url = re.sub(r"([^:])//", r"\1/", url)  # get rid of any // that isn't in the https:// part
         print('[document {}][{}] {}'.format(doc_deploy_type, tag, url))
@@ -151,12 +151,13 @@ def build_doc_tarball(version, git_ver, build_dir):
 
     with tarfile.open(tarball_path, "w:gz") as tarball:
         for html_dir in html_dirs:
-            # html_dir has the form '<ignored>/<language>/html/'
-            language_dirname = os.path.dirname(os.path.dirname(html_dir))
-            language = os.path.basename(language_dirname)
+            # html_dir has the form '<ignored>/<language>/<target>/html/'
+            target_dirname = os.path.dirname(os.path.dirname(html_dir))
+            target = os.path.basename(target_dirname)
+            language = os.path.basename(os.path.dirname(target_dirname))
 
-            # when deploying, we want the top-level directory layout 'language/version'
-            archive_path = "{}/{}".format(language, version)
+            # when deploying, we want the top-level directory layout 'language/version/target'
+            archive_path = "{}/{}/{}".format(language, version, target)
             print("Archiving '{}' as '{}'...".format(html_dir, archive_path))
             tarball.add(html_dir, archive_path, filter=not_sources_dir)
             version_paths.append(archive_path)
@@ -165,11 +166,12 @@ def build_doc_tarball(version, git_ver, build_dir):
             # pdf_path has the form '<ignored>/<language>/<target>/latex/build'
             latex_dirname = os.path.dirname(pdf_path)
             pdf_filename = os.path.basename(pdf_path)
-            language_dirname = os.path.dirname(os.path.dirname(latex_dirname))
-            language = os.path.basename(language_dirname)
+            target_dirname = os.path.dirname(os.path.dirname(latex_dirname))
+            target = os.path.basename(target_dirname)
+            language = os.path.basename(os.path.dirname(target_dirname))
 
-            # when deploying, we want the layout 'language/version/pdf'
-            archive_path = "{}/{}/{}".format(language, version, pdf_filename)
+            # when deploying, we want the layout 'language/version/target/pdf'
+            archive_path = "{}/{}/{}/{}".format(language, version, target, pdf_filename)
             print("Archiving '{}' as '{}'...".format(pdf_path, archive_path))
             tarball.add(pdf_path, archive_path)
 

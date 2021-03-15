@@ -57,18 +57,12 @@ class ETHClass {
     private:
         bool initialized;
         bool staticIP;
-        esp_eth_phy_t *eth_phy = NULL;
 #if ESP_IDF_VERSION_MAJOR > 3
-        esp_eth_handle_t eth_handle = NULL;
-        esp_eth_handle_t eth_handle1 = NULL;
-        esp_eth_handle_t eth_handle2 = NULL;
-
+        esp_eth_handle_t eth_handle;
 
     protected:
         bool started;
         eth_link_t eth_link;
-        eth_link_t eth_link2;
-        
         static void eth_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data);
 #else
         bool started;
@@ -85,14 +79,12 @@ class ETHClass {
 #endif
         
         bool config(IPAddress local_ip, IPAddress gateway, IPAddress subnet, IPAddress dns1 = (uint32_t)0x00000000, IPAddress dns2 = (uint32_t)0x00000000);
-        bool end();
-        bool Kill();
-        bool restart();
+
         const char * getHostname();
         bool setHostname(const char * hostname);
 
         bool fullDuplex();
-        uint8_t linkUp();
+        bool linkUp();
         uint8_t linkSpeed();
 
         bool enableIpV6();

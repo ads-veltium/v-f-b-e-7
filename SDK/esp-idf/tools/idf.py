@@ -210,7 +210,7 @@ def init_cli(verbose_output=None):
             self.action_args = action_args
             self.aliases = aliases
 
-        def run(self, context, global_args, action_args=None):
+        def __call__(self, context, global_args, action_args=None):
             if action_args is None:
                 action_args = self.action_args
 
@@ -457,7 +457,7 @@ def init_cli(verbose_output=None):
         def _print_closing_message(self, args, actions):
             # print a closing message of some kind
             #
-            if "flash" in str(actions):
+            if "flash" in str(actions) or "dfu" in str(actions):
                 print("Done")
                 return
 
@@ -468,8 +468,6 @@ def init_cli(verbose_output=None):
             # Otherwise, if we built any binaries print a message about
             # how to flash them
             def print_flashing_message(title, key):
-                print("\n%s build complete. To flash, run this command:" % title)
-
                 with open(os.path.join(args.build_dir, "flasher_args.json")) as f:
                     flasher_args = json.load(f)
 
@@ -477,6 +475,10 @@ def init_cli(verbose_output=None):
                     return _safe_relpath(os.path.join(args.build_dir, f))
 
                 if key != "project":  # flashing a single item
+                    if key not in flasher_args:
+                        # This is the case for 'idf.py bootloader' if Secure Boot is on, need to follow manual flashing steps
+                        print("\n%s build complete." % title)
+                        return
                     cmd = ""
                     if (key == "bootloader"):  # bootloader needs --flash-mode, etc to be passed in
                         cmd = " ".join(flasher_args["write_flash_args"]) + " "
@@ -491,6 +493,8 @@ def init_cli(verbose_output=None):
                     )
                     for o, f in flash_items:
                         cmd += o + " " + flasher_path(f) + " "
+
+                print("\n%s build complete. To flash, run this command:" % title)
 
                 print(
                     "%s %s -p %s -b %s --before %s --after %s --chip %s %s write_flash %s" % (
@@ -621,7 +625,7 @@ def init_cli(verbose_output=None):
                         name_with_aliases += " (aliases: %s)" % ", ".join(task.aliases)
 
                     print("Executing action: %s" % name_with_aliases)
-                    task.run(ctx, global_args, task.action_args)
+                    task(ctx, global_args, task.action_args)
 
                 self._print_closing_message(global_args, tasks_to_run.keys())
 
@@ -645,10 +649,15 @@ def init_cli(verbose_output=None):
     all_actions = {}
     # Load extensions from components dir
     idf_py_extensions_path = os.path.join(os.environ["IDF_PATH"], "tools", "idf_py_actions")
-    extra_paths = os.environ.get("IDF_EXTRA_ACTIONS_PATH", "").split(';')
-    extension_dirs = [idf_py_extensions_path] + extra_paths
-    extensions = {}
+    extension_dirs = [realpath(idf_py_extensions_path)]
+    extra_paths = os.environ.get("IDF_EXTRA_ACTIONS_PATH")
+    if extra_paths is not None:
+        for path in extra_paths.split(';'):
+            path = realpath(path)
+            if path not in extension_dirs:
+                extension_dirs.append(path)
 
+    extensions = {}
     for directory in extension_dirs:
         if directory and not os.path.exists(directory):
             print('WARNING: Directroy with idf.py extensions doesn\'t exist:\n    %s' % directory)

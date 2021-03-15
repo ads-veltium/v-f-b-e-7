@@ -35,7 +35,7 @@
 #include "lwip/dns.h"
 
 extern void tcpipInit();
-static bool once = false;
+
 #ifdef ESP_IDF_VERSION_MAJOR
 
 /**
@@ -69,36 +69,6 @@ static bool once = false;
 //}
 
 
-// Event handler for Ethernet
-void ETHClass::eth_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
-{
-    arduino_event_t event;
-
-    switch (event_id) {
-    case ETHERNET_EVENT_CONNECTED:{
-        event.event_id = ARDUINO_EVENT_ETH_CONNECTED;
-
-    }
-        break;
-    case ETHERNET_EVENT_DISCONNECTED:
-        event.event_id = ARDUINO_EVENT_ETH_DISCONNECTED;
-        ((ETHClass*)(arg))->eth_link = ETH_LINK_DOWN;
-        ((ETHClass*)(arg))->eth_link2 = ETH_LINK_DOWN;
-        break;
-    case ETHERNET_EVENT_START:
-        event.event_id = ARDUINO_EVENT_ETH_START;
-        ((ETHClass*)(arg))->started = true;
-        break;
-    case ETHERNET_EVENT_STOP:
-        event.event_id = ARDUINO_EVENT_ETH_STOP;
-        ((ETHClass*)(arg))->started = false;
-        break;
-    default:
-        break;
-    }
-    WiFi._eventCallback(&event);
-}
-
 
 #else
 static int _eth_phy_mdc_pin = -1;
@@ -128,11 +98,11 @@ ETHClass::ETHClass()
     :initialized(false)
     ,staticIP(false)
 #if ESP_IDF_VERSION_MAJOR > 3
-    ,eth_handle(NULL)
+     ,eth_handle(NULL)
 #endif
-    ,started(false)
+     ,started(false)
 #if ESP_IDF_VERSION_MAJOR > 3
-    ,eth_link(ETH_LINK_DOWN)
+     ,eth_link(ETH_LINK_DOWN)
 #endif
 {
 }
@@ -141,45 +111,30 @@ ETHClass::~ETHClass()
 {}
 
 #ifdef ESP_IDF_VERSION_MAJOR
-bool ETHClass::Kill(){
-    esp_eth_stop(eth_handle);
-    esp_eth_driver_uninstall(eth_handle);
-    //tcpip_adapter_dhcpc_stop();
-    return false;
-}
-bool ETHClass::end(){
-    if(esp_eth_stop(eth_handle) != ESP_OK){
-        log_e("esp_eth_stop failed");
-        return false;
-    }
-    return true;
-}
-bool ETHClass::restart(){
-    if(esp_eth_start(eth_handle) != ESP_OK){
-        log_e("esp_eth_restart failed");
-        return false;
-    }
-    return true;
-}
 bool ETHClass::begin(uint8_t phy_addr, int power, int mdc, int mdio, eth_phy_type_t type){
 
     tcpipInit();
 
     tcpip_adapter_set_default_eth_handlers();
-    esp_event_handler_register(ETH_EVENT, ESP_EVENT_ANY_ID, eth_event_handler, this);
-    //ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_ETH_GOT_IP, &got_ip_event_handler, NULL));
+    
+    esp_netif_config_t cfg = ESP_NETIF_DEFAULT_ETH();
+    esp_netif_t *eth_netif = esp_netif_new(&cfg);
 
-    eth_mac_config_t mac_config = ETH_MAC_DEFAULT_CONFIG();
-    mac_config.smi_mdc_gpio_num = mdc;
-    mac_config.smi_mdio_gpio_num = mdio;
-    //mac_config.sw_reset_timeout_ms = 1000;
+    
+    
     esp_eth_mac_t *eth_mac = NULL;
 #if CONFIG_ETH_SPI_ETHERNET_DM9051
     if(type == ETH_PHY_DM9051){
         return false;//todo
     } else {
 #endif
+#if CONFIG_ETH_USE_ESP32_EMAC
+        eth_mac_config_t mac_config = ETH_MAC_DEFAULT_CONFIG();
+        mac_config.smi_mdc_gpio_num = mdc;
+        mac_config.smi_mdio_gpio_num = mdio;
+        //mac_config.sw_reset_timeout_ms = 1000;
         eth_mac = esp_eth_mac_new_esp32(&mac_config);
+#endif
 #if CONFIG_ETH_SPI_ETHERNET_DM9051
     }
 #endif
@@ -191,12 +146,29 @@ bool ETHClass::begin(uint8_t phy_addr, int power, int mdc, int mdio, eth_phy_typ
 
     eth_phy_config_t phy_config = ETH_PHY_DEFAULT_CONFIG();
     phy_config.phy_addr = phy_addr;
-    phy_config.phy_addr1 = 1;
-    phy_config.phy_addr2 = 2;
     phy_config.reset_gpio_num = power;
-    eth_phy = NULL;
-
-    eth_phy = esp_eth_phy_new_lan8720(&phy_config);
+    esp_eth_phy_t *eth_phy = NULL;
+    switch(type){
+        case ETH_PHY_LAN8720:
+            eth_phy = esp_eth_phy_new_lan8720(&phy_config);
+            break;
+        case ETH_PHY_TLK110:
+            eth_phy = esp_eth_phy_new_ip101(&phy_config);
+            break;
+        case ETH_PHY_RTL8201:
+            eth_phy = esp_eth_phy_new_rtl8201(&phy_config);
+            break;
+        case ETH_PHY_DP83848:
+            eth_phy = esp_eth_phy_new_dp83848(&phy_config);
+            break;
+#if CONFIG_ETH_SPI_ETHERNET_DM9051
+        case ETH_PHY_DM9051:
+            eth_phy = esp_eth_phy_new_dm9051(&phy_config);
+            break;
+#endif
+        default:
+            break;
+    }
     if(eth_phy == NULL){
         log_e("esp_eth_phy_new failed");
         return false;
@@ -210,6 +182,8 @@ bool ETHClass::begin(uint8_t phy_addr, int power, int mdc, int mdio, eth_phy_typ
         log_e("esp_eth_driver_install failed");
         return false;
     }
+    
+
 
     if(esp_eth_start(eth_handle) != ESP_OK){
         log_e("esp_eth_start failed");
@@ -411,20 +385,10 @@ bool ETHClass::fullDuplex()
 #endif
 }
 
-uint8_t ETHClass::linkUp()
+bool ETHClass::linkUp()
 {
 #ifdef ESP_IDF_VERSION_MAJOR
-    if(eth_phy->link1==ETH_LINK_UP &&eth_phy->link2==ETH_LINK_UP){
-        return 3;
-    }
-    else if(eth_phy->link1 == ETH_LINK_UP){
-        return 1;
-    }
-    else if(eth_phy->link2 == ETH_LINK_UP){
-        return 2;
-    }
-    return 0;
-    
+    return eth_link == ETH_LINK_UP;
 #else
     return eth_config.phy_check_link();
 #endif

@@ -45,7 +45,7 @@ ignore_files = [os.path.join('components', 'mdns', 'test_afl_fuzz_host', 'esp32_
                 os.path.join('components', 'tcpip_adapter', 'include', 'tcpip_adapter_types.h')
                 ]
 
-# add directories here which should not be parsed
+# add directories here which should not be parsed,
 ignore_dirs = os.path.join('examples')
 
 # macros from here have higher priorities in case of collisions

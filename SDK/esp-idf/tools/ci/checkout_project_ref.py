@@ -11,22 +11,6 @@ import re
 
 
 IDF_GIT_DESCRIBE_PATTERN = re.compile(r"^v(\d)\.(\d)")
-RETRY_COUNT = 3
-
-
-def get_customized_project_revision(proj_name):
-    """
-    get customized project revision defined in bot message
-    """
-    revision = ""
-    customized_project_revisions = os.getenv("BOT_CUSTOMIZED_REVISION")
-    if customized_project_revisions:
-        customized_project_revisions = json.loads(customized_project_revisions)
-    try:
-        revision = customized_project_revisions[proj_name.lower()]
-    except (KeyError, TypeError):
-        pass
-    return revision
 
 
 def target_branch_candidates(proj_name):
@@ -39,11 +23,16 @@ def target_branch_candidates(proj_name):
         # CI_MERGE_REQUEST_TARGET_BRANCH_NAME
         os.getenv("CI_MERGE_REQUEST_TARGET_BRANCH_NAME"),
     ]
-    customized_candidate = get_customized_project_revision(proj_name)
-    if customized_candidate:
+    # revision defined in bot message
+    customized_project_revisions = os.getenv("BOT_CUSTOMIZED_REVISION")
+    if customized_project_revisions:
+        customized_project_revisions = json.loads(customized_project_revisions)
+    try:
+        ref_to_use = customized_project_revisions[proj_name.lower()]
         # highest priority, insert to head of list
-        candidates.insert(0, customized_candidate)
-
+        candidates.insert(0, ref_to_use)
+    except (KeyError, TypeError):
+        pass
     # branch name read from IDF
     try:
         git_describe = subprocess.check_output(["git", "describe", "HEAD"])
@@ -69,39 +58,20 @@ if __name__ == "__main__":
                         help="the name of project")
     parser.add_argument("project_relative_path",
                         help="relative path of project to IDF repository directory")
-    parser.add_argument('--customized_only', action='store_true',
-                        help="Only to find customized revision")
 
     args = parser.parse_args()
 
-    if args.customized_only:
-        customized_revision = get_customized_project_revision(args.project)
-        candidate_branches = [customized_revision] if customized_revision else []
-    else:
-        candidate_branches = target_branch_candidates(args.project)
+    candidate_branches = target_branch_candidates(args.project)
 
     # change to project dir for checkout
     os.chdir(args.project_relative_path)
 
-    ref_to_use = ""
     for candidate in candidate_branches:
-        # check if candidate branch exists
-        branch_match = subprocess.check_output(["git", "branch", "-a", "--list", "origin/" + candidate])
-        if branch_match:
-            ref_to_use = candidate
+        try:
+            subprocess.check_call(["git", "checkout", "-f", candidate], stdout=subprocess.PIPE, stderr=subprocess.PIPE)  # not print the stdout nor stderr
+            print("CI using ref {} for project {}".format(candidate, args.project))
             break
-
-    if ref_to_use:
-        for _ in range(RETRY_COUNT):
-            # Add retry for projects with git-lfs
-            try:
-                subprocess.check_call(["git", "checkout", "-f", ref_to_use], stdout=subprocess.PIPE)  # not print the stdout
-                print("CI using ref {} for project {}".format(ref_to_use, args.project))
-                break
-            except subprocess.CalledProcessError:
-                pass
-        else:
-            print("Failed to use ref {} for project {}".format(ref_to_use, args.project))
-            exit(1)
+        except subprocess.CalledProcessError:
+            pass
     else:
         print("using default branch")

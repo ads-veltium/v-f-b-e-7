@@ -487,11 +487,11 @@ typedef struct {
 struct esp_ble_mesh_model {
     /** Model ID */
     union {
-        const uint16_t model_id;
+        const uint16_t model_id; /*!< 16-bit model identifier */
         struct {
-            uint16_t company_id;
-            uint16_t model_id;
-        } vnd;
+            uint16_t company_id; /*!< 16-bit company identifier */
+            uint16_t model_id; /*!< 16-bit model identifier */
+        } vnd; /*!< Structure encapsulating a model ID with a company ID */
     };
 
     /** Internal information, mainly for persistent storage */
@@ -707,7 +707,7 @@ typedef struct {
 typedef struct {
     union {
         struct {
-            esp_ble_mesh_bd_addr_t addr;             /*!< Device address */
+            esp_ble_mesh_bd_addr_t addr;         /*!< Device address */
             esp_ble_mesh_addr_type_t addr_type;  /*!< Device address type */
         };
         uint8_t uuid[16];                   /*!< Device UUID */

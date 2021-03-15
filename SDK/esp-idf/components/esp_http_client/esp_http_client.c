@@ -119,6 +119,7 @@ struct esp_http_client {
     bool                        first_line_prepared;
     int                         header_index;
     bool                        is_async;
+    esp_transport_keep_alive_t  keep_alive_cfg;
 };
 
 typedef struct esp_http_client esp_http_client_t;
@@ -139,6 +140,9 @@ static const char *DEFAULT_HTTP_PROTOCOL = "HTTP/1.1";
 static const char *DEFAULT_HTTP_PATH = "/";
 static int DEFAULT_MAX_REDIRECT = 10;
 static int DEFAULT_TIMEOUT_MS = 5000;
+static const int DEFAULT_KEEP_ALIVE_IDLE = 5;
+static const int DEFAULT_KEEP_ALIVE_INTERVAL= 5;
+static const int DEFAULT_KEEP_ALIVE_COUNT= 3;
 
 static const char *HTTP_METHOD_MAPPING[] = {
     "GET",
@@ -492,7 +496,7 @@ esp_http_client_handle_t esp_http_client_init(const esp_http_client_config_t *co
 {
 
     esp_http_client_handle_t client;
-    esp_transport_handle_t tcp;
+    esp_transport_handle_t tcp = NULL;
     bool _success;
 
     _success = (
@@ -523,8 +527,15 @@ esp_http_client_handle_t esp_http_client_init(const esp_http_client_config_t *co
         ESP_LOGE(TAG, "Error initialize transport");
         goto error;
     }
+    if (config->keep_alive_enable == true) {
+        client->keep_alive_cfg.keep_alive_enable = true;
+        client->keep_alive_cfg.keep_alive_idle = (config->keep_alive_idle == 0) ? DEFAULT_KEEP_ALIVE_IDLE : config->keep_alive_idle;
+        client->keep_alive_cfg.keep_alive_interval = (config->keep_alive_interval == 0) ? DEFAULT_KEEP_ALIVE_INTERVAL : config->keep_alive_interval;
+        client->keep_alive_cfg.keep_alive_count =  (config->keep_alive_count == 0) ? DEFAULT_KEEP_ALIVE_COUNT : config->keep_alive_count;
+        esp_transport_tcp_set_keep_alive(tcp, &client->keep_alive_cfg);
+    }
 #ifdef CONFIG_ESP_HTTP_CLIENT_ENABLE_HTTPS
-    esp_transport_handle_t ssl;
+    esp_transport_handle_t ssl = NULL;
     _success = (
                    (ssl = esp_transport_ssl_init()) &&
                    (esp_transport_set_default_port(ssl, DEFAULT_HTTPS_PORT) == ESP_OK) &&
@@ -552,6 +563,10 @@ esp_http_client_handle_t esp_http_client_init(const esp_http_client_config_t *co
 
     if (config->skip_cert_common_name_check) {
         esp_transport_ssl_skip_common_name_check(ssl);
+    }
+
+    if (config->keep_alive_enable == true) {
+        esp_transport_ssl_set_keep_alive(ssl, &client->keep_alive_cfg);
     }
 #endif
 
@@ -623,14 +638,22 @@ esp_err_t esp_http_client_cleanup(esp_http_client_handle_t client)
     }
     esp_http_client_close(client);
     esp_transport_list_destroy(client->transport_list);
-    http_header_destroy(client->request->headers);
-    free(client->request->buffer->data);
-    free(client->request->buffer);
-    free(client->request);
-    http_header_destroy(client->response->headers);
-    free(client->response->buffer->data);
-    free(client->response->buffer);
-    free(client->response);
+    if (client->request) {
+        http_header_destroy(client->request->headers);
+        if (client->request->buffer) {
+            free(client->request->buffer->data);
+        }
+        free(client->request->buffer);
+        free(client->request);
+    }
+    if (client->response) {
+        http_header_destroy(client->response->headers);
+        if (client->response->buffer) {
+            free(client->response->buffer->data);
+        }
+        free(client->response->buffer);
+        free(client->response);
+    }
 
     free(client->parser);
     free(client->parser_settings);
@@ -705,7 +728,10 @@ esp_err_t esp_http_client_set_url(esp_http_client_handle_t client, const char *u
 
     if (purl.field_data[UF_HOST].len) {
         http_utils_assign_string(&client->connection_info.host, url + purl.field_data[UF_HOST].off, purl.field_data[UF_HOST].len);
-        HTTP_MEM_CHECK(TAG, client->connection_info.host, return ESP_ERR_NO_MEM);
+        HTTP_MEM_CHECK(TAG, client->connection_info.host, {
+            free(old_host);
+            return ESP_ERR_NO_MEM;
+        });
     }
     // Close the connection if host was changed
     if (old_host && client->connection_info.host
@@ -1324,4 +1350,31 @@ void esp_http_client_add_auth(esp_http_client_handle_t client)
         client->connection_info.auth_type = HTTP_AUTH_TYPE_NONE;
         ESP_LOGW(TAG, "This request requires authentication, but does not provide header information for that");
     }
+}
+
+int esp_http_client_read_response(esp_http_client_handle_t client, char *buffer, int len)
+{
+    int read_len = 0;
+    while (read_len < len) {
+        int data_read = esp_http_client_read(client, buffer + read_len, len - read_len);
+        if (data_read <= 0) {
+            return read_len;
+        }
+        read_len += data_read;
+    }
+    return read_len;
+}
+
+esp_err_t esp_http_client_get_url(esp_http_client_handle_t client, char *url, const int len)
+{
+    if (client == NULL || url == NULL) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    if (client->connection_info.host && client->connection_info.scheme && client->connection_info.path) {
+        snprintf(url, len, "%s://%s%s", client->connection_info.scheme, client->connection_info.host, client->connection_info.path);
+        return ESP_OK;
+    } else {
+        ESP_LOGE(TAG, "Failed to get URL");
+    }
+    return ESP_FAIL;
 }

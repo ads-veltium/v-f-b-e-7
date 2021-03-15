@@ -7,11 +7,10 @@
 #include "FirebaseClient.h"
 #include "ESPAsyncWebServer.h"
 #include "Eth_Station.h"
-#include "WiFiProv.h"
+#include "SmartConfig.h"
 
 void InitServer(void) ;
 void Station_Begin();
-void Station_Stop();
 void Delete_Credentials();
 void Station_Pause();
 void Station_Resume();

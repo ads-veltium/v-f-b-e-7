@@ -20,6 +20,7 @@ extern "C"
 #endif
 
 #include "sdkconfig.h"
+#include "esp_timer.h"
 
 #define ARDUHAL_LOG_LEVEL_NONE       (0)
 #define ARDUHAL_LOG_LEVEL_ERROR      (1)
@@ -55,7 +56,7 @@ extern "C"
 
 #define ARDUHAL_LOG_COLOR(COLOR)  "\033[0;" COLOR "m"
 #define ARDUHAL_LOG_BOLD(COLOR)   "\033[1;" COLOR "m"
-#define ARDUHAL_LOG_RESET_COLOR
+#define ARDUHAL_LOG_RESET_COLOR   "\033[0m"
 
 #define ARDUHAL_LOG_COLOR_E       ARDUHAL_LOG_COLOR(ARDUHAL_LOG_COLOR_RED)
 #define ARDUHAL_LOG_COLOR_W       ARDUHAL_LOG_COLOR(ARDUHAL_LOG_COLOR_YELLOW)
@@ -75,7 +76,7 @@ const char * pathToFileName(const char * path);
 int log_printf(const char *fmt, ...);
 
 #define ARDUHAL_SHORT_LOG_FORMAT(letter, format)  ARDUHAL_LOG_COLOR_ ## letter format ARDUHAL_LOG_RESET_COLOR "\r\n"
-#define ARDUHAL_LOG_FORMAT(letter, format)  ARDUHAL_LOG_COLOR_ ## letter "[" #letter "][%s:%u] %s(): \r\n", pathToFileName(__FILE__), __LINE__, __FUNCTION__
+#define ARDUHAL_LOG_FORMAT(letter, format)  ARDUHAL_LOG_COLOR_ ## letter "[%6u][" #letter "][%s:%u] %s(): " format ARDUHAL_LOG_RESET_COLOR "\r\n", (unsigned long) (esp_timer_get_time() / 1000ULL), pathToFileName(__FILE__), __LINE__, __FUNCTION__
 
 #if ARDUHAL_LOG_LEVEL >= ARDUHAL_LOG_LEVEL_VERBOSE
 #define log_v(format, ...) log_printf(ARDUHAL_LOG_FORMAT(V, format), ##__VA_ARGS__)

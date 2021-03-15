@@ -89,6 +89,7 @@ idf_export_main() {
     idf_exports=$("$ESP_PYTHON" "${IDF_PATH}/tools/idf_tools.py" export) || return 1
     eval "${idf_exports}"
 
+    echo "Using Python interpreter in $(which python)"
     echo "Checking if Python packages are up to date..."
     python "${IDF_PATH}/tools/check_python_dependencies.py" || return 1
 
@@ -97,7 +98,8 @@ idf_export_main() {
     # ${IDF_PATH}/tools is already added by 'idf_tools.py export'
     IDF_ADD_PATHS_EXTRAS="${IDF_PATH}/components/esptool_py/esptool"
     IDF_ADD_PATHS_EXTRAS="${IDF_ADD_PATHS_EXTRAS}:${IDF_PATH}/components/espcoredump"
-    IDF_ADD_PATHS_EXTRAS="${IDF_ADD_PATHS_EXTRAS}:${IDF_PATH}/components/partition_table/"
+    IDF_ADD_PATHS_EXTRAS="${IDF_ADD_PATHS_EXTRAS}:${IDF_PATH}/components/partition_table"
+    IDF_ADD_PATHS_EXTRAS="${IDF_ADD_PATHS_EXTRAS}:${IDF_PATH}/components/app_update"
     export PATH="${IDF_ADD_PATHS_EXTRAS}:${PATH}"
 
     if [ -n "$BASH" ]

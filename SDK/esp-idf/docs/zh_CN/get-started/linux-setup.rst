@@ -11,7 +11,7 @@ Linux 平台工具链的标准设置
 
 - CentOS 7::
 
-    sudo yum -y update && sudo yum install git wget flex bison gperf python3 python3-pip python3-setuptools cmake ninja-build ccache
+    sudo yum -y update && sudo yum install git wget flex bison gperf python3 python3-pip python3-setuptools cmake ninja-build ccache dfu-util
 
 目前仍然支持 CentOS 7，但为了更好的用户体验，建议使用 CentOS 8。
 
@@ -21,7 +21,7 @@ Linux 平台工具链的标准设置
 
 - Arch::
 
-    sudo pacman -S --needed gcc git make flex bison gperf python-pip cmake ninja ccache
+    sudo pacman -S --needed gcc git make flex bison gperf python-pip python-pyserial cmake ninja ccache dfu-util
 
 .. note::
     使用 ESP-IDF 需要 CMake 3.5 或以上版本。较早版本的 Linux 可能需要升级才能向后移植仓库，或安装 "cmake3" 软件包，而不是安装 "cmake"。
@@ -52,7 +52,6 @@ Python 2 已经 `结束生命周期 <https://www.python.org/doc/sunset-python-2/
 ==========
 
 继续设置开发环境，请前往 :ref:`get-started-get-esp-idf` 章节。
-
 
 
 .. _AUR: https://wiki.archlinux.org/index.php/Arch_User_Repository

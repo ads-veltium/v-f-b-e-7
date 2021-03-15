@@ -44,4 +44,5 @@ void BuscarContador_Task(void *args);
 void initialize_ethernet(void);
 bool stop_ethernet(void);
 bool restart_ethernet(void);
+bool ComprobarConexion(void);
 #endif

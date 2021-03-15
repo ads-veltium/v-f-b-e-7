@@ -165,7 +165,8 @@ class WiFiGenericClass
 
     bool setSleep(bool enabled);
     bool setSleep(wifi_ps_type_t sleepType);
-	wifi_ps_type_t getSleep();
+    wifi_ps_type_t getSleep();
+
     bool setTxPower(wifi_power_t power);
     wifi_power_t getTxPower();
 

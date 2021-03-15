@@ -4,7 +4,8 @@ menu "LWIP"
         string "Local netif hostname"
         default 'espressif'
         help
-            The name this device will report to other devices on the network
+            The default name this device will report to other devices on the network.
+            Could be updated at runtime with esp_netif_set_hostname()
 
     config LWIP_DNS_SUPPORT_MDNS_QUERIES
         bool "Enable mDNS queries in resolving host name"
@@ -62,9 +63,12 @@ menu "LWIP"
             to 16.
 
     config LWIP_USE_ONLY_LWIP_SELECT
-        bool "Support LWIP socket select() only"
+        bool "Support LWIP socket select() only (DEPRECATED)"
         default n
         help
+            This option is deprecated. Use VFS_SUPPORT_SELECT instead, which is
+            the inverse of this option.
+
             The virtual filesystem layer of select() redirects sockets to
             lwip_select() and non-socket file descriptors to their respective driver
             implementations. If this option is enabled then all calls of select()
@@ -144,6 +148,20 @@ menu "LWIP"
         default n
         help
             Enabling this option allows reassemblying incoming fragmented IP6 packets.
+
+    config LWIP_IP_FORWARD
+        bool "Enable IP forwarding"
+        default n
+        help
+            Enabling this option allows packets forwarding across multiple interfaces.
+
+    config LWIP_IPV4_NAPT
+        bool "Enable NAT (new/experimental)"
+        depends on LWIP_IP_FORWARD
+        select LWIP_L2_TO_L3_COPY
+        default n
+        help
+            Enabling this option allows Network Address and Port Translation.
 
     config LWIP_STATS
         bool "Enable LWIP statistics"
@@ -709,5 +727,12 @@ menu "LWIP"
                 (SNTPv4 RFC 4330 enforces a minimum update time of 15 seconds).
 
     endmenu # SNTP
+
+    config LWIP_ESP_LWIP_ASSERT
+        bool "Enable LWIP ASSERT checks"
+        default y
+        help
+            Enable this option allows lwip to check assert.
+            It is recommended to keep it open, do not close it.
 
 endmenu

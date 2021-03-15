@@ -17,11 +17,11 @@ ESP-IDF 将使用 Mac OS 上默认安装的 Python 版本。
 
     - 若有 HomeBrew_，您可以运行::
 
-        brew install cmake ninja
+        brew install cmake ninja dfu-util
 
     - 若有 MacPorts_，您可以运行::
 
-        sudo port install cmake ninja
+        sudo port install cmake ninja dfu-util
 
     - 若以上均不适用，请访问 CMake_ 和 Ninja_ 主页，查询有关 Mac OS 平台的下载安装问题。
 
@@ -74,4 +74,3 @@ Python 2 已经 `结束生命周期 <https://www.python.org/doc/sunset-python-2/
 .. _homebrew: https://brew.sh/
 .. _MacPorts: https://www.macports.org/install.php
 .. _Catalina 10.15 发布说明: https://developer.apple.com/documentation/macos-release-notes/macos-catalina-10_15-release-notes
-

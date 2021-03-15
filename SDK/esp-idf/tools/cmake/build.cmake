@@ -154,7 +154,7 @@ function(__build_init idf_path)
     # Set components required by all other components in the build
     #
     # - lwip is here so that #include <sys/socket.h> works without any special provisions
-    set(requires_common cxx newlib freertos heap log lwip soc esp_rom esp_common xtensa)
+    set(requires_common cxx newlib freertos heap log lwip soc esp_rom esp_common esp_system xtensa)
     idf_build_set_property(__COMPONENT_REQUIRES_COMMON "${requires_common}")
 
     __build_get_idf_git_revision()
@@ -474,8 +474,11 @@ function(idf_build_executable elf)
     # Set the EXECUTABLE_NAME and EXECUTABLE properties since there are generator expression
     # from components that depend on it
     get_filename_component(elf_name ${elf} NAME_WE)
+    get_target_property(elf_dir ${elf} BINARY_DIR)
+
     idf_build_set_property(EXECUTABLE_NAME ${elf_name})
     idf_build_set_property(EXECUTABLE ${elf})
+    idf_build_set_property(EXECUTABLE_DIR "${elf_dir}")
 
     # Add dependency of the build target to the executable
     add_dependencies(${elf} __idf_build_target)

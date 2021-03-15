@@ -19,8 +19,8 @@
 
 #ifdef CONFIG_IDF_TARGET_ESP32
 #include "esp32/rom/ets_sys.h"
-#else
-#include "esp32s2beta/rom/ets_sys.h"
+#elif CONFIG_IDF_TARGET_ESP32S2
+#include "esp32s2/rom/ets_sys.h"
 #endif
 #include "utils/common.h"
 #include "common/defs.h"
@@ -112,7 +112,7 @@ struct l2_ethhdr {
  * handler if send_eapol() is used.
  */
 
-#define KEYENTRY_TABLE_MAP(key_entry_valid)  ((key_entry_valid)%5) 
+#define KEYENTRY_TABLE_MAP(key_entry_valid)  ((key_entry_valid)%5)
 
 void pp_michael_mic_failure(u16 isunicast);
 

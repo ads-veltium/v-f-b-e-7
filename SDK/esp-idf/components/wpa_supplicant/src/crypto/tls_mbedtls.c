@@ -502,10 +502,6 @@ struct tls_connection * tls_connection_init(void *tls_ctx)
 
 void tls_connection_deinit(void *tls_ctx, struct tls_connection *conn)
 {
-	/* tls init failed case */
-	if (!conn) {
-		return;
-	}
 	/* Free ssl ctx and data */
 	tls_mbedtls_conn_delete((tls_context_t *) conn->tls);
 	os_free(conn->tls);

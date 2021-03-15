@@ -42,7 +42,6 @@ extern "C" {
 #include "lwip/dns.h"
 #include "dhcpserver/dhcpserver_options.h"
 #include "esp_ipc.h"
-#include "esp_eth.h"
 
 } //extern "C"
 
@@ -339,28 +338,6 @@ static void _arduino_event_cb(void* arg, esp_event_base_t event_base, int32_t ev
     	arduino_event.event_id = ARDUINO_EVENT_WIFI_AP_STAIPASSIGNED;
     	memcpy(&arduino_event.event_info.wifi_ap_staipassigned, event_data, sizeof(ip_event_ap_staipassigned_t));
 
-	/*
-	 * ETH
-	 * */
-	} else if (event_base == ETH_EVENT && event_id == ETHERNET_EVENT_CONNECTED) {
-		log_v("Ethernet Link Up");
-	    esp_eth_handle_t eth_handle = *(esp_eth_handle_t *)event_data;
-    	arduino_event.event_id = ARDUINO_EVENT_ETH_CONNECTED;
-    	//memcpy(&arduino_event.event_info.eth_connected, event_data, sizeof(esp_eth_handle_t));
-	} else if (event_base == ETH_EVENT && event_id == ETHERNET_EVENT_DISCONNECTED) {
-		log_v("Ethernet Link Down");
-    	arduino_event.event_id = ARDUINO_EVENT_ETH_DISCONNECTED;
-	} else if (event_base == ETH_EVENT && event_id == ETHERNET_EVENT_START) {
-		log_v("Ethernet Started");
-    	arduino_event.event_id = ARDUINO_EVENT_ETH_START;
-	} else if (event_base == ETH_EVENT && event_id == ETHERNET_EVENT_STOP) {
-		log_v("Ethernet Stopped");
-    	arduino_event.event_id = ARDUINO_EVENT_ETH_STOP;
-    } else if (event_base == IP_EVENT && event_id == IP_EVENT_ETH_GOT_IP) {
-        ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
-        log_v("Ethernet got %sip:" IPSTR, event->ip_changed?"new":"", IP2STR(&event->ip_info.ip));
-    	arduino_event.event_id = ARDUINO_EVENT_ETH_GOT_IP;
-    	memcpy(&arduino_event.event_info.got_ip, event_data, sizeof(ip_event_got_ip_t));
 
 	/*
 	 * IPv6
@@ -476,34 +453,29 @@ static bool _start_network_event_task(){
     }
 
     if(!_arduino_event_task_handle){
-        xTaskCreateUniversal(_arduino_event_task, "arduino_events", 4096, NULL, ESP_TASKD_EVENT_PRIO - 1, &_arduino_event_task_handle, CONFIG_ARDUINO_EVENT_RUNNING_CORE);
+        xTaskCreateUniversal(_arduino_event_task, "arduino_events", 4096, NULL, ESP_TASKD_EVENT_PRIO - 1, &_arduino_event_task_handle, ARDUINO_EVENT_RUNNING_CORE);
         if(!_arduino_event_task_handle){
             log_e("Network Event Task Start Failed!");
             return false;
         }
     }
 
-    if(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &_arduino_event_cb, NULL)){
+    if(esp_event_handler_instance_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &_arduino_event_cb, NULL, NULL)){
         log_e("event_handler_instance_register for WIFI_EVENT Failed!");
         return false;
     }
 
-    if(esp_event_handler_register(IP_EVENT, ESP_EVENT_ANY_ID, &_arduino_event_cb, NULL)){
+    if(esp_event_handler_instance_register(IP_EVENT, ESP_EVENT_ANY_ID, &_arduino_event_cb, NULL, NULL)){
         log_e("event_handler_instance_register for IP_EVENT Failed!");
         return false;
     }
 
-    if(esp_event_handler_register(SC_EVENT, ESP_EVENT_ANY_ID, &_arduino_event_cb, NULL)){
+    if(esp_event_handler_instance_register(SC_EVENT, ESP_EVENT_ANY_ID, &_arduino_event_cb, NULL, NULL)){
         log_e("event_handler_instance_register for SC_EVENT Failed!");
         return false;
     }
 
-    if(esp_event_handler_register(ETH_EVENT, ESP_EVENT_ANY_ID, &_arduino_event_cb, NULL)){
-        log_e("event_handler_instance_register for ETH_EVENT Failed!");
-        return false;
-    }
-
-    if(esp_event_handler_register(WIFI_PROV_EVENT, ESP_EVENT_ANY_ID, &_arduino_event_cb, NULL)){
+    if(esp_event_handler_instance_register(WIFI_PROV_EVENT, ESP_EVENT_ANY_ID, &_arduino_event_cb, NULL, NULL)){
         log_e("event_handler_instance_register for WIFI_PROV_EVENT Failed!");
         return false;
     }
@@ -564,7 +536,7 @@ bool wifiLowLevelInit(bool persistent){
     return lowLevelInitDone;
 }
 
-bool wifiLowLevelDeinit(){
+static bool wifiLowLevelDeinit(){
     if(lowLevelInitDone){
     	lowLevelInitDone = esp_wifi_deinit() == ESP_OK;
     }

@@ -308,6 +308,7 @@ static void btc_dm_link_up_evt(tBTA_DM_LINK_UP *p_link_up)
     BD_ADDR bd_addr;
     bt_bdaddr_t bt_bdaddr;
 
+
     if (p_link_up->sc_downgrade == 1) {
         memcpy(bt_bdaddr.address, p_link_up->bd_addr, sizeof(BD_ADDR));
         if (btc_storage_remove_bonded_device(&bt_bdaddr) == BT_STATUS_SUCCESS) {

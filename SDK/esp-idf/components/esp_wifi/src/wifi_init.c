@@ -17,11 +17,14 @@
 #include "esp_log.h"
 #include "esp_private/wifi.h"
 #include "esp_pm.h"
+#include "esp_sleep.h"
+#include "esp_private/pm_impl.h"
 #include "soc/rtc.h"
 #include "esp_wpa.h"
 #include "esp_netif.h"
 #include "tcpip_adapter_compatible/tcpip_adapter_compat.h"
 #include "driver/adc.h"
+#include "driver/adc2_wifi_private.h"
 
 #if (CONFIG_ESP32_WIFI_RX_BA_WIN > CONFIG_ESP32_WIFI_DYNAMIC_RX_BUFFER_NUM)
 #error "WiFi configuration check: WARNING, WIFI_RX_BA_WIN should not be larger than WIFI_DYNAMIC_RX_BUFFER_NUM!"
@@ -48,11 +51,14 @@ uint64_t g_wifi_feature_caps =
 #if CONFIG_ESP32_WIFI_ENABLE_WPA3_SAE
     CONFIG_FEATURE_WPA3_SAE_BIT |
 #endif
+#if (CONFIG_ESP32_SPIRAM_SUPPORT | CONFIG_ESP32S2_SPIRAM_SUPPORT)
+    CONFIG_FEATURE_CACHE_TX_BUF_BIT |
+#endif
 0;
 
-static const char* TAG = "wifi_init";
-
 static bool s_wifi_adc_xpd_flag;
+
+static const char* TAG = "wifi_init";
 
 static void __attribute__((constructor)) s_set_default_wifi_log_level(void)
 {
@@ -60,7 +66,7 @@ static void __attribute__((constructor)) s_set_default_wifi_log_level(void)
        so set it at runtime startup. Done here not in esp_wifi_init() to allow
        the user to set the level again before esp_wifi_init() is called.
     */
-    esp_log_level_set("wifi", CONFIG_LOG_DEFAULT_LEVEL);
+    esp_log_level_set("wifi", CONFIG_LOG_DEFAULT_LEVEL); 
     esp_log_level_set("mesh", CONFIG_LOG_DEFAULT_LEVEL);
     esp_log_level_set("smartconfig", CONFIG_LOG_DEFAULT_LEVEL);
     esp_log_level_set("ESPNOW", CONFIG_LOG_DEFAULT_LEVEL);
@@ -132,6 +138,11 @@ esp_err_t esp_wifi_deinit(void)
 #if CONFIG_ESP_NETIF_TCPIP_ADAPTER_COMPATIBLE_LAYER
     tcpip_adapter_clear_default_wifi_handlers();
 #endif
+#if CONFIG_IDF_TARGET_ESP32S2
+#if CONFIG_FREERTOS_USE_TICKLESS_IDLE
+    esp_pm_unregister_skip_light_sleep_callback(esp_wifi_internal_is_tsf_active);
+#endif
+#endif
 
     return err;
 }
@@ -176,6 +187,16 @@ esp_err_t esp_wifi_init(const wifi_init_config_t *config)
         }
     }
 #endif
+#if CONFIG_IDF_TARGET_ESP32S2
+#if CONFIG_FREERTOS_USE_TICKLESS_IDLE
+    esp_err_t ret = esp_pm_register_skip_light_sleep_callback(esp_wifi_internal_is_tsf_active);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to register skip light sleep callback (0x%x)", ret);
+        return ret;
+    }
+    esp_sleep_enable_wifi_wakeup();
+#endif
+#endif
 #if CONFIG_ESP_NETIF_TCPIP_ADAPTER_COMPATIBLE_LAYER
     esp_err_t err = tcpip_adapter_set_default_wifi_handlers();
     if (err != ESP_OK) {
@@ -200,6 +221,9 @@ esp_err_t esp_wifi_init(const wifi_init_config_t *config)
             return result;
         } 
     }
+#if CONFIG_IDF_TARGET_ESP32S2
+    adc2_cal_include(); //This enables the ADC2 calibration constructor at start up.
+#endif
     esp_wifi_config_info();
     return result;
 }

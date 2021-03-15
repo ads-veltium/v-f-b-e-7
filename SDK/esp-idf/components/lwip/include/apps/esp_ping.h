@@ -54,7 +54,8 @@ typedef enum {
     PING_TARGET_RES_FN              = 55,   /**< ping result callback function */
     PING_TARGET_RES_RESET           = 56,   /**< ping result statistic reset */
     PING_TARGET_DATA_LEN            = 57,   /**< ping data length*/
-    PING_TARGET_IP_TOS              = 58    /**< ping QOS*/
+    PING_TARGET_IP_TOS              = 58,    /**< ping QOS*/
+    PING_TARGET_IF_INDEX            = 59    /**< ping if index*/
 } ping_target_id_t;
 
 typedef enum {
@@ -65,7 +66,6 @@ typedef enum {
 
 typedef void (* esp_ping_found_fn)(ping_target_id_t found_id, esp_ping_found *found_val);
 void func ( void (*f)(ping_target_id_t, esp_ping_found*) );
-
 /**
  * @brief  Set PING function option
  *

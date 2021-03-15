@@ -16,7 +16,7 @@ static uint8_t s_eth_mac[6];
 esp_eth_phy_t *phy=NULL;
 esp_eth_phy_t *phy2=NULL;
 uint8 ZeroBuffer[10] ={'0'};
-
+esp_netif_t *eth_netif;
 //Variables para buscar el contador
 xParametrosPing ParametrosPing EXT_RAM_ATTR;
 void tcpipInit();
@@ -56,9 +56,6 @@ void pingResults(ping_target_id_t msgType, esp_ping_found * pf){
             Serial.println("Conexion a internet detectada!"); 
             ParametrosPing.CheckingConn = false;
             ConfigFirebase.InternetConection = true;
-            if(Coms.Wifi.ON){
-                Station_Stop();
-            }
         }
         ParametrosPing.Found= true;
         ping_deinit();
@@ -140,6 +137,9 @@ void BuscarContador_Task(void *args){
 
 
 bool ComprobarConexion(){
+    //Comprobar si la red tiene conexion a internet
+    IP4_ADDR(&ParametrosPing.BaseAdress , 8,8,8,8);
+    ParametrosPing.CheckingConn = true;
     uint32_t ping_count = 5;  //how many pings per report
     uint32_t ping_timeout = 1000; //mS till we consider it timed out
     uint32_t ping_delay = 100; //mS between pings
@@ -153,7 +153,7 @@ bool ComprobarConexion(){
     
 	return ESP_OK;
 }
-// Event handler for Ethernet
+
 static void eth_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
 {
     switch (event_id) {
@@ -187,9 +187,9 @@ static void eth_event_handler(void *arg, esp_event_base_t event_base, int32_t ev
         Serial.println( "Ethernet Got IP Address");
         Serial.printf( "ETHIP: %d %d %d %d\n",IP2STR(&ip_info->ip));
         Coms.ETH.IP1[0] =ip4_addr1(&ip_info->ip);
-            Coms.ETH.IP1[1] =ip4_addr2(&ip_info->ip);
-            Coms.ETH.IP1[2] =ip4_addr3(&ip_info->ip);
-            Coms.ETH.IP1[3] =ip4_addr4(&ip_info->ip);
+        Coms.ETH.IP1[1] =ip4_addr2(&ip_info->ip);
+        Coms.ETH.IP1[2] =ip4_addr3(&ip_info->ip);
+        Coms.ETH.IP1[3] =ip4_addr4(&ip_info->ip);
 
         if(Coms.ETH.Puerto==1){
             Coms.ETH.IP1[0] =ip4_addr1(&ip_info->ip);
@@ -212,9 +212,7 @@ static void eth_event_handler(void *arg, esp_event_base_t event_base, int32_t ev
         eth_connecting = false;
 
         
-        //Comprobar si la red tiene conexion a internet
-        IP4_ADDR(&ParametrosPing.BaseAdress , 8,8,8,8);
-        ParametrosPing.CheckingConn = true;
+
         ComprobarConexion();
         Coms.ETH.conectado = true;
         break;
@@ -232,18 +230,33 @@ void initialize_ethernet(void)
     Coms.ETH.Alone = 1;
     Coms.ETH.Auto  = 1;
     esp_netif_config_t cfg = ESP_NETIF_DEFAULT_ETH();
-    esp_netif_t *eth_netif = esp_netif_new(&cfg);
-    ESP_ERROR_CHECK(esp_netif_dhcps_stop(eth_netif));
 
-    esp_netif_ip_info_t DHCP_Server_IP;
-    IP4_ADDR(&DHCP_Server_IP.ip, 192, 168, 1, 1);
-    IP4_ADDR(&DHCP_Server_IP.gw, 192, 168, 1, 1);
-    IP4_ADDR(&DHCP_Server_IP.netmask, 255, 255, 255, 0);
-    ESP_ERROR_CHECK(esp_netif_set_ip_info(eth_netif, &DHCP_Server_IP)); 
-    ESP_ERROR_CHECK(esp_netif_dhcps_start(eth_netif));
+    if(Coms.ETH.Alone){
+        esp_netif_inherent_config_t config;
+        config = *cfg.base;
+        config.flags = (esp_netif_flags_t)(ESP_NETIF_DHCP_SERVER | ESP_NETIF_FLAG_AUTOUP);
+        config.route_prio = 10;
+        cfg.base = &config;
+        eth_netif= esp_netif_new(&cfg);
+        ESP_ERROR_CHECK(esp_netif_dhcpc_stop(eth_netif));
+        ESP_ERROR_CHECK(esp_netif_dhcps_stop(eth_netif));
 
+        esp_netif_ip_info_t DHCP_Server_IP;
+        IP4_ADDR(&DHCP_Server_IP.ip, 192, 168, 1, 1);
+        IP4_ADDR(&DHCP_Server_IP.gw, 192, 168, 1, 1);
+        IP4_ADDR(&DHCP_Server_IP.netmask, 255, 255, 255, 0);
+        ESP_ERROR_CHECK(esp_netif_set_ip_info(eth_netif, &DHCP_Server_IP)); 
+
+        ESP_ERROR_CHECK(esp_netif_dhcps_start(eth_netif));
+
+        esp_event_handler_register(ETH_EVENT, ETHERNET_EVENT_START, esp_netif_action_start, eth_netif);
+        esp_event_handler_register(ETH_EVENT, ETHERNET_EVENT_STOP, esp_netif_action_stop, eth_netif);
+        eth_connected = true;
+        
+    }   
     //Si fijamos una IP estatica:
-    if(!Coms.ETH.Auto){
+    else if(!Coms.ETH.Auto){
+        eth_netif = esp_netif_new(&cfg);
         ESP_ERROR_CHECK(esp_netif_dhcpc_stop(eth_netif));
         esp_netif_ip_info_t  info;
         memset(&info, 0, sizeof(info));
@@ -251,12 +264,8 @@ void initialize_ethernet(void)
 	    IP4_ADDR(&info.gw, 192, 168, 1, 1);
 	    IP4_ADDR(&info.netmask, 255, 255, 255, 0);
 	    ESP_ERROR_CHECK(esp_netif_set_ip_info(eth_netif, &info));  
+        esp_event_set_default_eth_handlers();
     }
-     
-
-    //Arrancar el servidor DHCP
-    esp_event_handler_register(ETH_EVENT, ETHERNET_EVENT_START, esp_netif_action_start, eth_netif);
-    esp_event_handler_register(ETH_EVENT, ETHERNET_EVENT_STOP, esp_netif_action_stop, eth_netif);
 
     ESP_ERROR_CHECK(esp_event_handler_register(ETH_EVENT, ESP_EVENT_ANY_ID, eth_event_handler, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_ETH_GOT_IP, eth_event_handler, NULL));
@@ -290,6 +299,9 @@ bool stop_ethernet(void){
         Serial.println("esp_eth_stop failed");
         return false;
     }
+    if(Coms.ETH.Alone){
+        ESP_ERROR_CHECK(esp_netif_dhcps_stop(eth_netif));
+    }
     eth_connected  = false;
     eth_connecting = false;
     delay(500);
@@ -300,6 +312,9 @@ bool restart_ethernet(void){
     if(esp_eth_start(s_eth_handle) != ESP_OK){
         Serial.println("esp_eth_stop failed");
         return false;
+    }
+    if(Coms.ETH.Alone){
+        ESP_ERROR_CHECK(esp_netif_dhcps_start(eth_netif));
     }
     eth_connecting = true;
     delay(100);
