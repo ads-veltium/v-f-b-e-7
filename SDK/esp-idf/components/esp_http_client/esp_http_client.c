@@ -509,9 +509,9 @@ esp_http_client_handle_t esp_http_client_init(const esp_http_client_config_t *co
                    (client->request->buffer        = calloc(1, sizeof(esp_http_buffer_t)))           &&
                    (client->response               = calloc(1, sizeof(esp_http_data_t)))             &&
                    (client->response->headers      = http_header_init())                             &&
-                   (client->response->buffer       = calloc(1, sizeof(esp_http_buffer_t)))
-               );
+                   (client->response->buffer       = calloc(1, sizeof(esp_http_buffer_t)))           
 
+               );
     if (!_success) {
         ESP_LOGE(TAG, "Error allocate memory");
         goto error;
@@ -655,6 +655,8 @@ esp_err_t esp_http_client_cleanup(esp_http_client_handle_t client)
         free(client->response);
     }
 
+    
+    
     free(client->parser);
     free(client->parser_settings);
     _clear_connection_info(client);
@@ -854,6 +856,8 @@ int esp_http_client_read(esp_http_client_handle_t client, char *buffer, int len)
 {
     esp_http_buffer_t *res_buffer = client->response->buffer;
 
+    
+    
     int rlen = ESP_FAIL, ridx = 0;
     if (res_buffer->raw_len) {
         int remain_len = client->response->buffer->raw_len;
@@ -1096,7 +1100,7 @@ static int http_client_prepare_first_line(esp_http_client_handle_t client, int w
                                   method,
                                   client->connection_info.path);
     if (first_line_len >= client->buffer_size_tx) {
-        ESP_LOGE(TAG, "Out of buffer");
+        ESP_LOGE(TAG, "Out of buffer1");
         return -1;
     }
 
@@ -1104,7 +1108,7 @@ static int http_client_prepare_first_line(esp_http_client_handle_t client, int w
         first_line_len += snprintf(client->request->buffer->data + first_line_len,
                                    client->buffer_size_tx - first_line_len, "?%s", client->connection_info.query);
         if (first_line_len >= client->buffer_size_tx) {
-            ESP_LOGE(TAG, "Out of buffer");
+            ESP_LOGE(TAG, "Out of buffer2");
             return -1;
 
         }
@@ -1112,7 +1116,7 @@ static int http_client_prepare_first_line(esp_http_client_handle_t client, int w
     first_line_len += snprintf(client->request->buffer->data + first_line_len,
                                client->buffer_size_tx - first_line_len, " %s\r\n", DEFAULT_HTTP_PROTOCOL);
     if (first_line_len >= client->buffer_size_tx) {
-        ESP_LOGE(TAG, "Out of buffer");
+        ESP_LOGE(TAG, "Out of buffer3");
         return -1;
     }
     return first_line_len;

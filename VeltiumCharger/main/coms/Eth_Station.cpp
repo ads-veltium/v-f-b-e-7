@@ -19,7 +19,6 @@ uint8 ZeroBuffer[10] ={'0'};
 esp_netif_t *eth_netif;
 //Variables para buscar el contador
 xParametrosPing ParametrosPing EXT_RAM_ATTR;
-void tcpipInit();
 
 bool CheckContador(int ip4){
     Contador ContadorCheck;
@@ -27,7 +26,7 @@ bool CheckContador(int ip4){
     char ip[15]={"0"};
     sprintf(ip,"%i.%i.%i.%i", ip4_addr1(&ParametrosPing.BaseAdress),ip4_addr2(&ParametrosPing.BaseAdress),ip4_addr3(&ParametrosPing.BaseAdress),ip4);
     ContadorCheck.begin(ip);
-    for (int i=0; i<=2;i++){
+    for (int i=0; i<2;i++){
         if(ContadorCheck.read()){           
             if(ContadorCheck.parseModel()){
                 ContadorCheck.end();
@@ -45,6 +44,12 @@ bool CheckContador(int ip4){
 }
 
 void pingResults(ping_target_id_t msgType, esp_ping_found * pf){
+    /*Serial.println(pf->max_time);
+    Serial.println(pf->resp_time);
+    Serial.println(pf->total_time);
+    Serial.println(pf->ping_err);
+    Serial.println(pf->recv_count);
+    Serial.println(pf->recv_count);*/
 
     if(pf->timeout_count == ParametrosPing.ping_count){     
 
@@ -92,7 +97,7 @@ void BuscarContador_Task(void *args){
             }
             else if(!Sentido && !TopeSup){ //Parriba
                 i = ip4_addr4(&ParametrosPing.BaseAdress) + Sup < 255 ? ip4_addr4(&ParametrosPing.BaseAdress) + Sup : 255;
-                if(i != 255 ){
+                if(i != 254 ){
                     Sup++;
                     Sentido = true;
                 }
@@ -102,9 +107,12 @@ void BuscarContador_Task(void *args){
                     continue;
                 }
             }
+            if(i==-1){
+                break;
+            }
             
-            printf("Buscando en %i \n", i);
-            ParametrosPing.NextOne = false;
+            /*printf("Buscando en %i \n", i);
+            
             esp_ping_set_target(PING_TARGET_RES_RESET, &BaseAdress, sizeof(uint32_t));
             IP4_ADDR(&BaseAdress, ip4_addr1(&BaseAdress),ip4_addr2(&BaseAdress),ip4_addr3(&BaseAdress),i);
             esp_ping_set_target(PING_TARGET_IP_ADDRESS_COUNT, &ParametrosPing.ping_count, sizeof(uint32_t));
@@ -112,11 +120,12 @@ void BuscarContador_Task(void *args){
             esp_ping_set_target(PING_TARGET_DELAY_TIME, &ParametrosPing.ping_delay, sizeof(uint32_t));
             esp_ping_set_target(PING_TARGET_IP_ADDRESS, &BaseAdress, sizeof(uint32_t));
             func(pingResults);
-            ping_init();
+            ping_init();*/
+            ParametrosPing.NextOne = false;
+            ParametrosPing.Found = true;
             i++;
         }
         else if(ParametrosPing.Found ){
-            Serial.println("Hemos encontrado algo, a ver si es un contador");
             if(CheckContador(i-1)){
                 Serial.println("Busqueda finalizada!");
                 Serial.printf("Contador encontrado en %d %d %d %d \n", ip4_addr1(&BaseAdress), ip4_addr2(&BaseAdress), ip4_addr3(&BaseAdress), i-1);
@@ -131,7 +140,9 @@ void BuscarContador_Task(void *args){
         }
         delay(20);
     }
-    Serial.println("No he encontrado ningun medidor");
+    if(!ContadorExt.ContadorConectado){
+        Serial.println("No he encontrado ningun medidor");
+    }
     vTaskDelete(NULL);
 }
 
@@ -224,13 +235,12 @@ static void eth_event_handler(void *arg, esp_event_base_t event_base, int32_t ev
 
 void initialize_ethernet(void)
 {
-
-    tcpipInit();
     
-    Coms.ETH.Alone = 1;
+    Coms.ETH.Alone = 0;
     Coms.ETH.Auto  = 1;
     esp_netif_config_t cfg = ESP_NETIF_DEFAULT_ETH();
 
+    //servidor DHCP
     if(Coms.ETH.Alone){
         esp_netif_inherent_config_t config;
         config = *cfg.base;
@@ -264,7 +274,12 @@ void initialize_ethernet(void)
 	    IP4_ADDR(&info.gw, 192, 168, 1, 1);
 	    IP4_ADDR(&info.netmask, 255, 255, 255, 0);
 	    ESP_ERROR_CHECK(esp_netif_set_ip_info(eth_netif, &info));  
-        esp_event_set_default_eth_handlers();
+        esp_eth_set_default_handlers(eth_netif);
+    }
+    //Configuracion automatica
+    else{
+        eth_netif = esp_netif_new(&cfg);
+        esp_eth_set_default_handlers(eth_netif);
     }
 
     ESP_ERROR_CHECK(esp_event_handler_register(ETH_EVENT, ESP_EVENT_ANY_ID, eth_event_handler, NULL));
@@ -284,7 +299,7 @@ void initialize_ethernet(void)
     phy = esp_eth_phy_new_lan8720(&phy_config);
 
     esp_eth_config_t config = ETH_DEFAULT_CONFIG(mac, phy);
-    esp_eth_handle_t eth_handle = NULL;
+
     ESP_ERROR_CHECK(esp_eth_driver_install(&config, &s_eth_handle));
     ESP_ERROR_CHECK(esp_netif_attach(eth_netif, esp_eth_new_netif_glue(s_eth_handle)));
     esp_eth_ioctl(s_eth_handle, ETH_CMD_S_PROMISCUOUS, (void *)true);
@@ -292,6 +307,11 @@ void initialize_ethernet(void)
 
     eth_connecting = true;
     eth_started = true;
+}
+void kill_ethernet(void){
+    stop_ethernet();
+    esp_netif_destroy(eth_netif);
+    esp_eth_driver_uninstall(s_eth_handle);
 }
 
 bool stop_ethernet(void){

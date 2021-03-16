@@ -552,6 +552,7 @@ void Firebase_Conn_Task(void *args){
                 Serial.println("No se ha podido obtener una autorizacion, reiniciando...");
               }
           }
+          serializeJson(Lectura,Serial);
           ConnectionState=DISCONNECTING;
           break;
         }

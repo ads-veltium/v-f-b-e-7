@@ -144,7 +144,8 @@
                 "${workspaceFolder}/components/Arduino/libraries/NimBLE/src",
                 "${workspaceFolder}/components/esp-nimble-cpp/src",
                 "${workspaceFolder}/main/coms",
-                "/home/joel/Documents/fw-bird-esp32/SDK/esp-idf/components/esp_netif/include"
+                "/home/joel/Documents/fw-bird-esp32/SDK/esp-idf/components/esp_netif/include",
+                "/home/joel/Documents/fw-bird-esp32/SDK/esp-idf/components/esp_http_client/include"
             ],
             "intelliSenseMode": "clang-x64",
             "browse": {

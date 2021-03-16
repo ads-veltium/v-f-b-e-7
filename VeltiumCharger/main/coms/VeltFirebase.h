@@ -2,7 +2,7 @@
 #define VeltFirebase_h
 
 #define ARDUINOJSON_USE_LONG_LONG 1
-#include "HTTPClient.h"
+#include "esp_http_client.h"
 #include "ArduinoJson.h"
 #include "Update.h"
 #include "../control.h"
@@ -40,10 +40,12 @@ uint16  ParseFirmwareVersion(String Texto);
 
 class Real_Time_Database{
     String RTDB_url, Read_url, Write_url, Base_Path;
-    HTTPClient RTDBClient, AutenticationClient; 
-
+    esp_http_client_handle_t Auth_client, RTDB_client;
+    
+    
     String Auth_url= "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=";
     StaticJsonDocument<256> AuthDoc;
+    
   public:
     #define WRITE     0
     #define UPDATE    1
@@ -66,8 +68,9 @@ class Real_Time_Database{
     bool Send_Command(String path, JsonDocument *doc, uint8_t Command);
     long long  Get_Timestamp(String path,JsonDocument *response);
     void begin(String Host, String DatabaseID);
-    void restart();
+    void reload();
     void end();
+
 };
 
 class Firebase{

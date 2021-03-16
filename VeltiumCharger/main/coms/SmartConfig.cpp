@@ -27,8 +27,6 @@ extern carac_Firebase_Configuration ConfigFirebase;
 bool wifi_connected  = false;
 bool wifi_connecting = false;
 
-void tcpipInit();
-
 static const char *TAG = "Smartconfig";
 
 static void smartconfig_example_task(void * parm);
@@ -43,9 +41,12 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
             break;
             }
             case WIFI_EVENT_STA_DISCONNECTED:
-                esp_wifi_connect();
-                Serial.println("Reconectando...");
-                if(++Reintentos>=5){
+                if(!Coms.StartSmartconfig && ! Coms.StartProvisioning){
+                    esp_wifi_connect();
+                    Serial.println("Reconectando...");
+                }
+
+                if(++Reintentos>=5 ){
                     Serial.println("Intentado demasiadas veces, desconectando");
                     esp_wifi_stop();
                     if(Coms.StartSmartconfig){
@@ -67,7 +68,7 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
     else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP){
         ip_event_got_ip_t *event = (ip_event_got_ip_t *) event_data;
         const esp_netif_ip_info_t *ip_info = &event->ip_info;
-        Serial.println( "Wifi got IP Address");
+        Serial.println( "Wifi got IP Address\n");
         Serial.printf( "Wifi: %d %d %d %d\n",IP2STR(&ip_info->ip));
 
 
@@ -86,12 +87,6 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
         if(len>16){
             modifyCharacteristic(&Coms.Wifi.AP[16], 16, COMS_CONFIGURATION_WIFI_SSID_2);
         }
-        if(Coms.Provisioning){
-            delay(7000);
-            MAIN_RESET_Write(0);
-            ESP.restart();
-
-        }
         Reintentos = 0;
         wifi_connected = true;
         wifi_connecting = false;
@@ -102,13 +97,13 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
          switch(event_id){
             case SC_EVENT_SCAN_DONE:
                 Reintentos = 0;
-                 ESP_LOGE(TAG, "Scan done");
+                 Serial.printf( "Scan done\n");
             break;
             case SC_EVENT_FOUND_CHANNEL:
-                 ESP_LOGE(TAG, "Found channel");
+                 Serial.printf( "Found channel\n");
             break;
             case SC_EVENT_GOT_SSID_PSWD:{
-                ESP_LOGE(TAG, "Got SSID and password");
+                Serial.printf( "Got SSID and password\n");
 
                 smartconfig_event_got_ssid_pswd_t *evt = (smartconfig_event_got_ssid_pswd_t *)event_data;
                 wifi_config_t wifi_config;
@@ -126,8 +121,8 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
 
                 memcpy(ssid, evt->ssid, sizeof(evt->ssid));
                 memcpy(password, evt->password, sizeof(evt->password));
-                ESP_LOGE(TAG, "SSID:%s", ssid);
-                ESP_LOGE(TAG, "PASSWORD:%s", password);
+                Serial.printf( "SSID:%s\n", ssid);
+                Serial.printf( "PASSWORD:%s\n", password);
 
                 ESP_ERROR_CHECK( esp_wifi_disconnect() );
 
@@ -139,7 +134,7 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
 
             case SC_EVENT_SEND_ACK_DONE:
 
-                ESP_LOGE(TAG, "smartconfig over");
+                Serial.printf( "smartconfig over\n");
                 esp_smartconfig_stop();
             break;
          }
@@ -147,32 +142,35 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
     else if(event_base == WIFI_PROV_EVENT){
         switch (event_id) {
             case WIFI_PROV_START:
-                ESP_LOGE(TAG, "Provisioning started");
+                Serial.printf( "Provisioning started");
                 Reintentos = 0;
                 break;
             case WIFI_PROV_CRED_RECV: {
                 wifi_sta_config_t *wifi_sta_cfg = (wifi_sta_config_t *)event_data;
-                ESP_LOGE(TAG, "Received Wi-Fi credentials"
-                         "\n\tSSID     : %s\n\tPassword : %s",
+                Serial.printf( "Received Wi-Fi credentials"
+                         "\n\tSSID     : %s\n\tPassword : %s\n",
                          (const char *) wifi_sta_cfg->ssid,
                          (const char *) wifi_sta_cfg->password);
                 break;
             }
             case WIFI_PROV_CRED_FAIL: {
                 wifi_prov_sta_fail_reason_t *reason = (wifi_prov_sta_fail_reason_t *)event_data;
-                ESP_LOGE(TAG, "Provisioning failed!\n\tReason : %s"
-                         "\n\tPlease reset to factory and retry provisioning",
+                Serial.printf( "Provisioning failed!\n\tReason : %s"
+                         "\n\tPlease reset to factory and retry provisioning\n",
                          (*reason == WIFI_PROV_STA_AUTH_ERROR) ?
                          "Wi-Fi station authentication failed" : "Wi-Fi access-point not found");
                 break;
             }
             case WIFI_PROV_CRED_SUCCESS:
-                ESP_LOGE(TAG, "Provisioning successful");
-                
+                Serial.printf("Provisioning successful\n");
+                Coms.Wifi.ON = true;
+                SendToPSOC5(Coms.Wifi.ON,COMS_CONFIGURATION_WIFI_ON);
                 break;
             case WIFI_PROV_END:
-                ESP_LOGE(TAG, "Provisioning service deinit");
+                Serial.printf("Provisioning service deinit\n");
                 wifi_prov_mgr_deinit();
+                MAIN_RESET_Write(0);
+                ESP.restart();
                 break;
             default:
                 break;
@@ -208,6 +206,14 @@ void initialise_smartconfig(void)
 }
 
 void initialise_provisioning(void){
+    esp_wifi_disconnect();
+    esp_wifi_stop();
+    esp_wifi_deinit();
+    esp_netif_destroy(sta_netif);
+    esp_netif_destroy(ap_netif);
+
+    delay(50);
+
     //borrar credenciales almacenadas
     wifi_config_t conf;
     memset(&conf, 0, sizeof(wifi_config_t));
@@ -218,6 +224,7 @@ void initialise_provisioning(void){
     }
 
     //configuracion del provision
+    sta_netif = esp_netif_create_default_wifi_sta();
     ap_netif = esp_netif_create_default_wifi_ap();
 
     /* Configuration for the provisioning manager */
@@ -275,14 +282,13 @@ void start_wifi(void)
 
     /* If device is not yet provisioned start provisioning service */
     if (!provisioned) {
-        ESP_LOGE(TAG, "Sin credenciales almacenadas, pausando wifi");    
+        Serial.printf( "Sin credenciales almacenadas, pausando wifi\n");    
         wifi_prov_mgr_deinit();   
         esp_wifi_stop();
 
         Coms.Wifi.ON=false;
         SendToPSOC5(Coms.Wifi.ON,COMS_CONFIGURATION_WIFI_ON);
     } else {
-        ESP_LOGI(TAG, "Credenciales encontradas, conectando...");
         wifi_prov_mgr_deinit();
         ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
         ESP_ERROR_CHECK(esp_wifi_start());

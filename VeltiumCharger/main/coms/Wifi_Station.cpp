@@ -215,23 +215,23 @@ void InitServer(void) {
 	//Cargar los archivos del servidor
 	Serial.println(ESP.getFreeHeap());
 
-    server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
+    server.on("/", HTTP_GET_A, [](AsyncWebServerRequest *request){
      request->send(SPIFFS, "/login.html");
     });
 
-    server.on("/login", HTTP_GET, [](AsyncWebServerRequest *request){
+    server.on("/login", HTTP_GET_A, [](AsyncWebServerRequest *request){
      request->send(SPIFFS, "/login.html");
     });
 
-     server.on("/datos", HTTP_GET, [](AsyncWebServerRequest *request){
+     server.on("/datos", HTTP_GET_A, [](AsyncWebServerRequest *request){
      request->send(SPIFFS, "/datos.html",String(), false, processor);
     });
 
-    server.on("/style.css", HTTP_GET, [](AsyncWebServerRequest *request){
+    server.on("/style.css", HTTP_GET_A, [](AsyncWebServerRequest *request){
     request->send(SPIFFS, "/style.css", "text/css");
     });
 
-    server.on("/get", HTTP_GET, [](AsyncWebServerRequest *request){
+    server.on("/get", HTTP_GET_A, [](AsyncWebServerRequest *request){
         memcpy(Coms.Wifi.AP,request->getParam(AP)->value().c_str(),32);
         Coms.Wifi.Pass = request->getParam(WIFI_PWD)->value();
         //Coms.ETH.IP1 = request->getParam(IP1)->value().toInt();
@@ -267,69 +267,69 @@ void InitServer(void) {
     });
     
 
-    server.on("/hp", HTTP_GET, [](AsyncWebServerRequest *request){
+    server.on("/hp", HTTP_GET_A, [](AsyncWebServerRequest *request){
     request->send_P(200, "text/plain", String(Status.HPT_status).c_str());
     });
 
-    server.on("/icp", HTTP_GET, [](AsyncWebServerRequest *request){
+    server.on("/icp", HTTP_GET_A, [](AsyncWebServerRequest *request){
     request->send_P(200, "text/plain", String(Status.ICP_status).c_str());
     });
 
-    server.on("/dcleak", HTTP_GET, [](AsyncWebServerRequest *request){
+    server.on("/dcleak", HTTP_GET_A, [](AsyncWebServerRequest *request){
     request->send_P(200, "text/plain", String(Status.DC_Leack_status).c_str());
     });
 
-    server.on("/conlock", HTTP_GET, [](AsyncWebServerRequest *request){
+    server.on("/conlock", HTTP_GET_A, [](AsyncWebServerRequest *request){
     request->send_P(200, "text/plain", String(Status.Con_Lock).c_str());
     });
 
-    server.on("/maxcable", HTTP_GET, [](AsyncWebServerRequest *request){
+    server.on("/maxcable", HTTP_GET_A, [](AsyncWebServerRequest *request){
     request->send_P(200, "text/plain", String(Status.Measures.max_current_cable).c_str());
     });
 
-    server.on("/potenciare", HTTP_GET, [](AsyncWebServerRequest *request){
+    server.on("/potenciare", HTTP_GET_A, [](AsyncWebServerRequest *request){
     request->send_P(200, "text/plain", String(Status.Measures.reactive_power).c_str());
     });
 
-    server.on("/potenciap", HTTP_GET, [](AsyncWebServerRequest *request){
+    server.on("/potenciap", HTTP_GET_A, [](AsyncWebServerRequest *request){
     request->send_P(200, "text/plain", String(Status.Measures.apparent_power).c_str());
     });
 
-    server.on("/energia", HTTP_GET, [](AsyncWebServerRequest *request){
+    server.on("/energia", HTTP_GET_A, [](AsyncWebServerRequest *request){
     request->send_P(200, "text/plain", String(Status.Measures.active_energy).c_str());
     });
 
-    server.on("/energiare", HTTP_GET, [](AsyncWebServerRequest *request){
+    server.on("/energiare", HTTP_GET_A, [](AsyncWebServerRequest *request){
     request->send_P(200, "text/plain", String(Status.Measures.reactive_energy).c_str());
     });
 
-    server.on("/powerfactor", HTTP_GET, [](AsyncWebServerRequest *request){
+    server.on("/powerfactor", HTTP_GET_A, [](AsyncWebServerRequest *request){
     request->send_P(200, "text/plain", String(Status.Measures.power_factor).c_str());
     });
 
-    server.on("/corrientedom", HTTP_GET, [](AsyncWebServerRequest *request){
+    server.on("/corrientedom", HTTP_GET_A, [](AsyncWebServerRequest *request){
     request->send_P(200, "text/plain", String(Status.Measures.consumo_domestico).c_str());
     });
 
-   server.on("/corriente", HTTP_GET, [](AsyncWebServerRequest *request){
+   server.on("/corriente", HTTP_GET_A, [](AsyncWebServerRequest *request){
         request->send_P(200, "text/plain", String(Status.Measures.instant_current).c_str());
   });
 
-  server.on("/voltaje", HTTP_GET, [](AsyncWebServerRequest *request){
+  server.on("/voltaje", HTTP_GET_A, [](AsyncWebServerRequest *request){
         request->send_P(200, "text/plain", String(Status.Measures.instant_voltage).c_str());
   });
 
-   server.on("/potencia", HTTP_GET, [](AsyncWebServerRequest *request){
+   server.on("/potencia", HTTP_GET_A, [](AsyncWebServerRequest *request){
         request->send_P(200, "text/plain", String(Status.Measures.active_power).c_str());
   });
 
-   server.on("/error", HTTP_GET, [](AsyncWebServerRequest *request){
+   server.on("/error", HTTP_GET_A, [](AsyncWebServerRequest *request){
         request->send_P(200, "text/plain", String(Status.error_code).c_str());
   });
 
   
   
-   server.on("/update", HTTP_GET, [] (AsyncWebServerRequest *request) {
+   server.on("/update", HTTP_GET_A, [] (AsyncWebServerRequest *request) {
 
 		int entrada;
 		entrada = request->getParam(NUM_BOTON)->value().toInt();
@@ -358,7 +358,7 @@ void InitServer(void) {
 
    });
 
-   server.on("/autoupdate", HTTP_GET, [] (AsyncWebServerRequest *request) {
+   server.on("/autoupdate", HTTP_GET_A, [] (AsyncWebServerRequest *request) {
     	bool estado;
         int numero;
 	
@@ -424,27 +424,25 @@ void ComsTask(void *args){
         if(Coms.StartConnection){
             //Arranque del provisioning
             if(Coms.StartProvisioning || Coms.StartSmartconfig){
+                ConfigFirebase.InternetConection=0;
                 Serial.println("Starting provisioning sistem");
                 if(ServidorArrancado){
                     server.end();
                     ServidorArrancado = false;
                 }
-                if(Coms.ETH.ON){
-                    stop_ethernet();
-                    Coms.ETH.ON=false;
+                if(eth_connected || eth_connecting){
+                    kill_ethernet();
+                    Coms.ETH.ON = false;
                 }
-
+                delay(100);
+                wifi_connecting=true;
                 if(Coms.StartSmartconfig){
-                    wifi_connecting=true;
                     initialise_smartconfig();
                 }
                 else{Coms.Provisioning = true;
-                    initialise_provisioning();}
-                while(Coms.Wifi.ON != true){
-                    SendToPSOC5(true,COMS_CONFIGURATION_WIFI_ON);
-                    delay(25);
+                    initialise_provisioning();
                 }
-                SendToPSOC5(Coms.Wifi.ON,COMS_CONFIGURATION_WIFI_ON);
+
                 Coms.StartProvisioning = false;
                 Coms.StartSmartconfig=false;
             }
@@ -477,7 +475,6 @@ void ComsTask(void *args){
             }
 
             if(ConfigFirebase.InternetConection && !ServidorArrancado){
-                //SPIFFS.begin();
                 SPIFFS.begin(false,"/spiffs",1,"WebServer");
                 server.begin();
                 InitServer();

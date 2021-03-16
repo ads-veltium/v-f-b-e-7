@@ -23,7 +23,7 @@ void Contador::begin(String Host){
     CounterClient.begin(CounterUrl);
     CounterClient.addHeader("Content-Type", "application/json"); 
     CounterClient.setTimeout(10000);
-    CounterClient.setConnectTimeout(2000);
+    CounterClient.setConnectTimeout(1000);
     CounterClient.setReuse(true);
     Inicializado = true;
 }

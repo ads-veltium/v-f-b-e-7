@@ -804,7 +804,7 @@ esp_err_t WiFiGenericClass::_eventCallback(arduino_event_t *event)
             WiFi.getAutoReconnect())
         {
             WiFi.disconnect();
-            WiFi.begin();
+           // WiFi.begin();
         }
     } else if(event->event_id == ARDUINO_EVENT_WIFI_STA_GOT_IP) {
 #if ARDUHAL_LOG_LEVEL >= ARDUHAL_LOG_LEVEL_DEBUG
@@ -1113,7 +1113,7 @@ static void wifi_dns_found_callback(const char *name, const ip_addr_t *ipaddr, v
     if(ipaddr) {
         (*reinterpret_cast<IPAddress*>(callback_arg)) = ipaddr->u_addr.ip4.addr;
     }
-    xEventGroupSetBits(_arduino_event_group, WIFI_DNS_DONE_BIT);
+    //xEventGroupSetBits(_arduino_event_group, WIFI_DNS_DONE_BIT);
 }
 
 /**

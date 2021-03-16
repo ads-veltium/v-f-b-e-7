@@ -213,10 +213,10 @@ void controlTask(void *arg)
 							buffer_tx_local[1] = (uint8)(BLOQUE_STATUS >> 8);
 							buffer_tx_local[2] = (uint8)BLOQUE_STATUS;
 							buffer_tx_local[3] = 2;
-							buffer_tx_local[4] = serverbleGetConnected();
+							buffer_tx_local[4] = serverbleGetConnected() || ConfigFirebase.ClientConnected;
 							buffer_tx_local[5] = ESTADO_NORMAL;
 							serialLocal.write(buffer_tx_local, 6);
-							LastUserCon = serverbleGetConnected();
+							LastUserCon = serverbleGetConnected() || ConfigFirebase.ClientConnected;
 						}
 
 						if(cnt_timeout_tx == 0)
@@ -279,12 +279,12 @@ void controlTask(void *arg)
 
 #ifdef CONNECTED
 			//Si el equipo es trifasico, buscamos el contador, si lo encontramos lo leemos
-			if(/*Status.Trifasico &&*/ Coms.ETH.conectado && !ContadorExt.ContadorConectado){
+			if(Status.Trifasico && Coms.ETH.conectado && !ContadorExt.ContadorConectado ){
 				if(--TimeFromStart == 0){
 					Counter.find();
 				}
 			}
-			if(ContadorExt.ContadorConectado){
+			if(ContadorExt.ContadorConectado && Coms.ETH.ON){
 				if(!Counter.Inicializado){
 					Counter.begin(ContadorExt.ContadorIp);
 				}
