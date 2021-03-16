@@ -439,12 +439,12 @@ void ComsTask(void *args){
                 if(Coms.StartSmartconfig){
                     initialise_smartconfig();
                 }
-                else{Coms.Provisioning = true;
+                else{
                     initialise_provisioning();
                 }
 
                 Coms.StartProvisioning = false;
-                Coms.StartSmartconfig=false;
+                Coms.StartSmartconfig  = false;
             }
 
             //Comprobar si hemos perdido todas las conexiones

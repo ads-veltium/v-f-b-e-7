@@ -141,8 +141,9 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
     else if(event_base == WIFI_PROV_EVENT){
         switch (event_id) {
             case WIFI_PROV_START:
-                Serial.printf( "Provisioning started");
+                Serial.println( "Provisioning started");
                 Reintentos = 0;
+                Coms.Provisioning = true;
                 break;
             case WIFI_PROV_CRED_RECV: {
                 wifi_sta_config_t *wifi_sta_cfg = (wifi_sta_config_t *)event_data;
@@ -164,12 +165,16 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
                 Serial.printf("Provisioning successful\n");
                 Coms.Wifi.ON = true;
                 SendToPSOC5(Coms.Wifi.ON,COMS_CONFIGURATION_WIFI_ON);
+                Coms.Provisioning = false;
                 break;
             case WIFI_PROV_END:
                 Serial.printf("Provisioning service deinit\n");
                 wifi_prov_mgr_deinit();
-                MAIN_RESET_Write(0);
-                ESP.restart();
+                if(!Coms.Provisioning){
+                    MAIN_RESET_Write(0);
+                    ESP.restart();
+                }   
+;
                 break;
             default:
                 break;
@@ -184,7 +189,6 @@ void initialise_smartconfig(void)
     esp_wifi_stop();
     esp_wifi_deinit();
     esp_netif_destroy(sta_netif);
-    esp_smartconfig_stop();
     delay(50);
 
     sta_netif = esp_netif_create_default_wifi_sta();
@@ -199,9 +203,9 @@ void initialise_smartconfig(void)
     }
 
     delay(100);
-    ESP_ERROR_CHECK( esp_smartconfig_set_type(SC_TYPE_ESPTOUCH) );
+    esp_smartconfig_set_type(SC_TYPE_ESPTOUCH);
     smartconfig_start_config_t cfg2 = SMARTCONFIG_START_CONFIG_DEFAULT();
-    ESP_ERROR_CHECK( esp_smartconfig_start(&cfg2));
+    esp_smartconfig_start(&cfg2);
 }
 
 void initialise_provisioning(void){
