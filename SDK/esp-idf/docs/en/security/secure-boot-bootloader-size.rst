@@ -2,8 +2,8 @@
 
 .. _secure-boot-bootloader-size:
 
-Bootloader Size (with enabled secure features)
-==============================================
+Bootloader Size
+===============
 
 
 {IDF_TARGET_MAX_BOOTLOADER_SIZE:default = "64KB (0x10000 bytes)", esp32 = "48KB (0xC000 bytes)"}

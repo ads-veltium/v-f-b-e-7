@@ -1,7 +1,8 @@
-from io import open
 import os
 import shutil
 import tempfile
+from io import open
+
 import ttfw_idf
 
 try:
@@ -11,7 +12,7 @@ except ImportError:
     from itertools import zip_longest
 
 
-@ttfw_idf.idf_example_test(env_tag="test_jtag_arm")
+@ttfw_idf.idf_example_test(env_tag='test_jtag_arm')
 def test_examples_semihost_vfs(env, extra_data):
 
     rel_project_path = os.path.join('examples', 'storage', 'semihost_vfs')
@@ -24,9 +25,9 @@ def test_examples_semihost_vfs(env, extra_data):
         temp_dir = tempfile.mkdtemp()
         host_file_path = os.path.join(proj_path, 'data', host_file_name)
         shutil.copyfile(host_file_path, os.path.join(temp_dir, host_file_name))
-        openocd_extra_args = '-c \'set ESP_SEMIHOST_BASEDIR {}\''.format(temp_dir)
+        cfg_cmds = ['set ESP_SEMIHOST_BASEDIR "{}"'.format(temp_dir)]
 
-        with ttfw_idf.OCDProcess(os.path.join(proj_path, 'openocd.log'), openocd_extra_args):
+        with ttfw_idf.OCDBackend(os.path.join(proj_path, 'openocd.log'), dut.app.target, cfg_cmds=cfg_cmds):
             dut.start_app()
             dut.expect_all('example: Switch to semihosted stdout',
                            'example: Switched back to UART stdout',

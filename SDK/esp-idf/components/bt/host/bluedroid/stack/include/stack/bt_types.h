@@ -22,6 +22,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "bt_common.h"
+#include "osi/semaphore.h"
 
 typedef uint8_t UINT8;
 typedef uint16_t UINT16;
@@ -196,6 +197,13 @@ typedef struct {
     uint16_t          layer_specific;
     uint8_t           data[];
 } BT_HDR;
+
+typedef struct {
+    uint8_t           status;
+    uint16_t          opcode;
+    osi_sem_t         sync_sem;
+} BlE_SYNC;
+
 
 #define BT_HDR_SIZE (sizeof (BT_HDR))
 

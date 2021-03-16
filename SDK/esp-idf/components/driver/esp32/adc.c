@@ -12,9 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <esp_types.h>
 #include <stdlib.h>
 #include <ctype.h>
+#include "sdkconfig.h"
+#include "esp_types.h"
 #include "esp_log.h"
 #include "sys/lock.h"
 #include "soc/rtc.h"
@@ -28,9 +29,6 @@
 #include "driver/rtc_cntl.h"
 #include "driver/gpio.h"
 #include "driver/adc.h"
-#include "sdkconfig.h"
-
-#include "esp32/rom/ets_sys.h"
 
 #ifndef NDEBUG
 // Enable built-in checks in queue.h in debug builds
@@ -58,7 +56,7 @@ static const char *ADC_TAG = "ADC";
 
 #define ADC_CHECK(a, str, ret_val) ({                                               \
     if (!(a)) {                                                                     \
-        ESP_LOGE(ADC_TAG,"%s:%d (%s):%s", __FILE__, __LINE__, __FUNCTION__, str);   \
+        ESP_LOGE(ADC_TAG,"%s(%d): %s", __FUNCTION__, __LINE__, str);                \
         return (ret_val);                                                           \
     }                                                                               \
 })
@@ -120,7 +118,7 @@ esp_err_t adc_i2s_mode_init(adc_unit_t adc_unit, adc_channel_t channel)
     }
     adc_gpio_init(adc_unit, channel);
     ADC_ENTER_CRITICAL();
-    adc_hal_digi_init();
+    adc_hal_init();
     adc_hal_digi_controller_config(&dig_cfg);
     ADC_EXIT_CRITICAL();
 
@@ -130,7 +128,7 @@ esp_err_t adc_i2s_mode_init(adc_unit_t adc_unit, adc_channel_t channel)
 esp_err_t adc_digi_init(void)
 {
     ADC_ENTER_CRITICAL();
-    adc_hal_digi_init();
+    adc_hal_init();
     ADC_EXIT_CRITICAL();
     return ESP_OK;
 }

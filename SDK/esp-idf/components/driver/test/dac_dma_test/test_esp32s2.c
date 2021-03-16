@@ -13,8 +13,10 @@
 // limitations under the License.
 
 /*
- Tests for the dac device driver
+ Tests for the dac device driver on ESP32-S2 only
 */
+#include "sdkconfig.h"
+#if CONFIG_IDF_TARGET_ESP32S2
 
 #include "esp_system.h"
 #include "esp_intr_alloc.h"
@@ -22,7 +24,6 @@
 #include "freertos/task.h"
 #include "freertos/queue.h"
 #include "driver/adc.h"
-#include "driver/dac.h"
 #include "driver/rtc_io.h"
 #include "driver/gpio.h"
 #include "unity.h"
@@ -32,13 +33,13 @@
 #include "esp_log.h"
 #include "nvs_flash.h"
 #include "test_utils.h"
+#include "soc/soc.h"
 #include "soc/spi_reg.h"
 #include "soc/adc_periph.h"
 #include "soc/dac_periph.h"
+#include "soc/spi_periph.h"
 #include "test/test_common_adc.h"
-
-#if !DISABLED_FOR_TARGETS(ESP8266, ESP32) // This testcase for ESP32S2
-
+#include "driver/dac.h"
 #include "soc/system_reg.h"
 #include "esp32s2/rom/lldesc.h"
 #include "test/test_adc_dac_dma.h"
@@ -362,4 +363,4 @@ void adc_dac_dma_linker_deinit(void)
 /**           SPI DMA INIT CODE END        */
 /*******************************************/
 
-#endif // !DISABLED_FOR_TARGETS(ESP8266, ESP32)
+#endif // CONFIG_IDF_TARGET_ESP32S2

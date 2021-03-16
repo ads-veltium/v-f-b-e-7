@@ -1,5 +1,14 @@
 menu "Bootloader config"
 
+    config BOOTLOADER_OFFSET_IN_FLASH
+        hex
+        default 0x1000 if IDF_TARGET_ESP32 || IDF_TARGET_ESP32S2
+        default 0x0
+        help
+            Offset address that 2nd bootloader will be flashed to.
+            The value is determined by the ROM bootloader.
+            It's not configurable in ESP-IDF.
+
     choice BOOTLOADER_COMPILER_OPTIMIZATION
         prompt "Bootloader optimization Level"
         default BOOTLOADER_COMPILER_OPTIMIZATION_SIZE
@@ -114,7 +123,8 @@ menu "Bootloader config"
     config BOOTLOADER_NUM_PIN_FACTORY_RESET
         int "Number of the GPIO input for factory reset"
         depends on BOOTLOADER_FACTORY_RESET
-        range 0 39
+        range 0 39 if IDF_TARGET_ESP32
+        range 0 44 if IDF_TARGET_ESP32S2
         default 4
         help
             The selected GPIO will be configured as an input with internal pull-up enabled.
@@ -143,6 +153,7 @@ menu "Bootloader config"
     config BOOTLOADER_APP_TEST
         bool "GPIO triggers boot from test app partition"
         default N
+        depends on !BOOTLOADER_APP_ANTI_ROLLBACK
         help
             Allows to run the test app from "TEST" partition.
             A boot from "test" partition will occur if there is a GPIO input pulled low while device starts up.
@@ -245,8 +256,8 @@ menu "Bootloader config"
         depends on BOOTLOADER_APP_ANTI_ROLLBACK
         range 1 32 if IDF_TARGET_ESP32
         default 32 if IDF_TARGET_ESP32
-        range 1 16 if IDF_TARGET_ESP32S2
-        default 16 if IDF_TARGET_ESP32S2
+        range 1 16
+        default 16
         help
             The size of the efuse secure version field.
             Its length is limited to 32 bits for ESP32 and 16 bits for ESP32-S2.
@@ -263,6 +274,10 @@ menu "Bootloader config"
 
     config BOOTLOADER_SKIP_VALIDATE_IN_DEEP_SLEEP
         bool "Skip image validation when exiting deep sleep"
+        # note: dependencies for this config item are different to other "skip image validation"
+        # options, allowing to turn on "allow insecure options" and have secure boot with
+        # "skip validation when existing deep sleep". Keeping this to avoid a breaking change,
+        # but - as noted in help - it invalidates the integrity of Secure Boot checks
         depends on (SECURE_BOOT && SECURE_BOOT_INSECURE) || !SECURE_BOOT
         default n
         help
@@ -274,6 +289,48 @@ menu "Bootloader config"
             in conjunction with using deep_sleep() entry and changing the active OTA
             partition as this would skip the validation upon first load of the new
             OTA partition.
+
+            It is possible to enable this option with Secure Boot if "allow insecure
+            options" is enabled, however it's strongly recommended to NOT enable it as
+            it may allow a Secure Boot bypass.
+
+    config BOOTLOADER_SKIP_VALIDATE_ON_POWER_ON
+        bool "Skip image validation from power on reset (READ HELP FIRST)"
+        # only available if both Secure Boot and Check Signature on Boot are disabled
+        depends on !SECURE_SIGNED_ON_BOOT
+        default n
+        help
+            Some applications need to boot very quickly from power on. By default, the entire app binary
+            is read from flash and verified which takes up a significant portion of the boot time.
+
+            Enabling this option will skip validation of the app when the SoC boots from power on.
+            Note that in this case it's not possible for the bootloader to detect if an app image is
+            corrupted in the flash, therefore it's not possible to safely fall back to a different app
+            partition. Flash corruption of this kind is unlikely but can happen if there is a serious
+            firmware bug or physical damage.
+
+            Following other reset types, the bootloader will still validate the app image. This increases
+            the chances that flash corruption resulting in a crash can be detected following soft reset, and
+            the bootloader will fall back to a valid app image. To increase the chances of successfully recovering
+            from a flash corruption event, keep the option BOOTLOADER_WDT_ENABLE enabled and consider also enabling
+            BOOTLOADER_WDT_DISABLE_IN_USER_CODE - then manually disable the RTC Watchdog once the app is running.
+            In addition, enable both the Task and Interrupt watchdog timers with reset options set.
+
+    config BOOTLOADER_SKIP_VALIDATE_ALWAYS
+        bool "Skip image validation always (READ HELP FIRST)"
+        # only available if both Secure Boot and Check Signature on Boot are disabled
+        depends on !SECURE_SIGNED_ON_BOOT
+        default n
+        select BOOTLOADER_SKIP_VALIDATE_IN_DEEP_SLEEP
+        select BOOTLOADER_SKIP_VALIDATE_ON_POWER_ON
+        help
+            Selecting this option prevents the bootloader from ever validating the app image before
+            booting it. Any flash corruption of the selected app partition will make the entire SoC
+            unbootable.
+
+            Although flash corruption is a very rare case, it is not recommended to select this option.
+            Consider selecting "Skip image validation from power on reset" instead. However, if boot time
+            is the only important factor then it can be enabled.
 
     config BOOTLOADER_RESERVE_RTC_SIZE
         hex
@@ -337,12 +394,12 @@ menu "Security features"
     config SECURE_BOOT_SUPPORTS_RSA
         bool
         default y
-        depends on ESP32_REV_MIN_3 || IDF_TARGET_ESP32S2
+        depends on ESP32_REV_MIN_3 || IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32C3
 
     config SECURE_TARGET_HAS_SECURE_ROM_DL_MODE
         bool
         default y
-        depends on IDF_TARGET_ESP32S2
+        depends on IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32C3
 
 
     config SECURE_SIGNED_APPS_NO_SECURE_BOOT
@@ -414,6 +471,7 @@ menu "Security features"
     config SECURE_BOOT
         bool "Enable hardware Secure Boot in bootloader (READ DOCS FIRST)"
         default n
+        depends on !IDF_TARGET_ESP32C3 # IDF-2647
         help
             Build a bootloader which enables Secure Boot on first boot.
 
@@ -760,6 +818,7 @@ menu "Security features"
     config SECURE_ENABLE_SECURE_ROM_DL_MODE
         bool "Permanently switch to ROM UART Secure Download mode"
         depends on SECURE_TARGET_HAS_SECURE_ROM_DL_MODE && !SECURE_DISABLE_ROM_DL_MODE
+        select ESPTOOLPY_NO_STUB
         help
             If set, during startup the app will burn an eFuse bit to permanently switch the UART ROM
             Download Mode into a separate Secure Download mode. This option can only work if
@@ -783,4 +842,3 @@ menu "Security features"
 
 
 endmenu  # Security features
-

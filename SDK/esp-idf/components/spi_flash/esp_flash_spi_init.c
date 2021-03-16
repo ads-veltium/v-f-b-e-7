@@ -17,12 +17,24 @@
 #include "memspi_host_driver.h"
 #include "esp_flash_spi_init.h"
 #include "driver/gpio.h"
-#include "esp32/rom/spi_flash.h"
+#include "esp_rom_gpio.h"
+#include "esp_rom_efuse.h"
 #include "esp_log.h"
 #include "esp_heap_caps.h"
 #include "hal/spi_types.h"
 #include "driver/spi_common_internal.h"
+#include "hal/spi_flash_hal.h"
 #include "esp_flash_internal.h"
+#include "esp_rom_gpio.h"
+#if CONFIG_IDF_TARGET_ESP32
+#include "esp32/rom/spi_flash.h"
+#elif CONFIG_IDF_TARGET_ESP32S2
+#include "esp32s2/rom/spi_flash.h"
+#elif CONFIG_IDF_TARGET_ESP32S3
+#include "esp32s3/rom/spi_flash.h"
+#elif CONFIG_IDF_TARGET_ESP32C3
+#include "esp32c3/rom/spi_flash.h"
+#endif
 
 __attribute__((unused)) static const char TAG[] = "spi_flash";
 
@@ -50,6 +62,7 @@ __attribute__((unused)) static const char TAG[] = "spi_flash";
 #define DEFAULT_FLASH_MODE SPI_FLASH_FASTRD
 #endif
 
+//TODO: modify cs hold to meet requirements of all chips!!!
 #if CONFIG_IDF_TARGET_ESP32
 #define ESP_FLASH_HOST_CONFIG_DEFAULT()  (memspi_host_config_t){ \
     .host_id = SPI_HOST,\
@@ -59,7 +72,6 @@ __attribute__((unused)) static const char TAG[] = "spi_flash";
     .input_delay_ns = 0,\
 }
 #elif CONFIG_IDF_TARGET_ESP32S2
-#include "esp32s2/rom/efuse.h"
 #define ESP_FLASH_HOST_CONFIG_DEFAULT()  (memspi_host_config_t){ \
     .host_id = SPI_HOST,\
     .speed = DEFAULT_FLASH_SPEED, \
@@ -67,10 +79,36 @@ __attribute__((unused)) static const char TAG[] = "spi_flash";
     .iomux = true, \
     .input_delay_ns = 0,\
 }
+#elif CONFIG_IDF_TARGET_ESP32S3
+#include "esp32s3/rom/efuse.h"
+#define ESP_FLASH_HOST_CONFIG_DEFAULT()  (memspi_host_config_t){ \
+    .host_id = SPI_HOST,\
+    .speed = DEFAULT_FLASH_SPEED, \
+    .cs_num = 0, \
+    .iomux = true, \
+    .input_delay_ns = 0,\
+}
+#elif CONFIG_IDF_TARGET_ESP32C3
+#include "esp32c3/rom/efuse.h"
+#if !CONFIG_SPI_FLASH_AUTO_SUSPEND
+#define ESP_FLASH_HOST_CONFIG_DEFAULT()  (memspi_host_config_t){ \
+    .host_id = SPI_HOST,\
+    .speed = DEFAULT_FLASH_SPEED, \
+    .cs_num = 0, \
+    .iomux = true, \
+    .input_delay_ns = 0,\
+}
+#else
+#define ESP_FLASH_HOST_CONFIG_DEFAULT()  (memspi_host_config_t){ \
+    .host_id = SPI_HOST,\
+    .speed = DEFAULT_FLASH_SPEED, \
+    .cs_num = 0, \
+    .iomux = true, \
+    .input_delay_ns = 0,\
+    .auto_sus_en = true,\
+}
+#endif //!CONFIG_SPI_FLASH_AUTO_SUSPEND
 #endif
-
-
-esp_flash_t *esp_flash_default_chip = NULL;
 
 
 static IRAM_ATTR NOINLINE_ATTR void cs_initialize(esp_flash_t *chip, const esp_flash_spi_device_config_t *config, bool use_iomux, int cs_id)
@@ -87,22 +125,23 @@ static IRAM_ATTR NOINLINE_ATTR void cs_initialize(esp_flash_t *chip, const esp_f
     //To avoid the panic caused by flash data line conflicts during cs line
     //initialization, disable the cache temporarily
     chip->os_func->start(chip->os_func_data);
+    PIN_INPUT_ENABLE(iomux_reg);
     if (use_iomux) {
-        // This requires `gpio_iomux_in` and `gpio_iomux_out` to be in the IRAM.
-        // `linker.lf` is used fulfill this requirement.
-        gpio_iomux_in(cs_io_num, spics_in);
-        gpio_iomux_out(cs_io_num, spics_func, false);
+        PIN_FUNC_SELECT(iomux_reg, spics_func);
     } else {
-        PIN_INPUT_ENABLE(iomux_reg);
+#if SOC_GPIO_PIN_COUNT <= 32
+        GPIO.enable_w1ts.val = (0x1 << cs_io_num);
+#else
         if (cs_io_num < 32) {
             GPIO.enable_w1ts = (0x1 << cs_io_num);
         } else {
             GPIO.enable1_w1ts.data = (0x1 << (cs_io_num - 32));
         }
+#endif
         GPIO.pin[cs_io_num].pad_driver = 0;
-        gpio_matrix_out(cs_io_num, spics_out, false, false);
+        esp_rom_gpio_connect_out_signal(cs_io_num, spics_out, false, false);
         if (cs_id == 0) {
-            gpio_matrix_in(cs_io_num, spics_in, false);
+            esp_rom_gpio_connect_in_signal(cs_io_num, spics_in, false);
         }
         PIN_FUNC_SELECT(iomux_reg, PIN_FUNC_GPIO);
     }
@@ -114,9 +153,11 @@ esp_err_t spi_bus_add_flash_device(esp_flash_t **out_chip, const esp_flash_spi_d
     if (out_chip == NULL) {
         return ESP_ERR_INVALID_ARG;
     }
+    if (!GPIO_IS_VALID_OUTPUT_GPIO(config->cs_io_num)) {
+        return ESP_ERR_INVALID_ARG;
+    }
     esp_flash_t *chip = NULL;
-    spi_flash_host_driver_t *host = NULL;
-    memspi_host_data_t *host_data = NULL;
+    memspi_host_inst_t *host = NULL;
     esp_err_t ret = ESP_OK;
 
     uint32_t caps = MALLOC_CAP_DEFAULT;
@@ -128,19 +169,12 @@ esp_err_t spi_bus_add_flash_device(esp_flash_t **out_chip, const esp_flash_spi_d
         goto fail;
     }
 
-    host = (spi_flash_host_driver_t*)heap_caps_malloc(sizeof(spi_flash_host_driver_t), caps);
+    host = (memspi_host_inst_t*)heap_caps_malloc(sizeof(memspi_host_inst_t), caps);
     *chip = (esp_flash_t) {
         .read_mode = config->io_mode,
-        .host = host,
+        .host = (spi_flash_host_inst_t*)host,
     };
     if (!host) {
-        ret = ESP_ERR_NO_MEM;
-        goto fail;
-    }
-
-    host_data = (memspi_host_data_t*)heap_caps_malloc(sizeof(memspi_host_data_t), caps);
-    host->driver_data = host_data;
-    if (!host_data) {
         ret = ESP_ERR_NO_MEM;
         goto fail;
     }
@@ -172,7 +206,7 @@ esp_err_t spi_bus_add_flash_device(esp_flash_t **out_chip, const esp_flash_spi_d
         .input_delay_ns = config->input_delay_ns,
         .speed = config->speed,
     };
-    err = memspi_host_init_pointers(host, host_data, &host_cfg);
+    err = memspi_host_init_pointers(host, &host_cfg);
     if (err != ESP_OK) {
         ret = err;
         goto fail;
@@ -194,59 +228,69 @@ esp_err_t spi_bus_remove_flash_device(esp_flash_t *chip)
         return ESP_ERR_INVALID_ARG;
     }
     esp_flash_deinit_os_functions(chip);
-    if (chip->host) {
-        free(chip->host->driver_data);
-        free(chip->host);
-    }
+    free(chip->host);
     free(chip);
     return ESP_OK;
 }
 
-
 /* The default (ie initial boot) no-OS ROM esp_flash_os_functions_t */
 extern const esp_flash_os_functions_t esp_flash_noos_functions;
 
+/* This pointer is defined in ROM and extern-ed on targets where CONFIG_SPI_FLASH_ROM_IMPL = y*/
+#if !CONFIG_SPI_FLASH_ROM_IMPL
+esp_flash_t *esp_flash_default_chip = NULL;
+#endif
+
 #ifndef CONFIG_SPI_FLASH_USE_LEGACY_IMPL
 
-static DRAM_ATTR memspi_host_data_t default_driver_data;
-static DRAM_ATTR spi_flash_host_driver_t esp_flash_default_host_drv = ESP_FLASH_DEFAULT_HOST_DRIVER();
-
+static DRAM_ATTR memspi_host_inst_t esp_flash_default_host;
 
 static DRAM_ATTR esp_flash_t default_chip = {
     .read_mode = DEFAULT_FLASH_MODE,
-    .host = &esp_flash_default_host_drv,
+    .host = (spi_flash_host_inst_t*)&esp_flash_default_host,
     .os_func = &esp_flash_noos_functions,
 };
 
+extern esp_err_t esp_flash_suspend_cmd_init(esp_flash_t* chip);
 esp_err_t esp_flash_init_default_chip(void)
 {
+    const esp_rom_spiflash_chip_t *legacy_chip = &g_rom_flashchip;
     memspi_host_config_t cfg = ESP_FLASH_HOST_CONFIG_DEFAULT();
 
-    #ifdef CONFIG_IDF_TARGET_ESP32S2
+    #if !CONFIG_IDF_TARGET_ESP32
     // For esp32s2 spi IOs are configured as from IO MUX by default
-    cfg.iomux = ets_efuse_get_spiconfig() == 0 ?  true : false;
+    cfg.iomux = esp_rom_efuse_get_flash_gpio_info() == 0 ?  true : false;
     #endif
 
     //the host is already initialized, only do init for the data and load it to the host
-    spi_flash_hal_init(&default_driver_data, &cfg);
-    default_chip.host->driver_data = &default_driver_data;
-
-    // ROM TODO: account for non-standard default pins in efuse
-    // ROM TODO: to account for chips which are slow to power on, maybe keep probing in a loop here
-    esp_err_t err = esp_flash_init(&default_chip);
+    esp_err_t err = memspi_host_init_pointers(&esp_flash_default_host, &cfg);
     if (err != ESP_OK) {
         return err;
     }
-    if (default_chip.size < g_rom_flashchip.chip_size) {
-        ESP_EARLY_LOGE(TAG, "Detected size(%dk) smaller than the size in the binary image header(%dk). Probe failed.", default_chip.size/1024, g_rom_flashchip.chip_size/1024);
-        return ESP_ERR_FLASH_SIZE_NOT_MATCH;
-    } else if (default_chip.size > g_rom_flashchip.chip_size) {
-        ESP_EARLY_LOGW(TAG, "Detected size(%dk) larger than the size in the binary image header(%dk). Using the size in the binary image header.", default_chip.size/1024, g_rom_flashchip.chip_size/1024);
-        default_chip.size = g_rom_flashchip.chip_size;
+
+    // ROM TODO: account for non-standard default pins in efuse
+    // ROM TODO: to account for chips which are slow to power on, maybe keep probing in a loop here
+    err = esp_flash_init(&default_chip);
+    if (err != ESP_OK) {
+        return err;
     }
-    default_chip.size = g_rom_flashchip.chip_size;
+    if (default_chip.size < legacy_chip->chip_size) {
+        ESP_EARLY_LOGE(TAG, "Detected size(%dk) smaller than the size in the binary image header(%dk). Probe failed.", default_chip.size/1024, legacy_chip->chip_size/1024);
+        return ESP_ERR_FLASH_SIZE_NOT_MATCH;
+    }
+
+    if (default_chip.size > legacy_chip->chip_size) {
+        ESP_EARLY_LOGW(TAG, "Detected size(%dk) larger than the size in the binary image header(%dk). Using the size in the binary image header.", default_chip.size/1024, legacy_chip->chip_size/1024);
+    }
+    default_chip.size = legacy_chip->chip_size;
 
     esp_flash_default_chip = &default_chip;
+#ifdef CONFIG_SPI_FLASH_AUTO_SUSPEND
+    err = esp_flash_suspend_cmd_init(&default_chip);
+    if (err != ESP_OK) {
+        return err;
+    }
+#endif
     return ESP_OK;
 }
 

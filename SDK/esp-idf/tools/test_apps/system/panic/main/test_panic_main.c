@@ -10,18 +10,18 @@
 
 /* utility functions */
 static void die(const char* msg) __attribute__ ((noreturn));
-static const char* get_test_name();
+static const char* get_test_name(void);
 
 /* functions which cause an exception/panic in different ways */
-static void test_abort();
-static void test_int_wdt();
-static void test_task_wdt();
-static void test_storeprohibited();
-static void test_cache_error();
-static void test_int_wdt_cache_disabled();
-static void test_stack_overflow();
-static void test_illegal_instruction();
-static void test_instr_fetch_prohibited();
+static void test_abort(void);
+static void test_int_wdt(void);
+static void test_task_wdt(void);
+static void test_storeprohibited(void);
+static void test_cache_error(void);
+static void test_int_wdt_cache_disabled(void);
+static void test_stack_overflow(void);
+static void test_illegal_instruction(void);
+static void test_instr_fetch_prohibited(void);
 
 
 void app_main(void)
@@ -60,12 +60,12 @@ void app_main(void)
 
 /* implementations of the test functions */
 
-static void test_abort()
+static void test_abort(void)
 {
     abort();
 }
 
-static void test_int_wdt()
+static void test_int_wdt(void)
 {
     portDISABLE_INTERRUPTS();
     while (true) {
@@ -73,25 +73,25 @@ static void test_int_wdt()
     }
 }
 
-static void test_task_wdt()
+static void test_task_wdt(void)
 {
     while (true) {
         ;
     }
 }
 
-static void test_storeprohibited()
+static void test_storeprohibited(void)
 {
     *(int*) 0x1 = 0;
 }
 
-static IRAM_ATTR void test_cache_error()
+static IRAM_ATTR void test_cache_error(void)
 {
     esp_flash_default_chip->os_func->start(esp_flash_default_chip->os_func_data);
     die("this should not be printed");
 }
 
-static void IRAM_ATTR test_int_wdt_cache_disabled()
+static void IRAM_ATTR test_int_wdt_cache_disabled(void)
 {
     esp_flash_default_chip->os_func->start(esp_flash_default_chip->os_func_data);
     portDISABLE_INTERRUPTS();
@@ -100,20 +100,42 @@ static void IRAM_ATTR test_int_wdt_cache_disabled()
     }
 }
 
-static void test_stack_overflow()
+/**
+ * This function overwrites the stack beginning from the valid area continuously towards and beyond
+ * the end of the stack (stack base) of the current task.
+ * This is to test stack protection measures like a watchpoint at the end of the stack.
+ *
+ * @note: This test DOES NOT write beyond the stack limit. It only writes up to exactly the limit itself.
+ *        The FreeRTOS stack protection mechanisms all trigger shortly before the end of the stack.
+ */
+static void test_stack_overflow(void)
 {
-    volatile uint8_t stuff[CONFIG_ESP_MAIN_TASK_STACK_SIZE * 2];
-    for (int i = 0; i < sizeof(stuff); ++i) {
-        stuff[i] = rand();
+    register uint32_t* sp asm("sp");
+    TaskStatus_t pxTaskStatus;
+    vTaskGetInfo(NULL, &pxTaskStatus, pdFALSE, pdFALSE);
+    uint32_t *end = (uint32_t*) pxTaskStatus.pxStackBase;
+
+    // offset - 20 bytes from SP in order to not corrupt the current frame.
+    // Need to write from higher to lower addresses since the stack grows downwards and the watchpoint/canary is near
+    // the end of the stack (lowest address).
+    for (uint32_t* ptr = sp - 5; ptr != end; --ptr) {
+        *ptr = 0;
     }
+
+    // trigger a context switch to initiate checking the FreeRTOS stack canary
+    vTaskDelay(pdMS_TO_TICKS(0));
 }
 
-static void test_illegal_instruction()
+static void test_illegal_instruction(void)
 {
+#if __XTENSA__
     __asm__ __volatile__("ill");
+#elif __riscv
+    __asm__ __volatile__("unimp");
+#endif
 }
 
-static void test_instr_fetch_prohibited()
+static void test_instr_fetch_prohibited(void)
 {
     typedef void (*fptr_t)(void);
     volatile fptr_t fptr = (fptr_t) 0x4;
@@ -124,7 +146,7 @@ static void test_instr_fetch_prohibited()
 
 #define BOOT_CMD_MAX_LEN (128)
 
-static const char* get_test_name()
+static const char* get_test_name(void)
 {
     static char test_name_str[BOOT_CMD_MAX_LEN] = {0};
 

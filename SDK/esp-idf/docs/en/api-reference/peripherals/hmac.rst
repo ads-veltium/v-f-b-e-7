@@ -4,7 +4,7 @@ HMAC
 The HMAC (Hash-based Message Authentication Code) module provides hardware acceleration for SHA256-HMAC generation using a key burned into an eFuse block.
 HMACs work with pre-shared secret keys and provide authenticity and integrity to a message.
 
-Look into the `{IDF_TARGET_NAME} Technical Reference Manual <{IDF_TARGET_TRM_EN_URL}>`_ (PDF) for more detailed information about the application workflow and the HMAC calculation process.
+For more detailed information on the application workflow and the HMAC calculation process, see *{IDF_TARGET_NAME} Technical Reference Manual* > *HMAC Accelerator (HMAC)* [`PDF <{IDF_TARGET_TRM_EN_URL}#hmac>`__].
 
 Generalized Application Scheme
 ------------------------------
@@ -57,8 +57,8 @@ Each key has a corresponding eFuse parameter *key purpose* determining for which
 
 This is to prevent the usage of a key for a different function than originally intended.
 
-To calculate an HMAC, the software has to provide the ID of the key block containing the secret key as well as the *key purpose* (see chapter *eFuse Controller* in the `{IDF_TARGET_NAME} Technical Reference Manual <{IDF_TARGET_TRM_EN_URL}>`_).
-Before the HMAC key calculation, the HMAC module looks up the purpose of the provided key block. 
+To calculate an HMAC, the software has to provide the ID of the key block containing the secret key as well as the *key purpose* (see *{IDF_TARGET_NAME} Technical Reference Manual* > *eFuse Controller (eFuse)* [`PDF <{IDF_TARGET_TRM_EN_URL}#efuse>`__]).
+Before the HMAC key calculation, the HMAC module looks up the purpose of the provided key block.
 The calculation only proceeds if the provided key purpose matches the purpose stored in the eFuses of the key block provided by the ID.
 
 HMAC Generation for Software
@@ -81,14 +81,30 @@ The user only needs to provide the eFuse key block and purpose on the HMAC side 
 Neither the key nor the actual HMAC are ever exposed to outside the HMAC module and DS component.
 The calculation of the HMAC and its hand-over to the DS component happen internally.
 
-For more details, check the chapter *Digital Signature* in the `{IDF_TARGET_NAME} Technical Reference Manual <{IDF_TARGET_TRM_EN_URL}>`_.
+For more details, see *{IDF_TARGET_NAME} Technical Reference Manual* > *Digital Signature (DS)* [`PDF <{IDF_TARGET_TRM_EN_URL}#digsig>`__].
 
 HMAC for Enabling JTAG
 ^^^^^^^^^^^^^^^^^^^^^^
 Key Purpose values: 6, 5
 
 The third application is using the HMAC as a key to enable JTAG if it was soft-disabled before.
-This functionality is currently not implemented.
+Following is the procedure to re-enable the JTAG
+
+Setup
+
+1. Generate a 256-bit HMAC secret key to use for JTAG re-enable.
+2. Write the key to an eFuse block with key purpose HMAC_DOWN_ALL (5) or HMAC_DOWN_JTAG (6). This can be done using the ets_efuse_write_key() function in the firmware or using espefuse.py from the host.
+3. Configure the eFuse key block to be read protected using the esp_efuse_set_read_protect(), so that software cannot read back the value.
+4. Burn the "soft JTAG disable" bit by esp_efuse_write_field_bit(ESP_EFUSE_SOFT_DIS_JTAG). This will permanently disable JTAG unless the correct key value is provided by software.
+
+JTAG enable
+
+1. The key to re-enable JTAG is the output of the HMAC-SHA256 function using the secret key in eFuse and 32 0x00 bytes as the message.
+2. Pass this key value when calling the :cpp:func:`esp_hmac_jtag_enable` function from the firmware.
+3. To re-disable JTAG in the firmware, reset the system or call :cpp:func:`esp_hmac_jtag_disable`.
+
+For more details, see *{IDF_TARGET_NAME} Technical Reference Manual* > *HMAC Accelerator (HMAC)* [`PDF <{IDF_TARGET_TRM_EN_URL}#hmac>`__].
+
 
 Application Outline
 -------------------
@@ -99,7 +115,7 @@ We use `ets_efuse_write_key` to set physical key block 4 in the eFuse for the HM
 
 .. code-block:: c
 
-    #include "esp32s2/rom/efuse.h"
+    #include "{IDF_TARGET_PATH_NAME}/rom/efuse.h"
 
     const uint8_t key_data[32] = { ... };
 

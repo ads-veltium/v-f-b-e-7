@@ -55,7 +55,7 @@ esp_err_t esp_efuse_utility_process(const esp_efuse_desc_t* field[], void* ptr, 
     int i = 0;
     while (err == ESP_OK && req_size > bits_counter && field[i] != NULL) {
         if (check_range_of_bits(field[i]->efuse_block, field[i]->bit_start, field[i]->bit_count) == false) {
-            ESP_LOGE(TAG, "Range of data does not match the coding scheme");
+            ESP_EARLY_LOGE(TAG, "Range of data does not match the coding scheme");
             err = ESP_ERR_CODING;
         }
         int i_reg = 0;

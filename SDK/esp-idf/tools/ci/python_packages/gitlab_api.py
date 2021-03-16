@@ -1,27 +1,31 @@
+import argparse
 import os
 import re
-import argparse
-import tempfile
 import tarfile
+import tempfile
 import zipfile
+from functools import wraps
 
 import gitlab
 
 
 class Gitlab(object):
-    JOB_NAME_PATTERN = re.compile(r"(\w+)(\s+(\d+)/(\d+))?")
+    JOB_NAME_PATTERN = re.compile(r'(\w+)(\s+(\d+)/(\d+))?')
+
+    DOWNLOAD_ERROR_MAX_RETRIES = 3
 
     def __init__(self, project_id=None):
-        config_data_from_env = os.getenv("PYTHON_GITLAB_CONFIG")
+        config_data_from_env = os.getenv('PYTHON_GITLAB_CONFIG')
         if config_data_from_env:
             # prefer to load config from env variable
-            with tempfile.NamedTemporaryFile("w", delete=False) as temp_file:
+            with tempfile.NamedTemporaryFile('w', delete=False) as temp_file:
                 temp_file.write(config_data_from_env)
             config_files = [temp_file.name]
         else:
             # otherwise try to use config file at local filesystem
             config_files = None
-        self.gitlab_inst = gitlab.Gitlab.from_config(config_files=config_files)
+        gitlab_id = os.getenv('LOCAL_GITLAB_HTTPS_HOST')  # if None, will use the default gitlab server
+        self.gitlab_inst = gitlab.Gitlab.from_config(gitlab_id=gitlab_id, config_files=config_files)
         self.gitlab_inst.auth()
         if project_id:
             self.project = self.gitlab_inst.projects.get(project_id)
@@ -42,7 +46,7 @@ class Gitlab(object):
                 if len(projects) == 1:
                     project_id = project.id
                     break
-            if project.namespace["path"] == namespace:
+            if project.namespace['path'] == namespace:
                 project_id = project.id
                 break
         else:
@@ -61,8 +65,33 @@ class Gitlab(object):
         with tempfile.NamedTemporaryFile(delete=False) as temp_file:
             job.artifacts(streamed=True, action=temp_file.write)
 
-        with zipfile.ZipFile(temp_file.name, "r") as archive_file:
+        with zipfile.ZipFile(temp_file.name, 'r') as archive_file:
             archive_file.extractall(destination)
+
+    def retry_download(func):
+        """
+        This wrapper will only catch IOError and retry the whole function.
+
+        So only use it with download functions, read() inside and atomic
+        functions
+        """
+        @wraps(func)
+        def wrapper(self, *args, **kwargs):
+            retried = 0
+            while True:
+                try:
+                    res = func(self, *args, **kwargs)
+                except (IOError, EOFError) as e:
+                    retried += 1
+                    if retried > self.DOWNLOAD_ERROR_MAX_RETRIES:
+                        raise e  # get out of the loop
+                    else:
+                        print('Retried for the {} time'.format(retried))
+                        continue
+                else:
+                    break
+            return res
+        return wrapper
 
     def download_artifact(self, job_id, artifact_path, destination=None):
         """
@@ -81,7 +110,7 @@ class Gitlab(object):
             try:
                 data = job.artifact(a_path)
             except gitlab.GitlabGetError as e:
-                print("Failed to download '{}' form job {}".format(a_path, job_id))
+                print("Failed to download '{}' from job {}".format(a_path, job_id))
                 raise e
             raw_data_list.append(data)
             if destination:
@@ -91,12 +120,12 @@ class Gitlab(object):
                 except OSError:
                     # already exists
                     pass
-                with open(file_path, "wb") as f:
+                with open(file_path, 'wb') as f:
                     f.write(data)
 
         return raw_data_list
 
-    def find_job_id(self, job_name, pipeline_id=None, job_status="success"):
+    def find_job_id(self, job_name, pipeline_id=None, job_status='success'):
         """
         Get Job ID from job name of specific pipeline
 
@@ -108,16 +137,17 @@ class Gitlab(object):
         """
         job_id_list = []
         if pipeline_id is None:
-            pipeline_id = os.getenv("CI_PIPELINE_ID")
+            pipeline_id = os.getenv('CI_PIPELINE_ID')
         pipeline = self.project.pipelines.get(pipeline_id)
         jobs = pipeline.jobs.list(all=True)
         for job in jobs:
             match = self.JOB_NAME_PATTERN.match(job.name)
             if match:
                 if match.group(1) == job_name and job.status == job_status:
-                    job_id_list.append({"id": job.id, "parallel_num": match.group(3)})
+                    job_id_list.append({'id': job.id, 'parallel_num': match.group(3)})
         return job_id_list
 
+    @retry_download
     def download_archive(self, ref, destination, project_id=None):
         """
         Download archive of certain commit of a repository and extract to destination path
@@ -136,12 +166,12 @@ class Gitlab(object):
             try:
                 project.repository_archive(sha=ref, streamed=True, action=temp_file.write)
             except gitlab.GitlabGetError as e:
-                print("Failed to archive from project {}".format(project_id))
+                print('Failed to archive from project {}'.format(project_id))
                 raise e
 
-        print("archive size: {:.03f}MB".format(float(os.path.getsize(temp_file.name)) / (1024 * 1024)))
+        print('archive size: {:.03f}MB'.format(float(os.path.getsize(temp_file.name)) / (1024 * 1024)))
 
-        with tarfile.open(temp_file.name, "r") as archive_file:
+        with tarfile.open(temp_file.name, 'r') as archive_file:
             root_name = archive_file.getnames()[0]
             archive_file.extractall(destination)
 
@@ -150,27 +180,27 @@ class Gitlab(object):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("action")
-    parser.add_argument("project_id", type=int)
-    parser.add_argument("--pipeline_id", "-i", type=int, default=None)
-    parser.add_argument("--ref", "-r", default="master")
-    parser.add_argument("--job_id", "-j", type=int, default=None)
-    parser.add_argument("--job_name", "-n", default=None)
-    parser.add_argument("--project_name", "-m", default=None)
-    parser.add_argument("--destination", "-d", default=None)
-    parser.add_argument("--artifact_path", "-a", nargs="*", default=None)
+    parser.add_argument('action')
+    parser.add_argument('project_id', type=int)
+    parser.add_argument('--pipeline_id', '-i', type=int, default=None)
+    parser.add_argument('--ref', '-r', default='master')
+    parser.add_argument('--job_id', '-j', type=int, default=None)
+    parser.add_argument('--job_name', '-n', default=None)
+    parser.add_argument('--project_name', '-m', default=None)
+    parser.add_argument('--destination', '-d', default=None)
+    parser.add_argument('--artifact_path', '-a', nargs='*', default=None)
     args = parser.parse_args()
 
     gitlab_inst = Gitlab(args.project_id)
-    if args.action == "download_artifacts":
+    if args.action == 'download_artifacts':
         gitlab_inst.download_artifacts(args.job_id, args.destination)
-    if args.action == "download_artifact":
+    if args.action == 'download_artifact':
         gitlab_inst.download_artifact(args.job_id, args.artifact_path, args.destination)
-    elif args.action == "find_job_id":
+    elif args.action == 'find_job_id':
         job_ids = gitlab_inst.find_job_id(args.job_name, args.pipeline_id)
-        print(";".join([",".join([str(j["id"]), j["parallel_num"]]) for j in job_ids]))
-    elif args.action == "download_archive":
+        print(';'.join([','.join([str(j['id']), j['parallel_num']]) for j in job_ids]))
+    elif args.action == 'download_archive':
         gitlab_inst.download_archive(args.ref, args.destination)
-    elif args.action == "get_project_id":
+    elif args.action == 'get_project_id':
         ret = gitlab_inst.get_project_id(args.project_name)
-        print("project id: {}".format(ret))
+        print('project id: {}'.format(ret))

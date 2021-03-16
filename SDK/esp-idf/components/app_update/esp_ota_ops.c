@@ -33,30 +33,34 @@
 
 #include "esp_ota_ops.h"
 #include "sys/queue.h"
-#include "esp32/rom/crc.h"
 #include "esp_log.h"
 #include "esp_flash_partitions.h"
 #include "bootloader_common.h"
 #include "sys/param.h"
 #include "esp_system.h"
 #include "esp_efuse.h"
+#include "esp_attr.h"
 
 #ifdef CONFIG_IDF_TARGET_ESP32
 #include "esp32/rom/crc.h"
 #elif CONFIG_IDF_TARGET_ESP32S2
 #include "esp32s2/rom/crc.h"
 #include "esp32s2/rom/secure_boot.h"
+#elif CONFIG_IDF_TARGET_ESP32C3
+#include "esp32c3/rom/crc.h"
+#include "esp32c3/rom/secure_boot.h"
 #endif
 
 #define SUB_TYPE_ID(i) (i & 0x0F)
 
+/* Partial_data is word aligned so no reallocation is necessary for encrypted flash write */
 typedef struct ota_ops_entry_ {
     uint32_t handle;
     const esp_partition_t *part;
-    uint32_t erased_size;
+    bool need_erase;
     uint32_t wrote_size;
     uint8_t partial_bytes;
-    uint8_t partial_data[16];
+    WORD_ALIGNED_ATTR uint8_t partial_data[16];
     LIST_ENTRY(ota_ops_entry_) entries;
 } ota_ops_entry_t;
 
@@ -159,16 +163,17 @@ esp_err_t esp_ota_begin(const esp_partition_t *partition, size_t image_size, esp
     }
 #endif
 
-    // If input image size is 0 or OTA_SIZE_UNKNOWN, erase entire partition
-    if ((image_size == 0) || (image_size == OTA_SIZE_UNKNOWN)) {
-        ret = esp_partition_erase_range(partition, 0, partition->size);
-    } else {
-        const int aligned_erase_size = (image_size + SPI_FLASH_SEC_SIZE - 1) & ~(SPI_FLASH_SEC_SIZE - 1);
-        ret = esp_partition_erase_range(partition, 0, aligned_erase_size);
-    }
-
-    if (ret != ESP_OK) {
-        return ret;
+    if (image_size != OTA_WITH_SEQUENTIAL_WRITES) {
+        // If input image size is 0 or OTA_SIZE_UNKNOWN, erase entire partition
+        if ((image_size == 0) || (image_size == OTA_SIZE_UNKNOWN)) {
+            ret = esp_partition_erase_range(partition, 0, partition->size);
+        } else {
+            const int aligned_erase_size = (image_size + SPI_FLASH_SEC_SIZE - 1) & ~(SPI_FLASH_SEC_SIZE - 1);
+            ret = esp_partition_erase_range(partition, 0, aligned_erase_size);
+        }
+        if (ret != ESP_OK) {
+            return ret;
+        }
     }
 
     new_entry = (ota_ops_entry_t *) calloc(sizeof(ota_ops_entry_t), 1);
@@ -178,14 +183,9 @@ esp_err_t esp_ota_begin(const esp_partition_t *partition, size_t image_size, esp
 
     LIST_INSERT_HEAD(&s_ota_ops_entries_head, new_entry, entries);
 
-    if ((image_size == 0) || (image_size == OTA_SIZE_UNKNOWN)) {
-        new_entry->erased_size = partition->size;
-    } else {
-        new_entry->erased_size = image_size;
-    }
-
     new_entry->part = partition;
     new_entry->handle = ++s_ota_ops_last_handle;
+    new_entry->need_erase = (image_size == OTA_WITH_SEQUENTIAL_WRITES);
     *out_handle = new_entry->handle;
     return ESP_OK;
 }
@@ -204,8 +204,22 @@ esp_err_t esp_ota_write(esp_ota_handle_t handle, const void *data, size_t size)
     // find ota handle in linked list
     for (it = LIST_FIRST(&s_ota_ops_entries_head); it != NULL; it = LIST_NEXT(it, entries)) {
         if (it->handle == handle) {
-            // must erase the partition before writing to it
-            assert(it->erased_size > 0 && "must erase the partition before writing to it");
+            if (it->need_erase) {
+                // must erase the partition before writing to it
+                uint32_t first_sector = it->wrote_size / SPI_FLASH_SEC_SIZE;
+                uint32_t last_sector = (it->wrote_size + size) / SPI_FLASH_SEC_SIZE;
+
+                ret = ESP_OK;
+                if ((it->wrote_size % SPI_FLASH_SEC_SIZE) == 0) {
+                    ret = esp_partition_erase_range(it->part, it->wrote_size, ((last_sector - first_sector) + 1) * SPI_FLASH_SEC_SIZE);
+                } else if (first_sector != last_sector) {
+                    ret = esp_partition_erase_range(it->part, (first_sector + 1) * SPI_FLASH_SEC_SIZE, (last_sector - first_sector) * SPI_FLASH_SEC_SIZE);
+                }
+                if (ret != ESP_OK) {
+                    return ret;
+                }
+            }
+
             if (it->wrote_size == 0 && it->partial_bytes == 0 && size > 0 && data_bytes[0] != ESP_IMAGE_HEADER_MAGIC) {
                 ESP_LOGE(TAG, "OTA image has invalid magic byte (expected 0xE9, saw 0x%02x)", data_bytes[0]);
                 return ESP_ERR_OTA_VALIDATE_FAILED;
@@ -271,7 +285,7 @@ esp_err_t esp_ota_write_with_offset(esp_ota_handle_t handle, const void *data, s
     for (it = LIST_FIRST(&s_ota_ops_entries_head); it != NULL; it = LIST_NEXT(it, entries)) {
         if (it->handle == handle) {
             // must erase the partition before writing to it
-            assert(it->erased_size > 0 && "must erase the partition before writing to it");
+            assert(it->need_erase == 0 && "must erase the partition before writing to it");
 
             /* esp_ota_write_with_offset is used to write data in non contiguous manner.
              * Hence, unaligned data(less than 16 bytes) cannot be cached if flash encryption is enabled.
@@ -293,16 +307,33 @@ esp_err_t esp_ota_write_with_offset(esp_ota_handle_t handle, const void *data, s
     return ESP_ERR_INVALID_ARG;
 }
 
-esp_err_t esp_ota_end(esp_ota_handle_t handle)
+static ota_ops_entry_t *get_ota_ops_entry(esp_ota_handle_t handle)
 {
-    ota_ops_entry_t *it;
-    esp_err_t ret = ESP_OK;
-
+    ota_ops_entry_t *it = NULL;
     for (it = LIST_FIRST(&s_ota_ops_entries_head); it != NULL; it = LIST_NEXT(it, entries)) {
         if (it->handle == handle) {
             break;
         }
     }
+   return it;
+}
+
+esp_err_t esp_ota_abort(esp_ota_handle_t handle)
+{
+    ota_ops_entry_t *it = get_ota_ops_entry(handle);
+
+    if (it == NULL) {
+        return ESP_ERR_NOT_FOUND;
+    }
+    LIST_REMOVE(it, entries);
+    free(it);
+    return ESP_OK;
+}
+
+esp_err_t esp_ota_end(esp_ota_handle_t handle)
+{
+    ota_ops_entry_t *it = get_ota_ops_entry(handle);
+    esp_err_t ret = ESP_OK;
 
     if (it == NULL) {
         return ESP_ERR_NOT_FOUND;
@@ -311,7 +342,7 @@ esp_err_t esp_ota_end(esp_ota_handle_t handle)
     /* 'it' holds the ota_ops_entry_t for 'handle' */
 
     // esp_ota_end() is only valid if some data was written to this handle
-    if ((it->erased_size == 0) || (it->wrote_size == 0)) {
+    if (it->wrote_size == 0) {
         ret = ESP_ERR_INVALID_ARG;
         goto cleanup;
     }
@@ -378,7 +409,7 @@ static esp_err_t esp_rewrite_ota_data(esp_partition_subtype_t subtype)
         return ESP_ERR_NOT_FOUND;
     }
 
-    int ota_app_count = get_ota_partition_count();
+    uint8_t ota_app_count = get_ota_partition_count();
     if (SUB_TYPE_ID(subtype) >= ota_app_count) {
         return ESP_ERR_INVALID_ARG;
     }
@@ -865,7 +896,7 @@ esp_err_t esp_ota_erase_last_boot_app_partition(void)
     return ESP_OK;
 }
 
-#if CONFIG_IDF_TARGET_ESP32S2 && CONFIG_SECURE_BOOT_V2_ENABLED
+#if SOC_EFUSE_SECURE_BOOT_KEY_DIGESTS > 1 && CONFIG_SECURE_BOOT_V2_ENABLED
 esp_err_t esp_ota_revoke_secure_boot_public_key(esp_ota_secure_boot_public_key_index_t index) {
 
     if (!esp_secure_boot_enabled()) {

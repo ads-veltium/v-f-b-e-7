@@ -43,7 +43,7 @@ Consult :doc:`/versions` for information about which ESP-IDF version to use in a
 Tools
 =====
 
-cmake
+CMake
 ^^^^^
 
 Download the latest stable release of CMake_ for Windows and run the installer.
@@ -56,7 +56,7 @@ Ninja build
 .. note::
     Ninja currently only provides binaries for 64-bit Windows. It is possible to use CMake and ``idf.py`` with other build tools, such as mingw-make, on 32-bit windows. However this is currently undocumented.
 
-Download the ninja_ latest stable Windows release from the (`download page <ninja-dl_>`_).
+Download the Ninja_ latest stable Windows release from the (`download page <ninja-dl_>`_).
 
 The Ninja for Windows download is a .zip file containing a single ``ninja.exe`` file which needs to be unzipped to a directory which is then :ref:`added to your Path <add-directory-windows-path>` (or you can choose a directory which is already on your Path).
 
@@ -81,12 +81,12 @@ Download the precompiled Windows toolchain:
 
 |download_link_win32|
 
-Unzip the zip file to ``C:\Program Files`` (or some other location). The zip file contains a single directory ``xtensa-{IDF_TARGET_TOOLCHAIN_NAME}-elf``.
+Unzip the zip file to ``C:\Program Files`` (or some other location). The zip file contains a single directory ``{IDF_TARGET_TOOLCHAIN_PREFIX}``.
 
-Next, the ``bin`` subdirectory of this directory must be :ref:`added to your Path <add-directory-windows-path>`. For example, the directory to add may be ``C:\Program Files\xtensa-{IDF_TARGET_TOOLCHAIN_NAME}-elf\bin``.
+Next, the ``bin`` subdirectory of this directory must be :ref:`added to your Path <add-directory-windows-path>`. For example, the directory to add may be ``C:\Program Files\{IDF_TARGET_TOOLCHAIN_PREFIX}\bin``.
 
 .. note::
-   If you already have the MSYS2 environment (for use with the "GNU Make" build system) installed, you can skip the separate download and add the directory ``C:\msys32\opt\xtensa-{IDF_TARGET_TOOLCHAIN_NAME}-elf\bin`` to the Path instead, as the toolchain is included in the MSYS2 environment.
+   If you already have the MSYS2 environment (for use with the "GNU Make" build system) installed, you can skip the separate download and add the directory ``C:\msys32\opt\{IDF_TARGET_TOOLCHAIN_PREFIX}\bin`` to the Path instead, as the toolchain is included in the MSYS2 environment.
 
 
 .. _add-directory-windows-path:
@@ -107,7 +107,7 @@ Next Steps
 To carry on with development environment setup, proceed to :ref:`get-started-set-up-tools`.
 
 .. _CMake: https://cmake.org/download/
-.. _ninja: https://ninja-build.org/
+.. _Ninja: https://ninja-build.org/
 .. _ninja-dl: https://github.com/ninja-build/ninja/releases
 .. _Python: https://www.python.org/downloads/windows/
 .. _MSYS2: https://www.msys2.org/

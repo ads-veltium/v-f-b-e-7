@@ -3,12 +3,13 @@ import os
 import sys
 import unittest
 
+import kconfiglib
+
 try:
-    from . import kconfiglib
-except Exception:
+    import gen_kconfig_doc
+except ImportError:
     sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../..')))
-    import kconfiglib
-import gen_kconfig_doc
+    import gen_kconfig_doc
 
 
 class ConfigTargetVisibilityTestCase(unittest.TestCase):
@@ -19,7 +20,7 @@ class ConfigTargetVisibilityTestCase(unittest.TestCase):
 
     def _get_config(self, name):
         sym = self.config.syms.get(name)
-        if sym:
+        if sym and len(sym.nodes) > 0:
             return sym.nodes[0]
         choice = self.config.named_choices.get(name)
         if choice:
@@ -107,5 +108,5 @@ class ConfigTargetVisibilityChipB(ConfigTargetVisibilityTestCase):
         self.invisible('CHIPA_FEATURE_FROM_V3')
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     unittest.main()

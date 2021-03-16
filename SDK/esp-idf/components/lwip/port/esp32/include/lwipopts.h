@@ -43,7 +43,6 @@
 #include "esp_task.h"
 #include "esp_system.h"
 #include "sdkconfig.h"
-#include "sntp.h"
 #include "netif/dhcp_state.h"
 
 /* Enable all Espressif-only options */
@@ -420,17 +419,6 @@
  */
 #define LWIP_TCP_RTO_TIME             CONFIG_LWIP_TCP_RTO_TIME
 
-/**
- * Set TCP hook for Initial Sequence Number (ISN)
- */
-#ifdef CONFIG_LWIP_TCP_ISN_HOOK
-#include <lwip/arch.h>
-struct ip_addr;
-u32_t lwip_hook_tcp_isn(const struct ip_addr *local_ip, u16_t local_port,
-                        const struct ip_addr *remote_ip, u16_t remote_port);
-#define LWIP_HOOK_TCP_ISN               lwip_hook_tcp_isn
-#endif
-
 /*
    ----------------------------------
    ---------- Pbuf options ----------
@@ -484,6 +472,34 @@ u32_t lwip_hook_tcp_isn(const struct ip_addr *local_ip, u16_t local_port,
    ---------- SLIPIF options ----------
    ------------------------------------
 */
+
+#ifdef CONFIG_LWIP_SLIP_SUPPORT
+
+/**
+ * Enable SLIP receive from ISR functions and disable Rx thread
+ *
+ * This is the only supported mode of lwIP SLIP interface, so that
+ * - incoming packets are queued into pbufs
+ * - no thread is created from lwIP
+ * meaning it is the application responsibility to read data
+ * from IO driver and feed them to the slip interface
+ */
+#define SLIP_RX_FROM_ISR                 1
+#define SLIP_USE_RX_THREAD               0
+
+/**
+ * PPP_DEBUG: Enable debugging for PPP.
+ */
+#define SLIP_DEBUG_ON                    CONFIG_LWIP_SLIP_DEBUG_ON
+
+#if SLIP_DEBUG_ON
+#define SLIP_DEBUG                       LWIP_DBG_ON
+#else
+#define SLIP_DEBUG                       LWIP_DBG_OFF
+#endif
+
+
+#endif
 
 /*
    ------------------------------------
@@ -750,7 +766,12 @@ u32_t lwip_hook_tcp_isn(const struct ip_addr *local_ip, u16_t local_port,
    ---------- Hook options ---------------
    ---------------------------------------
 */
+#ifdef LWIP_HOOK_FILENAME
+#warning LWIP_HOOK_FILENAME is used for IDF default hooks. Please use ESP_IDF_LWIP_HOOK_FILENAME to insert additional hook
+#endif
+#define LWIP_HOOK_FILENAME              "lwip_default_hooks.h"
 #define LWIP_HOOK_IP4_ROUTE_SRC         ip4_route_src_hook
+
 /*
    ---------------------------------------
    ---------- Debugging options ----------
@@ -759,37 +780,106 @@ u32_t lwip_hook_tcp_isn(const struct ip_addr *local_ip, u16_t local_port,
 /**
  * ETHARP_DEBUG: Enable debugging in etharp.c.
  */
-#define ETHARP_DEBUG                    LWIP_DBG_OFF
+#ifdef CONFIG_LWIP_ETHARP_DEBUG
+#define ETHARP_DEBUG                     LWIP_DBG_ON
+#else
+#define ETHARP_DEBUG                     LWIP_DBG_OFF
+#endif
+
 
 /**
  * NETIF_DEBUG: Enable debugging in netif.c.
  */
+#ifdef CONFIG_LWIP_NETIF_DEBUG
+#define NETIF_DEBUG                     LWIP_DBG_ON
+#else
 #define NETIF_DEBUG                     LWIP_DBG_OFF
+#endif
 
 /**
  * PBUF_DEBUG: Enable debugging in pbuf.c.
  */
-#define PBUF_DEBUG                      LWIP_DBG_OFF
+#ifdef CONFIG_LWIP_PBUF_DEBUG
+#define PBUF_DEBUG                     LWIP_DBG_ON
+#else
+#define PBUF_DEBUG                     LWIP_DBG_OFF
+#endif
 
 /**
  * API_LIB_DEBUG: Enable debugging in api_lib.c.
  */
-#define API_LIB_DEBUG                   LWIP_DBG_OFF
+#ifdef CONFIG_LWIP_API_LIB_DEBUG
+#define API_LIB_DEBUG                     LWIP_DBG_ON
+#else
+#define API_LIB_DEBUG                     LWIP_DBG_OFF
+#endif
+
 
 /**
  * SOCKETS_DEBUG: Enable debugging in sockets.c.
  */
+#ifdef CONFIG_LWIP_SOCKETS_DEBUG
+#define SOCKETS_DEBUG                   LWIP_DBG_ON
+#else
 #define SOCKETS_DEBUG                   LWIP_DBG_OFF
+#endif
 
 /**
  * ICMP_DEBUG: Enable debugging in icmp.c.
  */
+#ifdef CONFIG_LWIP_ICMP_DEBUG
+#define ICMP_DEBUG                      LWIP_DBG_ON
+#else
 #define ICMP_DEBUG                      LWIP_DBG_OFF
+#endif
+
+#ifdef CONFIG_LWIP_ICMP6_DEBUG
+#define ICMP6_DEBUG                      LWIP_DBG_ON
+#else
+#define ICMP6_DEBUG                      LWIP_DBG_OFF
+#endif
+
+/**
+ * DHCP_DEBUG: Enable debugging in dhcp.c.
+ */
+#ifdef CONFIG_LWIP_DHCP_DEBUG
+#define DHCP_DEBUG                      LWIP_DBG_ON
+#else
+#define DHCP_DEBUG                      LWIP_DBG_OFF
+#endif
+
+#ifdef CONFIG_LWIP_DHCP_STATE_DEBUG
+#define ESP_DHCP_DEBUG                  LWIP_DBG_ON
+#else
+#define ESP_DHCP_DEBUG                  LWIP_DBG_OFF
+#endif
 
 /**
  * IP_DEBUG: Enable debugging for IP.
  */
+#ifdef CONFIG_LWIP_IP_DEBUG
+#define IP_DEBUG                        LWIP_DBG_ON
+#else
 #define IP_DEBUG                        LWIP_DBG_OFF
+#endif
+
+/**
+ * IP6_DEBUG: Enable debugging for IP6.
+ */
+#ifdef CONFIG_LWIP_IP6_DEBUG
+#define IP6_DEBUG                        LWIP_DBG_ON
+#else
+#define IP6_DEBUG                        LWIP_DBG_OFF
+#endif
+
+/**
+ * TCP_DEBUG: Enable debugging for TCP.
+ */
+#ifdef CONFIG_LWIP_TCP_DEBUG
+#define TCP_DEBUG                        LWIP_DBG_ON
+#else
+#define TCP_DEBUG                        LWIP_DBG_OFF
+#endif
 
 /**
  * MEMP_DEBUG: Enable debugging in memp.c.
@@ -898,14 +988,13 @@ u32_t lwip_hook_tcp_isn(const struct ip_addr *local_ip, u16_t local_port,
 #define TCP_WND                         CONFIG_LWIP_TCP_WND_DEFAULT
 
 /**
- * DHCP_DEBUG: Enable debugging in dhcp.c.
+ * LWIP_DEBUG: Enable lwip debugging in other modules.
  */
-#define DHCP_DEBUG                      LWIP_DBG_OFF
 #define LWIP_DEBUG                      LWIP_DBG_OFF
-#define TCP_DEBUG                       LWIP_DBG_OFF
 
-#define CHECKSUM_CHECK_UDP              0
-#define CHECKSUM_CHECK_IP               0
+#define CHECKSUM_CHECK_UDP              CONFIG_LWIP_CHECKSUM_CHECK_UDP
+#define CHECKSUM_CHECK_IP               CONFIG_LWIP_CHECKSUM_CHECK_IP
+#define CHECKSUM_CHECK_ICMP             CONFIG_LWIP_CHECKSUM_CHECK_ICMP
 
 #define LWIP_NETCONN_FULLDUPLEX         1
 #define LWIP_NETCONN_SEM_PER_THREAD     1
@@ -921,6 +1010,23 @@ u32_t lwip_hook_tcp_isn(const struct ip_addr *local_ip, u16_t local_port,
 /*
  * SNTP update delay - in milliseconds
  */
+
+/*
+ * Forward declarations of weak definitions from lwip's sntp.c which could
+ * be redefined by user application. This is needed to provide custom definition
+ * of the below macros in lwip's sntp.c.
+ * Full declaration is provided in IDF's port layer in esp_sntp.h
+ */
+#ifdef __cplusplus
+#define LWIP_FORWARD_DECLARE_C_CXX extern "C"
+#else
+#define LWIP_FORWARD_DECLARE_C_CXX
+#endif
+
+LWIP_FORWARD_DECLARE_C_CXX void sntp_sync_time(struct timeval *tv);
+
+LWIP_FORWARD_DECLARE_C_CXX uint32_t sntp_get_sync_interval(void);
+
 /** Set this to 1 to support DNS names (or IP address strings) to set sntp servers
  * One server address/name can be defined as default if SNTP_SERVER_DNS == 1:
  * \#define SNTP_SERVER_ADDRESS "pool.ntp.org"

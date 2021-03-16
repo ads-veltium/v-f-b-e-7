@@ -30,7 +30,8 @@ typedef enum {
     ESP_ADC_CAL_VAL_EFUSE_VREF = 0,         /**< Characterization based on reference voltage stored in eFuse*/
     ESP_ADC_CAL_VAL_EFUSE_TP = 1,           /**< Characterization based on Two Point values stored in eFuse*/
     ESP_ADC_CAL_VAL_DEFAULT_VREF = 2,       /**< Characterization based on default reference voltage*/
-    ESP_ADC_CAL_VAL_MAX
+    ESP_ADC_CAL_VAL_MAX,
+    ESP_ADC_CAL_VAL_NOT_SUPPORTED = ESP_ADC_CAL_VAL_MAX,
 } esp_adc_cal_value_t;
 
 /**
@@ -56,6 +57,8 @@ typedef struct {
  * burned to the eFuse of the current ESP32
  *
  * @param   value_type  Type of calibration value (ESP_ADC_CAL_VAL_EFUSE_VREF or ESP_ADC_CAL_VAL_EFUSE_TP)
+ * @note in ESP32S2, only ESP_ADC_CAL_VAL_EFUSE_TP is supported. Some old ESP32S2s do not support this, either.
+ * In which case you have to calibrate it manually, possibly by performing your own two-point calibration on the chip.
  *
  * @return
  *      - ESP_OK: The calibration mode is supported in eFuse
@@ -72,10 +75,10 @@ esp_err_t esp_adc_cal_check_efuse(esp_adc_cal_value_t value_type);
  * Characterization can be based on Two Point values, eFuse Vref, or default Vref
  * and the calibration values will be prioritized in that order.
  *
- * @note 
+ * @note
  * For ESP32, Two Point values and eFuse Vref calibration can be enabled/disabled using menuconfig.
  * For ESP32s2, only Two Point values calibration and only ADC_WIDTH_BIT_13 is supported. The parameter default_vref is unused.
- * 
+ *
  *
  * @param[in]   adc_num         ADC to characterize (ADC_UNIT_1 or ADC_UNIT_2)
  * @param[in]   atten           Attenuation to characterize

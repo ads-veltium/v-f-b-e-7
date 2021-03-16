@@ -1,4 +1,4 @@
-{ Copyright 2019 Espressif Systems (Shanghai) PTE LTD
+{ Copyright 2019-2021 Espressif Systems (Shanghai) CO LTD
   SPDX-License-Identifier: Apache-2.0 }
 
 { ------------------------------ Custom steps before the main installation flow ------------------------------ }
@@ -20,7 +20,7 @@ end;
 { If IDF_TOOLS_PATH is set in the environment,
   set the default installation directory accordingly.
   Note: here we read IDF_TOOLS_PATH using GetEnv rather than
-  by getting it from registry, in case the user has set 
+  by getting it from registry, in case the user has set
   IDF_TOOLS_PATH as a system environment variable manually. }
 <event('InitializeWizard')>
 procedure UpdateInstallDir();
@@ -44,17 +44,6 @@ begin
     exit;
 
   ForceDirectories(ExpandConstant('{app}\dist'));
-
-  if not PythonUseExisting then
-  begin
-    DestPath := ExpandConstant('{app}\dist\{#PythonInstallerName}');
-    if FileExists(DestPath) then
-    begin
-      Log('Python installer already downloaded: ' + DestPath);
-    end else begin
-      idpAddFile('{#PythonInstallerDownloadURL}', DestPath);
-    end;
-  end;
 
   if not GitUseExisting then
   begin
@@ -82,9 +71,6 @@ var
 begin
   EnvPath := GetEnv('PATH');
 
-  if not PythonUseExisting then
-    PythonExecutablePathUpdateAfterInstall();
-
   if not GitUseExisting then
     GitExecutablePathUpdateAfterInstall();
 
@@ -103,6 +89,26 @@ begin
   SetEnvironmentVariable('PYTHONPATH', '')
 end;
 
+procedure InstallEmbeddedPython();
+var
+  EmbeddedPythonPath: String;
+  CmdLine: String;
+begin
+  if (Pos('tools', PythonPath) <> 1) then begin
+    Exit;
+  end;
+
+  EmbeddedPythonPath := ExpandConstant('{app}\') + PythonExecutablePath;
+  UpdatePythonVariables(EmbeddedPythonPath);
+  Log('Checking existence of Embedded Python: ' + EmbeddedPythonPath);
+  if (FileExists(EmbeddedPythonPath)) then begin
+    Exit;
+  end;
+
+  CmdLine := ExpandConstant('{tmp}\7za.exe x -o{app}\tools\python\' + PythonVersion + '\ -r -aoa "{app}\dist\idf-python-' + PythonVersion + '-embed-win64.zip"');
+  DoCmdlineInstall('Extracting Python Interpreter', 'Using Embedded Python', CmdLine);
+end;
+
 <event('CurStepChanged')>
 procedure PostInstallSteps(CurStep: TSetupStep);
 var
@@ -111,29 +117,47 @@ begin
   if CurStep <> ssPostInstall then
     exit;
 
+  ExtractTemporaryFile('7za.exe')
+  InstallEmbeddedPython();
+
   try
     AddPythonGitToPath();
 
     if not IDFUseExisting then
       IDFDownload();
 
+    if WizardIsTaskSelected('idf_tools_use_mirror') then
+    begin
+      SetEnvironmentVariable('IDF_GITHUB_ASSETS', 'dl.espressif.com/github_assets')
+    end;
+
     IDFToolsSetup();
 
 
-  if WizardIsTaskSelected('createlnk') then
+  if WizardIsTaskSelected('CreateLnkStartCmd') then
   begin
     CreateIDFCommandPromptShortcut('{autostartmenu}\Programs\ESP-IDF');
   end;
-   
-  if WizardIsTaskSelected('createdsk') then
+
+  if WizardIsTaskSelected('CreateLnkStartPs') then
+  begin
+    CreateIDFPowershellShortcut('{autostartmenu}\Programs\ESP-IDF' );
+  end;
+
+  if WizardIsTaskSelected('CreateLnkDeskCmd') then
   begin
     CreateIDFCommandPromptShortcut('{autodesktop}');
+  end;
+
+  if WizardIsTaskSelected('CreateLnkDeskPs') then
+  begin
+    CreateIDFPowershellShortcut('{autodesktop}');
   end;
 
   if WizardIsTaskSelected('wdexcl') then
   begin
     RegisterIDFToolsExecutablesInWD();
-  end;	
+  end;
 
   except
     SetupAborted := True;
@@ -155,4 +179,15 @@ begin
   begin
     Result := SetupAborted;
   end;
+end;
+
+
+function IsPowerShellInstalled(): Boolean;
+begin
+  Result := ((not SetupAborted) and (WizardIsTaskSelected('CreateLnkDeskPs') or WizardIsTaskSelected('CreateLnkStartPs')));
+end;
+
+function IsCmdInstalled(): Boolean;
+begin
+  Result := ((not SetupAborted) and (WizardIsTaskSelected('CreateLnkDeskCmd') or WizardIsTaskSelected('CreateLnkStartCmd')));
 end;

@@ -18,7 +18,7 @@
 #include "sdkconfig.h"
 
 #ifdef CONFIG_IDF_TARGET_ESP32
-#include "esp32/rom/ets_sys.h"
+#include "esp32/rom/ets_sys.h" // will be removed in idf v5.0
 #elif CONFIG_IDF_TARGET_ESP32S2
 #include "esp32s2/rom/ets_sys.h"
 #endif
@@ -130,11 +130,10 @@ char * dup_binstr(const void *src, size_t len);
 
 int wpa_michael_mic_failure(u16 isunicast);
 
-wifi_cipher_type_t cipher_type_map_supp_to_public(uint32_t wpa_cipher);
+wifi_cipher_type_t cipher_type_map_supp_to_public(unsigned cipher);
 
-uint32_t cipher_type_map_supp_to_public(wifi_cipher_type_t cipher);
+unsigned cipher_type_map_public_to_supp(wifi_cipher_type_t cipher);
 
 void wpa_sta_clear_curr_pmksa(void);
 
 #endif /* WPA_H */
-

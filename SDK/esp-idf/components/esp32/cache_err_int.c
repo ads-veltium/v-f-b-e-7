@@ -13,9 +13,9 @@
 // limitations under the License.
 
 /*
- The cache has an interrupt that can be raised as soon as an access to a cached 
- region (flash, psram) is done without the cache being enabled. We use that here 
- to panic the CPU, which from a debugging perspective is better than grabbing bad 
+ The cache has an interrupt that can be raised as soon as an access to a cached
+ region (flash, psram) is done without the cache being enabled. We use that here
+ to panic the CPU, which from a debugging perspective is better than grabbing bad
  data from the bus.
 */
 
@@ -23,16 +23,22 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include "freertos/FreeRTOS.h"
+
 #include "esp_err.h"
-#include "esp_intr_alloc.h"
 #include "esp_attr.h"
+
+#include "esp_intr_alloc.h"
 #include "soc/dport_reg.h"
+#include "hal/cpu_hal.h"
+
+#include "esp32/dport_access.h"
+#include "esp32/rom/ets_sys.h" // for intr_matrix_set
+
 #include "sdkconfig.h"
 
 void esp_cache_err_int_init(void)
 {
-    uint32_t core_id = xPortGetCoreID();
+    uint32_t core_id = cpu_hal_get_core_id();
     ESP_INTR_DISABLE(ETS_MEMACCESS_ERR_INUM);
 
     // We do not register a handler for the interrupt because it is interrupt

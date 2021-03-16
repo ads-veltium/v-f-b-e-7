@@ -1,3 +1,5 @@
+:orphan:
+
 Secure Boot V2
 ==============
 

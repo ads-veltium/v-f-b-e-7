@@ -29,6 +29,7 @@ extern "C"
 #endif
 
 #define OTA_SIZE_UNKNOWN 0xffffffff /*!< Used for esp_ota_begin() if new image size is unknown */
+#define OTA_WITH_SEQUENTIAL_WRITES 0xfffffffe /*!< Used for esp_ota_begin() if new image size is unknown and erase can be done in incremental manner (assuming write operation is in continuous sequence) */
 
 #define ESP_ERR_OTA_BASE                         0x1500                     /*!< Base error code for ota_ops api */
 #define ESP_ERR_OTA_PARTITION_CONFLICT           (ESP_ERR_OTA_BASE + 0x01)  /*!< Error if request was to write or erase the current running partition */
@@ -49,7 +50,7 @@ typedef uint32_t esp_ota_handle_t;
 
 /**
  * @brief   Return esp_app_desc structure. This structure includes app version.
- * 
+ *
  * Return description for running app.
  * @return Pointer to esp_app_desc structure.
  */
@@ -157,6 +158,18 @@ esp_err_t esp_ota_write_with_offset(esp_ota_handle_t handle, const void *data, s
 esp_err_t esp_ota_end(esp_ota_handle_t handle);
 
 /**
+ * @brief Abort OTA update, free the handle and memory associated with it.
+ *
+ * @param handle obtained from esp_ota_begin().
+ *
+ * @return
+ *    - ESP_OK: Handle and its associated memory is freed successfully.
+ *    - ESP_ERR_NOT_FOUND: OTA handle was not found.
+ */
+esp_err_t esp_ota_abort(esp_ota_handle_t handle);
+
+
+/**
  * @brief Configure OTA data for a new boot partition
  *
  * @note If this function returns ESP_OK, calling esp_restart() will boot the newly configured app partition.
@@ -224,7 +237,7 @@ const esp_partition_t* esp_ota_get_next_update_partition(const esp_partition_t *
 
 /**
  * @brief Returns esp_app_desc structure for app partition. This structure includes app version.
- * 
+ *
  * Returns a description for the requested app partition.
  * @param[in] partition     Pointer to app partition. (only app partition)
  * @param[out] app_desc     Structure of info about app.
@@ -299,7 +312,7 @@ esp_err_t esp_ota_erase_last_boot_app_partition(void);
  */
 bool esp_ota_check_rollback_is_possible(void);
 
-#if CONFIG_IDF_TARGET_ESP32S2 && (CONFIG_SECURE_BOOT_V2_ENABLED || __DOXYGEN__)
+#if SOC_EFUSE_SECURE_BOOT_KEY_DIGESTS > 1 && (CONFIG_SECURE_BOOT_V2_ENABLED || __DOXYGEN__)
 
 /**
  * Secure Boot V2 public key indexes.
@@ -325,7 +338,7 @@ typedef enum {
  *        - ESP_FAIL: If secure boot v2 has not been enabled.
  */
 esp_err_t esp_ota_revoke_secure_boot_public_key(esp_ota_secure_boot_public_key_index_t index);
-#endif /* CONFIG_IDF_TARGET_ESP32S2 */
+#endif /* SOC_EFUSE_SECURE_BOOT_KEY_DIGESTS > 1 */
 
 #ifdef __cplusplus
 }

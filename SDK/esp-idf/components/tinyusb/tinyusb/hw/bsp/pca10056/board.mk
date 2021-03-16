@@ -1,4 +1,5 @@
 CFLAGS += \
+  -flto \
   -mthumb \
   -mabi=aapcs \
   -mcpu=cortex-m4 \
@@ -8,8 +9,14 @@ CFLAGS += \
   -DCONFIG_GPIO_AS_PINRESET \
   -DCFG_TUSB_MCU=OPT_MCU_NRF5X
 
-# nrfx issue undef _ARMCC_VERSION usage https://github.com/NordicSemiconductor/nrfx/issues/49
-CFLAGS += -Wno-error=undef 
+# suppress warning caused by vendor mcu driver
+CFLAGS += -Wno-error=undef -Wno-error=unused-parameter -Wno-error=cast-align
+
+# due to tusb_hal_nrf_power_event
+GCCVERSION = $(firstword $(subst ., ,$(shell arm-none-eabi-gcc -dumpversion)))
+ifeq ($(shell expr $(GCCVERSION) \>= 8), 1)
+CFLAGS += -Wno-error=cast-function-type
+endif
 
 # All source paths should be relative to the top level.
 LD_FILE = hw/mcu/nordic/nrfx/mdk/nrf52840_xxaa.ld
@@ -18,13 +25,11 @@ LDFLAGS += -L$(TOP)/hw/mcu/nordic/nrfx/mdk
 
 SRC_C += \
 	hw/mcu/nordic/nrfx/drivers/src/nrfx_power.c \
-	hw/mcu/nordic/nrfx/mdk/system_nrf52840.c \
-
-# TODO remove later
-SRC_C += src/portable/$(VENDOR)/$(CHIP_FAMILY)/hal_$(CHIP_FAMILY).c
+	hw/mcu/nordic/nrfx/drivers/src/nrfx_uarte.c \
+	hw/mcu/nordic/nrfx/mdk/system_nrf52840.c
 
 INC += \
-	$(TOP)/hw/cmsis/Include \
+	$(TOP)/lib/CMSIS_4/CMSIS/Include \
 	$(TOP)/hw/mcu/nordic \
 	$(TOP)/hw/mcu/nordic/nrfx \
 	$(TOP)/hw/mcu/nordic/nrfx/mdk \
@@ -45,7 +50,6 @@ FREERTOS_PORT = ARM_CM4F
 
 # For flash-jlink target
 JLINK_DEVICE = nRF52840_xxAA
-JLINK_IF = swd
 
 # flash using jlink
 flash: flash-jlink

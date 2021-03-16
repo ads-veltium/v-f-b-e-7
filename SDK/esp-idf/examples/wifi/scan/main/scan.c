@@ -137,6 +137,7 @@ static void wifi_scan(void)
         }
         ESP_LOGI(TAG, "Channel \t\t%d\n", ap_info[i].primary);
     }
+
 }
 
 void app_main(void)

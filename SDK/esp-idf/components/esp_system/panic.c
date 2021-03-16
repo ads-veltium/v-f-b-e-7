@@ -12,21 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include <stdlib.h>
+#include <string.h>
 
 #include "esp_err.h"
 #include "esp_attr.h"
 
-#include "esp_spi_flash.h"
 #include "esp_private/system_internal.h"
-#include "esp_private/gdbstub.h"
+#include "esp_private/usb_console.h"
 #include "esp_ota_ops.h"
-
-#if CONFIG_APPTRACE_ENABLE
-#include "esp_app_trace.h"
-#if CONFIG_SYSVIEW_ENABLE
-#include "SEGGER_RTT.h"
-#endif
-#endif // CONFIG_APPTRACE_ENABLE
 
 #include "esp_core_dump.h"
 
@@ -37,20 +30,34 @@
 #include "hal/wdt_types.h"
 #include "hal/wdt_hal.h"
 
-#if !CONFIG_ESP_SYSTEM_PANIC_SILENT_REBOOT
-#include <string.h>
-#include "hal/uart_hal.h"
-#endif
-
-#include "panic_internal.h"
+#include "esp_private/panic_internal.h"
 #include "port/panic_funcs.h"
 
 #include "sdkconfig.h"
+
+#if CONFIG_ESP32_ENABLE_COREDUMP
+#include "esp_core_dump.h"
+#endif
+
+#if CONFIG_APPTRACE_ENABLE
+#include "esp_app_trace.h"
+#if CONFIG_SYSVIEW_ENABLE
+#include "SEGGER_RTT.h"
+#endif
 
 #if CONFIG_APPTRACE_ONPANIC_HOST_FLUSH_TMO == -1
 #define APPTRACE_ONPANIC_HOST_FLUSH_TMO   ESP_APPTRACE_TMO_INFINITE
 #else
 #define APPTRACE_ONPANIC_HOST_FLUSH_TMO   (1000*CONFIG_APPTRACE_ONPANIC_HOST_FLUSH_TMO)
+#endif
+#endif // CONFIG_APPTRACE_ENABLE
+
+#if !CONFIG_ESP_SYSTEM_PANIC_SILENT_REBOOT
+#include "hal/uart_hal.h"
+#endif
+
+#if CONFIG_ESP_SYSTEM_PANIC_GDBSTUB
+#include "esp_gdbstub.h"
 #endif
 
 bool g_panic_abort = false;
@@ -62,6 +69,7 @@ static wdt_hal_context_t wdt1_context = {.inst = WDT_MWDT1, .mwdt_dev = &TIMERG1
 
 #if !CONFIG_ESP_SYSTEM_PANIC_SILENT_REBOOT
 
+#if CONFIG_ESP_CONSOLE_UART
 static uart_hal_context_t s_panic_uart = { .dev = CONFIG_ESP_CONSOLE_UART_NUM == 0 ? &UART0 : &UART1 };
 
 void panic_print_char(const char c)
@@ -70,6 +78,23 @@ void panic_print_char(const char c)
     while(!uart_hal_get_txfifo_len(&s_panic_uart));
     uart_hal_write_txfifo(&s_panic_uart, (uint8_t*) &c, 1, &sz);
 }
+#endif // CONFIG_ESP_CONSOLE_UART
+
+
+#if CONFIG_ESP_CONSOLE_USB_CDC
+void panic_print_char(const char c)
+{
+    esp_usb_console_write_buf(&c, 1);
+    /* result ignored */
+}
+#endif // CONFIG_ESP_CONSOLE_USB_CDC
+
+#if CONFIG_ESP_CONSOLE_NONE
+void panic_print_char(const char c)
+{
+    /* no-op */
+}
+#endif // CONFIG_ESP_CONSOLE_NONE
 
 void panic_print_str(const char *str)
 {
@@ -167,7 +192,7 @@ void esp_panic_handler(panic_info_t *info)
         info->exception = PANIC_EXCEPTION_ABORT;
     }
 
-    /*
+   /*
      * For any supported chip, the panic handler prints the contents of panic_info_t in the following format:
      *
      *
@@ -185,7 +210,7 @@ void esp_panic_handler(panic_info_t *info)
      * description - a short description regarding the exception that occured
      * details - more details about the exception
      * state - processor state like register contents, and backtrace
-     * elf_info - details about the image currently running 
+     * elf_info - details about the image currently running
      *
      * NULL fields in panic_info_t are not printed.
      *
@@ -273,25 +298,25 @@ void esp_panic_handler(panic_info_t *info)
     wdt_hal_disable(&rtc_wdt_ctx);
     wdt_hal_write_protect_enable(&rtc_wdt_ctx);
     panic_print_str("Entering gdb stub now.\r\n");
-    esp_gdbstub_panic_handler((XtExcFrame*) info->frame);
+    esp_gdbstub_panic_handler((esp_gdbstub_frame_t*)info->frame);
 #else
-#if CONFIG_ESP32_ENABLE_COREDUMP
+#if CONFIG_ESP_COREDUMP_ENABLE
     static bool s_dumping_core;
     if (s_dumping_core) {
         panic_print_str("Re-entered core dump! Exception happened during core dump!\r\n");
     } else {
         disable_all_wdts();
         s_dumping_core = true;
-#if CONFIG_ESP32_ENABLE_COREDUMP_TO_FLASH
-        esp_core_dump_to_flash((XtExcFrame*) info->frame);
+#if CONFIG_ESP_COREDUMP_ENABLE_TO_FLASH
+        esp_core_dump_to_flash(info);
 #endif
-#if CONFIG_ESP32_ENABLE_COREDUMP_TO_UART && !CONFIG_ESP_SYSTEM_PANIC_SILENT_REBOOT
-        esp_core_dump_to_uart((XtExcFrame*) info->frame);
+#if CONFIG_ESP_COREDUMP_ENABLE_TO_UART && !CONFIG_ESP_SYSTEM_PANIC_SILENT_REBOOT
+        esp_core_dump_to_uart(info);
 #endif
         s_dumping_core = false;
         reconfigure_all_wdts();
     }
-#endif /* CONFIG_ESP32_ENABLE_COREDUMP */
+#endif /* CONFIG_ESP_COREDUMP_ENABLE */
     wdt_hal_write_protect_disable(&rtc_wdt_ctx);
     wdt_hal_disable(&rtc_wdt_ctx);
     wdt_hal_write_protect_enable(&rtc_wdt_ctx);
@@ -313,7 +338,7 @@ void esp_panic_handler(panic_info_t *info)
             break; // do not touch the previously set reset reason hint
         }
     }
-    
+
     panic_print_str("Rebooting...\r\n");
     panic_restart();
 #else
@@ -323,6 +348,7 @@ void esp_panic_handler(panic_info_t *info)
 #endif /* CONFIG_ESP_SYSTEM_PANIC_PRINT_REBOOT || CONFIG_ESP_SYSTEM_PANIC_SILENT_REBOOT */
 #endif /* CONFIG_ESP_SYSTEM_PANIC_GDBSTUB */
 }
+
 
 void __attribute__((noreturn)) panic_abort(const char *details)
 {

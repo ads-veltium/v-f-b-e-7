@@ -3,7 +3,6 @@
 */
 #include "esp_system.h"
 #include "driver/adc.h"
-#include "driver/dac.h"
 #include "unity.h"
 #include "esp_system.h"
 #include "esp_event.h"
@@ -13,6 +12,9 @@
 #include "test_utils.h"
 #include "driver/i2s.h"
 #include "driver/gpio.h"
+
+#if !TEMPORARY_DISABLED_FOR_TARGETS(ESP32S3, ESP32C3)
+#include "driver/dac.h"
 
 static const char* TAG = "test_adc2";
 
@@ -126,7 +128,7 @@ TEST_CASE("adc2 work with wifi","[adc]")
         },
     };
     TEST_ESP_OK(esp_wifi_set_mode(WIFI_MODE_STA));
-    TEST_ESP_OK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config));
+    TEST_ESP_OK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
 
     //test read value
     TEST_ESP_OK( adc2_get_raw( ADC_TEST_CH1, ADC_TEST_WIDTH, &read_raw ));
@@ -170,6 +172,8 @@ TEST_CASE("adc2 work with wifi","[adc]")
 
     TEST_IGNORE_MESSAGE("this test case is ignored due to the critical memory leak of esp_netif and event_loop.");
 }
+
+#endif
 
 #ifdef CONFIG_IDF_TARGET_ESP32
 static void i2s_adc_init(void)
@@ -256,7 +260,7 @@ TEST_CASE("adc1 and i2s work with wifi","[adc][ignore]")
         },
     };
     TEST_ESP_OK(esp_wifi_set_mode(WIFI_MODE_STA));
-    TEST_ESP_OK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config));
+    TEST_ESP_OK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
     i2s_adc_test();
     //now start wifi
     printf("wifi start...\n");

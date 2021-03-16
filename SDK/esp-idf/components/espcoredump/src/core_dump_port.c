@@ -16,8 +16,15 @@
 #include "soc/soc_memory_layout.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "freertos/xtensa_context.h" // for exception register stack structure
 #include "esp_core_dump_priv.h"
+
+#if __XTENSA__
+#include "freertos/xtensa_context.h"
+#else // __XTENSA__
+#define XCHAL_NUM_AREGS 64 // TODO-ESP32C3 coredump support IDF-1758
+#endif // __XTENSA__
+
+#include "esp_rom_sys.h"
 
 const static DRAM_ATTR char TAG[] __attribute__((unused)) = "esp_core_dump_port";
 
@@ -36,6 +43,8 @@ const static DRAM_ATTR char TAG[] __attribute__((unused)) = "esp_core_dump_port"
 
 #define COREDUMP_GET_EPS(reg, ptr) \
     if (reg - EPS_2 + 2 <= XCHAL_NUM_INTLEVELS) COREDUMP_GET_REG_PAIR(reg, ptr)
+
+#define COREDUMP_GET_MEMORY_SIZE(end, start) (end - start)
 
 // Enumeration of registers of exception stack frame
 // and solicited stack frame
@@ -123,7 +132,11 @@ typedef struct
 
 extern uint8_t port_IntStack;
 
-#if CONFIG_ESP32_ENABLE_COREDUMP
+#if CONFIG_ESP_COREDUMP_ENABLE
+
+#if !(CONFIG_IDF_TARGET_ESP32 || CONFIG_IDF_TARGET_ESP32S2)
+#error Coredump functionality is not implemented for this target!
+#endif
 
 static uint32_t s_total_length = 0;
 
@@ -139,8 +152,16 @@ static uint32_t s_fake_stacks_num;
 
 static xtensa_extra_info_t s_extra_info;
 
-#if ESP32_CORE_DUMP_STACK_SIZE > 0
-uint8_t s_coredump_stack[ESP32_CORE_DUMP_STACK_SIZE];
+static XtExcFrame *s_exc_frame;
+
+static bool esp_core_dump_check_task(core_dump_task_header_t *task);
+static bool esp_core_dump_check_stack(core_dump_task_header_t *task);
+static void esp_core_dump_switch_task_stack_to_isr(core_dump_task_header_t *task,
+                                    core_dump_mem_seg_header_t *stack);
+
+
+#if ESP_COREDUMP_STACK_SIZE > 0
+uint8_t s_coredump_stack[ESP_COREDUMP_STACK_SIZE];
 uint8_t *s_core_dump_sp;
 
 static uint32_t esp_core_dump_free_stack_space(const uint8_t *pucStackByte)
@@ -157,14 +178,14 @@ static uint32_t esp_core_dump_free_stack_space(const uint8_t *pucStackByte)
 
 void esp_core_dump_report_stack_usage(void)
 {
-#if ESP32_CORE_DUMP_STACK_SIZE > 0
+#if ESP_COREDUMP_STACK_SIZE > 0
     uint32_t bytes_free = esp_core_dump_free_stack_space(s_coredump_stack);
     ESP_COREDUMP_LOGD("Core dump used %u bytes on stack. %u bytes left free.",
         s_core_dump_sp - s_coredump_stack - bytes_free, bytes_free);
 #endif
 }
 
-#if CONFIG_ESP32_COREDUMP_CHECKSUM_SHA256
+#if CONFIG_ESP_COREDUMP_CHECKSUM_SHA256
 
 // function to calculate SHA256 for solid data array
 int esp_core_dump_sha(mbedtls_sha256_context *ctx,
@@ -190,20 +211,36 @@ exit:
 
 void esp_core_dump_print_sha256(const char* msg, const uint8_t* sha_output)
 {
-    ets_printf(DRAM_STR("%s='"), msg);
+    esp_rom_printf(DRAM_STR("%s='"), msg);
     for (int i = 0; i < COREDUMP_SHA256_LEN; i++) {
-        ets_printf(DRAM_STR("%02x"), sha_output[i]);
+        esp_rom_printf(DRAM_STR("%02x"), sha_output[i]);
     }
-    ets_printf(DRAM_STR("'\r\n"));
+    esp_rom_printf(DRAM_STR("'\r\n"));
 }
 #endif
+
+/**
+ * Prints a message and a checksum given as parameters.
+ * This function is useful when the caller isn't explicitly aware of which
+ * checksum type (CRC32, SHA256, etc) is being used.
+ */
+void esp_core_dump_print_checksum(const char* msg, const void* checksum)
+{
+#if CONFIG_ESP_COREDUMP_CHECKSUM_CRC32
+    esp_rom_printf(DRAM_STR("%s='"), msg);
+    esp_rom_printf(DRAM_STR("%08x"), *((const uint32_t*) checksum));
+    esp_rom_printf(DRAM_STR("'\r\n"));
+#elif CONFIG_ESP_COREDUMP_CHECKSUM_SHA256
+    esp_core_dump_print_sha256(msg, (const uint8_t*) checksum);
+#endif
+}
 
 void esp_core_dump_checksum_init(core_dump_write_data_t* wr_data)
 {
     if (wr_data) {
-#if CONFIG_ESP32_COREDUMP_CHECKSUM_CRC32
+#if CONFIG_ESP_COREDUMP_CHECKSUM_CRC32
         wr_data->crc = 0;
-#elif CONFIG_ESP32_COREDUMP_CHECKSUM_SHA256
+#elif CONFIG_ESP_COREDUMP_CHECKSUM_SHA256
         mbedtls_sha256_init(&wr_data->ctx);
         (void)mbedtls_sha256_starts_ret(&wr_data->ctx, 0);
 #endif
@@ -214,9 +251,9 @@ void esp_core_dump_checksum_init(core_dump_write_data_t* wr_data)
 void esp_core_dump_checksum_update(core_dump_write_data_t* wr_data, void* data, size_t data_len)
 {
     if (wr_data && data) {
-#if CONFIG_ESP32_COREDUMP_CHECKSUM_CRC32
-        wr_data->crc = crc32_le(wr_data->crc, data, data_len);
-#elif CONFIG_ESP32_COREDUMP_CHECKSUM_SHA256
+#if CONFIG_ESP_COREDUMP_CHECKSUM_CRC32
+        wr_data->crc = esp_rom_crc32_le(wr_data->crc, data, data_len);
+#elif CONFIG_ESP_COREDUMP_CHECKSUM_SHA256
 #if CONFIG_MBEDTLS_HARDWARE_SHA
         // set software mode of SHA calculation
         wr_data->ctx.mode = ESP_MBEDTLS_SHA256_SOFTWARE;
@@ -229,18 +266,30 @@ void esp_core_dump_checksum_update(core_dump_write_data_t* wr_data, void* data, 
     }
 }
 
+/**
+ * Returns the size, in bytes, of the checksums.
+ * Currently, this function is just an alias to esp_core_dump_checksum_finish
+ * function, which can return the size of the checksum if given parameters
+ * are NULL. However, the implementation can evolve in the future independently
+ * from esp_core_dump_checksum_finish function.
+ */
+uint32_t esp_core_dump_checksum_size(void)
+{
+    return esp_core_dump_checksum_finish(NULL, NULL);
+}
+
 uint32_t esp_core_dump_checksum_finish(core_dump_write_data_t* wr_data, void** chs_ptr)
 {
     // get core dump checksum
     uint32_t chs_len = 0;
-#if CONFIG_ESP32_COREDUMP_CHECKSUM_CRC32
+#if CONFIG_ESP_COREDUMP_CHECKSUM_CRC32
     if (chs_ptr) {
         wr_data->crc = wr_data->crc;
         *chs_ptr = (void*)&wr_data->crc;
         ESP_COREDUMP_LOG_PROCESS("Dump data CRC = 0x%x, offset = 0x%x", wr_data->crc, wr_data->off);
     }
     chs_len = sizeof(wr_data->crc);
-#elif CONFIG_ESP32_COREDUMP_CHECKSUM_SHA256
+#elif CONFIG_ESP_COREDUMP_CHECKSUM_SHA256
     if (chs_ptr) {
         ESP_COREDUMP_LOG_PROCESS("Dump data offset = %d", wr_data->off);
         (void)mbedtls_sha256_finish_ret(&wr_data->ctx, (uint8_t*)&wr_data->sha_output);
@@ -253,6 +302,20 @@ uint32_t esp_core_dump_checksum_finish(core_dump_write_data_t* wr_data, void** c
     return chs_len;
 }
 
+inline void esp_core_dump_port_init(panic_info_t *info)
+{
+    s_extra_info.crashed_task_tcb = COREDUMP_CURR_TASK_MARKER;
+    // Initialize exccause register to default value (required if current task corrupted)
+    s_extra_info.exccause.reg_val = COREDUMP_INVALID_CAUSE_VALUE;
+    s_extra_info.exccause.reg_index = EXCCAUSE;
+
+    s_exc_frame = (void *)info->frame;
+    s_exc_frame->exit = COREDUMP_CURR_TASK_MARKER;
+    if (info->pseudo_excause) {
+        s_exc_frame->exccause += XCHAL_EXCCAUSE_NUM;
+    }
+}
+
 inline uint16_t esp_core_dump_get_arch_id()
 {
     return COREDUMP_EM_XTENSA;
@@ -260,54 +323,75 @@ inline uint16_t esp_core_dump_get_arch_id()
 
 inline bool esp_core_dump_mem_seg_is_sane(uint32_t addr, uint32_t sz)
 {
-    //TODO: currently core dump supports memory segments in DRAM only, external SRAM not supported yet
-    return esp_ptr_in_dram((void *)addr) && esp_ptr_in_dram((void *)(addr+sz-1));
+    //TODO: external SRAM not supported yet
+    return (esp_ptr_in_dram((void *)addr) && esp_ptr_in_dram((void *)(addr+sz-1))) ||
+            (esp_ptr_in_rtc_slow((void *)addr) && esp_ptr_in_rtc_slow((void *)(addr+sz-1))) ||
+            (esp_ptr_in_rtc_dram_fast((void *)addr) && esp_ptr_in_rtc_dram_fast((void *)(addr+sz-1)))
+#if CONFIG_IDF_TARGET_ESP32 && CONFIG_ESP32_IRAM_AS_8BIT_ACCESSIBLE_MEMORY
+            || (esp_ptr_in_iram((void *)addr) && esp_ptr_in_iram((void *)(addr+sz-1)))
+#endif
+    ;
 }
 
-inline bool esp_core_dump_task_stack_end_is_sane(uint32_t sp)
+static inline bool esp_core_dump_task_stack_end_is_sane(uint32_t sp)
 {
     //TODO: currently core dump supports stacks in DRAM only, external SRAM not supported yet
     return esp_ptr_in_dram((void *)sp);
 }
 
-inline bool esp_core_dump_tcb_addr_is_sane(uint32_t addr)
+static inline bool esp_core_dump_tcb_addr_is_sane(uint32_t addr)
 {
-    return esp_core_dump_mem_seg_is_sane(addr, COREDUMP_TCB_SIZE);
+    return esp_core_dump_mem_seg_is_sane(addr, esp_core_dump_get_tcb_len());
 }
 
-uint32_t esp_core_dump_get_tasks_snapshot(core_dump_task_header_t** const tasks,
-                        const uint32_t snapshot_size)
+inline void esp_core_dump_reset_tasks_snapshots_iter(void)
 {
-    static TaskSnapshot_t s_tasks_snapshots[CONFIG_ESP32_CORE_DUMP_MAX_TASKS_NUM];
-    uint32_t tcb_sz; // unused
+    s_fake_stacks_num = 0;
+}
 
-    /* implying that TaskSnapshot_t extends core_dump_task_header_t by adding extra fields */
-    _Static_assert(sizeof(TaskSnapshot_t) >= sizeof(core_dump_task_header_t), "FreeRTOS task snapshot binary compatibility issue!");
+inline void *esp_core_dump_get_next_task(void *handle)
+{
+    return pxTaskGetNext(handle);
+}
 
-    uint32_t task_num = (uint32_t)uxTaskGetSnapshotAll(s_tasks_snapshots,
-                                                         (UBaseType_t)snapshot_size,
-                                                         (UBaseType_t*)&tcb_sz);
-    for (uint32_t i = 0; i < task_num; i++) {
-        tasks[i] = (core_dump_task_header_t *)&s_tasks_snapshots[i];
+bool esp_core_dump_get_task_snapshot(void *handle, core_dump_task_header_t *task,
+                                    core_dump_mem_seg_header_t *interrupted_stack)
+{
+    TaskSnapshot_t rtos_snapshot;
+
+    if (interrupted_stack != NULL) {
+        interrupted_stack->size = 0;
     }
-    return task_num;
+
+    vTaskGetSnapshot(handle, &rtos_snapshot);
+    task->tcb_addr = handle;
+    task->stack_start = (uint32_t)rtos_snapshot.pxTopOfStack;
+    task->stack_end = (uint32_t)rtos_snapshot.pxEndOfStack;
+
+    if (!xPortInterruptedFromISRContext() && handle == esp_core_dump_get_current_task_handle()) {
+        // Set correct stack top for current task; only modify if we came from the task,
+        // and not an ISR that crashed.
+        task->stack_start = (uint32_t)s_exc_frame;
+    }
+    if (!esp_core_dump_check_task(task)) {
+        ESP_COREDUMP_LOG_PROCESS("Task %x is broken!", handle);
+        return false;
+    }
+    if (handle == esp_core_dump_get_current_task_handle()) {
+        ESP_COREDUMP_LOG_PROCESS("Crashed task %x", handle);
+        s_extra_info.crashed_task_tcb = (uint32_t)handle;
+        if (xPortInterruptedFromISRContext()) {
+            esp_core_dump_switch_task_stack_to_isr(task, interrupted_stack);
+        }
+    }
+    return true;
 }
 
-inline uint32_t esp_core_dump_get_isr_stack_end(void)
-{
-    return (uint32_t)((uint8_t *)&port_IntStack + (xPortGetCoreID()+1)*configISR_STACK_SIZE);
-}
-
-uint32_t esp_core_dump_get_stack(core_dump_task_header_t *task_snapshot,
+inline uint32_t esp_core_dump_get_stack(core_dump_task_header_t *task,
                                 uint32_t *stk_vaddr, uint32_t *stk_len)
 {
-    if (task_snapshot->stack_end > task_snapshot->stack_start) {
-        *stk_len = task_snapshot->stack_end - task_snapshot->stack_start;
-        *stk_vaddr = task_snapshot->stack_start;
-    } else {
-        *stk_len = task_snapshot->stack_start - task_snapshot->stack_end;
-        *stk_vaddr = task_snapshot->stack_end;
-    }
+    *stk_len = task->stack_end - task->stack_start;
+    *stk_vaddr = task->stack_start;
     if (*stk_vaddr >= COREDUMP_FAKE_STACK_START && *stk_vaddr < COREDUMP_FAKE_STACK_LIMIT) {
         return (uint32_t)&s_fake_stack_frame;
     }
@@ -321,6 +405,18 @@ static void *esp_core_dump_get_fake_stack(uint32_t *stk_len)
 {
     *stk_len = sizeof(s_fake_stack_frame);
     return (uint8_t*)COREDUMP_FAKE_STACK_START + sizeof(s_fake_stack_frame)*s_fake_stacks_num++;
+}
+
+static void esp_core_dump_switch_task_stack_to_isr(core_dump_task_header_t *task, core_dump_mem_seg_header_t *stack)
+{
+    if (stack != NULL) {
+        stack->start = task->stack_start;
+        stack->size = esp_core_dump_get_memory_len(task->stack_start, task->stack_end);
+    }
+    uint32_t isr_stk_end = (uint32_t)((uint8_t *)&port_IntStack + (xPortGetCoreID()+1)*configISR_STACK_SIZE);
+    task->stack_start = (uint32_t)s_exc_frame;
+    task->stack_end = isr_stk_end;
+    ESP_COREDUMP_LOG_PROCESS("Switched task %x to ISR stack [%x...%x]", task->tcb_addr, task->stack_start, task->stack_end);
 }
 
 static core_dump_reg_pair_t *esp_core_dump_get_epc_regs(core_dump_reg_pair_t* src)
@@ -446,34 +542,18 @@ inline void* esp_core_dump_get_current_task_handle()
     return (void*)xTaskGetCurrentTaskHandleForCPU(xPortGetCoreID());
 }
 
-bool esp_core_dump_check_task(void *frame,
-                                core_dump_task_header_t *task,
-                                bool* is_current,
-                                bool* stack_is_valid)
+static bool esp_core_dump_check_task(core_dump_task_header_t *task)
 {
-    XtExcFrame *exc_frame = frame;
-    bool is_curr_task = false;
-    bool stack_is_sane = false;
     uint32_t stk_size = 0;
+    bool stack_is_valid = false;
 
     if (!esp_core_dump_tcb_addr_is_sane((uint32_t)task->tcb_addr)) {
         ESP_COREDUMP_LOG_PROCESS("Bad TCB addr=%x!", task->tcb_addr);
         return false;
     }
 
-    is_curr_task = task->tcb_addr == esp_core_dump_get_current_task_handle();
-    if (is_curr_task) {
-        // Set correct stack top for current task; only modify if we came from the task,
-        // and not an ISR that crashed.
-        if (!xPortInterruptedFromISRContext()) {
-            task->stack_start = (uint32_t)exc_frame;
-        }
-        exc_frame->exit = COREDUMP_CURR_TASK_MARKER;
-        s_extra_info.crashed_task_tcb = (uint32_t)task->tcb_addr;
-    }
-
-    stack_is_sane = esp_core_dump_check_stack(task->stack_start, task->stack_end);
-    if (!stack_is_sane) {
+    stack_is_valid = esp_core_dump_check_stack(task);
+    if (!stack_is_valid) {
         // Skip saving of invalid task if stack corrupted
         ESP_COREDUMP_LOG_PROCESS("Task (TCB:%x), stack is corrupted (%x, %x)",
                                     task->tcb_addr,
@@ -486,86 +566,105 @@ bool esp_core_dump_check_task(void *frame,
                                             task->stack_start,
                                             task->stack_end);
     }
-
-    if (is_curr_task) {
-        if (!stack_is_sane)
-            ESP_COREDUMP_LOG_PROCESS("Current task 0x%x is broken!", task->tcb_addr);
-        ESP_COREDUMP_LOG_PROCESS("Current task (TCB:%x), EXIT/PC/PS/A0/SP %x %x %x %x %x",
-                                            task->tcb_addr,
-                                            exc_frame->exit,
-                                            exc_frame->pc,
-                                            exc_frame->ps,
-                                            exc_frame->a0,
-                                            exc_frame->a1);
+    XtSolFrame *sol_frame = (XtSolFrame *)task->stack_start;
+    if (sol_frame->exit == 0) {
+        ESP_COREDUMP_LOG_PROCESS("Task (TCB:%x), EXIT/PC/PS/A0/SP %x %x %x %x %x",
+                                    task->tcb_addr,
+                                    sol_frame->exit,
+                                    sol_frame->pc,
+                                    sol_frame->ps,
+                                    sol_frame->a0,
+                                    sol_frame->a1);
     } else {
-        XtSolFrame *task_frame = (XtSolFrame *)task->stack_start;
-        if (stack_is_sane) {
-            if (task_frame->exit == 0) {
-                    ESP_COREDUMP_LOG_PROCESS("Task (TCB:%x), EXIT/PC/PS/A0/SP %x %x %x %x %x",
-                                                task->tcb_addr,
-                                                task_frame->exit,
-                                                task_frame->pc,
-                                                task_frame->ps,
-                                                task_frame->a0,
-                                                task_frame->a1);
-            } else {
-#if CONFIG_ESP32_ENABLE_COREDUMP_TO_FLASH
-                    XtExcFrame *task_frame2 = (XtExcFrame *)task->stack_start;
-                    task_frame2->exccause = COREDUMP_INVALID_CAUSE_VALUE;
-                    ESP_COREDUMP_LOG_PROCESS("Task (TCB:%x) EXIT/PC/PS/A0/SP %x %x %x %x %x",
-                                                task->tcb_addr,
-                                                task_frame2->exit,
-                                                task_frame2->pc,
-                                                task_frame2->ps,
-                                                task_frame2->a0,
-                                                task_frame2->a1);
+// to avoid warning that 'exc_frame' is unused when ESP_COREDUMP_LOG_PROCESS does nothing
+#if CONFIG_ESP_COREDUMP_ENABLE_TO_FLASH
+        XtExcFrame *exc_frame = (XtExcFrame *)task->stack_start;
+        ESP_COREDUMP_LOG_PROCESS("Task (TCB:%x) EXIT/PC/PS/A0/SP %x %x %x %x %x",
+                                    task->tcb_addr,
+                                    exc_frame->exit,
+                                    exc_frame->pc,
+                                    exc_frame->ps,
+                                    exc_frame->a0,
+                                    exc_frame->a1);
 #endif
-            }
-        } else {
-            ESP_COREDUMP_LOG_PROCESS("Task (TCB:%x), stack_start=%x is incorrect, skip registers printing.",
-                                        task->tcb_addr, task->stack_start);
-
-        }
     }
-
-    if (is_current) {
-        *is_current = is_curr_task;
-    }
-    if (stack_is_valid) {
-        *stack_is_valid = stack_is_sane;
-    }
-
     return true;
 }
 
-bool esp_core_dump_check_stack(uint32_t stack_start, uint32_t stack_end)
+static bool esp_core_dump_check_stack(core_dump_task_header_t *task)
 {
-    uint32_t len = stack_end - stack_start;
-    bool task_is_valid = false;
     // Check task's stack
-    if (!esp_stack_ptr_is_sane(stack_start) || !esp_core_dump_task_stack_end_is_sane(stack_end) ||
-        (len > COREDUMP_MAX_TASK_STACK_SIZE)) {
+    if (!esp_stack_ptr_is_sane(task->stack_start) || !esp_core_dump_task_stack_end_is_sane(task->stack_end) ||
+        (task->stack_start >= task->stack_end) ||
+        ((task->stack_end-task->stack_start) > COREDUMP_MAX_TASK_STACK_SIZE)) {
         // Check if current task stack is corrupted
-        task_is_valid = false;
-    } else {
-        ESP_COREDUMP_LOG_PROCESS("Stack len = %lu (%x %x)", len, stack_start, stack_end);
-        task_is_valid = true;
+        ESP_COREDUMP_LOG_PROCESS("Invalid stack (%x...%x)!", task->stack_start, task->stack_end);
+        return false;
     }
-    return task_is_valid;
-}
-
-void esp_core_dump_init_extra_info()
-{
-    s_extra_info.crashed_task_tcb = COREDUMP_CURR_TASK_MARKER;
-    // Initialize exccause register to default value (required if current task corrupted)
-    s_extra_info.exccause.reg_val = COREDUMP_INVALID_CAUSE_VALUE;
-    s_extra_info.exccause.reg_index = EXCCAUSE;
+    return true;
 }
 
 uint32_t esp_core_dump_get_extra_info(void **info)
 {
     *info = &s_extra_info;
     return sizeof(s_extra_info);
+}
+
+uint32_t esp_core_dump_get_user_ram_segments(void)
+{
+    uint32_t total_sz = 0;
+
+    // count number of memory segments to insert into ELF structure
+    total_sz += COREDUMP_GET_MEMORY_SIZE(&_coredump_dram_end, &_coredump_dram_start) > 0 ? 1 : 0;
+    total_sz += COREDUMP_GET_MEMORY_SIZE(&_coredump_rtc_end, &_coredump_rtc_start) > 0 ? 1 : 0;
+    total_sz += COREDUMP_GET_MEMORY_SIZE(&_coredump_rtc_fast_end, &_coredump_rtc_fast_start) > 0 ? 1 : 0;
+    total_sz += COREDUMP_GET_MEMORY_SIZE(&_coredump_iram_end, &_coredump_iram_start) > 0 ? 1 : 0;
+
+    return total_sz;
+}
+
+uint32_t esp_core_dump_get_user_ram_size(void)
+{
+    uint32_t total_sz = 0;
+
+    total_sz += COREDUMP_GET_MEMORY_SIZE(&_coredump_dram_end, &_coredump_dram_start);
+    total_sz += COREDUMP_GET_MEMORY_SIZE(&_coredump_rtc_end, &_coredump_rtc_start);
+    total_sz += COREDUMP_GET_MEMORY_SIZE(&_coredump_rtc_fast_end, &_coredump_rtc_fast_start);
+    total_sz += COREDUMP_GET_MEMORY_SIZE(&_coredump_iram_end, &_coredump_iram_start);
+
+    return total_sz;
+}
+
+int esp_core_dump_get_user_ram_info(coredump_region_t region, uint32_t *start) {
+
+    int total_sz = -1;
+
+    switch (region) {
+        case COREDUMP_MEMORY_DRAM:
+            *start = (uint32_t)&_coredump_dram_start;
+            total_sz = (uint8_t *)&_coredump_dram_end - (uint8_t *)&_coredump_dram_start;
+            break;
+
+        case COREDUMP_MEMORY_IRAM:
+            *start = (uint32_t)&_coredump_iram_start;
+            total_sz = (uint8_t *)&_coredump_iram_end - (uint8_t *)&_coredump_iram_start;
+            break;
+
+        case COREDUMP_MEMORY_RTC:
+            *start = (uint32_t)&_coredump_rtc_start;
+            total_sz = (uint8_t *)&_coredump_rtc_end - (uint8_t *)&_coredump_rtc_start;
+            break;
+
+        case COREDUMP_MEMORY_RTC_FAST:
+            *start = (uint32_t)&_coredump_rtc_fast_start;
+            total_sz = (uint8_t *)&_coredump_rtc_fast_end - (uint8_t *)&_coredump_rtc_fast_start;
+            break;
+
+        default:
+            break;
+    }
+
+    return total_sz;
 }
 
 #endif

@@ -7,7 +7,7 @@ This section provides guidance how to establish serial connection between {IDF_T
 
 
 Connect {IDF_TARGET_NAME} to PC
--------------------------------
+----------------------------------
 
 Connect the {IDF_TARGET_NAME} board to the PC using the USB cable. If device driver does not install automatically, identify USB to serial converter chip on your {IDF_TARGET_NAME} board (or external converter dongle), search for drivers in internet and install them.
 
@@ -36,7 +36,7 @@ Below are the links to drivers for {IDF_TARGET_NAME} boards produced by Espressi
 * CP210x: `CP210x USB to UART Bridge VCP Drivers <https://www.silabs.com/products/development-tools/software/usb-to-uart-bridge-vcp-drivers>`_
 * FTDI: `FTDI Virtual COM Port Drivers <https://www.ftdichip.com/Drivers/VCP.htm>`_
 
-The drivers above are primarily for reference. Under normal circumstances, the drivers should be bundled with and operating system and automatically installed upon connecting one of the listed boards to the PC.
+The drivers above are primarily for reference. Under normal circumstances, the drivers should be bundled with an operating system and automatically installed upon connecting one of the listed boards to the PC.
 
 
 Check port on Windows
@@ -61,7 +61,7 @@ Figures below show serial port for ESP32 DevKitC and ESP32 WROVER KIT
     Two USB Serial Ports of ESP-WROVER-KIT in Windows Device Manager
 
 
-Check port on Linux and MacOS
+Check port on Linux and macOS
 -----------------------------
 
 To check the device name for the serial port of your {IDF_TARGET_NAME} board (or external converter dongle), run this command two times, first with the board / dongle unplugged, then with plugged in. The port which appears the second time is the one you need:
@@ -70,13 +70,13 @@ Linux ::
 
     ls /dev/tty*
 
-MacOS ::
+macOS ::
 
     ls /dev/cu.*
 
 .. note::
 
-    MacOS users: if you don't see the serial port then check you have the USB/serial drivers installed as shown in the Getting Started guide for your particular development board. For MacOS High Sierra (10.13), you may also have to explicitly allow the drivers to load. Open System Preferences -> Security & Privacy -> General and check if there is a message shown here about "System Software from developer ..." where the developer name is Silicon Labs or FTDI.
+    macOS users: if you don't see the serial port then check you have the USB/serial drivers installed as shown in the Getting Started guide for your particular development board. For macOS High Sierra (10.13), you may also have to explicitly allow the drivers to load. Open System Preferences -> Security & Privacy -> General and check if there is a message shown here about "System Software from developer ..." where the developer name is Silicon Labs or FTDI.
 
 
 .. _linux-dialout-group:
@@ -98,7 +98,12 @@ Make sure you re-login to enable read and write permissions for the serial port.
 Verify serial connection
 ------------------------
 
-Now verify that the serial connection is operational. You can do this using a serial terminal program. In this example we will use `PuTTY SSH Client <http://www.putty.org/>`_ that is available for both Windows and Linux. You can use other serial program and set communication parameters like below.
+Now verify that the serial connection is operational. You can do this using a serial terminal program by checking if you get any output on the terminal after reseting {IDF_TARGET_NAME}. 
+
+Windows and Linux
+^^^^^^^^^^^^^^^^^
+
+In this example we will use `PuTTY SSH Client <http://www.putty.org/>`_ that is available for both Windows and Linux. You can use other serial program and set communication parameters like below.
 
 Run terminal, set identified serial port, baud rate = 115200, data bits = 8, stop bits = 1, and parity = N. Below are example screen shots of setting the port and such transmission parameters (in short described as  115200-8-1-N) on Windows and Linux. Remember to select exactly the same serial port you have identified in steps above.
 
@@ -117,7 +122,41 @@ Run terminal, set identified serial port, baud rate = 115200, data bits = 8, sto
     Setting Serial Communication in PuTTY on Linux
 
 
-Then open serial port in terminal and check, if you see any log printed out by {IDF_TARGET_NAME}. The log contents will depend on application loaded to {IDF_TARGET_NAME}. An example log by {IDF_TARGET_NAME} is shown below.
+Then open serial port in terminal and check, if you see any log printed out by {IDF_TARGET_NAME}. The log contents will depend on application loaded to {IDF_TARGET_NAME}, see `Example Output`_.
+
+.. note::
+
+   Close the serial terminal after verification that communication is working. If you keep the terminal session open, the serial port will be inaccessible for uploading firmware later.
+
+macOS
+^^^^^^^^
+
+To spare you the trouble of installing a serial terminal program, macOS offers the **screen** command.
+
+- As discussed in `Check port on Linux and macOS`_, run::
+
+    ls /dev/cu.*
+
+- You should see similar output::
+
+    /dev/cu.Bluetooth-Incoming-Port /dev/cu.SLAB_USBtoUART      /dev/cu.SLAB_USBtoUART7
+
+- The output will vary depending on the type and the number of boards connected to your PC. Then pick the device name of your board and run::
+
+    screen /dev/cu.device_name 115200
+
+  Replace ``device_name`` with the name found running ``ls /dev/cu.*``. 
+
+- What you are looking for is some log displayed by the **screen**. The log contents will depend on application loaded to {IDF_TARGET_NAME}, see `Example Output`_. To exit the **screen** session type Ctrl-A + \\ .
+
+.. note::
+
+   Do not forget to **exit the screen session** after verifying that the communication is working. If you fail to do it and just close the terminal window, the serial port will be inaccessible for uploading firmware later.
+
+Example Output
+^^^^^^^^^^^^^^
+
+An example log by {IDF_TARGET_NAME} is shown below. Reset the board if you do not see anything.
 
 .. highlight:: none
 
@@ -147,10 +186,6 @@ If you can see readable log output, it means serial connection is working and yo
 .. note::
 
    For some serial port wiring configurations, the serial RTS & DTR pins need to be disabled in the terminal program before the {IDF_TARGET_NAME} will boot and produce serial output. This depends on the hardware itself, most development boards (including all Espressif boards) *do not* have this issue. The issue is present if RTS & DTR are wired directly to the EN & GPIO0 pins. See the `esptool documentation`_ for more details.
-
-.. note::
-
-   Close serial terminal after verification that communication is working. In the next step we are going to use a different application to upload a new firmware to {IDF_TARGET_NAME}. This application will not be able to access serial port while it is open in terminal.
 
 If you got here from :ref:`get-started-connect` when installing s/w for {IDF_TARGET_NAME} development, then you can continue with :ref:`get-started-configure`.
 

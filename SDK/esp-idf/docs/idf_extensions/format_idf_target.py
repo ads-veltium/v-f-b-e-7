@@ -1,10 +1,12 @@
-import re
 import os
 import os.path
+import re
+
 from docutils import io, nodes, statemachine, utils
-from docutils.utils.error_reporting import SafeString, ErrorString
 from docutils.parsers.rst import directives
+from docutils.utils.error_reporting import ErrorString, SafeString
 from sphinx.directives.other import Include as BaseInclude
+from sphinx.util import logging
 
 
 def setup(app):
@@ -21,14 +23,24 @@ def setup(app):
     return {'parallel_read_safe': True, 'parallel_write_safe': True, 'version': '0.2'}
 
 
+def check_content(content, docname):
+    # Log warnings for any {IDF_TARGET} expressions that haven't been replaced
+    logger = logging.getLogger(__name__)
+
+    errors = re.findall(r'{IDF_TARGET.*?}', content)
+
+    for err in errors:
+        logger.warning('Badly formated string substitution: {}'.format(err), location=docname)
+
+
 class StringSubstituter:
     """ Allows for string substitution of target related strings
         before any markup is parsed
 
         Supports the following replacements (examples shown is for target=esp32s2):
         {IDF_TARGET_NAME}, replaced with the current target name, e.g. ESP32-S2 Beta
+        {IDF_TARGET_TOOLCHAIN_PREFIX}, replaced with the toolchain prefix, e.g. xtensa-esp32-elf
         {IDF_TARGET_PATH_NAME}, replaced with the path name, e.g. esp32s2
-        {IDF_TARGET_TOOLCHAIN_NAME}, replaced with the toolchain name, e.g. esp32s2
         {IDF_TARGET_CFG_PREFIX}, replaced with the prefix used for config parameters, e.g. ESP32S2
         {IDF_TARGET_TRM_EN_URL}, replaced with the url to the English technical reference manual
         {IDF_TARGET_TRM_CH_URL}, replaced with the url to the Chinese technical reference manual
@@ -39,15 +51,17 @@ class StringSubstituter:
         This will define a replacement of the tag {IDF_TARGET_TX_PIN} in the current rst-file, see e.g. uart.rst for example
 
     """
-    TARGET_NAMES = {'esp32': 'ESP32', 'esp32s2': 'ESP32-S2'}
-    TOOLCHAIN_NAMES = {'esp32': 'esp32', 'esp32s2': 'esp32s2'}
-    CONFIG_PREFIX = {'esp32': 'ESP32', 'esp32s2': 'ESP32S2'}
+    TARGET_NAMES = {'esp32': 'ESP32', 'esp32s2': 'ESP32-S2', 'esp32c3': 'ESP32-C3'}
+    TOOLCHAIN_PREFIX = {'esp32': 'xtensa-esp32-elf', 'esp32s2': 'xtensa-esp32s2-elf', 'esp32c3': 'riscv32-esp-elf'}
+    CONFIG_PREFIX = {'esp32': 'ESP32', 'esp32s2': 'ESP32S2', 'esp32c3': 'ESP32C3'}
 
     TRM_EN_URL = {'esp32': 'https://www.espressif.com/sites/default/files/documentation/esp32_technical_reference_manual_en.pdf',
-                  'esp32s2': 'https://www.espressif.com/sites/default/files/documentation/esp32-s2_technical_reference_manual_en.pdf'}
+                  'esp32s2': 'https://www.espressif.com/sites/default/files/documentation/esp32-s2_technical_reference_manual_en.pdf',
+                  'esp32c3': '#'}
 
     TRM_CN_URL = {'esp32': 'https://www.espressif.com/sites/default/files/documentation/esp32_technical_reference_manual_cn.pdf',
-                  'esp32s2': 'https://www.espressif.com/sites/default/files/documentation/esp32-s2_technical_reference_manual_cn.pdf'}
+                  'esp32s2': 'https://www.espressif.com/sites/default/files/documentation/esp32-s2_technical_reference_manual_cn.pdf',
+                  'esp32c3': '#'}
     RE_PATTERN = re.compile(r'^\s*{IDF_TARGET_(\w+?):(.+?)}', re.MULTILINE)
 
     def __init__(self):
@@ -60,26 +74,26 @@ class StringSubstituter:
     def init_sub_strings(self, config):
         self.target_name = config.idf_target
 
-        self.add_pair("{IDF_TARGET_NAME}", self.TARGET_NAMES[config.idf_target])
-        self.add_pair("{IDF_TARGET_PATH_NAME}", config.idf_target)
-        self.add_pair("{IDF_TARGET_TOOLCHAIN_NAME}", self.TOOLCHAIN_NAMES[config.idf_target])
-        self.add_pair("{IDF_TARGET_CFG_PREFIX}", self.CONFIG_PREFIX[config.idf_target])
-        self.add_pair("{IDF_TARGET_TRM_EN_URL}", self.TRM_EN_URL[config.idf_target])
-        self.add_pair("{IDF_TARGET_TRM_CN_URL}", self.TRM_CN_URL[config.idf_target])
+        self.add_pair('{IDF_TARGET_NAME}', self.TARGET_NAMES[config.idf_target])
+        self.add_pair('{IDF_TARGET_PATH_NAME}', config.idf_target)
+        self.add_pair('{IDF_TARGET_TOOLCHAIN_PREFIX}', self.TOOLCHAIN_PREFIX[config.idf_target])
+        self.add_pair('{IDF_TARGET_CFG_PREFIX}', self.CONFIG_PREFIX[config.idf_target])
+        self.add_pair('{IDF_TARGET_TRM_EN_URL}', self.TRM_EN_URL[config.idf_target])
+        self.add_pair('{IDF_TARGET_TRM_CN_URL}', self.TRM_CN_URL[config.idf_target])
 
     def add_local_subs(self, matches):
 
         for sub_def in matches:
             if len(sub_def) != 2:
-                raise ValueError("IDF_TARGET_X substitution define invalid, val={}".format(sub_def))
+                raise ValueError('IDF_TARGET_X substitution define invalid, val={}'.format(sub_def))
 
-            tag = "{" + "IDF_TARGET_{}".format(sub_def[0]) + "}"
+            tag = '{' + 'IDF_TARGET_{}'.format(sub_def[0]) + '}'
 
             match_default = re.match(r'^\s*default(\s*)=(\s*)\"(.*?)\"', sub_def[1])
 
             if match_default is None:
                 # There should always be a default value
-                raise ValueError("No default value in IDF_TARGET_X substitution define, val={}".format(sub_def))
+                raise ValueError('No default value in IDF_TARGET_X substitution define, val={}'.format(sub_def))
 
             match_target = re.match(r'^.*{}(\s*)=(\s*)\"(.*?)\"'.format(self.target_name), sub_def[1])
 
@@ -112,6 +126,8 @@ class StringSubstituter:
 
     def substitute_source_read_cb(self, app, docname, source):
         source[0] = self.substitute(source[0])
+
+        check_content(source[0], docname)
 
 
 class FormatedInclude(BaseInclude):

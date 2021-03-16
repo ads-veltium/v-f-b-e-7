@@ -44,7 +44,7 @@ static int lib_printf(const char* tag, const char* format, va_list arg)
         temp[i] = 0;
     }
     if (i > 0) {
-        ESP_EARLY_LOGI(tag, "%s", temp);
+        ESP_LOGI(tag, "%s", temp);
     }
     va_end(arg);
     return len;
@@ -130,6 +130,15 @@ int net80211_printf(const char* format, ...)
 }
 
 int coexist_printf(const char* format, ...)
+{
+    va_list arg;
+    va_start(arg, format);
+    int res = lib_printf("coexist", format, arg);
+    va_end(arg);
+    return res;
+}
+
+int wapi_printf(const char* format, ...)
 {
     va_list arg;
     va_start(arg, format);

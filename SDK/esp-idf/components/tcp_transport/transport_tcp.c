@@ -25,6 +25,7 @@
 
 #include "esp_transport_utils.h"
 #include "esp_transport.h"
+#include "esp_transport_internal.h"
 
 static const char *TAG = "TRANS_TCP";
 
@@ -32,7 +33,7 @@ typedef struct {
     int sock;
 } transport_tcp_t;
 
-static int resolve_dns(const char *host, struct sockaddr_in *ip) 
+static int resolve_dns(const char *host, struct sockaddr_in *ip)
 {
     const struct addrinfo hints = {
         .ai_family = AF_INET,
@@ -84,7 +85,6 @@ static int tcp_connect(esp_transport_handle_t t, const char *host, int port, int
     struct sockaddr_in remote_ip;
     struct timeval tv = { 0 };
     transport_tcp_t *tcp = esp_transport_get_context_data(t);
-    esp_transport_keep_alive_t *keep_alive_cfg = esp_transport_get_keep_alive(t);
 
     bzero(&remote_ip, sizeof(struct sockaddr_in));
 
@@ -110,12 +110,10 @@ static int tcp_connect(esp_transport_handle_t t, const char *host, int port, int
     setsockopt(tcp->sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
     setsockopt(tcp->sock, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
     // Set socket keep-alive option
-    if (keep_alive_cfg && keep_alive_cfg->keep_alive_enable) {
-        if (tcp_enable_keep_alive(tcp->sock, keep_alive_cfg) < 0) {
+    if (t->keep_alive_cfg && t->keep_alive_cfg->keep_alive_enable) {
+        if (tcp_enable_keep_alive(tcp->sock, t->keep_alive_cfg) < 0) {
             ESP_LOGE(TAG, "Error to set tcp [socket=%d] keep-alive", tcp->sock);
-            close(tcp->sock);
-            tcp->sock = -1;
-            return -1;
+            goto error;
         }
     }
     // Set socket to non-blocking
@@ -143,10 +141,12 @@ static int tcp_connect(esp_transport_handle_t t, const char *host, int port, int
             int res = select(tcp->sock+1, NULL, &fdset, NULL, &tv);
             if (res < 0) {
                 ESP_LOGE(TAG, "[sock=%d] select() error: %s", tcp->sock, strerror(errno));
+                esp_transport_capture_errno(t, errno);
                 goto error;
             }
             else if (res == 0) {
                 ESP_LOGE(TAG, "[sock=%d] select() timeout", tcp->sock);
+                esp_transport_capture_errno(t, EINPROGRESS);    // errno=EINPROGRESS indicates connection timeout
                 goto error;
             } else {
                 int sockerr;
@@ -157,6 +157,7 @@ static int tcp_connect(esp_transport_handle_t t, const char *host, int port, int
                     goto error;
                 }
                 else if (sockerr) {
+                    esp_transport_capture_errno(t, sockerr);
                     ESP_LOGE(TAG, "[sock=%d] delayed connect error: %s", tcp->sock, strerror(sockerr));
                     goto error;
                 }
@@ -223,6 +224,7 @@ static int tcp_poll_read(esp_transport_handle_t t, int timeout_ms)
         int sock_errno = 0;
         uint32_t optlen = sizeof(sock_errno);
         getsockopt(tcp->sock, SOL_SOCKET, SO_ERROR, &sock_errno, &optlen);
+        esp_transport_capture_errno(t, sock_errno);
         ESP_LOGE(TAG, "tcp_poll_read select error %d, errno = %s, fd = %d", sock_errno, strerror(sock_errno), tcp->sock);
         ret = -1;
     }
@@ -246,6 +248,7 @@ static int tcp_poll_write(esp_transport_handle_t t, int timeout_ms)
         int sock_errno = 0;
         uint32_t optlen = sizeof(sock_errno);
         getsockopt(tcp->sock, SOL_SOCKET, SO_ERROR, &sock_errno, &optlen);
+        esp_transport_capture_errno(t, sock_errno);
         ESP_LOGE(TAG, "tcp_poll_write select error %d, errno = %s, fd = %d", sock_errno, strerror(sock_errno), tcp->sock);
         ret = -1;
     }
@@ -271,19 +274,37 @@ static esp_err_t tcp_destroy(esp_transport_handle_t t)
     return 0;
 }
 
+static int tcp_get_socket(esp_transport_handle_t t)
+{
+    if (t) {
+        transport_tcp_t *tcp = t->data;
+        if (tcp) {
+            return tcp->sock;
+        }
+    }
+    return -1;
+}
+
 void esp_transport_tcp_set_keep_alive(esp_transport_handle_t t, esp_transport_keep_alive_t *keep_alive_cfg)
 {
-    esp_transport_set_keep_alive(t, keep_alive_cfg);
+    if (t && keep_alive_cfg) {
+        t->keep_alive_cfg = keep_alive_cfg;
+    }
 }
 
 esp_transport_handle_t esp_transport_tcp_init(void)
 {
     esp_transport_handle_t t = esp_transport_init();
     transport_tcp_t *tcp = calloc(1, sizeof(transport_tcp_t));
-    ESP_TRANSPORT_MEM_CHECK(TAG, tcp, return NULL);
+    ESP_TRANSPORT_MEM_CHECK(TAG, tcp, {
+        esp_transport_destroy(t);
+        return NULL;
+    });
+
     tcp->sock = -1;
     esp_transport_set_func(t, tcp_connect, tcp_read, tcp_write, tcp_close, tcp_poll_read, tcp_poll_write, tcp_destroy);
     esp_transport_set_context_data(t, tcp);
+    t->_get_socket = tcp_get_socket;
 
     return t;
 }

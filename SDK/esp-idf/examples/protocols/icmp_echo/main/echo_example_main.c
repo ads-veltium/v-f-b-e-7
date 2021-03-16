@@ -111,7 +111,7 @@ static int do_ping_cmd(int argc, char **argv)
     struct sockaddr_in6 sock_addr6;
     ip_addr_t target_addr;
     memset(&target_addr, 0, sizeof(target_addr));
-    
+
     if (inet_pton(AF_INET6, ping_args.host->sval[0], &sock_addr6.sin6_addr) == 1) {
         /* convert ip6 string to ip6 address */
         ipaddr_aton(ping_args.host->sval[0], &target_addr);
@@ -197,9 +197,14 @@ void app_main(void)
     ESP_ERROR_CHECK(example_connect());
 
     esp_console_repl_config_t repl_config = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
+    // install console REPL environment
+#if CONFIG_ESP_CONSOLE_UART
     esp_console_dev_uart_config_t uart_config = ESP_CONSOLE_DEV_UART_CONFIG_DEFAULT();
-    // init console REPL environment
     ESP_ERROR_CHECK(esp_console_new_repl_uart(&uart_config, &repl_config, &s_repl));
+#elif CONFIG_ESP_CONSOLE_USB_CDC
+    esp_console_dev_usb_cdc_config_t cdc_config = ESP_CONSOLE_DEV_CDC_CONFIG_DEFAULT();
+    ESP_ERROR_CHECK(esp_console_new_repl_usb_cdc(&cdc_config, &repl_config, &s_repl));
+#endif
 
     /* register command `ping` */
     register_ping();

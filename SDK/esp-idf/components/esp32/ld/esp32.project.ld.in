@@ -36,8 +36,14 @@ SECTIONS
   {
     . = ALIGN(4);
     _rtc_force_fast_start = ABSOLUTE(.);
+
+    _coredump_rtc_fast_start = ABSOLUTE(.);
+    mapping[rtc_fast_coredump]
+    _coredump_rtc_fast_end = ABSOLUTE(.);
+
     *(.rtc.force_fast .rtc.force_fast.*)
     . = ALIGN(4) ;
+
     _rtc_force_fast_end = ABSOLUTE(.);
   } > rtc_data_seg
 
@@ -52,10 +58,17 @@ SECTIONS
   {
     _rtc_data_start = ABSOLUTE(.);
 
+    /* coredump mapping */
+    _coredump_rtc_start = ABSOLUTE(.);
+    mapping[rtc_coredump]
+    _coredump_rtc_end = ABSOLUTE(.);
+
+    /* should be placed after coredump mapping */
     mapping[rtc_data]
 
     *rtc_wake_stub*.*(.data .rodata .data.* .rodata.* .bss .bss.*)
     _rtc_data_end = ABSOLUTE(.);
+
   } > rtc_data_location
 
   /* RTC bss, from any source file named rtc_wake_stub*.c */
@@ -119,7 +132,7 @@ SECTIONS
   {
     _iram_start = ABSOLUTE(.);
     /* Vectors go to IRAM */
-    _init_start = ABSOLUTE(.);
+    _vector_table = ABSOLUTE(.);
     /* Vectors according to builds/RF-2015.2-win32/esp108_v1_2_s5_512int_2/config.html */
     . = 0x0;
     KEEP(*(.WindowVectors.text));
@@ -151,6 +164,7 @@ SECTIONS
     *(.entry.text)
     *(.init.literal)
     *(.init)
+
     _init_end = ABSOLUTE(.);
   } > iram0_0_seg
 
@@ -188,6 +202,15 @@ SECTIONS
     *(.gnu.linkonce.s2.*)
     *(.jcr)
 
+    /* coredump mapping */
+    _coredump_dram_start = ABSOLUTE(.);
+    mapping[dram_coredump]
+    _coredump_dram_end = ABSOLUTE(.);
+
+    /* should be placed after coredump mapping */
+    _esp_system_init_fn_array_start = ABSOLUTE(.);
+    KEEP (*(SORT(.esp_system_init_fn) SORT(.esp_system_init_fn.*)))
+    _esp_system_init_fn_array_end = ABSOLUTE(.);
 
     mapping[dram0_data]
 
@@ -209,12 +232,22 @@ SECTIONS
     _noinit_end = ABSOLUTE(.);
   } > dram0_0_seg
 
+   /* external memory bss, from any global variable with EXT_RAM_ATTR attribute*/
+  .ext_ram.bss (NOLOAD) :
+  {
+    _ext_ram_bss_start = ABSOLUTE(.);
+
+    mapping[extern_ram]
+
+    . = ALIGN(4);
+    _ext_ram_bss_end = ABSOLUTE(.);
+  } > extern_ram_seg
+
   /* Shared RAM */
   .dram0.bss (NOLOAD) :
   {
     . = ALIGN (8);
     _bss_start = ABSOLUTE(.);
-    *(.ext_ram.bss*)
     _bt_bss_start = ABSOLUTE(.);
     *libbt.a:(.bss .bss.* COMMON)
     . = ALIGN (4);
@@ -229,18 +262,6 @@ SECTIONS
     _nimble_bss_end = ABSOLUTE(.);
 
     mapping[dram0_bss]
-
-    *(.dynsbss)
-    *(.sbss)
-    *(.sbss.*)
-    *(.gnu.linkonce.sb.*)
-    *(.scommon)
-    *(.sbss2)
-    *(.sbss2.*)
-    *(.gnu.linkonce.sb2.*)
-    *(.dynbss)
-    *(.share.mem)
-    *(.gnu.linkonce.b.*)
 
     . = ALIGN (8);
     _bss_end = ABSOLUTE(.);
@@ -258,6 +279,7 @@ SECTIONS
     *(.rodata_custom_desc .rodata_custom_desc.*) /* Should be the second. Custom app version info. DO NOT PUT ANYTHING BEFORE IT! */
 
     mapping[flash_rodata]
+
 
     *(.irom1.text) /* catch stray ICACHE_RODATA_ATTR */
     *(.gnu.linkonce.r.*)
@@ -278,6 +300,7 @@ SECTIONS
     __init_array_start = ABSOLUTE(.);
     KEEP (*(EXCLUDE_FILE (*crtend.* *crtbegin.*) .ctors SORT(.ctors.*)))
     __init_array_end = ABSOLUTE(.);
+
     KEEP (*crtbegin.*(.dtors))
     KEEP (*(EXCLUDE_FILE (*crtend.*) .dtors))
     KEEP (*(SORT(.dtors.*)))
@@ -346,6 +369,12 @@ SECTIONS
     . = ALIGN(4);
     _iram_data_start = ABSOLUTE(.);
 
+    /* coredump mapping */
+    _coredump_iram_start = ABSOLUTE(.);
+    mapping[iram_coredump]
+    _coredump_iram_end = ABSOLUTE(.);
+
+    /* should be placed after coredump mapping */
     mapping[iram0_data]
 
     _iram_data_end = ABSOLUTE(.);

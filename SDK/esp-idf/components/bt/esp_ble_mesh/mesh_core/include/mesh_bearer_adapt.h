@@ -805,4 +805,3 @@ int bt_mesh_update_exceptional_list(uint8_t sub_code, uint8_t type, void *info);
 #endif
 
 #endif /* _BLE_MESH_BEARER_ADAPT_H_ */
-

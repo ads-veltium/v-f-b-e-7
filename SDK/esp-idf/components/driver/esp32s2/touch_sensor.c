@@ -17,6 +17,7 @@
 #include <ctype.h>
 #include "esp_log.h"
 #include "sys/lock.h"
+#include "soc/soc_pins.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/xtensa_api.h"
 #include "freertos/semphr.h"
@@ -28,7 +29,6 @@
 #include "driver/gpio.h"
 #include "sdkconfig.h"
 
-#include "esp32s2/rom/ets_sys.h"
 #include "hal/touch_sensor_types.h"
 #include "hal/touch_sensor_hal.h"
 
@@ -46,7 +46,7 @@
 static const char *TOUCH_TAG = "TOUCH_SENSOR";
 #define TOUCH_CHECK(a, str, ret_val) ({                                             \
     if (!(a)) {                                                                     \
-        ESP_LOGE(TOUCH_TAG,"%s:%d (%s):%s", __FILE__, __LINE__, __FUNCTION__, str);   \
+        ESP_LOGE(TOUCH_TAG,"%s(%d): %s", __FUNCTION__, __LINE__, str);              \
         return (ret_val);                                                           \
     }                                                                               \
 })
@@ -54,7 +54,7 @@ static const char *TOUCH_TAG = "TOUCH_SENSOR";
         TOUCH_CHECK(channel < SOC_TOUCH_SENSOR_NUM && channel >= 0, "Touch channel error", ESP_ERR_INVALID_ARG); \
         TOUCH_CHECK(channel != SOC_TOUCH_DENOISE_CHANNEL, "TOUCH0 is internal denoise channel", ESP_ERR_INVALID_ARG); \
     } while (0);
-#define TOUCH_CH_MASK_CHECK(mask) TOUCH_CHECK((mask <= SOC_TOUCH_SENSOR_BIT_MASK_MAX), "touch channel bitmask error", ESP_ERR_INVALID_ARG)
+#define TOUCH_CH_MASK_CHECK(mask) TOUCH_CHECK((mask <= TOUCH_PAD_BIT_MASK_ALL), "touch channel bitmask error", ESP_ERR_INVALID_ARG)
 #define TOUCH_INTR_MASK_CHECK(mask) TOUCH_CHECK(mask & TOUCH_PAD_INTR_MASK_ALL, "intr mask error", ESP_ERR_INVALID_ARG)
 #define TOUCH_PARAM_CHECK_STR(s)           ""s" parameter error"
 
@@ -75,7 +75,7 @@ static void touch_pad_workaround_isr_internal(void *arg)
 {
     uint16_t ch_mask = 0;
     uint32_t intr_mask = touch_hal_read_intr_status_mask();
-    uint32_t pad_num = touch_hal_get_current_meas_channel();
+    int pad_num = touch_hal_get_current_meas_channel();
     /* Make sure that the scan done interrupt is generated after the last channel measurement is completed. */
     if (intr_mask & TOUCH_PAD_INTR_MASK_SCAN_DONE) {
         touch_hal_get_channel_mask(&ch_mask);
@@ -197,19 +197,23 @@ touch_pad_t IRAM_ATTR touch_pad_get_current_meas_channel(void)
 
 esp_err_t touch_pad_intr_enable(touch_pad_intr_mask_t int_mask)
 {
-    TOUCH_INTR_MASK_CHECK(int_mask);
-    TOUCH_ENTER_CRITICAL();
+    if (!(int_mask & TOUCH_PAD_INTR_MASK_ALL)) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    TOUCH_ENTER_CRITICAL_SAFE();
     touch_hal_intr_enable(int_mask);
-    TOUCH_EXIT_CRITICAL();
+    TOUCH_EXIT_CRITICAL_SAFE();
     return ESP_OK;
 }
 
 esp_err_t touch_pad_intr_disable(touch_pad_intr_mask_t int_mask)
 {
-    TOUCH_INTR_MASK_CHECK(int_mask);
-    TOUCH_ENTER_CRITICAL();
+    if (!(int_mask & TOUCH_PAD_INTR_MASK_ALL)) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    TOUCH_ENTER_CRITICAL_SAFE();
     touch_hal_intr_disable(int_mask);
-    TOUCH_EXIT_CRITICAL();
+    TOUCH_EXIT_CRITICAL_SAFE();
     return ESP_OK;
 }
 

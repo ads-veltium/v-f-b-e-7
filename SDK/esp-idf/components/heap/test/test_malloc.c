@@ -9,7 +9,6 @@
 #include "freertos/task.h"
 #include "freertos/semphr.h"
 #include "freertos/queue.h"
-#include "freertos/xtensa_api.h"
 #include "unity.h"
 #include "esp_heap_caps.h"
 
@@ -133,4 +132,3 @@ TEST_CASE("malloc(0) should return a NULL pointer", "[heap]")
     p = malloc(0);
     TEST_ASSERT(p == NULL);
 }
-

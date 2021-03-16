@@ -51,7 +51,9 @@ Then it is possible to read ADC conversion result with :cpp:func:`adc1_get_raw` 
 
     It is also possible to read the internal hall effect sensor via ADC1 by calling dedicated function :cpp:func:`hall_sensor_read`. Note that even the hall sensor is internal to ESP32, reading from it uses channels 0 and 3 of ADC1 (GPIO 36 and 39). Do not connect anything else to these pins and do not change their configuration. Otherwise it may affect the measurement of low value signal from the sensor.
 
-This API provides convenient way to configure ADC1 for reading from :doc:`ULP <../../api-guides/ulp>`. To do so, call function :cpp:func:`adc1_ulp_enable` and then set precision and attenuation as discussed above.
+.. only:: SOC_ULP_SUPPORTED
+
+    This API provides convenient way to configure ADC1 for reading from :doc:`ULP <../../api-guides/ulp>`. To do so, call function :cpp:func:`adc1_ulp_enable` and then set precision and attenuation as discussed above.
 
 There is another specific function :cpp:func:`adc_vref_to_gpio` used to route internal reference voltage to a GPIO pin. It comes handy to calibrate ADC reading and this is discussed in section :ref:`adc-api-adc-calibration`.
 
@@ -74,7 +76,7 @@ Reading voltage on ADC1 channel 0 ({IDF_TARGET_ADC1_CH0})::
         int val = adc1_get_raw(ADC1_CHANNEL_0);
 
 The input voltage in the above example is from 0 to 1.1 V (0 dB attenuation). The input range can be extended by setting a higher attenuation, see :cpp:type:`adc_atten_t`.
-An example of using the ADC driver including calibration (discussed below) is available at esp-idf: :example:`peripherals/adc`
+An example of using the ADC driver including calibration (discussed below) is available at esp-idf: :example:`peripherals/adc/adc`
 
 Reading voltage on ADC2 channel 7 ({IDF_TARGET_ADC2_CH7})::
 
@@ -93,7 +95,7 @@ Reading voltage on ADC2 channel 7 ({IDF_TARGET_ADC2_CH7})::
         }
 
 The reading may fail due to collision with Wi-Fi, should check it.
-An example using the ADC2 driver to read the output of DAC is available in esp-idf: :example:`peripherals/adc2`
+An example using the ADC2 driver to read the output of DAC is available in esp-idf: :example:`peripherals/adc/adc2`
 
 .. only:: esp32
 

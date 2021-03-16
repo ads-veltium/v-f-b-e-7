@@ -1,6 +1,7 @@
 from __future__ import print_function
-import os
+
 import hashlib
+import os
 
 import ttfw_idf
 
@@ -15,7 +16,7 @@ def test_examples_spiffsgen(env, extra_data):
 
     # Expect hello.txt is read successfully
     with open(os.path.join(base_dir, 'hello.txt'), 'r') as hello_txt:
-        dut.expect('Read from hello.txt: ' + hello_txt.read())
+        dut.expect('Read from hello.txt: ' + hello_txt.read().rstrip())
 
     # Expect alice.txt MD5 hash is computed accurately
     with open(os.path.join(base_dir, 'sub', 'alice.txt'), 'rb') as alice_txt:

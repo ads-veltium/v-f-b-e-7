@@ -39,23 +39,24 @@ The Basic logic to assign test cases is as follow:
 
 """
 
+import json
 import os
 import re
-import json
 
 import yaml
+
 try:
     from yaml import CLoader as Loader
 except ImportError:
     from yaml import Loader as Loader
 
-from . import (CaseConfig, SearchCases, GitlabCIJob, console_log)
+from . import CaseConfig, GitlabCIJob, SearchCases, console_log
 
 
 class Group(object):
     MAX_EXECUTION_TIME = 30
     MAX_CASE = 15
-    SORT_KEYS = ["env_tag"]
+    SORT_KEYS = ['env_tag']
     # Matching CI job rules could be different from the way we want to group test cases.
     # For example, when assign unit test cases, different test cases need to use different test functions.
     # We need to put them into different groups.
@@ -67,7 +68,7 @@ class Group(object):
         self.case_list = [case]
         self.filters = dict(zip(self.SORT_KEYS, [self._get_case_attr(case, x) for x in self.SORT_KEYS]))
         # we use ci_job_match_keys to match CI job tags. It's a set of required tags.
-        self.ci_job_match_keys = set([self._get_case_attr(case, x) for x in self.CI_JOB_MATCH_KEYS])
+        self.ci_job_match_keys = self._get_match_keys(case)
 
     @staticmethod
     def _get_case_attr(case, attr):
@@ -75,13 +76,23 @@ class Group(object):
         # this method will do get attribute form cases
         return case.case_info[attr]
 
+    def _get_match_keys(self, case):
+        keys = []
+        for attr in self.CI_JOB_MATCH_KEYS:
+            val = self._get_case_attr(case, attr)
+            if isinstance(val, list):
+                keys.extend(val)
+            else:
+                keys.append(val)
+        return set(keys)
+
     def accept_new_case(self):
         """
         check if allowed to add any case to this group
 
         :return: True or False
         """
-        max_time = (sum([self._get_case_attr(x, "execution_time") for x in self.case_list])
+        max_time = (sum([self._get_case_attr(x, 'execution_time') for x in self.case_list])
                     < self.MAX_EXECUTION_TIME)
         max_case = (len(self.case_list) < self.MAX_CASE)
         return max_time and max_case
@@ -124,8 +135,8 @@ class Group(object):
         :return: {"Filter": case filter, "CaseConfig": list of case configs for cases in this group}
         """
         output_data = {
-            "Filter": self.filters,
-            "CaseConfig": [{"name": self._get_case_attr(x, "name")} for x in self.case_list],
+            'Filter': self.filters,
+            'CaseConfig': [{'name': self._get_case_attr(x, 'name')} for x in self.case_list],
         }
         return output_data
 
@@ -134,19 +145,20 @@ class AssignTest(object):
     """
     Auto assign tests to CI jobs.
 
-    :param test_case_path: path of test case file(s)
+    :param test_case_paths: path of test case file(s)
     :param ci_config_file: path of ``.gitlab-ci.yml``
     """
     # subclass need to rewrite CI test job pattern, to filter all test jobs
-    CI_TEST_JOB_PATTERN = re.compile(r"^test_.+")
+    CI_TEST_JOB_PATTERN = re.compile(r'^test_.+')
     # by default we only run function in CI, as other tests could take long time
     DEFAULT_FILTER = {
-        "category": "function",
-        "ignore": False,
+        'category': 'function',
+        'ignore': False,
+        'supported_in_ci': True,
     }
 
-    def __init__(self, test_case_path, ci_config_file, case_group=Group):
-        self.test_case_path = test_case_path
+    def __init__(self, test_case_paths, ci_config_file, case_group=Group):
+        self.test_case_paths = test_case_paths
         self.test_case_file_pattern = None
         self.test_cases = []
         self.jobs = self._parse_gitlab_ci_config(ci_config_file)
@@ -156,37 +168,36 @@ class AssignTest(object):
     def _handle_parallel_attribute(job_name, job):
         jobs_out = []
         try:
-            for i in range(job["parallel"]):
-                jobs_out.append(GitlabCIJob.Job(job, job_name + "_{}".format(i + 1)))
+            for i in range(job['parallel']):
+                jobs_out.append(GitlabCIJob.Job(job, job_name + '_{}'.format(i + 1)))
         except KeyError:
             # Gitlab don't allow to set parallel to 1.
             # to make test job name same ($CI_JOB_NAME_$CI_NODE_INDEX),
             # we append "_" to jobs don't have parallel attribute
-            jobs_out.append(GitlabCIJob.Job(job, job_name + "_"))
+            jobs_out.append(GitlabCIJob.Job(job, job_name + '_'))
         return jobs_out
 
     def _parse_gitlab_ci_config(self, ci_config_file):
 
-        with open(ci_config_file, "r") as f:
+        with open(ci_config_file, 'r') as f:
             ci_config = yaml.load(f, Loader=Loader)
 
         job_list = list()
         for job_name in ci_config:
             if self.CI_TEST_JOB_PATTERN.search(job_name) is not None:
                 job_list.extend(self._handle_parallel_attribute(job_name, ci_config[job_name]))
-        job_list.sort(key=lambda x: x["name"])
+        job_list.sort(key=lambda x: x['name'])
         return job_list
 
-    def _search_cases(self, test_case_path, case_filter=None, test_case_file_pattern=None):
+    def search_cases(self, case_filter=None):
         """
-        :param test_case_path: path contains test case folder
         :param case_filter: filter for test cases. the filter to use is default filter updated with case_filter param.
         :return: filtered test case list
         """
         _case_filter = self.DEFAULT_FILTER.copy()
         if case_filter:
             _case_filter.update(case_filter)
-        test_methods = SearchCases.Search.search_test_cases(test_case_path, test_case_file_pattern)
+        test_methods = SearchCases.Search.search_test_cases(self.test_case_paths, self.test_case_file_pattern)
         return CaseConfig.filter_test_cases(test_methods, _case_filter)
 
     def _group_cases(self):
@@ -234,19 +245,18 @@ class AssignTest(object):
 
         :return: filter for search test cases
         """
-        bot_filter = os.getenv("BOT_CASE_FILTER")
-        if bot_filter:
-            bot_filter = json.loads(bot_filter)
-        else:
-            bot_filter = dict()
-        return bot_filter
+        res = dict()
+        for bot_filter in [os.getenv('BOT_CASE_FILTER'), os.getenv('BOT_TARGET_FILTER')]:
+            if bot_filter:
+                res.update(json.loads(bot_filter))
+        return res
 
     def _apply_bot_test_count(self):
         """
         Bot could also pass test count.
         If filtered cases need to be tested for several times, then we do duplicate them here.
         """
-        test_count = os.getenv("BOT_TEST_COUNT")
+        test_count = os.getenv('BOT_TEST_COUNT')
         if test_count:
             test_count = int(test_count)
             self.test_cases *= test_count
@@ -259,7 +269,7 @@ class AssignTest(object):
         """
         group_count = dict()
         for group in test_groups:
-            key = ",".join(group.ci_job_match_keys)
+            key = ','.join(group.ci_job_match_keys)
             try:
                 group_count[key] += 1
             except KeyError:
@@ -276,7 +286,7 @@ class AssignTest(object):
         failed_to_assign = []
         assigned_groups = []
         case_filter = self._apply_bot_filter()
-        self.test_cases = self._search_cases(self.test_case_path, case_filter, self.test_case_file_pattern)
+        self.test_cases = self.search_cases(case_filter)
         self._apply_bot_test_count()
         test_groups = self._group_cases()
 
@@ -295,26 +305,26 @@ class AssignTest(object):
         # print debug info
         # total requirement of current pipeline
         required_group_count = self._count_groups_by_keys(test_groups)
-        console_log("Required job count by tags:")
+        console_log('Required job count by tags:')
         for tags in required_group_count:
-            console_log("\t{}: {}".format(tags, required_group_count[tags]))
+            console_log('\t{}: {}'.format(tags, required_group_count[tags]))
 
         # number of unused jobs
-        not_used_jobs = [job for job in self.jobs if "case group" not in job]
+        not_used_jobs = [job for job in self.jobs if 'case group' not in job]
         if not_used_jobs:
-            console_log("{} jobs not used. Please check if you define too much jobs".format(len(not_used_jobs)), "O")
+            console_log('{} jobs not used. Please check if you define too much jobs'.format(len(not_used_jobs)), 'O')
         for job in not_used_jobs:
-            console_log("\t{}".format(job["name"]), "O")
+            console_log('\t{}'.format(job['name']), 'O')
 
         # failures
         if failed_to_assign:
-            console_log("Too many test cases vs jobs to run. "
-                        "Please increase parallel count in tools/ci/config/target-test.yml "
-                        "for jobs with specific tags:", "R")
+            console_log('Too many test cases vs jobs to run. '
+                        'Please increase parallel count in tools/ci/config/target-test.yml '
+                        'for jobs with specific tags:', 'R')
             failed_group_count = self._count_groups_by_keys(failed_to_assign)
             for tags in failed_group_count:
-                console_log("\t{}: {}".format(tags, failed_group_count[tags]), "R")
-            raise RuntimeError("Failed to assign test case to CI jobs")
+                console_log('\t{}: {}'.format(tags, failed_group_count[tags]), 'R')
+            raise RuntimeError('Failed to assign test case to CI jobs')
 
     def output_configs(self, output_path):
         """

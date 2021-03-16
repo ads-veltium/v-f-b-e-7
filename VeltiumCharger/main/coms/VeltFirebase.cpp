@@ -50,6 +50,7 @@ void Real_Time_Database::beginAuth (void) {
         .url = URL,
         .timeout_ms = 1000,
         .event_handler = _http_event_handle,
+        //.is_async = true,
     };
     Auth_client = esp_http_client_init(&config);
     esp_http_client_set_header(Auth_client,"Content-Type", "application/json");
@@ -146,6 +147,7 @@ void Real_Time_Database::begin(String Host, String DatabaseID){
         .timeout_ms = 2000,
         .event_handler = _http_event_handle,
         .buffer_size_tx = 2048,
+        .is_async = true,
     };
 
     RTDB_client = esp_http_client_init(&config);
@@ -157,7 +159,7 @@ void Real_Time_Database::end(){
 
 }
 void Real_Time_Database::reload (){
-    
+    Serial.println("reloading http client");
     Write_url = RTDB_url+"/status/ts_app_req.json?auth="+idToken+"&timeout=2500ms";
 
     esp_http_client_config_t config = {
@@ -165,6 +167,7 @@ void Real_Time_Database::reload (){
         .timeout_ms = 2000,
         .event_handler = _http_event_handle,
         .buffer_size_tx = 2048,
+        .is_async = true,
     };
     end();
     RTDB_client = esp_http_client_init(&config);
@@ -211,6 +214,11 @@ bool Real_Time_Database::Send_Command(String path, JsonDocument *doc, uint8_t Co
             break;
     }
     int err = esp_http_client_perform(RTDB_client);
+    while(err == ESP_ERR_HTTP_EAGAIN){
+         err = esp_http_client_perform(RTDB_client);
+         delay(5);
+    }
+    
     if (err != ESP_OK ) {
         Serial.printf("HTTP request failed: %s\n", esp_err_to_name(err));
         return false;
@@ -250,7 +258,13 @@ long long  Real_Time_Database::Get_Timestamp(String path, JsonDocument *respuest
 
     esp_http_client_set_url(RTDB_client, Write_url.c_str());
     esp_http_client_set_method(RTDB_client, HTTP_METHOD_GET);
+
     int err = esp_http_client_perform(RTDB_client);
+    while(err == ESP_ERR_HTTP_EAGAIN){
+        err = esp_http_client_perform(RTDB_client);
+        delay(5);
+    }
+
     if (err != ESP_OK ) {
         Serial.printf("HTTP request failed: %s\n", esp_err_to_name(err));
         FinishReading = false;

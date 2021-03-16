@@ -6,6 +6,7 @@ set(srcs "port/os_xtensa.c"
     "src/common/sae.c"
     "src/common/wpa_common.c"
     "src/common/dpp.c"
+    "src/utils/bitfield.c"
     "src/crypto/aes-ctr.c"
     "src/crypto/aes-siv.c"
     "src/crypto/sha256-kdf.c"
@@ -17,7 +18,7 @@ set(srcs "port/os_xtensa.c"
     "src/crypto/aes-omac1.c"
     "src/crypto/aes-unwrap.c"
     "src/crypto/aes-wrap.c"
-    "src/crypto/aes-omac1.c"
+    "src/crypto/sha256-tlsprf.c"
     "src/crypto/bignum.c"
     "src/crypto/ccmp.c"
     "src/crypto/crypto_mbedtls.c"
@@ -62,6 +63,7 @@ set(srcs "port/os_xtensa.c"
     "src/esp_supplicant/esp_wpas_glue.c"
     "src/esp_supplicant/esp_wps.c"
     "src/esp_supplicant/esp_wpa3.c"
+    "src/esp_supplicant/esp_dpp.c"
     "src/rsn_supp/pmksa_cache.c"
     "src/rsn_supp/wpa.c"
     "src/rsn_supp/wpa_ie.c"
@@ -106,7 +108,21 @@ else()
     )
 endif()
 
-idf_component_register(SRCS "${srcs}" "${tls_src}"
+if(CONFIG_WPA_11KV_SUPPORT)
+    set(roaming_src
+    "src/common/rrm.c"
+    "src/common/wnm_sta.c"
+    "src/common/bss.c"
+    "src/common/scan.c"
+    "src/common/ieee802_11_common.c"
+    "src/esp_supplicant/esp_common.c"
+    "src/esp_supplicant/esp_scan.c"
+    )
+else()
+    set(roaming_src "")
+endif()
+
+idf_component_register(SRCS "${srcs}" "${tls_src}" "${roaming_src}"
                     INCLUDE_DIRS include port/include include/esp_supplicant
                     PRIV_INCLUDE_DIRS src
                     PRIV_REQUIRES mbedtls esp_timer)
@@ -131,6 +147,7 @@ target_compile_definitions(${COMPONENT_LIB} PRIVATE
     CONFIG_IEEE80211W
     CONFIG_SHA256
     CONFIG_DPP
+    CONFIG_WNM
     )
 
 if(CONFIG_ESP32_WIFI_ENABLE_WPA3_SAE)

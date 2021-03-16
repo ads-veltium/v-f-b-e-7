@@ -18,6 +18,15 @@
 
 static const char* TAG = "test_nvs";
 
+TEST_CASE("Partition name no longer than 16 characters", "[nvs]")
+{
+    const char *TOO_LONG_NAME = "0123456789abcdefg";
+
+    TEST_ESP_ERR(ESP_ERR_INVALID_ARG, nvs_flash_init_partition(TOO_LONG_NAME));
+
+    nvs_flash_deinit_partition(TOO_LONG_NAME); // just in case
+}
+
 TEST_CASE("flash erase deinitializes initialized partition", "[nvs]")
 {
     nvs_handle_t handle;
@@ -26,7 +35,7 @@ TEST_CASE("flash erase deinitializes initialized partition", "[nvs]")
         nvs_flash_erase();
         err = nvs_flash_init();
     }
-    ESP_ERROR_CHECK( err );
+    TEST_ESP_OK( err );
 
     TEST_ESP_OK(nvs_flash_init());
     TEST_ESP_OK(nvs_open("uninit_ns", NVS_READWRITE, &handle));
@@ -321,24 +330,6 @@ TEST_CASE("check underlying xts code for 32-byte size sector encryption", "[nvs]
     TEST_ASSERT_TRUE(!memcmp(ptxt_hex, ctxt_hex, 32));
 }
 
-TEST_CASE("nvs_flash_generate_keys fails due to external partition", "[nvs_custom_part]")
-{
-    nvs_sec_cfg_t keys;
-    struct esp_flash_t spi_flash = {};
-    esp_partition_t partition = {};
-    partition.flash_chip = &spi_flash;
-    TEST_ESP_ERR(nvs_flash_generate_keys(&partition, &keys), ESP_ERR_NOT_SUPPORTED);
-}
-
-TEST_CASE("nvs_flash_read_security_cfg fails due to external partition", "[nvs_custom_part]")
-{
-    nvs_sec_cfg_t keys;
-    struct esp_flash_t spi_flash = {};
-    esp_partition_t partition = {};
-    partition.flash_chip = &spi_flash;
-    TEST_ESP_ERR(nvs_flash_read_security_cfg(&partition, &keys), ESP_ERR_NOT_SUPPORTED);
-}
-
 TEST_CASE("Check nvs key partition APIs (read and generate keys)", "[nvs]")
 {
     nvs_sec_cfg_t cfg, cfg2;
@@ -486,7 +477,7 @@ TEST_CASE("test nvs apis for nvs partition generator utility with encryption ena
     }
 
     for (int i = 0; i < nvs_part->size; i+= SPI_FLASH_SEC_SIZE) {
-        ESP_ERROR_CHECK( spi_flash_write(nvs_part->address + i, nvs_data_start + i, SPI_FLASH_SEC_SIZE) );
+        ESP_ERROR_CHECK( esp_partition_write(nvs_part, i, nvs_data_start + i, SPI_FLASH_SEC_SIZE) );
     }
 
     esp_err_t err = nvs_flash_read_security_cfg(key_part, &xts_cfg);

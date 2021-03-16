@@ -1,4 +1,4 @@
-/* 
+/*
  * FreeModbus Libary: A portable Modbus implementation for Modbus ASCII/RTU.
  * Copyright (c) 2013 China Beijing Armink <armink.ztl@gmail.com>
  * All rights reserved.
@@ -344,7 +344,8 @@ xMBMasterRTUTransmitFSM( void )
     return xNeedPoll;
 }
 
-BOOL MB_PORT_ISR_ATTR xMBMasterRTUTimerExpired(void)
+BOOL MB_PORT_ISR_ATTR
+xMBMasterRTUTimerExpired(void)
 {
     BOOL xNeedPoll = FALSE;
 
@@ -354,7 +355,7 @@ BOOL MB_PORT_ISR_ATTR xMBMasterRTUTimerExpired(void)
     case STATE_M_RX_INIT:
         xNeedPoll = xMBMasterPortEventPost(EV_MASTER_READY);
         break;
-        
+
         /* A frame was received and t35 expired. Notify the listener that
          * a new frame was received. */
     case STATE_M_RX_RCV:
@@ -403,5 +404,3 @@ BOOL MB_PORT_ISR_ATTR xMBMasterRTUTimerExpired(void)
 
 
 #endif
-
-

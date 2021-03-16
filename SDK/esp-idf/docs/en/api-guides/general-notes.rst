@@ -68,7 +68,13 @@ Application code in ESP-IDF can be placed into one of the following memory regio
 IRAM (instruction RAM)
 ^^^^^^^^^^^^^^^^^^^^^^
 
-ESP-IDF allocates part of `Internal SRAM0` region (defined in the Technical Reference Manual) for instruction RAM. Except for the first 64 kB block which is used for PRO and APP CPU caches, the rest of this memory range (i.e. from ``0x40080000`` to ``0x400A0000``) is used to store parts of application which need to run from RAM.
+.. only:: esp32
+
+    ESP-IDF allocates part of `Internal SRAM0` region for instruction RAM. The region is defined in *{IDF_TARGET_NAME} Technical Reference Manual* > *System and Memory* > *Embedded Memory* [`PDF <{IDF_TARGET_TRM_EN_URL}#sysmem>`__]. Except for the first 64 kB block which is used for PRO and APP CPU caches, the rest of this memory range (i.e. from ``0x40080000`` to ``0x400A0000``) is used to store parts of application which need to run from RAM.
+
+.. only:: esp32s2
+
+    ESP-IDF allocates part of `Internal SRAM0` region for instruction RAM. The region is defined in *{IDF_TARGET_NAME} Technical Reference Manual* > *System and Memory* > *Internal Memory* [`PDF <{IDF_TARGET_TRM_EN_URL}#sysmem>`__]. Except for the first 64 kB block which is used for PRO and APP CPU caches, the rest of this memory range (i.e. from ``0x40080000`` to ``0x400A0000``) is used to store parts of application which need to run from RAM.
 
 A few components of ESP-IDF and parts of WiFi stack are placed into this region using the linker script.
 
@@ -90,7 +96,13 @@ Here are the cases when parts of application may or should be placed into IRAM.
 IROM (code executed from Flash)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-If a function is not explicitly placed into IRAM or RTC memory, it is placed into flash. The mechanism by which Flash MMU is used to allow code execution from flash is described in the Technical Reference Manual. ESP-IDF places the code which should be executed from flash starting from the beginning of ``0x400D0000 — 0x40400000`` region. Upon startup, second stage bootloader initializes Flash MMU to map the location in flash where code is located into the beginning of this region. Access to this region is transparently cached using two 32kB blocks in ``0x40070000`` — ``0x40080000`` range.
+.. only:: SOC_SDIO_SLAVE_SUPPORTED
+
+    If a function is not explicitly placed into IRAM or RTC memory, it is placed into flash. The mechanism by which Flash MMU is used to allow code execution from flash is described in *{IDF_TARGET_NAME} Technical Reference Manual* > *Memory Management and Protection Units (MMU, MPU)* [`PDF <{IDF_TARGET_TRM_EN_URL}#mpummu>`__]. ESP-IDF places the code which should be executed from flash starting from the beginning of ``0x400D0000 — 0x40400000`` region. Upon startup, second stage bootloader initializes Flash MMU to map the location in flash where code is located into the beginning of this region. Access to this region is transparently cached using two 32kB blocks in ``0x40070000`` — ``0x40080000`` range.
+
+.. only:: not SOC_SDIO_SLAVE_SUPPORTED
+
+    If a function is not explicitly placed into IRAM or RTC memory, it is placed into flash. The mechanism by which Flash MMU is used to allow code execution from flash is described in `{IDF_TARGET_NAME} Technical Reference Manual <{IDF_TARGET_TRM_EN_URL}>`__. ESP-IDF places the code which should be executed from flash starting from the beginning of ``0x400D0000 — 0x40400000`` region. Upon startup, second stage bootloader initializes Flash MMU to map the location in flash where code is located into the beginning of this region. Access to this region is transparently cached using two 32kB blocks in ``0x40070000`` — ``0x40080000`` range.
 
 Note that the code outside ``0x40000000 — 0x40400000`` region may not be reachable with Window ABI ``CALLx`` instructions, so special care is required if ``0x40400000 — 0x40800000`` or ``0x40800000 — 0x40C00000`` regions are used by the application. ESP-IDF doesn't use these regions by default.
 
@@ -170,20 +182,20 @@ Or::
 
 Placing DMA buffers in the stack is still allowed, though you have to keep in mind:
 
-1. Never try to do this if the stack is in the pSRAM. If the stack of a task is placed in the pSRAM, several steps have
-   to be taken as described in :doc:`external-ram` (at least ``SPIRAM_ALLOW_STACK_EXTERNAL_MEMORY`` option enabled in
-   the menuconfig). Make sure your task is not in the pSRAM.
-2. Use macro ``WORD_ALIGNED_ATTR`` in functions before variables to place them in proper positions like::
+.. list::
 
-    void app_main()
-    {
-        uint8_t stuff;
-        WORD_ALIGNED_ATTR uint8_t buffer[]="I want to send something";   //or the buffer will be placed right after stuff.
-        // initialization code...
-        spi_transaction_t temp = {
-            .tx_buffer = buffer,
-            .length = 8*sizeof(buffer),
-        };
-        spi_device_transmit( spi, &temp );
-        // other stuff
-    }
+    :SOC_SPIRAM_SUPPORTED: - Never try to do this if the stack is in the pSRAM. If the stack of a task is placed in the pSRAM, several steps have to be taken as described in :doc:`external-ram` (at least ``SPIRAM_ALLOW_STACK_EXTERNAL_MEMORY`` option enabled in the menuconfig). Make sure your task is not in the pSRAM.
+    - Use macro ``WORD_ALIGNED_ATTR`` in functions before variables to place them in proper positions like::
+
+        void app_main()
+        {
+            uint8_t stuff;
+            WORD_ALIGNED_ATTR uint8_t buffer[]="I want to send something";   //or the buffer will be placed right after stuff.
+            // initialization code...
+            spi_transaction_t temp = {
+                .tx_buffer = buffer,
+                .length = 8*sizeof(buffer),
+            };
+            spi_device_transmit( spi, &temp );
+            // other stuff
+        }

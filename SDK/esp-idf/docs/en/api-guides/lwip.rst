@@ -122,7 +122,7 @@ Get the error reason code
 Example::
 
         int err;
-        
+
         if (select(sockfd + 1, NULL, NULL, &exfds, &tval) <= 0) {
             err = errno;
             return err;
@@ -156,17 +156,17 @@ Below is a list of common error codes. For more detailed list of standard POSIX/
 | ETIMEDOUT       | Connection timed out                |
 +-----------------+-------------------------------------+
 | EHOSTDOWN       | Host is down                        |
-+-----------------+-------------------------------------+ 
++-----------------+-------------------------------------+
 | EHOSTUNREACH    | Host is unreachable                 |
-+-----------------+-------------------------------------+ 
++-----------------+-------------------------------------+
 | EINPROGRESS     | Connection already in progress      |
-+-----------------+-------------------------------------+ 
++-----------------+-------------------------------------+
 | EALREADY        | Socket already connected            |
-+-----------------+-------------------------------------+ 
++-----------------+-------------------------------------+
 | EDESTADDRREQ    | Destination address required        |
-+-----------------+-------------------------------------+ 
++-----------------+-------------------------------------+
 | EPROTONOSUPPORT | Unknown protocol                    |
-+-----------------+-------------------------------------+ 
++-----------------+-------------------------------------+
 
 Socket Options
 ^^^^^^^^^^^^^^
@@ -294,6 +294,9 @@ Thread-safe sockets
 
 It is possible to ``close()`` a socket from a different thread to the one that created it. The ``close()`` call will block until any function calls currently using that socket from other tasks have returned.
 
+It is, however, not possible to delete a task while it is actively waiting on ``select()`` or ``poll()`` APIs. It is always necessary that these APIs exit before destroying the task, as this might corrupt internal structures and cause subsequent crashes of the lwIP.
+(These APIs allocate globally referenced callback pointers on stack, so that when the task gets destroyed before unrolling the stack, the lwIP would still hold pointers to the deleted stack)
+
 On demand timers
 ++++++++++++++++
 
@@ -324,14 +327,13 @@ IP layer features
 
 Limitations
 ^^^^^^^^^^^
+Calling ``send()`` or ``sendto()`` repeatedly on a UDP socket may eventually fail with ``errno`` equal to ``ENOMEM``. This is a limitation of buffer sizes in the lower layer network interface drivers. If all driver transmit buffers are full then UDP transmission will fail. Applications sending a high volume of UDP datagrams who don't wish for any to be dropped by the sender should check for this error code and re-send the datagram after a short delay.
 
-- Calling ``send()`` or ``sendto()`` repeatedly on a UDP socket may eventually fail with ``errno`` equal to ``ENOMEM``. This is a limitation of buffer sizes in the lower layer network interface drivers. If all driver transmit buffers are full then UDP transmission will fail. Applications sending a high volume of UDP datagrams who don't wish for any to be dropped by the sender should check for this error code and re-send the datagram after a short delay.
-
-.. only::esp32
+.. only:: esp32
 
     Increasing the number of TX buffers in the :ref:`Wi-Fi <CONFIG_ESP32_WIFI_TX_BUFFER>` or :ref:`Ethernet <CONFIG_ETH_DMA_TX_BUFFER_NUM>` project configuration (as applicable) may also help.
 
-.. only::esp32s2
+.. only:: not esp32
 
     Increasing the number of TX buffers in the :ref:`Wi-Fi <CONFIG_ESP32_WIFI_TX_BUFFER>` project configuration may also help.
 

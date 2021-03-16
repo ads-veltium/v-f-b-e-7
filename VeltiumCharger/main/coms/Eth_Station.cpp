@@ -297,7 +297,11 @@ void initialize_ethernet(void)
     phy_config.phy_addr1 = 1;
     phy_config.phy_addr2 = 2;
     phy = esp_eth_phy_new_lan8720(&phy_config);
-
+    if(mac == NULL ){
+        Serial.println("AAAAAAAA");
+    }else if (phy == NULL){
+        Serial.println("BBBBBBBB");
+    }
     esp_eth_config_t config = ETH_DEFAULT_CONFIG(mac, phy);
 
     ESP_ERROR_CHECK(esp_eth_driver_install(&config, &s_eth_handle));

@@ -29,6 +29,7 @@
 
 #include "sdkconfig.h"
 #include "mbedtls/config.h"
+#include "soc/soc_caps.h"
 
 /**
  * \name SECTION: System support
@@ -130,22 +131,28 @@
 #ifdef CONFIG_MBEDTLS_HARDWARE_SHA
 #define MBEDTLS_SHA1_ALT
 #define MBEDTLS_SHA256_ALT
+
+#if SOC_SHA_SUPPORT_SHA512
 #define MBEDTLS_SHA512_ALT
+#else
+#undef MBEDTLS_SHA512_ALT
+#endif
+
 #else
 #undef MBEDTLS_SHA1_ALT
 #undef MBEDTLS_SHA256_ALT
 #undef MBEDTLS_SHA512_ALT
 #endif
 
-/* The following MPI (bignum) functions have ESP32 hardware support,
-   Uncommenting these macros will use the hardware-accelerated
-   implementations.
+/* The following MPI (bignum) functions have ESP32 hardware support.
+   For exponential mod, both software and hardware implementation
+   will be compiled. If CONFIG_MBEDTLS_HARDWARE_MPI is enabled, mod APIs
+   will be wrapped to use hardware implementation.
 */
+#undef MBEDTLS_MPI_EXP_MOD_ALT
 #ifdef CONFIG_MBEDTLS_HARDWARE_MPI
-#define MBEDTLS_MPI_EXP_MOD_ALT
 #define MBEDTLS_MPI_MUL_MPI_ALT
 #else
-#undef MBEDTLS_MPI_EXP_MOD_ALT
 #undef MBEDTLS_MPI_MUL_MPI_ALT
 #endif
 
@@ -976,6 +983,8 @@
  */
 #ifdef CONFIG_MBEDTLS_SSL_PROTO_TLS1_1
 #define MBEDTLS_SSL_PROTO_TLS1_1
+#else
+#undef MBEDTLS_SSL_PROTO_TLS1_1
 #endif
 
 /**

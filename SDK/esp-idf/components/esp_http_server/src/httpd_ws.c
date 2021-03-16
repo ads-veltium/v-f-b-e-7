@@ -15,6 +15,7 @@
 
 
 #include <stdlib.h>
+#include <string.h>
 #include <sys/random.h>
 #include <esp_log.h>
 #include <esp_err.h>
@@ -44,7 +45,50 @@ static const char *TAG="httpd_ws";
  */
 static const char ws_magic_uuid[] = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 
-esp_err_t httpd_ws_respond_server_handshake(httpd_req_t *req)
+/* Checks if any subprotocols from the comma seperated list matches the supported one
+ *
+ * Returns true if the response should contain a protocol field
+*/
+
+/**
+ * @brief Checks if any subprotocols from the comma seperated list matches the supported one
+ *
+ * @param supported_subprotocol[in] The subprotocol supported by the URI
+ * @param subprotocol[in],  [in]: A comma seperate list of subprotocols requested
+ * @param buf_len Length of the buffer
+ * @return true: found a matching subprotocol
+ * @return false
+ */
+static bool httpd_ws_get_response_subprotocol(const char *supported_subprotocol, char *subprotocol, size_t buf_len)
+{
+    /* Request didnt contain any subprotocols */
+    if (strnlen(subprotocol, buf_len) == 0) {
+        return false;
+    }
+
+    if (supported_subprotocol == NULL) {
+        ESP_LOGW(TAG, "Sec-WebSocket-Protocol %s not supported, URI do not support any subprotocols", subprotocol);
+        return false;
+    }
+
+    /* Get first subprotocol from comma seperated list */
+    char *rest = NULL;
+    char *s = strtok_r(subprotocol, ", ", &rest);
+    do {
+        if (strncmp(s, supported_subprotocol, sizeof(subprotocol)) == 0) {
+            ESP_LOGD(TAG, "Requested subprotocol supported: %s", s);
+            return true;
+        }
+    } while ((s = strtok_r(NULL, ", ", &rest)) != NULL);
+
+    ESP_LOGW(TAG, "Sec-WebSocket-Protocol %s not supported, supported subprotocol is %s", subprotocol, supported_subprotocol);
+
+    /* No matches */
+    return false;
+
+}
+
+esp_err_t httpd_ws_respond_server_handshake(httpd_req_t *req, const char *supported_subprotocol)
 {
     /* Probe if input parameters are valid or not */
     if (!req || !req->aux) {
@@ -101,15 +145,53 @@ esp_err_t httpd_ws_respond_server_handshake(httpd_req_t *req)
 
     ESP_LOGD(TAG, LOG_FMT("Generated server key: %s"), server_key_encoded);
 
+    char subprotocol[50] = { '\0' };
+    if (httpd_req_get_hdr_value_str(req, "Sec-WebSocket-Protocol", subprotocol, sizeof(subprotocol) - 1) == ESP_ERR_HTTPD_RESULT_TRUNC) {
+        ESP_LOGW(TAG, "Sec-WebSocket-Protocol length exceeded buffer size of %d, was trunctated", sizeof(subprotocol));
+    }
+
+
     /* Prepare the Switching Protocol response */
     char tx_buf[192] = { '\0' };
     int fmt_len = snprintf(tx_buf, sizeof(tx_buf),
                            "HTTP/1.1 101 Switching Protocols\r\n"
                            "Upgrade: websocket\r\n"
                            "Connection: Upgrade\r\n"
-                           "Sec-WebSocket-Accept: %s\r\n\r\n", server_key_encoded);
+                           "Sec-WebSocket-Accept: %s\r\n", server_key_encoded);
+
     if (fmt_len < 0 || fmt_len > sizeof(tx_buf)) {
         ESP_LOGW(TAG, LOG_FMT("Failed to prepare Tx buffer"));
+        return ESP_FAIL;
+    }
+
+    if ( httpd_ws_get_response_subprotocol(supported_subprotocol, subprotocol, sizeof(subprotocol))) {
+        ESP_LOGD(TAG, "subprotocol: %s", subprotocol);
+        int r = snprintf(tx_buf + fmt_len, sizeof(tx_buf) - fmt_len, "Sec-WebSocket-Protocol: %s\r\n", supported_subprotocol);
+        if (r <= 0) {
+            ESP_LOGE(TAG, "Error in response generation"
+                          "(snprintf of subprotocol returned %d, buffer size: %d", r, sizeof(tx_buf));
+            return ESP_FAIL;
+        }
+
+        fmt_len += r;
+
+        if (fmt_len >= sizeof(tx_buf)) {
+            ESP_LOGE(TAG, "Error in response generation"
+                          "(snprintf of subprotocol returned %d, desired response len: %d, buffer size: %d", r, fmt_len, sizeof(tx_buf));
+            return ESP_FAIL;
+        }
+    }
+
+    int r = snprintf(tx_buf + fmt_len, sizeof(tx_buf) - fmt_len, "\r\n");
+    if (r <= 0) {
+        ESP_LOGE(TAG, "Error in response generation"
+                        "(snprintf of subprotocol returned %d, buffer size: %d", r, sizeof(tx_buf));
+        return ESP_FAIL;
+    }
+    fmt_len += r;
+    if (fmt_len >= sizeof(tx_buf)) {
+        ESP_LOGE(TAG, "Error in response generation"
+                       "(snprintf of header terminal returned %d, desired response len: %d, buffer size: %d", r, fmt_len, sizeof(tx_buf));
         return ESP_FAIL;
     }
 
@@ -295,9 +377,11 @@ esp_err_t httpd_ws_send_frame_async(httpd_handle_t hd, int fd, httpd_ws_frame_t 
     } else {
         header_buf[1] = 127;                /* Length for 64 bits */
         uint8_t shift_idx = sizeof(uint64_t) - 1; /* Shift index starts at 7 */
-        for (int8_t idx = 2; idx > 9; idx--) {
-            /* Now do shifting (be careful of endianess, i.e. when buffer index is 2, frame length shift index is 7) */
-            header_buf[idx] = (frame->len >> (uint8_t)(shift_idx * 8)) & 0xffU;
+        uint64_t len64 = frame->len; /* Raise variable size to make sure we won't shift by more bits
+                                      * than the length has (to avoid undefined behaviour) */
+        for (int8_t idx = 2; idx <= 9; idx++) {
+            /* Now do shifting (be careful of endianness, i.e. when buffer index is 2, frame length shift index is 7) */
+            header_buf[idx] = (len64 >> (shift_idx * 8)) & 0xffU;
             shift_idx--;
         }
         tx_len = 10;
@@ -381,6 +465,17 @@ esp_err_t httpd_ws_get_frame_type(httpd_req_t *req)
     }
 
     return ESP_OK;
+}
+
+httpd_ws_client_info_t httpd_ws_get_fd_info(httpd_handle_t hd, int fd)
+{
+    struct sock_db *sess = httpd_sess_get(hd, fd);
+
+    if (sess == NULL) {
+        return HTTPD_WS_CLIENT_INVALID;
+    }
+    bool is_active_ws = sess->ws_handshake_done && (!sess->ws_close);
+    return is_active_ws ? HTTPD_WS_CLIENT_WEBSOCKET : HTTPD_WS_CLIENT_HTTP;
 }
 
 #endif /* CONFIG_HTTPD_WS_SUPPORT */

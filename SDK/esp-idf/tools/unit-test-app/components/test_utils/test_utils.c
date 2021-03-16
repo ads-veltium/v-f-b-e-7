@@ -73,7 +73,7 @@ static void wait_user_control(char* parameter_buf, uint8_t buf_len)
         buffer = sign;
         buffer_len = sizeof(sign) - 1;
     }
-    // workaround that unity_gets (UartRxString) will not set '\0' correctly
+    // workaround that unity_gets (esp_rom_uart_rx_string) will not set '\0' correctly
     bzero(buffer, buffer_len);
 
     unity_gets(buffer, buffer_len);
@@ -211,7 +211,7 @@ void test_utils_task_delete(TaskHandle_t thandle)
     vTaskDelete(thandle);
 #else // CONFIG_FREERTOS_UNICORE
     const BaseType_t tsk_affinity = xTaskGetAffinity(thandle);
-    const uint32_t core_id = xPortGetCoreID();
+    const BaseType_t core_id = xPortGetCoreID();
 
     printf("Task_affinity: 0x%x, current_core: %d\n", tsk_affinity, core_id);
 

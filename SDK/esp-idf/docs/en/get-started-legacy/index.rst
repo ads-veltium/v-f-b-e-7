@@ -42,15 +42,6 @@ Software:
 * **ESP-IDF** that essentially contains API (software libraries and source code) for ESP32 and scripts to operate the **Toolchain**
 * **Text editor** to write programs (**Projects**) in C, e.g., `Eclipse <https://www.eclipse.org/>`_
 
-
-.. figure:: ../../_static/what-you-need.png
-    :align: center
-    :alt: Development of applications for ESP32
-    :figclass: align-center
-
-    Development of applications for ESP32
-
-
 Development Board Overviews
 ===========================
 
@@ -308,7 +299,7 @@ If you run the given command and see errors such as "Failed to connect", there m
 
 In general, you should have no problems with the official esp-idf development boards. However, ``esptool.py`` is not able to reset your hardware automatically in the following cases:
 
-- Your hardware does not have the DTR and RTS lines connected to ``GPIO0`` and ``CIHP_PU``
+- Your hardware does not have the DTR and RTS lines connected to ``GPIO0`` and ``CHIP_PU``
 - The DTR and RTS lines are configured differently
 - There are no such serial control lines at all
 

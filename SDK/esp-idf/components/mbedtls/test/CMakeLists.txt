@@ -7,8 +7,8 @@ set(TEST_CRTS "crts/server_cert_chain.pem"
 
 idf_component_register(SRC_DIRS "."
                     PRIV_INCLUDE_DIRS "."
-                    PRIV_REQUIRES unity test_utils mbedtls libsodium
-                    EMBED_TXTFILES EMBED_TXTFILES ${TEST_CRTS})
+                    PRIV_REQUIRES cmock test_utils mbedtls libsodium
+                    EMBED_TXTFILES ${TEST_CRTS})
 
 
 idf_component_get_property(mbedtls mbedtls COMPONENT_LIB)

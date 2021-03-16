@@ -27,6 +27,8 @@
 #include "esp_log.h"
 #include "driver/gpio.h"
 #include "driver/twai.h"
+#include "esp_rom_gpio.h"
+#include "esp_rom_sys.h"
 
 /* --------------------- Definitions and static variables ------------------ */
 //Example Configuration
@@ -53,10 +55,10 @@ static void invert_tx_bits(bool enable)
 {
     if (enable) {
         //Inverts output of TX to trigger errors
-        gpio_matrix_out(TX_GPIO_NUM, TWAI_TX_IDX, true, false);
+        esp_rom_gpio_connect_out_signal(TX_GPIO_NUM, TWAI_TX_IDX, true, false);
     } else {
         //Returns TX to default settings
-        gpio_matrix_out(TX_GPIO_NUM, TWAI_TX_IDX, false, false);
+        esp_rom_gpio_connect_out_signal(TX_GPIO_NUM, TWAI_TX_IDX, false, false);
     }
 }
 
@@ -69,9 +71,9 @@ static void tx_task(void *arg)
         }
         if (trigger_tx_error) {
             //Trigger a bit error in transmission by inverting GPIO
-            ets_delay_us(ERR_DELAY_US);     //Wait until arbitration phase is over
+            esp_rom_delay_us(ERR_DELAY_US);     //Wait until arbitration phase is over
             invert_tx_bits(true);           //Trigger bit error for a few bits
-            ets_delay_us(ERR_PERIOD_US);
+            esp_rom_delay_us(ERR_PERIOD_US);
             invert_tx_bits(false);
         }
         vTaskDelay(pdMS_TO_TICKS(50));

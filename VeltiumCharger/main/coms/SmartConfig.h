@@ -3,4 +3,4 @@
 void initialise_smartconfig(void);
 void start_wifi(void);
 void initialise_provisioning(void);
-#endif;
+#endif

@@ -5,14 +5,12 @@
 #include "freertos/task.h"
 #include "freertos/semphr.h"
 #include "freertos/queue.h"
-#include "freertos/xtensa_api.h"
 #include "esp_intr_alloc.h"
-#include "xtensa/hal.h"
 #include "unity.h"
 #include "soc/cpu.h"
 #include "test_utils.h"
 #include "math.h"
-  
+
 #define SW_ISR_LEVEL_1  7
 #ifdef CONFIG_FREERTOS_FPU_IN_ISR
 

@@ -21,6 +21,7 @@
 #include "esp_system.h"
 #include "esp_intr_alloc.h"
 #include "esp_heap_caps.h"
+#include "esp_rom_sys.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
@@ -300,7 +301,7 @@ static esp_err_t enc28j60_do_reset(emac_enc28j60_t *emac)
     }
 
     // After reset, wait at least 1ms for the device to be ready
-    ets_delay_us(ENC28J60_SYSTEM_RESET_ADDITION_TIME_US);
+    esp_rom_delay_us(ENC28J60_SYSTEM_RESET_ADDITION_TIME_US);
 
     return ret;
 }
@@ -392,7 +393,7 @@ static esp_err_t emac_enc28j60_write_phy_reg(esp_eth_mac_t *mac, uint32_t phy_ad
     /* polling the busy flag */
     uint32_t to = 0;
     do {
-        ets_delay_us(100);
+        esp_rom_delay_us(100);
         MAC_CHECK(enc28j60_register_read(emac, ENC28J60_MISTAT, &mii_status) == ESP_OK,
                   "read MISTAT failed", out, ESP_FAIL);
         to += 100;
@@ -431,7 +432,7 @@ static esp_err_t emac_enc28j60_read_phy_reg(esp_eth_mac_t *mac, uint32_t phy_add
     /* polling the busy flag */
     uint32_t to = 0;
     do {
-        ets_delay_us(100);
+        esp_rom_delay_us(100);
         MAC_CHECK(enc28j60_register_read(emac, ENC28J60_MISTAT, &mii_status) == ESP_OK,
                   "read MISTAT failed", out, ESP_FAIL);
         to += 100;
@@ -838,7 +839,7 @@ static esp_err_t emac_enc28j60_init(esp_eth_mac_t *mac)
     esp_eth_mediator_t *eth = emac->eth;
 
     /* init gpio used for reporting enc28j60 interrupt */
-    gpio_pad_select_gpio(emac->int_gpio_num);
+    gpio_reset_pin(emac->int_gpio_num);
     gpio_set_direction(emac->int_gpio_num, GPIO_MODE_INPUT);
     gpio_set_pull_mode(emac->int_gpio_num, GPIO_PULLUP_ONLY);
     gpio_set_intr_type(emac->int_gpio_num, GPIO_INTR_NEGEDGE);

@@ -27,12 +27,11 @@ extern carac_Firebase_Configuration ConfigFirebase;
 bool wifi_connected  = false;
 bool wifi_connecting = false;
 
-static const char *TAG = "Smartconfig";
-
+static uint8 Reintentos = 0;
 static void smartconfig_example_task(void * parm);
 
 static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data){
-    static uint8 Reintentos = 0;
+    
 
     if (event_base == WIFI_EVENT){
         switch(event_id){
@@ -78,7 +77,7 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
         Coms.Wifi.IP[3] =ip4_addr4(&ip_info->ip);
 
         wifi_config_t wifi_actual_config;
-        esp_wifi_get_config(ESP_IF_WIFI_STA, &wifi_actual_config);
+        esp_wifi_get_config(WIFI_IF_STA, &wifi_actual_config);
 
         uint8_t len= sizeof(wifi_actual_config.sta.ssid) <=32 ? sizeof(wifi_actual_config.sta.ssid):32;
         memcpy(Coms.Wifi.AP,wifi_actual_config.sta.ssid,len);
@@ -97,7 +96,7 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
          switch(event_id){
             case SC_EVENT_SCAN_DONE:
                 Reintentos = 0;
-                 Serial.printf( "Scan done\n");
+                Serial.printf( "Scan done\n");
             break;
             case SC_EVENT_FOUND_CHANNEL:
                  Serial.printf( "Found channel\n");
@@ -126,7 +125,7 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
 
                 ESP_ERROR_CHECK( esp_wifi_disconnect() );
 
-                ESP_ERROR_CHECK( esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config) );
+                ESP_ERROR_CHECK( esp_wifi_set_config(WIFI_IF_STA, &wifi_config) );
                 ESP_ERROR_CHECK( esp_wifi_connect() );
                 Serial.println("Pass recibido");
             
@@ -180,12 +179,12 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
 
 void initialise_smartconfig(void)
 {
-
+    Reintentos = 0;
     esp_wifi_disconnect();
     esp_wifi_stop();
     esp_wifi_deinit();
     esp_netif_destroy(sta_netif);
-
+    esp_smartconfig_stop();
     delay(50);
 
     sta_netif = esp_netif_create_default_wifi_sta();
@@ -206,12 +205,14 @@ void initialise_smartconfig(void)
 }
 
 void initialise_provisioning(void){
+    Reintentos = 0;
     esp_wifi_disconnect();
     esp_wifi_stop();
     esp_wifi_deinit();
     esp_netif_destroy(sta_netif);
     esp_netif_destroy(ap_netif);
-
+    wifi_prov_mgr_stop_provisioning();
+    wifi_prov_mgr_deinit();
     delay(50);
 
     //borrar credenciales almacenadas

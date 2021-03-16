@@ -6,7 +6,7 @@
 .. toctree::
    :maxdepth: 3
 
-    {IDF_TARGET_NAME} 技术参考手册 (PDF) <{IDF_TARGET_TRM_CN_URL}>
+    :esp32 or esp32s2: {IDF_TARGET_NAME} 技术参考手册 (PDF) <{IDF_TARGET_TRM_CN_URL}>
     :esp32: ESP32 技术规格书 (PDF) <https://espressif.com/sites/default/files/documentation/esp32_datasheet_cn.pdf>
     :esp32s2: ESP32-S2 技术规格书 (PDF) <https://www.espressif.com/sites/default/files/documentation/esp32-s2_datasheet_cn.pdf>
     :esp32: ESP32 硬件设计指南 (PDF) <https://espressif.com/sites/default/files/documentation/esp32_hardware_design_guidelines_cn.pdf>
@@ -15,3 +15,4 @@
     模组与开发板（历史版本）<modules-and-boards-previous>
     乐鑫产品订购信息 (PDF) <http://www.espressif.com/sites/default/files/documentation/espressif_products_ordering_information_cn.pdf>
     乐鑫产品证书 <https://www.espressif.com/zh-hans/certificates>
+    Chip Series Comparison <chip-series-comparison>

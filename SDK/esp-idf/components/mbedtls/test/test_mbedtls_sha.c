@@ -15,6 +15,7 @@
 #include "sdkconfig.h"
 #include "test_apb_dport_access.h"
 #include "sodium/utils.h"
+#include "soc/soc_caps.h"
 
 TEST_CASE("mbedtls SHA self-tests", "[mbedtls]")
 {
@@ -79,6 +80,10 @@ TEST_CASE("mbedtls SHA interleaving", "[mbedtls]")
     TEST_ASSERT_EQUAL(0, mbedtls_sha256_finish_ret(&sha256_ctx, sha256));
     TEST_ASSERT_EQUAL(0, mbedtls_sha512_finish_ret(&sha512_ctx, sha512));
 
+    mbedtls_sha1_free(&sha1_ctx);
+    mbedtls_sha256_free(&sha256_ctx);
+    mbedtls_sha512_free(&sha512_ctx);
+
     TEST_ASSERT_EQUAL_MEMORY_MESSAGE(sha512_thousand_bs, sha512, 64, "SHA512 calculation");
     TEST_ASSERT_EQUAL_MEMORY_MESSAGE(sha256_thousand_as, sha256, 32, "SHA256 calculation");
     TEST_ASSERT_EQUAL_MEMORY_MESSAGE(sha1_thousand_as, sha1, 20, "SHA1 calculation");
@@ -97,6 +102,7 @@ static void tskRunSHA1Test(void *pvParameters)
             TEST_ASSERT_EQUAL(0, mbedtls_sha1_update_ret(&sha1_ctx, (unsigned char *)one_hundred_as, 100));
         }
         TEST_ASSERT_EQUAL(0, mbedtls_sha1_finish_ret(&sha1_ctx, sha1));
+        mbedtls_sha1_free(&sha1_ctx);
         TEST_ASSERT_EQUAL_MEMORY_MESSAGE(sha1_thousand_as, sha1, 20, "SHA1 calculation");
     }
     xSemaphoreGive(done_sem);
@@ -115,7 +121,7 @@ static void tskRunSHA256Test(void *pvParameters)
             TEST_ASSERT_EQUAL(0, mbedtls_sha256_update_ret(&sha256_ctx, (unsigned char *)one_hundred_bs, 100));
         }
         TEST_ASSERT_EQUAL(0, mbedtls_sha256_finish_ret(&sha256_ctx, sha256));
-
+        mbedtls_sha256_free(&sha256_ctx);
         TEST_ASSERT_EQUAL_MEMORY_MESSAGE(sha256_thousand_bs, sha256, 32, "SHA256 calculation");
     }
     xSemaphoreGive(done_sem);
@@ -153,6 +159,7 @@ void tskRunSHASelftests(void *param)
             while (1) {}
         }
 
+#if SOC_SHA_SUPPORT_SHA512
         if (mbedtls_sha512_self_test(1)) {
             printf("SHA512 self-tests failed.\n");
             while (1) {}
@@ -162,6 +169,7 @@ void tskRunSHASelftests(void *param)
             printf("SHA512 self-tests failed.\n");
             while (1) {}
         }
+#endif //SOC_SHA_SUPPORT_SHA512
     }
     xSemaphoreGive(done_sem);
     vTaskDelete(NULL);
@@ -195,16 +203,20 @@ TEST_CASE("mbedtls SHA512 clone", "[mbedtls]")
         TEST_ASSERT_EQUAL(0, mbedtls_sha512_update_ret(&ctx, one_hundred_bs, 100));
     }
 
+    mbedtls_sha512_init(&clone);
     mbedtls_sha512_clone(&clone, &ctx);
     for (int i = 0; i < 5; i++) {
         TEST_ASSERT_EQUAL(0, mbedtls_sha512_update_ret(&ctx, one_hundred_bs, 100));
         TEST_ASSERT_EQUAL(0, mbedtls_sha512_update_ret(&clone, one_hundred_bs, 100));
     }
     TEST_ASSERT_EQUAL(0, mbedtls_sha512_finish_ret(&ctx, sha512));
+    mbedtls_sha512_free(&ctx);
 
     TEST_ASSERT_EQUAL_MEMORY_MESSAGE(sha512_thousand_bs, sha512, 64, "SHA512 original calculation");
 
     TEST_ASSERT_EQUAL(0, mbedtls_sha512_finish_ret(&clone, sha512));
+    mbedtls_sha512_free(&clone);
+
     TEST_ASSERT_EQUAL_MEMORY_MESSAGE(sha512_thousand_bs, sha512, 64, "SHA512 cloned calculation");
 }
 
@@ -221,6 +233,7 @@ TEST_CASE("mbedtls SHA384 clone", "[mbedtls][")
         TEST_ASSERT_EQUAL(0, mbedtls_sha512_update_ret(&ctx, one_hundred_bs, 100));
     }
 
+    mbedtls_sha512_init(&clone);
     mbedtls_sha512_clone(&clone, &ctx);
 
     for (int i = 0; i < 5; i++) {
@@ -228,9 +241,13 @@ TEST_CASE("mbedtls SHA384 clone", "[mbedtls][")
         TEST_ASSERT_EQUAL(0, mbedtls_sha512_update_ret(&clone, one_hundred_bs, 100));
     }
     TEST_ASSERT_EQUAL(0, mbedtls_sha512_finish_ret(&ctx, sha384));
+    mbedtls_sha512_free(&ctx);
+
     TEST_ASSERT_EQUAL_MEMORY_MESSAGE(sha384_thousand_bs, sha384, 48, "SHA512 original calculation");
 
     TEST_ASSERT_EQUAL(0, mbedtls_sha512_finish_ret(&clone, sha384));
+    mbedtls_sha512_free(&clone);
+
     TEST_ASSERT_EQUAL_MEMORY_MESSAGE(sha384_thousand_bs, sha384, 48, "SHA512 cloned calculation");
 }
 
@@ -247,16 +264,20 @@ TEST_CASE("mbedtls SHA256 clone", "[mbedtls]")
         TEST_ASSERT_EQUAL(0, mbedtls_sha256_update_ret(&ctx, one_hundred_as, 100));
     }
 
+    mbedtls_sha256_init(&clone);
     mbedtls_sha256_clone(&clone, &ctx);
     for (int i = 0; i < 5; i++) {
         TEST_ASSERT_EQUAL(0, mbedtls_sha256_update_ret(&ctx, one_hundred_as, 100));
         TEST_ASSERT_EQUAL(0, mbedtls_sha256_update_ret(&clone, one_hundred_as, 100));
     }
     TEST_ASSERT_EQUAL(0, mbedtls_sha256_finish_ret(&ctx, sha256));
+    mbedtls_sha256_free(&ctx);
 
     TEST_ASSERT_EQUAL_MEMORY_MESSAGE(sha256_thousand_as, sha256, 32, "SHA256 original calculation");
 
     TEST_ASSERT_EQUAL(0, mbedtls_sha256_finish_ret(&clone, sha256));
+    mbedtls_sha256_free(&clone);
+
     TEST_ASSERT_EQUAL_MEMORY_MESSAGE(sha256_thousand_as, sha256, 32, "SHA256 cloned calculation");
 }
 
@@ -276,6 +297,8 @@ static void tskFinaliseSha(void *v_param)
     }
 
     param->ret = mbedtls_sha256_finish_ret(&param->ctx, param->result);
+    mbedtls_sha256_free(&param->ctx);
+
     param->done = true;
     vTaskDelete(NULL);
 }
@@ -305,11 +328,69 @@ TEST_CASE("mbedtls SHA session passed between tasks", "[mbedtls]")
     TEST_ASSERT_EQUAL_MEMORY_MESSAGE(sha256_thousand_as, param.result, 32, "SHA256 result from other task");
 }
 
-/* ESP32 do not have SHA512/t functions */
-#if !DISABLED_FOR_TARGETS(ESP32)
+
+
+
+/* Random input generated and hashed using python:
+
+    import hashlib
+    import os, binascii
+
+    input = bytearray(os.urandom(150))
+    arr = ''
+    for idx, b in enumerate(input):
+        if idx % 8 == 0:
+            arr += '\n'
+        arr += "{}, ".format(hex(b))
+    digest = hashlib.sha256(input).hexdigest()
+
+*/
+const uint8_t test_vector[] = {
+    0xe4, 0x1a, 0x1a, 0x30, 0x71, 0xd3, 0x94, 0xb0,
+    0xc3, 0x7e, 0x99, 0x9f, 0x1a, 0xde, 0x4a, 0x36,
+    0xb1, 0x1, 0x81, 0x2b, 0x41, 0x91, 0x11, 0x7f,
+    0xd8, 0xe1, 0xd5, 0xe5, 0x52, 0x6d, 0x92, 0xee,
+    0x6c, 0xf7, 0x70, 0xea, 0x3a, 0xb, 0xc9, 0x97,
+    0xc0, 0x12, 0x6f, 0x10, 0x5b, 0x90, 0xd8, 0x52,
+    0x91, 0x69, 0xea, 0xc4, 0x1f, 0xc, 0xcf, 0xc6,
+    0xf0, 0x43, 0xc6, 0xa3, 0x1f, 0x46, 0x3c, 0x3d,
+    0x25, 0xe5, 0xa8, 0x27, 0x86, 0x85, 0x32, 0x3f,
+    0x33, 0xd8, 0x40, 0xc4, 0x41, 0xf6, 0x4b, 0x12,
+    0xd8, 0x5e, 0x4, 0x27, 0x42, 0x90, 0x73, 0x4,
+    0x8, 0x42, 0xd1, 0x64, 0xd, 0x84, 0x3, 0x1,
+    0x76, 0x88, 0xe4, 0x95, 0xdf, 0xe7, 0x62, 0xb4,
+    0xb3, 0xb2, 0x7e, 0x6d, 0x78, 0xca, 0x79, 0x82,
+    0xcc, 0xba, 0x22, 0xd2, 0x90, 0x2e, 0xe3, 0xa8,
+    0x2a, 0x53, 0x3a, 0xb1, 0x9a, 0x7f, 0xb7, 0x8b,
+    0xfa, 0x32, 0x47, 0xc1, 0x5c, 0x6, 0x4f, 0x7b,
+    0xcd, 0xb3, 0xf4, 0xf1, 0xd0, 0xb5, 0xbf, 0xfb,
+    0x7c, 0xc3, 0xa5, 0xb2, 0xc4, 0xd4,
+};
+
+const uint8_t test_vector_digest[] = {
+    0xff, 0x1c, 0x60, 0xcb, 0x21, 0xf0, 0x63, 0x68,
+    0xb9, 0xfc, 0xfe, 0xad, 0x3e, 0xb0, 0x2e, 0xd1,
+    0xf9, 0x08, 0x82, 0x82, 0x83, 0x06, 0xc1, 0x8a,
+    0x98, 0x5d, 0x36, 0xc0, 0xb7, 0xeb, 0x35, 0xe0,
+};
+
+TEST_CASE("mbedtls SHA, input in flash", "[mbedtls]")
+{
+    mbedtls_sha256_context sha256_ctx;
+    unsigned char sha256[32];
+
+    mbedtls_sha256_init(&sha256_ctx);
+
+    TEST_ASSERT_EQUAL(0, mbedtls_sha256_starts_ret(&sha256_ctx, false));
+    TEST_ASSERT_EQUAL(0, mbedtls_sha256_update_ret(&sha256_ctx, test_vector, sizeof(test_vector)));
+    TEST_ASSERT_EQUAL(0, mbedtls_sha256_finish_ret(&sha256_ctx, sha256));
+    mbedtls_sha256_free(&sha256_ctx);
+
+    TEST_ASSERT_EQUAL_MEMORY_MESSAGE(test_vector_digest, sha256, 32, "SHA256 calculation");
+}
 
 /* Function are not implemented in SW */
-#ifdef CONFIG_MBEDTLS_HARDWARE_SHA
+#if CONFIG_MBEDTLS_HARDWARE_SHA && SOC_SHA_SUPPORT_SHA512_T
 
 /*
  * FIPS-180-2 test vectors
@@ -388,6 +469,8 @@ TEST_CASE("mbedtls SHA512/t", "[mbedtls]")
             }
             TEST_ASSERT_EQUAL(0, mbedtls_sha512_update_ret(&sha512_ctx, sha512T_test_buf[j], sha512T_test_buflen[j]));
             TEST_ASSERT_EQUAL(0, mbedtls_sha512_finish_ret(&sha512_ctx, sha512));
+            mbedtls_sha512_free(&sha512_ctx);
+
             TEST_ASSERT_EQUAL_MEMORY_MESSAGE(sha512_test_sum[k], sha512, sha512T_t_len[i] / 8, "SHA512t calculation");
         }
     }
@@ -430,4 +513,3 @@ TEST_CASE("mbedtls SHA256 PSRAM DMA", "[mbedtls]")
 #endif //CONFIG_SPIRAM
 
 #endif //CONFIG_MBEDTLS_HARDWARE_SHA
-#endif //!DISABLED_FOR_TARGETS(ESP32S2)

@@ -175,4 +175,3 @@ esp_err_t esp_ping_result(uint8_t res_val, uint16_t ping_len, uint32_t ping_time
 
     return ret;
 }
-

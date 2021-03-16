@@ -1141,5 +1141,5 @@ void SendToPSOC5(uint16 attrHandle){
   controlSendToSerialLocal(buffer_tx_local, len+4);
 }
 
-
 #endif
+

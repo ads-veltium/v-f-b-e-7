@@ -13,11 +13,13 @@
 // limitations under the License.
 
 /*
- Tests for the adc device driver
+ Tests for the adc device driver on ESP32 only
 */
+#include "sdkconfig.h"
+#if CONFIG_IDF_TARGET_ESP32
+
 #include "esp_system.h"
 #include "driver/adc.h"
-#include "driver/dac.h"
 #include "driver/rtc_io.h"
 #include "driver/gpio.h"
 #include "unity.h"
@@ -27,8 +29,8 @@
 #include "esp_log.h"
 #include "nvs_flash.h"
 #include "test_utils.h"
-
-#if !DISABLED_FOR_TARGETS(ESP8266, ESP32S2) // This testcase for ESP32
+#include "esp_rom_sys.h"
+#include "driver/dac.h"
 
 /*
  * ADC DMA testcase
@@ -162,4 +164,4 @@ TEST_CASE("ADC DMA read", "[adc dma]")
     example_i2s_deinit();
 }
 
-#endif // !DISABLED_FOR_TARGETS(ESP8266, ESP32S2)
+#endif // CONFIG_IDF_TARGET_ESP32

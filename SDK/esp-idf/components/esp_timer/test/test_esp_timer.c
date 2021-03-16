@@ -6,7 +6,6 @@
 #include "esp_timer.h"
 #include "esp_timer_impl.h"
 #include "unity.h"
-#include "soc/frc_timer_reg.h"
 #include "soc/timer_group_reg.h"
 #include "esp_heap_caps.h"
 #include "freertos/FreeRTOS.h"
@@ -14,6 +13,11 @@
 #include "freertos/semphr.h"
 #include "test_utils.h"
 #include "esp_freertos_hooks.h"
+#include "esp_rom_sys.h"
+
+#if CONFIG_ESP_TIMER_IMPL_FRC2
+#include "soc/frc_timer_reg.h"
+#endif
 
 #ifdef CONFIG_ESP_TIMER_PROFILING
 #define WITH_PROFILING 1
@@ -207,7 +211,7 @@ TEST_CASE("periodic esp_timer produces correct delays", "[esp_timer]")
         p_args->intervals[p_args->cur_interval++] = ms_diff;
         // Deliberately make timer handler run longer.
         // We check that this doesn't affect the result.
-        ets_delay_us(10*1000);
+        esp_rom_delay_us(10*1000);
         if (p_args->cur_interval == NUM_INTERVALS) {
             printf("done\n");
             TEST_ESP_OK(esp_timer_stop(p_args->timer));
@@ -409,6 +413,8 @@ TEST_CASE("esp_timer for very short intervals", "[esp_timer]")
 
     teardown_overflow();
     vSemaphoreDelete(semaphore);
+    TEST_ESP_OK(esp_timer_delete(timer1));
+    TEST_ESP_OK(esp_timer_delete(timer2));
 }
 
 
@@ -661,6 +667,7 @@ TEST_CASE("after esp_timer_impl_advance, timers run when expected", "[esp_timer]
     TEST_ASSERT(state.cb_time > t_start);
 
     ref_clock_deinit();
+    TEST_ESP_OK(esp_timer_delete(timer));
 }
 
 static esp_timer_handle_t timer1;
@@ -734,7 +741,7 @@ static void dport_task(void *pvParameters)
 {
     while (task_stop == false) {
         DPORT_STALL_OTHER_CPU_START();
-        ets_delay_us(3);
+        esp_rom_delay_us(3);
         DPORT_STALL_OTHER_CPU_END();
     }
     vTaskDelete(NULL);
@@ -820,6 +827,8 @@ TEST_CASE("esp_timer_impl_set_alarm and using start_once do not lead that the Sy
 
     esp_timer_stop(oneshot_timer);
     esp_timer_delete(oneshot_timer);
+    esp_timer_stop(periodic_timer);
+    esp_timer_delete(periodic_timer);
     printf("timers deleted\n");
 
     vTaskDelay(1000 / portTICK_PERIOD_MS);
@@ -836,7 +845,7 @@ TEST_CASE("Test case when esp_timer_impl_set_alarm needs set timer < now_time", 
 #endif
     esp_timer_impl_advance(50331648); // 0xefffffff/80 = 50331647
 
-    ets_delay_us(2);
+    esp_rom_delay_us(2);
 
     portDISABLE_INTERRUPTS();
     esp_timer_impl_set_alarm(50331647);
@@ -854,6 +863,7 @@ TEST_CASE("Test case when esp_timer_impl_set_alarm needs set timer < now_time", 
     TEST_ASSERT(alarm_reg <= (count_reg + offset));
 }
 
+#ifdef CONFIG_ESP_TIMER_IMPL_FRC2
 TEST_CASE("Test esp_timer_impl_set_alarm when the counter is near an overflow value", "[esp_timer]")
 {
     for (int i = 0; i < 1024; ++i) {
@@ -862,4 +872,47 @@ TEST_CASE("Test esp_timer_impl_set_alarm when the counter is near an overflow va
         printf("%d) count_reg = 0x%x\n", i, count_reg);
         esp_timer_impl_set_alarm(1); // timestamp is expired
     }
+}
+#endif
+
+static void timer_callback5(void* arg)
+{
+    *(int64_t *)arg = esp_timer_get_time();
+}
+
+TEST_CASE("Test a latency between a call of callback and real event", "[esp_timer]")
+{
+
+    int64_t callback_time = 0;
+    const esp_timer_create_args_t periodic_timer_args = {
+        .arg = &callback_time,
+        .callback = &timer_callback5,
+    };
+
+    esp_timer_handle_t periodic_timer;
+
+    TEST_ESP_OK(esp_timer_create(&periodic_timer_args, &periodic_timer));
+    int interval_ms = 50;
+    TEST_ESP_OK(esp_timer_start_periodic(periodic_timer, interval_ms * 1000));
+
+    for (int i = 0; i < 5; ++i) {
+        int64_t expected_time = esp_timer_get_next_alarm();
+        int64_t saved_callback_time = callback_time;
+        while (saved_callback_time == callback_time) {
+            vTaskDelay(10 / portTICK_PERIOD_MS);
+        }
+        int diff = callback_time - expected_time;
+        printf("%d us\n", diff);
+#ifndef CONFIG_IDF_ENV_FPGA
+        if (i != 0) {
+            // skip the first measurement
+            // if CPU_FREQ = 240MHz. 14 - 16us
+            TEST_ASSERT_LESS_OR_EQUAL(50, diff);
+        }
+#endif // not CONFIG_IDF_ENV_FPGA
+    }
+
+    TEST_ESP_OK(esp_timer_dump(stdout));
+    TEST_ESP_OK(esp_timer_stop(periodic_timer));
+    TEST_ESP_OK(esp_timer_delete(periodic_timer));
 }

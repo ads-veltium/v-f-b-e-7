@@ -6,8 +6,15 @@ Overview
 --------
 
 There are several :ref:`memory regions<memory-layout>` where code and data can be placed. Code and read-only data are placed by default in flash,
-writable data in RAM, etc. However, it is sometimes necessary to change these default placements. For example, it may
-be necessary to place critical code in RAM for performance reasons or to place code in RTC memory for use in a wake stub or the ULP coprocessor.
+writable data in RAM, etc. However, it is sometimes necessary to change these default placements. 
+
+.. only:: SOC_ULP_SUPPORTED
+
+    For example, it may be necessary to place critical code in RAM for performance reasons or to place code in RTC memory for use in a wake stub or the ULP coprocessor.
+
+.. only:: not SOC_ULP_SUPPORTED
+
+    For example, it may be necessary to place critical code in RAM for performance reasons or to place code in RTC memory for use in a wake stub.
 
 With the linker script generation mechanism, it is possible to specify these placements at the component level within ESP-IDF. The component presents
 information on how it would like to place its symbols, objects or the entire archive. During build the information presented by the components are collected,
@@ -276,7 +283,7 @@ The three fragment types share a common grammar:
 **Condition Checking**
 
 Condition checking enable the linker script generation to be configuration-aware. Depending on whether expressions involving configuration values
-are true or not, a particular set of values for a key can be used. The evaluation uses ``eval_string`` from :idf_file:`tools/kconfig_new/kconfiglib.py`
+are true or not, a particular set of values for a key can be used. The evaluation uses ``eval_string`` from kconfiglib package
 and adheres to its required syntax and limitations. Supported operators are as follows:
 
     - comparison

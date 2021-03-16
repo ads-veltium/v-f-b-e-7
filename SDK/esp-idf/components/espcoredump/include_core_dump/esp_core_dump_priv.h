@@ -11,8 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#ifndef ESP_CORE_DUMP_H_
-#define ESP_CORE_DUMP_H_
+#ifndef ESP_CORE_DUMP_PRIV_H_
+#define ESP_CORE_DUMP_PRIV_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -21,20 +21,22 @@ extern "C" {
 #include "esp_err.h"
 #include "esp_attr.h"
 #include "esp_log.h"
+#include "esp_rom_sys.h"
 #include "sdkconfig.h"
-#if CONFIG_ESP32_COREDUMP_CHECKSUM_SHA256
+#include "esp_private/panic_internal.h"
+#if CONFIG_ESP_COREDUMP_CHECKSUM_SHA256
 // TODO: move this to portable part of the code
 #include "mbedtls/sha256.h"
 #endif
 
-#define ESP_COREDUMP_LOG( level, format, ... )  if (LOG_LOCAL_LEVEL >= level)   { ets_printf(DRAM_STR(format), esp_log_early_timestamp(), (const char *)TAG, ##__VA_ARGS__); }
+#define ESP_COREDUMP_LOG( level, format, ... )  if (LOG_LOCAL_LEVEL >= level)   { esp_rom_printf(DRAM_STR(format), esp_log_early_timestamp(), (const char *)TAG, ##__VA_ARGS__); }
 #define ESP_COREDUMP_LOGE( format, ... )  ESP_COREDUMP_LOG(ESP_LOG_ERROR, LOG_FORMAT(E, format), ##__VA_ARGS__)
 #define ESP_COREDUMP_LOGW( format, ... )  ESP_COREDUMP_LOG(ESP_LOG_WARN, LOG_FORMAT(W, format), ##__VA_ARGS__)
 #define ESP_COREDUMP_LOGI( format, ... )  ESP_COREDUMP_LOG(ESP_LOG_INFO, LOG_FORMAT(I, format), ##__VA_ARGS__)
 #define ESP_COREDUMP_LOGD( format, ... )  ESP_COREDUMP_LOG(ESP_LOG_DEBUG, LOG_FORMAT(D, format), ##__VA_ARGS__)
 #define ESP_COREDUMP_LOGV( format, ... )  ESP_COREDUMP_LOG(ESP_LOG_VERBOSE, LOG_FORMAT(V, format), ##__VA_ARGS__)
 
-#if CONFIG_ESP32_ENABLE_COREDUMP_TO_FLASH
+#if CONFIG_ESP_COREDUMP_ENABLE_TO_FLASH
 #define ESP_COREDUMP_LOG_PROCESS( format, ... )  ESP_COREDUMP_LOGD(format, ##__VA_ARGS__)
 #else
 #define ESP_COREDUMP_LOG_PROCESS( format, ... )  do{/*(__VA_ARGS__);*/}while(0)
@@ -53,16 +55,18 @@ extern "C" {
 #define COREDUMP_CURR_TASK_MARKER           0xDEADBEEF
 #define COREDUMP_CURR_TASK_NOT_FOUND        -1
 
-#if CONFIG_ESP32_COREDUMP_DATA_FORMAT_ELF
-#if CONFIG_ESP32_COREDUMP_CHECKSUM_CRC32
+#if CONFIG_ESP_COREDUMP_DATA_FORMAT_ELF
+#if CONFIG_ESP_COREDUMP_CHECKSUM_CRC32
 #define COREDUMP_VERSION                    COREDUMP_VERSION_ELF_CRC32
-#elif CONFIG_ESP32_COREDUMP_CHECKSUM_SHA256
+#elif CONFIG_ESP_COREDUMP_CHECKSUM_SHA256
 #define COREDUMP_VERSION                    COREDUMP_VERSION_ELF_SHA256
 #define COREDUMP_SHA256_LEN                 32
 #endif
 #else
 #define COREDUMP_VERSION                    COREDUMP_VERSION_BIN_CURRENT
 #endif
+
+#define COREDUMP_CHECKSUM_MAX_LEN           32
 
 typedef esp_err_t (*esp_core_dump_write_prepare_t)(void *priv, uint32_t *data_len);
 typedef esp_err_t (*esp_core_dump_write_start_t)(void *priv);
@@ -71,22 +75,29 @@ typedef esp_err_t (*esp_core_dump_flash_write_data_t)(void *priv, void * data, u
 
 typedef uint32_t core_dump_crc_t;
 
+/**
+ * The following macro defines the size of the cache used to write the coredump
+ * to the flash. When the flash is encrypted, the smallest data block we can
+ * write to it is 16 bytes long. Thus, this macro MUST be a multiple of 16.
+ */
+#define COREDUMP_CACHE_SIZE 32
+
+#if (COREDUMP_CACHE_SIZE % 16) != 0
+    #error "Coredump cache size must be a multiple of 16"
+#endif
+
 typedef struct _core_dump_write_data_t
 {
     // TODO: move flash related data to flash-specific code
-    uint32_t                off; // current offset in partition
-    union
-    {
-        uint8_t    data8[4];
-        uint32_t   data32;
-    }                       cached_data;
-    uint8_t                 cached_bytes;
-#if CONFIG_ESP32_COREDUMP_CHECKSUM_SHA256
+    uint32_t        off; // current offset in partition
+    uint8_t         cached_data[COREDUMP_CACHE_SIZE];
+    uint8_t         cached_bytes;
+#if CONFIG_ESP_COREDUMP_CHECKSUM_SHA256
     // TODO: move this to portable part of the code
     mbedtls_sha256_context  ctx;
-    char                    sha_output[COREDUMP_SHA256_LEN];
-#elif CONFIG_ESP32_COREDUMP_CHECKSUM_CRC32
-    core_dump_crc_t         crc; // CRC of dumped data
+    char            sha_output[COREDUMP_SHA256_LEN];
+#elif CONFIG_ESP_COREDUMP_CHECKSUM_CRC32
+    core_dump_crc_t crc; // CRC of dumped data
 #endif
 } core_dump_write_data_t;
 
@@ -102,8 +113,6 @@ typedef struct _core_dump_write_config_t
     esp_core_dump_write_end_t           end;
     // this function is called to write data chunk
     esp_core_dump_flash_write_data_t    write;
-    // number of tasks with corrupted TCBs
-    uint32_t                            bad_tasks_num;
     // pointer to data which are specific for particular core dump emitter
     void *                              priv;
 } core_dump_write_config_t;
@@ -137,7 +146,7 @@ typedef struct _core_dump_mem_seg_header_t
 void esp_core_dump_flash_init(void);
 
 // Common core dump write function
-void esp_core_dump_write(void *frame, core_dump_write_config_t *write_cfg);
+void esp_core_dump_write(panic_info_t *info, core_dump_write_config_t *write_cfg);
 
 #include "esp_core_dump_port.h"
 

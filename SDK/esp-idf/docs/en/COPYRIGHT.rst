@@ -19,7 +19,7 @@ These third party libraries can be included into the application (firmware) prod
 
 * :component:`Xtensa header files<xtensa/include/xtensa>` are Copyright (C) 2013 Tensilica Inc and are licensed under the MIT License as reproduced in the individual header files.
 
-* Original parts of FreeRTOS_ (components/freertos) are Copyright (C) 2015 Real Time Engineers Ltd and is licensed under the GNU General Public License V2 with the FreeRTOS Linking Exception, as described in :component_file:`license.txt<freertos/license.txt>`.
+* Original parts of FreeRTOS_ (components/freertos) are Copyright (C) 2017 Amazon.com, Inc. or its affiliates are licensed under the MIT License, as described in :component_file:`license.txt<freertos/license.txt>`.
 
 * Original parts of LWIP_ (components/lwip) are Copyright (C) 2001, 2002 Swedish Institute of Computer Science and are licensed under the BSD License as described in :component_file:`COPYING file<lwip/lwip/COPYING>`.
 
@@ -65,6 +65,10 @@ These third party libraries can be included into the application (firmware) prod
 
 * `cryptoauthlib`_ Microchip CryptoAuthentication Library - Copyright (c) 2015 - 2018 Microchip Technology Inc, is licensed under common Microchip software License as described in :example_file:`LICENSE file <peripherals/secure_element/atecc608_ecdsa/components/esp-cryptoauthlib/cryptoauthlib/LICENSE>`
 
+* :component_file:` TLSF allocator <heap/heap_tlsf.c>` Two Level Segregated Fit memory allocator, Copyright (c) 2006-2016, Matthew Conte, and licensed under the BSD license.
+
+* `qrcode`_ QR Code generator library Copyright (c) Project Nayuki, is licensed under MIT license.
+
 Build Tools
 -----------
 
@@ -73,11 +77,6 @@ This is the list of licenses for tools included in this repository, which are us
 * :component:`esptool.py <esptool_py/esptool>` is Copyright (C) 2014-2016 Fredrik Ahlberg, Angus Gratton and is licensed under the GNU General Public License v2, as described in :component_file:`LICENSE file<esptool_py/LICENSE>`.
 
 * :idf:`KConfig <tools/kconfig>` is Copyright (C) 2002 Roman Zippel and others, and is licensed under the GNU General Public License V2.
-
-* :idf_file:`Kconfiglib <tools/kconfig_new/kconfiglib.py>` is Copyright (C) 2011-2019, Ulf Magnusson, and is licensed under the ISC License.
-
-* :idf_file:`Menuconfig of Kconfiglib <tools/kconfig_new/menuconfig.py>` is Copyright (C) 2018-2019, Nordic Semiconductor ASA and Ulf Magnusson, and is licensed under the ISC License.
-
 
 Documentation
 -------------
@@ -182,3 +181,4 @@ Copyright (C) 2011, ChaN, all right reserved.
 .. _sphinx_idf_theme: https://github.com/espressif/sphinx_idf_theme
 .. _sphinx_rtd_theme: https://github.com/readthedocs/sphinx_rtd_theme
 .. _cryptoauthlib: https://github.com/MicrochipTech/cryptoauthlib
+.. _qrcode: https://github.com/nayuki/QR-Code-generator

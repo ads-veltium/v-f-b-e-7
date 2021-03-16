@@ -21,15 +21,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from __future__ import print_function
-import os
-import re
-import sys
 
-try:
-    from . import kconfiglib
-except Exception:
-    sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
-    import kconfiglib
+import re
+
+import kconfiglib
 
 # Indentation to be used in the generated file
 INDENT = '    '
@@ -159,7 +154,7 @@ def write_docs(config, visibility, filename):
     """ Note: writing .rst documentation ignores the current value
     of any items. ie the --config option can be ignored.
     (However at time of writing it still needs to be set to something...) """
-    with open(filename, "w") as f:
+    with open(filename, 'w') as f:
         for node in config.node_iter():
             write_menu_item(f, node, visibility)
 
@@ -177,14 +172,14 @@ def get_breadcrumbs(node):
     node = node.parent
     while node.parent:
         if node.prompt:
-            result = [":ref:`%s`" % get_link_anchor(node)] + result
+            result = [':ref:`%s`' % get_link_anchor(node)] + result
         node = node.parent
-    return " > ".join(result)
+    return ' > '.join(result)
 
 
 def get_link_anchor(node):
     try:
-        return "CONFIG_%s" % node.item.name
+        return 'CONFIG_%s' % node.item.name
     except AttributeError:
         assert(node_is_menu(node))  # only menus should have no item.name
 
@@ -192,9 +187,9 @@ def get_link_anchor(node):
     result = []
     while node.parent:
         if node.prompt:
-            result = [re.sub(r"[^a-zA-z0-9]+", "-", node.prompt[0])] + result
+            result = [re.sub(r'[^a-zA-z0-9]+', '-', node.prompt[0])] + result
         node = node.parent
-    result = "-".join(result).lower()
+    result = '-'.join(result).lower()
     return result
 
 
@@ -213,12 +208,73 @@ def format_rest_text(text, indent):
     # Format an indented text block for use with ReST
     text = indent + text.replace('\n', '\n' + indent)
     # Escape some characters which are inline formatting in ReST
-    text = text.replace("*", "\\*")
-    text = text.replace("_", "\\_")
+    text = text.replace('*', '\\*')
+    text = text.replace('_', '\\_')
     # replace absolute links to documentation by relative ones
     text = re.sub(r'https://docs.espressif.com/projects/esp-idf/\w+/\w+/(.+)\.html', r':doc:`../\1`', text)
     text += '\n'
     return text
+
+
+def _minimize_expr(expr, visibility):
+    def expr_nodes_invisible(e):
+        return hasattr(e, 'nodes') and len(e.nodes) > 0 and all(not visibility.visible(i) for i in e.nodes)
+
+    if isinstance(expr, tuple):
+        if expr[0] == kconfiglib.NOT:
+            new_expr = _minimize_expr(expr[1], visibility)
+            return kconfiglib.Kconfig.y if new_expr == kconfiglib.Kconfig.n else new_expr
+        else:
+            new_expr1 = _minimize_expr(expr[1], visibility)
+            new_expr2 = _minimize_expr(expr[2], visibility)
+            if expr[0] == kconfiglib.AND:
+                if new_expr1 == kconfiglib.Kconfig.n or new_expr2 == kconfiglib.Kconfig.n:
+                    return kconfiglib.Kconfig.n
+                if new_expr1 == kconfiglib.Kconfig.y:
+                    return new_expr2
+                if new_expr2 == kconfiglib.Kconfig.y:
+                    return new_expr1
+            elif expr[0] == kconfiglib.OR:
+                if new_expr1 == kconfiglib.Kconfig.y or new_expr2 == kconfiglib.Kconfig.y:
+                    return kconfiglib.Kconfig.y
+                if new_expr1 == kconfiglib.Kconfig.n:
+                    return new_expr2
+                if new_expr2 == kconfiglib.Kconfig.n:
+                    return new_expr1
+            elif expr[0] == kconfiglib.EQUAL:
+                if not isinstance(new_expr1, type(new_expr2)):
+                    return kconfiglib.Kconfig.n
+                if new_expr1 == new_expr2:
+                    return kconfiglib.Kconfig.y
+            elif expr[0] == kconfiglib.UNEQUAL:
+                if not isinstance(new_expr1, type(new_expr2)):
+                    return kconfiglib.Kconfig.y
+                if new_expr1 != new_expr2:
+                    return kconfiglib.Kconfig.n
+            else:  # <, <=, >, >=
+                if not isinstance(new_expr1, type(new_expr2)):
+                    return kconfiglib.Kconfig.n  # e.g "True < 2"
+
+                if expr_nodes_invisible(new_expr1) or expr_nodes_invisible(new_expr2):
+                    return kconfiglib.Kconfig.y if kconfiglib.expr_value(expr) else kconfiglib.Kconfig.n
+
+            return (expr[0], new_expr1, new_expr2)
+
+    if (not kconfiglib.expr_value(expr) and len(expr.config_string) == 0 and expr_nodes_invisible(expr)):
+        # nodes which are invisible
+        # len(expr.nodes) > 0 avoids constant symbols without actual node definitions, e.g. integer constants
+        # len(expr.config_string) == 0 avoids hidden configs which reflects the values of choices
+        return kconfiglib.Kconfig.n
+
+    if (kconfiglib.expr_value(expr) and len(expr.config_string) > 0 and expr_nodes_invisible(expr)):
+        # hidden config dependencies which will be written to sdkconfig as enabled ones.
+        return kconfiglib.Kconfig.y
+
+    if any(node.item.name.startswith(visibility.target_env_var) for node in expr.nodes):
+        # We know the actual values for IDF_TARGETs
+        return kconfiglib.Kconfig.y if kconfiglib.expr_value(expr) else kconfiglib.Kconfig.n
+
+    return expr
 
 
 def write_menu_item(f, node, visibility):
@@ -243,7 +299,7 @@ def write_menu_item(f, node, visibility):
         # if no symbol name, use the prompt as the heading
         title = node.prompt[0]
 
-    f.write(".. _%s:\n\n" % get_link_anchor(node))
+    f.write('.. _%s:\n\n' % get_link_anchor(node))
     f.write('%s\n' % title)
     f.write(HEADING_SYMBOLS[get_heading_level(node)] * len(title))
     f.write('\n\n')
@@ -276,21 +332,70 @@ def write_menu_item(f, node, visibility):
 
         f.write('\n\n')
 
+    if isinstance(node.item, kconfiglib.Symbol):
+        def _expr_str(sc):
+            if sc.is_constant or not sc.nodes or sc.choice:
+                return '{}'.format(sc.name)
+            return ':ref:`%s%s`' % (sc.kconfig.config_prefix, sc.name)
+
+        range_strs = []
+        for low, high, cond in node.item.ranges:
+            cond = _minimize_expr(cond, visibility)
+            if cond == kconfiglib.Kconfig.n:
+                continue
+            if not isinstance(cond, tuple) and cond != kconfiglib.Kconfig.y:
+                if len(cond.nodes) > 0 and all(not visibility.visible(i) for i in cond.nodes):
+                    if not kconfiglib.expr_value(cond):
+                        continue
+            range_str = '%s- from %s to %s' % (INDENT * 2, low.str_value, high.str_value)
+            if cond != kconfiglib.Kconfig.y and not kconfiglib.expr_value(cond):
+                range_str += ' if %s' % kconfiglib.expr_str(cond, _expr_str)
+            range_strs.append(range_str)
+        if len(range_strs) > 0:
+            f.write('%sRange:\n' % INDENT)
+            f.write('\n'.join(range_strs))
+            f.write('\n\n')
+
+        default_strs = []
+        for default, cond in node.item.defaults:
+            cond = _minimize_expr(cond, visibility)
+            if cond == kconfiglib.Kconfig.n:
+                continue
+            if not isinstance(cond, tuple) and cond != kconfiglib.Kconfig.y:
+                if len(cond.nodes) > 0 and all(not visibility.visible(i) for i in cond.nodes):
+                    if not kconfiglib.expr_value(cond):
+                        continue
+            # default.type is mostly UNKNOWN so it cannot be used reliably for detecting the type
+            d = default.str_value
+            if d in ['y', 'Y']:
+                d = 'Yes (enabled)'
+            elif d in ['n', 'N']:
+                d = 'No (disabled)'
+            elif re.search(r'[^0-9a-fA-F]', d):  # simple string detection: if it not a valid number
+                d = '"%s"' % d
+            default_str = '%s- %s' % (INDENT * 2, d)
+            if cond != kconfiglib.Kconfig.y and not kconfiglib.expr_value(cond):
+                default_str += ' if %s' % kconfiglib.expr_str(cond, _expr_str)
+            default_strs.append(default_str)
+        if len(default_strs) > 0:
+            f.write('%sDefault value:\n' % INDENT)
+            f.write('\n'.join(default_strs))
+            f.write('\n\n')
+
     if is_menu:
         # enumerate links to child items
-        first = True
+        child_list = []
         child = node.list
         while child:
-            try:
-                if not is_choice(child) and child.prompt and visibility.visible(child):
-                    if first:
-                        f.write("Contains:\n\n")
-                        first = False
-                    f.write('- :ref:`%s`\n' % get_link_anchor(child))
-            except AttributeError:
-                pass
+            if not is_choice(child) and child.prompt and visibility.visible(child):
+                child_list.append((child.prompt[0], get_link_anchor(child)))
             child = child.next
-        f.write('\n')
+        if len(child_list) > 0:
+            f.write('Contains:\n\n')
+            sorted_child_list = sorted(child_list, key=lambda pair: pair[0].lower())
+            ref_list = ['- :ref:`{}`'.format(anchor) for _, anchor in sorted_child_list]
+            f.write('\n'.join(ref_list))
+            f.write('\n\n')
 
 
 if __name__ == '__main__':

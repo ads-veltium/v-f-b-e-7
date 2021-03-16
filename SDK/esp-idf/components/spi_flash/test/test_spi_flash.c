@@ -12,6 +12,19 @@
 #include "test_utils.h"
 #include "ccomp_timer.h"
 #include "esp_log.h"
+#include "esp_rom_sys.h"
+#include "esp_timer.h"
+
+#include "sdkconfig.h"
+#if CONFIG_IDF_TARGET_ESP32
+#include "esp32/rom/spi_flash.h"
+#elif CONFIG_IDF_TARGET_ESP32S2
+#include "esp32s2/rom/spi_flash.h"
+#elif CONFIG_IDF_TARGET_ESP32S3
+#include "esp32s3/rom/spi_flash.h"
+#elif CONFIG_IDF_TARGET_ESP32C3
+#include "esp32c3/rom/spi_flash.h"
+#endif
 
 struct flash_test_ctx {
     uint32_t offset;
@@ -133,7 +146,7 @@ static void IRAM_ATTR timer_isr(void* varg) {
     block_task_arg_t* arg = (block_task_arg_t*) varg;
     timer_group_clr_intr_status_in_isr(TIMER_GROUP_0, TIMER_0);
     timer_group_enable_alarm_in_isr(TIMER_GROUP_0, TIMER_0);
-    ets_delay_us(arg->delay_time_us);
+    esp_rom_delay_us(arg->delay_time_us);
     arg->repeat_count++;
 }
 
@@ -298,9 +311,9 @@ TEST_CASE("Test spi_flash read/write performance", "[spi_flash]")
     TEST_ASSERT_EQUAL_HEX8_ARRAY(data_to_write, data_read, total_len);
 
 // Data checks are disabled when PSRAM is used or in Freertos compliance check test
-#if !CONFIG_SPIRAM_SUPPORT && !CONFIG_FREERTOS_CHECK_PORT_CRITICAL_COMPLIANCE
-#  define CHECK_DATA(suffix) TEST_PERFORMANCE_GREATER_THAN(FLASH_SPEED_BYTE_PER_SEC_LEGACY_##suffix, "%d", speed_##suffix)
-#  define CHECK_ERASE(var) TEST_PERFORMANCE_GREATER_THAN(FLASH_SPEED_BYTE_PER_SEC_LEGACY_ERASE, "%d", var)
+#if !CONFIG_SPIRAM && !CONFIG_FREERTOS_CHECK_PORT_CRITICAL_COMPLIANCE
+#  define CHECK_DATA(suffix) TEST_PERFORMANCE_CCOMP_GREATER_THAN(FLASH_SPEED_BYTE_PER_SEC_LEGACY_##suffix, "%d", speed_##suffix)
+#  define CHECK_ERASE(var) TEST_PERFORMANCE_CCOMP_GREATER_THAN(FLASH_SPEED_BYTE_PER_SEC_LEGACY_ERASE, "%d", var)
 #else
 #  define CHECK_DATA(suffix) ((void)speed_##suffix)
 #  define CHECK_ERASE(var) ((void)var)
@@ -378,3 +391,31 @@ TEST_CASE("spi_flash deadlock with high priority busy-waiting task", "[spi_flash
     TEST_ASSERT_EQUAL_INT(uxTaskPriorityGet(NULL), UNITY_FREERTOS_PRIORITY);
 }
 #endif // portNUM_PROCESSORS > 1
+
+TEST_CASE("WEL is cleared after boot", "[spi_flash]")
+{
+    esp_rom_spiflash_chip_t *legacy_chip = &g_rom_flashchip;
+    uint32_t status;
+    esp_rom_spiflash_read_status(legacy_chip, &status);
+
+    TEST_ASSERT((status & 0x2) == 0);
+}
+
+#if CONFIG_ESPTOOLPY_FLASHMODE_QIO
+// ISSI chip has its QE bit on other chips' BP4, which may get cleared by accident
+TEST_CASE("rom unlock will not erase QE bit", "[spi_flash]")
+{
+    esp_rom_spiflash_chip_t *legacy_chip = &g_rom_flashchip;
+    uint32_t status;
+    printf("dev_id: %08X \n", legacy_chip->device_id);
+
+    if (((legacy_chip->device_id >> 16) & 0xff) != 0x9D) {
+        TEST_IGNORE_MESSAGE("This test is only for ISSI chips. Ignore.");
+    }
+    esp_rom_spiflash_unlock();
+    esp_rom_spiflash_read_status(legacy_chip, &status);
+    printf("status: %08x\n", status);
+
+    TEST_ASSERT(status & 0x40);
+}
+#endif

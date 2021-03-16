@@ -252,7 +252,7 @@ static esp_err_t deinit_slot(slot_info_t *slot)
     gpio_config_t config = {
         .pin_bit_mask = pin_bit_mask,
         .mode = GPIO_MODE_INPUT,
-        .intr_type = GPIO_PIN_INTR_DISABLE,
+        .intr_type = GPIO_INTR_DISABLE,
     };
     gpio_config(&config);
 
@@ -334,7 +334,7 @@ esp_err_t sdspi_host_init_device(const sdspi_device_config_t* slot_config, sdspi
 
     // Configure CS pin
     gpio_config_t io_conf = {
-        .intr_type = GPIO_PIN_INTR_DISABLE,
+        .intr_type = GPIO_INTR_DISABLE,
         .mode = GPIO_MODE_OUTPUT,
         .pin_bit_mask = 1ULL << slot_config->gpio_cs,
     };
@@ -348,7 +348,7 @@ esp_err_t sdspi_host_init_device(const sdspi_device_config_t* slot_config, sdspi
 
     // Configure CD and WP pins
     io_conf = (gpio_config_t) {
-        .intr_type = GPIO_PIN_INTR_DISABLE,
+        .intr_type = GPIO_INTR_DISABLE,
         .mode = GPIO_MODE_INPUT,
         .pin_bit_mask = 0,
         .pull_up_en = true
@@ -541,7 +541,7 @@ static esp_err_t poll_busy(slot_info_t *slot, int timeout_ms, bool polling)
     };
     esp_err_t ret;
 
-    uint64_t t_end = esp_timer_get_time() + timeout_ms * 1000;
+    int64_t t_end = esp_timer_get_time() + timeout_ms * 1000;
     int nonzero_count = 0;
     do {
         t_rx = SDSPI_MOSI_IDLE_VAL;
@@ -576,7 +576,7 @@ static esp_err_t poll_data_token(slot_info_t *slot, uint8_t *extra_ptr, size_t *
         .length = sizeof(t_rx) * 8,
     };
     esp_err_t ret;
-    uint64_t t_end = esp_timer_get_time() + timeout_ms * 1000;
+    int64_t t_end = esp_timer_get_time() + timeout_ms * 1000;
     do {
         memset(t_rx, SDSPI_MOSI_IDLE_VAL, sizeof(t_rx));
         ret = spi_device_polling_transmit(slot->spi_handle, &t);
@@ -584,7 +584,7 @@ static esp_err_t poll_data_token(slot_info_t *slot, uint8_t *extra_ptr, size_t *
             return ret;
         }
         bool found = false;
-        for (int byte_idx = 0; byte_idx < sizeof(t_rx); byte_idx++) {
+        for (size_t byte_idx = 0; byte_idx < sizeof(t_rx); byte_idx++) {
             uint8_t rd_data = t_rx[byte_idx];
             if (rd_data == TOKEN_BLOCK_START) {
                 found = true;
@@ -704,7 +704,7 @@ static esp_err_t start_command_read_blocks(slot_info_t *slot, sdspi_hw_cmd_t *cm
         const uint8_t* extra_data_ptr = NULL;
         bool need_poll = true;
 
-        for (int i = 0; i < pre_scan_data_size; ++i) {
+        for (size_t i = 0; i < pre_scan_data_size; ++i) {
             if (pre_scan_data_ptr[i] == TOKEN_BLOCK_START) {
                 extra_data_size = pre_scan_data_size - i - 1;
                 extra_data_ptr = pre_scan_data_ptr + i + 1;
@@ -993,7 +993,7 @@ esp_err_t sdspi_host_init_slot(int slot, const sdspi_slot_config_t* slot_config)
     if (ret != ESP_OK) {
         goto cleanup;
     }
-    if (sdspi_handle != host_id) {
+    if (sdspi_handle != (int)host_id) {
         ESP_LOGE(TAG, "The deprecated sdspi_host_init_slot should be called before all other devices on the specified bus.");
         sdspi_host_remove_device(sdspi_handle);
         ret = ESP_ERR_INVALID_STATE;

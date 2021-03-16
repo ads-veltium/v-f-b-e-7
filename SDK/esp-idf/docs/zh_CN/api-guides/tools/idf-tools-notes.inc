@@ -14,6 +14,16 @@
 
 ---
 
+.. tool-xtensa-esp32s3-elf-notes
+
+
+---
+
+.. tool-riscv32-esp-elf-notes
+
+
+---
+
 .. tool-esp32ulp-elf-notes
 
 
@@ -52,6 +62,16 @@ On Linux and macOS, it is recommended to install ninja using the OS package mana
 ---
 
 .. tool-dfu-util-notes
+
+
+---
+
+.. tool-idf-python-notes
+
+
+---
+
+.. tool-idf-python-wheels-notes
 
 
 ---

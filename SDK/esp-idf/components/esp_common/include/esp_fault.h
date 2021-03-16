@@ -13,6 +13,7 @@
 // limitations under the License.
 #include "sdkconfig.h"
 #include "soc/rtc_cntl_reg.h"
+#include "esp_rom_sys.h"
 
 #pragma once
 
@@ -57,6 +58,11 @@ extern "C" {
         if(!(CONDITION)) _ESP_FAULT_RESET();            \
 } while(0)
 
+#ifndef CONFIG_IDF_TARGET_ARCH_RISCV
+#define _ESP_FAULT_ILLEGAL_INSTRUCTION asm volatile("ill.n; ill.n; ill.n; ill.n; ill.n; ill.n; ill.n;")
+#else
+#define _ESP_FAULT_ILLEGAL_INSTRUCTION asm volatile("unimp; unimp; unimp; unimp; unimp;")
+#endif
 
 // Uncomment this macro to get debug output if ESP_FAULT_ASSERT() fails
 //
@@ -74,16 +80,16 @@ extern "C" {
 
 #define _ESP_FAULT_RESET()  do {                                \
         REG_WRITE(RTC_CNTL_OPTIONS0_REG, RTC_CNTL_SW_SYS_RST);  \
-        asm volatile("ill; ill; ill;");                         \
+        _ESP_FAULT_ILLEGAL_INSTRUCTION;                         \
     } while(0)
 
 #else // ESP_FAULT_ASSERT_DEBUG
 
 #warning "Enabling ESP_FAULT_ASSERT_DEBUG makes ESP_FAULT_ASSERT() less effective"
 
-#define _ESP_FAULT_RESET()  do {                                    \
-        ets_printf("ESP_FAULT_ASSERT %s:%d\n", __FILE__, __LINE__); \
-        asm volatile("ill;");                                       \
+#define _ESP_FAULT_RESET()  do {                                        \
+        esp_rom_printf("ESP_FAULT_ASSERT %s:%d\n", __FILE__, __LINE__); \
+        _ESP_FAULT_ILLEGAL_INSTRUCTION;                                 \
     } while(0)
 
 #endif // ESP_FAULT_ASSERT_DEBUG

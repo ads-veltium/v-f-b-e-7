@@ -41,6 +41,7 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#include <stdbool.h>
 #include "esp_err.h"
 
 #ifdef __cplusplus
@@ -81,6 +82,7 @@ typedef struct {
     void* arg;                      //!< Argument to pass to the callback
     esp_timer_dispatch_t dispatch_method;   //!< Call the callback from task or from ISR
     const char* name;               //!< Timer name, used in esp_timer_dump function
+    bool skip_unhandled_events;     //!< Skip unhandled events for periodic timers
 } esp_timer_create_args_t;
 
 /**
@@ -178,7 +180,7 @@ esp_err_t esp_timer_stop(esp_timer_handle_t timer);
  * @param timer timer handle allocated using esp_timer_create
  * @return
  *      - ESP_OK on success
- *      - ESP_ERR_INVALID_STATE if the timer is not running
+ *      - ESP_ERR_INVALID_STATE if the timer is running
  */
 esp_err_t esp_timer_delete(esp_timer_handle_t timer);
 
@@ -229,4 +231,3 @@ esp_err_t esp_timer_dump(FILE* stream);
 #ifdef __cplusplus
 }
 #endif
-
