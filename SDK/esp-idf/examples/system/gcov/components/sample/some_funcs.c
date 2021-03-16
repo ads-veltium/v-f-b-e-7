@@ -7,3 +7,4 @@ void some_dummy_func(void)
     printf("some_dummy_func: Counter = %d\n", i++);
     i++;
 }
+

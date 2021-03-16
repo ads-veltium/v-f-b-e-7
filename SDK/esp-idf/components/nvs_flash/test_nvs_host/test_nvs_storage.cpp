@@ -18,8 +18,6 @@
 #include "nvs_partition_manager.hpp"
 #include "spi_flash_emulation.h"
 
-#include "test_fixtures.hpp"
-
 #include <iostream>
 
 using namespace std;
@@ -29,9 +27,9 @@ TEST_CASE("Storage iterator recognizes blob with VerOffset::VER_1_OFFSET", "[nvs
 {
     const uint32_t NVS_FLASH_SECTOR = 6;
     const uint32_t NVS_FLASH_SECTOR_COUNT_MIN = 3;
-    PartitionEmulationFixture f(0, 10, "test");
+    SpiFlashEmulator emu(10);
 
-    REQUIRE(NVSPartitionManager::get_instance()->init_custom(&f.part, NVS_FLASH_SECTOR, NVS_FLASH_SECTOR_COUNT_MIN)
+    REQUIRE(NVSPartitionManager::get_instance()->init_custom("test", NVS_FLASH_SECTOR, NVS_FLASH_SECTOR_COUNT_MIN)
             == ESP_OK);
 
     uint8_t blob [] = {0x0, 0x1, 0x2, 0x3};
@@ -58,3 +56,4 @@ TEST_CASE("Storage iterator recognizes blob with VerOffset::VER_1_OFFSET", "[nvs
 
     REQUIRE(NVSPartitionManager::get_instance()->deinit_partition("test") == ESP_OK);
 }
+

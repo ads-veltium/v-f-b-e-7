@@ -30,7 +30,7 @@
 #include <cinttypes>
 #include <memory>
 
-#include "llhttp.h"
+#include "http-parser/http_parser.h"
 
 #include "shrpx_upstream.h"
 #include "memchunk.h"
@@ -100,7 +100,7 @@ public:
 
 private:
   ClientHandler *handler_;
-  llhttp_t htp_;
+  http_parser htp_;
   size_t current_header_length_;
   std::unique_ptr<Downstream> downstream_;
   IOControl ioctrl_;

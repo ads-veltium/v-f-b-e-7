@@ -22,10 +22,7 @@ class JunitTestsReport < Plugin
   def post_build
     @results_list.each_key do |context|
       results = @ceedling[:plugin_reportinator].assemble_test_results(@results_list[context])
-
-      artifact_filename = @ceedling[:configurator].project_config_hash[:junit_tests_report_artifact_filename] || 'report.xml'
-      artifact_fullpath = @ceedling[:configurator].project_config_hash[:junit_tests_report_path] || File.join(PROJECT_BUILD_ARTIFACTS_ROOT, context.to_s)
-      file_path = File.join(artifact_fullpath, artifact_filename)
+      file_path = File.join( PROJECT_BUILD_ARTIFACTS_ROOT, context.to_s, 'report.xml' )
 
       @ceedling[:file_wrapper].open( file_path, 'w' ) do |f|
         @testsuite_counter = 0
@@ -93,14 +90,7 @@ class JunitTestsReport < Plugin
 
     unless suite[:stdout].empty?
       stream.puts('    <system-out>')
-      suite[:stdout].each do |line|
-        line.gsub!(/&/, '&amp;')
-        line.gsub!(/</, '&lt;')
-        line.gsub!(/>/, '&gt;')
-        line.gsub!(/"/, '&quot;')
-        line.gsub!(/'/, '&apos;')
-        stream.puts(line)
-      end
+      suite[:stdout].each{|line| stream.puts line }
       stream.puts('    </system-out>')
     end
 
@@ -108,7 +98,6 @@ class JunitTestsReport < Plugin
   end
 
   def write_test( test, stream )
-    test[:test].gsub!('"', '&quot;')
     case test[:result]
     when :success
       stream.puts('    <testcase name="%<test>s" />' % test)

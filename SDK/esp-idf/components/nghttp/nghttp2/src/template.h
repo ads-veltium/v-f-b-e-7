@@ -36,9 +36,24 @@
 #include <typeinfo>
 #include <algorithm>
 #include <ostream>
-#include <utility>
 
 namespace nghttp2 {
+
+#if __cplusplus > 201103L
+using std::make_unique;
+#else  // __cplusplus <= 201103L
+template <typename T, typename... U>
+typename std::enable_if<!std::is_array<T>::value, std::unique_ptr<T>>::type
+make_unique(U &&... u) {
+  return std::unique_ptr<T>(new T(std::forward<U>(u)...));
+}
+
+template <typename T>
+typename std::enable_if<std::is_array<T>::value, std::unique_ptr<T>>::type
+make_unique(size_t size) {
+  return std::unique_ptr<T>(new typename std::remove_extent<T>::type[size]());
+}
+#endif // __cplusplus <= 201103L
 
 // std::forward is constexpr since C++14
 template <typename... T>
@@ -90,17 +105,21 @@ template <typename T> struct DList {
   DList &operator=(const DList &) = delete;
 
   DList(DList &&other) noexcept
-      : head{std::exchange(other.head, nullptr)},
-        tail{std::exchange(other.tail, nullptr)},
-        len{std::exchange(other.len, 0)} {}
+      : head(other.head), tail(other.tail), len(other.len) {
+    other.head = other.tail = nullptr;
+    other.len = 0;
+  }
 
   DList &operator=(DList &&other) noexcept {
     if (this == &other) {
       return *this;
     }
-    head = std::exchange(other.head, nullptr);
-    tail = std::exchange(other.tail, nullptr);
-    len = std::exchange(other.len, 0);
+    head = other.head;
+    tail = other.tail;
+    len = other.len;
+
+    other.head = other.tail = nullptr;
+    other.len = 0;
 
     return *this;
   }
@@ -182,7 +201,7 @@ constexpr double operator"" _ms(unsigned long long ms) { return ms / 1000.; }
 // Returns a copy of NULL-terminated string [first, last).
 template <typename InputIt>
 std::unique_ptr<char[]> strcopy(InputIt first, InputIt last) {
-  auto res = std::make_unique<char[]>(last - first + 1);
+  auto res = make_unique<char[]>(last - first + 1);
   *std::copy(first, last, res.get()) = '\0';
   return res;
 }
@@ -247,7 +266,10 @@ public:
   ImmutableString(const ImmutableString &other)
       : len(other.len), base(copystr(std::begin(other), std::end(other))) {}
   ImmutableString(ImmutableString &&other) noexcept
-      : len{std::exchange(other.len, 0)}, base{std::exchange(other.base, "")} {}
+      : len(other.len), base(other.base) {
+    other.len = 0;
+    other.base = "";
+  }
   ~ImmutableString() {
     if (len) {
       delete[] base;
@@ -272,8 +294,10 @@ public:
     if (len) {
       delete[] base;
     }
-    len = std::exchange(other.len, 0);
-    base = std::exchange(other.base, "");
+    len = other.len;
+    base = other.base;
+    other.len = 0;
+    other.base = "";
     return *this;
   }
 
@@ -529,20 +553,5 @@ inline int run_app(std::function<int(int, char **)> app, int argc,
 }
 
 } // namespace nghttp2
-
-namespace std {
-template <> struct hash<nghttp2::StringRef> {
-  std::size_t operator()(const nghttp2::StringRef &s) const noexcept {
-    // 32 bit FNV-1a:
-    // https://tools.ietf.org/html/draft-eastlake-fnv-16#section-6.1.1
-    uint32_t h = 2166136261u;
-    for (auto c : s) {
-      h ^= static_cast<uint8_t>(c);
-      h += (h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24);
-    }
-    return h;
-  }
-};
-} // namespace std
 
 #endif // TEMPLATE_H

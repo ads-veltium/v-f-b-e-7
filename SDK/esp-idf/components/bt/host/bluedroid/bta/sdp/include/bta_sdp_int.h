@@ -109,3 +109,4 @@ extern void bta_sdp_remove_record(tBTA_SDP_MSG *p_data);
 #endif  ///SDP_INCLUDED == TRUE
 
 #endif /* BTA_SDP_INT_H */
+

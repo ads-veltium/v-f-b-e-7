@@ -45,3 +45,4 @@ hf_msg_prs_err_t hf_msg_parse(char c, hf_msg_prs_cb_t *prs);
 void hf_msg_show_usage(void);
 
 #endif /* __APP_HF_MSG_PRS_H__*/
+

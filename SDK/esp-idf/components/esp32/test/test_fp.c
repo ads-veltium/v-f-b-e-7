@@ -267,3 +267,4 @@ TEST_CASE("floating point square root performance", "[fp]")
 
     TEST_PERFORMANCE_LESS_THAN(CYCLES_PER_SQRT, "%d cycles", cycles);
 }
+

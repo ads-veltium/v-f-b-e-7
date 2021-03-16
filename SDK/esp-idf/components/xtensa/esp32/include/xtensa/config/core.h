@@ -1413,3 +1413,4 @@ extern const unsigned int  XCJOIN(Xthal_cp_mask_,XCHAL_CP7_IDENT);
 #endif
 
 #endif /*XTENSA_CONFIG_CORE_H*/
+

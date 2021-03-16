@@ -15,7 +15,6 @@
 #include "esp_event_internal.h"
 
 #include "esp_heap_caps.h"
-#include "esp_timer.h"
 
 #include "sdkconfig.h"
 #include "unity.h"

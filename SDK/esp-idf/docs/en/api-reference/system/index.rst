@@ -6,7 +6,6 @@ System API
 
     App image format <app_image_format>
     Application Level Tracing <app_trace>
-    :esp32s2: Async Memory Copy <async_memcpy>
     Console Component <console>
     eFuse Manager <efuse>
     Error Codes and Helper Functions <esp_err>
@@ -30,7 +29,6 @@ System API
     Sleep Modes <sleep_modes>
     Watchdogs <wdts>
     System Time <system_time>
-    Internal and Unstable API <internal-unstable>
 
 
 Code examples for this API section are provided in the :example:`system` directory of ESP-IDF examples.

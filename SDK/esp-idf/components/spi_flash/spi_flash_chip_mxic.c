@@ -35,27 +35,13 @@ esp_err_t spi_flash_chip_issi_get_io_mode(esp_flash_t *chip, esp_flash_io_mode_t
 // Use the same implementation as ISSI chips
 #define spi_flash_chip_mxic_set_io_mode spi_flash_chip_issi_set_io_mode
 #define spi_flash_chip_mxic_get_io_mode spi_flash_chip_issi_get_io_mode
-#define spi_flash_chip_mxic_read_reg        spi_flash_chip_generic_read_reg
 
 static const char chip_name[] = "mxic";
-
-esp_err_t spi_flash_chip_mxic_suspend_cmd_conf(esp_flash_t *chip)
-{
-    spi_flash_sus_cmd_conf sus_conf = {
-        .sus_mask = 0x06,
-        .cmd_rdsr = CMD_RDSCUR,
-        .sus_cmd = CMD_SUSPEND,
-        .res_cmd = CMD_RESUME,
-    };
-
-    return chip->host->driver->sus_setup(chip->host, &sus_conf);
-}
 
 // The mxic chip can use the functions for generic chips except from set read mode and probe,
 // So we only replace these two functions.
 const spi_flash_chip_t esp_flash_chip_mxic = {
     .name = chip_name,
-    .timeout = &spi_flash_chip_generic_timeout,
     .probe = spi_flash_chip_mxic_probe,
     .reset = spi_flash_chip_generic_reset,
     .detect_size = spi_flash_chip_generic_detect_size,
@@ -68,6 +54,7 @@ const spi_flash_chip_t esp_flash_chip_mxic = {
     .get_chip_write_protect = spi_flash_chip_generic_get_write_protect,
     .set_chip_write_protect = spi_flash_chip_generic_set_write_protect,
 
+    // TODO support protected regions on MXIC flash
     .num_protectable_regions = 0,
     .protectable_regions = NULL,
     .get_protected_regions = NULL,
@@ -82,8 +69,4 @@ const spi_flash_chip_t esp_flash_chip_mxic = {
     .wait_idle = spi_flash_chip_generic_wait_idle,
     .set_io_mode = spi_flash_chip_mxic_set_io_mode,
     .get_io_mode = spi_flash_chip_mxic_get_io_mode,
-
-    .read_reg = spi_flash_chip_mxic_read_reg,
-    .yield = spi_flash_chip_generic_yield,
-    .sus_setup = spi_flash_chip_mxic_suspend_cmd_conf,
 };

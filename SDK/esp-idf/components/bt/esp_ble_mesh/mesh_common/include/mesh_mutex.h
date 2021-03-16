@@ -55,3 +55,4 @@ void bt_mesh_mutex_deinit(void);
 #endif
 
 #endif /* _BLE_MESH_MUTEX_H_ */
+

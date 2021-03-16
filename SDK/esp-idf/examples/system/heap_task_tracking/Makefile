@@ -6,3 +6,4 @@
 PROJECT_NAME := heap_task_tracking
 
 include $(IDF_PATH)/make/project.mk
+

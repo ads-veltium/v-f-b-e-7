@@ -765,7 +765,6 @@ typedef struct {
     FLOW_SPEC flow;
     UINT16 handle;
     UINT8 status;
-    BD_ADDR     rem_bda;
 } tBTM_QOS_SETUP_CMPL;
 
 

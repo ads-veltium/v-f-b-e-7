@@ -79,7 +79,6 @@ void btm_init (void)
     btm_ble_lock_init();
     btm_ble_sem_init();
 #endif
-    btm_sec_dev_init();
 }
 
 
@@ -96,8 +95,6 @@ void btm_free(void)
 {
     fixed_queue_free(btm_cb.page_queue, osi_free_func);
     fixed_queue_free(btm_cb.sec_pending_q, osi_free_func);
-    btm_acl_free();
-    btm_sec_dev_free();
 #if BTM_DYNAMIC_MEMORY
     FREE_AND_RESET(btm_cb_ptr);
 #endif

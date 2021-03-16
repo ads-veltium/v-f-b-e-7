@@ -25,21 +25,21 @@
 #include "shrpx_config.h"
 
 #ifdef HAVE_PWD_H
-#  include <pwd.h>
+#include <pwd.h>
 #endif // HAVE_PWD_H
 #ifdef HAVE_NETDB_H
-#  include <netdb.h>
+#include <netdb.h>
 #endif // HAVE_NETDB_H
 #ifdef HAVE_SYSLOG_H
-#  include <syslog.h>
+#include <syslog.h>
 #endif // HAVE_SYSLOG_H
 #include <sys/types.h>
 #include <sys/stat.h>
 #ifdef HAVE_FCNTL_H
-#  include <fcntl.h>
+#include <fcntl.h>
 #endif // HAVE_FCNTL_H
 #ifdef HAVE_UNISTD_H
-#  include <unistd.h>
+#include <unistd.h>
 #endif // HAVE_UNISTD_H
 #include <dirent.h>
 
@@ -47,18 +47,14 @@
 #include <cerrno>
 #include <limits>
 #include <fstream>
-#include <unordered_map>
 
 #include <nghttp2/nghttp2.h>
 
-#include "url-parser/url_parser.h"
+#include "http-parser/http_parser.h"
 
 #include "shrpx_log.h"
 #include "shrpx_tls.h"
 #include "shrpx_http.h"
-#ifdef HAVE_MRUBY
-#  include "shrpx_mruby.h"
-#endif // HAVE_MRUBY
 #include "util.h"
 #include "base64.h"
 #include "ssl_compat.h"
@@ -161,7 +157,7 @@ bool is_secure(const StringRef &filename) {
 std::unique_ptr<TicketKeys>
 read_tls_ticket_key_file(const std::vector<StringRef> &files,
                          const EVP_CIPHER *cipher, const EVP_MD *hmac) {
-  auto ticket_keys = std::make_unique<TicketKeys>();
+  auto ticket_keys = make_unique<TicketKeys>();
   auto &keys = ticket_keys->keys;
   keys.resize(files.size());
   auto enc_keylen = EVP_CIPHER_key_length(cipher);
@@ -380,7 +376,7 @@ LogFragmentType log_var_lookup_token(const char *name, size_t namelen) {
     switch (name[2]) {
     case 'd':
       if (util::strieq_l("pi", name, 2)) {
-        return LogFragmentType::PID;
+        return SHRPX_LOGF_PID;
       }
       break;
     }
@@ -389,7 +385,7 @@ LogFragmentType log_var_lookup_token(const char *name, size_t namelen) {
     switch (name[3]) {
     case 'n':
       if (util::strieq_l("alp", name, 3)) {
-        return LogFragmentType::ALPN;
+        return SHRPX_LOGF_ALPN;
       }
       break;
     }
@@ -398,7 +394,7 @@ LogFragmentType log_var_lookup_token(const char *name, size_t namelen) {
     switch (name[5]) {
     case 's':
       if (util::strieq_l("statu", name, 5)) {
-        return LogFragmentType::STATUS;
+        return SHRPX_LOGF_STATUS;
       }
       break;
     }
@@ -407,12 +403,12 @@ LogFragmentType log_var_lookup_token(const char *name, size_t namelen) {
     switch (name[6]) {
     case 'i':
       if (util::strieq_l("tls_sn", name, 6)) {
-        return LogFragmentType::TLS_SNI;
+        return SHRPX_LOGF_TLS_SNI;
       }
       break;
     case 't':
       if (util::strieq_l("reques", name, 6)) {
-        return LogFragmentType::REQUEST;
+        return SHRPX_LOGF_REQUEST;
       }
       break;
     }
@@ -421,15 +417,15 @@ LogFragmentType log_var_lookup_token(const char *name, size_t namelen) {
     switch (name[9]) {
     case 'l':
       if (util::strieq_l("time_loca", name, 9)) {
-        return LogFragmentType::TIME_LOCAL;
+        return SHRPX_LOGF_TIME_LOCAL;
       }
       break;
     case 'r':
       if (util::strieq_l("ssl_ciphe", name, 9)) {
-        return LogFragmentType::SSL_CIPHER;
+        return SHRPX_LOGF_SSL_CIPHER;
       }
       if (util::strieq_l("tls_ciphe", name, 9)) {
-        return LogFragmentType::TLS_CIPHER;
+        return SHRPX_LOGF_TLS_CIPHER;
       }
       break;
     }
@@ -438,15 +434,15 @@ LogFragmentType log_var_lookup_token(const char *name, size_t namelen) {
     switch (name[10]) {
     case 'r':
       if (util::strieq_l("remote_add", name, 10)) {
-        return LogFragmentType::REMOTE_ADDR;
+        return SHRPX_LOGF_REMOTE_ADDR;
       }
       break;
     case 't':
       if (util::strieq_l("remote_por", name, 10)) {
-        return LogFragmentType::REMOTE_PORT;
+        return SHRPX_LOGF_REMOTE_PORT;
       }
       if (util::strieq_l("server_por", name, 10)) {
-        return LogFragmentType::SERVER_PORT;
+        return SHRPX_LOGF_SERVER_PORT;
       }
       break;
     }
@@ -455,28 +451,28 @@ LogFragmentType log_var_lookup_token(const char *name, size_t namelen) {
     switch (name[11]) {
     case '1':
       if (util::strieq_l("time_iso860", name, 11)) {
-        return LogFragmentType::TIME_ISO8601;
+        return SHRPX_LOGF_TIME_ISO8601;
       }
       break;
     case 'e':
       if (util::strieq_l("request_tim", name, 11)) {
-        return LogFragmentType::REQUEST_TIME;
+        return SHRPX_LOGF_REQUEST_TIME;
       }
       break;
     case 'l':
       if (util::strieq_l("ssl_protoco", name, 11)) {
-        return LogFragmentType::SSL_PROTOCOL;
+        return SHRPX_LOGF_SSL_PROTOCOL;
       }
       if (util::strieq_l("tls_protoco", name, 11)) {
-        return LogFragmentType::TLS_PROTOCOL;
+        return SHRPX_LOGF_TLS_PROTOCOL;
       }
       break;
     case 't':
       if (util::strieq_l("backend_hos", name, 11)) {
-        return LogFragmentType::BACKEND_HOST;
+        return SHRPX_LOGF_BACKEND_HOST;
       }
       if (util::strieq_l("backend_por", name, 11)) {
-        return LogFragmentType::BACKEND_PORT;
+        return SHRPX_LOGF_BACKEND_PORT;
       }
       break;
     }
@@ -485,10 +481,10 @@ LogFragmentType log_var_lookup_token(const char *name, size_t namelen) {
     switch (name[13]) {
     case 'd':
       if (util::strieq_l("ssl_session_i", name, 13)) {
-        return LogFragmentType::SSL_SESSION_ID;
+        return SHRPX_LOGF_SSL_SESSION_ID;
       }
       if (util::strieq_l("tls_session_i", name, 13)) {
-        return LogFragmentType::TLS_SESSION_ID;
+        return SHRPX_LOGF_TLS_SESSION_ID;
       }
       break;
     }
@@ -497,16 +493,7 @@ LogFragmentType log_var_lookup_token(const char *name, size_t namelen) {
     switch (name[14]) {
     case 't':
       if (util::strieq_l("body_bytes_sen", name, 14)) {
-        return LogFragmentType::BODY_BYTES_SENT;
-      }
-      break;
-    }
-    break;
-  case 17:
-    switch (name[16]) {
-    case 'l':
-      if (util::strieq_l("tls_client_seria", name, 16)) {
-        return LogFragmentType::TLS_CLIENT_SERIAL;
+        return SHRPX_LOGF_BODY_BYTES_SENT;
       }
       break;
     }
@@ -515,52 +502,16 @@ LogFragmentType log_var_lookup_token(const char *name, size_t namelen) {
     switch (name[17]) {
     case 'd':
       if (util::strieq_l("ssl_session_reuse", name, 17)) {
-        return LogFragmentType::SSL_SESSION_REUSED;
+        return SHRPX_LOGF_SSL_SESSION_REUSED;
       }
       if (util::strieq_l("tls_session_reuse", name, 17)) {
-        return LogFragmentType::TLS_SESSION_REUSED;
-      }
-      break;
-    }
-    break;
-  case 22:
-    switch (name[21]) {
-    case 'e':
-      if (util::strieq_l("tls_client_issuer_nam", name, 21)) {
-        return LogFragmentType::TLS_CLIENT_ISSUER_NAME;
-      }
-      break;
-    }
-    break;
-  case 23:
-    switch (name[22]) {
-    case 'e':
-      if (util::strieq_l("tls_client_subject_nam", name, 22)) {
-        return LogFragmentType::TLS_CLIENT_SUBJECT_NAME;
-      }
-      break;
-    }
-    break;
-  case 27:
-    switch (name[26]) {
-    case '1':
-      if (util::strieq_l("tls_client_fingerprint_sha", name, 26)) {
-        return LogFragmentType::TLS_CLIENT_FINGERPRINT_SHA1;
-      }
-      break;
-    }
-    break;
-  case 29:
-    switch (name[28]) {
-    case '6':
-      if (util::strieq_l("tls_client_fingerprint_sha25", name, 28)) {
-        return LogFragmentType::TLS_CLIENT_FINGERPRINT_SHA256;
+        return SHRPX_LOGF_TLS_SESSION_REUSED;
       }
       break;
     }
     break;
   }
-  return LogFragmentType::NONE;
+  return SHRPX_LOGF_NONE;
 }
 } // namespace
 
@@ -614,16 +565,16 @@ std::vector<LogFragment> parse_log_format(BlockAllocator &balloc,
 
     auto type = log_var_lookup_token(var_name, var_namelen);
 
-    if (type == LogFragmentType::NONE) {
+    if (type == SHRPX_LOGF_NONE) {
       if (util::istarts_with_l(StringRef{var_name, var_namelen}, "http_")) {
         if (util::streq_l("host", StringRef{var_name + str_size("http_"),
                                             var_namelen - str_size("http_")})) {
           // Special handling of host header field.  We will use
           // :authority header field if host header is missing.  This
           // is a typical case in HTTP/2.
-          type = LogFragmentType::AUTHORITY;
+          type = SHRPX_LOGF_AUTHORITY;
         } else {
-          type = LogFragmentType::HTTP;
+          type = SHRPX_LOGF_HTTP;
           value = var_name + str_size("http_");
         }
       } else {
@@ -635,7 +586,7 @@ std::vector<LogFragment> parse_log_format(BlockAllocator &balloc,
 
     if (literal_start < var_start) {
       res.emplace_back(
-          LogFragmentType::LITERAL,
+          SHRPX_LOGF_LITERAL,
           make_string_ref(balloc, StringRef{literal_start, var_start}));
     }
 
@@ -662,7 +613,7 @@ std::vector<LogFragment> parse_log_format(BlockAllocator &balloc,
   }
 
   if (literal_start != eop) {
-    res.emplace_back(LogFragmentType::LITERAL,
+    res.emplace_back(SHRPX_LOGF_LITERAL,
                      make_string_ref(balloc, StringRef{literal_start, eop}));
   }
 
@@ -757,7 +708,7 @@ int parse_memcached_connection_params(MemcachedConnectionParams &out,
 } // namespace
 
 struct UpstreamParams {
-  UpstreamAltMode alt_mode;
+  int alt_mode;
   bool tls;
   bool sni_fwd;
   bool proxyproto;
@@ -780,19 +731,17 @@ int parse_upstream_params(UpstreamParams &out, const StringRef &src_params) {
     } else if (util::strieq_l("no-tls", param)) {
       out.tls = false;
     } else if (util::strieq_l("api", param)) {
-      if (out.alt_mode != UpstreamAltMode::NONE &&
-          out.alt_mode != UpstreamAltMode::API) {
+      if (out.alt_mode && out.alt_mode != ALTMODE_API) {
         LOG(ERROR) << "frontend: api and healthmon are mutually exclusive";
         return -1;
       }
-      out.alt_mode = UpstreamAltMode::API;
+      out.alt_mode = ALTMODE_API;
     } else if (util::strieq_l("healthmon", param)) {
-      if (out.alt_mode != UpstreamAltMode::NONE &&
-          out.alt_mode != UpstreamAltMode::HEALTHMON) {
+      if (out.alt_mode && out.alt_mode != ALTMODE_HEALTHMON) {
         LOG(ERROR) << "frontend: api and healthmon are mutually exclusive";
         return -1;
       }
-      out.alt_mode = UpstreamAltMode::HEALTHMON;
+      out.alt_mode = ALTMODE_HEALTHMON;
     } else if (util::strieq_l("proxyproto", param)) {
       out.proxyproto = true;
     } else if (!param.empty()) {
@@ -813,37 +762,14 @@ int parse_upstream_params(UpstreamParams &out, const StringRef &src_params) {
 
 struct DownstreamParams {
   StringRef sni;
-  StringRef mruby;
-  StringRef group;
-  AffinityConfig affinity;
-  ev_tstamp read_timeout;
-  ev_tstamp write_timeout;
   size_t fall;
   size_t rise;
-  uint32_t weight;
-  uint32_t group_weight;
-  Proto proto;
+  shrpx_proto proto;
+  shrpx_session_affinity affinity;
   bool tls;
   bool dns;
   bool redirect_if_not_tls;
-  bool upgrade_scheme;
 };
-
-namespace {
-// Parses |value| of parameter named |name| as duration.  This
-// function returns 0 if it succeeds and the parsed value is assigned
-// to |dest|, or -1.
-int parse_downstream_param_duration(ev_tstamp &dest, const StringRef &name,
-                                    const StringRef &value) {
-  auto t = util::parse_duration_with_unit(value);
-  if (t == std::numeric_limits<double>::infinity()) {
-    LOG(ERROR) << "backend: " << name << ": bad value: '" << value << "'";
-    return -1;
-  }
-  dest = t;
-  return 0;
-}
-} // namespace
 
 namespace {
 // Parses downstream configuration parameter |src_params|, and stores
@@ -864,10 +790,10 @@ int parse_downstream_params(DownstreamParams &out,
       }
 
       if (util::streq_l("h2", std::begin(protostr), protostr.size())) {
-        out.proto = Proto::HTTP2;
+        out.proto = PROTO_HTTP2;
       } else if (util::streq_l("http/1.1", std::begin(protostr),
                                protostr.size())) {
-        out.proto = Proto::HTTP1;
+        out.proto = PROTO_HTTP1;
       } else {
         LOG(ERROR) << "backend: proto: unknown protocol " << protostr;
         return -1;
@@ -909,98 +835,17 @@ int parse_downstream_params(DownstreamParams &out,
     } else if (util::istarts_with_l(param, "affinity=")) {
       auto valstr = StringRef{first + str_size("affinity="), end};
       if (util::strieq_l("none", valstr)) {
-        out.affinity.type = SessionAffinity::NONE;
+        out.affinity = AFFINITY_NONE;
       } else if (util::strieq_l("ip", valstr)) {
-        out.affinity.type = SessionAffinity::IP;
-      } else if (util::strieq_l("cookie", valstr)) {
-        out.affinity.type = SessionAffinity::COOKIE;
+        out.affinity = AFFINITY_IP;
       } else {
-        LOG(ERROR)
-            << "backend: affinity: value must be one of none, ip, and cookie";
-        return -1;
-      }
-    } else if (util::istarts_with_l(param, "affinity-cookie-name=")) {
-      auto val = StringRef{first + str_size("affinity-cookie-name="), end};
-      if (val.empty()) {
-        LOG(ERROR)
-            << "backend: affinity-cookie-name: non empty string is expected";
-        return -1;
-      }
-      out.affinity.cookie.name = val;
-    } else if (util::istarts_with_l(param, "affinity-cookie-path=")) {
-      out.affinity.cookie.path =
-          StringRef{first + str_size("affinity-cookie-path="), end};
-    } else if (util::istarts_with_l(param, "affinity-cookie-secure=")) {
-      auto valstr = StringRef{first + str_size("affinity-cookie-secure="), end};
-      if (util::strieq_l("auto", valstr)) {
-        out.affinity.cookie.secure = SessionAffinityCookieSecure::AUTO;
-      } else if (util::strieq_l("yes", valstr)) {
-        out.affinity.cookie.secure = SessionAffinityCookieSecure::YES;
-      } else if (util::strieq_l("no", valstr)) {
-        out.affinity.cookie.secure = SessionAffinityCookieSecure::NO;
-      } else {
-        LOG(ERROR) << "backend: affinity-cookie-secure: value must be one of "
-                      "auto, yes, and no";
+        LOG(ERROR) << "backend: affinity: value must be either none or ip";
         return -1;
       }
     } else if (util::strieq_l("dns", param)) {
       out.dns = true;
     } else if (util::strieq_l("redirect-if-not-tls", param)) {
       out.redirect_if_not_tls = true;
-    } else if (util::strieq_l("upgrade-scheme", param)) {
-      out.upgrade_scheme = true;
-    } else if (util::istarts_with_l(param, "mruby=")) {
-      auto valstr = StringRef{first + str_size("mruby="), end};
-      out.mruby = valstr;
-    } else if (util::istarts_with_l(param, "read-timeout=")) {
-      if (parse_downstream_param_duration(
-              out.read_timeout, StringRef::from_lit("read-timeout"),
-              StringRef{first + str_size("read-timeout="), end}) == -1) {
-        return -1;
-      }
-    } else if (util::istarts_with_l(param, "write-timeout=")) {
-      if (parse_downstream_param_duration(
-              out.write_timeout, StringRef::from_lit("write-timeout"),
-              StringRef{first + str_size("write-timeout="), end}) == -1) {
-        return -1;
-      }
-    } else if (util::istarts_with_l(param, "weight=")) {
-      auto valstr = StringRef{first + str_size("weight="), end};
-      if (valstr.empty()) {
-        LOG(ERROR)
-            << "backend: weight: non-negative integer [1, 256] is expected";
-        return -1;
-      }
-
-      auto n = util::parse_uint(valstr);
-      if (n < 1 || n > 256) {
-        LOG(ERROR)
-            << "backend: weight: non-negative integer [1, 256] is expected";
-        return -1;
-      }
-      out.weight = n;
-    } else if (util::istarts_with_l(param, "group=")) {
-      auto valstr = StringRef{first + str_size("group="), end};
-      if (valstr.empty()) {
-        LOG(ERROR) << "backend: group: empty string is not allowed";
-        return -1;
-      }
-      out.group = valstr;
-    } else if (util::istarts_with_l(param, "group-weight=")) {
-      auto valstr = StringRef{first + str_size("group-weight="), end};
-      if (valstr.empty()) {
-        LOG(ERROR) << "backend: group-weight: non-negative integer [1, 256] is "
-                      "expected";
-        return -1;
-      }
-
-      auto n = util::parse_uint(valstr);
-      if (n < 1 || n > 256) {
-        LOG(ERROR) << "backend: group-weight: non-negative integer [1, 256] is "
-                      "expected";
-        return -1;
-      }
-      out.group_weight = n;
     } else if (!param.empty()) {
       LOG(ERROR) << "backend: " << param << ": unknown keyword";
       return -1;
@@ -1026,7 +871,6 @@ namespace {
 //
 // This function returns 0 if it succeeds, or -1.
 int parse_mapping(Config *config, DownstreamAddrConfig &addr,
-                  std::map<StringRef, size_t> &pattern_addr_indexer,
                   const StringRef &src_pattern, const StringRef &src_params) {
   // This returns at least 1 element (it could be empty string).  We
   // will append '/' to all patterns, so it becomes catch-all pattern.
@@ -1036,8 +880,7 @@ int parse_mapping(Config *config, DownstreamAddrConfig &addr,
   auto &addr_groups = downstreamconf.addr_groups;
 
   DownstreamParams params{};
-  params.proto = Proto::HTTP1;
-  params.weight = 1;
+  params.proto = PROTO_HTTP1;
 
   if (parse_downstream_params(params, src_params) != 0) {
     return -1;
@@ -1048,23 +891,12 @@ int parse_mapping(Config *config, DownstreamAddrConfig &addr,
     return -1;
   }
 
-  if (params.affinity.type == SessionAffinity::COOKIE &&
-      params.affinity.cookie.name.empty()) {
-    LOG(ERROR) << "backend: affinity-cookie-name is mandatory if "
-                  "affinity=cookie is specified";
-    return -1;
-  }
-
   addr.fall = params.fall;
   addr.rise = params.rise;
-  addr.weight = params.weight;
-  addr.group = make_string_ref(downstreamconf.balloc, params.group);
-  addr.group_weight = params.group_weight;
   addr.proto = params.proto;
   addr.tls = params.tls;
   addr.sni = make_string_ref(downstreamconf.balloc, params.sni);
   addr.dns = params.dns;
-  addr.upgrade_scheme = params.upgrade_scheme;
 
   auto &routerconf = downstreamconf.router;
   auto &router = routerconf.router;
@@ -1072,6 +904,7 @@ int parse_mapping(Config *config, DownstreamAddrConfig &addr,
   auto &wildcard_patterns = routerconf.wildcard_patterns;
 
   for (const auto &raw_pattern : mapping) {
+    auto done = false;
     StringRef pattern;
     auto slash = std::find(std::begin(raw_pattern), std::end(raw_pattern), '/');
     if (slash == std::end(raw_pattern)) {
@@ -1098,97 +931,33 @@ int parse_mapping(Config *config, DownstreamAddrConfig &addr,
       *p = '\0';
       pattern = StringRef{iov.base, p};
     }
-    auto it = pattern_addr_indexer.find(pattern);
-    if (it != std::end(pattern_addr_indexer)) {
-      auto &g = addr_groups[(*it).second];
-      // Last value wins if we have multiple different affinity
-      // value under one group.
-      if (params.affinity.type != SessionAffinity::NONE) {
-        if (g.affinity.type == SessionAffinity::NONE) {
-          g.affinity.type = params.affinity.type;
-          if (params.affinity.type == SessionAffinity::COOKIE) {
-            g.affinity.cookie.name = make_string_ref(
-                downstreamconf.balloc, params.affinity.cookie.name);
-            if (!params.affinity.cookie.path.empty()) {
-              g.affinity.cookie.path = make_string_ref(
-                  downstreamconf.balloc, params.affinity.cookie.path);
-            }
-            g.affinity.cookie.secure = params.affinity.cookie.secure;
-          }
-        } else if (g.affinity.type != params.affinity.type ||
-                   g.affinity.cookie.name != params.affinity.cookie.name ||
-                   g.affinity.cookie.path != params.affinity.cookie.path ||
-                   g.affinity.cookie.secure != params.affinity.cookie.secure) {
-          LOG(ERROR) << "backend: affinity: multiple different affinity "
-                        "configurations found in a single group";
-          return -1;
+    for (auto &g : addr_groups) {
+      if (g.pattern == pattern) {
+        // Last value wins if we have multiple different affinity
+        // value under one group.
+        if (params.affinity != AFFINITY_NONE) {
+          g.affinity = params.affinity;
         }
-      }
-      // If at least one backend requires frontend TLS connection,
-      // enable it for all backends sharing the same pattern.
-      if (params.redirect_if_not_tls) {
-        g.redirect_if_not_tls = true;
-      }
-      // All backends in the same group must have the same mruby path.
-      // If some backends do not specify mruby file, and there is at
-      // least one backend with mruby file, it is used for all
-      // backends in the group.
-      if (!params.mruby.empty()) {
-        if (g.mruby_file.empty()) {
-          g.mruby_file = make_string_ref(downstreamconf.balloc, params.mruby);
-        } else if (g.mruby_file != params.mruby) {
-          LOG(ERROR) << "backend: mruby: multiple different mruby file found "
-                        "in a single group";
-          return -1;
+        // If at least one backend requires frontend TLS connection,
+        // enable it for all backends sharing the same pattern.
+        if (params.redirect_if_not_tls) {
+          g.redirect_if_not_tls = true;
         }
+        g.addrs.push_back(addr);
+        done = true;
+        break;
       }
-      // All backends in the same group must have the same read/write
-      // timeout.  If some backends do not specify read/write timeout,
-      // and there is at least one backend with read/write timeout, it
-      // is used for all backends in the group.
-      if (params.read_timeout > 1e-9) {
-        if (g.timeout.read < 1e-9) {
-          g.timeout.read = params.read_timeout;
-        } else if (fabs(g.timeout.read - params.read_timeout) > 1e-9) {
-          LOG(ERROR)
-              << "backend: read-timeout: multiple different read-timeout "
-                 "found in a single group";
-          return -1;
-        }
-      }
-      if (params.write_timeout > 1e-9) {
-        if (g.timeout.write < 1e-9) {
-          g.timeout.write = params.write_timeout;
-        } else if (fabs(g.timeout.write - params.write_timeout) > 1e-9) {
-          LOG(ERROR) << "backend: write-timeout: multiple different "
-                        "write-timeout found in a single group";
-          return -1;
-        }
-      }
-
-      g.addrs.push_back(addr);
+    }
+    if (done) {
       continue;
     }
 
     auto idx = addr_groups.size();
-    pattern_addr_indexer.emplace(pattern, idx);
     addr_groups.emplace_back(pattern);
     auto &g = addr_groups.back();
     g.addrs.push_back(addr);
-    g.affinity.type = params.affinity.type;
-    if (params.affinity.type == SessionAffinity::COOKIE) {
-      g.affinity.cookie.name =
-          make_string_ref(downstreamconf.balloc, params.affinity.cookie.name);
-      if (!params.affinity.cookie.path.empty()) {
-        g.affinity.cookie.path =
-            make_string_ref(downstreamconf.balloc, params.affinity.cookie.path);
-      }
-      g.affinity.cookie.secure = params.affinity.cookie.secure;
-    }
+    g.affinity = params.affinity;
     g.redirect_if_not_tls = params.redirect_if_not_tls;
-    g.mruby_file = make_string_ref(downstreamconf.balloc, params.mruby);
-    g.timeout.read = params.read_timeout;
-    g.timeout.write = params.write_timeout;
 
     if (pattern[0] == '*') {
       // wildcard pattern
@@ -1242,27 +1011,27 @@ int parse_mapping(Config *config, DownstreamAddrConfig &addr,
 } // namespace
 
 namespace {
-ForwardedNode parse_forwarded_node_type(const StringRef &optarg) {
+int parse_forwarded_node_type(const StringRef &optarg) {
   if (util::strieq_l("obfuscated", optarg)) {
-    return ForwardedNode::OBFUSCATED;
+    return FORWARDED_NODE_OBFUSCATED;
   }
 
   if (util::strieq_l("ip", optarg)) {
-    return ForwardedNode::IP;
+    return FORWARDED_NODE_IP;
   }
 
   if (optarg.size() < 2 || optarg[0] != '_') {
-    return static_cast<ForwardedNode>(-1);
+    return -1;
   }
 
   if (std::find_if_not(std::begin(optarg), std::end(optarg), [](char c) {
         return util::is_alpha(c) || util::is_digit(c) || c == '.' || c == '_' ||
                c == '-';
       }) != std::end(optarg)) {
-    return static_cast<ForwardedNode>(-1);
+    return -1;
   }
 
-  return ForwardedNode::OBFUSCATED;
+  return FORWARDED_NODE_OBFUSCATED;
 }
 } // namespace
 
@@ -1346,7 +1115,7 @@ int parse_subcert_params(SubcertParams &out, const StringRef &src_params) {
     auto param = StringRef{first, end};
 
     if (util::istarts_with_l(param, "sct-dir=")) {
-#if !LIBRESSL_LEGACY_API && OPENSSL_VERSION_NUMBER >= 0x10002000L
+#if !LIBRESSL_IN_USE && OPENSSL_VERSION_NUMBER >= 0x10002000L
       auto sct_dir =
           StringRef{std::begin(param) + str_size("sct-dir="), std::end(param)};
       if (sct_dir.empty()) {
@@ -1354,9 +1123,9 @@ int parse_subcert_params(SubcertParams &out, const StringRef &src_params) {
         return -1;
       }
       out.sct_dir = sct_dir;
-#else  // !(!LIBRESSL_LEGACY_API && OPENSSL_VERSION_NUMBER >= 0x10002000L)
+#else  // !(!LIBRESSL_IN_USE && OPENSSL_VERSION_NUMBER >= 0x10002000L)
       LOG(WARN) << "subcert: sct-dir requires OpenSSL >= 1.0.2";
-#endif // !(!LIBRESSL_LEGACY_API && OPENSSL_VERSION_NUMBER >= 0x10002000L)
+#endif // !(!LIBRESSL_IN_USE && OPENSSL_VERSION_NUMBER >= 0x10002000L)
     } else if (!param.empty()) {
       LOG(ERROR) << "subcert: " << param << ": unknown keyword";
       return -1;
@@ -1488,7 +1257,7 @@ int read_tls_sct_from_dir(std::vector<uint8_t> &dst, const StringRef &opt,
 }
 } // namespace
 
-#if !LIBRESSL_LEGACY_API
+#if !LIBRESSL_IN_USE
 namespace {
 // Reads PSK secrets from path, and parses each line.  The result is
 // directly stored into config->tls.psk_secrets.  This function
@@ -1552,9 +1321,9 @@ int parse_psk_secrets(Config *config, const StringRef &path) {
   return 0;
 }
 } // namespace
-#endif // !LIBRESSL_LEGACY_API
+#endif // !LIBRESSL_IN_USE
 
-#if !LIBRESSL_LEGACY_API
+#if !LIBRESSL_IN_USE
 namespace {
 // Reads PSK secrets from path, and parses each line.  The result is
 // directly stored into config->tls.client.psk.  This function returns
@@ -1614,7 +1383,7 @@ int parse_client_psk_secrets(Config *config, const StringRef &path) {
   return 0;
 }
 } // namespace
-#endif // !LIBRESSL_LEGACY_API
+#endif // !LIBRESSL_IN_USE
 
 // generated by gennghttpxfun.py
 int option_lookup_token(const char *name, size_t namelen) {
@@ -1863,11 +1632,6 @@ int option_lookup_token(const char *name, size_t namelen) {
         return SHRPX_OPTID_FORWARDED_FOR;
       }
       break;
-    case 's':
-      if (util::strieq_l("tls13-cipher", name, 12)) {
-        return SHRPX_OPTID_TLS13_CIPHERS;
-      }
-      break;
     case 't':
       if (util::strieq_l("verify-clien", name, 12)) {
         return SHRPX_OPTID_VERIFY_CLIENT;
@@ -1992,11 +1756,6 @@ int option_lookup_token(const char *name, size_t namelen) {
     break;
   case 18:
     switch (name[17]) {
-    case 'a':
-      if (util::strieq_l("tls-max-early-dat", name, 17)) {
-        return SHRPX_OPTID_TLS_MAX_EARLY_DATA;
-      }
-      break;
     case 'r':
       if (util::strieq_l("add-request-heade", name, 17)) {
         return SHRPX_OPTID_ADD_REQUEST_HEADER;
@@ -2063,11 +1822,6 @@ int option_lookup_token(const char *name, size_t namelen) {
     case 'l':
       if (util::strieq_l("ocsp-update-interva", name, 19)) {
         return SHRPX_OPTID_OCSP_UPDATE_INTERVAL;
-      }
-      break;
-    case 's':
-      if (util::strieq_l("tls13-client-cipher", name, 19)) {
-        return SHRPX_OPTID_TLS13_CLIENT_CIPHERS;
       }
       break;
     case 't':
@@ -2233,11 +1987,6 @@ int option_lookup_token(const char *name, size_t namelen) {
     break;
   case 26:
     switch (name[25]) {
-    case 'a':
-      if (util::strieq_l("tls-no-postpone-early-dat", name, 25)) {
-        return SHRPX_OPTID_TLS_NO_POSTPONE_EARLY_DATA;
-      }
-      break;
     case 'e':
       if (util::strieq_l("frontend-http2-window-siz", name, 25)) {
         return SHRPX_OPTID_FRONTEND_HTTP2_WINDOW_SIZE;
@@ -2290,11 +2039,6 @@ int option_lookup_token(const char *name, size_t namelen) {
     break;
   case 28:
     switch (name[27]) {
-    case 'a':
-      if (util::strieq_l("no-strip-incoming-early-dat", name, 27)) {
-        return SHRPX_OPTID_NO_STRIP_INCOMING_EARLY_DATA;
-      }
-      break;
     case 'd':
       if (util::strieq_l("tls-dyn-rec-warmup-threshol", name, 27)) {
         return SHRPX_OPTID_TLS_DYN_REC_WARMUP_THRESHOLD;
@@ -2322,15 +2066,7 @@ int option_lookup_token(const char *name, size_t namelen) {
     break;
   case 30:
     switch (name[29]) {
-    case 'd':
-      if (util::strieq_l("verify-client-tolerate-expire", name, 29)) {
-        return SHRPX_OPTID_VERIFY_CLIENT_TOLERATE_EXPIRED;
-      }
-      break;
     case 'r':
-      if (util::strieq_l("ignore-per-pattern-mruby-erro", name, 29)) {
-        return SHRPX_OPTID_IGNORE_PER_PATTERN_MRUBY_ERROR;
-      }
       if (util::strieq_l("strip-incoming-x-forwarded-fo", name, 29)) {
         return SHRPX_OPTID_STRIP_INCOMING_X_FORWARDED_FOR;
       }
@@ -2544,16 +2280,13 @@ int option_lookup_token(const char *name, size_t namelen) {
 }
 
 int parse_config(Config *config, const StringRef &opt, const StringRef &optarg,
-                 std::set<StringRef> &included_set,
-                 std::map<StringRef, size_t> &pattern_addr_indexer) {
+                 std::set<StringRef> &included_set) {
   auto optid = option_lookup_token(opt.c_str(), opt.size());
-  return parse_config(config, optid, opt, optarg, included_set,
-                      pattern_addr_indexer);
+  return parse_config(config, optid, opt, optarg, included_set);
 }
 
 int parse_config(Config *config, int optid, const StringRef &opt,
-                 const StringRef &optarg, std::set<StringRef> &included_set,
-                 std::map<StringRef, size_t> &pattern_addr_indexer) {
+                 const StringRef &optarg, std::set<StringRef> &included_set) {
   std::array<char, STRERROR_BUFSIZE> errbuf;
   char host[NI_MAXHOST];
   uint16_t port;
@@ -2585,8 +2318,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     auto params =
         mapping_end == std::end(optarg) ? mapping_end : mapping_end + 1;
 
-    if (parse_mapping(config, addr, pattern_addr_indexer,
-                      StringRef{mapping, mapping_end},
+    if (parse_mapping(config, addr, StringRef{mapping, mapping_end},
                       StringRef{params, std::end(optarg)}) != 0) {
       return -1;
     }
@@ -2619,7 +2351,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     addr.alt_mode = params.alt_mode;
     addr.accept_proxy_protocol = params.proxyproto;
 
-    if (addr.alt_mode == UpstreamAltMode::API) {
+    if (addr.alt_mode == ALTMODE_API) {
       apiconf.enabled = true;
     }
 
@@ -2682,16 +2414,13 @@ int parse_config(Config *config, int optid, const StringRef &opt,
 
     return 0;
   }
-  case SHRPX_OPTID_LOG_LEVEL: {
-    auto level = Log::get_severity_level_by_name(optarg);
-    if (level == -1) {
+  case SHRPX_OPTID_LOG_LEVEL:
+    if (Log::set_severity_level_by_name(optarg) == -1) {
       LOG(ERROR) << opt << ": Invalid severity level: " << optarg;
       return -1;
     }
-    config->logging.severity = level;
 
     return 0;
-  }
   case SHRPX_OPTID_DAEMON:
     config->daemon = util::strieq_l("yes", optarg);
 
@@ -2794,7 +2523,8 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     }
 
     // Make 16 bits to the HTTP/2 default 64KiB - 1.  This is the same
-    // behaviour of previous code.
+    // behaviour of previous code.  For SPDY, we adjust this value in
+    // SpdyUpstream to look like the SPDY default.
     *resp = (1 << n) - 1;
 
     return 0;
@@ -2836,16 +2566,14 @@ int parse_config(Config *config, int optid, const StringRef &opt,
               << SHRPX_OPT_FRONTEND;
     return 0;
   case SHRPX_OPTID_BACKEND_NO_TLS:
-    LOG(WARN) << opt
-              << ": deprecated.  backend connection is not encrypted by "
-                 "default.  See also "
+    LOG(WARN) << opt << ": deprecated.  backend connection is not encrypted by "
+                        "default.  See also "
               << SHRPX_OPT_BACKEND_TLS;
     return 0;
   case SHRPX_OPTID_BACKEND_TLS_SNI_FIELD:
-    LOG(WARN) << opt
-              << ": deprecated.  Use sni keyword in --backend option.  "
-                 "For now, all sni values of all backends are "
-                 "overridden by the given value "
+    LOG(WARN) << opt << ": deprecated.  Use sni keyword in --backend option.  "
+                        "For now, all sni values of all backends are "
+                        "overridden by the given value "
               << optarg;
     config->tls.backend_sni_name = make_string_ref(config->balloc, optarg);
 
@@ -2955,14 +2683,9 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     config->tls.ciphers = make_string_ref(config->balloc, optarg);
 
     return 0;
-  case SHRPX_OPTID_TLS13_CIPHERS:
-    config->tls.tls13_ciphers = make_string_ref(config->balloc, optarg);
-
-    return 0;
   case SHRPX_OPTID_CLIENT:
-    LOG(ERROR) << opt
-               << ": deprecated.  Use frontend=<addr>,<port>;no-tls, "
-                  "backend=<addr>,<port>;;proto=h2;tls";
+    LOG(ERROR) << opt << ": deprecated.  Use frontend=<addr>,<port>;no-tls, "
+                         "backend=<addr>,<port>;;proto=h2;tls";
     return -1;
   case SHRPX_OPTID_INSECURE:
     config->tls.insecure = util::strieq_l("yes", optarg);
@@ -3057,9 +2780,8 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     return 0;
   }
   case SHRPX_OPTID_TLS_PROTO_LIST: {
-    LOG(WARN) << opt
-              << ": deprecated.  Use tls-min-proto-version and "
-                 "tls-max-proto-version instead.";
+    LOG(WARN) << opt << ": deprecated.  Use tls-min-proto-version and "
+                        "tls-max-proto-version instead.";
     auto list = util::split_str(optarg, ',');
     config->tls.tls_proto_list.resize(list.size());
     for (size_t i = 0; i < list.size(); ++i) {
@@ -3293,8 +3015,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     }
 
     included_set.insert(optarg);
-    auto rv =
-        load_config(config, optarg.c_str(), included_set, pattern_addr_indexer);
+    auto rv = load_config(config, optarg.c_str(), included_set);
     included_set.erase(optarg);
 
     if (rv != 0) {
@@ -3437,7 +3158,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
   case SHRPX_OPTID_FORWARDED_FOR: {
     auto type = parse_forwarded_node_type(optarg);
 
-    if (type == static_cast<ForwardedNode>(-1) ||
+    if (type == -1 ||
         (optid == SHRPX_OPTID_FORWARDED_FOR && optarg[0] == '_')) {
       LOG(ERROR) << opt << ": unknown node type or illegal obfuscated string "
                  << optarg;
@@ -3448,7 +3169,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
 
     switch (optid) {
     case SHRPX_OPTID_FORWARDED_BY:
-      fwdconf.by_node_type = type;
+      fwdconf.by_node_type = static_cast<shrpx_forwarded_node_type>(type);
       if (optarg[0] == '_') {
         fwdconf.by_obfuscated = make_string_ref(config->balloc, optarg);
       } else {
@@ -3456,7 +3177,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
       }
       break;
     case SHRPX_OPTID_FORWARDED_FOR:
-      fwdconf.for_node_type = type;
+      fwdconf.for_node_type = static_cast<shrpx_forwarded_node_type>(type);
       break;
     }
 
@@ -3613,19 +3334,19 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     return parse_uint_with_unit(
         &config->http2.downstream.decoder_dynamic_table_size, opt, optarg);
   case SHRPX_OPTID_ECDH_CURVES:
-#if !LIBRESSL_LEGACY_API && OPENSSL_VERSION_NUMBER >= 0x10002000L
+#if !LIBRESSL_IN_USE && OPENSSL_VERSION_NUMBER >= 0x10002000L
     config->tls.ecdh_curves = make_string_ref(config->balloc, optarg);
-#else  // !(!LIBRESSL_LEGACY_API && OPENSSL_VERSION_NUMBER >= 0x10002000L)
+#else  // !(!LIBRESSL_IN_USE && OPENSSL_VERSION_NUMBER >= 0x10002000L)
     LOG(WARN) << opt << ": This option requires OpenSSL >= 1.0.2";
-#endif // !(!LIBRESSL_LEGACY_API && OPENSSL_VERSION_NUMBER >= 0x10002000L)
+#endif // !(!LIBRESSL_IN_USE && OPENSSL_VERSION_NUMBER >= 0x10002000L)
     return 0;
   case SHRPX_OPTID_TLS_SCT_DIR:
-#if !LIBRESSL_LEGACY_API && OPENSSL_VERSION_NUMBER >= 0x10002000L
+#if !LIBRESSL_IN_USE && OPENSSL_VERSION_NUMBER >= 0x10002000L
     return read_tls_sct_from_dir(config->tls.sct_data, opt, optarg);
-#else  // !(!LIBRESSL_LEGACY_API && OPENSSL_VERSION_NUMBER >= 0x10002000L)
+#else  // !(!LIBRESSL_IN_USE && OPENSSL_VERSION_NUMBER >= 0x10002000L)
     LOG(WARN) << opt << ": This option requires OpenSSL >= 1.0.2";
     return 0;
-#endif // !(!LIBRESSL_LEGACY_API && OPENSSL_VERSION_NUMBER >= 0x10002000L)
+#endif // !(!LIBRESSL_IN_USE && OPENSSL_VERSION_NUMBER >= 0x10002000L)
   case SHRPX_OPTID_DNS_CACHE_TIMEOUT:
     return parse_duration(&config->dns.timeout.cache, opt, optarg);
   case SHRPX_OPTID_DNS_LOOKUP_TIMEOUT:
@@ -3648,23 +3369,23 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     return parse_duration(&config->conn.upstream.timeout.idle_read, opt,
                           optarg);
   case SHRPX_OPTID_PSK_SECRETS:
-#if !LIBRESSL_LEGACY_API
+#if !LIBRESSL_IN_USE
     return parse_psk_secrets(config, optarg);
-#else  // LIBRESSL_LEGACY_API
+#else  // LIBRESSL_IN_USE
     LOG(WARN)
         << opt
         << ": ignored because underlying TLS library does not support PSK";
     return 0;
-#endif // LIBRESSL_LEGACY_API
+#endif // LIBRESSL_IN_USE
   case SHRPX_OPTID_CLIENT_PSK_SECRETS:
-#if !LIBRESSL_LEGACY_API
+#if !LIBRESSL_IN_USE
     return parse_client_psk_secrets(config, optarg);
-#else  // LIBRESSL_LEGACY_API
+#else  // LIBRESSL_IN_USE
     LOG(WARN)
         << opt
         << ": ignored because underlying TLS library does not support PSK";
     return 0;
-#endif // LIBRESSL_LEGACY_API
+#endif // LIBRESSL_IN_USE
   case SHRPX_OPTID_CLIENT_NO_HTTP2_CIPHER_BLACK_LIST:
     config->tls.client.no_http2_cipher_black_list =
         util::strieq_l("yes", optarg);
@@ -3672,10 +3393,6 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     return 0;
   case SHRPX_OPTID_CLIENT_CIPHERS:
     config->tls.client.ciphers = make_string_ref(config->balloc, optarg);
-
-    return 0;
-  case SHRPX_OPTID_TLS13_CLIENT_CIPHERS:
-    config->tls.client.tls13_ciphers = make_string_ref(config->balloc, optarg);
 
     return 0;
   case SHRPX_OPTID_ACCESSLOG_WRITE_EARLY:
@@ -3689,9 +3406,8 @@ int parse_config(Config *config, int optid, const StringRef &opt,
   case SHRPX_OPTID_REDIRECT_HTTPS_PORT: {
     auto n = util::parse_uint(optarg);
     if (n == -1 || n < 0 || n > 65535) {
-      LOG(ERROR) << opt
-                 << ": bad value.  Specify an integer in the range [0, "
-                    "65535], inclusive";
+      LOG(ERROR) << opt << ": bad value.  Specify an integer in the range [0, "
+                           "65535], inclusive";
       return -1;
     }
     config->http.redirect_https_port = optarg;
@@ -3723,25 +3439,6 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     config->tls.ocsp.no_verify = util::strieq_l("yes", optarg);
 
     return 0;
-  case SHRPX_OPTID_VERIFY_CLIENT_TOLERATE_EXPIRED:
-    config->tls.client_verify.tolerate_expired = util::strieq_l("yes", optarg);
-
-    return 0;
-  case SHRPX_OPTID_IGNORE_PER_PATTERN_MRUBY_ERROR:
-    config->ignore_per_pattern_mruby_error = util::strieq_l("yes", optarg);
-
-    return 0;
-  case SHRPX_OPTID_TLS_NO_POSTPONE_EARLY_DATA:
-    config->tls.no_postpone_early_data = util::strieq_l("yes", optarg);
-
-    return 0;
-  case SHRPX_OPTID_TLS_MAX_EARLY_DATA: {
-    return parse_uint_with_unit(&config->tls.max_early_data, opt, optarg);
-  }
-  case SHRPX_OPTID_NO_STRIP_INCOMING_EARLY_DATA:
-    config->http.early_data.strip_incoming = !util::strieq_l("yes", optarg);
-
-    return 0;
   case SHRPX_OPTID_CONF:
     LOG(WARN) << "conf: ignored";
 
@@ -3754,8 +3451,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
 }
 
 int load_config(Config *config, const char *filename,
-                std::set<StringRef> &include_set,
-                std::map<StringRef, size_t> &pattern_addr_indexer) {
+                std::set<StringRef> &include_set) {
   std::ifstream in(filename, std::ios::binary);
   if (!in) {
     LOG(ERROR) << "Could not open config file " << filename;
@@ -3777,8 +3473,7 @@ int load_config(Config *config, const char *filename,
     *eq = '\0';
 
     if (parse_config(config, StringRef{std::begin(line), eq},
-                     StringRef{eq + 1, std::end(line)}, include_set,
-                     pattern_addr_indexer) != 0) {
+                     StringRef{eq + 1, std::end(line)}, include_set) != 0) {
       return -1;
     }
   }
@@ -3922,15 +3617,15 @@ int int_syslog_facility(const StringRef &strfacility) {
   return -1;
 }
 
-StringRef strproto(Proto proto) {
+StringRef strproto(shrpx_proto proto) {
   switch (proto) {
-  case Proto::NONE:
+  case PROTO_NONE:
     return StringRef::from_lit("none");
-  case Proto::HTTP1:
+  case PROTO_HTTP1:
     return StringRef::from_lit("http/1.1");
-  case Proto::HTTP2:
+  case PROTO_HTTP2:
     return StringRef::from_lit("h2");
-  case Proto::MEMCACHED:
+  case PROTO_MEMCACHED:
     return StringRef::from_lit("memcached");
   }
 
@@ -3993,9 +3688,7 @@ int configure_downstream_group(Config *config, bool http2_proxy,
     DownstreamAddrConfig addr{};
     addr.host = StringRef::from_lit(DEFAULT_DOWNSTREAM_HOST);
     addr.port = DEFAULT_DOWNSTREAM_PORT;
-    addr.proto = Proto::HTTP1;
-    addr.weight = 1;
-    addr.group_weight = 1;
+    addr.proto = PROTO_HTTP1;
 
     DownstreamAddrGroupConfig g(StringRef::from_lit("/"));
     g.addrs.push_back(std::move(addr));
@@ -4034,32 +3727,7 @@ int configure_downstream_group(Config *config, bool http2_proxy,
                   << (addr.tls ? ", tls" : "");
       }
     }
-#ifdef HAVE_MRUBY
-    // Try compile mruby script and catch compile error early.
-    if (!g.mruby_file.empty()) {
-      if (mruby::create_mruby_context(g.mruby_file) == nullptr) {
-        LOG(config->ignore_per_pattern_mruby_error ? ERROR : FATAL)
-            << "backend: Could not compile mruby flie for pattern "
-            << g.pattern;
-        if (!config->ignore_per_pattern_mruby_error) {
-          return -1;
-        }
-        g.mruby_file = StringRef{};
-      }
-    }
-#endif // HAVE_MRUBY
   }
-
-#ifdef HAVE_MRUBY
-  // Try compile mruby script (--mruby-file) here to catch compile
-  // error early.
-  if (!config->mruby_file.empty()) {
-    if (mruby::create_mruby_context(config->mruby_file) == nullptr) {
-      LOG(FATAL) << "mruby-file: Could not compile mruby file";
-      return -1;
-    }
-  }
-#endif // HAVE_MRUBY
 
   if (catch_all_group == -1) {
     LOG(FATAL) << "backend: No catch-all backend address is configured";
@@ -4075,17 +3743,7 @@ int configure_downstream_group(Config *config, bool http2_proxy,
   auto resolve_flags = numeric_addr_only ? AI_NUMERICHOST | AI_NUMERICSERV : 0;
 
   for (auto &g : addr_groups) {
-    std::unordered_map<StringRef, uint32_t> wgchk;
     for (auto &addr : g.addrs) {
-      if (addr.group_weight) {
-        auto it = wgchk.find(addr.group);
-        if (it == std::end(wgchk)) {
-          wgchk.emplace(addr.group, addr.group_weight);
-        } else if ((*it).second != addr.group_weight) {
-          LOG(FATAL) << "backend: inconsistent group-weight for a single group";
-          return -1;
-        }
-      }
 
       if (addr.host_unix) {
         // for AF_UNIX socket, we use "localhost" as host for backend
@@ -4138,18 +3796,7 @@ int configure_downstream_group(Config *config, bool http2_proxy,
       }
     }
 
-    for (auto &addr : g.addrs) {
-      if (addr.group_weight == 0) {
-        auto it = wgchk.find(addr.group);
-        if (it == std::end(wgchk)) {
-          addr.group_weight = 1;
-        } else {
-          addr.group_weight = (*it).second;
-        }
-      }
-    }
-
-    if (g.affinity.type != SessionAffinity::NONE) {
+    if (g.affinity == AFFINITY_IP) {
       size_t idx = 0;
       for (auto &addr : g.addrs) {
         StringRef key;
@@ -4175,14 +3822,6 @@ int configure_downstream_group(Config *config, bool http2_proxy,
                 [](const AffinityHash &lhs, const AffinityHash &rhs) {
                   return lhs.hash < rhs.hash;
                 });
-    }
-
-    auto &timeout = g.timeout;
-    if (timeout.read < 1e-9) {
-      timeout.read = downstreamconf.timeout.read;
-    }
-    if (timeout.write < 1e-9) {
-      timeout.write = downstreamconf.timeout.write;
     }
   }
 

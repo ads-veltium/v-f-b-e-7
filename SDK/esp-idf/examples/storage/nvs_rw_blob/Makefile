@@ -6,3 +6,4 @@
 PROJECT_NAME := nvs-rw-blob
 
 include $(IDF_PATH)/make/project.mk
+

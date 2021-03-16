@@ -24,7 +24,6 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include <stddef.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -45,7 +44,7 @@ enum SHA_TYPE {
     SHA_INVALID = -1,
 };
 
-/* Do not use these function in multi core mode due to
+/* Do not use these function in multi core mode due to 
  * inside they have no safe implementation (without DPORT workaround).
 */
 void ets_sha_init(SHA_CTX *ctx);

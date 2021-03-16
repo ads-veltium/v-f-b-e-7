@@ -283,3 +283,9 @@ void run_tc_init(void)
     }
     xTaskCreatePinnedToCore(run_task, "run_task", 4096, tc_case, RUN_TASK_PRIORITY, NULL, 0);
 }
+
+
+
+
+
+

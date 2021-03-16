@@ -1,9 +1,7 @@
 from __future__ import unicode_literals
-
-import os
 import re
-
 import ttfw_idf
+import os
 
 
 @ttfw_idf.idf_example_test(env_tag='Example_WIFI')

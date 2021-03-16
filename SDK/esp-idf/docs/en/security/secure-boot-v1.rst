@@ -56,9 +56,7 @@ The following keys are used by the secure boot process:
 
   - By default, the Efuse Block 2 Coding Scheme is "None" and a 256 bit key is stored in this block. On some {IDF_TARGET_NAME}s, the Coding Scheme is set to 3/4 Encoding (CODING_SCHEME efuse has value 1) and a 192 bit key must be stored in this block.
 
-  .. only:: esp32
-
-    For more details, see *{IDF_TARGET_NAME} Technical Reference Manual* > *eFuse Controller (eFuse)* > *System Parameter coding_scheme* [`PDF <{IDF_TARGET_TRM_EN_URL}#efuse>`__].
+  For more details, see *{IDF_TARGET_NAME} Technical Reference Manual* > *eFuse Controller (eFuse)* > *System Parameter coding_scheme* [`PDF <{IDF_TARGET_TRM_EN_URL}#efuse>`__].
 
   The algorithm operates on a 256 bit key in all cases, 192 bit keys are extended by repeating some bits (:ref:`details<secure-bootloader-digest-algorithm>`).
 

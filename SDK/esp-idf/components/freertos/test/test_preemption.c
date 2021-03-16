@@ -9,11 +9,10 @@
 #include "freertos/task.h"
 #include "freertos/semphr.h"
 #include "freertos/queue.h"
+#include "freertos/xtensa_api.h"
 #include "unity.h"
 #include "soc/cpu.h"
-#include "hal/cpu_hal.h"
 #include "test_utils.h"
-#include "sdkconfig.h"
 
 static volatile bool trigger;
 static volatile bool flag;
@@ -31,7 +30,7 @@ static void task_send_to_queue(void *param)
 
     while(!trigger) {}
 
-    ccount = cpu_hal_get_cycle_count();
+    RSR(CCOUNT, ccount);
     flag = true;
     xQueueSendToBack(queue, &ccount, 0);
     /* This is to ensure that higher priority task
@@ -60,7 +59,7 @@ TEST_CASE("Yield from lower priority task, same CPU", "[freertos]")
 
         uint32_t yield_ccount, now_ccount, delta;
         TEST_ASSERT( xQueueReceive(queue, &yield_ccount, 100 / portTICK_PERIOD_MS) );
-        now_ccount = cpu_hal_get_cycle_count();
+        RSR(CCOUNT, now_ccount);
         TEST_ASSERT( flag );
 
         delta = now_ccount - yield_ccount;
@@ -73,7 +72,7 @@ TEST_CASE("Yield from lower priority task, same CPU", "[freertos]")
 }
 
 
-#if (portNUM_PROCESSORS == 2) && !CONFIG_FREERTOS_TASK_FUNCTIONS_INTO_FLASH
+#if portNUM_PROCESSORS == 2
 TEST_CASE("Yield from lower priority task, other CPU", "[freertos]")
 {
     uint32_t trigger_ccount, yield_ccount, now_ccount, delta;
@@ -92,12 +91,12 @@ TEST_CASE("Yield from lower priority task, other CPU", "[freertos]")
 
         vTaskDelay(2); /* make sure everything is set up */
         trigger = true;
-        trigger_ccount = cpu_hal_get_cycle_count();
+        RSR(CCOUNT, trigger_ccount);
 
         // yield_ccount is not useful in this test as it's the other core's CCOUNT
         // so we use trigger_ccount instead
         TEST_ASSERT( xQueueReceive(queue, &yield_ccount, 100 / portTICK_PERIOD_MS) );
-        now_ccount = cpu_hal_get_cycle_count();
+        RSR(CCOUNT, now_ccount);
         TEST_ASSERT( flag );
 
         delta = now_ccount - trigger_ccount;
@@ -108,4 +107,4 @@ TEST_CASE("Yield from lower priority task, other CPU", "[freertos]")
         vTaskDelete(sender_task);
     }
 }
-#endif
+#endif // portNUM_PROCESSORS == 2

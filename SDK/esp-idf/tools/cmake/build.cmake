@@ -1,3 +1,4 @@
+
 # idf_build_get_property
 #
 # @brief Retrieve the value of the specified property related to ESP-IDF build.
@@ -94,10 +95,12 @@ function(__build_set_default_build_specifications)
 
     list(APPEND compile_options     "-ffunction-sections"
                                     "-fdata-sections"
+                                    "-fstrict-volatile-bitfields"
                                     # warning-related flags
                                     "-Wall"
                                     "-Werror=all"
                                     "-Wno-error=unused-function"
+                                    "-Wno-error=unused-but-set-variable"
                                     "-Wno-error=unused-variable"
                                     "-Wno-error=deprecated-declarations"
                                     "-Wextra"
@@ -123,9 +126,8 @@ endfunction()
 # properties used for the processing phase of the build.
 #
 function(__build_init idf_path)
-    # Create the build target, to which the ESP-IDF build properties, dependencies are attached to.
-    # Must be global so as to be accessible from any subdirectory in custom projects.
-    add_library(__idf_build_target STATIC IMPORTED GLOBAL)
+    # Create the build target, to which the ESP-IDF build properties, dependencies are attached to
+    add_library(__idf_build_target STATIC IMPORTED)
 
     set_default(python "python")
 
@@ -149,16 +151,11 @@ function(__build_init idf_path)
         endif()
     endforeach()
 
-
-    idf_build_get_property(target IDF_TARGET)
-    if(NOT target STREQUAL "linux")
-        # Set components required by all other components in the build
-        #
-        # - lwip is here so that #include <sys/socket.h> works without any special provisions
-        # - esp_hw_support is here for backward compatibility
-        set(requires_common cxx newlib freertos esp_hw_support heap log lwip soc hal esp_rom esp_common esp_system)
-        idf_build_set_property(__COMPONENT_REQUIRES_COMMON "${requires_common}")
-    endif()
+    # Set components required by all other components in the build
+    #
+    # - lwip is here so that #include <sys/socket.h> works without any special provisions
+    set(requires_common cxx newlib freertos heap log lwip soc esp_rom esp_common esp_system xtensa)
+    idf_build_set_property(__COMPONENT_REQUIRES_COMMON "${requires_common}")
 
     __build_get_idf_git_revision()
     __kconfig_init()
@@ -399,13 +396,7 @@ macro(idf_build_process target)
     # Check for required Python modules
     __build_check_python()
 
-    idf_build_get_property(target IDF_TARGET)
-
-    if(NOT target STREQUAL "linux")
-        idf_build_set_property(__COMPONENT_REQUIRES_COMMON ${target} APPEND)
-    else()
-        idf_build_set_property(__COMPONENT_REQUIRES_COMMON "")
-    endif()
+    idf_build_set_property(__COMPONENT_REQUIRES_COMMON ${target} APPEND)
 
     # Perform early expansion of component CMakeLists.txt in CMake scripting mode.
     # It is here we retrieve the public and private requirements of each component.

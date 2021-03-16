@@ -31,3 +31,4 @@ int bootloader_clock_get_rated_freq_mhz(void);
 #ifdef __cplusplus
 }
 #endif
+

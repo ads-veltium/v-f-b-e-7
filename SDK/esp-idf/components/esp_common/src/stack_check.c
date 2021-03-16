@@ -14,7 +14,6 @@
 
 #include "sdkconfig.h"
 #include "esp_system.h"
-#include "esp_rom_sys.h"
 
 #if CONFIG_COMPILER_STACK_CHECK
 
@@ -33,7 +32,7 @@ __esp_stack_guard_setup (void)
 
 void __stack_chk_fail (void)
 {
-    esp_rom_printf("\r\nStack smashing protect failure!\r\n\r\n");
+    ets_printf("\r\nStack smashing protect failure!\r\n\r\n");
     abort();
 }
 

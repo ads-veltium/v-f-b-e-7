@@ -100,3 +100,4 @@ const esp_efuse_desc_t* ESP_EFUSE_TEST6_LEN_17[] = {
     &TEST6_LEN_17[5],    		// TEST field
     NULL
 };
+

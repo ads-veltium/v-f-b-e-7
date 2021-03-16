@@ -120,38 +120,6 @@ The flash encryption operation is controlled by various eFuses available on {IDF
          - Yes
          - 0
 
-.. only:: esp32c3
-
-    .. list-table:: eFuses Used in Flash Encryption
-       :widths: 25 40 10 15 10
-       :header-rows: 0
-
-       * - **eFuse**
-         - **Description**
-         - **Bit Depth**
-         - **R/W Access Control Available**
-         - **Default Value**
-       * - ``BLOCK_KEYN``
-         - AES key storage. N is between 0 and 5.
-         - 256
-         - Yes
-         - x
-       * - ``KEY_PURPOSE_N``
-         - Controls the purpose of eFuse block ``BLOCK_KEYN``, where N is between 0 and 5. For flash encryption the only valid value is ``4`` for ``XTS_AES_128_KEY``.
-         - 4
-         - Yes
-         - 0
-       * - ``DIS_DOWNLOAD_MANUAL_ENCRYPT``
-         - If set, disables flash encryption when in download bootmodes.
-         - 1
-         - Yes
-         - 0
-       * - ``{IDF_TARGET_CRYPT_CNT}``
-         - Enables encryption and decryption, when an SPI boot mode is set. Feature is enabled if 1 or 3 bits are set in the eFuse, disabled otherwise.
-         - 3
-         - Yes
-         - 0
-
 
 Read and write access to eFuse bits is controlled by appropriate fields in the registers ``WR_DIS`` and ``RD_DIS``. For more information on {IDF_TARGET_NAME} eFuses, see :doc:`eFuse manager <../api-reference/system/efuse>`. To change protection bits of eFuse field using espefuse.py, use these two commands: read_protect_efuse and write_protect_efuse. Example ``espefuse.py write_protect_efuse DISABLE_DL_ENCRYPT``.
 
@@ -197,23 +165,6 @@ Assuming that the eFuse values are in their default states and the firmware boot
 
   8. The device is then rebooted to start executing the encrypted image. The firmware bootloader calls the flash decryption block to decrypt the flash contents and then loads the decrypted contents into IRAM.
 
-.. only:: esp32c3
-
-  1. On the first power-on reset, all data in flash is un-encrypted (plaintext). The ROM bootloader loads the firmware bootloader.
-
-  2. Firmware bootloader reads the ``{IDF_TARGET_CRYPT_CNT}`` eFuse value (``0b000``). Since the value is ``0`` (even number of bits set), it configures and enables the flash encryption block. For more information on the flash encryption block, see `{IDF_TARGET_NAME} Technical Reference Manual <{IDF_TARGET_TRM_EN_URL}>`_.
-
-  3. Firmware bootloader uses RNG (random) module to generate an 256 bit key and then writes it into `BLOCK_KEYN` eFuse. The software also updates the ``KEY_PURPOSE_N`` for the block where the key were stored. The key cannot be accessed via software as the write and read protection bits for `BLOCK_KEYN` eFuse are set. ``KEY_PURPOSE_N`` field is write-protected as well. The flash encryption operations happen entirely by hardware, and the key cannot be accessed via software.
-
-  4. Flash encryption block encrypts the flash contents - the firmware bootloader, applications and partitions marked as ``encrypted``. Encrypting in-place can take time, up to a minute for large partitions.
-
-  5. Firmware bootloader sets the first available bit in ``{IDF_TARGET_CRYPT_CNT}`` (0b001) to mark the flash contents as encrypted. Odd number of bits is set.
-
-  6. For :ref:`flash-enc-development-mode`, the firmware bootloader allows the UART bootloader to re-flash encrypted binaries. Also, the ``{IDF_TARGET_CRYPT_CNT}`` eFuse bits are NOT write-protected. In addition, the firmware bootloader by default sets the eFuse bits ``DIS_DOWNLOAD_ICACHE``, ``DIS_PAD_JTAG``, ``DIS_USB_JTAG`` and ``DIS_LEGACY_SPI_BOOT``.
-
-  7. For :ref:`flash-enc-release-mode`, the firmware bootloader sets all the eFuse bits set under development mode as well as ``DIS_DOWNLOAD_MANUAL_ENCRYPT``. It also write-protects the ``{IDF_TARGET_CRYPT_CNT}`` eFuse bits. To modify this behavior, see :ref:`uart-bootloader-encryption`.
-
-  8. The device is then rebooted to start executing the encrypted image. The firmware bootloader calls the flash decryption block to decrypt the flash contents and then loads the decrypted contents into IRAM.
 
 During the development stage, there is a frequent need to program different plaintext flash images and test the flash encryption process. This requires that Firmware Download mode is able to load new plaintext images as many times as it might be needed. However, during manufacturing or production stages, Firmware Download mode should not be allowed to access flash contents for security reasons.
 
@@ -310,7 +261,7 @@ To use a host generated key, take the following steps:
 
 2. Generate a random key by running:
 
-.. only:: esp32s2
+  .. only:: esp32s2
 
     If :ref:`Size of generated AES-XTS key <CONFIG_SECURE_FLASH_ENCRYPTION_KEYSIZE>` is AES-256 (512-bit key) need to use the `XTS_AES_256_KEY_1` and `XTS_AES_256_KEY_2` purposes. The espsecure does not support 512-bit key, but it is possible to workaround:
 
@@ -330,7 +281,7 @@ To use a host generated key, take the following steps:
         espsecure.py generate_flash_encryption_key my_flash_encryption_key.bin
 
 
-.. only:: not esp32s2
+  .. only:: not esp32s2
 
     .. code-block:: bash
 
@@ -339,17 +290,17 @@ To use a host generated key, take the following steps:
 
 3. **Before the first encrypted boot**, burn the key into your device's eFuse using the command below. This action can be done **only once**.
 
-.. only:: esp32
+  .. only:: esp32
 
-  .. code-block:: bash
+    .. code-block:: bash
 
-      espefuse.py --port PORT burn_key flash_encryption my_flash_encryption_key.bin
+        espefuse.py --port PORT burn_key flash_encryption my_flash_encryption_key.bin
 
-.. only:: esp32s2
+  .. only:: esp32s2
 
-  .. code-block:: bash
+    .. code-block:: bash
 
-      espefuse.py --port PORT burn_key BLOCK my_flash_encryption_key.bin KEYPURPOSE
+        espefuse.py --port PORT burn_key BLOCK my_flash_encryption_key.bin KEYPURPOSE
 
   where `BLOCK` is a free keyblock between `BLOCK_KEY0` and `BLOCK_KEY5`. And `KEYPURPOSE` is either `AES_256_KEY_1`, `XTS_AES_256_KEY_2`, `XTS_AES_128_KEY`. See `{IDF_TARGET_NAME} Technical Reference Manual <{IDF_TARGET_TRM_EN_URL}>`_ for a description of the key purposes.
 
@@ -367,15 +318,9 @@ To use a host generated key, take the following steps:
 
       espefuse.py  --port PORT  burn_key BLOCK+1 my_flash_encryption_key2.bin XTS_AES_256_KEY_2
 
-.. only:: esp32c3
+  where `BLOCK+1` is a block adjacent to `BLOCK` (best practice is to keep them adjacent).
 
-  .. code-block:: bash
-
-      espefuse.py --port PORT burn_key BLOCK my_flash_encryption_key.bin XTS_AES_128_KEY
-
-  where `BLOCK` is a free keyblock between `BLOCK_KEY0` and `BLOCK_KEY5`.
-
-If the key is not burned and the device is started after enabling flash encryption, the {IDF_TARGET_NAME} will generate a random key that software cannot access or modify.
+  If the key is not burned and the device is started after enabling flash encryption, the {IDF_TARGET_NAME} will generate a random key that software cannot access or modify.
 
 4. In :ref:`project-configuration-menu`, do the following:
 
@@ -384,7 +329,7 @@ If the key is not burned and the device is started after enabling flash encrypti
     - :ref:`Select the appropriate bootloader log verbosity <CONFIG_BOOTLOADER_LOG_LEVEL>`
     - Save the configuration and exit.
 
-Enabling flash encryption will increase the size of bootloader, which might require updating partition table offset. See :ref:`secure-boot-bootloader-size`.
+  Enabling flash encryption will increase the size of bootloader, which might require updating partition table offset. See :ref:`secure-boot-bootloader-size`.
 
 5. Run the command given below to build and flash the complete images.
 
@@ -439,6 +384,7 @@ To use this mode, take the following steps:
     - :ref:`Enable flash encryption on boot <CONFIG_SECURE_FLASH_ENC_ENABLED>`
     :esp32: - :ref:`Select Release mode <CONFIG_SECURE_FLASH_ENCRYPTION_MODE>` (Note that once Release mode is selected, the ``DISABLE_DL_ENCRYPT`` and ``DISABLE_DL_DECRYPT`` eFuse bits will be burned to disable UART bootloader access to flash contents)
     :not esp32: - :ref:`Select Release mode <CONFIG_SECURE_FLASH_ENCRYPTION_MODE>` (Note that once Release mode is selected, the ``EFUSE_DIS_DOWNLOAD_MANUAL_ENCRYPT`` eFuse bit will be burned to disable UART bootloader access to flash contents)
+    :esp32s2: - Set :ref:`Size of generated AES-XTS key <CONFIG_SECURE_FLASH_ENCRYPTION_KEYSIZE>`
     - :ref:`Select the appropriate bootloader log verbosity <CONFIG_BOOTLOADER_LOG_LEVEL>`
     - Save the configuration and exit.
 
@@ -474,8 +420,7 @@ When using Flash Encryption in production:
    - Do not reuse the same flash encryption key between multiple devices. This means that an attacker who copies encrypted data from one device cannot transfer it to a second device.
    :esp32: - When using ESP32 V3, if the UART ROM Download Mode is not needed for a production device then it should be disabled to provide an extra level of protection. Do this by calling :cpp:func:`esp_efuse_disable_rom_download_mode` during application startup. Alternatively, configure the project :ref:`CONFIG_ESP32_REV_MIN` level to 3 (targeting ESP32 V3 only) and enable :ref:`CONFIG_SECURE_DISABLE_ROM_DL_MODE`. The ability to disable ROM Download Mode is not available on earlier ESP32 versions.
    :not esp32: - The UART ROM Download Mode should be disabled entirely if it is not needed, or permanently set to "Secure Download Mode" otherwise. Secure Download Mode permanently limits the available commands to basic flash read and write only. The default behaviour is to set Secure Download Mode on first boot in Release mode. To disable Download Mode entirely, enable configuration option :ref:`CONFIG_SECURE_DISABLE_ROM_DL_MODE` or call :cpp:func:`esp_efuse_disable_rom_download_mode` at runtime.
-   :not esp32c3: - Enable :doc:`Secure Boot <secure-boot-v2>` as an extra layer of protection, and to prevent an attacker from selectively corrupting any part of the flash before boot.
-   :esp32c3: - Enable Secure Boot (not supported yet) as an extra layer of protection, and to prevent an attacker from selectively corrupting any part of the flash before boot.
+   -  Enable :doc:`Secure Boot <secure-boot-v2>` as an extra layer of protection, and to prevent an attacker from selectively corrupting any part of the flash before boot.
 
 Possible Failures
 -----------------
@@ -693,7 +638,7 @@ If flash encryption was enabled accidentally, flashing of plaintext data will so
 
   For flash encryption in Development mode, encryption can be disabled by burning the ``{IDF_TARGET_CRYPT_CNT}`` eFuse. It can only be done three times per chip by taking the following steps:
 
-.. only:: esp32s2 or esp32c3
+.. only:: esp32s2
 
   For flash encryption in Development mode, encryption can be disabled by burning the ``{IDF_TARGET_CRYPT_CNT}`` eFuse. It can only be done one time per chip by taking the following steps:
 
@@ -719,8 +664,6 @@ Key Points About Flash Encryption
   :esp32: - The flash encryption algorithm is AES-256, where the key is "tweaked" with the offset address of each 32 byte block of flash. This means that every 32-byte block (two consecutive 16 byte AES blocks) is encrypted with a unique key derived from the flash encryption key.
 
   :esp32s2: - Flash memory contents is encrypted using XTS-AES-128 or XTS-AES-256. The flash encryption key is 256 bits and 512 bits respectively and stored one or two ``BLOCK_KEYN`` eFuses internal to the chip and, by default, is protected from software access.
-
-  :esp32c3: - Flash memory contents is encrypted using XTS-AES-128. The flash encryption key is 256 bits and stored one``BLOCK_KEYN`` eFuse internal to the chip and, by default, is protected from software access.
 
   - Flash access is transparent via the flash cache mapping feature of {IDF_TARGET_NAME} - any flash regions which are mapped to the address space will be transparently decrypted when read.
 
@@ -749,8 +692,7 @@ Flash encryption protects firmware against unauthorised readout and modification
     - Not all data is stored encrypted. If storing data on flash, check if the method you are using (library, API, etc.) supports flash encryption.
     - Flash encryption does not prevent an attacker from understanding the high-level layout of the flash. This is because the same AES key is used for every pair of adjacent 16 byte AES blocks. When these adjacent 16 byte blocks contain identical content (such as empty or padding areas), these blocks will encrypt to produce matching pairs of encrypted blocks. This may allow an attacker to make high-level comparisons between encrypted devices (i.e. to tell if two devices are probably running the same firmware version).
     :esp32: - For the same reason, an attacker can always tell when a pair of adjacent 16 byte blocks (32 byte aligned) contain two identical 16 byte sequences. Keep this in mind if storing sensitive data on the flash, design your flash storage so this doesn't happen (using a counter byte or some other non-identical value every 16 bytes is sufficient). :ref:`NVS Encryption <nvs_encryption>` deals with this and is suitable for many uses.
-    :not esp32c3: - Flash encryption alone may not prevent an attacker from modifying the firmware of the device. To prevent unauthorised firmware from running on the device, use flash encryption in combination with :doc:`Secure Boot <secure-boot-v2>`.
-    :esp32c3: - Flash encryption alone may not prevent an attacker from modifying the firmware of the device. To prevent unauthorised firmware from running on the device, use flash encryption in combination with Secure Boot (not supported yet).
+    - Flash encryption alone may not prevent an attacker from modifying the firmware of the device. To prevent unauthorised firmware from running on the device, use flash encryption in combination with :doc:`Secure Boot <secure-boot-v2>`.
 
 .. _flash-encryption-and-secure-boot:
 
@@ -813,15 +755,13 @@ On the first boot, the flash encryption process burns by default the following e
   - ``DISABLE_DL_DECRYPT`` which disables transparent flash decryption when running in UART bootloader mode, even if the eFuse ``{IDF_TARGET_CRYPT_CNT}`` is set to enable it in normal operation.
   - ``DISABLE_DL_CACHE`` which disables the entire MMU flash cache when running in UART bootloader mode.
 
-.. only:: esp32s2 or esp32c3
+.. only:: esp32s2
 
   .. list::
 
     - ``DIS_DOWNLOAD_MANUAL_ENCRYPT`` which disables flash encryption operation when running in UART bootloader boot mode.
     :esp32s2: - ``DIS_DOWNLOAD_ICACHE`` and ``DIS_DOWNLOAD_DCACHE`` which disables the entire MMU flash cache when running in UART bootloader mode.
-    :esp32c3: - ``DIS_DOWNLOAD_ICACHE`` which disables the entire MMU flash cache when running in UART bootloader mode.
     :esp32s2: - ``HARD_DIS_JTAG`` which disables JTAG.
-    :esp32c3: - ``DIS_PAD_JTAG`` and ``DIS_USB_JTAG`` which disables JTAG.
     - ``DIS_LEGACY_SPI_BOOT``  which disables Legacy SPI boot mode
 
 However, before the first boot you can choose to keep any of these features enabled by burning only selected eFuses and write-protect the rest of eFuses with unset value 0. For example:
@@ -833,7 +773,7 @@ However, before the first boot you can choose to keep any of these features enab
     espefuse.py --port PORT burn_efuse DISABLE_DL_DECRYPT
     espefuse.py --port PORT write_protect_efuse DISABLE_DL_ENCRYPT
 
-.. only:: esp32s2 or esp32c3
+.. only:: esp32s2
 
   .. code-block:: bash
 
@@ -930,19 +870,5 @@ The following sections provide some reference information about the operation of
   - XTS-AES is a block chiper mode specifically designed for disc encryption and addresses the weaknesses other potential modes (e.g. AES-CTR) have for this use case. A detailed description of the XTS-AES algorithm can be found in `IEEE Std 1619-2007 <https://ieeexplore.ieee.org/document/4493450>`_.
 
   - The flash encryption key is stored in one or two ``BLOCK_KEYN`` eFuses and, by default, is protected from further writes or software readout.
-
-  - To see the full flash encryption algorithm implemented in Python, refer to the `_flash_encryption_operation()` function in the ``espsecure.py`` source code.
-
-.. only:: esp32c3
-
-  .. _flash-encryption-algorithm:
-
-  Flash Encryption Algorithm
-  ^^^^^^^^^^^^^^^^^^^^^^^^^^
-  - {IDF_TARGET_NAME} use the XTS-AES block chiper mode with 256 bit size for flash encryption.
-
-  - XTS-AES is a block chiper mode specifically designed for disc encryption and addresses the weaknesses other potential modes (e.g. AES-CTR) have for this use case. A detailed description of the XTS-AES algorithm can be found in `IEEE Std 1619-2007 <https://ieeexplore.ieee.org/document/4493450>`_.
-
-  - The flash encryption key is stored in one ``BLOCK_KEYN`` eFuse and, by default, is protected from further writes or software readout.
 
   - To see the full flash encryption algorithm implemented in Python, refer to the `_flash_encryption_operation()` function in the ``espsecure.py`` source code.

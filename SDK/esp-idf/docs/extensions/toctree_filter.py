@@ -1,6 +1,5 @@
 # Based on https://stackoverflow.com/a/46600038 with some modifications
 import re
-
 from sphinx.directives.other import TocTree
 
 

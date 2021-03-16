@@ -17,19 +17,19 @@ def test_lists()
   # li2 must now be empty
   # remove each individual item from right side of li3 and
   # append to right side of li2 (reversing list)
-  until li3.empty?
+  while (not li3.empty?)
     li2.push(li3.pop)
   end
   # li3 must now be empty
   # reverse li1 in place
   li1.reverse!
   # check that first item is now SIZE
-  if li1[0] != SIZE
+  if li1[0] != SIZE then
     p "not SIZE"
     0
   else
     # compare li1 and li2 for equality
-    if li1 != li2
+    if li1 != li2 then
       return(0)
     else
       # return the length of the list

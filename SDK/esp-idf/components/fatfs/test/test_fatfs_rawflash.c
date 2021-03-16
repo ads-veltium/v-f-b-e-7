@@ -29,7 +29,6 @@
 #include "test_fatfs_common.h"
 #include "esp_partition.h"
 #include "ff.h"
-#include "esp_rom_sys.h"
 
 
 static void test_setup(size_t max_files)
@@ -268,7 +267,7 @@ static void read_task(void* param)
         uint32_t rval;
         int cnt = fread(&rval, sizeof(rval), 1, f);
         if (cnt != 1 || rval != args->val) {
-            esp_rom_printf("E(r): i=%d, cnt=%d rval=%d val=%d\n\n", i, cnt, rval, args->val);
+            ets_printf("E(r): i=%d, cnt=%d rval=%d val=%d\n\n", i, cnt, rval, args->val);
             args->result = ESP_FAIL;
             goto close;
         }

@@ -29,7 +29,7 @@
 
 #include <sys/types.h>
 #ifdef HAVE_SYS_SOCKET_H
-#  include <sys/socket.h>
+#include <sys/socket.h>
 #endif // HAVE_SYS_SOCKET_H
 
 #include <mutex>
@@ -37,7 +37,7 @@
 #include <vector>
 #include <random>
 #ifndef NOTHREADS
-#  include <future>
+#include <future>
 #endif // NOTHREADS
 
 #include <openssl/ssl.h>
@@ -45,7 +45,7 @@
 #include <ev.h>
 
 #ifdef HAVE_NEVERBLEED
-#  include <neverbleed.h>
+#include <neverbleed.h>
 #endif // HAVE_NEVERBLEED
 
 #include "shrpx_downstream_connection_pool.h"
@@ -84,18 +84,17 @@ struct OCSPUpdateContext {
 };
 
 // SerialEvent is an event sent from Worker thread.
-enum class SerialEventType {
-  NONE,
-  REPLACE_DOWNSTREAM,
+enum SerialEventType {
+  SEV_NONE,
+  SEV_REPLACE_DOWNSTREAM,
 };
 
 struct SerialEvent {
   // ctor for event uses DownstreamConfig
-  SerialEvent(SerialEventType type,
-              const std::shared_ptr<DownstreamConfig> &downstreamconf)
+  SerialEvent(int type, const std::shared_ptr<DownstreamConfig> &downstreamconf)
       : type(type), downstreamconf(downstreamconf) {}
 
-  SerialEventType type;
+  int type;
   std::shared_ptr<DownstreamConfig> downstreamconf;
 };
 
@@ -118,7 +117,6 @@ public:
   struct ev_loop *get_loop() const;
   Worker *get_single_worker() const;
   void add_acceptor(std::unique_ptr<AcceptHandler> h);
-  void delete_acceptor();
   void enable_acceptor();
   void disable_acceptor();
   void sleep_acceptor(ev_tstamp t);
@@ -161,11 +159,11 @@ public:
   const std::vector<SSL_CTX *> &get_indexed_ssl_ctx(size_t idx) const;
 
 #ifdef HAVE_NEVERBLEED
-  void set_neverbleed(neverbleed_t *nb);
+  void set_neverbleed(std::unique_ptr<neverbleed_t> nb);
+  neverbleed_t *get_neverbleed() const;
 #endif // HAVE_NEVERBLEED
 
-  // Send SerialEvent SerialEventType::REPLACE_DOWNSTREAM to this
-  // object.
+  // Send SerialEvent SEV_REPLACE_DOWNSTREAM to this object.
   void send_replace_downstream(
       const std::shared_ptr<DownstreamConfig> &downstreamconf);
   // Internal function to send |ev| to this object.
@@ -211,7 +209,7 @@ private:
   struct ev_loop *loop_;
   std::vector<std::unique_ptr<AcceptHandler>> acceptors_;
 #ifdef HAVE_NEVERBLEED
-  neverbleed_t *nb_;
+  std::unique_ptr<neverbleed_t> nb_;
 #endif // HAVE_NEVERBLEED
   ev_timer disable_acceptor_timer_;
   ev_timer ocsp_timer_;

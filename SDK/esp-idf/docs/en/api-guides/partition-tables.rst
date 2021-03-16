@@ -39,15 +39,15 @@ Here is the summary printed for the "Factory app, two OTA definitions" configura
   nvs,      data, nvs,     0x9000,  0x4000,
   otadata,  data, ota,     0xd000,  0x2000,
   phy_init, data, phy,     0xf000,  0x1000,
-  factory,  app,  factory, 0x10000,  1M,
-  ota_0,    app,  ota_0,   0x110000, 1M,
-  ota_1,    app,  ota_1,   0x210000, 1M,
+  factory,  0,    0,       0x10000, 1M,
+  ota_0,    0,    ota_0,  0x110000, 1M,
+  ota_1,    0,    ota_1,  0x210000, 1M,
 
 * There are now three app partition definitions. The type of the factory app (at 0x10000) and the next two "OTA" apps are all set to "app", but their subtypes are different.
 * There is also a new "otadata" slot, which holds the data for OTA updates. The bootloader consults this data in order to know which app to execute. If "ota data" is empty, it will execute the factory app.
 
 Creating Custom Tables
--------------------------
+----------------------
 
 If you choose "Custom partition table CSV" in menuconfig then you can also enter the name of a CSV file (in the project directory) to use for your partition table. The CSV file can describe any number of definitions for the table you need.
 
@@ -80,7 +80,7 @@ If your app needs to store data in a format not already supported by ESP-IDF, th
 
 See :cpp:type:`esp_partition_type_t` for the enum definitions for ``app`` and ``data`` partitions.
 
-If writing in C++ then specifying a application-defined partition type requires casting an integer to :cpp:type:`esp_partition_type_t` in order to use it with the :ref:`partition API<api-reference-partition-table>`. For example::
+If writing in C++ then specifying a application-defined partition type requires casting an integer to :cpp:type:`esp_partition_type_t` in order to use it with the :ref:`partition API <api-reference-partition-table>`. For example::
 
     static const esp_partition_type_t APP_PARTITION_TYPE_A = (esp_partition_type_t)0x40;
 
@@ -99,7 +99,6 @@ See enum :cpp:type:`esp_partition_subtype_t` for the full list of subtypes defin
 
     - OTA never updates the factory partition.
     - If you want to conserve flash usage in an OTA project, you can remove the factory partition and use ``ota_0`` instead.
-  
   - ``ota_0`` (0x10) ... ``ota_15`` (0x1F) are the OTA app slots. When :doc:`OTA <../api-reference/system/ota>` is in use, the OTA data partition configures which app slot the bootloader should boot. When using OTA, an application should have at least two OTA application slots (``ota_0`` & ``ota_1``). Refer to the :doc:`OTA documentation <../api-reference/system/ota>` for more details.
   - ``test`` (0x20) is a reserved subtype for factory test procedures. It will be used as the fallback boot partition if no other valid app partition is found. It is also possible to configure the bootloader to read a GPIO input during each boot, and boot this partition if the GPIO is held low, see :ref:`bootloader_boot_from_test_firmware`.
 
@@ -128,7 +127,7 @@ See enum :cpp:type:`esp_partition_subtype_t` for the full list of subtypes defin
 
 * If the partition type is any application-defined value (range 0x40-0xFE), then ``subtype`` field can be any value chosen by the application (range 0x00-0xFE).
 
-  Note that when writing in C++, an application-defined subtype value requires casting to type :cpp:type:`esp_partition_subtype_t` in order to use it with the :ref:`partition API<api-reference-partition-table>`.
+  Note that when writing in C++, an application-defined subtype value requires casting to type :cpp:type:`esp_partition_subtype_t` in order to use it with the :ref:`partition API <api-reference-partition-table>`.
 
 Offset & Size
 ~~~~~~~~~~~~~
@@ -146,9 +145,7 @@ Flags
 
 Only one flag is currently supported, ``encrypted``. If this field is set to ``encrypted``, this partition will be encrypted if :doc:`/security/flash-encryption` is enabled.
 
-.. note::
-
-    ``app`` type partitions will always be encrypted, regardless of whether this flag is set or not.
+(Note that ``app`` type partitions will always be encrypted, regardless of whether this flag is set or not.)
 
 Generating Binary Partition Table
 ---------------------------------
@@ -184,10 +181,7 @@ Flashing the partition table
 
 A manual flashing command is also printed as part of ``idf.py partition_table`` output.
 
-.. note::
-
-  Note that updating the partition table doesn't erase data that may have been stored according to the old partition table. You can use ``idf.py erase_flash`` (or ``esptool.py erase_flash``) to erase the entire flash contents.
-
+Note that updating the partition table doesn't erase data that may have been stored according to the old partition table. You can use ``idf.py erase_flash`` (or ``esptool.py erase_flash``) to erase the entire flash contents.
 
 Partition Tool (parttool.py)
 ----------------------------
@@ -197,9 +191,10 @@ The component `partition_table` provides a tool :component_file:`parttool.py<par
   - reading a partition and saving the contents to a file (read_partition)
   - writing the contents of a file to a partition (write_partition)
   - erasing a partition (erase_partition)
-  - retrieving info such as name, offset, size and flag ("encrypted") of a given partition (get_partition_info)
+  - retrieving info such as offset and size of a given partition (get_partition_info)
 
-The tool can either be imported and used from another Python script or invoked from shell script for users wanting to perform operation programmatically. This is facilitated by the tool's Python API and command-line interface, respectively.
+The tool can either be imported and used from another Python script or invoked from shell script for users wanting to perform operation programmatically. This is facilitated by the tool's Python API
+and command-line interface, respectively.
 
 Python API
 ~~~~~~~~~~~
@@ -241,7 +236,8 @@ The created object can now be used to perform operations on the target device:
   storage = target.get_partition_info(PARTITION_BOOT_DEFAULT)
   print(storage.size)
 
-The partition to operate on is specified using `PartitionName` or `PartitionType` or PARTITION_BOOT_DEFAULT. As the name implies, these can be used to refer to partitions of a particular name, type-subtype combination, or the default boot partition.
+The partition to operate on is specified using `PartitionName` or `PartitionType` or PARTITION_BOOT_DEFAULT. As the name implies, these can be used to refer
+to partitions of a particular name, type-subtype combination, or the default boot partition.
 
 More information on the Python API is available in the docstrings for the tool.
 
@@ -264,7 +260,7 @@ The command-line interface of `parttool.py` has the following structure:
   parttool.py --port "/dev/ttyUSB1" erase_partition --partition-name=storage
 
   # Read partition with type 'data' and subtype 'spiffs' and save to file 'spiffs.bin'
-  parttool.py --port "/dev/ttyUSB1" read_partition --partition-type=data --partition-subtype=spiffs --output "spiffs.bin"
+  parttool.py --port "/dev/ttyUSB1" read_partition --partition-type=data --partition-subtype=spiffs "spiffs.bin"
 
   # Write to partition 'factory' the contents of a file named 'factory.bin'
   parttool.py --port "/dev/ttyUSB1" write_partition --partition-name=factory "factory.bin"
@@ -281,5 +277,6 @@ More information can be obtained by specifying `--help` as argument:
 
   # Show descriptions for specific subcommand arguments
   parttool.py [subcommand] --help
+
 
 .. _secure boot: security/secure-boot-v1.rst

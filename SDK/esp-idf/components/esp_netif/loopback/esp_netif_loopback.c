@@ -18,7 +18,6 @@
 
 #include "esp_netif.h"
 #include "esp_netif_private.h"
-#include "esp_netif_sta_list.h"
 
 #if CONFIG_ESP_NETIF_LOOPBACK
 
@@ -433,7 +432,7 @@ const char *esp_netif_get_desc(esp_netif_t *esp_netif)
     return esp_netif->if_desc;
 }
 
-int32_t esp_netif_get_event_id(esp_netif_t *esp_netif, esp_netif_ip_event_type_t event_type)
+uint32_t esp_netif_get_event_id(esp_netif_t *esp_netif, esp_netif_ip_event_type_t event_type)
 {
     return 0;
 }

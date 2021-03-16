@@ -11,15 +11,6 @@ mainmenu "Espressif IoT Development Framework Configuration"
     config IDF_ENV_FPGA
         # This option is for internal use only
         bool
-        option env="IDF_ENV_FPGA"
-
-    config IDF_TARGET_ARCH_RISCV
-        bool
-        default "n"
-
-    config IDF_TARGET_ARCH_XTENSA
-        bool
-        default "n"
 
     config IDF_TARGET
         # This option records the IDF target when sdkconfig is generated the first time.
@@ -32,44 +23,16 @@ mainmenu "Espressif IoT Development Framework Configuration"
     config IDF_TARGET_ESP32
         bool
         default "y" if IDF_TARGET="esp32"
-        select IDF_TARGET_ARCH_XTENSA
 
     config IDF_TARGET_ESP32S2
         bool
         default "y" if IDF_TARGET="esp32s2"
         select FREERTOS_UNICORE
-        select IDF_TARGET_ARCH_XTENSA
-
-    config IDF_TARGET_ESP32S3
-        bool
-        default "y" if IDF_TARGET="esp32s3"
-        select IDF_TARGET_ARCH_XTENSA
-
-    choice IDF_TARGET_ESP32S3_BETA_VERSION
-        prompt "ESP32-S3 beta version"
-        depends on IDF_TARGET_ESP32S3
-        default IDF_TARGET_ESP32S3_BETA_VERSION_2
-        help
-            Currently ESP32-S3 has several beta versions for internal use only.
-            Select the one that matches your chip model.
-
-        config IDF_TARGET_ESP32S3_BETA_VERSION_2
-            bool
-            prompt "ESP32-S3 beta2"
-    endchoice
-
-    config IDF_TARGET_ESP32C3
-        bool
-        default "y" if IDF_TARGET="esp32c3"
-        select FREERTOS_UNICORE
-        select IDF_TARGET_ARCH_RISCV
 
     config IDF_FIRMWARE_CHIP_ID
         hex
         default 0x0000 if IDF_TARGET_ESP32
         default 0x0002 if IDF_TARGET_ESP32S2
-        default 0x0004 if IDF_TARGET_ESP32S3
-        default 0x0005 if IDF_TARGET_ESP32C3
         default 0xFFFF
 
     menu "SDK tool configuration"
@@ -77,9 +40,6 @@ mainmenu "Espressif IoT Development Framework Configuration"
             string "Compiler toolchain path/prefix"
             default "xtensa-esp32-elf-" if IDF_TARGET_ESP32
             default "xtensa-esp32s2-elf-" if IDF_TARGET_ESP32S2
-            default "xtensa-esp32s3-elf-" if IDF_TARGET_ESP32S3
-            default "riscv32-esp-elf-" if IDF_TARGET_ESP32C3
-
             help
                 The prefix/path that is used to call the toolchain. The default setting assumes
                 a crosstool-ng gcc setup that is in your PATH.
@@ -134,7 +94,7 @@ mainmenu "Espressif IoT Development Framework Configuration"
                 Select the way the application is built.
 
                 By default, the application is built as a binary file in a format compatible with
-                the ESP-IDF bootloader. In addition to this application, 2nd stage bootloader is
+                the ESP32 bootloader. In addition to this application, 2nd stage bootloader is
                 also built. Application and bootloader binaries can be written into flash and
                 loaded/executed from there.
 
@@ -146,7 +106,7 @@ mainmenu "Espressif IoT Development Framework Configuration"
                 written into flash.
                 Note that at the moment, ESP-IDF does not contain all the startup code required to
                 initialize the CPUs and ROM memory (data/bss). Therefore it is necessary to execute
-                a bit of ROM code prior to executing the application. A gdbinit file may look as follows (for ESP32):
+                a bit of ROM code prior to executing the application. A gdbinit file may look as follows:
 
                     # Connect to a running instance of OpenOCD
                     target remote :3333
@@ -165,8 +125,6 @@ mainmenu "Espressif IoT Development Framework Configuration"
                 Execute this gdbinit file as follows:
 
                     xtensa-esp32-elf-gdb build/app-name.elf -x gdbinit
-
-                Example gdbinit files for other targets can be found in tools/test_apps/system/gdb_loadable_elf/
 
                 Recommended sdkconfig.defaults for building loadable ELF files is as follows.
                 CONFIG_APP_BUILD_TYPE_ELF_RAM is required, other options help reduce application
@@ -368,12 +326,6 @@ mainmenu "Espressif IoT Development Framework Configuration"
             help
                 Enable this option if using GCC 6 or newer, and wanting to disable warnings which don't appear with
                 GCC 5.
-
-        config COMPILER_DUMP_RTL_FILES
-            bool "Dump RTL files during compilation"
-            help
-                If enabled, RTL files will be produced during compilation. These files
-                can be used by other tools, for example to calculate call graphs.
 
 
     endmenu # Compiler Options

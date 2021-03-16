@@ -14,7 +14,7 @@
 
 #pragma once
 
-/* Common header for ESP32-S2 ADC/DAC tests */
+#if !DISABLED_FOR_TARGETS(ESP8266, ESP32) // This testcase for ESP32S2
 
 /**
  * SPI DMA type.
@@ -63,3 +63,5 @@ void adc_dac_dma_linker_stop(spi_dma_link_type_t type);
  * Deinit SPI3 DMA. Disable interrupt, stop DMA trans.
  */
 void adc_dac_dma_linker_deinit(void);
+
+#endif

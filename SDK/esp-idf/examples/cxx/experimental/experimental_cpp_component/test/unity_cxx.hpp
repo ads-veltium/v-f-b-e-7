@@ -1,8 +1,9 @@
-#pragma once
+#ifndef UNITY_CXX_H_
+#define UNITY_CXX_H_
 
 #include "unity.h"
 
-#define CXX_UNITY_TYPE_TO_STR(x) #x
+#define STR(x) #x
 
 /**
  * Very simple helper macro to catch exceptions.
@@ -23,9 +24,12 @@
         } catch ( std::exception &e) { \
             caught_different = true; \
         } \
-        TEST_ASSERT_FALSE_MESSAGE(caught_different, "ERROR: Expected " CXX_UNITY_TYPE_TO_STR(exception_) \
+        TEST_ASSERT_FALSE_MESSAGE(caught_different, "ERROR: Expected " STR(exception_) \
                 ", but caught different exception."); \
-        TEST_ASSERT_TRUE_MESSAGE(caught, "ERROR: Expected " CXX_UNITY_TYPE_TO_STR(exception_) \
+        TEST_ASSERT_TRUE_MESSAGE(caught, "ERROR: Expected " STR(exception_) \
                 ", but no exception thrown."); \
     } \
     while (0)
+
+
+#endif // UNITY_CXX_H_

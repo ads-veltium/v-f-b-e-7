@@ -14,6 +14,7 @@
  */
 #include <stdio.h>
 #include "esp_system.h"
+#include "driver/pcnt.h"
 #include "unity.h"
 #include "test_utils.h"
 #include "freertos/FreeRTOS.h"
@@ -24,10 +25,8 @@
 #include "soc/rtc.h"
 #include "soc/soc_caps.h"
 
-#if SOC_MCPWM_SUPPORTED
-#if !TEMPORARY_DISABLED_FOR_TARGETS(ESP32S3)
+#ifdef SOC_MCPWM_SUPPORTED
 #include "soc/mcpwm_periph.h"
-#include "driver/pcnt.h"
 #include "driver/mcpwm.h"
 
 
@@ -787,5 +786,4 @@ TEST_CASE("MCPWM unit1, timer2 capture test", "[mcpwm][test_env=UT_T1_MCPWM][tim
     capture_test(MCPWM_UNIT_1, MCPWM_TIMER_2, MCPWM_POS_EDGE);
 }
 
-#endif // !TEMPORARY_DISABLED_FOR_TARGETS(ESP32S3)
-#endif // SOC_MCPWM_SUPPORTED
+#endif

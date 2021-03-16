@@ -1,8 +1,5 @@
-This is the (likely incomplete) list of "mruby developers".
-If you submit a patch to mruby, please add your name to the end
-of this list.
-
-   Yukihiro Matsumoto (Matz)
+Original Authors "mruby developers" are:
+   Yukihiro Matsumoto
    SCSK KYUSHU CORPORATION
    Kyushu Institute of Technology
    Network Applied Communication Laboratory, Inc.
@@ -37,8 +34,3 @@ of this list.
    Yuichi Osawa
    Terence Lee
    Zachary Scott
-   Tomasz Dąbrowski
-   Christopher Aue
-   Masahiro Wakame
-   YAMAMOTO Masaya
-   KOBAYASHI Shuji

@@ -23,35 +23,15 @@
 #ifndef _SHA1_ALT_H_
 #define _SHA1_ALT_H_
 
-#if defined(MBEDTLS_SHA1_ALT)
-
-#include "hal/sha_types.h"
-#include "soc/soc_caps.h"
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#if SOC_SHA_SUPPORT_PARALLEL_ENG
+#if defined(MBEDTLS_SHA1_ALT)
 
-typedef enum {
-    ESP_MBEDTLS_SHA1_UNUSED, /* first block hasn't been processed yet */
-    ESP_MBEDTLS_SHA1_HARDWARE, /* using hardware SHA engine */
-    ESP_MBEDTLS_SHA1_SOFTWARE, /* using software SHA */
-} esp_mbedtls_sha1_mode;
+#if CONFIG_IDF_TARGET_ESP32S2
 
-/**
- * \brief          SHA-1 context structure
- */
-typedef struct {
-    uint32_t total[2];          /*!< number of bytes processed  */
-    uint32_t state[5];          /*!< intermediate digest state  */
-    unsigned char buffer[64];   /*!< data block being processed */
-    esp_mbedtls_sha1_mode mode;
-} mbedtls_sha1_context;
-
-#elif SOC_SHA_SUPPORT_DMA
-
+#include "esp32s2/sha.h"
 typedef enum {
     ESP_SHA1_STATE_INIT,
     ESP_SHA1_STATE_IN_PROCESS
@@ -69,7 +49,28 @@ typedef struct {
     esp_sha1_state sha_state;
 } mbedtls_sha1_context;
 
-#endif
+#endif //CONFIG_IDF_TARGET_ESP32S2
+
+#if CONFIG_IDF_TARGET_ESP32
+
+typedef enum {
+    ESP_MBEDTLS_SHA1_UNUSED, /* first block hasn't been processed yet */
+    ESP_MBEDTLS_SHA1_HARDWARE, /* using hardware SHA engine */
+    ESP_MBEDTLS_SHA1_SOFTWARE, /* using software SHA */
+} esp_mbedtls_sha1_mode;
+
+/**
+ * \brief          SHA-1 context structure
+ */
+typedef struct {
+    uint32_t total[2];          /*!< number of bytes processed  */
+    uint32_t state[5];          /*!< intermediate digest state  */
+    unsigned char buffer[64];   /*!< data block being processed */
+    esp_mbedtls_sha1_mode mode;
+}
+mbedtls_sha1_context;
+
+#endif //CONFIG_IDF_TARGET_ESP32
 
 #endif
 
@@ -78,3 +79,4 @@ typedef struct {
 #endif
 
 #endif
+

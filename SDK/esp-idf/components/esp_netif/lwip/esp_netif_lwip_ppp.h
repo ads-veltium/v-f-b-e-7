@@ -15,8 +15,6 @@
 #ifndef _ESP_NETIF_LWIP_PPP_H_
 #define _ESP_NETIF_LWIP_PPP_H_
 
-#if CONFIG_ESP_NETIF_TCPIP_LWIP
-
 /**
  * @brief  Creates new PPP related structure
  *
@@ -27,17 +25,17 @@
  *         - pointer to ppp-netif object on success
  *         - NULL otherwise
  */
-netif_related_data_t * esp_netif_new_ppp(esp_netif_t *esp_netif, const esp_netif_netstack_config_t *esp_netif_stack_config);
+lwip_ppp_ctx_t* esp_netif_new_ppp(esp_netif_t *esp_netif, const esp_netif_netstack_config_t *esp_netif_stack_config);
 
 /**
  * @brief  Creates new PPP related structure
  *
- * @param[in]    netif_related pointer to internal ppp context instance
+ * @param[in]    ppp pointer to internal ppp context instance
  *
  * @return
  *         - ESP_OK on success
  */
-esp_err_t esp_netif_start_ppp(netif_related_data_t *netif_related);
+esp_err_t esp_netif_start_ppp(lwip_ppp_ctx_t *ppp);
 
 /**
  * @brief  Data path API to input incoming packets to PPP
@@ -55,19 +53,19 @@ void esp_netif_lwip_ppp_input(void *ppp, void *buffer, size_t len, void *eb);
 /**
  * @brief   Destroys the ppp netif object
  *
- * @param[in]    netif_related pointer to internal ppp context instance
+ * @param[in]    ppp pointer to internal ppp context instance
  */
-void esp_netif_destroy_ppp(netif_related_data_t *netif_related);
+void esp_netif_destroy_ppp(lwip_ppp_ctx_t *ppp);
 
 /**
  * @brief  Stops the PPP interface
  *
- * @param[in]    netif_related pointer to internal ppp context instance
+ * @param[in]    ppp pointer to internal ppp context instance
  *
  * @return
  *         - ESP_OK on success
  */
-esp_err_t esp_netif_stop_ppp(netif_related_data_t *netif_related);
+esp_err_t esp_netif_stop_ppp(lwip_ppp_ctx_t *ppp);
 
 /**
  * @brief  Sets default netif for routing priority config
@@ -75,9 +73,6 @@ esp_err_t esp_netif_stop_ppp(netif_related_data_t *netif_related);
  * @note: This function must be called from lwip thread
  *
  */
-void esp_netif_ppp_set_default_netif(netif_related_data_t *netif_related);
-
-#endif /* CONFIG_ESP_NETIF_TCPIP_LWIP */
-
+void esp_netif_ppp_set_default_netif(lwip_ppp_ctx_t* ppp_ctx);
 
 #endif // _ESP_NETIF_LWIP_PPP_H_

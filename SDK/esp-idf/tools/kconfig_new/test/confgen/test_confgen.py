@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+from future.utils import iteritems
 import os
 import re
 import subprocess
@@ -7,8 +8,6 @@ import sys
 import tempfile
 import textwrap
 import unittest
-
-from future.utils import iteritems
 
 
 class ConfgenBaseTestCase(unittest.TestCase):
@@ -271,5 +270,5 @@ hex "Hex Item default prefix"
 default 0x77
 """
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

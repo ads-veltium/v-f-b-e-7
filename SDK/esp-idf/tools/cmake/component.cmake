@@ -171,9 +171,6 @@ function(__component_add component_dir prefix)
             add_library(${component_target} STATIC IMPORTED)
         endif()
         idf_build_set_property(__COMPONENT_TARGETS ${component_target} APPEND)
-    else()
-        __component_get_property(dir ${component_target} COMPONENT_DIR)
-        __component_set_property(${component_target} COMPONENT_OVERRIDEN_DIR ${dir})
     endif()
 
     set(component_lib __${prefix}_${component_name})
@@ -416,11 +413,9 @@ endfunction()
 # @param[in, optional] REQUIRED_IDF_TARGETS (multivalue) the list of IDF build targets that the component only supports
 # @param[in, optional] EMBED_FILES (multivalue) list of binary files to embed with the component
 # @param[in, optional] EMBED_TXTFILES (multivalue) list of text files to embed with the component
-# @param[in, optional] KCONFIG (single value) override the default Kconfig
-# @param[in, optional] KCONFIG_PROJBUILD (single value) override the default Kconfig
 function(idf_component_register)
     set(options)
-    set(single_value KCONFIG KCONFIG_PROJBUILD)
+    set(single_value)
     set(multi_value SRCS SRC_DIRS EXCLUDE_SRCS
                     INCLUDE_DIRS PRIV_INCLUDE_DIRS LDFRAGMENTS REQUIRES
                     PRIV_REQUIRES REQUIRED_IDF_TARGETS EMBED_FILES EMBED_TXTFILES)
@@ -463,9 +458,7 @@ function(idf_component_register)
     idf_build_get_property(compile_definitions COMPILE_DEFINITIONS GENERATOR_EXPRESSION)
     add_compile_options("${compile_definitions}")
 
-    if(common_reqs) # check whether common_reqs exists, this may be the case in minimalistic host unit test builds
-        list(REMOVE_ITEM common_reqs ${component_lib})
-    endif()
+    list(REMOVE_ITEM common_reqs ${component_lib})
     link_libraries(${common_reqs})
 
     idf_build_get_property(config_dir CONFIG_DIR)
@@ -477,7 +470,7 @@ function(idf_component_register)
         __component_add_include_dirs(${component_lib} "${__INCLUDE_DIRS}" PUBLIC)
         __component_add_include_dirs(${component_lib} "${__PRIV_INCLUDE_DIRS}" PRIVATE)
         __component_add_include_dirs(${component_lib} "${config_dir}" PUBLIC)
-        set_target_properties(${component_lib} PROPERTIES OUTPUT_NAME ${COMPONENT_NAME} LINKER_LANGUAGE C)
+        set_target_properties(${component_lib} PROPERTIES OUTPUT_NAME ${COMPONENT_NAME})
         __ldgen_add_component(${component_lib})
     else()
         add_library(${component_lib} INTERFACE)

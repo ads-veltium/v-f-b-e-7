@@ -1,5 +1,3 @@
-| Supported Targets | ESP32 | ESP32-S2 |
-| ----------------- | ----- | -------- |
 # Example: Application Level Tracing - SystemView Tracing (sysview_tracing)
 
 This test code shows how to perform system-wide behavioral analysis of the program using [SEGGER SystemView tool](https://www.segger.com/products/development-tools/systemview/).

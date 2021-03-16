@@ -27,20 +27,26 @@
 static int
 ble_hs_startup_read_sup_f_tx(void)
 {
-    struct ble_hci_ip_rd_loc_supp_feat_rp rsp;
+    uint8_t ack_params[BLE_HCI_RD_LOC_SUPP_FEAT_RSPLEN];
+    uint8_t ack_params_len;
     int rc;
 
     rc = ble_hs_hci_cmd_tx(BLE_HCI_OP(BLE_HCI_OGF_INFO_PARAMS,
                                       BLE_HCI_OCF_IP_RD_LOC_SUPP_FEAT),
-                           NULL, 0, &rsp, sizeof(rsp));
+                           NULL,0, ack_params, sizeof ack_params,
+                           &ack_params_len);
     if (rc != 0) {
         return rc;
+    }
+
+    if (ack_params_len != BLE_HCI_RD_LOC_SUPP_FEAT_RSPLEN) {
+        return BLE_HS_ECONTROLLER;
     }
 
     /* for now we don't use it outside of init sequence so check this here
      * LE Supported (Controller) byte 4, bit 6
      */
-    if (!(rsp.features & 0x0000006000000000)) {
+    if (!(ack_params[4] & 0x60)) {
         BLE_HS_LOG(ERROR, "Controller doesn't support LE\n");
         return BLE_HS_ECONTROLLER;
     }
@@ -52,18 +58,26 @@ ble_hs_startup_read_sup_f_tx(void)
 static int
 ble_hs_startup_read_local_ver_tx(void)
 {
-    struct ble_hci_ip_rd_local_ver_rp rsp;
+    uint8_t ack_params[BLE_HCI_RD_LOC_VER_INFO_RSPLEN];
+    uint8_t ack_params_len;
+    uint8_t hci_version;
     int rc;
 
     rc = ble_hs_hci_cmd_tx(BLE_HCI_OP(BLE_HCI_OGF_INFO_PARAMS,
                                       BLE_HCI_OCF_IP_RD_LOCAL_VER),
-                           NULL, 0, &rsp, sizeof(rsp));
+                           NULL,0, ack_params, sizeof ack_params,
+                           &ack_params_len);
     if (rc != 0) {
         return rc;
     }
 
+    if (ack_params_len != BLE_HCI_RD_LOC_VER_INFO_RSPLEN) {
+        return BLE_HS_ECONTROLLER;
+    }
+
     /* For now we are interested only in HCI Version */
-    ble_hs_hci_set_hci_version(rsp.hci_ver);
+    hci_version = ack_params[0];
+    ble_hs_hci_set_hci_version(hci_version);
 
     return 0;
 }
@@ -71,17 +85,26 @@ ble_hs_startup_read_local_ver_tx(void)
 static int
 ble_hs_startup_le_read_sup_f_tx(void)
 {
-    struct ble_hci_le_rd_loc_supp_feat_rp rsp;
+    uint8_t ack_params[BLE_HCI_RD_LE_LOC_SUPP_FEAT_RSPLEN];
+    uint8_t ack_params_len;
+    uint32_t feat;
     int rc;
 
     rc = ble_hs_hci_cmd_tx(BLE_HCI_OP(BLE_HCI_OGF_LE,
                                       BLE_HCI_OCF_LE_RD_LOC_SUPP_FEAT),
-                           NULL,0, &rsp, sizeof(rsp));
+                           NULL,0, ack_params, sizeof ack_params,
+                           &ack_params_len);
     if (rc != 0) {
         return rc;
     }
 
-    ble_hs_hci_set_le_supported_feat(le64toh(rsp.features));
+    if (ack_params_len != BLE_HCI_RD_LE_LOC_SUPP_FEAT_RSPLEN) {
+        return BLE_HS_ECONTROLLER;
+    }
+
+    /* For now 32-bits of features is enough */
+    feat = get_le32(ack_params);
+    ble_hs_hci_set_le_supported_feat(feat);
 
     return 0;
 }
@@ -89,18 +112,23 @@ ble_hs_startup_le_read_sup_f_tx(void)
 static int
 ble_hs_startup_le_read_buf_sz_tx(uint16_t *out_pktlen, uint8_t *out_max_pkts)
 {
-    struct ble_hci_le_rd_buf_size_rp rsp;
+    uint8_t ack_params[BLE_HCI_RD_BUF_SIZE_RSPLEN];
+    uint8_t ack_params_len;
     int rc;
 
     rc = ble_hs_hci_cmd_tx(BLE_HCI_OP(BLE_HCI_OGF_LE,
                                       BLE_HCI_OCF_LE_RD_BUF_SIZE), NULL, 0,
-                           &rsp, sizeof(rsp));
+                           ack_params, sizeof ack_params, &ack_params_len);
     if (rc != 0) {
         return rc;
     }
 
-    *out_pktlen = le16toh(rsp.data_len);
-    *out_max_pkts = rsp.data_packets;
+    if (ack_params_len != BLE_HCI_RD_BUF_SIZE_RSPLEN) {
+        return BLE_HS_ECONTROLLER;
+    }
+
+    *out_pktlen = get_le16(ack_params + 0);
+    *out_max_pkts = ack_params[2];
 
     return 0;
 }
@@ -108,18 +136,23 @@ ble_hs_startup_le_read_buf_sz_tx(uint16_t *out_pktlen, uint8_t *out_max_pkts)
 static int
 ble_hs_startup_read_buf_sz_tx(uint16_t *out_pktlen, uint16_t *out_max_pkts)
 {
-    struct ble_hci_ip_rd_buf_size_rp rsp;
+    uint8_t ack_params[BLE_HCI_IP_RD_BUF_SIZE_RSPLEN];
+    uint8_t ack_params_len;
     int rc;
 
     rc = ble_hs_hci_cmd_tx(BLE_HCI_OP(BLE_HCI_OGF_INFO_PARAMS,
                                       BLE_HCI_OCF_IP_RD_BUF_SIZE), NULL, 0,
-                           &rsp, sizeof(rsp));
+                           ack_params, sizeof ack_params, &ack_params_len);
     if (rc != 0) {
         return rc;
     }
 
-    *out_pktlen = le16toh(rsp.acl_data_len);
-    *out_max_pkts = le16toh(rsp.acl_num);
+    if (ack_params_len != BLE_HCI_IP_RD_BUF_SIZE_RSPLEN) {
+        return BLE_HS_ECONTROLLER;
+    }
+
+    *out_pktlen = get_le16(ack_params + 0);
+    *out_max_pkts = get_le16(ack_params + 3);
 
     return 0;
 }
@@ -159,24 +192,30 @@ ble_hs_startup_read_buf_sz(void)
 static int
 ble_hs_startup_read_bd_addr(void)
 {
-    struct ble_hci_ip_rd_bd_addr_rp rsp;
+    uint8_t ack_params[BLE_HCI_IP_RD_BD_ADDR_ACK_PARAM_LEN];
+    uint8_t ack_params_len;
     int rc;
 
     rc = ble_hs_hci_cmd_tx(BLE_HCI_OP(BLE_HCI_OGF_INFO_PARAMS,
                                       BLE_HCI_OCF_IP_RD_BD_ADDR),
-                           NULL, 0, &rsp, sizeof(rsp));
+                           NULL, 0, ack_params, sizeof ack_params,
+                           &ack_params_len);
     if (rc != 0) {
         return rc;
     }
 
-    ble_hs_id_set_pub(rsp.addr);
+    if (ack_params_len != sizeof ack_params) {
+        return BLE_HS_ECONTROLLER;
+    }
+
+    ble_hs_id_set_pub(ack_params);
     return 0;
 }
 
 static int
 ble_hs_startup_le_set_evmask_tx(void)
 {
-    struct ble_hci_le_set_event_mask_cp cmd;
+    uint8_t buf[BLE_HCI_SET_LE_EVENT_MASK_LEN];
     uint8_t version;
     uint64_t mask;
     int rc;
@@ -228,21 +267,10 @@ ble_hs_startup_le_set_evmask_tx(void)
         mask |= 0x00000000000ff800;
     }
 
-#if MYNEWT_VAL(BLE_PERIODIC_ADV_SYNC_TRANSFER)
-    if (version >= BLE_HCI_VER_BCS_5_1) {
-        /**
-         * Enable the following LE events:
-         * 0x0000000000800000 LE Periodic Advertising Sync Transfer Received event
-         */
-        mask |= 0x0000000000800000;
-    }
-#endif
-
-    cmd.event_mask = htole64(mask);
-
-    rc = ble_hs_hci_cmd_tx(BLE_HCI_OP(BLE_HCI_OGF_LE,
-                                      BLE_HCI_OCF_LE_SET_EVENT_MASK),
-                           &cmd, sizeof(cmd), NULL, 0);
+    ble_hs_hci_cmd_build_le_set_event_mask(mask, buf, sizeof buf);
+    rc = ble_hs_hci_cmd_tx_empty_ack(BLE_HCI_OP(BLE_HCI_OGF_LE,
+                                                BLE_HCI_OCF_LE_SET_EVENT_MASK),
+                                     buf, sizeof(buf));
     if (rc != 0) {
         return rc;
     }
@@ -253,8 +281,7 @@ ble_hs_startup_le_set_evmask_tx(void)
 static int
 ble_hs_startup_set_evmask_tx(void)
 {
-    struct ble_hci_cb_set_event_mask_cp cmd;
-    struct ble_hci_cb_set_event_mask2_cp cmd2;
+    uint8_t buf[BLE_HCI_SET_EVENT_MASK_LEN];
     uint8_t version;
     int rc;
 
@@ -269,11 +296,10 @@ ble_hs_startup_set_evmask_tx(void)
      *     0x0000800000000000 Encryption Key Refresh Complete Event
      *     0x2000000000000000 LE Meta-Event
      */
-    cmd.event_mask = htole64(0x2000800002008090);
-
-    rc = ble_hs_hci_cmd_tx(BLE_HCI_OP(BLE_HCI_OGF_CTLR_BASEBAND,
-                                      BLE_HCI_OCF_CB_SET_EVENT_MASK),
-                           &cmd, sizeof(cmd), NULL, 0);
+    ble_hs_hci_cmd_build_set_event_mask(0x2000800002008090, buf, sizeof buf);
+    rc = ble_hs_hci_cmd_tx_empty_ack(BLE_HCI_OP(BLE_HCI_OGF_CTLR_BASEBAND,
+                                                BLE_HCI_OCF_CB_SET_EVENT_MASK),
+                                     buf, sizeof(buf));
     if (rc != 0) {
         return rc;
     }
@@ -283,10 +309,10 @@ ble_hs_startup_set_evmask_tx(void)
          * Enable the following events:
          *     0x0000000000800000 Authenticated Payload Timeout Event
          */
-        cmd2.event_mask2 = htole64(0x0000000000800000);
-        rc = ble_hs_hci_cmd_tx(BLE_HCI_OP(BLE_HCI_OGF_CTLR_BASEBAND,
-                                          BLE_HCI_OCF_CB_SET_EVENT_MASK2),
-                               &cmd2, sizeof(cmd2), NULL, 0);
+        ble_hs_hci_cmd_build_set_event_mask2(0x0000000000800000, buf, sizeof buf);
+        rc = ble_hs_hci_cmd_tx_empty_ack(BLE_HCI_OP(BLE_HCI_OGF_CTLR_BASEBAND,
+                                                    BLE_HCI_OCF_CB_SET_EVENT_MASK2),
+                                         buf, sizeof(buf));
         if (rc != 0) {
             return rc;
         }
@@ -298,9 +324,16 @@ ble_hs_startup_set_evmask_tx(void)
 static int
 ble_hs_startup_reset_tx(void)
 {
-    return ble_hs_hci_cmd_tx(BLE_HCI_OP(BLE_HCI_OGF_CTLR_BASEBAND,
-                                        BLE_HCI_OCF_CB_RESET),
-                             NULL, 0, NULL, 0);
+    int rc;
+
+    rc = ble_hs_hci_cmd_tx_empty_ack(BLE_HCI_OP(BLE_HCI_OGF_CTLR_BASEBAND,
+                                                BLE_HCI_OCF_CB_RESET),
+                                     NULL, 0);
+    if (rc != 0) {
+        return rc;
+    }
+
+    return 0;
 }
 
 int

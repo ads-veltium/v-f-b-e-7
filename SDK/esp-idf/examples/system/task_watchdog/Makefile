@@ -6,3 +6,4 @@
 PROJECT_NAME := task_watchdog
 
 include $(IDF_PATH)/make/project.mk
+

@@ -3,14 +3,8 @@ from __future__ import division, print_function
 import io
 import os
 import re
-import sys
 
-try:
-    from setuptools import find_packages, setup
-except ImportError:
-    print('Package setuptools is missing from your Python installation. Please see the installation section of '
-          'the README for instructions on how to install it.')
-    exit(1)
+from setuptools import find_packages, setup
 
 
 # Example code to pull version from esptool.py with regex, taken from
@@ -103,13 +97,10 @@ setup(
         'Environment :: Console',
         'License :: OSI Approved :: GNU General Public License v2 or later (GPLv2+)',
         'Programming Language :: Python :: 2.7',
-        'Programming Language :: Python :: 3.4',  # Note: when dropping 3.4 support we can also remove the check in setup_requires
+        'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
-        'Programming Language :: Python :: 3.7',
-        'Programming Language :: Python :: 3.8',
     ],
-    setup_requires=['wheel'] if sys.version_info[0:2] not in [(3, 4), (3, 5)] else [],
     extras_require={
         "dev": [
             'flake8>=3.2.0',
@@ -117,7 +108,6 @@ setup(
             'flake8-import-order',
             'pyelftools',
             'unittest-xml-reporting<=2.5.2',  # the replacement of the old xmlrunner package (Python 2 comp. version)
-            'coverage',
         ],
     },
     install_requires=[

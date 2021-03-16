@@ -6,3 +6,4 @@
 PROJECT_NAME := mcpwm_brushed_dc_control
 
 include $(IDF_PATH)/make/project.mk
+

@@ -93,11 +93,6 @@ static BT_HDR *make_read_local_supported_commands(void)
     return make_command_no_params(HCI_READ_LOCAL_SUPPORTED_CMDS);
 }
 
-static BT_HDR *make_read_local_supported_features(void)
-{
-    return make_command_no_params(HCI_READ_LOCAL_FEATURES);
-}
-
 static BT_HDR *make_read_local_extended_features(uint8_t page_number)
 {
     uint8_t *stream;
@@ -219,12 +214,6 @@ static BT_HDR *make_write_default_erroneous_data_report(uint8_t enable)
     UINT8_TO_STREAM(stream, enable);
     return packet;
 }
-#if (BLE_50_FEATURE_SUPPORT == TRUE)
-static BT_HDR *make_read_max_adv_data_len(void)
-{
-    return make_command_no_params(HCI_BLE_RD_MAX_ADV_DATA_LEN);
-}
-#endif // #if (BLE_50_FEATURE_SUPPORT == TRUE)
 // Internal functions
 
 static BT_HDR *make_command_no_params(uint16_t opcode)
@@ -267,7 +256,6 @@ static const hci_packet_factory_t interface = {
     make_read_local_version_info,
     make_read_bd_addr,
     make_read_local_supported_commands,
-    make_read_local_supported_features,
     make_read_local_extended_features,
     make_write_simple_pairing_mode,
     make_write_secure_connections_host_support,
@@ -278,9 +266,6 @@ static const hci_packet_factory_t interface = {
     make_ble_read_supported_states,
     make_ble_read_local_supported_features,
     make_ble_read_resolving_list_size,
-#if (BLE_50_FEATURE_SUPPORT == TRUE)
-    make_read_max_adv_data_len,
-#endif // #if (BLE_50_FEATURE_SUPPORT == TRUE)
     make_ble_read_suggested_default_data_length,
     make_ble_write_suggested_default_data_length,
     make_ble_set_event_mask,

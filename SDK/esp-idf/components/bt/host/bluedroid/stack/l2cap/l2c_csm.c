@@ -1261,3 +1261,5 @@ void l2c_enqueue_peer_data (tL2C_CCB *p_ccb, BT_HDR *p_buf)
         l2cb.check_round_robin = TRUE;
     }
 }
+
+

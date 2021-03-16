@@ -61,5 +61,3 @@ API Reference
 -------------
 
 .. include-build-file:: inc/esp_expression_with_stack.inc
-
-

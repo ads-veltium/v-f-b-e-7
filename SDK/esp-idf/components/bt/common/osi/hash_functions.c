@@ -61,3 +61,4 @@ void hash_function_blob(const unsigned char *s, unsigned int len, hash_key_t h)
         h[0] = (h[0] << 7) + h[0] + *s++;
     }
 }
+

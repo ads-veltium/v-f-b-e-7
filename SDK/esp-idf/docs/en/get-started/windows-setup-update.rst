@@ -2,8 +2,6 @@
 Updating ESP-IDF tools on Windows
 *********************************
 
-:link_to_translation:`zh_CN:[中文]`
-
 .. _get-started-install_bat-windows:
 
 Install ESP-IDF tools using a script

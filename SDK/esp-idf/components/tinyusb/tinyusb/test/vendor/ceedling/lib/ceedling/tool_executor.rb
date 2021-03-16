@@ -18,8 +18,6 @@ class ToolExecutor
   end
 
   # build up a command line from yaml provided config
-
-  # @param extra_params is an array of parameters to append to executable
   def build_command_line(tool_config, extra_params, *args)
     @tool_name  = tool_config[:name]
     @executable = tool_config[:executable]
@@ -52,6 +50,7 @@ class ToolExecutor
     options[:boom] = true if (options[:boom].nil?)
     options[:stderr_redirect] = StdErrRedirect::NONE if (options[:stderr_redirect].nil?)
     options[:background_exec] = BackgroundExec::NONE if (options[:background_exec].nil?)
+
     # build command line
     command_line = [
       @tool_executor_helper.background_exec_cmdline_prepend( options ),
@@ -60,8 +59,6 @@ class ToolExecutor
       @tool_executor_helper.stderr_redirect_cmdline_append( options ),
       @tool_executor_helper.background_exec_cmdline_append( options ),
       ].flatten.compact.join(' ')
-
-    @streaminator.stderr_puts("Verbose: #{__method__.to_s}(): #{command_line}", Verbosity::DEBUG)
 
     shell_result = {}
 
@@ -76,10 +73,7 @@ class ToolExecutor
     shell_result[:time] = time
 
     #scrub the string for illegal output
-    unless shell_result[:output].nil?
-      shell_result[:output] = shell_result[:output].scrub if "".respond_to?(:scrub)
-      shell_result[:output].gsub!(/\033\[\d\dm/,'')
-    end
+    shell_result[:output].scrub! unless (!("".respond_to? :scrub!) || (shell_result[:output].nil?))
 
     @tool_executor_helper.print_happy_results( command_line, shell_result, options[:boom] )
     @tool_executor_helper.print_error_results( command_line, shell_result, options[:boom] )

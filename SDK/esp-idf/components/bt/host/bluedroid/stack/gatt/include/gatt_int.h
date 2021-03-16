@@ -501,7 +501,7 @@ typedef struct {
 } tGATT_PROFILE_CLCB;
 
 typedef struct {
-    list_t              *p_tcb_list;
+    tGATT_TCB           tcb[GATT_MAX_PHY_CHANNEL];
     fixed_queue_t       *sign_op_queue;
 
     tGATT_SR_REG        sr_reg[GATT_MAX_SR_PROFILES];
@@ -517,7 +517,7 @@ typedef struct {
     fixed_queue_t       *srv_chg_clt_q;   /* service change clients queue */
     fixed_queue_t       *pending_new_srv_start_q; /* pending new service start queue */
     tGATT_REG           cl_rcb[GATT_MAX_APPS];
-    list_t              *p_clcb_list;           /* connection link control block*/
+    tGATT_CLCB          clcb[GATT_CL_MAX_LCB];  /* connection link control block*/
     tGATT_SCCB          sccb[GATT_MAX_SCCB];    /* sign complete callback function GATT_MAX_SCCB <= GATT_CL_MAX_LCB */
     UINT8               trace_level;
     UINT16              def_mtu_size;
@@ -576,8 +576,8 @@ extern void gatt_free(void);
 
 /* from gatt_main.c */
 extern BOOLEAN gatt_disconnect (tGATT_TCB *p_tcb);
-extern BOOLEAN gatt_act_connect (tGATT_REG *p_reg, BD_ADDR bd_addr, tBLE_ADDR_TYPE bd_addr_type, tBT_TRANSPORT transport, BOOLEAN is_aux);
-extern BOOLEAN gatt_connect (BD_ADDR rem_bda, tBLE_ADDR_TYPE bd_addr_type, tGATT_TCB *p_tcb, tBT_TRANSPORT transport, BOOLEAN is_aux);
+extern BOOLEAN gatt_act_connect (tGATT_REG *p_reg, BD_ADDR bd_addr, tBLE_ADDR_TYPE bd_addr_type, tBT_TRANSPORT transport);
+extern BOOLEAN gatt_connect (BD_ADDR rem_bda, tBLE_ADDR_TYPE bd_addr_type, tGATT_TCB *p_tcb, tBT_TRANSPORT transport);
 extern void gatt_data_process (tGATT_TCB *p_tcb, BT_HDR *p_buf);
 extern void gatt_update_app_use_link_flag ( tGATT_IF gatt_if, tGATT_TCB *p_tcb, BOOLEAN is_add, BOOLEAN check_acl_link);
 
@@ -676,8 +676,6 @@ extern tGATT_REG *gatt_get_regcb (tGATT_IF gatt_if);
 extern BOOLEAN gatt_is_clcb_allocated (UINT16 conn_id);
 extern tGATT_CLCB *gatt_clcb_alloc (UINT16 conn_id);
 extern void gatt_clcb_dealloc (tGATT_CLCB *p_clcb);
-extern tGATT_CLCB *gatt_clcb_find_by_conn_id(UINT16 conn_id);
-extern tGATT_CLCB *gatt_clcb_find_by_idx(UINT16 cclcb_idx);
 
 extern void gatt_sr_copy_prep_cnt_to_cback_cnt(tGATT_TCB *p_tcb );
 extern BOOLEAN gatt_sr_is_cback_cnt_zero(tGATT_TCB *p_tcb );
@@ -696,7 +694,6 @@ extern tGATT_TCB *gatt_allocate_tcb_by_bdaddr(BD_ADDR bda, tBT_TRANSPORT transpo
 extern tGATT_TCB *gatt_get_tcb_by_idx(UINT8 tcb_idx);
 extern tGATT_TCB *gatt_find_tcb_by_addr(BD_ADDR bda, tBT_TRANSPORT transport);
 extern BOOLEAN gatt_send_ble_burst_data (BD_ADDR remote_bda,  BT_HDR *p_buf);
-extern void gatt_tcb_free( tGATT_TCB *p_tcb);
 
 /* GATT client functions */
 extern void gatt_dequeue_sr_cmd (tGATT_TCB *p_tcb);

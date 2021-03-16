@@ -86,17 +86,6 @@ elseif(CONFIG_COMPILER_STACK_CHECK_MODE_ALL)
     list(APPEND compile_options "-fstack-protector-all")
 endif()
 
-if(CONFIG_COMPILER_DUMP_RTL_FILES)
-    list(APPEND compile_options "-fdump-rtl-expand")
-endif()
-
-# GCC-specific options
-if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
-    list(APPEND compile_options "-fstrict-volatile-bitfields"
-                                "-Wno-error=unused-but-set-variable"
-                                )
-endif()
-
 list(APPEND link_options "-fno-lto")
 
 idf_build_set_property(COMPILE_OPTIONS "${compile_options}" APPEND)

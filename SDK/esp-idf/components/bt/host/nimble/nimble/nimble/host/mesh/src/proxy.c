@@ -7,11 +7,13 @@
  */
 
 #include "syscfg/syscfg.h"
-#define MESH_LOG_MODULE BLE_MESH_PROXY_LOG
 
 #if MYNEWT_VAL(BLE_MESH_PROXY)
 
 #include "mesh/mesh.h"
+
+#define BT_DBG_ENABLED (MYNEWT_VAL(BLE_MESH_DEBUG_PROXY))
+#include "host/ble_hs_log.h"
 #include "host/ble_att.h"
 #include "services/gatt/ble_svc_gatt.h"
 #include "../../host/src/ble_hs_priv.h"
@@ -652,7 +654,10 @@ static void proxy_connected(uint16_t conn_handle)
 static void proxy_disconnected(uint16_t conn_handle, int reason)
 {
 	int i;
-	bool disconnected = false;
+
+	BT_INFO("conn_handle %d reason %d", conn_handle, reason);
+
+	conn_count--;
 
 	for (i = 0; i < ARRAY_SIZE(clients); i++) {
 		struct bt_mesh_proxy_client *client = &clients[i];
@@ -665,16 +670,11 @@ static void proxy_disconnected(uint16_t conn_handle, int reason)
 
 			k_delayed_work_cancel(&client->sar_timer);
 			client->conn_handle = BLE_HS_CONN_HANDLE_NONE;
-			conn_count--;
-			disconnected = true;
 			break;
 		}
 	}
 
-	if (disconnected) {
-		BT_INFO("conn_handle %d reason %d", conn_handle, reason);
-		bt_mesh_adv_update();
-	}
+	bt_mesh_adv_update();
 }
 
 struct os_mbuf *bt_mesh_proxy_get_buf(void)
@@ -740,7 +740,7 @@ int bt_mesh_proxy_prov_enable(void)
 	return 0;
 }
 
-int bt_mesh_proxy_prov_disable(bool disconnect)
+int bt_mesh_proxy_prov_disable(void)
 {
 	uint16_t handle;
 	int rc;
@@ -767,22 +767,12 @@ int bt_mesh_proxy_prov_disable(bool disconnect)
 	for (i = 0; i < ARRAY_SIZE(clients); i++) {
 		struct bt_mesh_proxy_client *client = &clients[i];
 
-		if ((client->conn_handle == BLE_HS_CONN_HANDLE_NONE)
-		    || (client->filter_type != PROV)) {
-			continue;
-		}
-
-		if (disconnect) {
-			rc = ble_gap_terminate(client->conn_handle,
-					       BLE_ERR_REM_USER_CONN_TERM);
-			assert(rc == 0);
-		} else {
+        if ((client->conn_handle != BLE_HS_CONN_HANDLE_NONE)
+                && (client->filter_type == PROV)) {
 			bt_mesh_pb_gatt_close(client->conn_handle);
 			client->filter_type = NONE;
 		}
 	}
-
-	bt_mesh_adv_update();
 
 	return 0;
 }
@@ -917,6 +907,16 @@ static bool client_filter_match(struct bt_mesh_proxy_client *client,
 
 	BT_DBG("filter_type %u addr 0x%04x", client->filter_type, addr);
 
+	if (client->filter_type == WHITELIST) {
+		for (i = 0; i < ARRAY_SIZE(client->filter); i++) {
+			if (client->filter[i] == addr) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
 	if (client->filter_type == BLACKLIST) {
 		for (i = 0; i < ARRAY_SIZE(client->filter); i++) {
 			if (client->filter[i] == addr) {
@@ -925,18 +925,6 @@ static bool client_filter_match(struct bt_mesh_proxy_client *client,
 		}
 
 		return true;
-	}
-
-	if (addr == BT_MESH_ADDR_ALL_NODES) {
-		return true;
-	}
-
-	if (client->filter_type == WHITELIST) {
-		for (i = 0; i < ARRAY_SIZE(client->filter); i++) {
-			if (client->filter[i] == addr) {
-				return true;
-			}
-		}
 	}
 
 	return false;
@@ -1158,7 +1146,7 @@ static bool advertise_subnet(struct bt_mesh_subnet *sub)
 	}
 
 	return (sub->node_id == BT_MESH_NODE_IDENTITY_RUNNING ||
-		bt_mesh_gatt_proxy_get() != BT_MESH_GATT_PROXY_NOT_SUPPORTED);
+		bt_mesh_gatt_proxy_get() == BT_MESH_GATT_PROXY_ENABLED);
 }
 
 static struct bt_mesh_subnet *next_sub(void)
@@ -1201,7 +1189,7 @@ static s32_t gatt_proxy_advertise(struct bt_mesh_subnet *sub)
 	BT_DBG("");
 
 	if (conn_count == CONFIG_BT_MAX_CONN) {
-		BT_DBG("Connectable advertising deferred (max connections)");
+		BT_WARN("Connectable advertising deferred (max connections)");
 		return remaining;
 	}
 
@@ -1225,7 +1213,11 @@ static s32_t gatt_proxy_advertise(struct bt_mesh_subnet *sub)
 	}
 
 	if (sub->node_id == BT_MESH_NODE_IDENTITY_STOPPED) {
-		net_id_adv(sub);
+		if (bt_mesh_gatt_proxy_get() == BT_MESH_GATT_PROXY_ENABLED) {
+			net_id_adv(sub);
+		} else {
+			return gatt_proxy_advertise(next_sub());
+		}
 	}
 
 	subnet_count = sub_count();
@@ -1361,39 +1353,12 @@ void bt_mesh_proxy_adv_stop(void)
 	}
 }
 
-static void ble_mesh_handle_connect(struct ble_gap_event *event, void *arg)
+int
+ble_mesh_proxy_gap_event(struct ble_gap_event *event, void *arg)
 {
-#if MYNEWT_VAL(BLE_EXT_ADV)
-	/* When EXT ADV is enabled then mesh proxy is connected
-	 * when proxy advertising instance is completed.
-	 * Therefore no need to handle BLE_GAP_EVENT_CONNECT
-	 */
-	if (event->type == BLE_GAP_EVENT_ADV_COMPLETE) {
-		/* Reason 0 means advertising has been completed because
-		 * connection has been established
-		 */
-		if (event->adv_complete.reason != 0) {
-			return;
-		}
 
-		if (event->adv_complete.instance != BT_MESH_ADV_GATT_INST) {
-			return;
-		}
-
-		proxy_connected(event->adv_complete.conn_handle);
-	}
-#else
 	if (event->type == BLE_GAP_EVENT_CONNECT) {
 		proxy_connected(event->connect.conn_handle);
-	}
-#endif
-}
-
-int ble_mesh_proxy_gap_event(struct ble_gap_event *event, void *arg)
-{
-	if ((event->type == BLE_GAP_EVENT_CONNECT) ||
-		(event->type == BLE_GAP_EVENT_ADV_COMPLETE)) {
-		ble_mesh_handle_connect(event, arg);
 	} else if (event->type == BLE_GAP_EVENT_DISCONNECT) {
 		proxy_disconnected(event->disconnect.conn.conn_handle,
 				   event->disconnect.reason);

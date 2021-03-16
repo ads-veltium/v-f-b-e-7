@@ -6,3 +6,4 @@
 PROJECT_NAME := pppos_client
 
 include $(IDF_PATH)/make/project.mk
+

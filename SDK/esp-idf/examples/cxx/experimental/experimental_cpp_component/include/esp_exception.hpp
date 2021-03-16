@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#ifndef ESP_EXCEPTION_HPP_
+#define ESP_EXCEPTION_HPP_
 
 #ifdef __cpp_exceptions
 
@@ -22,53 +23,22 @@
 namespace idf {
 
 /**
- * @brief
- * General exception class for all C++ exceptions in IDF.
- *
+ * General exception class for exceptions on the ESP chips.
  * All throwing code in IDF should use either this exception directly or a sub-classes.
- * An error from the underlying IDF function is mandatory. The idea is to wrap the orignal IDF error code to keep
- * the error scheme partially compatible. If an exception occurs in a higher level C++ code not directly wrapping
- * IDF functions, an appropriate error code reflecting the cause must be chosen or newly created.
  */
-class ESPException : public std::exception {
-public:
-    /**
-     * @param error Error from underlying IDF functions.
-     */
+struct ESPException : public std::exception {
     ESPException(esp_err_t error);
 
-    virtual ~ESPException() { }
-
-    /**
-     * @return A textual representation of the contained error. This method only wraps \c esp_err_to_name.
-     */
-    virtual const char *what() const noexcept;
-
-    /**
-     * Error from underlying IDF functions. If an exception occurs in a higher level C++ code not directly wrapping
-     * IDF functions, an appropriate error code reflecting the cause must be chosen or newly created.
-     */
-    const esp_err_t error;
+    esp_err_t error;
 };
 
 /**
  * Convenience macro to help converting IDF error codes into ESPException.
  */
-#define CHECK_THROW(error_)                                         \
-    do {                                                            \
-        esp_err_t result = error_;                                  \
-        if (result != ESP_OK) throw idf::ESPException(result);      \
-    } while (0)
-
-/**
- * Convenience macro to help converting IDF error codes into a child of ESPException.
- */
-#define CHECK_THROW_SPECIFIC(error_, exception_type_)               \
-    do {                                                            \
-        esp_err_t result = error_;                                  \
-        if (result != ESP_OK) throw idf::exception_type_(result);   \
-    } while (0)
+#define CHECK_THROW(error_) if (error_ != ESP_OK) throw idf::ESPException(error_);
 
 } // namespace idf
 
 #endif // __cpp_exceptions
+
+#endif // ESP_EXCEPTION_HPP_

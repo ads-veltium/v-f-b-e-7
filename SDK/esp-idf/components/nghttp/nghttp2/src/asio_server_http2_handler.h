@@ -169,6 +169,6 @@ private:
 
 } // namespace server
 } // namespace asio_http2
-} // namespace nghttp2
+} // namespace nghttp
 
 #endif // ASIO_SERVER_HTTP2_HANDLER_H

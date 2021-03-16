@@ -44,3 +44,4 @@ void btc_gatt_com_call_handler(btc_msg_t *msg)
         break;
     }
 }
+

@@ -1,7 +1,8 @@
 #include "Eth_Station.h"
 #include "esp_netif.h"
 #include "esp_eth_netif_glue.h"
-static const char *TAG = "Eth_Controller";
+#include "esp_http_client.h"
+
 bool eth_link_up     = false;
 bool eth_connected   = false;
 bool eth_connecting  = false;
@@ -148,25 +149,23 @@ void BuscarContador_Task(void *args){
 
 
 bool ComprobarConexion(){
-    //Comprobar si la red tiene conexion a internet
-    IP4_ADDR(&ParametrosPing.BaseAdress , 8,8,8,8);
-    ParametrosPing.CheckingConn = true;
-    uint32_t ping_count = 5;  //how many pings per report
-    uint32_t ping_timeout = 1000; //mS till we consider it timed out
-    uint32_t ping_delay = 100; //mS between pings
-    
-	esp_ping_set_target(PING_TARGET_IP_ADDRESS_COUNT, &ping_count, sizeof(uint32_t));
-    esp_ping_set_target(PING_TARGET_RCV_TIMEO, &ping_timeout, sizeof(uint32_t));
-    esp_ping_set_target(PING_TARGET_DELAY_TIME, &ping_delay, sizeof(uint32_t));
-    esp_ping_set_target(PING_TARGET_IP_ADDRESS, &ParametrosPing.BaseAdress, sizeof(uint32_t));
-    func(pingResults);
-    ping_init();
-    
-	return ESP_OK;
+    esp_http_client_config_t config = {
+        .url = "http://httpbin.org/get",
+    };
+    esp_http_client_handle_t client = esp_http_client_init(&config);
+    esp_err_t err = esp_http_client_perform(client);
+
+    if (err == ESP_OK) {
+        if(esp_http_client_get_status_code(client) == 200){
+            return true;
+        }
+    }
+    esp_http_client_cleanup(client);
+
+	return false;
 }
 
-static void eth_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
-{
+static void eth_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data){
     switch (event_id) {
     case ETHERNET_EVENT_CONNECTED:
 
@@ -222,9 +221,7 @@ static void eth_event_handler(void *arg, esp_event_base_t event_base, int32_t ev
         eth_connected = true;
         eth_connecting = false;
 
-        
-
-        ComprobarConexion();
+        ConfigFirebase.InternetConection = ComprobarConexion();
         Coms.ETH.conectado = true;
         break;
     }

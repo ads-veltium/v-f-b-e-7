@@ -13,11 +13,8 @@
 // limitations under the License.
 
 /*
- Tests for the touch sensor device driver for ESP32
+ Tests for the touch sensor device driver
 */
-#include "sdkconfig.h"
-#if CONFIG_IDF_TARGET_ESP32
-
 #include "esp_system.h"
 #include "driver/touch_pad.h"
 #include "unity.h"
@@ -35,7 +32,8 @@
 #include "soc/rtc_cntl_struct.h"
 #include "soc/rtc_io_reg.h"
 #include "soc/rtc_io_struct.h"
-#include "esp_rom_sys.h"
+
+#if !DISABLED_FOR_TARGETS(ESP8266, ESP32S2) // This testcase for ESP32
 
 static const char *TAG = "test_touch";
 
@@ -300,7 +298,7 @@ static bool s_pad_activated[TOUCH_PAD_MAX];
 static void test_touch_intr_cb(void *arg)
 {
     uint32_t pad_intr = touch_pad_get_status();
-    esp_rom_printf("T%x ", pad_intr);
+    ets_printf("T%x ", pad_intr);
     //clear interrupt
     touch_pad_clear_status();
     for (int i = 0; i < TEST_TOUCH_CHANNEL; i++) {
@@ -375,4 +373,4 @@ TEST_CASE("Touch Sensor interrupt test", "[touch]")
     TEST_ESP_OK( test_touch_interrupt() );
 }
 
-#endif // CONFIG_IDF_TARGET_ESP32
+#endif // !DISABLED_FOR_TARGETS(ESP8266, ESP32)

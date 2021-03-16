@@ -1,13 +1,12 @@
 #!/usr/bin/env python
-from __future__ import division, print_function
-
-import sys
+from __future__ import print_function, division
 import unittest
+import sys
 
 try:
     import efuse_table_gen
 except ImportError:
-    sys.path.append('..')
+    sys.path.append("..")
     import efuse_table_gen
 
 
@@ -118,7 +117,7 @@ name2,                   EFUSE_BLK2,                       ,                    
 ,                        EFUSE_BLK2,                       ,                     4,
 name1,                   EFUSE_BLK3,                       ,                     5,
 """
-        with self.assertRaisesRegex(efuse_table_gen.InputError, 'Field names must be unique'):
+        with self.assertRaisesRegex(efuse_table_gen.InputError, "Field names must be unique"):
             efuse_table_gen.FuseTable.from_csv(csv)
 
     def test_seq_bit_start5_fill(self):
@@ -155,7 +154,7 @@ name1,                   EFUSE_BLK3,                     1,                     
 name2,                   EFUSE_BLK3,                     5,                     4,              Use for test name 2
             """
         t = efuse_table_gen.FuseTable.from_csv(csv)
-        with self.assertRaisesRegex(efuse_table_gen.InputError, 'overlap'):
+        with self.assertRaisesRegex(efuse_table_gen.InputError, "overlap"):
             t.verify()
 
     def test_empty_field_name_fail(self):
@@ -164,7 +163,7 @@ name2,                   EFUSE_BLK3,                     5,                     
 ,                        EFUSE_BLK3,                       ,                     5,
 name2,                   EFUSE_BLK2,                       ,                     4,
 """
-        with self.assertRaisesRegex(efuse_table_gen.InputError, 'missing field name'):
+        with self.assertRaisesRegex(efuse_table_gen.InputError, "missing field name"):
             efuse_table_gen.FuseTable.from_csv(csv)
 
     def test_unique_field_name_fail(self):
@@ -173,7 +172,7 @@ name2,                   EFUSE_BLK2,                       ,                    
 name1,                   EFUSE_BLK3,                     0,                     5,              Use for test name 1
 name1,                   EFUSE_BLK3,                     5,                     4,              Use for test name 2
             """
-        with self.assertRaisesRegex(efuse_table_gen.InputError, 'Field names must be unique'):
+        with self.assertRaisesRegex(efuse_table_gen.InputError, "Field names must be unique"):
             efuse_table_gen.FuseTable.from_csv(csv)
 
     def test_bit_count_empty_fail(self):
@@ -182,7 +181,7 @@ name1,                   EFUSE_BLK3,                     5,                     
 name1,                   EFUSE_BLK3,                     0,                     ,              Use for test name 1
 name2,                   EFUSE_BLK3,                     5,                     4,              Use for test name 2
             """
-        with self.assertRaisesRegex(efuse_table_gen.InputError, 'empty'):
+        with self.assertRaisesRegex(efuse_table_gen.InputError, "empty"):
             efuse_table_gen.FuseTable.from_csv(csv)
 
     def test_bit_start_num_fail(self):
@@ -191,7 +190,7 @@ name2,                   EFUSE_BLK3,                     5,                     
 name1,                   EFUSE_BLK3,                     k,                     5,              Use for test name 1
 name2,                   EFUSE_BLK3,                     5,                     4,              Use for test name 2
             """
-        with self.assertRaisesRegex(efuse_table_gen.InputError, 'Invalid field value'):
+        with self.assertRaisesRegex(efuse_table_gen.InputError, "Invalid field value"):
             efuse_table_gen.FuseTable.from_csv(csv)
 
     def test_join_entry(self):
@@ -258,7 +257,7 @@ name2,                   EFUSE_BLK3,                     191,                   
             """
         efuse_table_gen.max_blk_len = 192
         t = efuse_table_gen.FuseTable.from_csv(csv)
-        with self.assertRaisesRegex(efuse_table_gen.InputError, 'The field is outside the boundaries'):
+        with self.assertRaisesRegex(efuse_table_gen.InputError, "The field is outside the boundaries"):
             t.verify()
 
     def test_field_blk1_size_is_more(self):
@@ -268,7 +267,7 @@ name1,                   EFUSE_BLK0,                     0,                     
 name2,                   EFUSE_BLK1,                     1,                     256,            Use for test name 2
             """
         t = efuse_table_gen.FuseTable.from_csv(csv)
-        with self.assertRaisesRegex(efuse_table_gen.InputError, 'The field is outside the boundaries'):
+        with self.assertRaisesRegex(efuse_table_gen.InputError, "The field is outside the boundaries"):
             t.verify()
 
 
@@ -312,8 +311,8 @@ name1,                   EFUSE_BLK3,                     0,                     
 name2,                   EFUSE_BLK2,                     5,                     4,              Use for test name 2
             """
         t = efuse_table_gen.FuseTable.from_csv(csv)
-        with self.assertRaisesRegex(efuse_table_gen.ValidationError, 'custom_table should use only EFUSE_BLK3'):
-            t.verify('custom_table')
+        with self.assertRaisesRegex(efuse_table_gen.ValidationError, "custom_table should use only EFUSE_BLK3"):
+            t.verify("custom_table")
 
     def test_common_and_custom_table_use_the_same_bits(self):
         csv_common = """
@@ -322,7 +321,7 @@ name1,                   EFUSE_BLK3,                     0,                     
 name2,                   EFUSE_BLK2,                     5,                     4,              Use for test name 2
                      """
         common_table = efuse_table_gen.FuseTable.from_csv(csv_common)
-        common_table.verify('common_table')
+        common_table.verify("common_table")
         two_tables = common_table
 
         csv_custom = """
@@ -331,12 +330,12 @@ name3,                   EFUSE_BLK3,                     20,                    
 name4,                   EFUSE_BLK3,                      4,                    1,              Use for test name 2
             """
         custom_table = efuse_table_gen.FuseTable.from_csv(csv_custom)
-        custom_table.verify('custom_table')
+        custom_table.verify("custom_table")
 
         two_tables += custom_table
-        with self.assertRaisesRegex(efuse_table_gen.InputError, 'overlaps'):
+        with self.assertRaisesRegex(efuse_table_gen.InputError, "overlaps"):
             two_tables.verify()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

@@ -10,7 +10,6 @@
 #include "driver/adc.h"
 #include "audio_example_file.h"
 #include "esp_adc_cal.h"
-#include "esp_rom_sys.h"
 
 #if CONFIG_IDF_TARGET_ESP32
 
@@ -223,7 +222,7 @@ void example_i2s_adc_dac(void*arg)
         //save original data from I2S(ADC) into flash.
         esp_partition_write(data_partition, flash_wr_size, i2s_read_buff, i2s_read_len);
         flash_wr_size += i2s_read_len;
-        esp_rom_printf("Sound recording %u%%\n", flash_wr_size * 100 / FLASH_RECORD_SIZE);
+        ets_printf("Sound recording %u%%\n", flash_wr_size * 100 / FLASH_RECORD_SIZE);
     }
     i2s_adc_disable(EXAMPLE_I2S_NUM);
     free(i2s_read_buff);

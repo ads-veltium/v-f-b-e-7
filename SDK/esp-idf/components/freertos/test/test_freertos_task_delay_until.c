@@ -24,6 +24,8 @@
 #define TICKS_TO_MS(x)  (((x)*1000)/TICK_RATE)
 #define REF_TO_ROUND_MS(x)    (((x)+500)/1000)
 
+#if !TEMPORARY_DISABLED_FOR_TARGETS(ESP32S2)
+
 static SemaphoreHandle_t task_delete_semphr;
 
 static void delaying_task(void* arg)
@@ -71,3 +73,5 @@ TEST_CASE("Test vTaskDelayUntil", "[freertos]")
     vSemaphoreDelete(task_delete_semphr);
     ref_clock_deinit();
 }
+
+#endif // CONFIG_IDF_TARGET_ESP32S2

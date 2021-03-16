@@ -6,3 +6,4 @@
 PROJECT_NAME := uart_echo
 
 include $(IDF_PATH)/make/project.mk
+

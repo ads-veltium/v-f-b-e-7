@@ -564,12 +564,12 @@ esp_err_t esp_netif_dhcps_stop(esp_netif_t *esp_netif);
  *
  * This function behaves differently if DHCP server or client is enabled
  *
- *   If DHCP client is enabled, main and backup DNS servers will be updated automatically
- *   from the DHCP lease if the relevant DHCP options are set. Fallback DNS Server is never updated from the DHCP lease
+ *   If DHCP client is enabled, main and backup DNS servers will be updated automatically 
+ *   from the DHCP lease if the relevant DHCP options are set. Fallback DNS Server is never updated from the DHCP lease 
  *   and is designed to be set via this API.
  *   If DHCP client is disabled, all DNS server types can be set via this API only.
- *
- *   If DHCP server is enabled, the Main DNS Server setting is used by the DHCP server to provide a DNS Server option
+ *   
+ *   If DHCP server is enabled, the Main DNS Server setting is used by the DHCP server to provide a DNS Server option 
  *   to DHCP clients (Wi-Fi stations).
  *   - The default Main DNS server is typically the IP of the Wi-Fi AP interface itself.
  *   - This function can override it by setting server type ESP_NETIF_DNS_MAIN.
@@ -708,31 +708,6 @@ char *esp_ip4addr_ntoa(const esp_ip4_addr_t *addr, char *buf, int buflen);
 uint32_t esp_ip4addr_aton(const char *addr);
 
 /**
- * @brief Converts Ascii internet IPv4 address into esp_ip4_addr_t
- *
- * @param[in] src IPv4 address in ascii representation (e.g. "127.0.0.1")
- * @param[out] dst Address of the target esp_ip4_addr_t structure to receive converted address
- * @return
- *         - ESP_OK on success
- *         - ESP_FAIL if conversion failed
- *         - ESP_ERR_INVALID_ARG if invalid parameter is passed into
- */
-esp_err_t esp_netif_str_to_ip4(const char *src, esp_ip4_addr_t *dst);
-
-/**
- * @brief Converts Ascii internet IPv6 address into esp_ip4_addr_t
- * Zeros in the IP address can be stripped or completely ommited: "2001:db8:85a3:0:0:0:2:1" or "2001:db8::2:1")
- *
- * @param[in] src IPv6 address in ascii representation (e.g. ""2001:0db8:85a3:0000:0000:0000:0002:0001")
- * @param[out] dst Address of the target esp_ip6_addr_t structure to receive converted address
- * @return
- *         - ESP_OK on success
- *         - ESP_FAIL if conversion failed
- *         - ESP_ERR_INVALID_ARG if invalid parameter is passed into
- */
-esp_err_t esp_netif_str_to_ip6(const char *src, esp_ip6_addr_t *dst);
-
-/**
  * @}
  */
 
@@ -747,36 +722,36 @@ esp_err_t esp_netif_str_to_ip6(const char *src, esp_ip6_addr_t *dst);
 
 /**
  * @brief Gets media driver handle for this esp-netif instance
- *
+ * 
  * @param[in]  esp_netif Handle to esp-netif instance
- *
+ * 
  * @return opaque pointer of related IO driver
  */
 esp_netif_iodriver_handle esp_netif_get_io_driver(esp_netif_t *esp_netif);
 
 /**
  * @brief Searches over a list of created objects to find an instance with supplied if key
- *
+ * 
  * @param if_key Textual description of network interface
- *
+ * 
  * @return Handle to esp-netif instance
  */
 esp_netif_t *esp_netif_get_handle_from_ifkey(const char *if_key);
 
 /**
  * @brief Returns configured flags for this interface
- *
+ * 
  * @param[in]  esp_netif Handle to esp-netif instance
- *
- * @return Configuration flags
+ * 
+ * @return Configuration flags 
  */
 esp_netif_flags_t esp_netif_get_flags(esp_netif_t *esp_netif);
 
 /**
  * @brief Returns configured interface key for this esp-netif instance
- *
+ * 
  * @param[in]  esp_netif Handle to esp-netif instance
- *
+ * 
  * @return Textual description of related interface
  */
 const char *esp_netif_get_ifkey(esp_netif_t *esp_netif);
@@ -805,7 +780,7 @@ int esp_netif_get_route_prio(esp_netif_t *esp_netif);
  * @param[in]  esp_netif Handle to esp-netif instance
  *
  * @param event_type (either get or lost IP)
- *
+ * 
  * @return specific event id which is configured to be raised if the interface lost or acquired IP address
  *         -1 if supplied event_type is not known
  */

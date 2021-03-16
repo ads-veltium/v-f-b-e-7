@@ -1,9 +1,7 @@
 from __future__ import unicode_literals
-
-import os
-
-import ttfw_idf
 from tiny_test_fw import Utility
+import os
+import ttfw_idf
 
 
 def get_socket_msgs(i):

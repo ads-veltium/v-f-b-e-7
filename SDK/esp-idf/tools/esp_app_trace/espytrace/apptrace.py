@@ -1,8 +1,6 @@
 from __future__ import print_function
-
-import os
 import sys
-
+import os
 try:
     from urlparse import urlparse
 except ImportError:
@@ -11,15 +9,13 @@ try:
     import SocketServer
 except ImportError:
     import socketserver as SocketServer
-
-import os.path
-import subprocess
-import tempfile
 import threading
+import tempfile
 import time
-
-import elftools.elf.constants as elfconst
+import subprocess
+import os.path
 import elftools.elf.elffile as elffile
+import elftools.elf.constants as elfconst
 
 
 def clock():
@@ -48,7 +44,7 @@ def addr2line(toolchain, elf_path, addr):
             source line location string
     """
     try:
-        return subprocess.check_output(['%saddr2line' % toolchain, '-e', elf_path, '0x%x' % addr]).decode('utf-8')
+        return subprocess.check_output(['%saddr2line' % toolchain, '-e', elf_path, '0x%x' % addr]).decode("utf-8")
     except subprocess.CalledProcessError:
         return ''
 
@@ -212,7 +208,7 @@ class FileReader(Reader):
         line = ''
         start_tm = clock()
         while not self.need_stop:
-            line += self.trace_file.readline().decode('utf-8')
+            line += self.trace_file.readline().decode("utf-8")
             if line.endswith(linesep):
                 break
             if self.timeout != -1 and clock() >= start_tm + self.timeout:
@@ -425,13 +421,13 @@ class TraceDataProcessor:
             event : object
                 Event object
         """
-        print('EVENT[{:d}]: {}'.format(self.total_events, event))
+        print("EVENT[{:d}]: {}".format(self.total_events, event))
 
     def print_report(self):
         """
             Base method to print report.
         """
-        print('Processed {:d} events'.format(self.total_events))
+        print("Processed {:d} events".format(self.total_events))
 
     def cleanup(self):
         """
@@ -583,8 +579,8 @@ class BaseLogTraceDataProcessorImpl:
         """
             Prints log report
         """
-        print('=============== LOG TRACE REPORT ===============')
-        print('Processed {:d} log messages.'.format(len(self.messages)))
+        print("=============== LOG TRACE REPORT ===============")
+        print("Processed {:d} log messages.".format(len(self.messages)))
 
     def on_new_event(self, event):
         """
@@ -682,13 +678,13 @@ class HeapTraceEvent:
                     callers += ':'
                 callers += '0x{:x}'.format(addr)
         if self.alloc:
-            return '[{:.9f}] HEAP: Allocated {:d} bytes @ 0x{:x} from {} on core {:d} by: {}'.format(self.trace_event.ts,
+            return "[{:.9f}] HEAP: Allocated {:d} bytes @ 0x{:x} from {} on core {:d} by: {}".format(self.trace_event.ts,
                                                                                                      self.size, self.addr,
                                                                                                      self.trace_event.ctx_desc,
                                                                                                      self.trace_event.core_id,
                                                                                                      callers)
         else:
-            return '[{:.9f}] HEAP: Freed bytes @ 0x{:x} from {} on core {:d} by: {}'.format(self.trace_event.ts,
+            return "[{:.9f}] HEAP: Freed bytes @ 0x{:x} from {} on core {:d} by: {}".format(self.trace_event.ts,
                                                                                             self.addr, self.trace_event.ctx_desc,
                                                                                             self.trace_event.core_id, callers)
 
@@ -742,10 +738,10 @@ class BaseHeapTraceDataProcessorImpl:
         """
             Prints heap report
         """
-        print('=============== HEAP TRACE REPORT ===============')
-        print('Processed {:d} heap events.'.format(self.heap_events_count))
+        print("=============== HEAP TRACE REPORT ===============")
+        print("Processed {:d} heap events.".format(self.heap_events_count))
         if len(self.allocs) == 0:
-            print('OK - Heap errors was not found.')
+            print("OK - Heap errors was not found.")
             return
         leaked_bytes = 0
         for alloc in self.allocs:
@@ -753,6 +749,6 @@ class BaseHeapTraceDataProcessorImpl:
             print(alloc)
             for free in self.frees:
                 if free.addr > alloc.addr and free.addr <= alloc.addr + alloc.size:
-                    print('Possible wrong free operation found')
+                    print("Possible wrong free operation found")
                     print(free)
-        print('Found {:d} leaked bytes in {:d} blocks.'.format(leaked_bytes, len(self.allocs)))
+        print("Found {:d} leaked bytes in {:d} blocks.".format(leaked_bytes, len(self.allocs)))

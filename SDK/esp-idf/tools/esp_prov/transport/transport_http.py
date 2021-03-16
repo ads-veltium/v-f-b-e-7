@@ -14,11 +14,9 @@
 #
 
 from __future__ import print_function
-
-import socket
-
 from future.utils import tobytes
 
+import socket
 try:
     from http.client import HTTPConnection, HTTPSConnection
 except ImportError:
@@ -33,28 +31,28 @@ class Transport_HTTP(Transport):
         try:
             socket.gethostbyname(hostname.split(':')[0])
         except socket.gaierror:
-            raise RuntimeError('Unable to resolve hostname :' + hostname)
+            raise RuntimeError("Unable to resolve hostname :" + hostname)
 
         if ssl_context is None:
             self.conn = HTTPConnection(hostname, timeout=45)
         else:
             self.conn = HTTPSConnection(hostname, context=ssl_context, timeout=45)
         try:
-            print('Connecting to ' + hostname)
+            print("Connecting to " + hostname)
             self.conn.connect()
         except Exception as err:
-            raise RuntimeError('Connection Failure : ' + str(err))
-        self.headers = {'Content-type': 'application/x-www-form-urlencoded','Accept': 'text/plain'}
+            raise RuntimeError("Connection Failure : " + str(err))
+        self.headers = {"Content-type": "application/x-www-form-urlencoded","Accept": "text/plain"}
 
     def _send_post_request(self, path, data):
         try:
-            self.conn.request('POST', path, tobytes(data), self.headers)
+            self.conn.request("POST", path, tobytes(data), self.headers)
             response = self.conn.getresponse()
             if response.status == 200:
                 return response.read().decode('latin-1')
         except Exception as err:
-            raise RuntimeError('Connection Failure : ' + str(err))
-        raise RuntimeError('Server responded with error code ' + str(response.status))
+            raise RuntimeError("Connection Failure : " + str(err))
+        raise RuntimeError("Server responded with error code " + str(response.status))
 
     def send_data(self, ep_name, data):
         return self._send_post_request('/' + ep_name, data)

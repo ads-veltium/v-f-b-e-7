@@ -15,7 +15,6 @@
 #include <nvs.h>
 #include <esp_bt.h>
 #include <esp_event.h>
-#include <esp_timer.h>
 
 #ifdef CONFIG_BT_NIMBLE_ENABLED
 #include "esp_nimble_hci.h"
@@ -36,7 +35,7 @@ static const char *TAG = "app_prov";
 static const char *ssid_prefix = "PROV_";
 
 /* Handler for catching WiFi events */
-static void app_prov_event_handler(void* handler_arg, esp_event_base_t base, int32_t id, void* data);
+static void app_prov_event_handler(void* handler_arg, esp_event_base_t base, int id, void* data);
 
 /* Handlers for wifi_config provisioning endpoint */
 extern wifi_prov_config_handlers_t wifi_prov_handlers;
@@ -199,7 +198,7 @@ static void _stop_prov_cb(void * arg)
 
 /* Event handler for starting/stopping provisioning */
 static void app_prov_event_handler(void* handler_arg, esp_event_base_t event_base,
-                                   int32_t event_id, void* event_data)
+                                   int event_id, void* event_data)
 {
     /* If pointer to provisioning application data is NULL
      * then provisioning is not running */
@@ -289,7 +288,7 @@ esp_err_t app_prov_is_provisioned(bool *provisioned)
 
     /* Get WiFi Station configuration */
     wifi_config_t wifi_cfg;
-    if (esp_wifi_get_config(WIFI_IF_STA, &wifi_cfg) != ESP_OK) {
+    if (esp_wifi_get_config(ESP_IF_WIFI_STA, &wifi_cfg) != ESP_OK) {
         return ESP_FAIL;
     }
 
@@ -310,7 +309,7 @@ esp_err_t app_prov_configure_sta(wifi_config_t *wifi_cfg)
     }
     /* Configure WiFi station with host credentials
      * provided during provisioning */
-    if (esp_wifi_set_config(WIFI_IF_STA, wifi_cfg) != ESP_OK) {
+    if (esp_wifi_set_config(ESP_IF_WIFI_STA, wifi_cfg) != ESP_OK) {
         ESP_LOGE(TAG, "Failed to set WiFi configuration");
         return ESP_FAIL;
     }

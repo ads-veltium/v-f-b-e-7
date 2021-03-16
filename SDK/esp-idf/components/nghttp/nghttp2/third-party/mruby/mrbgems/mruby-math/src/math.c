@@ -4,8 +4,8 @@
 ** See Copyright Notice in mruby.h
 */
 
-#include <mruby.h>
-#include <mruby/array.h>
+#include "mruby.h"
+#include "mruby/array.h"
 
 #include <math.h>
 
@@ -19,9 +19,11 @@ domain_error(mrb_state *mrb, const char *func)
 }
 
 /* math functions not provided by Microsoft Visual C++ 2012 or older */
-#if defined _MSC_VER && _MSC_VER <= 1700
+#if defined _MSC_VER && _MSC_VER < 1800
 
 #include <float.h>
+
+#define MATH_TOLERANCE 1E-12
 
 double
 asinh(double x)
@@ -120,8 +122,7 @@ erf(double x)
     term *= xsqr/j;
     sum  += term/(2*j+1);
     ++j;
-    if (sum == 0) break;
-  } while (fabs(term/sum) > DBL_EPSILON);
+  } while (fabs(term/sum) > MATH_TOLERANCE);
   return two_sqrtpi*sum;
 }
 
@@ -154,14 +155,10 @@ erfc(double x)
     n += 0.5;
     q1 = q2;
     q2 = b/d;
-  } while (fabs(q1-q2)/q2 > DBL_EPSILON);
+  } while (fabs(q1-q2)/q2 > MATH_TOLERANCE);
   return one_sqrtpi*exp(-x*x)*q2;
 }
 
-#endif
-
-#if defined __FreeBSD__ && !defined __FreeBSD_version
-#include <osreldate.h> /* for __FreeBSD_version */
 #endif
 
 #if (defined _MSC_VER && _MSC_VER < 1800) || defined __ANDROID__ || (defined __FreeBSD__  &&  __FreeBSD_version < 803000)
@@ -489,7 +486,7 @@ static mrb_value
 math_log(mrb_state *mrb, mrb_value obj)
 {
   mrb_float x, base;
-  mrb_int argc;
+  int argc;
 
   argc = mrb_get_args(mrb, "f|f", &x, &base);
   if (x < 0.0) {
@@ -660,7 +657,7 @@ math_ldexp(mrb_state *mrb, mrb_value obj)
   mrb_int   i;
 
   mrb_get_args(mrb, "fi", &x, &i);
-  x = ldexp(x, (int)i);
+  x = ldexp(x, i);
 
   return mrb_float_value(mrb, x);
 }
@@ -739,6 +736,12 @@ mrb_mruby_math_gem_init(mrb_state* mrb)
   mrb_define_const(mrb, mrb_math, "E", mrb_float_value(mrb, M_E));
 #else
   mrb_define_const(mrb, mrb_math, "E", mrb_float_value(mrb, exp(1.0)));
+#endif
+
+#ifdef MRB_USE_FLOAT
+  mrb_define_const(mrb, mrb_math, "TOLERANCE", mrb_float_value(mrb, 1e-5));
+#else
+  mrb_define_const(mrb, mrb_math, "TOLERANCE", mrb_float_value(mrb, 1e-12));
 #endif
 
   mrb_define_module_function(mrb, mrb_math, "sin", math_sin, MRB_ARGS_REQ(1));

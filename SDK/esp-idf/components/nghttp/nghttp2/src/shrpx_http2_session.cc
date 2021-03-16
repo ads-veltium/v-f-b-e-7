@@ -26,7 +26,7 @@
 
 #include <netinet/tcp.h>
 #ifdef HAVE_UNISTD_H
-#  include <unistd.h>
+#include <unistd.h>
 #endif // HAVE_UNISTD_H
 
 #include <vector>
@@ -69,7 +69,7 @@ void connchk_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
   ev_timer_stop(loop, w);
 
   switch (http2session->get_connection_check_state()) {
-  case ConnectionCheck::STARTED:
+  case Http2Session::CONNECTION_CHECK_STARTED:
     // ping timeout; disconnect
     if (LOG_ENABLED(INFO)) {
       SSLOG(INFO, http2session) << "ping timeout";
@@ -82,7 +82,8 @@ void connchk_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
     if (LOG_ENABLED(INFO)) {
       SSLOG(INFO, http2session) << "connection check required";
     }
-    http2session->set_connection_check_state(ConnectionCheck::REQUIRED);
+    http2session->set_connection_check_state(
+        Http2Session::CONNECTION_CHECK_REQUIRED);
   }
 }
 } // namespace
@@ -185,10 +186,10 @@ Http2Session::Http2Session(struct ev_loop *loop, SSL_CTX *ssl_ctx,
     : dlnext(nullptr),
       dlprev(nullptr),
       conn_(loop, -1, nullptr, worker->get_mcpool(),
-            group->shared_addr->timeout.write, group->shared_addr->timeout.read,
-            {}, {}, writecb, readcb, timeoutcb, this,
-            get_config()->tls.dyn_rec.warmup_threshold,
-            get_config()->tls.dyn_rec.idle_timeout, Proto::HTTP2),
+            worker->get_downstream_config()->timeout.write,
+            worker->get_downstream_config()->timeout.read, {}, {}, writecb,
+            readcb, timeoutcb, this, get_config()->tls.dyn_rec.warmup_threshold,
+            get_config()->tls.dyn_rec.idle_timeout, PROTO_HTTP2),
       wb_(worker->get_mcpool()),
       worker_(worker),
       ssl_ctx_(ssl_ctx),
@@ -196,11 +197,9 @@ Http2Session::Http2Session(struct ev_loop *loop, SSL_CTX *ssl_ctx,
       addr_(addr),
       session_(nullptr),
       raddr_(nullptr),
-      state_(Http2SessionState::DISCONNECTED),
-      connection_check_state_(ConnectionCheck::NONE),
-      freelist_zone_(FreelistZone::NONE),
-      settings_recved_(false),
-      allow_connect_proto_(false) {
+      state_(DISCONNECTED),
+      connection_check_state_(CONNECTION_CHECK_NONE),
+      freelist_zone_(FREELIST_ZONE_NONE) {
   read_ = write_ = &Http2Session::noop;
 
   on_read_ = &Http2Session::read_noop;
@@ -265,14 +264,14 @@ int Http2Session::disconnect(bool hard) {
     proxy_htp_.reset();
   }
 
-  connection_check_state_ = ConnectionCheck::NONE;
-  state_ = Http2SessionState::DISCONNECTED;
+  connection_check_state_ = CONNECTION_CHECK_NONE;
+  state_ = DISCONNECTED;
 
   // When deleting Http2DownstreamConnection, it calls this object's
   // remove_downstream_connection().  The multiple
   // Http2DownstreamConnection objects belong to the same
-  // ClientHandler object if upstream is h2.  So be careful when you
-  // delete ClientHandler here.
+  // ClientHandler object if upstream is h2 or SPDY.  So be careful
+  // when you delete ClientHandler here.
   //
   // We allow creating new pending Http2DownstreamConnection with this
   // object.  Upstream::on_downstream_reset() may add
@@ -304,11 +303,13 @@ int Http2Session::disconnect(bool hard) {
 }
 
 int Http2Session::resolve_name() {
-  auto dns_query = std::make_unique<DNSQuery>(
-      addr_->host, [this](DNSResolverStatus status, const Address *result) {
+  int rv;
+
+  auto dns_query = make_unique<DNSQuery>(
+      addr_->host, [this](int status, const Address *result) {
         int rv;
 
-        if (status == DNSResolverStatus::OK) {
+        if (status == DNS_STATUS_OK) {
           *resolved_addr_ = *result;
           util::set_port(*this->resolved_addr_, this->addr_->port);
         }
@@ -318,16 +319,17 @@ int Http2Session::resolve_name() {
           delete this;
         }
       });
-  resolved_addr_ = std::make_unique<Address>();
+  resolved_addr_ = make_unique<Address>();
   auto dns_tracker = worker_->get_dns_tracker();
-  switch (dns_tracker->resolve(resolved_addr_.get(), dns_query.get())) {
-  case DNSResolverStatus::ERROR:
+  rv = dns_tracker->resolve(resolved_addr_.get(), dns_query.get());
+  switch (rv) {
+  case DNS_STATUS_ERROR:
     return -1;
-  case DNSResolverStatus::RUNNING:
+  case DNS_STATUS_RUNNING:
     dns_query_ = std::move(dns_query);
-    state_ = Http2SessionState::RESOLVING_NAME;
+    state_ = RESOLVING_NAME;
     return 0;
-  case DNSResolverStatus::OK:
+  case DNS_STATUS_OK:
     util::set_port(*resolved_addr_, addr_->port);
     return 0;
   default:
@@ -336,32 +338,12 @@ int Http2Session::resolve_name() {
   }
 }
 
-namespace {
-int htp_hdrs_completecb(llhttp_t *htp);
-} // namespace
-
-namespace {
-constexpr llhttp_settings_t htp_hooks = {
-    nullptr,             // llhttp_cb      on_message_begin;
-    nullptr,             // llhttp_data_cb on_url;
-    nullptr,             // llhttp_data_cb on_status;
-    nullptr,             // llhttp_data_cb on_header_field;
-    nullptr,             // llhttp_data_cb on_header_value;
-    htp_hdrs_completecb, // llhttp_cb      on_headers_complete;
-    nullptr,             // llhttp_data_cb on_body;
-    nullptr,             // llhttp_cb      on_message_complete;
-    nullptr,             // llhttp_cb      on_chunk_header
-    nullptr,             // llhttp_cb      on_chunk_complete
-};
-} // namespace
-
 int Http2Session::initiate_connection() {
   int rv = 0;
 
   auto worker_blocker = worker_->get_connect_blocker();
 
-  if (state_ == Http2SessionState::DISCONNECTED ||
-      state_ == Http2SessionState::RESOLVING_NAME) {
+  if (state_ == DISCONNECTED || state_ == RESOLVING_NAME) {
     if (worker_blocker->blocked()) {
       if (LOG_ENABLED(INFO)) {
         SSLOG(INFO, this)
@@ -374,7 +356,7 @@ int Http2Session::initiate_connection() {
   auto &downstreamconf = *get_config()->conn.downstream;
 
   const auto &proxy = get_config()->downstream_http_proxy;
-  if (!proxy.host.empty() && state_ == Http2SessionState::DISCONNECTED) {
+  if (!proxy.host.empty() && state_ == DISCONNECTED) {
     if (LOG_ENABLED(INFO)) {
       SSLOG(INFO, this) << "Connecting to the proxy " << proxy.host << ":"
                         << proxy.port;
@@ -421,27 +403,26 @@ int Http2Session::initiate_connection() {
     on_read_ = &Http2Session::downstream_read_proxy;
     on_write_ = &Http2Session::downstream_connect_proxy;
 
-    proxy_htp_ = std::make_unique<llhttp_t>();
-    llhttp_init(proxy_htp_.get(), HTTP_RESPONSE, &htp_hooks);
+    proxy_htp_ = make_unique<http_parser>();
+    http_parser_init(proxy_htp_.get(), HTTP_RESPONSE);
     proxy_htp_->data = this;
 
-    state_ = Http2SessionState::PROXY_CONNECTING;
+    state_ = PROXY_CONNECTING;
 
     return 0;
   }
 
-  if (state_ == Http2SessionState::DISCONNECTED ||
-      state_ == Http2SessionState::PROXY_CONNECTED ||
-      state_ == Http2SessionState::RESOLVING_NAME) {
+  if (state_ == DISCONNECTED || state_ == PROXY_CONNECTED ||
+      state_ == RESOLVING_NAME) {
     if (LOG_ENABLED(INFO)) {
-      if (state_ != Http2SessionState::RESOLVING_NAME) {
+      if (state_ != RESOLVING_NAME) {
         SSLOG(INFO, this) << "Connecting to downstream server";
       }
     }
     if (addr_->tls) {
       assert(ssl_ctx_);
 
-      if (state_ != Http2SessionState::RESOLVING_NAME) {
+      if (state_ != RESOLVING_NAME) {
         auto ssl = tls::create_ssl(ssl_ctx_);
         if (!ssl) {
           return -1;
@@ -469,14 +450,14 @@ int Http2Session::initiate_connection() {
         }
       }
 
-      if (state_ == Http2SessionState::DISCONNECTED) {
+      if (state_ == DISCONNECTED) {
         if (addr_->dns) {
           rv = resolve_name();
           if (rv != 0) {
             downstream_failure(addr_, nullptr);
             return -1;
           }
-          if (state_ == Http2SessionState::RESOLVING_NAME) {
+          if (state_ == RESOLVING_NAME) {
             return 0;
           }
           raddr_ = resolved_addr_.get();
@@ -485,21 +466,20 @@ int Http2Session::initiate_connection() {
         }
       }
 
-      if (state_ == Http2SessionState::RESOLVING_NAME) {
-        if (dns_query_->status == DNSResolverStatus::ERROR) {
+      if (state_ == RESOLVING_NAME) {
+        if (dns_query_->status == DNS_STATUS_ERROR) {
           downstream_failure(addr_, nullptr);
           return -1;
         }
-        assert(dns_query_->status == DNSResolverStatus::OK);
-        state_ = Http2SessionState::DISCONNECTED;
+        assert(dns_query_->status == DNS_STATUS_OK);
+        state_ = DISCONNECTED;
         dns_query_.reset();
         raddr_ = resolved_addr_.get();
       }
 
-      // If state_ == Http2SessionState::PROXY_CONNECTED, we have
-      // connected to the proxy using conn_.fd and tunnel has been
-      // established.
-      if (state_ == Http2SessionState::DISCONNECTED) {
+      // If state_ == PROXY_CONNECTED, we has connected to the proxy
+      // using conn_.fd and tunnel has been established.
+      if (state_ == DISCONNECTED) {
         assert(conn_.fd == -1);
 
         conn_.fd = util::create_nonblock_socket(raddr_->su.storage.ss_family);
@@ -534,7 +514,7 @@ int Http2Session::initiate_connection() {
 
       conn_.prepare_client_handshake();
     } else {
-      if (state_ == Http2SessionState::DISCONNECTED) {
+      if (state_ == DISCONNECTED) {
         // Without TLS and proxy.
         if (addr_->dns) {
           rv = resolve_name();
@@ -542,7 +522,7 @@ int Http2Session::initiate_connection() {
             downstream_failure(addr_, nullptr);
             return -1;
           }
-          if (state_ == Http2SessionState::RESOLVING_NAME) {
+          if (state_ == RESOLVING_NAME) {
             return 0;
           }
           raddr_ = resolved_addr_.get();
@@ -551,18 +531,18 @@ int Http2Session::initiate_connection() {
         }
       }
 
-      if (state_ == Http2SessionState::RESOLVING_NAME) {
-        if (dns_query_->status == DNSResolverStatus::ERROR) {
+      if (state_ == RESOLVING_NAME) {
+        if (dns_query_->status == DNS_STATUS_ERROR) {
           downstream_failure(addr_, nullptr);
           return -1;
         }
-        assert(dns_query_->status == DNSResolverStatus::OK);
-        state_ = Http2SessionState::DISCONNECTED;
+        assert(dns_query_->status == DNS_STATUS_OK);
+        state_ = DISCONNECTED;
         dns_query_.reset();
         raddr_ = resolved_addr_.get();
       }
 
-      if (state_ == Http2SessionState::DISCONNECTED) {
+      if (state_ == DISCONNECTED) {
         // Without TLS and proxy.
         assert(conn_.fd == -1);
 
@@ -597,17 +577,17 @@ int Http2Session::initiate_connection() {
       }
     }
 
-    // We have been already connected when no TLS and proxy is used.
-    if (state_ == Http2SessionState::PROXY_CONNECTED) {
-      on_read_ = &Http2Session::read_noop;
-      on_write_ = &Http2Session::write_noop;
+    on_write_ = &Http2Session::downstream_write;
+    on_read_ = &Http2Session::downstream_read;
 
+    // We have been already connected when no TLS and proxy is used.
+    if (state_ == PROXY_CONNECTED) {
       return connected();
     }
 
     write_ = &Http2Session::connected;
 
-    state_ = Http2SessionState::CONNECTING;
+    state_ = CONNECTING;
     conn_.wlimit.startw();
 
     conn_.wt.repeat = downstreamconf.timeout.connect;
@@ -623,45 +603,68 @@ int Http2Session::initiate_connection() {
 }
 
 namespace {
-int htp_hdrs_completecb(llhttp_t *htp) {
+int htp_hdrs_completecb(http_parser *htp) {
   auto http2session = static_cast<Http2Session *>(htp->data);
 
   // We only read HTTP header part.  If tunneling succeeds, response
   // body is a different protocol (HTTP/2 in this case), we don't read
   // them here.
+  //
+  // Here is a caveat: http-parser returns 1 less bytes if we pause
+  // here.  The reason why they do this is probably they want to eat
+  // last 1 byte in s_headers_done state, on the other hand, this
+  // callback is called its previous state s_headers_almost_done.  We
+  // will do "+ 1" to the return value to workaround this.
+  http_parser_pause(htp, 1);
 
   // We just check status code here
-  if (htp->status_code / 100 == 2) {
+  if (htp->status_code == 200) {
     if (LOG_ENABLED(INFO)) {
       SSLOG(INFO, http2session) << "Tunneling success";
     }
-    http2session->set_state(Http2SessionState::PROXY_CONNECTED);
+    http2session->set_state(Http2Session::PROXY_CONNECTED);
 
-    return HPE_PAUSED;
+    return 0;
   }
 
   SSLOG(WARN, http2session) << "Tunneling failed: " << htp->status_code;
-  http2session->set_state(Http2SessionState::PROXY_FAILED);
+  http2session->set_state(Http2Session::PROXY_FAILED);
 
-  return HPE_PAUSED;
+  return 0;
 }
 } // namespace
 
+namespace {
+constexpr http_parser_settings htp_hooks = {
+    nullptr,             // http_cb      on_message_begin;
+    nullptr,             // http_data_cb on_url;
+    nullptr,             // http_data_cb on_status;
+    nullptr,             // http_data_cb on_header_field;
+    nullptr,             // http_data_cb on_header_value;
+    htp_hdrs_completecb, // http_cb      on_headers_complete;
+    nullptr,             // http_data_cb on_body;
+    nullptr              // http_cb      on_message_complete;
+};
+} // namespace
+
 int Http2Session::downstream_read_proxy(const uint8_t *data, size_t datalen) {
-  auto htperr = llhttp_execute(proxy_htp_.get(),
-                               reinterpret_cast<const char *>(data), datalen);
+  auto nread =
+      http_parser_execute(proxy_htp_.get(), &htp_hooks,
+                          reinterpret_cast<const char *>(data), datalen);
+  (void)nread;
+
+  auto htperr = HTTP_PARSER_ERRNO(proxy_htp_.get());
+
   if (htperr == HPE_PAUSED) {
     switch (state_) {
-    case Http2SessionState::PROXY_CONNECTED:
+    case Http2Session::PROXY_CONNECTED:
       // Initiate SSL/TLS handshake through established tunnel.
       if (initiate_connection() != 0) {
         return -1;
       }
       return 0;
-    case Http2SessionState::PROXY_FAILED:
+    case Http2Session::PROXY_FAILED:
       return -1;
-    default:
-      break;
     }
     // should not be here
     assert(0);
@@ -721,7 +724,7 @@ void Http2Session::remove_downstream_connection(
     SSLOG(INFO, this) << "Remove downstream";
   }
 
-  if (freelist_zone_ == FreelistZone::NONE && !max_concurrency_reached()) {
+  if (freelist_zone_ == FREELIST_ZONE_NONE && !max_concurrency_reached()) {
     if (LOG_ENABLED(INFO)) {
       SSLOG(INFO, this) << "Append to http2_extra_freelist, addr=" << addr_
                         << ", freelist.size="
@@ -743,8 +746,8 @@ void Http2Session::remove_stream_data(StreamData *sd) {
 int Http2Session::submit_request(Http2DownstreamConnection *dconn,
                                  const nghttp2_nv *nva, size_t nvlen,
                                  const nghttp2_data_provider *data_prd) {
-  assert(state_ == Http2SessionState::CONNECTED);
-  auto sd = std::make_unique<StreamData>();
+  assert(state_ == CONNECTED);
+  auto sd = make_unique<StreamData>();
   sd->dlnext = sd->dlprev = nullptr;
   // TODO Specify nullptr to pri_spec for now
   auto stream_id =
@@ -763,7 +766,7 @@ int Http2Session::submit_request(Http2DownstreamConnection *dconn,
 }
 
 int Http2Session::submit_rst_stream(int32_t stream_id, uint32_t error_code) {
-  assert(state_ == Http2SessionState::CONNECTED);
+  assert(state_ == CONNECTED);
   if (LOG_ENABLED(INFO)) {
     SSLOG(INFO, this) << "RST_STREAM stream_id=" << stream_id
                       << " with error_code=" << error_code;
@@ -781,7 +784,7 @@ int Http2Session::submit_rst_stream(int32_t stream_id, uint32_t error_code) {
 nghttp2_session *Http2Session::get_session() const { return session_; }
 
 int Http2Session::resume_data(Http2DownstreamConnection *dconn) {
-  assert(state_ == Http2SessionState::CONNECTED);
+  assert(state_ == CONNECTED);
   auto downstream = dconn->get_downstream();
   int rv = nghttp2_session_resume_data(session_,
                                        downstream->get_downstream_stream_id());
@@ -831,34 +834,34 @@ int on_stream_close_callback(nghttp2_session *session, int32_t stream_id,
     auto upstream = downstream->get_upstream();
 
     if (downstream->get_downstream_stream_id() % 2 == 0 &&
-        downstream->get_request_state() == DownstreamState::INITIAL) {
+        downstream->get_request_state() == Downstream::INITIAL) {
       // Downstream is canceled in backend before it is submitted in
       // frontend session.
 
       // This will avoid to send RST_STREAM to backend
-      downstream->set_response_state(DownstreamState::MSG_RESET);
+      downstream->set_response_state(Downstream::MSG_RESET);
       upstream->cancel_premature_downstream(downstream);
     } else {
-      if (downstream->get_upgraded() && downstream->get_response_state() ==
-                                            DownstreamState::HEADER_COMPLETE) {
+      if (downstream->get_upgraded() &&
+          downstream->get_response_state() == Downstream::HEADER_COMPLETE) {
         // For tunneled connection, we have to submit RST_STREAM to
         // upstream *after* whole response body is sent. We just set
         // MSG_COMPLETE here. Upstream will take care of that.
         downstream->get_upstream()->on_downstream_body_complete(downstream);
-        downstream->set_response_state(DownstreamState::MSG_COMPLETE);
+        downstream->set_response_state(Downstream::MSG_COMPLETE);
       } else if (error_code == NGHTTP2_NO_ERROR) {
         switch (downstream->get_response_state()) {
-        case DownstreamState::MSG_COMPLETE:
-        case DownstreamState::MSG_BAD_HEADER:
+        case Downstream::MSG_COMPLETE:
+        case Downstream::MSG_BAD_HEADER:
           break;
         default:
-          downstream->set_response_state(DownstreamState::MSG_RESET);
+          downstream->set_response_state(Downstream::MSG_RESET);
         }
       } else if (downstream->get_response_state() !=
-                 DownstreamState::MSG_BAD_HEADER) {
-        downstream->set_response_state(DownstreamState::MSG_RESET);
+                 Downstream::MSG_BAD_HEADER) {
+        downstream->set_response_state(Downstream::MSG_RESET);
       }
-      if (downstream->get_response_state() == DownstreamState::MSG_RESET &&
+      if (downstream->get_response_state() == Downstream::MSG_RESET &&
           downstream->get_response_rst_stream_error_code() ==
               NGHTTP2_NO_ERROR) {
         downstream->set_response_rst_stream_error_code(error_code);
@@ -1097,7 +1100,6 @@ int on_response_headers(Http2Session *http2session, Downstream *downstream,
 
   auto status = resp.fs.header(http2::HD__STATUS);
   // libnghttp2 guarantees this exists and can be parsed
-  assert(status);
   auto status_code = http2::parse_http_status_code(status->value);
 
   resp.http_status = status_code;
@@ -1132,24 +1134,24 @@ int on_response_headers(Http2Session *http2session, Downstream *downstream,
     if (rv != 0) {
       http2session->submit_rst_stream(frame->hd.stream_id,
                                       NGHTTP2_PROTOCOL_ERROR);
-      downstream->set_response_state(DownstreamState::MSG_RESET);
+      downstream->set_response_state(Downstream::MSG_RESET);
     }
 
     return 0;
   }
 
-  downstream->set_response_state(DownstreamState::HEADER_COMPLETE);
-  downstream->check_upgrade_fulfilled_http2();
+  downstream->set_response_state(Downstream::HEADER_COMPLETE);
+  downstream->check_upgrade_fulfilled();
 
   if (downstream->get_upgraded()) {
     resp.connection_close = true;
-    // On upgrade success, both ends can send data
+    // On upgrade sucess, both ends can send data
     if (upstream->resume_read(SHRPX_NO_BUFFER, downstream, 0) != 0) {
       // If resume_read fails, just drop connection. Not ideal.
       delete handler;
       return -1;
     }
-    downstream->set_request_state(DownstreamState::HEADER_COMPLETE);
+    downstream->set_request_state(Downstream::HEADER_COMPLETE);
     if (LOG_ENABLED(INFO)) {
       SSLOG(INFO, http2session)
           << "HTTP upgrade success. stream_id=" << frame->hd.stream_id;
@@ -1169,7 +1171,7 @@ int on_response_headers(Http2Session *http2session, Downstream *downstream,
         resp.connection_close = true;
       } else {
         // Otherwise, use chunked encoding to keep upstream connection
-        // open.  In HTTP2, we are supposed not to receive
+        // open.  In HTTP2, we are supporsed not to receive
         // transfer-encoding.
         resp.fs.add_header_token(StringRef::from_lit("transfer-encoding"),
                                  StringRef::from_lit("chunked"), false,
@@ -1192,12 +1194,12 @@ int on_response_headers(Http2Session *http2session, Downstream *downstream,
   if (rv != 0) {
     // Handling early return (in other words, response was hijacked by
     // mruby scripting).
-    if (downstream->get_response_state() == DownstreamState::MSG_COMPLETE) {
+    if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
       http2session->submit_rst_stream(frame->hd.stream_id, NGHTTP2_CANCEL);
     } else {
       http2session->submit_rst_stream(frame->hd.stream_id,
                                       NGHTTP2_INTERNAL_ERROR);
-      downstream->set_response_state(DownstreamState::MSG_RESET);
+      downstream->set_response_state(Downstream::MSG_RESET);
     }
   }
 
@@ -1224,21 +1226,20 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
     if (rv != 0) {
       http2session->submit_rst_stream(frame->hd.stream_id,
                                       NGHTTP2_INTERNAL_ERROR);
-      downstream->set_response_state(DownstreamState::MSG_RESET);
+      downstream->set_response_state(Downstream::MSG_RESET);
 
     } else if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
 
       downstream->disable_downstream_rtimer();
 
-      if (downstream->get_response_state() ==
-          DownstreamState::HEADER_COMPLETE) {
+      if (downstream->get_response_state() == Downstream::HEADER_COMPLETE) {
 
-        downstream->set_response_state(DownstreamState::MSG_COMPLETE);
+        downstream->set_response_state(Downstream::MSG_COMPLETE);
 
         rv = upstream->on_downstream_body_complete(downstream);
 
         if (rv != 0) {
-          downstream->set_response_state(DownstreamState::MSG_RESET);
+          downstream->set_response_state(Downstream::MSG_RESET);
         }
       }
     }
@@ -1274,16 +1275,15 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
     if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
       downstream->disable_downstream_rtimer();
 
-      if (downstream->get_response_state() ==
-          DownstreamState::HEADER_COMPLETE) {
-        downstream->set_response_state(DownstreamState::MSG_COMPLETE);
+      if (downstream->get_response_state() == Downstream::HEADER_COMPLETE) {
+        downstream->set_response_state(Downstream::MSG_COMPLETE);
 
         auto upstream = downstream->get_upstream();
 
         rv = upstream->on_downstream_body_complete(downstream);
 
         if (rv != 0) {
-          downstream->set_response_state(DownstreamState::MSG_RESET);
+          downstream->set_response_state(Downstream::MSG_RESET);
         }
       }
     } else {
@@ -1308,7 +1308,6 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
   }
   case NGHTTP2_SETTINGS: {
     if ((frame->hd.flags & NGHTTP2_FLAG_ACK) == 0) {
-      http2session->on_settings_received(frame);
       return 0;
     }
 
@@ -1443,7 +1442,7 @@ int on_data_chunk_recv_callback(nghttp2_session *session, uint8_t flags,
       return NGHTTP2_ERR_CALLBACK_FAILURE;
     }
 
-    downstream->set_response_state(DownstreamState::MSG_RESET);
+    downstream->set_response_state(Downstream::MSG_RESET);
   }
 
   call_downstream_readcb(http2session, downstream);
@@ -1469,15 +1468,6 @@ int on_frame_send_callback(nghttp2_session *session, const nghttp2_frame *frame,
     if (frame->hd.type == NGHTTP2_HEADERS &&
         frame->headers.cat == NGHTTP2_HCAT_REQUEST) {
       downstream->set_request_header_sent(true);
-      auto src = downstream->get_blocked_request_buf();
-      if (src->rleft()) {
-        auto dest = downstream->get_request_buf();
-        src->remove(*dest);
-        if (http2session->resume_data(sd->dconn) != 0) {
-          return NGHTTP2_ERR_CALLBACK_FAILURE;
-        }
-        downstream->ensure_downstream_wtimer();
-      }
     }
 
     if ((frame->hd.flags & NGHTTP2_FLAG_END_STREAM) == 0) {
@@ -1530,15 +1520,15 @@ int on_frame_not_send_callback(nghttp2_session *session,
 
     if (upstream->on_downstream_reset(downstream, false)) {
       // This should be done for h1 upstream only.  Deleting
-      // ClientHandler for h2 upstream may lead to crash.
+      // ClientHandler for h2 or SPDY upstream may lead to crash.
       delete upstream->get_client_handler();
     }
 
     return 0;
   }
 
-  // To avoid stream hanging around, flag DownstreamState::MSG_RESET.
-  downstream->set_response_state(DownstreamState::MSG_RESET);
+  // To avoid stream hanging around, flag Downstream::MSG_RESET.
+  downstream->set_response_state(Downstream::MSG_RESET);
   call_downstream_readcb(http2session, downstream);
 
   return 0;
@@ -1650,18 +1640,13 @@ nghttp2_session_callbacks *create_http2_downstream_callbacks() {
 int Http2Session::connection_made() {
   int rv;
 
-  state_ = Http2SessionState::CONNECTED;
-
-  on_write_ = &Http2Session::downstream_write;
-  on_read_ = &Http2Session::downstream_read;
+  state_ = Http2Session::CONNECTED;
 
   if (addr_->tls) {
     const unsigned char *next_proto = nullptr;
     unsigned int next_proto_len = 0;
 
-#ifndef OPENSSL_NO_NEXTPROTONEG
     SSL_get0_next_proto_negotiated(conn_.tls.ssl, &next_proto, &next_proto_len);
-#endif // !OPENSSL_NO_NEXTPROTONEG
 #if OPENSSL_VERSION_NUMBER >= 0x10002000L
     if (!next_proto) {
       SSL_get0_alpn_selected(conn_.tls.ssl, &next_proto, &next_proto_len);
@@ -1770,6 +1755,7 @@ int Http2Session::downstream_write() {
   for (;;) {
     const uint8_t *data;
     auto datalen = nghttp2_session_mem_send(session_, &data);
+
     if (datalen < 0) {
       SSLOG(ERROR, this) << "nghttp2_session_mem_send() returned error: "
                          << nghttp2_strerror(datalen);
@@ -1798,7 +1784,7 @@ int Http2Session::downstream_write() {
 
 void Http2Session::signal_write() {
   switch (state_) {
-  case Http2SessionState::DISCONNECTED:
+  case Http2Session::DISCONNECTED:
     if (!ev_is_active(&initiate_connection_timer_)) {
       if (LOG_ENABLED(INFO)) {
         LOG(INFO) << "Start connecting to backend server";
@@ -1810,10 +1796,8 @@ void Http2Session::signal_write() {
       ev_feed_event(conn_.loop, &initiate_connection_timer_, 0);
     }
     break;
-  case Http2SessionState::CONNECTED:
+  case Http2Session::CONNECTED:
     conn_.wlimit.startw();
-    break;
-  default:
     break;
   }
 }
@@ -1824,9 +1808,9 @@ struct ev_loop *Http2Session::get_loop() const {
 
 ev_io *Http2Session::get_wev() { return &conn_.wev; }
 
-Http2SessionState Http2Session::get_state() const { return state_; }
+int Http2Session::get_state() const { return state_; }
 
-void Http2Session::set_state(Http2SessionState state) { state_ = state; }
+void Http2Session::set_state(int state) { state_ = state; }
 
 int Http2Session::terminate_session(uint32_t error_code) {
   int rv;
@@ -1858,19 +1842,17 @@ int Http2Session::consume(int32_t stream_id, size_t len) {
   return 0;
 }
 
-bool Http2Session::can_push_request(const Downstream *downstream) const {
-  auto &req = downstream->request();
-  return state_ == Http2SessionState::CONNECTED &&
-         connection_check_state_ == ConnectionCheck::NONE &&
-         (req.connect_proto == ConnectProto::NONE || settings_recved_);
+bool Http2Session::can_push_request() const {
+  return state_ == CONNECTED &&
+         connection_check_state_ == CONNECTION_CHECK_NONE;
 }
 
 void Http2Session::start_checking_connection() {
-  if (state_ != Http2SessionState::CONNECTED ||
-      connection_check_state_ != ConnectionCheck::REQUIRED) {
+  if (state_ != CONNECTED ||
+      connection_check_state_ != CONNECTION_CHECK_REQUIRED) {
     return;
   }
-  connection_check_state_ = ConnectionCheck::STARTED;
+  connection_check_state_ = CONNECTION_CHECK_STARTED;
 
   SSLOG(INFO, this) << "Start checking connection";
   // If connection is down, we may get error when writing data.  Issue
@@ -1889,7 +1871,7 @@ void Http2Session::reset_connection_check_timer(ev_tstamp t) {
 }
 
 void Http2Session::reset_connection_check_timer_if_not_checking() {
-  if (connection_check_state_ != ConnectionCheck::NONE) {
+  if (connection_check_state_ != CONNECTION_CHECK_NONE) {
     return;
   }
 
@@ -1899,7 +1881,7 @@ void Http2Session::reset_connection_check_timer_if_not_checking() {
 void Http2Session::connection_alive() {
   reset_connection_check_timer(CONNCHK_TIMEOUT);
 
-  if (connection_check_state_ == ConnectionCheck::NONE) {
+  if (connection_check_state_ == CONNECTION_CHECK_NONE) {
     return;
   }
 
@@ -1907,7 +1889,7 @@ void Http2Session::connection_alive() {
     SSLOG(INFO, this) << "Connection alive";
   }
 
-  connection_check_state_ = ConnectionCheck::NONE;
+  connection_check_state_ = CONNECTION_CHECK_NONE;
 
   submit_pending_requests();
 }
@@ -1918,11 +1900,6 @@ void Http2Session::submit_pending_requests() {
 
     if (!downstream->get_request_pending() ||
         !downstream->request_submission_ready()) {
-      continue;
-    }
-
-    auto &req = downstream->request();
-    if (req.connect_proto != ConnectProto::NONE && !settings_recved_) {
       continue;
     }
 
@@ -1942,11 +1919,11 @@ void Http2Session::submit_pending_requests() {
   }
 }
 
-void Http2Session::set_connection_check_state(ConnectionCheck state) {
+void Http2Session::set_connection_check_state(int state) {
   connection_check_state_ = state;
 }
 
-ConnectionCheck Http2Session::get_connection_check_state() const {
+int Http2Session::get_connection_check_state() const {
   return connection_check_state_;
 }
 
@@ -1972,8 +1949,10 @@ int Http2Session::connected() {
     SSLOG(INFO, this) << "Connection established";
   }
 
+  auto &downstreamconf = *get_config()->conn.downstream;
+
   // Reset timeout for write.  Previously, we set timeout for connect.
-  conn_.wt.repeat = group_->shared_addr->timeout.write;
+  conn_.wt.repeat = downstreamconf.timeout.write;
   ev_timer_again(conn_.loop, &conn_.wt);
 
   conn_.rlimit.startw();
@@ -1982,7 +1961,7 @@ int Http2Session::connected() {
   read_ = &Http2Session::read_clear;
   write_ = &Http2Session::write_clear;
 
-  if (state_ == Http2SessionState::PROXY_CONNECTING) {
+  if (state_ == PROXY_CONNECTING) {
     return do_write();
   }
 
@@ -1994,7 +1973,7 @@ int Http2Session::connected() {
   }
 
   if (connection_made() != 0) {
-    state_ = Http2SessionState::CONNECT_FAILING;
+    state_ = CONNECT_FAILING;
     return -1;
   }
 
@@ -2096,7 +2075,7 @@ int Http2Session::tls_handshake() {
   write_ = &Http2Session::write_tls;
 
   if (connection_made() != 0) {
-    state_ = Http2SessionState::CONNECT_FAILING;
+    state_ = CONNECT_FAILING;
     return -1;
   }
 
@@ -2183,10 +2162,10 @@ int Http2Session::write_void() {
 
 bool Http2Session::should_hard_fail() const {
   switch (state_) {
-  case Http2SessionState::PROXY_CONNECTING:
-  case Http2SessionState::PROXY_FAILED:
+  case PROXY_CONNECTING:
+  case PROXY_FAILED:
     return true;
-  case Http2SessionState::DISCONNECTED: {
+  case DISCONNECTED: {
     const auto &proxy = get_config()->downstream_http_proxy;
     return !proxy.host.empty();
   }
@@ -2215,7 +2194,7 @@ int Http2Session::handle_downstream_push_promise(Downstream *downstream,
 
   auto handler = upstream->get_client_handler();
 
-  auto promised_dconn = std::make_unique<Http2DownstreamConnection>(this);
+  auto promised_dconn = make_unique<Http2DownstreamConnection>(this);
   promised_dconn->set_client_handler(handler);
 
   auto ptr = promised_dconn.get();
@@ -2225,7 +2204,7 @@ int Http2Session::handle_downstream_push_promise(Downstream *downstream,
     return -1;
   }
 
-  auto promised_sd = std::make_unique<StreamData>();
+  auto promised_sd = make_unique<StreamData>();
 
   nghttp2_session_set_stream_user_data(session_, promised_stream_id,
                                        promised_sd.get());
@@ -2282,7 +2261,7 @@ int Http2Session::handle_downstream_push_promise_complete(
 
   auto upstream = promised_downstream->get_upstream();
 
-  promised_downstream->set_request_state(DownstreamState::MSG_COMPLETE);
+  promised_downstream->set_request_state(Downstream::MSG_COMPLETE);
   promised_downstream->set_request_header_sent(true);
 
   if (upstream->on_downstream_push_promise_complete(downstream,
@@ -2313,8 +2292,24 @@ Http2Session::get_downstream_addr_group() const {
   return group_;
 }
 
+void Http2Session::add_to_avail_freelist() {
+  if (freelist_zone_ != FREELIST_ZONE_NONE) {
+    return;
+  }
+
+  if (LOG_ENABLED(INFO)) {
+    SSLOG(INFO, this) << "Append to http2_avail_freelist, group="
+                      << group_.get() << ", freelist.size="
+                      << group_->shared_addr->http2_avail_freelist.size();
+  }
+
+  freelist_zone_ = FREELIST_ZONE_AVAIL;
+  group_->shared_addr->http2_avail_freelist.append(this);
+  addr_->in_avail = true;
+}
+
 void Http2Session::add_to_extra_freelist() {
-  if (freelist_zone_ != FreelistZone::NONE) {
+  if (freelist_zone_ != FREELIST_ZONE_NONE) {
     return;
   }
 
@@ -2324,15 +2319,24 @@ void Http2Session::add_to_extra_freelist() {
                       << addr_->http2_extra_freelist.size();
   }
 
-  freelist_zone_ = FreelistZone::EXTRA;
+  freelist_zone_ = FREELIST_ZONE_EXTRA;
   addr_->http2_extra_freelist.append(this);
 }
 
 void Http2Session::remove_from_freelist() {
   switch (freelist_zone_) {
-  case FreelistZone::NONE:
+  case FREELIST_ZONE_NONE:
     return;
-  case FreelistZone::EXTRA:
+  case FREELIST_ZONE_AVAIL:
+    if (LOG_ENABLED(INFO)) {
+      SSLOG(INFO, this) << "Remove from http2_avail_freelist, group=" << group_
+                        << ", freelist.size="
+                        << group_->shared_addr->http2_avail_freelist.size();
+    }
+    group_->shared_addr->http2_avail_freelist.remove(this);
+    addr_->in_avail = false;
+    break;
+  case FREELIST_ZONE_EXTRA:
     if (LOG_ENABLED(INFO)) {
       SSLOG(INFO, this) << "Remove from http2_extra_freelist, addr=" << addr_
                         << ", freelist.size="
@@ -2340,35 +2344,34 @@ void Http2Session::remove_from_freelist() {
     }
     addr_->http2_extra_freelist.remove(this);
     break;
-  case FreelistZone::GONE:
+  case FREELIST_ZONE_GONE:
     return;
   }
 
-  freelist_zone_ = FreelistZone::NONE;
+  freelist_zone_ = FREELIST_ZONE_NONE;
 }
 
 void Http2Session::exclude_from_scheduling() {
   remove_from_freelist();
-  freelist_zone_ = FreelistZone::GONE;
+  freelist_zone_ = FREELIST_ZONE_GONE;
 }
 
 DefaultMemchunks *Http2Session::get_request_buf() { return &wb_; }
 
 void Http2Session::on_timeout() {
   switch (state_) {
-  case Http2SessionState::PROXY_CONNECTING: {
+  case PROXY_CONNECTING: {
     auto worker_blocker = worker_->get_connect_blocker();
     worker_blocker->on_failure();
     break;
   }
-  case Http2SessionState::CONNECTING:
+  case CONNECTING: {
     SSLOG(WARN, this) << "Connect time out; addr="
                       << util::to_numeric_addr(raddr_);
 
     downstream_failure(addr_, raddr_);
     break;
-  default:
-    break;
+  }
   }
 }
 
@@ -2387,29 +2390,5 @@ void Http2Session::check_retire() {
 }
 
 const Address *Http2Session::get_raddr() const { return raddr_; }
-
-void Http2Session::on_settings_received(const nghttp2_frame *frame) {
-  // TODO This effectively disallows nghttpx to change its behaviour
-  // based on the 2nd SETTINGS.
-  if (settings_recved_) {
-    return;
-  }
-
-  settings_recved_ = true;
-
-  for (size_t i = 0; i < frame->settings.niv; ++i) {
-    auto &ent = frame->settings.iv[i];
-    if (ent.settings_id == NGHTTP2_SETTINGS_ENABLE_CONNECT_PROTOCOL) {
-      allow_connect_proto_ = true;
-      break;
-    }
-  }
-
-  submit_pending_requests();
-}
-
-bool Http2Session::get_allow_connect_proto() const {
-  return allow_connect_proto_;
-}
 
 } // namespace shrpx

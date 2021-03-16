@@ -15,10 +15,10 @@
 # limitations under the License.
 
 import os
-import shutil
 import sys
-import tempfile
 import unittest
+import tempfile
+import shutil
 
 try:
     from contextlib import redirect_stdout

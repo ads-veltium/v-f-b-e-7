@@ -6,3 +6,4 @@
 PROJECT_NAME := parttool
 
 include $(IDF_PATH)/make/project.mk
+

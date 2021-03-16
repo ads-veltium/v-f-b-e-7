@@ -184,25 +184,22 @@ static void ota_example_task(void *pvParameter)
 
                     image_header_was_checked = true;
 
-                    err = esp_ota_begin(update_partition, OTA_WITH_SEQUENTIAL_WRITES, &update_handle);
+                    err = esp_ota_begin(update_partition, OTA_SIZE_UNKNOWN, &update_handle);
                     if (err != ESP_OK) {
                         ESP_LOGE(TAG, "esp_ota_begin failed (%s)", esp_err_to_name(err));
                         http_cleanup(client);
-                        esp_ota_abort(update_handle);
                         task_fatal_error();
                     }
                     ESP_LOGI(TAG, "esp_ota_begin succeeded");
                 } else {
                     ESP_LOGE(TAG, "received package is not fit len");
                     http_cleanup(client);
-                    esp_ota_abort(update_handle);
                     task_fatal_error();
                 }
             }
             err = esp_ota_write( update_handle, (const void *)ota_write_data, data_read);
             if (err != ESP_OK) {
                 http_cleanup(client);
-                esp_ota_abort(update_handle);
                 task_fatal_error();
             }
             binary_file_length += data_read;
@@ -226,7 +223,6 @@ static void ota_example_task(void *pvParameter)
     if (esp_http_client_is_complete_data_received(client) != true) {
         ESP_LOGE(TAG, "Error in receiving complete file");
         http_cleanup(client);
-        esp_ota_abort(update_handle);
         task_fatal_error();
     }
 
@@ -254,7 +250,7 @@ static void ota_example_task(void *pvParameter)
 static bool diagnostic(void)
 {
     gpio_config_t io_conf;
-    io_conf.intr_type    = GPIO_INTR_DISABLE;
+    io_conf.intr_type    = GPIO_PIN_INTR_DISABLE;
     io_conf.mode         = GPIO_MODE_INPUT;
     io_conf.pin_bit_mask = (1ULL << CONFIG_EXAMPLE_GPIO_DIAGNOSTIC);
     io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;

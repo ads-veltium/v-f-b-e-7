@@ -21,6 +21,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  *
+ * This file is part of the TinyUSB stack.
  */
 
 #ifndef _TUSB_CONFIG_H_
@@ -39,10 +40,10 @@
   #error CFG_TUSB_MCU must be defined
 #endif
 
-#if CFG_TUSB_MCU == OPT_MCU_LPC43XX || CFG_TUSB_MCU == OPT_MCU_LPC18XX || CFG_TUSB_MCU == OPT_MCU_MIMXRT10XX
-  #define CFG_TUSB_RHPORT0_MODE       (OPT_MODE_HOST | OPT_MODE_HIGH_SPEED)
+#if CFG_TUSB_MCU == OPT_MCU_LPC43XX || CFG_TUSB_MCU == OPT_MCU_LPC18XX
+#define CFG_TUSB_RHPORT0_MODE       (OPT_MODE_HOST | OPT_MODE_HIGH_SPEED)
 #else
-  #define CFG_TUSB_RHPORT0_MODE       OPT_MODE_HOST
+#define CFG_TUSB_RHPORT0_MODE       OPT_MODE_HOST
 #endif
 
 #define CFG_TUSB_OS                 OPT_OS_NONE
@@ -62,22 +63,49 @@
 #endif
 
 #ifndef CFG_TUSB_MEM_ALIGN
-#define CFG_TUSB_MEM_ALIGN          __attribute__ ((aligned(4)))
+#define CFG_TUSB_MEM_ALIGN          TU_ATTR_ALIGNED(4)
 #endif
 
 //--------------------------------------------------------------------
-// CONFIGURATION
+// DEVICE CONFIGURATION
 //--------------------------------------------------------------------
 
 #define CFG_TUH_HUB                 1
 #define CFG_TUH_CDC                 1
-#define CFG_TUH_HID_KEYBOARD        1
-#define CFG_TUH_HID_MOUSE           1
+#define CFG_TUH_HID_KEYBOARD        0
+#define CFG_TUH_HID_MOUSE           0
 #define CFG_TUSB_HOST_HID_GENERIC   0 // (not yet supported)
-#define CFG_TUH_MSC                 1
-#define CFG_TUH_VENDOR              0
+#define CFG_TUH_MSC                 0
 
 #define CFG_TUSB_HOST_DEVICE_MAX    (CFG_TUH_HUB ? 5 : 1) // normal hub has 4 ports
+
+//------------- CLASS -------------//
+#define CFG_TUD_CDC                 0
+#define CFG_TUD_MSC                 0
+#define CFG_TUD_CUSTOM_CLASS        0
+
+#define CFG_TUD_HID                 0
+#define CFG_TUD_HID_KEYBOARD        0
+#define CFG_TUD_HID_MOUSE           0
+
+//--------------------------------------------------------------------
+// CDC
+//--------------------------------------------------------------------
+
+// FIFO size of CDC TX and RX
+#define CFG_TUD_CDC_RX_BUFSIZE      64
+#define CFG_TUD_CDC_TX_BUFSIZE      64
+
+//--------------------------------------------------------------------
+// MSC
+//--------------------------------------------------------------------
+
+// Buffer size of Device Mass storage
+#define CFG_TUD_MSC_BUFSIZE         512
+
+//--------------------------------------------------------------------
+// HID
+//--------------------------------------------------------------------
 
 #ifdef __cplusplus
  }

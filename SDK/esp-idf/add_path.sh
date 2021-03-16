@@ -16,3 +16,5 @@ else
 	export PATH="${IDF_ADD_PATHS_EXTRAS}:${PATH}"
 	echo "Added to PATH: ${IDF_ADD_PATHS_EXTRAS}"
 fi
+
+

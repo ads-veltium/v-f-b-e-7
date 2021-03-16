@@ -1,12 +1,14 @@
-.check_doc_links_template:
-  extends: .rules:protected-no_label
+.check_doc_links_template: &check_doc_links_template
   stage: post_deploy
   image: $ESP_IDF_DOC_ENV_IMAGE
   tags: [ "build", "amd64", "internet" ]
-  needs: # ensure runs after push_to_github succeeded
-    - build_docs_html
-    - build_docs_pdf
-    - push_to_github
+  only:
+    refs:
+      - master
+      - /^release\/v/
+      - /^v\d+\.\d+(\.\d+)?($|-)/
+    variables:
+      - $BOT_TRIGGER_WITH_LABEL == null
   artifacts:
     when: always
     paths:

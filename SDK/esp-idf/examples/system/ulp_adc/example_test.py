@@ -1,9 +1,7 @@
 from __future__ import unicode_literals
-
-import re
-
-import ttfw_idf
 from tiny_test_fw import Utility
+import re
+import ttfw_idf
 
 
 @ttfw_idf.idf_example_test(env_tag='Example_GENERIC')

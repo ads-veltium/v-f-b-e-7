@@ -8,22 +8,14 @@ end
 assert('Hash#==', '15.2.13.4.1') do
   assert_true({ 'abc' => 'abc' } == { 'abc' => 'abc' })
   assert_false({ 'abc' => 'abc' } ==  { 'cba' => 'cba' })
-  assert_false({ :a => 1 } == true)
-  skip unless Object.const_defined?(:Float)
   assert_true({ :equal => 1 } == { :equal => 1.0 })
+  assert_false({ :a => 1 } == true)
 end
 
 assert('Hash#[]', '15.2.13.4.2') do
   a = { 'abc' => 'abc' }
 
   assert_equal 'abc', a['abc']
-
-  # Hash#[] should call #default (#3272)
-  hash = {}
-  def hash.default(k); self[k] = 1; end
-  hash[:foo] += 1
-
-  assert_equal 2, hash[:foo]
 end
 
 assert('Hash#[]=', '15.2.13.4.3') do
@@ -45,10 +37,6 @@ assert('Hash#dup') do
   b = a.dup
   a['a'] = 2
   assert_equal({'a' => 1}, b)
-
-  c = Hash.new { |h, k| h[k] = k.upcase }
-  d = c.dup
-  assert_equal("FOO", d["foo"])
 end
 
 assert('Hash#default', '15.2.13.4.5') do
@@ -83,12 +71,12 @@ assert('Hash#default_proc', '15.2.13.4.7') do
 end
 
 assert('Hash#delete', '15.2.13.4.8') do
-  a = { 'abc' => 'ABC' }
-  b = { 'abc' => 'ABC' }
+  a = { 'abc' => 'abc' }
+  b = { 'abc' => 'abc' }
   b_tmp_1 = false
   b_tmp_2 = false
 
-  assert_equal 'ABC', a.delete('abc')
+  a.delete('abc')
   b.delete('abc') do |k|
     b_tmp_1 = true
   end
@@ -251,10 +239,6 @@ assert('Hash#replace', '15.2.13.4.23') do
   a = Hash.new{|h,x| x}
   b.replace(a)
   assert_equal(127, b[127])
-
-   assert_raise(TypeError) do
-    { 'abc_key' => 'abc_value' }.replace "a"
-  end
 end
 
 assert('Hash#shift', '15.2.13.4.24') do
@@ -366,11 +350,4 @@ assert('Hash#rehash') do
   # h[[:b]] => nil
   h.rehash
   assert_equal("b", h[[:b]])
-end
-
-assert('Hash#freeze') do
-  h = {}.freeze
-  assert_raise(FrozenError) do
-    h[:a] = 'b'
-  end
 end

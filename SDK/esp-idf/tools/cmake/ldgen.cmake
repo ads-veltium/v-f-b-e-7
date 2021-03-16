@@ -56,12 +56,6 @@ function(__ldgen_process_template template output)
 
     idf_build_get_property(config_env_path CONFIG_ENV_PATH)
 
-    if($ENV{LDGEN_CHECK_MAPPING})
-        set(ldgen_check "--check-mapping"
-            "--check-mapping-exceptions=${idf_path}/tools/ci/check_ldgen_mapping_exceptions.txt")
-        message(STATUS "Mapping check enabled in ldgen")
-    endif()
-
     add_custom_command(
         OUTPUT ${output}
         COMMAND ${python} ${idf_path}/tools/ldgen/ldgen.py
@@ -73,7 +67,6 @@ function(__ldgen_process_template template output)
         --env-file  "${config_env_path}"
         --libraries-file ${build_dir}/ldgen_libraries
         --objdump   ${CMAKE_OBJDUMP}
-        ${ldgen_check}
         DEPENDS     ${template} ${ldgen_fragment_files} ${ldgen_depends} ${SDKCONFIG}
     )
 

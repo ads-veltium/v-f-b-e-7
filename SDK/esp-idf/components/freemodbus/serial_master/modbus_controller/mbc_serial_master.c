@@ -81,7 +81,7 @@ static esp_err_t mbc_serial_master_setup(void* comm_info)
     MB_MASTER_CHECK(((comm_info_ptr->mode == MB_MODE_RTU) || (comm_info_ptr->mode == MB_MODE_ASCII)),
                 ESP_ERR_INVALID_ARG, "mb incorrect mode = (0x%x).",
                 (uint32_t)comm_info_ptr->mode);
-    MB_MASTER_CHECK((comm_info_ptr->port <= UART_NUM_MAX), ESP_ERR_INVALID_ARG,
+    MB_MASTER_CHECK((comm_info_ptr->port < UART_NUM_MAX), ESP_ERR_INVALID_ARG,
                 "mb wrong port to set = (0x%x).", (uint32_t)comm_info_ptr->port);
     MB_MASTER_CHECK((comm_info_ptr->parity <= UART_PARITY_ODD), ESP_ERR_INVALID_ARG,
                 "mb wrong parity option = (0x%x).", (uint32_t)comm_info_ptr->parity);
@@ -101,7 +101,7 @@ static esp_err_t mbc_serial_master_start(void)
     const mb_communication_info_t* comm_info = (mb_communication_info_t*)&mbm_opts->mbm_comm;
 
     // Initialize Modbus stack using mbcontroller parameters
-    status = eMBMasterSerialInit((eMBMode)comm_info->mode, (UCHAR)comm_info->port,
+    status = eMBMasterInit((eMBMode)comm_info->mode, (UCHAR)comm_info->port,
                                     (ULONG)comm_info->baudrate,
                                     MB_PORT_PARITY_GET(comm_info->parity));
 
@@ -140,7 +140,6 @@ static esp_err_t mbc_serial_master_destroy(void)
     MB_MASTER_CHECK((mb_error == MB_ENOERR), ESP_ERR_INVALID_STATE,
             "mb stack close failure returned (0x%x).", (uint32_t)mb_error);
     free(mbm_interface_ptr); // free the memory allocated for options
-    vMBPortSetMode((UCHAR)MB_PORT_INACTIVE);
     mbm_interface_ptr = NULL;
     return ESP_OK;
 }
@@ -148,9 +147,9 @@ static esp_err_t mbc_serial_master_destroy(void)
 // Set Modbus parameter description table
 static esp_err_t mbc_serial_master_set_descriptor(const mb_parameter_descriptor_t* descriptor, const uint16_t num_elements)
 {
-    MB_MASTER_CHECK((descriptor != NULL),
+    MB_MASTER_CHECK((descriptor != NULL), 
                         ESP_ERR_INVALID_ARG, "mb incorrect descriptor.");
-    MB_MASTER_CHECK((num_elements >= 1),
+    MB_MASTER_CHECK((num_elements >= 1), 
                         ESP_ERR_INVALID_ARG, "mb table size is incorrect.");
     mb_master_options_t* mbm_opts = &mbm_interface_ptr->opts;
     const mb_parameter_descriptor_t *reg_ptr = descriptor;
@@ -158,11 +157,11 @@ static esp_err_t mbc_serial_master_set_descriptor(const mb_parameter_descriptor_
     for (uint16_t counter = 0; counter < (num_elements); counter++, reg_ptr++)
     {
         // Below is the code to check consistency of the table format and required fields.
-        MB_MASTER_CHECK((reg_ptr->cid == counter),
+        MB_MASTER_CHECK((reg_ptr->cid == counter), 
                             ESP_ERR_INVALID_ARG, "mb descriptor cid field is incorrect.");
-        MB_MASTER_CHECK((reg_ptr->param_key != NULL),
+        MB_MASTER_CHECK((reg_ptr->param_key != NULL), 
                             ESP_ERR_INVALID_ARG, "mb descriptor param key is incorrect.");
-        MB_MASTER_CHECK((reg_ptr->mb_size > 0),
+        MB_MASTER_CHECK((reg_ptr->mb_size > 0), 
                             ESP_ERR_INVALID_ARG, "mb descriptor param size is incorrect.");
     }
     mbm_opts->mbm_param_descriptor_table = descriptor;
@@ -177,9 +176,9 @@ static esp_err_t mbc_serial_master_send_request(mb_param_request_t* request, voi
                     ESP_ERR_INVALID_STATE,
                     "Master interface uninitialized.");
     mb_master_options_t* mbm_opts = &mbm_interface_ptr->opts;
-    MB_MASTER_CHECK((request != NULL),
+    MB_MASTER_CHECK((request != NULL), 
                     ESP_ERR_INVALID_ARG, "mb request structure.");
-    MB_MASTER_CHECK((data_ptr != NULL),
+    MB_MASTER_CHECK((data_ptr != NULL), 
                     ESP_ERR_INVALID_ARG, "mb incorrect data pointer.");
 
     eMBMasterReqErrCode mb_error = MB_MRE_NO_REG;
@@ -285,17 +284,17 @@ static esp_err_t mbc_serial_master_get_cid_info(uint16_t cid, const mb_parameter
                     "Master interface uninitialized.");
     mb_master_options_t* mbm_opts = &mbm_interface_ptr->opts;
 
-    MB_MASTER_CHECK((param_buffer != NULL),
+    MB_MASTER_CHECK((param_buffer != NULL), 
                         ESP_ERR_INVALID_ARG, "mb incorrect data buffer pointer.");
-    MB_MASTER_CHECK((mbm_opts->mbm_param_descriptor_table != NULL),
+    MB_MASTER_CHECK((mbm_opts->mbm_param_descriptor_table != NULL), 
                         ESP_ERR_INVALID_ARG, "mb incorrect descriptor table or not set.");
-    MB_MASTER_CHECK((cid < mbm_opts->mbm_param_descriptor_size),
+    MB_MASTER_CHECK((cid < mbm_opts->mbm_param_descriptor_size), 
                         ESP_ERR_NOT_FOUND, "mb incorrect cid of characteristic.");
 
     // It is assumed that characteristics cid increased in the table
     const mb_parameter_descriptor_t* reg_info = &mbm_opts->mbm_param_descriptor_table[cid];
 
-    MB_MASTER_CHECK((reg_info->param_key != NULL),
+    MB_MASTER_CHECK((reg_info->param_key != NULL), 
                         ESP_ERR_INVALID_ARG, "mb incorrect characteristic key.");
     *param_buffer = reg_info;
     return ESP_OK;
@@ -308,37 +307,37 @@ static uint8_t mbc_serial_master_get_command(mb_param_type_t param_type, mb_para
     switch(param_type)
     { //
         case MB_PARAM_HOLDING:
-            command = (mode == MB_PARAM_WRITE) ?
-                        MB_FUNC_WRITE_MULTIPLE_REGISTERS :
+            command = (mode == MB_PARAM_WRITE) ? 
+                        MB_FUNC_WRITE_MULTIPLE_REGISTERS : 
                         MB_FUNC_READ_HOLDING_REGISTER;
             break;
         case MB_PARAM_INPUT:
             command = MB_FUNC_READ_INPUT_REGISTER;
             break;
         case MB_PARAM_COIL:
-            command = (mode == MB_PARAM_WRITE) ?
-                        MB_FUNC_WRITE_MULTIPLE_COILS :
+            command = (mode == MB_PARAM_WRITE) ? 
+                        MB_FUNC_WRITE_MULTIPLE_COILS : 
                         MB_FUNC_READ_COILS;
             break;
         case MB_PARAM_DISCRETE:
             if (mode != MB_PARAM_WRITE) {
                 command = MB_FUNC_READ_DISCRETE_INPUTS;
             } else {
-                ESP_LOGE(MB_MASTER_TAG, "%s: Incorrect mode (%u)",
+                ESP_LOGE(MB_MASTER_TAG, "%s: Incorrect mode (%u)", 
                             __FUNCTION__, (uint8_t)mode);
             }
             break;
         default:
-            ESP_LOGE(MB_MASTER_TAG, "%s: Incorrect param type (%u)",
+            ESP_LOGE(MB_MASTER_TAG, "%s: Incorrect param type (%u)", 
                             __FUNCTION__, param_type);
             break;
     }
     return command;
 }
 
-// Helper to search parameter by name in the parameter description table
+// Helper to search parameter by name in the parameter description table 
 // and fills Modbus request fields accordingly
-static esp_err_t mbc_serial_master_set_request(char* name, mb_param_mode_t mode,
+static esp_err_t mbc_serial_master_set_request(char* name, mb_param_mode_t mode, 
                                                 mb_param_request_t* request,
                                                 mb_parameter_descriptor_t* reg_data)
 {
@@ -347,11 +346,11 @@ static esp_err_t mbc_serial_master_set_request(char* name, mb_param_mode_t mode,
                     "Master interface uninitialized.");
     mb_master_options_t* mbm_opts = &mbm_interface_ptr->opts;
     esp_err_t error = ESP_ERR_NOT_FOUND;
-    MB_MASTER_CHECK((name != NULL),
+    MB_MASTER_CHECK((name != NULL), 
                         ESP_ERR_INVALID_ARG, "mb incorrect parameter name.");
-    MB_MASTER_CHECK((request != NULL),
+    MB_MASTER_CHECK((request != NULL), 
                         ESP_ERR_INVALID_ARG, "mb incorrect request parameter.");
-    MB_MASTER_CHECK((mode <= MB_PARAM_WRITE),
+    MB_MASTER_CHECK((mode <= MB_PARAM_WRITE), 
                         ESP_ERR_INVALID_ARG, "mb incorrect mode.");
     MB_MASTER_ASSERT(mbm_opts->mbm_param_descriptor_table != NULL);
     const mb_parameter_descriptor_t* reg_ptr = mbm_opts->mbm_param_descriptor_table;
@@ -364,15 +363,15 @@ static esp_err_t mbc_serial_master_set_request(char* name, mb_param_mode_t mode,
             continue; // The length of strings is different then check next record in the table
         }
         // Compare the name of parameter with parameter key from table
-        int comp_result = memcmp((const void*)name, (const void*)reg_ptr->param_key, (size_t)param_key_len);
+        uint8_t comp_result = memcmp((const char*)name, (const char*)reg_ptr->param_key, (size_t)param_key_len);
         if (comp_result == 0) {
             // The correct line is found in the table and reg_ptr points to the found parameter description
             request->slave_addr = reg_ptr->mb_slave_addr;
             request->reg_start = reg_ptr->mb_reg_start;
             request->reg_size = reg_ptr->mb_size;
             request->command = mbc_serial_master_get_command(reg_ptr->mb_param_type, mode);
-            MB_MASTER_CHECK((request->command > 0),
-                                ESP_ERR_INVALID_ARG,
+            MB_MASTER_CHECK((request->command > 0), 
+                                ESP_ERR_INVALID_ARG, 
                                 "mb incorrect command or parameter type.");
             if (reg_data != NULL) {
                 *reg_data = *reg_ptr; // Set the cid registered parameter data
@@ -385,12 +384,12 @@ static esp_err_t mbc_serial_master_set_request(char* name, mb_param_mode_t mode,
 }
 
 // Get parameter data for corresponding characteristic
-static esp_err_t mbc_serial_master_get_parameter(uint16_t cid, char* name,
+static esp_err_t mbc_serial_master_get_parameter(uint16_t cid, char* name, 
                                                     uint8_t* value_ptr, uint8_t *type)
 {
-    MB_MASTER_CHECK((name != NULL),
+    MB_MASTER_CHECK((name != NULL), 
                         ESP_ERR_INVALID_ARG, "mb incorrect descriptor.");
-    MB_MASTER_CHECK((type != NULL),
+    MB_MASTER_CHECK((type != NULL), 
                         ESP_ERR_INVALID_ARG, "type pointer is incorrect.");
     esp_err_t error = ESP_ERR_INVALID_RESPONSE;
     mb_param_request_t request ;
@@ -417,14 +416,14 @@ static esp_err_t mbc_serial_master_get_parameter(uint16_t cid, char* name,
 }
 
 // Set parameter value for characteristic selected by name and cid
-static esp_err_t mbc_serial_master_set_parameter(uint16_t cid, char* name,
+static esp_err_t mbc_serial_master_set_parameter(uint16_t cid, char* name, 
                                                     uint8_t* value_ptr, uint8_t *type)
 {
-    MB_MASTER_CHECK((name != NULL),
+    MB_MASTER_CHECK((name != NULL), 
                         ESP_ERR_INVALID_ARG, "mb incorrect descriptor.");
     MB_MASTER_CHECK((value_ptr != NULL),
                         ESP_ERR_INVALID_ARG, "value pointer is incorrect.");
-    MB_MASTER_CHECK((type != NULL),
+    MB_MASTER_CHECK((type != NULL), 
                         ESP_ERR_INVALID_ARG, "type pointer is incorrect.");
     esp_err_t error = ESP_ERR_INVALID_RESPONSE;
     mb_param_request_t request ;
@@ -473,7 +472,7 @@ eMBErrorCode eMBRegInputCBSerialMaster(UCHAR * pucRegBuffer, USHORT usAddress,
                     "Master stack processing error.");
     mb_master_options_t* mbm_opts = &mbm_interface_ptr->opts;
     // Number of input registers to be transferred
-    USHORT usRegInputNregs = (USHORT)mbm_opts->mbm_reg_buffer_size;
+    USHORT usRegInputNregs = (USHORT)mbm_opts->mbm_reg_buffer_size; 
     UCHAR* pucInputBuffer = (UCHAR*)mbm_opts->mbm_reg_buffer_ptr; // Get instance address
     USHORT usRegs = usNRegs;
     eMBErrorCode eStatus = MB_ENOERR;
@@ -557,7 +556,7 @@ eMBErrorCode eMBRegCoilsCBSerialMaster(UCHAR* pucRegBuffer, USHORT usAddress,
 {
     MB_MASTER_CHECK((mbm_interface_ptr != NULL),
                     MB_EILLSTATE, "Master interface uninitialized.");
-    MB_MASTER_CHECK((pucRegBuffer != NULL),
+    MB_MASTER_CHECK((pucRegBuffer != NULL), 
                     MB_EINVAL, "Master stack processing error.");
     mb_master_options_t* mbm_opts = &mbm_interface_ptr->opts;
     USHORT usRegCoilNregs = (USHORT)mbm_opts->mbm_reg_buffer_size;
@@ -610,7 +609,7 @@ eMBErrorCode eMBRegDiscreteCBSerialMaster(UCHAR * pucRegBuffer, USHORT usAddress
 {
     MB_MASTER_CHECK((mbm_interface_ptr != NULL),
                     MB_EILLSTATE, "Master interface uninitialized.");
-    MB_MASTER_CHECK((pucRegBuffer != NULL),
+    MB_MASTER_CHECK((pucRegBuffer != NULL), 
                     MB_EINVAL, "Master stack processing error.");
     mb_master_options_t* mbm_opts = &mbm_interface_ptr->opts;
     USHORT usRegDiscreteNregs = (USHORT)mbm_opts->mbm_reg_buffer_size;
@@ -645,8 +644,11 @@ eMBErrorCode eMBRegDiscreteCBSerialMaster(UCHAR * pucRegBuffer, USHORT usAddress
 }
 
 // Initialization of resources for Modbus serial master controller
-esp_err_t mbc_serial_master_create(void** handler)
+esp_err_t mbc_serial_master_create(mb_port_type_t port_type, void** handler)
 {
+    MB_MASTER_CHECK((port_type == MB_PORT_SERIAL_MASTER), 
+                        ESP_ERR_INVALID_STATE, "mb incorrect port selected = %u.", 
+                        (uint32_t)port_type);
     // Allocate space for master interface structure
     if (mbm_interface_ptr == NULL) {
         mbm_interface_ptr = malloc(sizeof(mb_master_interface_t));
@@ -657,8 +659,6 @@ esp_err_t mbc_serial_master_create(void** handler)
     mb_master_options_t* mbm_opts = &mbm_interface_ptr->opts;
     mbm_opts->port_type = MB_PORT_SERIAL_MASTER;
 
-    vMBPortSetMode((UCHAR)MB_PORT_SERIAL_MASTER);
-
     mbm_opts->mbm_comm.mode = MB_MODE_RTU;
     mbm_opts->mbm_comm.port = MB_UART_PORT;
     mbm_opts->mbm_comm.baudrate = MB_DEVICE_SPEED;
@@ -668,7 +668,7 @@ esp_err_t mbc_serial_master_create(void** handler)
     BaseType_t status = 0;
     // Parameter change notification queue
     mbm_opts->mbm_event_group = xEventGroupCreate();
-    MB_MASTER_CHECK((mbm_opts->mbm_event_group != NULL),
+    MB_MASTER_CHECK((mbm_opts->mbm_event_group != NULL), 
                         ESP_ERR_NO_MEM, "mb event group error.");
     // Create modbus controller task
     status = xTaskCreate((void*)&modbus_master_task,

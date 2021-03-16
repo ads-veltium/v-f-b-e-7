@@ -49,7 +49,7 @@ DNSTracker::~DNSTracker() {
     while (!qlist.empty()) {
       auto head = qlist.head;
       qlist.remove(head);
-      head->status = DNSResolverStatus::ERROR;
+      head->status = DNS_STATUS_ERROR;
       head->in_qlist = false;
       // TODO Not sure we should call callback here, or it is even be
       // safe to do that.
@@ -58,8 +58,7 @@ DNSTracker::~DNSTracker() {
 }
 
 ResolverEntry DNSTracker::make_entry(std::unique_ptr<DualDNSResolver> resolv,
-                                     ImmutableString host,
-                                     DNSResolverStatus status,
+                                     ImmutableString host, int status,
                                      const Address *result) {
   auto &dnsconf = get_config()->dns;
 
@@ -68,11 +67,9 @@ ResolverEntry DNSTracker::make_entry(std::unique_ptr<DualDNSResolver> resolv,
   ent.host = std::move(host);
   ent.status = status;
   switch (status) {
-  case DNSResolverStatus::ERROR:
-  case DNSResolverStatus::OK:
+  case DNS_STATUS_ERROR:
+  case DNS_STATUS_OK:
     ent.expiry = ev_now(loop_) + dnsconf.timeout.cache;
-    break;
-  default:
     break;
   }
   if (result) {
@@ -83,17 +80,15 @@ ResolverEntry DNSTracker::make_entry(std::unique_ptr<DualDNSResolver> resolv,
 
 void DNSTracker::update_entry(ResolverEntry &ent,
                               std::unique_ptr<DualDNSResolver> resolv,
-                              DNSResolverStatus status, const Address *result) {
+                              int status, const Address *result) {
   auto &dnsconf = get_config()->dns;
 
   ent.resolv = std::move(resolv);
   ent.status = status;
   switch (status) {
-  case DNSResolverStatus::ERROR:
-  case DNSResolverStatus::OK:
+  case DNS_STATUS_ERROR:
+  case DNS_STATUS_OK:
     ent.expiry = ev_now(loop_) + dnsconf.timeout.cache;
-    break;
-  default:
     break;
   }
   if (result) {
@@ -101,7 +96,7 @@ void DNSTracker::update_entry(ResolverEntry &ent,
   }
 }
 
-DNSResolverStatus DNSTracker::resolve(Address *result, DNSQuery *dnsq) {
+int DNSTracker::resolve(Address *result, DNSQuery *dnsq) {
   int rv;
 
   auto it = ents_.find(dnsq->host);
@@ -111,7 +106,7 @@ DNSResolverStatus DNSTracker::resolve(Address *result, DNSQuery *dnsq) {
       LOG(INFO) << "DNS entry not found for " << dnsq->host;
     }
 
-    auto resolv = std::make_unique<DualDNSResolver>(loop_);
+    auto resolv = make_unique<DualDNSResolver>(loop_);
     auto host_copy =
         ImmutableString{std::begin(dnsq->host), std::end(dnsq->host)};
     auto host = StringRef{host_copy};
@@ -123,41 +118,46 @@ DNSResolverStatus DNSTracker::resolve(Address *result, DNSQuery *dnsq) {
       }
 
       ents_.emplace(host, make_entry(nullptr, std::move(host_copy),
-                                     DNSResolverStatus::ERROR, nullptr));
+                                     DNS_STATUS_ERROR, nullptr));
 
       start_gc_timer();
 
-      return DNSResolverStatus::ERROR;
+      return DNS_STATUS_ERROR;
     }
 
-    switch (resolv->get_status(result)) {
-    case DNSResolverStatus::ERROR:
+    rv = resolv->get_status(result);
+    switch (rv) {
+    case DNS_STATUS_ERROR: {
       if (LOG_ENABLED(INFO)) {
         LOG(INFO) << "Name lookup failed for " << host;
       }
 
       ents_.emplace(host, make_entry(nullptr, std::move(host_copy),
-                                     DNSResolverStatus::ERROR, nullptr));
+                                     DNS_STATUS_ERROR, nullptr));
 
       start_gc_timer();
 
-      return DNSResolverStatus::ERROR;
-    case DNSResolverStatus::OK:
+      return DNS_STATUS_ERROR;
+    }
+    case DNS_STATUS_OK: {
       if (LOG_ENABLED(INFO)) {
         LOG(INFO) << "Name lookup succeeded: " << host << " -> "
                   << util::numeric_name(&result->su.sa, result->len);
       }
 
       ents_.emplace(host, make_entry(nullptr, std::move(host_copy),
-                                     DNSResolverStatus::OK, result));
+                                     DNS_STATUS_OK, result));
 
       start_gc_timer();
 
-      return DNSResolverStatus::OK;
-    case DNSResolverStatus::RUNNING: {
+      return DNS_STATUS_OK;
+    }
+    case DNS_STATUS_RUNNING: {
+      assert(rv == DNS_STATUS_RUNNING);
+
       auto p = ents_.emplace(host,
                              make_entry(std::move(resolv), std::move(host_copy),
-                                        DNSResolverStatus::RUNNING, nullptr));
+                                        DNS_STATUS_RUNNING, nullptr));
 
       start_gc_timer();
 
@@ -165,7 +165,7 @@ DNSResolverStatus DNSTracker::resolve(Address *result, DNSQuery *dnsq) {
 
       add_to_qlist(ent, dnsq);
 
-      return DNSResolverStatus::RUNNING;
+      return DNS_STATUS_RUNNING;
     }
     default:
       assert(0);
@@ -174,13 +174,13 @@ DNSResolverStatus DNSTracker::resolve(Address *result, DNSQuery *dnsq) {
 
   auto &ent = (*it).second;
 
-  if (ent.status != DNSResolverStatus::RUNNING && ent.expiry < ev_now(loop_)) {
+  if (ent.status != DNS_STATUS_RUNNING && ent.expiry < ev_now(loop_)) {
     if (LOG_ENABLED(INFO)) {
       LOG(INFO) << "DNS entry found for " << dnsq->host
                 << ", but it has been expired";
     }
 
-    auto resolv = std::make_unique<DualDNSResolver>(loop_);
+    auto resolv = make_unique<DualDNSResolver>(loop_);
     auto host = StringRef{ent.host};
 
     rv = resolv->resolve(host);
@@ -189,53 +189,57 @@ DNSResolverStatus DNSTracker::resolve(Address *result, DNSQuery *dnsq) {
         LOG(INFO) << "Name lookup failed for " << host;
       }
 
-      update_entry(ent, nullptr, DNSResolverStatus::ERROR, nullptr);
+      update_entry(ent, nullptr, DNS_STATUS_ERROR, nullptr);
 
-      return DNSResolverStatus::ERROR;
+      return DNS_STATUS_ERROR;
     }
 
-    switch (resolv->get_status(result)) {
-    case DNSResolverStatus::ERROR:
+    rv = resolv->get_status(result);
+    switch (rv) {
+    case DNS_STATUS_ERROR: {
       if (LOG_ENABLED(INFO)) {
         LOG(INFO) << "Name lookup failed for " << host;
       }
 
-      update_entry(ent, nullptr, DNSResolverStatus::ERROR, nullptr);
+      update_entry(ent, nullptr, DNS_STATUS_ERROR, nullptr);
 
-      return DNSResolverStatus::ERROR;
-    case DNSResolverStatus::OK:
+      return DNS_STATUS_ERROR;
+    }
+    case DNS_STATUS_OK: {
       if (LOG_ENABLED(INFO)) {
         LOG(INFO) << "Name lookup succeeded: " << host << " -> "
                   << util::numeric_name(&result->su.sa, result->len);
       }
 
-      update_entry(ent, nullptr, DNSResolverStatus::OK, result);
+      update_entry(ent, nullptr, DNS_STATUS_OK, result);
 
-      return DNSResolverStatus::OK;
-    case DNSResolverStatus::RUNNING:
-      update_entry(ent, std::move(resolv), DNSResolverStatus::RUNNING, nullptr);
+      return DNS_STATUS_OK;
+    }
+    case DNS_STATUS_RUNNING: {
+      update_entry(ent, std::move(resolv), DNS_STATUS_RUNNING, nullptr);
       add_to_qlist(ent, dnsq);
 
-      return DNSResolverStatus::RUNNING;
+      return DNS_STATUS_RUNNING;
+    }
     default:
       assert(0);
     }
   }
 
   switch (ent.status) {
-  case DNSResolverStatus::RUNNING:
+  case DNS_STATUS_RUNNING:
     if (LOG_ENABLED(INFO)) {
       LOG(INFO) << "Waiting for name lookup complete for " << dnsq->host;
     }
     ent.qlist.append(dnsq);
     dnsq->in_qlist = true;
-    return DNSResolverStatus::RUNNING;
-  case DNSResolverStatus::ERROR:
+    return DNS_STATUS_RUNNING;
+  case DNS_STATUS_ERROR:
     if (LOG_ENABLED(INFO)) {
       LOG(INFO) << "Name lookup failed for " << dnsq->host << " (cached)";
     }
-    return DNSResolverStatus::ERROR;
-  case DNSResolverStatus::OK:
+    return DNS_STATUS_ERROR;
+  case DNS_STATUS_OK:
     if (LOG_ENABLED(INFO)) {
       LOG(INFO) << "Name lookup succeeded (cached): " << dnsq->host << " -> "
                 << util::numeric_name(&ent.result.su.sa, ent.result.len);
@@ -243,7 +247,7 @@ DNSResolverStatus DNSTracker::resolve(Address *result, DNSQuery *dnsq) {
     if (result) {
       memcpy(result, &ent.result, sizeof(*result));
     }
-    return DNSResolverStatus::OK;
+    return DNS_STATUS_OK;
   default:
     assert(0);
     abort();
@@ -252,27 +256,26 @@ DNSResolverStatus DNSTracker::resolve(Address *result, DNSQuery *dnsq) {
 
 void DNSTracker::add_to_qlist(ResolverEntry &ent, DNSQuery *dnsq) {
   auto loop = loop_;
-  ent.resolv->set_complete_cb(
-      [&ent, loop](DNSResolverStatus status, const Address *result) {
-        auto &qlist = ent.qlist;
-        while (!qlist.empty()) {
-          auto head = qlist.head;
-          qlist.remove(head);
-          head->status = status;
-          head->in_qlist = false;
-          auto cb = head->cb;
-          cb(status, result);
-        }
+  ent.resolv->set_complete_cb([&ent, loop](int status, const Address *result) {
+    auto &qlist = ent.qlist;
+    while (!qlist.empty()) {
+      auto head = qlist.head;
+      qlist.remove(head);
+      head->status = status;
+      head->in_qlist = false;
+      auto cb = head->cb;
+      cb(status, result);
+    }
 
-        auto &dnsconf = get_config()->dns;
+    auto &dnsconf = get_config()->dns;
 
-        ent.resolv.reset();
-        ent.status = status;
-        ent.expiry = ev_now(loop) + dnsconf.timeout.cache;
-        if (ent.status == DNSResolverStatus::OK) {
-          ent.result = *result;
-        }
-      });
+    ent.resolv.reset();
+    ent.status = status;
+    ent.expiry = ev_now(loop) + dnsconf.timeout.cache;
+    if (ent.status == DNS_STATUS_OK) {
+      ent.result = *result;
+    }
+  });
   ent.qlist.append(dnsq);
   dnsq->in_qlist = true;
 }

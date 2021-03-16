@@ -1,5 +1,4 @@
 import re
-
 from docutils import nodes
 from docutils.parsers.rst import Directive
 

@@ -42,7 +42,8 @@
 #endif
 
 
-
+#define BLE  0
+#define COMS 1
 //Prioridades FreeRTOS
 #define PRIORIDAD_LEDS     1
 #define PRIORIDAD_CONTROL  4

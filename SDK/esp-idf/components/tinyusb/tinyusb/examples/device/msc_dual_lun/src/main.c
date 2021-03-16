@@ -58,7 +58,9 @@ int main(void)
 
   while (1)
   {
-    tud_task(); // tinyusb device task
+    // tinyusb device task
+    tud_task();
+
     led_blinking_task();
   }
 

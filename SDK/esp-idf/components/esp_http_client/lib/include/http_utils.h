@@ -64,7 +64,7 @@ char *http_utils_get_string_between(const char *str, const char *begin, const ch
  * - New string pointer
  * - NULL: Invalid input
  */
-char *http_utils_join_string(const char *first_str, size_t len_first, const char *second_str, size_t len_second);
+char *http_utils_join_string(const char *first_str, int len_first, const char *second_str, int len_second);
 
 /**
  * @brief      Check if ``str`` is start with ``start``
@@ -81,7 +81,7 @@ int http_utils_str_starts_with(const char *str, const char *start);
 
 
 #define HTTP_MEM_CHECK(TAG, a, action) if (!(a)) {                                                  \
-        ESP_LOGE(TAG,"%s(%d): %s", __FUNCTION__, __LINE__, "Memory exhausted");                     \
+        ESP_LOGE(TAG,"%s:%d (%s): %s", __FILE__, __LINE__, __FUNCTION__, "Memory exhausted");       \
         action;                                                                                     \
         }
 

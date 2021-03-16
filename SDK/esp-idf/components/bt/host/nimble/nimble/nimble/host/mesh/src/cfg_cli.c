@@ -7,9 +7,9 @@
  */
 
 #include "syscfg/syscfg.h"
-#define MESH_LOG_MODULE BLE_MESH_MODEL_LOG
 #if MYNEWT_VAL(BLE_MESH_CFG_CLI)
 
+#define BT_DBG_ENABLED (MYNEWT_VAL(BLE_MESH_DEBUG_MODEL))
 #include "mesh/mesh.h"
 
 #include <string.h>
@@ -20,9 +20,6 @@
 #include "foundation.h"
 
 #define CID_NVAL 0xffff
-
-/* 2 byte dummy opcode for getting compile time buffer sizes. */
-#define DUMMY_2_BYTE_OP	BT_MESH_MODEL_OP_2(0xff, 0xff)
 
 struct comp_data {
 	u8_t *status;
@@ -484,38 +481,6 @@ const struct bt_mesh_model_op bt_mesh_cfg_cli_op[] = {
 	BT_MESH_MODEL_OP_END,
 };
 
-static int cfg_cli_init(struct bt_mesh_model *model)
-{
-	BT_DBG("");
-
-	if (!bt_mesh_model_in_primary(model)) {
-		BT_ERR("Configuration Client only allowed in primary element");
-		return -EINVAL;
-	}
-
-	if (!model->user_data) {
-		BT_ERR("No Configuration Client context provided");
-		return -EINVAL;
-	}
-
-	cli = model->user_data;
-	cli->model = model;
-
-	/*
-	 * Configuration Model security is device-key based and both the local
-	 * and remote keys are allowed to access this model.
-	 */
-	model->keys[0] = BT_MESH_KEY_DEV_ANY;
-
-	k_sem_init(&cli->op_sync, 0, 1);
-
-	return 0;
-}
-
-const struct bt_mesh_model_cb bt_mesh_cfg_cli_cb = {
-	.init = cfg_cli_init,
-};
-
 static int cli_prepare(void *param, u32_t op)
 {
 	if (!cli) {
@@ -554,10 +519,10 @@ static int cli_wait(void)
 int bt_mesh_cfg_comp_data_get(u16_t net_idx, u16_t addr, u8_t page,
 			      u8_t *status, struct os_mbuf *comp)
 {
-	struct os_mbuf *msg = BT_MESH_MODEL_BUF(OP_DEV_COMP_DATA_GET, 1);
+	struct os_mbuf *msg = NET_BUF_SIMPLE(2 + 1 + 4);
 	struct bt_mesh_msg_ctx ctx = {
 		.net_idx = net_idx,
-		.app_idx = BT_MESH_KEY_DEV_REMOTE,
+		.app_idx = BT_MESH_KEY_DEV,
 		.addr = addr,
 		.send_ttl = BT_MESH_TTL_DEFAULT,
 	};
@@ -591,10 +556,10 @@ done:
 static int get_state_u8(u16_t net_idx, u16_t addr, u32_t op, u32_t rsp,
 			u8_t *val)
 {
-	struct os_mbuf *msg = BT_MESH_MODEL_BUF(DUMMY_2_BYTE_OP, 0);
+	struct os_mbuf *msg = NET_BUF_SIMPLE(2 + 0 + 4);
 	struct bt_mesh_msg_ctx ctx = {
 		.net_idx = net_idx,
-		.app_idx = BT_MESH_KEY_DEV_REMOTE,
+		.app_idx = BT_MESH_KEY_DEV,
 		.addr = addr,
 		.send_ttl = BT_MESH_TTL_DEFAULT,
 	};
@@ -623,10 +588,10 @@ done:
 static int set_state_u8(u16_t net_idx, u16_t addr, u32_t op, u32_t rsp,
 			u8_t new_val, u8_t *val)
 {
-	struct os_mbuf *msg = BT_MESH_MODEL_BUF(DUMMY_2_BYTE_OP, 1);
+	struct os_mbuf *msg = NET_BUF_SIMPLE(2 + 1 + 4);
 	struct bt_mesh_msg_ctx ctx = {
 		.net_idx = net_idx,
-		.app_idx = BT_MESH_KEY_DEV_REMOTE,
+		.app_idx = BT_MESH_KEY_DEV,
 		.addr = addr,
 		.send_ttl = BT_MESH_TTL_DEFAULT,
 	};
@@ -705,10 +670,10 @@ int bt_mesh_cfg_gatt_proxy_set(u16_t net_idx, u16_t addr, u8_t val,
 int bt_mesh_cfg_relay_get(u16_t net_idx, u16_t addr, u8_t *status,
 			  u8_t *transmit)
 {
-	struct os_mbuf *msg = BT_MESH_MODEL_BUF(OP_RELAY_GET, 0);
+	struct os_mbuf *msg = NET_BUF_SIMPLE(2 + 0 + 4);
 	struct bt_mesh_msg_ctx ctx = {
 		.net_idx = net_idx,
-		.app_idx = BT_MESH_KEY_DEV_REMOTE,
+		.app_idx = BT_MESH_KEY_DEV,
 		.addr = addr,
 		.send_ttl = BT_MESH_TTL_DEFAULT,
 	};
@@ -741,10 +706,10 @@ done:
 int bt_mesh_cfg_relay_set(u16_t net_idx, u16_t addr, u8_t new_relay,
 			  u8_t new_transmit, u8_t *status, u8_t *transmit)
 {
-	struct os_mbuf *msg = BT_MESH_MODEL_BUF(OP_RELAY_SET, 2);
+	struct os_mbuf *msg = NET_BUF_SIMPLE(2 + 2 + 4);
 	struct bt_mesh_msg_ctx ctx = {
 		.net_idx = net_idx,
-		.app_idx = BT_MESH_KEY_DEV_REMOTE,
+		.app_idx = BT_MESH_KEY_DEV,
 		.addr = addr,
 		.send_ttl = BT_MESH_TTL_DEFAULT,
 	};
@@ -779,10 +744,10 @@ done:
 int bt_mesh_cfg_net_key_add(u16_t net_idx, u16_t addr, u16_t key_net_idx,
 			    const u8_t net_key[16], u8_t *status)
 {
-	struct os_mbuf *msg = BT_MESH_MODEL_BUF(OP_NET_KEY_ADD, 18);
+	struct os_mbuf *msg = NET_BUF_SIMPLE(2 + 18 + 4);
 	struct bt_mesh_msg_ctx ctx = {
 		.net_idx = net_idx,
-		.app_idx = BT_MESH_KEY_DEV_REMOTE,
+		.app_idx = BT_MESH_KEY_DEV,
 		.addr = addr,
 		.send_ttl = BT_MESH_TTL_DEFAULT,
 	};
@@ -823,10 +788,10 @@ int bt_mesh_cfg_app_key_add(u16_t net_idx, u16_t addr, u16_t key_net_idx,
 			    u16_t key_app_idx, const u8_t app_key[16],
 			    u8_t *status)
 {
-	struct os_mbuf *msg = BT_MESH_MODEL_BUF(OP_APP_KEY_ADD, 19);
+	struct os_mbuf *msg = NET_BUF_SIMPLE(1 + 19 + 4);
 	struct bt_mesh_msg_ctx ctx = {
 		.net_idx = net_idx,
-		.app_idx = BT_MESH_KEY_DEV_REMOTE,
+		.app_idx = BT_MESH_KEY_DEV,
 		.addr = addr,
 		.send_ttl = BT_MESH_TTL_DEFAULT,
 	};
@@ -868,10 +833,10 @@ static int mod_app_bind(u16_t net_idx, u16_t addr, u16_t elem_addr,
 			u16_t mod_app_idx, u16_t mod_id, u16_t cid,
 			u8_t *status)
 {
-	struct os_mbuf *msg = BT_MESH_MODEL_BUF(OP_MOD_APP_BIND, 8);
+	struct os_mbuf *msg = NET_BUF_SIMPLE(2 + 8 + 4);
 	struct bt_mesh_msg_ctx ctx = {
 		.net_idx = net_idx,
-		.app_idx = BT_MESH_KEY_DEV_REMOTE,
+		.app_idx = BT_MESH_KEY_DEV,
 		.addr = addr,
 		.send_ttl = BT_MESH_TTL_DEFAULT,
 	};
@@ -939,10 +904,10 @@ int bt_mesh_cfg_mod_app_bind_vnd(u16_t net_idx, u16_t addr, u16_t elem_addr,
 static int mod_sub(u32_t op, u16_t net_idx, u16_t addr, u16_t elem_addr,
 		   u16_t sub_addr, u16_t mod_id, u16_t cid, u8_t *status)
 {
-	struct os_mbuf *msg = BT_MESH_MODEL_BUF(DUMMY_2_BYTE_OP, 8);
+	struct os_mbuf *msg = NET_BUF_SIMPLE(2 + 8 + 4);
 	struct bt_mesh_msg_ctx ctx = {
 		.net_idx = net_idx,
-		.app_idx = BT_MESH_KEY_DEV_REMOTE,
+		.app_idx = BT_MESH_KEY_DEV,
 		.addr = addr,
 		.send_ttl = BT_MESH_TTL_DEFAULT,
 	};
@@ -1049,10 +1014,10 @@ static int mod_sub_va(u32_t op, u16_t net_idx, u16_t addr, u16_t elem_addr,
 		      const u8_t label[16], u16_t mod_id, u16_t cid,
 		      u16_t *virt_addr, u8_t *status)
 {
-	struct os_mbuf *msg = BT_MESH_MODEL_BUF(DUMMY_2_BYTE_OP, 22);
+	struct os_mbuf *msg = NET_BUF_SIMPLE(2 + 22 + 4);
 	struct bt_mesh_msg_ctx ctx = {
 		.net_idx = net_idx,
-		.app_idx = BT_MESH_KEY_DEV_REMOTE,
+		.app_idx = BT_MESH_KEY_DEV,
 		.addr = addr,
 		.send_ttl = BT_MESH_TTL_DEFAULT,
 	};
@@ -1168,10 +1133,10 @@ static int mod_pub_get(u16_t net_idx, u16_t addr, u16_t elem_addr,
 		       u16_t mod_id, u16_t cid,
 		       struct bt_mesh_cfg_mod_pub *pub, u8_t *status)
 {
-	struct os_mbuf *msg = BT_MESH_MODEL_BUF(OP_MOD_PUB_GET, 6);
+	struct os_mbuf *msg = NET_BUF_SIMPLE(2 + 6 + 4);
 	struct bt_mesh_msg_ctx ctx = {
 		.net_idx = net_idx,
-		.app_idx = BT_MESH_KEY_DEV_REMOTE,
+		.app_idx = BT_MESH_KEY_DEV,
 		.addr = addr,
 		.send_ttl = BT_MESH_TTL_DEFAULT,
 	};
@@ -1240,10 +1205,10 @@ static int mod_pub_set(u16_t net_idx, u16_t addr, u16_t elem_addr,
 		       u16_t mod_id, u16_t cid,
 		       struct bt_mesh_cfg_mod_pub *pub, u8_t *status)
 {
-	struct os_mbuf *msg = BT_MESH_MODEL_BUF(OP_MOD_PUB_SET, 13);
+	struct os_mbuf *msg = NET_BUF_SIMPLE(2 + 13 + 4);
 	struct bt_mesh_msg_ctx ctx = {
 		.net_idx = net_idx,
-		.app_idx = BT_MESH_KEY_DEV_REMOTE,
+		.app_idx = BT_MESH_KEY_DEV,
 		.addr = addr,
 		.send_ttl = BT_MESH_TTL_DEFAULT,
 	};
@@ -1265,7 +1230,7 @@ static int mod_pub_set(u16_t net_idx, u16_t addr, u16_t elem_addr,
 
 	net_buf_simple_add_le16(msg, elem_addr);
 	net_buf_simple_add_le16(msg, pub->addr);
-	net_buf_simple_add_le16(msg, (pub->app_idx | (pub->cred_flag << 12)));
+	net_buf_simple_add_le16(msg, (pub->app_idx & (pub->cred_flag << 12)));
 	net_buf_simple_add_u8(msg, pub->ttl);
 	net_buf_simple_add_u8(msg, pub->period);
 	net_buf_simple_add_u8(msg, pub->transmit);
@@ -1316,10 +1281,10 @@ int bt_mesh_cfg_mod_pub_set_vnd(u16_t net_idx, u16_t addr, u16_t elem_addr,
 int bt_mesh_cfg_hb_sub_set(u16_t net_idx, u16_t addr,
 			   struct bt_mesh_cfg_hb_sub *sub, u8_t *status)
 {
-	struct os_mbuf *msg = BT_MESH_MODEL_BUF(OP_HEARTBEAT_SUB_SET, 5);
+	struct os_mbuf *msg = NET_BUF_SIMPLE(2 + 5 + 4);
 	struct bt_mesh_msg_ctx ctx = {
 		.net_idx = net_idx,
-		.app_idx = BT_MESH_KEY_DEV_REMOTE,
+		.app_idx = BT_MESH_KEY_DEV,
 		.addr = addr,
 		.send_ttl = BT_MESH_TTL_DEFAULT,
 	};
@@ -1360,10 +1325,10 @@ done:
 int bt_mesh_cfg_hb_sub_get(u16_t net_idx, u16_t addr,
 			   struct bt_mesh_cfg_hb_sub *sub, u8_t *status)
 {
-	struct os_mbuf *msg = BT_MESH_MODEL_BUF(OP_HEARTBEAT_SUB_GET, 0);
+	struct os_mbuf *msg = NET_BUF_SIMPLE(2 + 0 + 4);
 	struct bt_mesh_msg_ctx ctx = {
 		.net_idx = net_idx,
-		.app_idx = BT_MESH_KEY_DEV_REMOTE,
+		.app_idx = BT_MESH_KEY_DEV,
 		.addr = addr,
 		.send_ttl = BT_MESH_TTL_DEFAULT,
 	};
@@ -1401,10 +1366,10 @@ done:
 int bt_mesh_cfg_hb_pub_set(u16_t net_idx, u16_t addr,
 			   const struct bt_mesh_cfg_hb_pub *pub, u8_t *status)
 {
-	struct os_mbuf *msg = BT_MESH_MODEL_BUF(OP_HEARTBEAT_PUB_SET, 9);
+	struct os_mbuf *msg = NET_BUF_SIMPLE(2 + 9 + 4);
 	struct bt_mesh_msg_ctx ctx = {
 		.net_idx = net_idx,
-		.app_idx = BT_MESH_KEY_DEV_REMOTE,
+		.app_idx = BT_MESH_KEY_DEV,
 		.addr = addr,
 		.send_ttl = BT_MESH_TTL_DEFAULT,
 	};
@@ -1447,7 +1412,7 @@ done:
 int bt_mesh_cfg_hb_pub_get(u16_t net_idx, u16_t addr,
 			   struct bt_mesh_cfg_hb_pub *pub, u8_t *status)
 {
-	struct os_mbuf *msg = BT_MESH_MODEL_BUF(OP_HEARTBEAT_PUB_GET, 0);
+	struct os_mbuf *msg = NET_BUF_SIMPLE(2 + 0 + 4);
 	struct bt_mesh_msg_ctx ctx = {
 		.net_idx = net_idx,
 		.app_idx = BT_MESH_KEY_DEV,
@@ -1493,6 +1458,31 @@ s32_t bt_mesh_cfg_cli_timeout_get(void)
 void bt_mesh_cfg_cli_timeout_set(s32_t timeout)
 {
 	msg_timeout = timeout;
+}
+
+int bt_mesh_cfg_cli_init(struct bt_mesh_model *model, bool primary)
+{
+	BT_DBG("primary %u", primary);
+
+	if (!primary) {
+		BT_ERR("Configuration Client only allowed in primary element");
+		return -EINVAL;
+	}
+
+	if (!model->user_data) {
+		BT_ERR("No Configuration Client context provided");
+		return -EINVAL;
+	}
+
+	cli = model->user_data;
+	cli->model = model;
+
+	/* Configuration Model security is device-key based */
+	model->keys[0] = BT_MESH_KEY_DEV;
+
+	k_sem_init(&cli->op_sync, 0, 1);
+
+	return 0;
 }
 
 #endif

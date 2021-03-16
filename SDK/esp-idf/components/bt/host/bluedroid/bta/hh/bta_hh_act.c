@@ -1253,3 +1253,4 @@ static char *bta_hh_hid_event_name(UINT16 event)
 }
 #endif
 #endif /* BTA_HH_INCLUDED */
+

@@ -601,6 +601,7 @@ int pthread_mutex_destroy(pthread_mutex_t *mutex)
     if (res != pdTRUE) {
         assert(false && "Failed to release mutex!");
     }
+
     vSemaphoreDelete(mux->sem);
     free(mux);
 

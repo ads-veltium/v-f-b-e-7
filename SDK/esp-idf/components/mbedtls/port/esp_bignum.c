@@ -32,7 +32,6 @@
 #include "esp_log.h"
 #include "esp_attr.h"
 #include "bignum_impl.h"
-#include "soc/soc_caps.h"
 
 #include <mbedtls/bignum.h>
 
@@ -67,9 +66,7 @@ static inline size_t bits_to_words(size_t bits)
 /* Return the number of words actually used to represent an mpi
    number.
 */
-int __wrap_mbedtls_mpi_exp_mod( mbedtls_mpi *Z, const mbedtls_mpi *X, const mbedtls_mpi *Y, const mbedtls_mpi *M, mbedtls_mpi *_Rinv );
-extern int __real_mbedtls_mpi_exp_mod( mbedtls_mpi *Z, const mbedtls_mpi *X, const mbedtls_mpi *Y, const mbedtls_mpi *M, mbedtls_mpi *_Rinv );
-
+#if defined(MBEDTLS_MPI_EXP_MOD_ALT)
 static size_t mpi_words(const mbedtls_mpi *mpi)
 {
     for (size_t i = mpi->n; i > 0; i--) {
@@ -80,6 +77,7 @@ static size_t mpi_words(const mbedtls_mpi *mpi)
     return 0;
 }
 
+#endif //MBEDTLS_MPI_EXP_MOD_ALT
 
 /**
  *
@@ -182,6 +180,8 @@ cleanup:
     return ret;
 }
 
+#if defined(MBEDTLS_MPI_EXP_MOD_ALT)
+
 #ifdef ESP_MPI_USE_MONT_EXP
 /*
  * Return the most significant one-bit.
@@ -272,7 +272,7 @@ cleanup2:
  * (See RSA Accelerator section in Technical Reference for more about Mprime, Rinv)
  *
  */
-int __wrap_mbedtls_mpi_exp_mod( mbedtls_mpi *Z, const mbedtls_mpi *X, const mbedtls_mpi *Y, const mbedtls_mpi *M, mbedtls_mpi *_Rinv )
+int mbedtls_mpi_exp_mod( mbedtls_mpi *Z, const mbedtls_mpi *X, const mbedtls_mpi *Y, const mbedtls_mpi *M, mbedtls_mpi *_Rinv )
 {
     int ret = 0;
     size_t x_words = mpi_words(X);
@@ -301,12 +301,8 @@ int __wrap_mbedtls_mpi_exp_mod( mbedtls_mpi *Z, const mbedtls_mpi *X, const mbed
         return mbedtls_mpi_lset(Z, 1);
     }
 
-    if (num_words * 32 > SOC_RSA_MAX_BIT_LEN) {
-#ifdef CONFIG_MBEDTLS_LARGE_KEY_SOFTWARE_MPI
-        return __real_mbedtls_mpi_exp_mod(Z, X, Y, M, _Rinv);
-#else
+    if (num_words * 32 > 4096) {
         return MBEDTLS_ERR_MPI_NOT_ACCEPTABLE;
-#endif
     }
 
     /* Determine RR pointer, either _RR for cached value
@@ -354,6 +350,10 @@ cleanup:
     }
     return ret;
 }
+
+#endif /* MBEDTLS_MPI_EXP_MOD_ALT */
+
+
 
 #if defined(MBEDTLS_MPI_MUL_MPI_ALT) /* MBEDTLS_MPI_MUL_MPI_ALT */
 
@@ -403,8 +403,8 @@ int mbedtls_mpi_mul_mpi( mbedtls_mpi *Z, const mbedtls_mpi *X, const mbedtls_mpi
        multiplication doesn't have the same restriction, so result is simply the
        number of bits in X plus number of bits in in Y.)
     */
-    if (hw_words * 32 > SOC_RSA_MAX_BIT_LEN/2) {
-        if (z_words * 32 <= SOC_RSA_MAX_BIT_LEN) {
+    if (hw_words * 32 > 2048) {
+        if (z_words * 32 <= 4096) {
             /* Note: it's possible to use mpi_mult_mpi_overlong
                for this case as well, but it's very slightly
                slower and requires a memory allocation.
@@ -527,3 +527,4 @@ cleanup:
 }
 
 #endif /* MBEDTLS_MPI_MUL_MPI_ALT */
+

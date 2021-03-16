@@ -20,7 +20,6 @@ extern "C" {
 
 #include "esp_err.h"
 
-
 /**
  * @brief For I2S dma to claim the usage of ADC1.
  *
@@ -58,3 +57,4 @@ esp_err_t adc1_lock_release(void);
 #ifdef __cplusplus
 }
 #endif
+

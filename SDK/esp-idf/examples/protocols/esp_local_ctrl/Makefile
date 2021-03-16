@@ -6,3 +6,4 @@
 PROJECT_NAME := esp_local_ctrl
 
 include $(IDF_PATH)/make/project.mk
+

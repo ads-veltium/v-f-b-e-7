@@ -1,6 +1,3 @@
-| Supported Targets | ESP32 | ESP32-S2 |
-| ----------------- | ----- | -------- |
-
 # PPP over Serial test
 
 Testing connection of PPP client (ESP) to PPP server (raspberry pi)

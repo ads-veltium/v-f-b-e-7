@@ -823,3 +823,4 @@ esp_err_t esp_ble_mesh_config_client_set_state(esp_ble_mesh_client_common_param_
 #endif
 
 #endif /* _ESP_BLE_MESH_CONFIG_MODEL_API_H_ */
+

@@ -160,3 +160,4 @@ typedef struct sdp_info {
 
 #endif  ///HID_HOST_INCLUDED == TRUE
 #endif
+

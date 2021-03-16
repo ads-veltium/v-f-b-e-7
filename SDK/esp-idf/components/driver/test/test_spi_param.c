@@ -1,13 +1,10 @@
-#include "esp_log.h"
-#include "esp_attr.h"
-#include "soc/spi_periph.h"
-#include "sdkconfig.h"
 #include "test/test_common_spi.h"
 #include "driver/spi_master.h"
 #include "driver/spi_slave.h"
-
-#if !DISABLED_FOR_TARGETS(ESP32C3)
-//There is only one GPSPI controller on ESP32C3, so single-board test is disabled.
+#include "esp_log.h"
+#include "soc/spi_periph.h"
+#include "test/test_common_spi.h"
+#include "sdkconfig.h"
 
 #ifndef MIN
 #define MIN(a, b)((a) > (b)? (b): (a))
@@ -97,16 +94,15 @@ static void local_test_start(spi_device_handle_t *spi, int freq, const spitest_p
 
     //slave config
     slvcfg.mode = pset->mode;
+
     slave_pull_up(&buscfg, slvcfg.spics_io_num);
 
-    int dma_chan = (pset->master_dma_chan == 0) ? 0 : SPI_DMA_CH_AUTO;
-    TEST_ESP_OK(spi_bus_initialize(TEST_SPI_HOST, &buscfg, dma_chan));
+    TEST_ESP_OK(spi_bus_initialize(TEST_SPI_HOST, &buscfg, pset->master_dma_chan));
     TEST_ESP_OK(spi_bus_add_device(TEST_SPI_HOST, &devcfg, spi));
 
     //slave automatically use iomux pins if pins are on VSPI_* pins
     buscfg.quadhd_io_num = -1;
-    int slave_dma_chan = (pset->slave_dma_chan == 0) ? 0 : SPI_DMA_CH_AUTO;
-    TEST_ESP_OK(spi_slave_initialize(TEST_SLAVE_HOST, &buscfg, &slvcfg, slave_dma_chan));
+    TEST_ESP_OK(spi_slave_initialize(TEST_SLAVE_HOST, &buscfg, &slvcfg, pset->slave_dma_chan));
 
     //initialize master and slave on the same pins break some of the output configs, fix them
     if (pset->master_iomux) {
@@ -226,7 +222,7 @@ static void local_test_loop(const void* arg1, void* arg2)
 //TODO: esp32s2 has better timing performance
 static spitest_param_set_t timing_pgroup[] = {
 //signals are not fed to peripherals through iomux if the functions are not selected to iomux
-#if !DISABLED_FOR_TARGETS(ESP32S2, ESP32S3)
+#if !DISABLED_FOR_TARGETS(ESP32S2)
     {   .pset_name = "FULL_DUP, MASTER IOMUX",
         .freq_limit = ESP_SPI_SLAVE_MAX_FREQ_SYNC,
         .master_limit = SPI_MASTER_FREQ_13M,
@@ -253,7 +249,7 @@ static spitest_param_set_t timing_pgroup[] = {
         .slave_tv_ns = TV_INT_CONNECT_GPIO,
     },
 //signals are not fed to peripherals through iomux if the functions are not selected to iomux
-#if !DISABLED_FOR_TARGETS(ESP32S2, ESP32S3)
+#if !DISABLED_FOR_TARGETS(ESP32S2)
     {   .pset_name = "MISO_DUP, MASTER IOMUX",
         .freq_limit = ESP_SPI_SLAVE_MAX_FREQ_SYNC,
         .master_limit = ESP_SPI_SLAVE_MAX_FREQ_SYNC,
@@ -280,7 +276,7 @@ static spitest_param_set_t timing_pgroup[] = {
         .slave_tv_ns = TV_INT_CONNECT_GPIO,
     },
 //signals are not fed to peripherals through iomux if the functions are not selected to iomux
-#if !DISABLED_FOR_TARGETS(ESP32S2, ESP32S3)
+#if !DISABLED_FOR_TARGETS(ESP32S2)
     {   .pset_name = "MOSI_DUP, MASTER IOMUX",
         .freq_limit = ESP_SPI_SLAVE_MAX_FREQ_SYNC,
         //.freq_limit = ESP_SPI_SLAVE_MAX_READ_FREQ, //ESP_SPI_SLAVE_MAX_FREQ_SYNC,
@@ -393,7 +389,7 @@ static spitest_param_set_t mode_pgroup[] = {
         .master_limit = SPI_MASTER_FREQ_13M,
         .dup = FULL_DUPLEX,
         .mode = 0,
-        .slave_dma_chan = SPI_DMA_CH_AUTO,
+        .slave_dma_chan = 2,
         .master_iomux = false,
         .slave_iomux = LOCAL_MODE_TEST_SLAVE_IOMUX,
         .slave_tv_ns = TV_INT_CONNECT,
@@ -405,7 +401,7 @@ static spitest_param_set_t mode_pgroup[] = {
         .master_limit = SPI_MASTER_FREQ_13M,
         .dup = FULL_DUPLEX,
         .mode = 1,
-        .slave_dma_chan = SPI_DMA_CH_AUTO,
+        .slave_dma_chan = 2,
         .master_iomux = false,
         .slave_iomux = LOCAL_MODE_TEST_SLAVE_IOMUX,
         .slave_tv_ns = TV_INT_CONNECT,
@@ -416,7 +412,7 @@ static spitest_param_set_t mode_pgroup[] = {
         .master_limit = SPI_MASTER_FREQ_13M,
         .dup = FULL_DUPLEX,
         .mode = 2,
-        .slave_dma_chan = SPI_DMA_CH_AUTO,
+        .slave_dma_chan = 2,
         .master_iomux = false,
         .slave_iomux = LOCAL_MODE_TEST_SLAVE_IOMUX,
         .slave_tv_ns = TV_INT_CONNECT,
@@ -428,7 +424,7 @@ static spitest_param_set_t mode_pgroup[] = {
         .master_limit = SPI_MASTER_FREQ_13M,
         .dup = FULL_DUPLEX,
         .mode = 3,
-        .slave_dma_chan = SPI_DMA_CH_AUTO,
+        .slave_dma_chan = 2,
         .master_iomux = false,
         .slave_iomux = LOCAL_MODE_TEST_SLAVE_IOMUX,
         .slave_tv_ns = TV_INT_CONNECT,
@@ -471,7 +467,7 @@ static spitest_param_set_t mode_pgroup[] = {
         .freq_list = test_freq_mode_local,
         .dup = HALF_DUPLEX_MISO,
         .mode = 0,
-        .slave_dma_chan = SPI_DMA_CH_AUTO,
+        .slave_dma_chan = 2,
         .master_iomux = false,
         .slave_iomux = LOCAL_MODE_TEST_SLAVE_IOMUX,
         .slave_tv_ns = TV_INT_CONNECT+SLAVE_EXTRA_DELAY_DMA,
@@ -481,7 +477,7 @@ static spitest_param_set_t mode_pgroup[] = {
         .freq_list = test_freq_mode_local,
         .dup = HALF_DUPLEX_MISO,
         .mode = 1,
-        .slave_dma_chan = SPI_DMA_CH_AUTO,
+        .slave_dma_chan = 2,
         .master_iomux = false,
         .slave_iomux = LOCAL_MODE_TEST_SLAVE_IOMUX,
         .slave_tv_ns = TV_INT_CONNECT,
@@ -491,7 +487,7 @@ static spitest_param_set_t mode_pgroup[] = {
         .freq_list = test_freq_mode_local,
         .dup = HALF_DUPLEX_MISO,
         .mode = 2,
-        .slave_dma_chan = SPI_DMA_CH_AUTO,
+        .slave_dma_chan = 2,
         .master_iomux = false,
         .slave_iomux = LOCAL_MODE_TEST_SLAVE_IOMUX,
         .slave_tv_ns = TV_INT_CONNECT+SLAVE_EXTRA_DELAY_DMA,
@@ -501,7 +497,7 @@ static spitest_param_set_t mode_pgroup[] = {
         .freq_list = test_freq_mode_local,
         .dup = HALF_DUPLEX_MISO,
         .mode = 3,
-        .slave_dma_chan = SPI_DMA_CH_AUTO,
+        .slave_dma_chan = 2,
         .master_iomux = false,
         .slave_iomux = LOCAL_MODE_TEST_SLAVE_IOMUX,
         .slave_tv_ns = TV_INT_CONNECT,
@@ -546,7 +542,7 @@ TEST_CASE("Slave receive correct data", "[spi]")
                 .master_iomux = false,
                 .slave_iomux = false,
                 .master_dma_chan = 0,
-                .slave_dma_chan = (dma_chan ? SPI_DMA_CH_AUTO: 0),
+                .slave_dma_chan = (dma_chan? TEST_DMA_CHAN_SLAVE: 0),
             };
             ESP_LOGI(SLAVE_TAG, "Test slave recv @ mode %d, dma enabled=%d", spi_mode, dma_chan);
 
@@ -617,7 +613,7 @@ TEST_CASE("Slave receive correct data", "[spi]")
     }
 }
 
-#if !TEMPORARY_DISABLED_FOR_TARGETS(ESP32S2, ESP32S3, ESP32C3)
+#if !TEMPORARY_DISABLED_FOR_TARGETS(ESP32S2)
 //These tests are ESP32 only due to lack of runners
 /********************************************************************************
  *      Test By Master & Slave (2 boards)
@@ -703,9 +699,7 @@ static void test_master_start(spi_device_handle_t *spi, int freq, const spitest_
     devpset.input_delay_ns = pset->slave_tv_ns;
     devpset.clock_speed_hz = freq;
     if (pset->master_limit != 0 && freq > pset->master_limit) devpset.flags |= SPI_DEVICE_NO_DUMMY;
-
-    int dma_chan = (pset->master_dma_chan == 0) ? 0 : SPI_DMA_CH_AUTO;
-    TEST_ESP_OK(spi_bus_initialize(TEST_SPI_HOST, &buspset, dma_chan));
+    TEST_ESP_OK(spi_bus_initialize(TEST_SPI_HOST, &buspset, pset->master_dma_chan));
     TEST_ESP_OK(spi_bus_add_device(TEST_SPI_HOST, &devpset, spi));
 
     //prepare data for the slave
@@ -825,8 +819,7 @@ static void timing_slave_start(int speed, const spitest_param_set_t* pset, spite
     //Enable pull-ups on SPI lines so we don't detect rogue pulses when no master is connected.
     slave_pull_up(&slv_buscfg, slvcfg.spics_io_num);
 
-    int slave_dma_chan = (pset->slave_dma_chan == 0) ? 0 : SPI_DMA_CH_AUTO;
-    TEST_ESP_OK(spi_slave_initialize(TEST_SLAVE_HOST, &slv_buscfg, &slvcfg, slave_dma_chan));
+    TEST_ESP_OK(spi_slave_initialize(TEST_SLAVE_HOST, &slv_buscfg, &slvcfg, pset->slave_dma_chan));
 
     //prepare data for the master
     for (int i = 0; i < pset->test_size; i++) {
@@ -1086,8 +1079,8 @@ spitest_param_set_t mode_conf[] = {
         .slave_iomux = true,
         .slave_tv_ns = DELAY_HCLK_UNTIL_7M,
         .mode = 0,
-        .master_dma_chan = SPI_DMA_CH_AUTO,
-        .slave_dma_chan = SPI_DMA_CH_AUTO,
+        .master_dma_chan = 1,
+        .slave_dma_chan = 1,
         .length_aligned = true,
     },
     {   .pset_name = "mode 1, DMA",
@@ -1098,8 +1091,8 @@ spitest_param_set_t mode_conf[] = {
         .slave_iomux = true,
         .slave_tv_ns = TV_WITH_ESP_SLAVE,
         .mode = 1,
-        .master_dma_chan = SPI_DMA_CH_AUTO,
-        .slave_dma_chan = SPI_DMA_CH_AUTO,
+        .master_dma_chan = 1,
+        .slave_dma_chan = 1,
         .length_aligned = true,
     },
     {   .pset_name = "mode 2, DMA",
@@ -1110,8 +1103,8 @@ spitest_param_set_t mode_conf[] = {
         .slave_iomux = true,
         .slave_tv_ns = DELAY_HCLK_UNTIL_7M,
         .mode = 2,
-        .master_dma_chan = SPI_DMA_CH_AUTO,
-        .slave_dma_chan = SPI_DMA_CH_AUTO,
+        .master_dma_chan = 1,
+        .slave_dma_chan = 1,
         .length_aligned = true,
     },
     {   .pset_name = "mode 3, DMA",
@@ -1122,8 +1115,8 @@ spitest_param_set_t mode_conf[] = {
         .slave_iomux = true,
         .slave_tv_ns = TV_WITH_ESP_SLAVE,
         .mode = 3,
-        .master_dma_chan = SPI_DMA_CH_AUTO,
-        .slave_dma_chan = SPI_DMA_CH_AUTO,
+        .master_dma_chan = 1,
+        .slave_dma_chan = 1,
         .length_aligned = true,
     },
     //the master can only read to 16MHz, use half-duplex mode to read at 20.
@@ -1134,8 +1127,8 @@ spitest_param_set_t mode_conf[] = {
         .slave_iomux = true,
         .slave_tv_ns = TV_WITH_ESP_SLAVE,
         .mode = 0,
-        .master_dma_chan = SPI_DMA_CH_AUTO,
-        .slave_dma_chan = SPI_DMA_CH_AUTO,
+        .master_dma_chan = 1,
+        .slave_dma_chan = 1,
     },
     {   .pset_name = "mode 1, DMA, 20M",
         .freq_list = test_freq_20M_only,
@@ -1144,8 +1137,8 @@ spitest_param_set_t mode_conf[] = {
         .slave_iomux = true,
         .slave_tv_ns = TV_WITH_ESP_SLAVE,
         .mode = 1,
-        .master_dma_chan = SPI_DMA_CH_AUTO,
-        .slave_dma_chan = SPI_DMA_CH_AUTO,
+        .master_dma_chan = 1,
+        .slave_dma_chan = 1,
     },
     {   .pset_name = "mode 2, DMA, 20M",
         .freq_list = test_freq_20M_only,
@@ -1154,8 +1147,8 @@ spitest_param_set_t mode_conf[] = {
         .slave_iomux = true,
         .slave_tv_ns = TV_WITH_ESP_SLAVE,
         .mode = 2,
-        .master_dma_chan = SPI_DMA_CH_AUTO,
-        .slave_dma_chan = SPI_DMA_CH_AUTO,
+        .master_dma_chan = 1,
+        .slave_dma_chan = 1,
     },
     {   .pset_name = "mode 3, DMA, 20M",
         .freq_list = test_freq_20M_only,
@@ -1164,12 +1157,10 @@ spitest_param_set_t mode_conf[] = {
         .slave_iomux = true,
         .slave_tv_ns = TV_WITH_ESP_SLAVE,
         .mode = 3,
-        .master_dma_chan = SPI_DMA_CH_AUTO,
-        .slave_dma_chan = SPI_DMA_CH_AUTO,
+        .master_dma_chan = 1,
+        .slave_dma_chan = 1,
     },
 };
 TEST_SPI_MASTER_SLAVE(MODE, mode_conf, "")
 
-#endif // !TEMPORARY_DISABLED_FOR_TARGETS(ESP32S2, ESP32S3, ESP32C3)
-
-#endif // !TEMPORARY_DISABLED_FOR_TARGETS(ESP32C3)
+#endif

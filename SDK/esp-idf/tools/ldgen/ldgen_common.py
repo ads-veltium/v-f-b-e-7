@@ -1,5 +1,5 @@
 #
-# Copyright 2021 Espressif Systems (Shanghai) CO LTD
+# Copyright 2018-2019 Espressif Systems (Shanghai) PTE LTD
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.

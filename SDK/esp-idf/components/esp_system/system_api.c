@@ -6,18 +6,16 @@
 #include "soc/cpu.h"
 #include "soc/rtc.h"
 #include "soc/rtc_cntl_reg.h"
-#include "esp_private/panic_internal.h"
-#include "esp_rom_uart.h"
-#if CONFIG_IDF_TARGET_ESP32S2
+#include "panic_internal.h"
+#if CONFIG_IDF_TARGET_ESP32
+#include "esp32/rom/uart.h"
+#elif CONFIG_IDF_TARGET_ESP32S2
+#include "esp32s2/rom/uart.h"
 #include "esp32s2/memprot.h"
-#elif CONFIG_IDF_TARGET_ESP32S3
-#include "esp32s3/memprot.h"
-#elif CONFIG_IDF_TARGET_ESP32C3
-#include "esp32c3/memprot.h"
 #endif
 
 
-#define SHUTDOWN_HANDLERS_NO 4
+#define SHUTDOWN_HANDLERS_NO 3
 static shutdown_handler_t shutdown_handlers[SHUTDOWN_HANDLERS_NO];
 
 esp_err_t esp_register_shutdown_handler(shutdown_handler_t handler)
@@ -48,7 +46,7 @@ void IRAM_ATTR esp_restart_noos_dig(void)
 {
     // make sure all the panic handler output is sent from UART FIFO
     if (CONFIG_ESP_CONSOLE_UART_NUM >= 0) {
-        esp_rom_uart_tx_wait_idle(CONFIG_ESP_CONSOLE_UART_NUM);
+        uart_tx_wait_idle(CONFIG_ESP_CONSOLE_UART_NUM);
     }
 
     // switch to XTAL (otherwise we will keep running from the PLL)
@@ -75,15 +73,11 @@ void IRAM_ATTR esp_restart(void)
     // Disable scheduler on this core.
     vTaskSuspendAll();
 
-    bool digital_reset_needed = false;
-#if CONFIG_ESP_SYSTEM_CONFIG_MEMPROT_FEATURE
+#if CONFIG_IDF_TARGET_ESP32S2
     if (esp_memprot_is_intr_ena_any() || esp_memprot_is_locked_any()) {
-        digital_reset_needed = true;
-    }
-#endif
-    if (digital_reset_needed) {
         esp_restart_noos_dig();
     }
+#endif
     esp_restart_noos();
 }
 

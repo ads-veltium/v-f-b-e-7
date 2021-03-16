@@ -81,3 +81,4 @@ void btc_ble_mesh_lighting_server_cb_handler(btc_msg_t *msg);
 #endif
 
 #endif /* _BTC_BLE_MESH_LIGHTING_MODEL_H_ */
+

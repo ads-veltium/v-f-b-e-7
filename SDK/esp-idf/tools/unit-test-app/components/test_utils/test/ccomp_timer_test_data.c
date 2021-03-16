@@ -5,6 +5,7 @@
 #include "esp_log.h"
 #include "esp_attr.h"
 #include "ccomp_timer.h"
+#include "eri.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
@@ -13,20 +14,11 @@
 #include "esp32/clk.h"
 #elif CONFIG_IDF_TARGET_ESP32S2
 #include "esp32s2/clk.h"
-#elif CONFIG_IDF_TARTGET_ESP32S3
-#include "esp32s3/clk.h"
-#elif CONFIG_IDF_TARGET_ESP32C3
-#include "esp32c3/clk.h"
 #endif
 
 #include "unity.h"
 
 #include "sdkconfig.h"
-
-
-/* No performance monitor in RISCV for now
- */
-#if !DISABLED_FOR_TARGETS(ESP32C3)
 
 static const char* TAG = "test_ccomp_timer";
 
@@ -35,18 +27,13 @@ static const char* TAG = "test_ccomp_timer";
 #define CACHE_LINE_SIZE         32
 #define CACHE_SIZE              (1 << 15)
 // Only test half due to lack of memory
-#define TEST_SIZE               (CACHE_SIZE / 2)
-#elif CONFIG_IDF_TARGET_ESP32S2 || CONFIG_IDF_TARGET_ESP32S3
+#define TEST_SIZE               (CACHE_SIZE / 2) 
+#elif CONFIG_IDF_TARGET_ESP32S2
 // Default cache configuration - no override specified on
 // test_utils config
 #define CACHE_WAYS              8
 #define CACHE_LINE_SIZE         32
 #define CACHE_SIZE              (1 << 13)
-#define TEST_SIZE               (CACHE_SIZE)
-#elif CONFIG_IDF_TARGET_ESP32C3
-#define CACHE_WAYS              8
-#define CACHE_LINE_SIZE         32
-#define CACHE_SIZE              (1 << 14)
 #define TEST_SIZE               (CACHE_SIZE)
 #endif
 
@@ -137,7 +124,7 @@ static ccomp_test_time_t perform_test_at_hit_rate(int hit_rate, const uint8_t *m
     };
 
     free(access.accesses);
-
+    
     return t;
 }
 
@@ -176,7 +163,7 @@ TEST_CASE("data cache hit rate sweep", "[test_utils][ccomp_timer]")
 
         ESP_LOGI(TAG, "Hit Rate(%%): %d    Wall Time(us): %lld    Compensated Time(us): %lld    Error(%%): %f", i, (long long)t_hr.wall, (long long)t_hr.ccomp, error);
 
-        // Check if the measured time is at least within some percent of the
+        // Check if the measured time is at least within some percent of the 
         // reference.
         TEST_ASSERT(error <= 5.0f);
     }
@@ -185,5 +172,3 @@ TEST_CASE("data cache hit rate sweep", "[test_utils][ccomp_timer]")
     free(flash_mem);
 #endif
 }
-
-#endif // !DISABLED_FOR_TARGETS(ESP32C3)

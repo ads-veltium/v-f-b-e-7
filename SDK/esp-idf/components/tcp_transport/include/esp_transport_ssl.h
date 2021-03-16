@@ -141,16 +141,6 @@ void esp_transport_ssl_skip_common_name_check(esp_transport_handle_t t);
  */
 void esp_transport_ssl_use_secure_element(esp_transport_handle_t t);
 
-
-/**
- * @brief      Set the ds_data handle in ssl context.(used for the digital signature operation)
- *
- * @param      t        ssl transport
- *             ds_data  the handle for ds data params
- */
-
-void esp_transport_ssl_set_ds_data(esp_transport_handle_t t, void *ds_data);
-
 /**
  * @brief      Set PSK key and hint for PSK server/client verification in esp-tls component.
  *             Important notes:
@@ -172,8 +162,8 @@ void esp_transport_ssl_set_psk_key_hint(esp_transport_handle_t t, const psk_hint
  * @param[in]  keep_alive_cfg  The handle for keep-alive configuration
  */
 void esp_transport_ssl_set_keep_alive(esp_transport_handle_t t, esp_transport_keep_alive_t *keep_alive_cfg);
-
 #ifdef __cplusplus
 }
 #endif
 #endif /* _ESP_TRANSPORT_SSL_H_ */
+

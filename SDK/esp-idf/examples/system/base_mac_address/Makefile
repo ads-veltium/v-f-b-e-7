@@ -6,3 +6,4 @@
 PROJECT_NAME := base_mac_address
 
 include $(IDF_PATH)/make/project.mk
+

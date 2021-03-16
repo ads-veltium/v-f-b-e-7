@@ -16,19 +16,23 @@ class Array
   #    c.uniq! { |s| s.first } # => [["student", "sam"], ["teacher", "matz"]]
   #
   def uniq!(&block)
-    hash = {}
+    ary = self.dup
+    result = []
     if block
-      self.each do |val|
-        key = block.call(val)
-        hash[key] = val unless hash.key?(key)
-      end
-      result = hash.values
-    else
       hash = {}
-      self.each do |val|
-        hash[val] = val
+      while ary.size > 0
+        val = ary.shift
+        key = block.call(val)
+        hash[key] = val unless hash.has_key?(key)
       end
-      result = hash.keys
+      hash.each_value do |value|
+        result << value
+      end
+    else
+      while ary.size > 0
+        result << ary.shift
+        ary.delete(result.last)
+      end
     end
     if result.size == self.size
       nil
@@ -52,7 +56,11 @@ class Array
   #
   def uniq(&block)
     ary = self.dup
-    ary.uniq!(&block)
+    if block
+      ary.uniq!(&block)
+    else
+      ary.uniq!
+    end
     ary
   end
 
@@ -72,19 +80,8 @@ class Array
 
     hash = {}
     array = []
-    idx = 0
-    len = elem.size
-    while idx < len
-      hash[elem[idx]] = true
-      idx += 1
-    end
-    idx = 0
-    len = size
-    while idx < len
-      v = self[idx]
-      array << v unless hash[v]
-      idx += 1
-    end
+    elem.each { |x| hash[x] = true }
+    self.each { |x| array << x unless hash[x] }
     array
   end
 
@@ -107,25 +104,6 @@ class Array
 
   ##
   # call-seq:
-  #    ary.union(other_ary,...)  -> new_ary
-  #
-  # Set Union---Returns a new array by joining this array with
-  # <i>other_ary</i>, removing duplicates.
-  #
-  #    ["a", "b", "c"].union(["c", "d", "a"], ["a", "c", "e"])
-  #           #=> ["a", "b", "c", "d", "e"]
-  #
-  def union(*args)
-    ary = self.dup
-    args.each do |x|
-      ary.concat(x)
-      ary.uniq!
-    end
-    ary
-  end
-
-  ##
-  # call-seq:
   #    ary & other_ary      -> new_ary
   #
   # Set Intersection---Returns a new array
@@ -138,21 +116,12 @@ class Array
 
     hash = {}
     array = []
-    idx = 0
-    len = elem.size
-    while idx < len
-      hash[elem[idx]] = true
-      idx += 1
-    end
-    idx = 0
-    len = size
-    while idx < len
-      v = self[idx]
+    elem.each{|v| hash[v] = true }
+    self.each do |v|
       if hash[v]
         array << v
         hash.delete v
       end
-      idx += 1
     end
     array
   end
@@ -175,9 +144,15 @@ class Array
   #    a.flatten(1)              #=> [1, 2, 3, [4, 5]]
   #
   def flatten(depth=nil)
-    res = dup
-    res.flatten! depth
-    res
+    ar = []
+    self.each do |e|
+      if e.is_a?(Array) && (depth.nil? || depth > 0)
+        ar += e.flatten(depth.nil? ? nil : depth - 1)
+      else
+        ar << e
+      end
+    end
+    ar
   end
 
   ##
@@ -200,17 +175,13 @@ class Array
   def flatten!(depth=nil)
     modified = false
     ar = []
-    idx = 0
-    len = size
-    while idx < len
-      e = self[idx]
+    self.each do |e|
       if e.is_a?(Array) && (depth.nil? || depth > 0)
         ar += e.flatten(depth.nil? ? nil : depth - 1)
         modified = true
       else
         ar << e
       end
-      idx += 1
     end
     if modified
       self.replace(ar)
@@ -256,7 +227,7 @@ class Array
 
   # for efficiency
   def reverse_each(&block)
-    return to_enum :reverse_each unless block
+    return to_enum :reverse_each unless block_given?
 
     i = self.size - 1
     while i>=0
@@ -266,6 +237,7 @@ class Array
     self
   end
 
+  NONE=Object.new
   ##
   #  call-seq:
   #     ary.fetch(index)                    -> obj
@@ -278,9 +250,8 @@ class Array
   #  +default+ value.
   #
   #  Alternatively, if a block is given it will only be executed when an
-  #  invalid +index+ is referenced.
-  #
-  #  Negative values of +index+ count from the end of the array.
+  #  invalid +index+ is referenced.  Negative values of +index+ count from the
+  #  end of the array.
   #
   #     a = [ 11, 22, 33, 44 ]
   #     a.fetch(1)               #=> 22
@@ -290,7 +261,7 @@ class Array
   #                              #=> "100 is out of bounds"
   #
 
-  def fetch(n, ifnone=NONE, &block)
+  def fetch(n=nil, ifnone=NONE, &block)
     warn "block supersedes default value argument" if !n.nil? && ifnone != NONE && block
 
     idx = n
@@ -477,7 +448,7 @@ class Array
   #     scores.delete_if {|score| score < 80 }   #=> [97]
 
   def delete_if(&block)
-    return to_enum :delete_if unless block
+    return to_enum :delete_if unless block_given?
 
     idx = 0
     while idx < self.size do
@@ -506,7 +477,7 @@ class Array
   #  If no block is given, an Enumerator is returned instead.
 
   def reject!(&block)
-    return to_enum :reject! unless block
+    return to_enum :reject! unless block_given?
 
     len = self.size
     idx = 0
@@ -596,60 +567,33 @@ class Array
   #  undefined which value is actually picked up at each iteration.
 
   def bsearch(&block)
-    return to_enum :bsearch unless block
-
-    if idx = bsearch_index(&block)
-      self[idx]
-    else
-      nil
-    end
-  end
-
-  ##
-  #  call-seq:
-  #     ary.bsearch_index {|x| block }  -> int or nil
-  #
-  #  By using binary search, finds an index of a value from this array which
-  #  meets the given condition in O(log n) where n is the size of the array.
-  #
-  #  It supports two modes, depending on the nature of the block and they are
-  #  exactly the same as in the case of #bsearch method with the only difference
-  #  being that this method returns the index of the element instead of the
-  #  element itself. For more details consult the documentation for #bsearch.
-
-  def bsearch_index(&block)
-    return to_enum :bsearch_index unless block
+    return to_enum :bsearch unless block_given?
 
     low = 0
-    high = size
+    high = self.size
     satisfied = false
-
     while low < high
-      mid = ((low+high)/2).truncate
-      res = block.call self[mid]
-
-      case res
-      when 0 # find-any mode: Found!
-        return mid
-      when Numeric # find-any mode: Continue...
-        in_lower_half = res < 0
-      when true # find-min mode
-        in_lower_half = true
+      mid = low + ((high - low) / 2).truncate
+      val = self[mid]
+      v = block.call(val)
+      if v.is_a?(Integer)
+        return val if v == 0
+        smaller = v < 0
+      elsif v == true
         satisfied = true
-      when false, nil # find-min mode
-        in_lower_half = false
-      else
-        raise TypeError, 'invalid block result (must be numeric, true, false or nil)'
+        smaller = true
+      elsif v == false || v.nil?
+        smaller = false
       end
-
-      if in_lower_half
+      if smaller
         high = mid
       else
         low = mid + 1
       end
     end
-
-    satisfied ? low : nil
+    return nil if low == self.size
+    return nil unless satisfied
+    self[low]
   end
 
   ##
@@ -670,7 +614,7 @@ class Array
   #     scores.delete_if {|score| score < 80 }   #=> [97]
 
   def delete_if(&block)
-    return to_enum :delete_if unless block
+    return to_enum :delete_if unless block_given?
 
     idx = 0
     while idx < self.size do
@@ -699,7 +643,7 @@ class Array
   #     a.keep_if { |val| val > 3 } #=> [4, 5]
 
   def keep_if(&block)
-    return to_enum :keep_if unless block
+    return to_enum :keep_if unless block_given?
 
     idx = 0
     len = self.size
@@ -728,17 +672,13 @@ class Array
   #  If no block is given, an Enumerator is returned instead.
 
   def select!(&block)
-    return to_enum :select! unless block
+    return to_enum :select! unless block_given?
 
     result = []
-    idx = 0
-    len = size
-    while idx < len
-      elem = self[idx]
-      result << elem if block.call(elem)
-      idx += 1
+    self.each do |x|
+      result << x if block.call(x)
     end
-    return nil if len == result.size
+    return nil if self.size == result.size
     self.replace(result)
   end
 
@@ -760,180 +700,13 @@ class Array
 
     if block
       idx = 0
-      len = size
-      while idx < len
-        return idx if block.call self[idx]
+      self.each do |*e|
+        return idx if block.call(*e)
         idx += 1
       end
     else
       return self.__ary_index(val)
     end
     nil
-  end
-
-  ##
-  # call-seq:
-  #   ary.dig(idx, ...)                 -> object
-  #
-  # Extracts the nested value specified by the sequence of <i>idx</i>
-  # objects by calling +dig+ at each step, returning +nil+ if any
-  # intermediate step is +nil+.
-  #
-  def dig(idx,*args)
-    n = self[idx]
-    if args.size > 0
-      n&.dig(*args)
-    else
-      n
-    end
-  end
-
-  ##
-  # call-seq:
-  #    ary.permutation { |p| block }          -> ary
-  #    ary.permutation                        -> Enumerator
-  #    ary.permutation(n) { |p| block }       -> ary
-  #    ary.permutation(n)                     -> Enumerator
-  #
-  # When invoked with a block, yield all permutations of length +n+ of the
-  # elements of the array, then return the array itself.
-  #
-  # If +n+ is not specified, yield all permutations of all elements.
-  #
-  # The implementation makes no guarantees about the order in which the
-  # permutations are yielded.
-  #
-  # If no block is given, an Enumerator is returned instead.
-  #
-  # Examples:
-  #
-  #  a = [1, 2, 3]
-  #  a.permutation.to_a    #=> [[1,2,3],[1,3,2],[2,1,3],[2,3,1],[3,1,2],[3,2,1]]
-  #  a.permutation(1).to_a #=> [[1],[2],[3]]
-  #  a.permutation(2).to_a #=> [[1,2],[1,3],[2,1],[2,3],[3,1],[3,2]]
-  #  a.permutation(3).to_a #=> [[1,2,3],[1,3,2],[2,1,3],[2,3,1],[3,1,2],[3,2,1]]
-  #  a.permutation(0).to_a #=> [[]] # one permutation of length 0
-  #  a.permutation(4).to_a #=> []   # no permutations of length 4
-  def permutation(n=self.size, &block)
-    size = self.size
-    return to_enum(:permutation, n) unless block
-    return if n > size
-    if n == 0
-       yield []
-    else
-      i = 0
-      while i<size
-        result = [self[i]]
-        if n-1 > 0
-          ary = self[0...i] + self[i+1..-1]
-          ary.permutation(n-1) do |c|
-            yield result + c
-          end
-        else
-          yield result
-        end
-        i += 1
-      end
-    end
-  end
-
-  ##
-  # call-seq:
-  #    ary.combination(n) { |c| block }    -> ary
-  #    ary.combination(n)                  -> Enumerator
-  #
-  # When invoked with a block, yields all combinations of length +n+ of elements
-  # from the array and then returns the array itself.
-  #
-  # The implementation makes no guarantees about the order in which the
-  # combinations are yielded.
-  #
-  # If no block is given, an Enumerator is returned instead.
-  #
-  # Examples:
-  #
-  #    a = [1, 2, 3, 4]
-  #    a.combination(1).to_a  #=> [[1],[2],[3],[4]]
-  #    a.combination(2).to_a  #=> [[1,2],[1,3],[1,4],[2,3],[2,4],[3,4]]
-  #    a.combination(3).to_a  #=> [[1,2,3],[1,2,4],[1,3,4],[2,3,4]]
-  #    a.combination(4).to_a  #=> [[1,2,3,4]]
-  #    a.combination(0).to_a  #=> [[]] # one combination of length 0
-  #    a.combination(5).to_a  #=> []   # no combinations of length 5
-
-  def combination(n, &block)
-    size = self.size
-    return to_enum(:combination, n) unless block
-    return if n > size
-    if n == 0
-       yield []
-    elsif n == 1
-      i = 0
-      while i<size
-        yield [self[i]]
-        i += 1
-      end
-    else
-      i = 0
-      while i<size
-        result = [self[i]]
-        self[i+1..-1].combination(n-1) do |c|
-          yield result + c
-        end
-        i += 1
-      end
-    end
-  end
-
-  ##
-  # call-seq:
-  #    ary.transpose -> new_ary
-  #
-  # Assumes that self is an array of arrays and transposes the rows and columns.
-  #
-  # If the length of the subarrays don't match, an IndexError is raised.
-  #
-  # Examples:
-  #
-  #    a = [[1,2], [3,4], [5,6]]
-  #    a.transpose   #=> [[1, 3, 5], [2, 4, 6]]
-
-  def transpose
-    return [] if empty?
-
-    column_count = nil
-    self.each do |row|
-      raise TypeError unless row.is_a?(Array)
-      column_count ||= row.count
-      raise IndexError, 'element size differs' unless column_count == row.count
-    end
-
-    Array.new(column_count) do |column_index|
-      self.map { |row| row[column_index] }
-    end
-  end
-
-  ##
-  #  call-seq:
-  #    ary.to_h                ->   Hash
-  #    ary.to_h{|item| ... }   ->   Hash
-  #
-  # Returns the result of interpreting <i>aray</i> as an array of
-  # <tt>[key, value]</tt> pairs. If a block is given, it should
-  # return <tt>[key, value]</tt> pairs to construct a hash.
-  #
-  #     [[:foo, :bar], [1, 2]].to_h
-  #       # => {:foo => :bar, 1 => 2}
-  #     [1, 2].to_h{|x| [x, x*2]}
-  #       # => {1 => 2, 2 => 4}
-  #
-  def to_h(&blk)
-    h = {}
-    self.each do |v|
-      v = blk.call(v) if blk
-      raise TypeError, "wrong element type #{v.class}" unless Array === v
-      raise ArgumentError, "wrong array length (expected 2, was #{v.length})" unless v.length == 2
-      h[v[0]] = v[1]
-    end
-    h
   end
 end

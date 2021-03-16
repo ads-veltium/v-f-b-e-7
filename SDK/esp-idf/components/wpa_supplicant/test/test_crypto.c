@@ -542,3 +542,4 @@ TEST_CASE("Test crypto lib ECC apis", "[wpa_crypto]")
     }
 
 }
+

@@ -89,7 +89,7 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
         Reintentos = 0;
         wifi_connected = true;
         wifi_connecting = false;
-        ComprobarConexion();
+        ConfigFirebase.InternetConection = ComprobarConexion();
     }
 
     else if(event_base == SC_EVENT){

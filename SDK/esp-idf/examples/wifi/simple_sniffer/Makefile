@@ -8,3 +8,4 @@ PROJECT_NAME := simple_sniffer
 EXTRA_COMPONENT_DIRS := $(IDF_PATH)/examples/system/console/components
 
 include $(IDF_PATH)/make/project.mk
+

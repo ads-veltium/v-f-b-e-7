@@ -4,12 +4,13 @@
     [Released under MIT License. Please refer to license.txt for details]
 ========================================== */
 
+#include "unity.h"
 #include "cmock.h"
 
 //public constants to be used by mocks
 const char* CMockStringOutOfMemory = "CMock has run out of memory. Please allocate more.";
 const char* CMockStringCalledMore  = "Called more times than expected.";
-const char* CMockStringCalledLess  = "Called fewer times than expected.";
+const char* CMockStringCalledLess  = "Called less times than expected.";
 const char* CMockStringCalledEarly = "Called earlier than expected.";
 const char* CMockStringCalledLate  = "Called later than expected.";
 const char* CMockStringCallOrder   = "Called out of order.";
@@ -23,11 +24,12 @@ const char* CMockStringMismatch    = "Function called with unexpected argument v
 #ifdef CMOCK_MEM_DYNAMIC
 static unsigned char*         CMock_Guts_Buffer = NULL;
 static CMOCK_MEM_INDEX_TYPE   CMock_Guts_BufferSize = CMOCK_MEM_ALIGN_SIZE;
-static CMOCK_MEM_INDEX_TYPE   CMock_Guts_FreePtr = CMOCK_MEM_ALIGN_SIZE;
+static CMOCK_MEM_INDEX_TYPE   CMock_Guts_FreePtr;
 #else
-static unsigned char          CMock_Guts_Buffer[CMOCK_MEM_SIZE + CMOCK_MEM_ALIGN_SIZE];
+static CMOCK_MEM_INDEX_TYPE   CMock_Guts_BufferArray[(CMOCK_MEM_SIZE + CMOCK_MEM_INDEX_SIZE - 1) / CMOCK_MEM_INDEX_SIZE];
+#define CMock_Guts_Buffer ((unsigned char*)CMock_Guts_BufferArray)
 static CMOCK_MEM_INDEX_TYPE   CMock_Guts_BufferSize = CMOCK_MEM_SIZE + CMOCK_MEM_ALIGN_SIZE;
-static CMOCK_MEM_INDEX_TYPE   CMock_Guts_FreePtr = CMOCK_MEM_ALIGN_SIZE;
+static CMOCK_MEM_INDEX_TYPE   CMock_Guts_FreePtr;
 #endif
 
 //-------------------------------------------------------
@@ -165,14 +167,6 @@ void* CMock_Guts_GetAddressFor(CMOCK_MEM_INDEX_TYPE index)
   {
     return NULL;
   }
-}
-
-//-------------------------------------------------------
-// CMock_Guts_MemBytesCapacity
-//-------------------------------------------------------
-CMOCK_MEM_INDEX_TYPE CMock_Guts_MemBytesCapacity(void)
-{
-  return (sizeof(CMock_Guts_Buffer) - CMOCK_MEM_ALIGN_SIZE);
 }
 
 //-------------------------------------------------------

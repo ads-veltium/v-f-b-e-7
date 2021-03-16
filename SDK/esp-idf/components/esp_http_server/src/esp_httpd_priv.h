@@ -76,7 +76,6 @@ struct sock_db {
     bool ws_handshake_done;                 /*!< True if it has done WebSocket handshake (if this socket is a valid WS) */
     bool ws_close;                          /*!< Set to true to close the socket later (when WS Close frame received) */
     esp_err_t (*ws_handler)(httpd_req_t *r);   /*!< WebSocket handler, leave to null if it's not WebSocket */
-    bool ws_control_frames;                         /*!< WebSocket flag indicating that control frames should be passed to user handlers */
 #endif
 };
 
@@ -493,8 +492,7 @@ int httpd_default_recv(httpd_handle_t hd, int sockfd, char *buf, size_t buf_len,
 /**
  * @brief   This function is for responding a WebSocket handshake
  *
- * @param[in] req                       Pointer to handshake request that will be handled
- * @param[in] supported_subprotocol     Pointer to the subprotocol supported by this URI
+ * @param[in] req    Pointer to handshake request that will be handled
  * @return
  *  - ESP_OK                        : When handshake is sucessful
  *  - ESP_ERR_NOT_FOUND             : When some headers (Sec-WebSocket-*) are not found
@@ -503,7 +501,7 @@ int httpd_default_recv(httpd_handle_t hd, int sockfd, char *buf, size_t buf_len,
  *  - ESP_ERR_INVALID_ARG           : Argument is invalid (null or non-WebSocket)
  *  - ESP_FAIL                      : Socket failures
  */
-esp_err_t httpd_ws_respond_server_handshake(httpd_req_t *req, const char *supported_subprotocol);
+esp_err_t httpd_ws_respond_server_handshake(httpd_req_t *req);
 
 /**
  * @brief   This function is for getting a frame type

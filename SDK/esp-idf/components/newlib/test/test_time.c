@@ -9,27 +9,9 @@
 #include "freertos/semphr.h"
 #include "sdkconfig.h"
 #include "soc/rtc.h"
-#include "soc/rtc_cntl_reg.h"
 #include "esp_system.h"
 #include "test_utils.h"
 #include "esp_log.h"
-#include "esp_rom_sys.h"
-#include "esp_system.h"
-#include "esp_timer.h"
-
-#if CONFIG_IDF_TARGET_ESP32
-#include "esp32/clk.h"
-#define TARGET_DEFAULT_CPU_FREQ_MHZ CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ
-#elif CONFIG_IDF_TARGET_ESP32S2
-#include "esp32s2/clk.h"
-#define TARGET_DEFAULT_CPU_FREQ_MHZ CONFIG_ESP32S2_DEFAULT_CPU_FREQ_MHZ
-#elif CONFIG_IDF_TARGET_ESP32S3
-#include "esp32s3/clk.h"
-#define TARGET_DEFAULT_CPU_FREQ_MHZ CONFIG_ESP32S3_DEFAULT_CPU_FREQ_MHZ
-#elif CONFIG_IDF_TARGET_ESP32C3
-#include "esp32c3/clk.h"
-#define TARGET_DEFAULT_CPU_FREQ_MHZ CONFIG_ESP32C3_DEFAULT_CPU_FREQ_MHZ
-#endif
 
 #if portNUM_PROCESSORS == 2
 
@@ -42,7 +24,7 @@ TEST_CASE("Reading RTC registers on APP CPU doesn't affect clock", "[newlib]")
         for (int i = 0; i < 200000; ++i) {
             // wait for 20us, reading one of RTC registers
             uint32_t ccount = xthal_get_ccount();
-            while (xthal_get_ccount() - ccount < 20 * TARGET_DEFAULT_CPU_FREQ_MHZ) {
+            while (xthal_get_ccount() - ccount < 20 * CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ) {
                 volatile uint32_t val = REG_READ(RTC_CNTL_STATE0_REG);
                 (void) val;
             }
@@ -288,7 +270,7 @@ static void measure_time_task(void *pvParameters)
         int64_t sys_time_us[2] = { main_sys_time_us[0], 0};
         // although exit flag is set in another task, checking (exit_flag == false) is safe
         while (exit_flag == false) {
-            esp_rom_delay_us(2 * 1000000); // 2 sec
+            ets_delay_us(2 * 1000000); // 2 sec
 
             start_measure(&sys_time_us[1], &real_time_us[1]);
             result_adjtime_correction_us[1] += calc_correction("measure", sys_time_us, real_time_us);
@@ -340,18 +322,25 @@ TEST_CASE("test time adjustment happens linearly", "[newlib][timeout=35]")
 }
 #endif
 
+#if defined( CONFIG_ESP32_TIME_SYSCALL_USE_RTC ) || defined( CONFIG_ESP32_TIME_SYSCALL_USE_RTC_FRC1 ) || defined( CONFIG_ESP32S2_TIME_SYSCALL_USE_RTC ) || defined( CONFIG_ESP32S2_TIME_SYSCALL_USE_RTC_FRC1 )
+#define WITH_RTC 1
+#endif
+
+#if defined( CONFIG_ESP32_TIME_SYSCALL_USE_FRC1 ) || defined( CONFIG_ESP32_TIME_SYSCALL_USE_RTC_FRC1 ) || defined( CONFIG_ESP32S2_TIME_SYSCALL_USE_FRC1 ) || defined( CONFIG_ESP32S2_TIME_SYSCALL_USE_RTC_FRC1 )
+#define WITH_FRC 1
+#endif
 void test_posix_timers_clock (void)
 {
 #ifndef _POSIX_TIMERS
     TEST_ASSERT_MESSAGE(false, "_POSIX_TIMERS - is not defined");
 #endif
 
-#if defined( CONFIG_ESP_TIME_FUNCS_USE_ESP_TIMER )
-    printf("CONFIG_ESP_TIME_FUNCS_USE_ESP_TIMER    ");
+#if defined( WITH_FRC )
+    printf("WITH_FRC    ");
 #endif
 
-#if defined( CONFIG_ESP_TIME_FUNCS_USE_RTC_TIMER )
-    printf("CONFIG_ESP_TIME_FUNCS_USE_RTC_TIMER    ");
+#if defined( WITH_RTC )
+    printf("WITH_RTC    ");
 #endif
 
 #ifdef CONFIG_ESP32_RTC_CLK_SRC_EXT_CRYS
@@ -368,7 +357,7 @@ void test_posix_timers_clock (void)
     TEST_ASSERT(clock_gettime(CLOCK_MONOTONIC, NULL) == -1);
     TEST_ASSERT(clock_getres(CLOCK_MONOTONIC,  NULL) == -1);
 
-#if defined( CONFIG_ESP_TIME_FUNCS_USE_ESP_TIMER ) || defined( CONFIG_ESP_TIME_FUNCS_USE_RTC_TIMER )
+#if defined( WITH_FRC ) || defined( WITH_RTC )
     struct timeval now = {0};
     now.tv_sec  = 10L;
     now.tv_usec = 100000L;
@@ -389,13 +378,13 @@ void test_posix_timers_clock (void)
     ts.tv_nsec = 100000000L;
     TEST_ASSERT(clock_settime(CLOCK_REALTIME, &ts) == 0);
     TEST_ASSERT(gettimeofday(&now, NULL) == 0);
-    TEST_ASSERT_EQUAL(ts.tv_sec, now.tv_sec);
-    TEST_ASSERT_INT_WITHIN(5000L, ts.tv_nsec / 1000L, now.tv_usec);
+    TEST_ASSERT(now.tv_sec == ts.tv_sec);
+    TEST_ASSERT_INT_WITHIN(5000L, now.tv_usec,  ts.tv_nsec / 1000L);
 
     TEST_ASSERT(clock_settime(CLOCK_MONOTONIC, &ts) == -1);
 
     uint64_t delta_monotonic_us = 0;
-#if defined( CONFIG_ESP_TIME_FUNCS_USE_ESP_TIMER )
+#if defined( WITH_FRC )
 
     TEST_ASSERT(clock_getres(CLOCK_REALTIME, &ts) == 0);
     TEST_ASSERT_EQUAL_INT(1000, ts.tv_nsec);
@@ -407,7 +396,7 @@ void test_posix_timers_clock (void)
     TEST_ASSERT(delta_monotonic_us > 0 || delta_monotonic_us == 0);
     TEST_ASSERT_INT_WITHIN(5000L, 0, delta_monotonic_us);
 
-#elif defined( CONFIG_ESP_TIME_FUNCS_USE_RTC_TIMER )
+    #elif defined( WITH_RTC )
 
     TEST_ASSERT(clock_getres(CLOCK_REALTIME, &ts) == 0);
     TEST_ASSERT_EQUAL_INT(1000000000L / rtc_clk_slow_freq_get_hz(), ts.tv_nsec);
@@ -419,7 +408,7 @@ void test_posix_timers_clock (void)
     TEST_ASSERT(delta_monotonic_us > 0 || delta_monotonic_us == 0);
     TEST_ASSERT_INT_WITHIN(5000L, 0, delta_monotonic_us);
 
-#endif // CONFIG_ESP_TIME_FUNCS_USE_ESP_TIMER
+#endif // WITH_FRC
 
 #else
     struct timespec ts = {0};
@@ -430,7 +419,7 @@ void test_posix_timers_clock (void)
     TEST_ASSERT(clock_settime(CLOCK_MONOTONIC, &ts) == -1);
     TEST_ASSERT(clock_gettime(CLOCK_MONOTONIC, &ts) == -1);
     TEST_ASSERT(clock_getres(CLOCK_MONOTONIC,  &ts) == -1);
-#endif // defined( CONFIG_ESP_TIME_FUNCS_USE_ESP_TIMER ) || defined( CONFIG_ESP_TIME_FUNCS_USE_RTC_TIMER )
+#endif // defined( WITH_FRC ) || defined( WITH_RTC )
 }
 
 TEST_CASE("test posix_timers clock_... functions", "[newlib]")

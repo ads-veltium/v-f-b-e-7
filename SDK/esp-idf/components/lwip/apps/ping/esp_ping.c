@@ -32,9 +32,6 @@ typedef struct _ping_option {
 
 static ping_option ping_option_info[1];
 
-void func ( void (*f)(ping_target_id_t, esp_ping_found*) ){
-     ping_option_info->ping_res_fn = f;
-}
 esp_err_t esp_ping_set_target(ping_target_id_t opt_id, void *opt_val, uint32_t opt_len)
 {
     esp_err_t ret = ESP_OK;
@@ -175,3 +172,4 @@ esp_err_t esp_ping_result(uint8_t res_val, uint16_t ping_len, uint32_t ping_time
 
     return ret;
 }
+

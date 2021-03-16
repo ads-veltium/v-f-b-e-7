@@ -558,6 +558,7 @@ static void
 ble_gatt_conn_test_util_timeout(uint16_t conn_handle,
                                 struct ble_gatt_conn_test_arg *arg)
 {
+    struct hci_disconn_complete evt;
     int32_t ticks_from_now;
 
     ticks_from_now = ble_gattc_timer();
@@ -573,8 +574,10 @@ ble_gatt_conn_test_util_timeout(uint16_t conn_handle,
     TEST_ASSERT(ticks_from_now == BLE_HS_FOREVER);
 
     /* Ensure connection was terminated due to proecedure timeout. */
-    ble_hs_test_util_hci_rx_disconn_complete_event(conn_handle, 0,
-                                                   BLE_ERR_REM_USER_CONN_TERM);
+    evt.connection_handle = conn_handle;
+    evt.status = 0;
+    evt.reason = BLE_ERR_REM_USER_CONN_TERM;
+    ble_hs_test_util_hci_rx_disconn_complete_event(&evt);
 
     /* Ensure GATT callback was called with timeout status. */
     if (arg != NULL) {

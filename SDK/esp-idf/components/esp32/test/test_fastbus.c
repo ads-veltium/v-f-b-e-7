@@ -1,7 +1,8 @@
 
+#include <esp_types.h>
 #include <stdio.h>
+#include "esp32/rom/ets_sys.h"
 
-#include "esp_types.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
@@ -128,3 +129,4 @@ TEST_CASE("Fast I/O bus test", "[hw][ignore]")
     }
     xt_ints_off(1 << ETS_UART0_INUM);
 }
+

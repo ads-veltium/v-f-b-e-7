@@ -1,8 +1,7 @@
-set(srcs
+set(srcs 
     "heap_caps.c"
     "heap_caps_init.c"
-    "multi_heap.c"
-    "heap_tlsf.c")
+    "multi_heap.c")
 
 if(NOT CONFIG_HEAP_POISONING_DISABLED)
     list(APPEND srcs "multi_heap_poisoning.c")
@@ -47,3 +46,4 @@ if(NOT CMAKE_BUILD_EARLY_EXPANSION)
         target_compile_options(${COMPONENT_TARGET} PRIVATE "-DMULTI_HEAP_FREERTOS")
     endif()
 endif()
+

@@ -40,22 +40,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import argparse
-import contextlib
-import copy
-import errno
-import functools
-import hashlib
 import json
 import os
-import platform
-import re
-import shutil
-import ssl
 import subprocess
 import sys
+import argparse
+import re
+import platform
+import hashlib
 import tarfile
 import zipfile
+import errno
+import shutil
+import functools
+import copy
 from collections import OrderedDict, namedtuple
 
 try:
@@ -64,10 +62,9 @@ except ImportError:
     pass
 
 try:
-    from urllib.error import ContentTooShortError
-    from urllib.request import urlopen
+    from urllib.request import urlretrieve
 except ImportError:
-    from urllib import ContentTooShortError, urlopen
+    from urllib import urlretrieve
 
 try:
     from exceptions import WindowsError
@@ -120,8 +117,6 @@ PLATFORM_FROM_NAME = {
     'osx': PLATFORM_MACOS,
     'darwin': PLATFORM_MACOS,
     'Darwin-x86_64': PLATFORM_MACOS,
-    # pretend it is x86_64 until Darwin-arm64 tool builds are available:
-    'Darwin-arm64': PLATFORM_MACOS,
     # Linux
     PLATFORM_LINUX64: PLATFORM_LINUX64,
     'linux64': PLATFORM_LINUX64,
@@ -143,40 +138,6 @@ CURRENT_PLATFORM = PLATFORM_FROM_NAME.get(PYTHON_PLATFORM, UNKNOWN_PLATFORM)
 
 EXPORT_SHELL = 'shell'
 EXPORT_KEY_VALUE = 'key-value'
-
-ISRG_X1_ROOT_CERT = u"""
------BEGIN CERTIFICATE-----
-MIIFazCCA1OgAwIBAgIRAIIQz7DSQONZRGPgu2OCiwAwDQYJKoZIhvcNAQELBQAw
-TzELMAkGA1UEBhMCVVMxKTAnBgNVBAoTIEludGVybmV0IFNlY3VyaXR5IFJlc2Vh
-cmNoIEdyb3VwMRUwEwYDVQQDEwxJU1JHIFJvb3QgWDEwHhcNMTUwNjA0MTEwNDM4
-WhcNMzUwNjA0MTEwNDM4WjBPMQswCQYDVQQGEwJVUzEpMCcGA1UEChMgSW50ZXJu
-ZXQgU2VjdXJpdHkgUmVzZWFyY2ggR3JvdXAxFTATBgNVBAMTDElTUkcgUm9vdCBY
-MTCCAiIwDQYJKoZIhvcNAQEBBQADggIPADCCAgoCggIBAK3oJHP0FDfzm54rVygc
-h77ct984kIxuPOZXoHj3dcKi/vVqbvYATyjb3miGbESTtrFj/RQSa78f0uoxmyF+
-0TM8ukj13Xnfs7j/EvEhmkvBioZxaUpmZmyPfjxwv60pIgbz5MDmgK7iS4+3mX6U
-A5/TR5d8mUgjU+g4rk8Kb4Mu0UlXjIB0ttov0DiNewNwIRt18jA8+o+u3dpjq+sW
-T8KOEUt+zwvo/7V3LvSye0rgTBIlDHCNAymg4VMk7BPZ7hm/ELNKjD+Jo2FR3qyH
-B5T0Y3HsLuJvW5iB4YlcNHlsdu87kGJ55tukmi8mxdAQ4Q7e2RCOFvu396j3x+UC
-B5iPNgiV5+I3lg02dZ77DnKxHZu8A/lJBdiB3QW0KtZB6awBdpUKD9jf1b0SHzUv
-KBds0pjBqAlkd25HN7rOrFleaJ1/ctaJxQZBKT5ZPt0m9STJEadao0xAH0ahmbWn
-OlFuhjuefXKnEgV4We0+UXgVCwOPjdAvBbI+e0ocS3MFEvzG6uBQE3xDk3SzynTn
-jh8BCNAw1FtxNrQHusEwMFxIt4I7mKZ9YIqioymCzLq9gwQbooMDQaHWBfEbwrbw
-qHyGO0aoSCqI3Haadr8faqU9GY/rOPNk3sgrDQoo//fb4hVC1CLQJ13hef4Y53CI
-rU7m2Ys6xt0nUW7/vGT1M0NPAgMBAAGjQjBAMA4GA1UdDwEB/wQEAwIBBjAPBgNV
-HRMBAf8EBTADAQH/MB0GA1UdDgQWBBR5tFnme7bl5AFzgAiIyBpY9umbbjANBgkq
-hkiG9w0BAQsFAAOCAgEAVR9YqbyyqFDQDLHYGmkgJykIrGF1XIpu+ILlaS/V9lZL
-ubhzEFnTIZd+50xx+7LSYK05qAvqFyFWhfFQDlnrzuBZ6brJFe+GnY+EgPbk6ZGQ
-3BebYhtF8GaV0nxvwuo77x/Py9auJ/GpsMiu/X1+mvoiBOv/2X/qkSsisRcOj/KK
-NFtY2PwByVS5uCbMiogziUwthDyC3+6WVwW6LLv3xLfHTjuCvjHIInNzktHCgKQ5
-ORAzI4JMPJ+GslWYHb4phowim57iaztXOoJwTdwJx4nLCgdNbOhdjsnvzqvHu7Ur
-TkXWStAmzOVyyghqpZXjFaH3pO3JLF+l+/+sKAIuvtd7u+Nxe5AW0wdeRlN8NwdC
-jNPElpzVmbUq4JUagEiuTDkHzsxHpFKVK7q4+63SM1N95R1NbdWhscdCb+ZAJzVc
-oyi3B43njTOQ5yOf+1CceWxG1bQVs5ZufpsMljq4Ui0/1lvh+wjChP4kqKOJ2qxq
-4RgqsahDYVvTH9w7jXbyLeiNdd8XM2w9U/t7y0Ff/9yi0GE44Za4rF2LN9d11TPA
-mRGunUHBcnWEvgJBQl9nJEiU0Zsnvgc/ubhPgXRR4Xq37Z0j4r7g1SgEEzwxA57d
-emyPxgcYxn/eR44/KJ4EBs+lVDR3veyJm+kXQ99b21/+jh5Xos1AnX5iItreGCc=
------END CERTIFICATE-----
-"""
 
 
 global_quiet = False
@@ -277,7 +238,7 @@ def get_file_size_sha256(filename, block_size=65536):
 def report_progress(count, block_size, total_size):
     percent = int(count * block_size * 100 / total_size)
     percent = min(100, percent)
-    sys.stdout.write('\r%d%%' % percent)
+    sys.stdout.write("\r%d%%" % percent)
     sys.stdout.flush()
 
 
@@ -291,7 +252,7 @@ def mkdir_p(path):
 
 def unpack(filename, destination):
     info('Extracting {0} to {1}'.format(filename, destination))
-    if filename.endswith(('.tar.gz', '.tgz')):
+    if filename.endswith('tar.gz'):
         archive_obj = tarfile.open(filename, 'r:gz')
     elif filename.endswith('zip'):
         archive_obj = zipfile.ZipFile(filename)
@@ -302,61 +263,6 @@ def unpack(filename, destination):
         # https://bugs.python.org/issue17153
         destination = str(destination)
     archive_obj.extractall(destination)
-
-
-def splittype(url):
-    match = re.match('([^/:]+):(.*)', url, re.DOTALL)
-    if match:
-        scheme, data = match.groups()
-        return scheme.lower(), data
-    return None, url
-
-
-# An alternative version of urlretrieve which takes SSL context as an argument
-def urlretrieve_ctx(url, filename, reporthook=None, data=None, context=None):
-    url_type, path = splittype(url)
-
-    # urlopen doesn't have context argument in Python <=2.7.9
-    extra_urlopen_args = {}
-    if context:
-        extra_urlopen_args['context'] = context
-    with contextlib.closing(urlopen(url, data, **extra_urlopen_args)) as fp:
-        headers = fp.info()
-
-        # Just return the local path and the "headers" for file://
-        # URLs. No sense in performing a copy unless requested.
-        if url_type == 'file' and not filename:
-            return os.path.normpath(path), headers
-
-        # Handle temporary file setup.
-        tfp = open(filename, 'wb')
-
-        with tfp:
-            result = filename, headers
-            bs = 1024 * 8
-            size = int(headers.get('content-length', -1))
-            read = 0
-            blocknum = 0
-
-            if reporthook:
-                reporthook(blocknum, bs, size)
-
-            while True:
-                block = fp.read(bs)
-                if not block:
-                    break
-                read += len(block)
-                tfp.write(block)
-                blocknum += 1
-                if reporthook:
-                    reporthook(blocknum, bs, size)
-
-    if size >= 0 and read < size:
-        raise ContentTooShortError(
-            'retrieval incomplete: got only %i out of %i bytes'
-            % (read, size), result)
-
-    return result
 
 
 # Sometimes renaming a directory on Windows (randomly?) causes a PermissionError.
@@ -571,7 +477,7 @@ class IDFTool(object):
             raise ToolExecError('Command {} has returned non-zero exit code ({})\n'.format(
                 ' '.join(self._current_options.version_cmd), e.returncode))
 
-        in_str = version_cmd_result.decode('utf-8')
+        in_str = version_cmd_result.decode("utf-8")
         match = re.search(self._current_options.version_regex, in_str)
         if not match:
             return UNKNOWN_VERSION
@@ -674,20 +580,8 @@ class IDFTool(object):
             local_temp_path = local_path + '.tmp'
             info('Downloading {} to {}'.format(archive_name, local_temp_path))
             try:
-                ctx = None
-                # For dl.espressif.com, add the ISRG x1 root certificate.
-                # This works around the issue with outdated certificate stores in some installations.
-                if 'dl.espressif.com' in url:
-                    try:
-                        ctx = ssl.create_default_context()
-                        ctx.load_verify_locations(cadata=ISRG_X1_ROOT_CERT)
-                    except AttributeError:
-                        # no ssl.create_default_context or load_verify_locations cadata argument
-                        # in Python <=2.7.8
-                        pass
-
-                urlretrieve_ctx(url, local_temp_path, report_progress if not global_non_interactive else None, context=ctx)
-                sys.stdout.write('\rDone\n')
+                urlretrieve(url, local_temp_path, report_progress if not global_non_interactive else None)
+                sys.stdout.write("\rDone\n")
             except Exception as e:
                 # urlretrieve could throw different exceptions, e.g. IOError when the server is down
                 # Errors are ignored because the downloaded file is checked a couple of lines later.
@@ -959,7 +853,7 @@ def get_python_env_path():
 
     version_file_path = os.path.join(global_idf_path, 'version.txt')
     if os.path.exists(version_file_path):
-        with open(version_file_path, 'r') as version_file:
+        with open(version_file_path, "r") as version_file:
             idf_version_str = version_file.read()
     else:
         try:
@@ -1172,11 +1066,6 @@ def action_export(args):
         raise SystemExit(1)
 
 
-def apply_url_mirrors(args, tool_download_obj):
-    apply_mirror_prefix_map(args, tool_download_obj)
-    apply_github_assets_option(tool_download_obj)
-
-
 def apply_mirror_prefix_map(args, tool_download_obj):
     """Rewrite URL for given tool_obj, given tool_version, and current platform,
        if --mirror-prefix-map flag or IDF_MIRROR_PREFIX_MAP environment variable is given.
@@ -1202,32 +1091,6 @@ def apply_mirror_prefix_map(args, tool_download_obj):
                 info('Changed download URL: {} => {}'.format(old_url, new_url))
                 tool_download_obj.url = new_url
                 break
-
-
-def apply_github_assets_option(tool_download_obj):
-    """ Rewrite URL for given tool_obj if the download URL is an https://github.com/ URL and the variable
-    IDF_GITHUB_ASSETS is set. The github.com part of the URL will be replaced.
-    """
-    try:
-        github_assets = os.environ['IDF_GITHUB_ASSETS'].strip()
-    except KeyError:
-        return  # no IDF_GITHUB_ASSETS
-    if not github_assets:  # variable exists but is empty
-        return
-
-    # check no URL qualifier in the mirror URL
-    if '://' in github_assets:
-        fatal("IDF_GITHUB_ASSETS shouldn't include any URL qualifier, https:// is assumed")
-        raise SystemExit(1)
-
-    # Strip any trailing / from the mirror URL
-    github_assets = github_assets.rstrip('/')
-
-    old_url = tool_download_obj.url
-    new_url = re.sub(r'^https://github.com/', 'https://{}/'.format(github_assets), old_url)
-    if new_url != old_url:
-        info('Using GitHub assets mirror for URL: {} => {}'.format(old_url, new_url))
-        tool_download_obj.url = new_url
 
 
 def action_download(args):
@@ -1272,7 +1135,7 @@ def action_download(args):
         tool_spec = '{}@{}'.format(tool_name, tool_version)
 
         info('Downloading {}'.format(tool_spec))
-        apply_url_mirrors(args, tool_obj.versions[tool_version].get_download_for_platform(platform))
+        apply_mirror_prefix_map(args, tool_obj.versions[tool_version].get_download_for_platform(platform))
 
         tool_obj.download(tool_version)
 
@@ -1313,25 +1176,10 @@ def action_install(args):
             continue
 
         info('Installing {}'.format(tool_spec))
-        apply_url_mirrors(args, tool_obj.versions[tool_version].get_download_for_platform(PYTHON_PLATFORM))
+        apply_mirror_prefix_map(args, tool_obj.versions[tool_version].get_download_for_platform(PYTHON_PLATFORM))
 
         tool_obj.download(tool_version)
         tool_obj.install(tool_version)
-
-
-def get_wheels_dir():
-    tools_info = load_tools_info()
-    wheels_package_name = 'idf-python-wheels'
-    if wheels_package_name not in tools_info:
-        return None
-    wheels_package = tools_info[wheels_package_name]
-    recommended_version = wheels_package.get_recommended_version()
-    if recommended_version is None:
-        return None
-    wheels_dir = wheels_package.get_path_for_version(recommended_version)
-    if not os.path.exists(wheels_dir):
-        return None
-    return wheels_dir
 
 
 def action_install_python_env(args):
@@ -1350,7 +1198,7 @@ def action_install_python_env(args):
         info('Creating a new Python environment in {}'.format(idf_python_env_path))
 
         try:
-            import virtualenv  # noqa: F401
+            import virtualenv   # noqa: F401
         except ImportError:
             info('Installing virtualenv')
             subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--user', 'virtualenv'],
@@ -1363,15 +1211,6 @@ def action_install_python_env(args):
     run_args += ['-r', requirements_txt]
     if args.extra_wheels_dir:
         run_args += ['--find-links', args.extra_wheels_dir]
-    if args.no_index:
-        run_args += ['--no-index']
-    if args.extra_wheels_url:
-        run_args += ['--extra-index-url', args.extra_wheels_url]
-
-    wheels_dir = get_wheels_dir()
-    if wheels_dir is not None:
-        run_args += ['--find-links', wheels_dir]
-
     info('Installing Python packages from {}'.format(requirements_txt))
     subprocess.check_call(run_args, stdout=sys.stdout, stderr=sys.stderr)
 
@@ -1454,17 +1293,17 @@ def action_gen_doc(args):
     def print_out(text):
         f.write(text + '\n')
 
-    print_out('.. |zwsp| unicode:: U+200B')
-    print_out('   :trim:')
-    print_out('')
+    print_out(".. |zwsp| unicode:: U+200B")
+    print_out("   :trim:")
+    print_out("")
 
-    idf_gh_url = 'https://github.com/espressif/esp-idf'
+    idf_gh_url = "https://github.com/espressif/esp-idf"
     for tool_name, tool_obj in tools_info.items():
         info_url = tool_obj.options.info_url
-        if idf_gh_url + '/tree' in info_url:
-            info_url = re.sub(idf_gh_url + r'/tree/\w+/(.*)', r':idf:`\1`', info_url)
+        if idf_gh_url + "/tree" in info_url:
+            info_url = re.sub(idf_gh_url + r"/tree/\w+/(.*)", r":idf:`\1`", info_url)
 
-        license_url = 'https://spdx.org/licenses/' + tool_obj.options.license
+        license_url = "https://spdx.org/licenses/" + tool_obj.options.license
 
         print_out("""
 .. _tool-{name}:
@@ -1502,9 +1341,9 @@ More info: {info_url}
             if install_type == IDFTool.INSTALL_NEVER:
                 continue
             elif install_type == IDFTool.INSTALL_ALWAYS:
-                install_type_str = 'required'
+                install_type_str = "required"
             elif install_type == IDFTool.INSTALL_ON_REQUEST:
-                install_type_str = 'optional'
+                install_type_str = "optional"
             else:
                 raise NotImplementedError()
 
@@ -1575,8 +1414,6 @@ def main(argv):
                                     action='store_true')
     install_python_env.add_argument('--extra-wheels-dir', help='Additional directories with wheels ' +
                                     'to use during installation')
-    install_python_env.add_argument('--extra-wheels-url', help='Additional URL with wheels', default='https://dl.espressif.com/pypi')
-    install_python_env.add_argument('--no-index', help='Work offline without retrieving wheels index')
 
     if IDF_MAINTAINER:
         add_version = subparsers.add_parser('add-version', help='Add or update download info for a version')
@@ -1615,7 +1452,7 @@ def main(argv):
     if args.idf_path:
         global_idf_path = args.idf_path
     if not global_idf_path:
-        global_idf_path = os.path.realpath(os.path.join(os.path.dirname(__file__), '..'))
+        global_idf_path = os.path.realpath(os.path.join(os.path.dirname(__file__), ".."))
     os.environ['IDF_PATH'] = global_idf_path
 
     global global_idf_tools_path

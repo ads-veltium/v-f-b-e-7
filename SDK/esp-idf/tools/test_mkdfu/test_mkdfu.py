@@ -16,16 +16,14 @@
 # limitations under the License.
 
 from __future__ import unicode_literals
-
 import filecmp
 import os
+import pexpect
 import shutil
 import sys
 import tempfile
 import time
 import unittest
-
-import pexpect
 
 current_dir = os.path.dirname(os.path.realpath(__file__))
 mkdfu_path = os.path.join(current_dir, '..', 'mkdfu.py')
@@ -37,7 +35,6 @@ class TestHelloWorldExample(unittest.TestCase):
             self.addCleanup(os.unlink, f.name)
         cmd = ' '.join([sys.executable, mkdfu_path, 'write',
                         '-o', f.name,
-                        '--pid', '2',
                         add_args])
         p = pexpect.spawn(cmd, timeout=10)
         self.addCleanup(p.terminate, force=True)
@@ -84,7 +81,6 @@ class TestHelloWorldExample(unittest.TestCase):
 
         cmd = ' '.join([sys.executable, mkdfu_path, 'write',
                         '-o', output,
-                        '--pid', '2',
                         ' '.join(['0x1000', bootloader,
                                   '0x8000', os.path.join(current_dir, '1', '2.bin'),
                                   '0x10000', os.path.join(current_dir, '1', '3.bin')

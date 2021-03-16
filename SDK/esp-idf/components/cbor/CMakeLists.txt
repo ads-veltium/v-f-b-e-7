@@ -12,7 +12,7 @@ idf_component_register(SRCS "tinycbor/src/cborencoder_close_container_checked.c"
                     PRIV_INCLUDE_DIRS "tinycbor/src")
 
 # for open_memstream.c
-set_source_files_properties(tinycbor/src/open_memstream.c PROPERTIES COMPILE_DEFINITIONS "__linux__")
+target_compile_definitions(${COMPONENT_LIB} PRIVATE "__GLIBC__")
 
 # cbortojson.c:378:17: assignment discards 'const' qualifier from pointer target type
 target_compile_options(${COMPONENT_LIB} PRIVATE "-Wno-discarded-qualifiers")

@@ -37,3 +37,5 @@ clean:
 	rm -f $(PROG_ELF) $(PROG_BIN) $(OBJ) $(TRACE_FILE) $(GDB_LOG)
 
 .PHONY: all clean flash test
+
+

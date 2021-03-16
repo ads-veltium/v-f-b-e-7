@@ -83,11 +83,11 @@ static esp_err_t esp_ping_send(esp_ping_t *ep)
     if (ep->packet_hdr->type == ICMP_ECHO) {
         ep->packet_hdr->chksum = inet_chksum(ep->packet_hdr, ep->icmp_pkt_size);
     }
-
-    ssize_t sent = sendto(ep->sock, ep->packet_hdr, ep->icmp_pkt_size, 0,
+    
+    int sent = sendto(ep->sock, ep->packet_hdr, ep->icmp_pkt_size, 0,
                       (struct sockaddr *)&ep->target_addr, sizeof(ep->target_addr));
 
-    if (sent != (ssize_t)ep->icmp_pkt_size) {
+    if (sent != ep->icmp_pkt_size) {
         int opt_val;
         socklen_t opt_len = sizeof(opt_val);
         getsockopt(ep->sock, SOL_SOCKET, SO_ERROR, &opt_val, &opt_len);
@@ -180,9 +180,7 @@ static void esp_ping_thread(void *args)
                         ep->on_ping_timeout((esp_ping_handle_t)ep, ep->cb_args);
                     }
                 }
-                if (pdMS_TO_TICKS(ep->interval_ms)) {
-                    vTaskDelayUntil(&last_wake, pdMS_TO_TICKS(ep->interval_ms)); // to get a more accurate delay
-                }
+                vTaskDelayUntil(&last_wake, pdMS_TO_TICKS(ep->interval_ms)); // to get a more accurate delay
             }
             /* batch of ping operations finished */
             if (ep->on_ping_end) {
@@ -335,11 +333,6 @@ esp_err_t esp_ping_stop(esp_ping_handle_t hdl)
     esp_err_t ret = ESP_OK;
     esp_ping_t *ep = (esp_ping_t *)hdl;
     PING_CHECK(ep, "ping handle can't be null", err, ESP_ERR_INVALID_ARG);
-    free(ep->packet_hdr);
-    close(ep->sock);
-    vTaskDelete(ep->ping_task_hdl);
-    free(ep);    PING_CHECK(ep, "ping handle can't be null", err, ESP_ERR_INVALID_ARG);
-    
     ep->flags &= ~PING_FLAGS_START;
     return ESP_OK;
 err:

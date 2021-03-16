@@ -54,18 +54,16 @@ esp_err_t coex_init(void);
 void coex_deinit(void);
 
 /**
- * @brief Enable software coexist
+ * @brief Pause software coexist
  *        extern function for internal use.
- *
- * @return Enable ok or failed.
  */
-esp_err_t coex_enable(void);
+void coex_pause(void);
 
 /**
- * @brief Disable software coexist
+ * @brief Resume software coexist
  *        extern function for internal use.
  */
-void coex_disable(void);
+void coex_resume(void);
 
 /**
  * @brief Get software coexist version string
@@ -121,26 +119,6 @@ int coex_wifi_release(uint32_t event);
  *  @return : 0 - success, other - failed
  */
 int coex_wifi_channel_set(uint8_t primary, uint8_t secondary);
-
-/**
- * @brief Get coexistence event duration.
- *
- *  @param event : Coexistence event
- *  @param duration: Coexistence event duration
- *  @return : 0 - success, other - failed
- */
-int coex_event_duration_get(uint32_t event, uint32_t *duration);
-
-#if SOC_COEX_HW_PTI
-/**
- * @brief Get coexistence event priority.
- *
- *  @param event : Coexistence event
- *  @param pti: Coexistence event priority
- *  @return : 0 - success, other - failed
- */
-int coex_pti_get(uint32_t event, uint8_t *pti);
-#endif
 
 /**
  * @brief Clear coexistence status.

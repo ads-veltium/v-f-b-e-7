@@ -189,7 +189,7 @@ TEST_CASE("Test Task_Notify", "[freertos]")
 
             xSemaphoreGive(trigger_send_semphr);    //Trigger sender task
             for(int k = 0; k < NO_OF_TASKS; k++){             //Wait for sender and receiver task deletion
-                TEST_ASSERT( xSemaphoreTake(task_delete_semphr, 1000 / portTICK_PERIOD_MS) );
+                xSemaphoreTake(task_delete_semphr, portMAX_DELAY);
             }
             vTaskDelay(5);      //Give time tasks to delete
 
@@ -209,3 +209,5 @@ TEST_CASE("Test Task_Notify", "[freertos]")
     isr_handle_1 = NULL;
 #endif
 }
+
+

@@ -34,14 +34,14 @@
 //--------------------------------------------------------------------+
 // TASK API
 //--------------------------------------------------------------------+
-//static inline void osal_task_delay(uint32_t msec)
-//{
-//  (void) msec;
-//  // TODO only used by Host stack, will implement using SOF
-//
-////  uint32_t start = tusb_hal_millis();
-////  while ( ( tusb_hal_millis() - start ) < msec ) {}
-//}
+static inline void osal_task_delay(uint32_t msec)
+{
+  (void) msec;
+  // TODO only used by Host stack, will implement using SOF
+
+//  uint32_t start = tusb_hal_millis();
+//  while ( ( tusb_hal_millis() - start ) < msec ) {}
+}
 
 //--------------------------------------------------------------------+
 // Binary Semaphore API
@@ -139,16 +139,12 @@ typedef osal_queue_def_t* osal_queue_t;
       .depth        = _depth,                       \
       .item_size    = sizeof(_type),                \
       .overwritable = false,                        \
-      .max_pointer_idx = (2*(_depth))-1,            \
-      .non_used_index_space = 0xFFFF-((2*(_depth))-1),\
     }\
   }
 
-// lock queue by disable USB interrupt
+// lock queue by disable usb isr
 static inline void _osal_q_lock(osal_queue_t qhdl)
 {
-  (void) qhdl;
-
 #if TUSB_OPT_DEVICE_ENABLED
   if (qhdl->role == OPT_MODE_DEVICE) dcd_int_disable(TUD_OPT_RHPORT);
 #endif
@@ -161,8 +157,6 @@ static inline void _osal_q_lock(osal_queue_t qhdl)
 // unlock queue
 static inline void _osal_q_unlock(osal_queue_t qhdl)
 {
-  (void) qhdl;
-
 #if TUSB_OPT_DEVICE_ENABLED
   if (qhdl->role == OPT_MODE_DEVICE) dcd_int_enable(TUD_OPT_RHPORT);
 #endif
@@ -178,7 +172,8 @@ static inline osal_queue_t osal_queue_create(osal_queue_def_t* qdef)
   return (osal_queue_t) qdef;
 }
 
-static inline bool osal_queue_receive(osal_queue_t qhdl, void* data)
+// non blocking
+static inline bool osal_queue_receive(osal_queue_t const qhdl, void* data)
 {
   _osal_q_lock(qhdl);
   bool success = tu_fifo_read(&qhdl->ff, data);
@@ -187,7 +182,7 @@ static inline bool osal_queue_receive(osal_queue_t qhdl, void* data)
   return success;
 }
 
-static inline bool osal_queue_send(osal_queue_t qhdl, void const * data, bool in_isr)
+static inline bool osal_queue_send(osal_queue_t const qhdl, void const * data, bool in_isr)
 {
   if (!in_isr) {
     _osal_q_lock(qhdl);
@@ -199,16 +194,7 @@ static inline bool osal_queue_send(osal_queue_t qhdl, void const * data, bool in
     _osal_q_unlock(qhdl);
   }
 
-  TU_ASSERT(success);
-
   return success;
-}
-
-static inline bool osal_queue_empty(osal_queue_t qhdl)
-{
-  // Skip queue lock/unlock since this function is primarily called
-  // with interrupt disabled before going into low power mode
-  return tu_fifo_empty(&qhdl->ff);
 }
 
 #ifdef __cplusplus

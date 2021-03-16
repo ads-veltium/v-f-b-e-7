@@ -6,3 +6,4 @@
 PROJECT_NAME := spi-slave-receiver
 
 include $(IDF_PATH)/make/project.mk
+

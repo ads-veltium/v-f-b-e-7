@@ -32,9 +32,8 @@
 
 /* This MIDI example send sequence of note (on/off) repeatedly. To test on PC, you need to install
  * synth software and midi connection management software. On
- * - Linux (Ubuntu): install qsynth, qjackctl. Then connect TinyUSB output port to FLUID Synth input port
- * - Windows: install MIDI-OX
- * - MacOS: SimpleSynth
+ * - Linux (Ubuntu) : install qsynth, qjackctl. Then connect TinyUSB output port to FLUID Synth input port
+ *
  */
 
 //--------------------------------------------------------------------+
@@ -66,11 +65,13 @@ int main(void)
 
   while (1)
   {
-    tud_task(); // tinyusb device task
+    // tinyusb device task
+    tud_task();
+
     led_blinking_task();
+
     midi_task();
   }
-
 
   return 0;
 }

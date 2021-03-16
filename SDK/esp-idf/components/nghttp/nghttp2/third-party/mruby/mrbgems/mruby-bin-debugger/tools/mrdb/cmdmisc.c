@@ -8,7 +8,7 @@
 #include <string.h>
 
 #include "apilist.h"
-#include <mruby/compile.h>
+#include "mruby/compile.h"
 
 typedef struct help_msg {
   const char *cmd1;
@@ -82,12 +82,6 @@ static help_msg help_msg_list[] = {
     "Arguments are breakpoint numbers with spaces in between.\n"
   },
   {
-    "i[nfo]", "l[ocals]", "Print name of local variables",
-    "Usage: info locals\n"
-    "\n"
-    "Print name of local variables.\n"
-  },
-  {
     "l[ist]", NULL, "List specified line",
     "Usage: list\n"
     "       list first[,last]\n"
@@ -139,7 +133,7 @@ typedef struct listcmd_parser_state {
 static listcmd_parser_state*
 listcmd_parser_state_new(mrb_state *mrb)
 {
-  listcmd_parser_state *st = (listcmd_parser_state*)mrb_malloc(mrb, sizeof(listcmd_parser_state));
+  listcmd_parser_state *st = mrb_malloc(mrb, sizeof(listcmd_parser_state));
   memset(st, 0, sizeof(listcmd_parser_state));
   return st;
 }
@@ -233,7 +227,7 @@ parse_filename(mrb_state *mrb, char **sp, listcmd_parser_state *st)
   }
 
   if (len > 0) {
-    st->filename = (char*)mrb_malloc(mrb, len + 1);
+    st->filename = mrb_malloc(mrb, len + 1);
     strncpy(st->filename, *sp, len);
     st->filename[len] = '\0';
     *sp += len;
@@ -248,8 +242,7 @@ char*
 replace_ext(mrb_state *mrb, const char *filename, const char *ext)
 {
   size_t len;
-  const char *p;
-  char *s;
+  char *p, *s;
 
   if (filename == NULL) {
     return NULL;
@@ -262,7 +255,7 @@ replace_ext(mrb_state *mrb, const char *filename, const char *ext)
     len = strlen(filename);
   }
 
-  s = (char*)mrb_malloc(mrb, len + strlen(ext) + 1);
+  s = mrb_malloc(mrb, len + strlen(ext) + 1);
   memset(s, '\0', len + strlen(ext) + 1);
   strncpy(s, filename, len);
   strcat(s, ext);
@@ -332,7 +325,7 @@ parse_listcmd_args(mrb_state *mrb, mrdb_state *mrdb, listcmd_parser_state *st)
 static mrb_bool
 check_cmd_pattern(const char *pattern, const char *cmd)
 {
-  const char *lbracket, *rbracket, *p, *q;
+  char *lbracket, *rbracket, *p, *q;
 
   if (pattern == NULL && cmd == NULL) {
     return TRUE;
@@ -340,7 +333,7 @@ check_cmd_pattern(const char *pattern, const char *cmd)
   if (pattern == NULL || cmd == NULL) {
     return FALSE;
   }
-  if ((lbracket = strchr(pattern, '[')) == NULL) {
+  if((lbracket = strchr(pattern, '[')) == NULL) {
     return !strcmp(pattern, cmd);
   }
   if ((rbracket = strchr(pattern, ']')) == NULL) {
@@ -501,7 +494,7 @@ dbgcmd_quit(mrb_state *mrb, mrdb_state *mrdb)
 
   if (mrdb->dbg->xm == DBG_QUIT) {
     struct RClass *exc;
-    exc = mrb_define_class(mrb, "DebuggerExit", mrb->eException_class);
+    exc = mrb_define_class(mrb, "DebuggerExit", mrb_class_get(mrb, "Exception"));
     mrb_raise(mrb, exc, "Exit mrdb.");
   }
   return DBGST_PROMPT;

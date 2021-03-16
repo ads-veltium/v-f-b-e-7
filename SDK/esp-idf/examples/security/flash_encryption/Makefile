@@ -6,3 +6,4 @@
 PROJECT_NAME := flash-encryption
 
 include $(IDF_PATH)/make/project.mk
+

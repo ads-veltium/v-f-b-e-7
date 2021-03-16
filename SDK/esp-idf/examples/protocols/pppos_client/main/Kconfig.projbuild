@@ -14,10 +14,6 @@ menu "Example Configuration"
             bool "BG96"
             help
                 Quectel BG96 is a series of LTE Cat M1/Cat NB1/EGPRS module.
-        config EXAMPLE_MODEM_DEVICE_SIM7600
-            bool "SIM7600"
-            help
-                SIM7600 is Multi-Band LTE-TDD/LTE-FDD/HSPA+ and GSM/GPRS/EDGE module
     endchoice
 
     config EXAMPLE_MODEM_PPP_AUTH_USERNAME
@@ -86,7 +82,7 @@ menu "Example Configuration"
         config EXAMPLE_MODEM_UART_EVENT_TASK_STACK_SIZE
             int "UART Event Task Stack Size"
             range 2000 6000
-            default 3072
+            default 2048
             help
                 Stack size of UART event task.
 

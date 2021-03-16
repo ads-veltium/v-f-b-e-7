@@ -9,18 +9,13 @@ class String
   # and pass the respective line.
   #
   # ISO 15.2.10.5.15
-  def each_line(rs = "\n", &block)
-    return to_enum(:each_line, rs, &block) unless block
-    return block.call(self) if rs.nil?
-    rs.__to_str
+  def each_line(&block)
     offset = 0
-    rs_len = rs.length
-    this = dup
-    while pos = this.index(rs, offset)
-      block.call(this[offset, pos + rs_len - offset])
-      offset = pos + rs_len
+    while pos = self.index("\n", offset)
+      block.call(self[offset, pos + 1 - offset])
+      offset = pos + 1
     end
-    block.call(this[offset, this.size - offset]) if this.size > offset
+    block.call(self[offset, self.size - offset]) if self.size > offset
     self
   end
 
@@ -39,8 +34,6 @@ class String
             m
           when "'"
             post
-          when "1", "2", "3", "4", "5", "6", "7", "8", "9"
-            ""
           else
             self[j, 2]
           end
@@ -58,34 +51,23 @@ class String
   #
   # ISO 15.2.10.5.18
   def gsub(*args, &block)
-    return to_enum(:gsub, *args) if args.length == 1 && !block
-    raise ArgumentError, "wrong number of arguments" unless (1..2).include?(args.length)
-
-    pattern, replace = *args
-    plen = pattern.length
-    if args.length == 2 && block
-      block = nil
-    end
-    if !replace.nil? || !block
-      replace.__to_str
-    end
-    offset = 0
-    result = []
-    while found = index(pattern, offset)
-      result << self[offset, found - offset]
-      offset = found + plen
-      result << if block
-        block.call(pattern).to_s
-      else
-        replace.__sub_replace(self[0, found], pattern, self[offset..-1] || "")
+    if args.size == 2
+      s = ""
+      i = 0
+      while j = index(args[0], i)
+        seplen = args[0].length
+        k = j + seplen
+        pre = self[0, j]
+        post = self[k, length-k]
+        s += self[i, j-i] + args[1].__sub_replace(pre, args[0], post)
+        i = k
       end
-      if plen == 0
-        result << self[offset, 1]
-        offset += 1
-      end
+      s + self[i, length-i]
+    elsif args.size == 1 && block
+      split(args[0], -1).join(block.call(args[0]))
+    else
+      raise ArgumentError, "wrong number of arguments"
     end
-    result << self[offset..-1] if offset < length
-    result.join
   end
 
   ##
@@ -96,10 +78,8 @@ class String
   #
   # ISO 15.2.10.5.19
   def gsub!(*args, &block)
-    raise FrozenError, "can't modify frozen String" if frozen?
-    return to_enum(:gsub!, *args) if args.length == 1 && !block
     str = self.gsub(*args, &block)
-    return nil unless self.index(args[0])
+    return nil if str == self
     self.replace(str)
   end
 
@@ -124,31 +104,15 @@ class String
   #
   # ISO 15.2.10.5.36
   def sub(*args, &block)
-    unless (1..2).include?(args.length)
-      raise ArgumentError, "wrong number of arguments (given #{args.length}, expected 2)"
-    end
-
-    pattern, replace = *args
-    pattern.__to_str
-    if args.length == 2 && block
-      block = nil
-    end
-    unless block
-      replace.__to_str
-    end
-    result = []
-    this = dup
-    found = index(pattern)
-    return this unless found
-    result << this[0, found]
-    offset = found + pattern.length
-    result << if block
-      block.call(pattern).to_s
+    if args.size == 2
+      pre, post = split(args[0], 2)
+      return self unless post # The sub target wasn't found in the string
+      pre + args[1].__sub_replace(pre, args[0], post) + post
+    elsif args.size == 1 && block
+      split(args[0], 2).join(block.call(args[0]))
     else
-      replace.__sub_replace(this[0, found], pattern, this[offset..-1] || "")
+      raise ArgumentError, "wrong number of arguments"
     end
-    result << this[offset..-1] if offset < length
-    result.join
   end
 
   ##
@@ -159,9 +123,8 @@ class String
   #
   # ISO 15.2.10.5.37
   def sub!(*args, &block)
-    raise FrozenError, "can't modify frozen String" if frozen?
     str = self.sub(*args, &block)
-    return nil unless self.index(args[0])
+    return nil if str == self
     self.replace(str)
   end
 
@@ -196,24 +159,16 @@ class String
     anum = args.size
     if anum == 2
       pos, value = args
-      case pos
-      when String
+      if pos.kind_of? String
         posnum = self.index(pos)
         if posnum
           b = self[0, posnum.to_i]
           a = self[(posnum + pos.length)..-1]
           self.replace([b, value, a].join(''))
+          return value
         else
           raise IndexError, "string not matched"
         end
-      when Range
-        head = pos.begin
-        tail = pos.end
-        tail += self.length if tail < 0
-        unless pos.exclude_end?
-          tail += 1
-        end
-        return self[head, tail-head]=value
       else
         pos += self.length if pos < 0
         if pos < 0 || pos > self.length
@@ -222,8 +177,8 @@ class String
         b = self[0, pos.to_i]
         a = self[pos + 1..-1]
         self.replace([b, value, a].join(''))
+        return value
       end
-      return value
     elsif anum == 3
       pos, len, value = args
       pos += self.length if pos < 0
@@ -245,13 +200,14 @@ class String
   ##
   # ISO 15.2.10.5.3
   def =~(re)
+    raise TypeError, "type mismatch: String given" if re.respond_to? :to_str
     re =~ self
   end
 
   ##
   # ISO 15.2.10.5.27
   def match(re, &block)
-    if String === re
+    if re.respond_to? :to_str
       if Object.const_defined?(:Regexp)
         r = Regexp.new(re)
         r.match(self, &block)

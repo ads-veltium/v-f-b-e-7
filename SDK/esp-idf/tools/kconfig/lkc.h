@@ -72,11 +72,10 @@ void zconfdump(FILE *out);
 void zconf_starthelp(void);
 FILE *zconf_fopen(const char *name);
 void zconf_initscan(const char *name);
-void zconf_nextfile(const char *name, bool relative);
-void zconf_nextfiles(const char *name, bool relative);
+void zconf_nextfile(const char *name);
+void zconf_nextfiles(const char *name);
 int zconf_lineno(void);
 const char *zconf_curname(void);
-const char *zconf_curdir(void);
 
 /* confdata.c */
 const char *conf_get_configname(void);
@@ -113,7 +112,7 @@ void menu_finalize(struct menu *parent);
 void menu_set_type(int type);
 
 /* util.c */
-struct file *file_lookup(const char *name, bool relative);
+struct file *file_lookup(const char *name);
 int file_write_dep(const char *name);
 void *xmalloc(size_t size);
 void *xcalloc(size_t nmemb, size_t size);

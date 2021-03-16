@@ -14,8 +14,6 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"
-#include "soc/soc_caps.h"
-#if SOC_PCNT_SUPPORTED
 #include "driver/periph_ctrl.h"
 #include "driver/gpio.h"
 #include "driver/pcnt.h"
@@ -24,7 +22,6 @@
 #include "esp_log.h"
 #include "soc/gpio_periph.h"
 #include "unity.h"
-#include "esp_rom_gpio.h"
 
 #define PULSE_IO 21
 #define PCNT_INPUT_IO 4
@@ -52,9 +49,9 @@ static void pcnt_test_io_config(int ctrl_level)
 {
     // Connect internal signals using IO matrix.
     gpio_set_direction(PULSE_IO, GPIO_MODE_INPUT_OUTPUT);
-    esp_rom_gpio_connect_out_signal(PULSE_IO, LEDC_LS_SIG_OUT1_IDX, 0, 0); // LEDC_TIMER_1, LEDC_LOW_SPEED_MODE
-    esp_rom_gpio_connect_in_signal(PULSE_IO, PCNT_SIG_CH0_IN0_IDX, 0); // PCNT_UNIT_0, PCNT_CHANNEL_0
-    esp_rom_gpio_connect_in_signal(ctrl_level ? GPIO_MATRIX_CONST_ONE_INPUT: GPIO_MATRIX_CONST_ZERO_INPUT, PCNT_CTRL_CH0_IN0_IDX, 0); // PCNT_UNIT_0, PCNT_CHANNEL_0
+    gpio_matrix_out(PULSE_IO, LEDC_LS_SIG_OUT1_IDX, 0, 0); // LEDC_TIMER_1, LEDC_LOW_SPEED_MODE
+    gpio_matrix_in(PULSE_IO, PCNT_SIG_CH0_IN0_IDX, 0); // PCNT_UNIT_0, PCNT_CHANNEL_0
+    gpio_matrix_in(ctrl_level ? GPIO_FUNC_IN_HIGH: GPIO_FUNC_IN_LOW, PCNT_CTRL_CH0_IN0_IDX, 0); // PCNT_UNIT_0, PCNT_CHANNEL_0
 }
 
 /* use LEDC to produce pulse for PCNT
@@ -605,7 +602,7 @@ TEST_CASE("PCNT interrupt method test(control IO is low)", "[pcnt][timeout=120]"
     TEST_ESP_OK(pcnt_counter_clear(PCNT_UNIT_0));
 
     pcnt_evt_queue = xQueueCreate(10, sizeof(uint32_t));
-
+    
     pcnt_isr_handle_t pcnt_isr_service;
     TEST_ESP_OK(pcnt_isr_register(pcnt_intr_handler, NULL, 0, &pcnt_isr_service));
     TEST_ESP_OK(pcnt_intr_enable(PCNT_UNIT_0));
@@ -671,5 +668,3 @@ TEST_CASE("PCNT counting mode test", "[pcnt]")
     printf("PCNT mode test for negative count\n");
     count_mode_test(PCNT_CTRL_GND_IO);
 }
-
-#endif // #if SOC_PCNT_SUPPORTED

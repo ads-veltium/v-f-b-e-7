@@ -6,3 +6,4 @@
 PROJECT_NAME := default_event_loop
 
 include $(IDF_PATH)/make/project.mk
+

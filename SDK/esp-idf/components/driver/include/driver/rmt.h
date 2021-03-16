@@ -21,18 +21,14 @@ extern "C" {
 #include <stdbool.h>
 #include <stdint.h>
 #include "esp_err.h"
-#include "soc/soc_caps.h"
 #include "driver/gpio.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/ringbuf.h"
+#include "soc/rmt_caps.h"
 #include "soc/rmt_struct.h"
 #include "hal/rmt_types.h"
 
-#define RMT_CHANNEL_FLAGS_AWARE_DFS (1 << 0) /*!< Channel can work during APB clock scaling */
-
-/** @cond */
-#define RMT_CHANNEL_FLAGS_ALWAYS_ON RMT_CHANNEL_FLAGS_AWARE_DFS  /*!< Deprecated name, defined here for compatibility */
-/** @endcond */
+#define RMT_CHANNEL_FLAGS_ALWAYS_ON (1 << 0)    /*!< Channel can work when APB frequency is changing (RMT channel adopts REF_TICK as clock source) */
 
 /**
  * @brief Define memory space of each RMT channel (in words = 4 bytes)
@@ -361,7 +357,7 @@ esp_err_t rmt_rx_start(rmt_channel_t channel, bool rx_idx_rst);
 esp_err_t rmt_rx_stop(rmt_channel_t channel);
 
 /**
-* @brief Reset RMT TX memory
+* @brief Reset RMT TX/RX memory index.
 *
 * @param channel RMT channel
 *
@@ -369,18 +365,7 @@ esp_err_t rmt_rx_stop(rmt_channel_t channel);
 *     - ESP_ERR_INVALID_ARG Parameter error
 *     - ESP_OK Success
 */
-esp_err_t rmt_tx_memory_reset(rmt_channel_t channel);
-
-/**
-* @brief Reset RMT RX memory
-*
-* @param channel RMT channel
-*
-* @return
-*     - ESP_ERR_INVALID_ARG Parameter error
-*     - ESP_OK Success
-*/
-esp_err_t rmt_rx_memory_reset(rmt_channel_t channel);
+esp_err_t rmt_memory_rw_rst(rmt_channel_t channel);
 
 /**
 * @brief Set RMT memory owner.
@@ -518,6 +503,22 @@ esp_err_t rmt_get_idle_level(rmt_channel_t channel, bool *idle_out_en, rmt_idle_
 *     - ESP_OK Success
 */
 esp_err_t rmt_get_status(rmt_channel_t channel, uint32_t *status);
+
+/**
+* @brief Set mask value to RMT interrupt enable register.
+*
+* @param mask Bit mask to set to the register
+*
+*/
+void rmt_set_intr_enable_mask(uint32_t mask);
+
+/**
+* @brief Clear mask value to RMT interrupt enable register.
+*
+* @param mask Bit mask to clear the register
+*
+*/
+void rmt_clr_intr_enable_mask(uint32_t mask);
 
 /**
 * @brief Set RMT RX interrupt enable
@@ -763,33 +764,6 @@ esp_err_t rmt_get_ringbuf_handle(rmt_channel_t channel, RingbufHandle_t *buf_han
 esp_err_t rmt_translator_init(rmt_channel_t channel, sample_to_rmt_t fn);
 
 /**
-* @brief Set user context for the translator of specific channel
-*
-* @param channel RMT channel number
-* @param context User context
-*
-* @return
-*     - ESP_FAIL Set context fail
-*     - ESP_OK Set context success
-*/
-esp_err_t rmt_translator_set_context(rmt_channel_t channel, void *context);
-
-/**
-* @brief Get the user context set by 'rmt_translator_set_context'
-*
-* @note This API must be invoked in the RMT translator callback function,
-*       and the first argument must be the actual parameter 'item_num' you got in that callback function.
-*
-* @param item_num Address of the memory which contains the number of translated items (It's from driver's internal memroy)
-* @param context Returned User context
-*
-* @return
-*     - ESP_FAIL Get context fail
-*     - ESP_OK Get context success
-*/
-esp_err_t rmt_translator_get_context(const size_t *item_num, void **context);
-
-/**
 * @brief Translate uint8_t type of data into rmt format and send it out.
 *        Requires rmt_translator_init to init the translator first.
 *
@@ -858,49 +832,6 @@ esp_err_t rmt_add_channel_to_group(rmt_channel_t channel);
 */
 esp_err_t rmt_remove_channel_from_group(rmt_channel_t channel);
 #endif
-
-#if SOC_RMT_SUPPORT_TX_LOOP_COUNT
-/**
- * @brief Set loop count for RMT TX channel
- *
- * @param channel RMT channel
- * @param count loop count
- * @return
- *      - ESP_ERR_INVALID_ARG Parameter error
- *      - ESP_OK Success
- */
-esp_err_t rmt_set_tx_loop_count(rmt_channel_t channel, uint32_t count);
-#endif
-
-/**
-* @brief Reset RMT TX/RX memory index.
-*
-* @param channel RMT channel
-*
-* @return
-*     - ESP_ERR_INVALID_ARG Parameter error
-*     - ESP_OK Success
-*/
-esp_err_t rmt_memory_rw_rst(rmt_channel_t channel)
-__attribute__((deprecated("use rmt_tx_memory_reset or rmt_rx_memory_reset instead")));
-
-/**
-* @brief Set mask value to RMT interrupt enable register.
-*
-* @param mask Bit mask to set to the register
-*
-*/
-void rmt_set_intr_enable_mask(uint32_t mask)
-__attribute__((deprecated("interrupt should be handled by driver")));
-
-/**
-* @brief Clear mask value to RMT interrupt enable register.
-*
-* @param mask Bit mask to clear the register
-*
-*/
-void rmt_clr_intr_enable_mask(uint32_t mask)
-__attribute__((deprecated("interrupt should be handled by driver")));
 
 #ifdef __cplusplus
 }

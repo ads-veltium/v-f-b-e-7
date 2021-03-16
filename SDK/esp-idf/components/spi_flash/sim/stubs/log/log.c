@@ -19,3 +19,4 @@ uint32_t esp_log_timestamp(void)
 {
     return 0;
 }
+

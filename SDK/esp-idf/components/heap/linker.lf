@@ -1,7 +1,5 @@
 [mapping:heap]
 archive: libheap.a
 entries:
-    heap_tlsf (noflash)
     multi_heap (noflash)
-    if HEAP_POISONING_DISABLED = n:
-        multi_heap_poisoning (noflash)
+    multi_heap_poisoning (noflash)

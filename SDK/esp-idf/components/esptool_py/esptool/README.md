@@ -1,12 +1,12 @@
 # esptool.py
 
-A Python-based, open source, platform independent, utility to communicate with the ROM bootloader in Espressif ESP8266 & ESP32 series chips.
+A Python-based, open source, platform independent, utility to communicate with the ROM bootloader in Espressif ESP8266 & ESP32 chips.
 
 esptool.py was started by Fredrik Ahlberg (@[themadinventor](https://github.com/themadinventor/)) as an unofficial community project. It is now also supported by Espressif. Current primary maintainer is Angus Gratton (@[projectgus](https://github.com/projectgus/)).
 
 esptool.py is Free Software under a GPLv2 license.
 
-[![Test esptool](https://github.com/espressif/esptool/workflows/Test%20esptool/badge.svg?branch=master)](https://github.com/espressif/esptool)
+[![Build Status](https://travis-ci.org/espressif/esptool.svg?branch=master)](https://travis-ci.org/espressif/esptool)
 
 ## Installation / dependencies
 
@@ -20,11 +20,9 @@ The latest stable esptool.py release can be installed from [pypi](http://pypi.py
 $ pip install esptool
 ```
 
-With some Python installations this may not work and you'll receive an error, try `python -m pip install esptool` or `pip2 install esptool`, or consult your [Python installation manual](https://pip.pypa.io/en/stable/installing/) for information about how to access pip.
+With some Python installations this may not work and you'll receive an error, try `python -m pip install esptool` or `pip2 install esptool`, or consult your Python installation manual for information about how to access pip.
 
-[Setuptools](https://setuptools.readthedocs.io/en/latest/userguide/quickstart.html) is also a requirement which is not available on all systems by default. You can install it by a package manager of your operating system, or by `pip install setuptools`.
-
-After installing, you will have `esptool.py` installed into the default Python executables directory and you should be able to run it with the command `esptool.py` or `python -m esptool`. Please note that probably only `python -m esptool` will work for Pythons installed from Windows Store.
+After installing, you will have `esptool.py` installed into the default Python executables directory and you should be able to run it with the command `esptool.py`.
 
 ### Development Mode Installation
 
@@ -36,7 +34,7 @@ $ cd esptool
 $ pip install --user -e .
 ```
 
-This will install esptool's dependencies and create some executable script wrappers in the user's `bin` directory. The wrappers will run the scripts found in the git working directory directly, so any time the working directory contents change it will pick up the new versions.
+This will install esptool's dependencies and create some executable script wrappers in the user's `bin` directory. The wrappers will run the the scripts found in the git working directory directly, so any time the working directory contents change it will pick up the new versions.
 
 It's also possible to run the scripts directly from the working directory with this Development Mode installation.
 
@@ -58,13 +56,13 @@ To see all options for a particular command, append `-h` to the command name. ie
 
 Note: Windows and macOS may require drivers to be installed for a particular USB/serial adapter, before a serial port is available. Consult the documentation for your particular device. On macOS, you can also consult [System Information](https://support.apple.com/en-us/HT203001)'s list of USB devices to identify the manufacturer or device ID when the adapter is plugged in. On Windows, you can use [Windows Update or Device Manager](https://support.microsoft.com/en-us/help/15048/windows-7-update-driver-hardware-not-working-properly) to find a driver.
 
-If using Cygwin or WSL on Windows, you have to convert the Windows-style name into a Unix-style path (`COM1` -> `/dev/ttyS0`, and so on). (This is not necessary if using ESP-IDF for ESP32 with the supplied Windows MSYS2 environment, this environment uses a native Windows Python which accepts COM ports as-is.)
+If using Cygwin or WSL on Windows, you have to convert the Windows-style name into an Unix-style path (`COM1` -> `/dev/ttyS0`, and so on). (This is not necessary if using esp-idf for ESP32 with the supplied Windows MSYS2 environment, this environment uses a native Windows Python which accepts COM ports as-is.)
 
 In Linux, the current user may not have access to serial ports and a "Permission Denied" error will appear. On most Linux distributions, the solution is to add the user to the `dialout` group with a command like `sudo usermod -a -G dialout <USERNAME>`. Check your Linux distribution's documentation for more information.
 
 ### Baud rate
 
-The default esptool.py baud rate is 115200bps. Different rates may be set using `-b 921600` (or another baud rate of your choice). A default baud rate can also be specified using the `ESPTOOL_BAUD` environment variable. This can speed up `write_flash` and `read_flash` operations.
+The default esptool.py baud rate is 115200bps. Different rates may be set using `-b 921600` (or another baudrate of your choice). A default baud rate can also be specified using the `ESPTOOL_BAUD` environment variable. This can speed up `write_flash` and `read_flash` operations.
 
 The baud rate is limited to 115200 when esptool.py establishes the initial connection, higher speeds are only used for data transfers.
 
@@ -106,7 +104,7 @@ You may also need to specify arguments for [flash mode and flash size](#flash-mo
 esptool.py --port /dev/ttyUSB0 write_flash --flash_mode qio --flash_size 32m 0x0 bootloader.bin 0x1000 my_app.bin
 ```
 
-Since esptool v2.0, these options are not often needed as the default is to keep the flash mode and size from the `.bin` image file. See the [Flash Modes](#flash-modes) section for more details.
+Since esptool v2.0, these options are not often needed as the default is to keep the flash mode and size from the `.bin` image file, and to detect the flash size. See the [Flash Modes](#flash-modes) section for more details.
 
 #### Compression
 
@@ -117,7 +115,7 @@ By default, the serial transfer data is compressed for better performance. The `
 The read_flash command allows reading back the contents of flash. The arguments to the command are an address, a size, and a filename to dump the output to. For example, to read a full 2MB of attached flash:
 
 ```
-esptool.py -p PORT -b 460800 read_flash 0 0x200000 flash_contents.bin
+./esptool.py -p PORT -b 460800 read_flash 0 0x200000 flash_contents.bin
 ```
 
 (Note that if `write_flash` updated the boot image's [flash mode and flash size](#flash-modes) during flashing then these bytes may be different when read back.)
@@ -169,9 +167,7 @@ esptool.py --chip esp8266 elf2image my_app.elf
 
 This command does not require a serial connection.
 
-`elf2image` also accepts the [Flash Modes](#flash-modes) arguments `--flash_freq` and `--flash_mode`, which can be used to set the default values in the image header. This is important when generating any image which will be booted directly by the chip. These values can also be overwritten via the `write_flash` command, see the [write_flash command](#write-binary-data-to-flash-write_flash) for details.
-
-By default, `elf2image` uses the sections in the ELF file to generate each segment in the binary executable. To use segments (PHDRs) instead, pass the `--use_segments` option.
+`elf2image` also accepts the [Flash Modes](#flash-modes) arguments `--flash_freq` and `--flash_mode`, which can be used to set the default values in the image header. This is important when generating any image which will be booted directly by the chip. These values can also be overwritten via the `write_flash` command, see the [write_flash command](#Writing-binaries-to-flash) for details.
 
 #### elf2image for ESP8266
 
@@ -185,7 +181,7 @@ esptool.py --chip esp8266 elf2image --version=2 -o my_app-ota.bin my_app.elf
 
 #### elf2image for ESP32
 
-For ESP32, elf2image produces a single output binary "image file". By default this has the same name as the .elf file, with a .bin extension. ie:
+For esp32, elf2image produces a single output binary "image file". By default this has the same name as the .elf file, with a .bin extension. ie:
 
 ```
 esptool.py --chip esp32 elf2image my_esp32_app.elf
@@ -250,7 +246,7 @@ For everyone else, three things must happen to enter the serial bootloader - a r
 
 ### Boot Mode
 
-Both ESP8266 and ESP32 choose the boot mode each time they reset. A reset event can happen in one of several ways:
+Both ESP8266 and ESP32 chooses the boot mode each time it resets. A reset event can happen in one of several ways:
 
 * Power applied to chip.
 * The nRESET pin was low and is pulled high (on ESP8266 only).
@@ -265,7 +261,7 @@ For more details on selecting the boot mode, see the following Wiki pages:
 
 ## Flash Modes
 
-`write_flash` and some other commands accept command line arguments to set bootloader flash mode, flash size and flash clock frequency. The chip needs correct mode, frequency and size settings in order to run correctly - although there is some flexibility. A header at the beginning of a bootable image contains these values.
+`write_flash` and some other comands accept command line arguments to set bootloader flash mode, flash size and flash clock frequency. The chip needs correct mode, frequency and size settings in order to run correctly - although there is some flexibility. A header at the beginning of a bootable image contains these values.
 
 To override these values, the options `--flash_mode`, `--flash_size` and/or `--flash_freq` must appear after `write_flash` on the command line, for example:
 
@@ -289,7 +285,7 @@ For a full explanation of these modes, see the [SPI Flash Modes wiki page](https
 
 Clock frequency for SPI flash interactions. Valid values are `keep`, `40m`, `26m`, `20m`, `80m` (MHz). The default is `keep`, which keeps whatever value is already in the image file. This parameter can also be specified using the environment variable `ESPTOOL_FF`.
 
-The flash chip connected to most chips works with 40MHz clock speeds, but you can try lower values if the device won't boot. The highest 80MHz flash clock speed will give the best performance, but may cause crashing if the flash or board design is not capable of this speed.
+The flash chip connected to most chips works with 40MHz clock speeds, but you can try lower values if the device won't boot. The highest 80MHz flash clock speed will give best performance, but may cause crashing if the flash or board designis not capable of this speed.
 
 ### Flash Size (--flash_size, -fs)
 
@@ -297,18 +293,16 @@ Size of the SPI flash, given in megabytes. Valid values vary by chip type:
 
 Chip     | flash_size values
 ---------|---------------------------------------------------------------
-ESP32    | `keep`, `detect`, `1MB`, `2MB`, `4MB`, `8MB`, `16MB`
-ESP8266  | `keep`, `detect`, `256KB`, `512KB`, `1MB`, `2MB`, `4MB`, `2MB-c1`, `4MB-c1`, `8MB`, `16MB`
+ESP32    | `detect`, `1MB`, `2MB`, `4MB`, `8MB`, `16MB`
+ESP8266  | `detect`, `256KB`, `512KB`, `1MB`, `2MB`, `4MB`, `2MB-c1`, `4MB-c1`, `8MB`, `16MB`
 
 For ESP8266, some [additional sizes & layouts for OTA "firmware slots" are available](#esp8266-and-flash-size).
 
-The default `--flash_size` parameter is `keep`. This means that if no `--flash_size` argument is passed when flashing a bootloader, the value in the bootloader .bin file header is kept instead of detecting the actual flash size and updating the header.
+The default `--flash_size` parameter is `detect`, which tries to autodetect size based on SPI flash ID. If detection fails, a warning is printed and a default value of of `4MB` (4 megabytes) is used.
 
-To enable automatic flash size detection based on SPI flash ID, add the argument `esptool.py [...] write_flash [...] -fs detect`. If detection fails, a warning is printed and a default value of of `4MB` (4 megabytes) is used.
+If flash size is not successfully detected, you can find the flash size by using the `flash_id` command and then looking up the ID from the output (see [Read SPI flash id](#read-spi-flash-id)). Alternatively, read off the silkscreen labelling of the flash chip and search for its datasheet.
 
-If flash size is not successfully detected, you can find the flash size by using the `flash_id` command and then looking up the ID from the output (see [Read SPI flash id](#read-spi-flash-id-flash_id)). Alternatively, read off the silkscreen labelling of the flash chip and search for its datasheet.
-
-The default `flash_size` parameter can also be overridden using the environment variable `ESPTOOL_FS`.
+The default `flash_size`  parameter can also be overriden using the environment variable `ESPTOOL_FS`.
 
 #### ESP8266 and Flash Size
 
@@ -334,29 +328,8 @@ If using OTA, some additional sizes & layouts for OTA "firmware slots" are avail
 
 #### ESP32 and Flash Size
 
-The ESP-IDF flashes a partition table to the flash at offset 0x8000. All of the partitions in this table must fit inside the configured flash size, otherwise the ESP32 will not work correctly.
+The ESP32 esp-idf flashes a partition table to the flash at offset 0x8000. All of the partitions in this table must fit inside the configured flash size, otherwise the ESP32 will not work correctly.
 
-## Merging binaries
-
-The `merge_bin` command will merge multiple binary files (of any kind) into a single file that can be flashed to a device later. Any gaps between the input files are padded with 0xFF bytes (same as unwritten flash contents).
-
-For example:
-
-```
-esptool.py --chip esp32 merge_bin -o merged-flash.bin --flash_mode dio --flash_size 4MB 0x1000 bootloader.bin 0x8000 partition-table.bin 0x10000 app.bin
-```
-
-Will create a file `merged-flash.bin` with the contents of the other 3 files. This file can be later be written to flash with `esptool.py write_flash 0x0 merged-flash.bin`.
-
-Note: Because gaps between the input files are padded with 0xFF bytes, when the merged binary is written then any flash sectors between the individual files will be erased. To avoid this, write the files individually.
-
-### Options
-
-* The `merge_bin` command supports the same `--flash_mode`, `--flash_size` and `--flash_speed` options as the `write_flash` command to override the bootloader flash header (see above for details). These options are applied to the output file contents in the same way as when writing to flash. Make sure to pass the `--chip` parameter if using these options, as the supported values and the bootloader offset both depend on the chip.
-* The `--target-offset 0xNNN` option will create a merged binary that should be flashed at the specified offset, instead of at offset 0x0.
-* The `--fill-flash-size SIZE` option will pad the merged binary with 0xFF bytes to the full flash specified size, for example `--fill-flash-size 4MB` will create a 4MB binary file.
-
-```
 ## Advanced Options
 
 See the [Advanced Options wiki page](https://github.com/espressif/esptool/wiki/Advanced-Options) for some of the more unusual esptool.py command line options.
@@ -417,9 +390,9 @@ The 3.3V output from FTDI FT232R chips/adapters or Arduino boards *do not* suppl
 
 #### Missing bootloader
 
-Recent ESP8266 SDKs and the ESP32 ESP-IDF both use a small firmware bootloader program. The hardware bootloader in ROM loads this firmware bootloader from flash, and then it runs the program. On ESP8266. firmware bootloader image (with a filename like `boot_v1.x.bin`) has to be flashed at offset 0. If the firmware bootloader is missing then the ESP8266 will not boot. On ESP32, the bootloader image should be flashed by ESP-IDF at offset 0x1000.
+Recent ESP8266 SDKs and the ESP32 esp-idf both use a small firmware bootloader program. The hardware bootloader in ROM loads this firmware bootloader from flash, and then it runs the program. On ESP8266. firmware bootloader image (with a filename like `boot_v1.x.bin`) has to be flashed at offset 0. If the firmware bootloader is missing then the ESP8266 will not boot. On ESP32, the bootloader image should be flashed by esp-idf at offset 0x1000.
 
-Refer to SDK or ESP-IDF documentation for details regarding which binaries need to be flashed at which offsets.
+Refer to SDK or esp-idf documentation for details regarding which binaries need to be flashed at which offsets.
 
 #### SPI Pins which must be disconnected
 
@@ -447,9 +420,9 @@ Note that not every serial program supports the unusual ESP8266 74880bps "boot l
 
 Running `esptool.py --trace` will dump all serial interactions to the standard output (this is *a lot* of output). This can be helpful when debugging issues with the serial connection, or when providing information for bug reports.
 
-## Using esptool from Python
+## Using esptool.py from Python
 
-esptool.py, espefuse.py, and espsecure.py can easily be integrated into Python applications or called from other Python scripts.
+esptool.py can easily be integrated into Python applications or called from other Python scripts.
 
 While it currently does have a poor Python API, something which [#208](https://github.com/espressif/esptool/issues/208) will address, it allows for passing CLI 
 arguments to `esptool.main()`. This workaround makes integration very straightforward as you can pass exactly the 

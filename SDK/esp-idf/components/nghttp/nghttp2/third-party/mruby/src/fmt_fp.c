@@ -1,5 +1,3 @@
-#ifndef MRB_WITHOUT_FLOAT
-#if defined(MRB_DISABLE_STDIO) || defined(_WIN32) || defined(_WIN64)
 /*
 
 Most code in this file originates from musl (src/stdio/vfprintf.c)
@@ -35,8 +33,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <float.h>
 #include <ctype.h>
 
-#include <mruby.h>
-#include <mruby/string.h>
+#include "mruby.h"
+#include "mruby/string.h"
 
 struct fmt_args {
   mrb_state *mrb;
@@ -63,7 +61,7 @@ out(struct fmt_args *f, const char *s, size_t l)
 
 #define PAD_SIZE 256
 static void
-pad(struct fmt_args *f, char c, ptrdiff_t w, ptrdiff_t l, uint8_t fl)
+pad(struct fmt_args *f, char c, int w, int l, int fl)
 {
   char pad[PAD_SIZE];
   if (fl & (LEFT_ADJ | ZERO_PAD) || l >= w) return;
@@ -93,17 +91,16 @@ typedef char compiler_defines_long_double_incorrectly[9-(int)sizeof(long double)
 #endif
 
 static int
-fmt_fp(struct fmt_args *f, long double y, ptrdiff_t p, uint8_t fl, int t)
+fmt_fp(struct fmt_args *f, long double y, int w, int p, int fl, int t)
 {
   uint32_t big[(LDBL_MANT_DIG+28)/29 + 1          // mantissa expansion
     + (LDBL_MAX_EXP+LDBL_MANT_DIG+28+8)/9]; // exponent expansion
   uint32_t *a, *d, *r, *z;
   uint32_t i;
-  int e2=0, e, j;
-  ptrdiff_t l;
+  int e2=0, e, j, l;
   char buf[9+LDBL_MANT_DIG/4], *s;
   const char *prefix="-0X+0X 0X-0x+0x 0x";
-  ptrdiff_t pl;
+  int pl;
   char ebuf0[3*sizeof(int)], *ebuf=&ebuf0[3*sizeof(int)], *estr;
 
   pl=1;
@@ -118,11 +115,11 @@ fmt_fp(struct fmt_args *f, long double y, ptrdiff_t p, uint8_t fl, int t)
   if (!isfinite(y)) {
     const char *ss = (t&32)?"inf":"INF";
     if (y!=y) ss=(t&32)?"nan":"NAN";
-    pad(f, ' ', 0, 3+pl, fl&~ZERO_PAD);
+    pad(f, ' ', w, 3+pl, fl&~ZERO_PAD);
     out(f, prefix, pl);
     out(f, ss, 3);
-    pad(f, ' ', 0, 3+pl, fl^LEFT_ADJ);
-    return 3+(int)pl;
+    pad(f, ' ', w, 3+pl, fl^LEFT_ADJ);
+    return MAX(w, 3+pl);
   }
 
   y = frexp((double)y, &e2) * 2;
@@ -130,7 +127,7 @@ fmt_fp(struct fmt_args *f, long double y, ptrdiff_t p, uint8_t fl, int t)
 
   if ((t|32)=='a') {
     long double round = 8.0;
-    ptrdiff_t re;
+    int re;
 
     if (t&32) prefix += 9;
     pl += 2;
@@ -159,7 +156,7 @@ fmt_fp(struct fmt_args *f, long double y, ptrdiff_t p, uint8_t fl, int t)
 
     s=buf;
     do {
-      int x=(int)y;
+      int x=y;
       *s++=xdigits[x]|(t&32);
       y=16*(y-x);
       if (s-buf==1 && (y||p>0||(fl&ALT_FORM))) *s++='.';
@@ -170,14 +167,14 @@ fmt_fp(struct fmt_args *f, long double y, ptrdiff_t p, uint8_t fl, int t)
     else
       l = (s-buf) + (ebuf-estr);
 
-    pad(f, ' ', 0, pl+l, fl);
+    pad(f, ' ', w, pl+l, fl);
     out(f, prefix, pl);
-    pad(f, '0', 0, pl+l, fl^ZERO_PAD);
+    pad(f, '0', w, pl+l, fl^ZERO_PAD);
     out(f, buf, s-buf);
     pad(f, '0', l-(ebuf-estr)-(s-buf), 0, 0);
     out(f, estr, ebuf-estr);
-    pad(f, ' ', 0, pl+l, fl^LEFT_ADJ);
-    return (int)pl+(int)l;
+    pad(f, ' ', w, pl+l, fl^LEFT_ADJ);
+    return MAX(w, pl+l);
   }
   if (p<0) p=6;
 
@@ -187,7 +184,7 @@ fmt_fp(struct fmt_args *f, long double y, ptrdiff_t p, uint8_t fl, int t)
   else a=r=z=big+sizeof(big)/sizeof(*big) - LDBL_MANT_DIG - 1;
 
   do {
-    *z = (uint32_t)y;
+    *z = y;
     y = 1000000000*(y-*z++);
   } while (y);
 
@@ -197,7 +194,7 @@ fmt_fp(struct fmt_args *f, long double y, ptrdiff_t p, uint8_t fl, int t)
     for (d=z-1; d>=a; d--) {
       uint64_t x = ((uint64_t)*d<<sh)+carry;
       *d = x % 1000000000;
-      carry = (uint32_t)(x / 1000000000);
+      carry = x / 1000000000;
     }
     if (carry) *--a = carry;
     while (z>a && !z[-1]) z--;
@@ -205,7 +202,7 @@ fmt_fp(struct fmt_args *f, long double y, ptrdiff_t p, uint8_t fl, int t)
   }
   while (e2<0) {
     uint32_t carry=0, *b;
-    int sh=MIN(9,-e2), need=1+((int)p+LDBL_MANT_DIG/3+8)/9;
+    int sh=MIN(9,-e2), need=1+(p+LDBL_MANT_DIG/3+8)/9;
     for (d=a; d<z; d++) {
       uint32_t rm = *d & ((1<<sh)-1);
       *d = (*d>>sh) + carry;
@@ -219,11 +216,11 @@ fmt_fp(struct fmt_args *f, long double y, ptrdiff_t p, uint8_t fl, int t)
     e2+=sh;
   }
 
-  if (a<z) for (i=10, e=9*(int)(r-a); *a>=i; i*=10, e++);
+  if (a<z) for (i=10, e=9*(r-a); *a>=i; i*=10, e++);
   else e=0;
 
   /* Perform rounding: j is precision after the radix (possibly neg) */
-  j = (int)p - ((t|32)!='f')*e - ((t|32)=='g' && p);
+  j = p - ((t|32)!='f')*e - ((t|32)=='g' && p);
   if (j < 9*(z-r-1)) {
     uint32_t x;
     /* We avoid C's broken division of negative numbers */
@@ -250,13 +247,13 @@ fmt_fp(struct fmt_args *f, long double y, ptrdiff_t p, uint8_t fl, int t)
           if (d<a) *--a=0;
           (*d)++;
         }
-        for (i=10, e=9*(int)(r-a); *a>=i; i*=10, e++);
+        for (i=10, e=9*(r-a); *a>=i; i*=10, e++);
       }
     }
     if (z>d+1) z=d+1;
   }
   for (; z>a && !z[-1]; z--);
-
+  
   if ((t|32)=='g') {
     if (!p) p++;
     if (p>e && e>=-4) {
@@ -289,9 +286,9 @@ fmt_fp(struct fmt_args *f, long double y, ptrdiff_t p, uint8_t fl, int t)
     l += ebuf-estr;
   }
 
-  pad(f, ' ', 0, pl+l, fl);
+  pad(f, ' ', w, pl+l, fl);
   out(f, prefix, pl);
-  pad(f, '0', 0, pl+l, fl^ZERO_PAD);
+  pad(f, '0', w, pl+l, fl^ZERO_PAD);
 
   if ((t|32)=='f') {
     if (a>r) a=r;
@@ -320,21 +317,21 @@ fmt_fp(struct fmt_args *f, long double y, ptrdiff_t p, uint8_t fl, int t)
         if (p>0||(fl&ALT_FORM)) out(f, ".", 1);
       }
       out(f, ss, MIN(buf+9-ss, p));
-      p -= (int)(buf+9-ss);
+      p -= buf+9-ss;
     }
     pad(f, '0', p+18, 18, 0);
     out(f, estr, ebuf-estr);
   }
 
-  pad(f, ' ', 0, pl+l, fl^LEFT_ADJ);
+  pad(f, ' ', w, pl+l, fl^LEFT_ADJ);
 
-  return (int)pl+(int)l;
+  return MAX(w, pl+l);
 }
 
 static int
 fmt_core(struct fmt_args *f, const char *fmt, mrb_float flo)
 {
-  ptrdiff_t p;
+  int p;
 
   if (*fmt != '%') {
     return -1;
@@ -354,10 +351,10 @@ fmt_core(struct fmt_args *f, const char *fmt, mrb_float flo)
   switch (*fmt) {
   case 'e': case 'f': case 'g': case 'a':
   case 'E': case 'F': case 'G': case 'A':
-    return fmt_fp(f, flo, p, 0, *fmt);
+    return fmt_fp(f, flo, 0, p, 0, *fmt);
   default:
     return -1;
-  }
+  } 
 }
 
 mrb_value
@@ -366,23 +363,9 @@ mrb_float_to_str(mrb_state *mrb, mrb_value flo, const char *fmt)
   struct fmt_args f;
 
   f.mrb = mrb;
-  f.str = mrb_str_new_capa(mrb, 24);
+  f.str = mrb_str_buf_new(mrb, 24);
   if (fmt_core(&f, fmt, mrb_float(flo)) < 0) {
     mrb_raise(mrb, E_ARGUMENT_ERROR, "invalid format string");
   }
   return f.str;
 }
-#else   /* MRB_DISABLE_STDIO */
-#include <mruby.h>
-#include <stdio.h>
-
-mrb_value
-mrb_float_to_str(mrb_state *mrb, mrb_value flo, const char *fmt)
-{
-  char buf[25];
-
-  snprintf(buf, sizeof(buf), fmt, mrb_float(flo));
-  return mrb_str_new_cstr(mrb, buf);
-}
-#endif  /* MRB_DISABLE_STDIO */
-#endif

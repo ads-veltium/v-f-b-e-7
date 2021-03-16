@@ -1,6 +1,15 @@
 # This script should be sourced, not executed.
 
 function idf_export_main
+    # The file doesn't have executable permissions, so this shouldn't really happen.
+    # Doing this in case someone tries to chmod +x it and execute...
+    set cmd (status current-command)
+    if test $cmd != source -a $cmd != .
+        echo "his script should be sourced, not executed:"
+        echo . (realpath (status --current-filename)/..)
+        return 1
+    end
+
     if not set -q IDF_PATH
         echo "IDF_PATH must be set before sourcing this script"
         return 1
@@ -66,7 +75,5 @@ function idf_export_main
 end
 
 idf_export_main
-
-eval (env _IDF.PY_COMPLETE=source_fish idf.py)
 
 set -e idf_export_main

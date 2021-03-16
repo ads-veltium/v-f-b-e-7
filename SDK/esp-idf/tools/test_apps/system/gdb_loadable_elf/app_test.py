@@ -1,14 +1,13 @@
 from __future__ import unicode_literals
-
 import os
 import threading
 import time
 
-import debug_backend
 import pexpect
 import serial
-import ttfw_idf
+
 from tiny_test_fw import Utility
+import ttfw_idf
 
 
 class SerialThread(object):
@@ -35,12 +34,12 @@ class SerialThread(object):
             Utility.console_log('The pyserial thread is still alive', 'O')
 
 
-@ttfw_idf.idf_custom_test(env_tag='test_jtag_arm', group='test-apps')
+@ttfw_idf.idf_custom_test(env_tag="test_jtag_arm", group="test-apps")
 def test_app_loadable_elf(env, extra_data):
+
     rel_project_path = os.path.join('tools', 'test_apps', 'system', 'gdb_loadable_elf')
     app_files = ['gdb_loadable_elf.elf']
-    target = 'esp32'
-    app = ttfw_idf.LoadableElfTestApp(rel_project_path, app_files, target=target)
+    app = ttfw_idf.LoadableElfTestApp(rel_project_path, app_files, target="esp32")
     idf_path = app.get_sdk_path()
     proj_path = os.path.join(idf_path, rel_project_path)
     elf_path = os.path.join(app.binary_path, 'gdb_loadable_elf.elf')
@@ -49,22 +48,26 @@ def test_app_loadable_elf(env, extra_data):
     with SerialThread(esp_log_path):
         openocd_log = os.path.join(proj_path, 'openocd.log')
         gdb_log = os.path.join(proj_path, 'gdb.log')
-        gdb_init = os.path.join(proj_path, 'gdbinit_' + target)
-        gdb_dir = os.path.join(proj_path, 'main')
+        gdb_args = '-x {} --directory={}'.format(os.path.join(proj_path, '.gdbinit.ci'),
+                                                 os.path.join(proj_path, 'main'))
 
-        with ttfw_idf.OCDBackend(openocd_log, app.target):
-            with ttfw_idf.GDBBackend(gdb_log, elf_path, app.target, gdb_init, gdb_dir) as p:
-                def wait_for_breakpoint():
-                    p.gdb.wait_target_state(debug_backend.TARGET_STATE_RUNNING)
-                    stop_reason = p.gdb.wait_target_state(debug_backend.TARGET_STATE_STOPPED)
-                    assert stop_reason == debug_backend.TARGET_STOP_REASON_BP, 'STOP reason: {}'.format(stop_reason)
+        with ttfw_idf.OCDProcess(openocd_log), ttfw_idf.GDBProcess(gdb_log, elf_path, app.target, gdb_args) as gdb:
+            i = gdb.pexpect_proc.expect_exact(['Thread 1 hit Temporary breakpoint 2, app_main ()',
+                                               'Load failed'])
+            if i == 0:
+                Utility.console_log('gdb is at breakpoint')
+            elif i == 1:
+                raise RuntimeError('Load has failed. Please examine the logs.')
+            else:
+                Utility.console_log('i = {}'.format(i))
+                Utility.console_log(str(gdb.pexpect_proc))
+                # This really should not happen. TIMEOUT and EOF failures are exceptions.
+                raise RuntimeError('An unknown error has occurred. Please examine the logs.')
 
-                wait_for_breakpoint()
-
-                p.gdb.add_bp('esp_restart')
-                p.gdb.exec_continue()
-
-                wait_for_breakpoint()
+            gdb.pexpect_proc.expect_exact('(gdb)')
+            gdb.pexpect_proc.sendline('b esp_restart')
+            gdb.pexpect_proc.sendline('c')
+            gdb.pexpect_proc.expect_exact('Thread 1 hit Breakpoint 3, esp_restart ()')
 
     if pexpect.run('grep "Restarting now." {}'.format(esp_log_path), withexitstatus=True)[1]:
         raise RuntimeError('Expected output from ESP was not received')

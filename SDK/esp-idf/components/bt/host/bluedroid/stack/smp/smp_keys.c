@@ -2244,3 +2244,4 @@ static void smp_rand_back(tBTM_RAND_ENC *p)
 }
 
 #endif
+

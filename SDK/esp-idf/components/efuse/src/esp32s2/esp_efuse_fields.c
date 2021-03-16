@@ -17,6 +17,7 @@
 #include "esp_efuse_table.h"
 #include "stdlib.h"
 #include "esp_types.h"
+#include "esp32s2/rom/efuse.h"
 #include "assert.h"
 #include "esp_err.h"
 #include "esp_log.h"
@@ -73,3 +74,4 @@ esp_err_t esp_efuse_enable_rom_secure_download_mode(void)
     }
     return esp_efuse_write_field_bit(ESP_EFUSE_ENABLE_SECURITY_DOWNLOAD);
 }
+

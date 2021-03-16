@@ -45,12 +45,15 @@ module Kernel
       __printstr__ "\n"
       i += 1
     end
-    args.__svalue
+    args[0]
   end
 
   unless Kernel.respond_to?(:sprintf)
     def printf(*args)
       raise NotImplementedError.new('printf not available')
+    end
+    def sprintf(*args)
+      raise NotImplementedError.new('sprintf not available')
     end
   else
     def printf(*args)

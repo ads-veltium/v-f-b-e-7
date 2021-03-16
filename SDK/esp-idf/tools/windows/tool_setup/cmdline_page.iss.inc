@@ -1,4 +1,4 @@
-{ Copyright 2019-2021 Espressif Systems (Shanghai) CO LTD
+{ Copyright 2019 Espressif Systems (Shanghai) PTE LTD
   SPDX-License-Identifier: Apache-2.0 }
 
 { ------------------------------ Progress & log page for command line tools ------------------------------ }
@@ -151,3 +151,4 @@ begin
   if not Result then
     RaiseException('Installation has failed at step: ' + caption);
 end;
+

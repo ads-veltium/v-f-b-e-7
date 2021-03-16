@@ -55,7 +55,7 @@ extern uint8_t const hid_keycode_to_ascii_tbl[2][128]; // TODO used weak attr if
  * \retval      true if device supports Keyboard interface
  * \retval      false if device does not support Keyboard interface or is not mounted
  */
-bool tuh_hid_keyboard_is_mounted(uint8_t dev_addr);
+bool          tuh_hid_keyboard_is_mounted(uint8_t dev_addr);
 
 /** \brief      Check if the interface is currently busy or not
  * \param[in]   dev_addr device address
@@ -64,7 +64,7 @@ bool tuh_hid_keyboard_is_mounted(uint8_t dev_addr);
  * \note        This function is primarily used for polling/waiting result after \ref tuh_hid_keyboard_get_report.
  *              Alternatively, asynchronous event API can be used
  */
-bool tuh_hid_keyboard_is_busy(uint8_t dev_addr);
+bool          tuh_hid_keyboard_is_busy(uint8_t dev_addr);
 
 /** \brief        Perform a get report from Keyboard interface
  * \param[in]		  dev_addr device address
@@ -195,10 +195,15 @@ void tuh_hid_generic_isr(uint8_t dev_addr, xfer_result_t event);
 //--------------------------------------------------------------------+
 // Internal Class Driver API
 //--------------------------------------------------------------------+
+typedef struct {
+  pipe_handle_t pipe_hdl;
+  uint16_t report_size;
+  uint8_t interface_number;
+}hidh_interface_info_t;
+
 void hidh_init(void);
-bool hidh_open_subtask(uint8_t rhport, uint8_t dev_addr, tusb_desc_interface_t const *p_interface_desc, uint16_t *p_length);
-bool hidh_set_config(uint8_t dev_addr, uint8_t itf_num);
-bool hidh_xfer_cb(uint8_t dev_addr, uint8_t ep_addr, xfer_result_t event, uint32_t xferred_bytes);
+bool hidh_open_subtask(uint8_t dev_addr, tusb_desc_interface_t const *p_interface_desc, uint16_t *p_length);
+void hidh_isr(pipe_handle_t pipe_hdl, xfer_result_t event, uint32_t xferred_bytes);
 void hidh_close(uint8_t dev_addr);
 
 #ifdef __cplusplus

@@ -6,3 +6,4 @@
 PROJECT_NAME := twai_network_slave
 
 include $(IDF_PATH)/make/project.mk
+

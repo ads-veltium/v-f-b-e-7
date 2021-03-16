@@ -190,3 +190,4 @@ TEST_CASE("Performance test for Empty callback", "[perfmon]")
     }
     ESP_LOGI(TAG, "All tests passed.");
 }
+

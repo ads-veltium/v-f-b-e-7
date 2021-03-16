@@ -42,3 +42,5 @@ $(foreach case,$(TEST_CASES),$(eval $(call sodium_testcase,$(case))))
 # this seems odd, but it prevents the libsodium test harness from
 # trying to write to a file!
 CFLAGS += -DBROWSER_TESTS
+
+

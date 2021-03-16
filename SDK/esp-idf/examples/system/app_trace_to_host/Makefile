@@ -6,3 +6,4 @@
 PROJECT_NAME := app_trace_to_host
 
 include $(IDF_PATH)/make/project.mk
+

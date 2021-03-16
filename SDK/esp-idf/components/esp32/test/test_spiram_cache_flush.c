@@ -4,6 +4,7 @@ This code tests the interaction between PSRAM and SPI flash routines.
 
 #include <esp_types.h>
 #include <stdio.h>
+#include "esp32/rom/ets_sys.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
@@ -14,6 +15,7 @@ This code tests the interaction between PSRAM and SPI flash routines.
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include "esp32/rom/ets_sys.h"
 #include "esp_heap_caps.h"
 #include "esp_spi_flash.h"
 #include "esp_partition.h"

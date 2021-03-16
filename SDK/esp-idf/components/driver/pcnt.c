@@ -1,4 +1,4 @@
-// Copyright 2015-2020 Espressif Systems (Shanghai) PTE LTD
+// Copyright 2015-2019 Espressif Systems (Shanghai) PTE LTD
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,15 +11,15 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
+#include "freertos/xtensa_api.h"
 #include "esp_log.h"
-#include "soc/soc_caps.h"
-#if SOC_PCNT_SUPPORTED
-#include "driver/periph_ctrl.h"
 #include "driver/pcnt.h"
+#include "driver/periph_ctrl.h"
 #include "hal/pcnt_hal.h"
-#include "esp_rom_gpio.h"
+#include "soc/pcnt_caps.h"
 
 #define PCNT_CHANNEL_ERR_STR  "PCNT CHANNEL ERROR"
 #define PCNT_UNIT_ERR_STR  "PCNT UNIT ERROR"
@@ -84,18 +84,28 @@ static inline esp_err_t _pcnt_set_pin(pcnt_port_t pcnt_port, pcnt_unit_t unit, p
     PCNT_CHECK(GPIO_IS_VALID_GPIO(pulse_io) || pulse_io < 0, PCNT_GPIO_ERR_STR, ESP_ERR_INVALID_ARG);
     PCNT_CHECK(GPIO_IS_VALID_GPIO(ctrl_io) || ctrl_io < 0, PCNT_GPIO_ERR_STR, ESP_ERR_INVALID_ARG);
 
+    int sig_base  = (channel == 0) ? PCNT_SIG_CH0_IN0_IDX  : PCNT_SIG_CH1_IN0_IDX;
+    int ctrl_base = (channel == 0) ? PCNT_CTRL_CH0_IN0_IDX : PCNT_CTRL_CH1_IN0_IDX;
+    if (unit > 4) {
+        sig_base  += 12; // GPIO matrix assignments have a gap between units 4 & 5
+        ctrl_base += 12;
+    }
+
+    int input_sig_index = sig_base  + (4 * unit);
+    int ctrl_sig_index  = ctrl_base + (4 * unit);
+
     if (pulse_io >= 0) {
         PIN_FUNC_SELECT(GPIO_PIN_MUX_REG[pulse_io], PIN_FUNC_GPIO);
         gpio_set_direction(pulse_io, GPIO_MODE_INPUT);
         gpio_set_pull_mode(pulse_io, GPIO_PULLUP_ONLY);
-        esp_rom_gpio_connect_in_signal(pulse_io, pcnt_periph_signals.units[unit].channels[channel].pulse_sig, 0);
+        gpio_matrix_in(pulse_io, input_sig_index, 0);
     }
 
     if (ctrl_io >= 0) {
         PIN_FUNC_SELECT(GPIO_PIN_MUX_REG[ctrl_io], PIN_FUNC_GPIO);
         gpio_set_direction(ctrl_io, GPIO_MODE_INPUT);
         gpio_set_pull_mode(ctrl_io, GPIO_PULLUP_ONLY);
-        esp_rom_gpio_connect_in_signal(ctrl_io, pcnt_periph_signals.units[unit].channels[channel].control_sig, 0);
+        gpio_matrix_in(ctrl_io, ctrl_sig_index, 0);
     }
 
     return ESP_OK;
@@ -200,16 +210,6 @@ static inline esp_err_t _pcnt_get_event_value(pcnt_port_t pcnt_port, pcnt_unit_t
     return ESP_OK;
 }
 
-static inline esp_err_t _pcnt_get_event_status(pcnt_port_t pcnt_port, pcnt_unit_t unit, uint32_t *status)
-{
-    PCNT_OBJ_CHECK(pcnt_port);
-    PCNT_CHECK(unit < PCNT_UNIT_MAX, PCNT_UNIT_ERR_STR, ESP_ERR_INVALID_ARG);
-    PCNT_CHECK(status != NULL, PCNT_ADDRESS_ERR_STR, ESP_ERR_INVALID_ARG);
-
-    *status = pcnt_hal_get_event_status(&(p_pcnt_obj[pcnt_port]->hal), unit);
-    return ESP_OK;
-}
-
 static inline esp_err_t _pcnt_set_filter_value(pcnt_port_t pcnt_port, pcnt_unit_t unit, uint16_t filter_val)
 {
     PCNT_OBJ_CHECK(pcnt_port);
@@ -283,11 +283,11 @@ static inline esp_err_t _pcnt_isr_handler_remove(pcnt_port_t pcnt_port, pcnt_uni
 // pcnt interrupt service
 static void IRAM_ATTR pcnt_intr_service(void *arg)
 {
-    uint32_t status = 0;
+    uint32_t status;
     pcnt_port_t pcnt_port = (pcnt_port_t)arg;
     pcnt_hal_get_intr_status(&(p_pcnt_obj[pcnt_port]->hal), &status);
     pcnt_hal_clear_intr_status(&(p_pcnt_obj[pcnt_port]->hal), status);
-
+    
     while (status) {
         int unit = __builtin_ffs(status) - 1;
         status &= ~(1 << unit);
@@ -349,10 +349,10 @@ static inline esp_err_t _pcnt_unit_config(pcnt_port_t pcnt_port, const pcnt_conf
     /*Enalbe hardware module*/
     static bool pcnt_enable = false;
     if (pcnt_enable == false) {
-        periph_module_reset(pcnt_periph_signals.module);
+        periph_module_reset(PERIPH_PCNT_MODULE);
         pcnt_enable = true;
     }
-    periph_module_enable(pcnt_periph_signals.module);
+    periph_module_enable(PERIPH_PCNT_MODULE);
     /*Set counter range*/
     _pcnt_set_event_value(pcnt_port, unit, PCNT_EVT_H_LIM, pcnt_config->counter_h_lim);
     _pcnt_set_event_value(pcnt_port, unit, PCNT_EVT_L_LIM, pcnt_config->counter_l_lim);
@@ -468,11 +468,6 @@ esp_err_t pcnt_get_event_value(pcnt_unit_t unit, pcnt_evt_type_t evt_type, int16
     return _pcnt_get_event_value(PCNT_PORT_0, unit, evt_type, value);
 }
 
-esp_err_t pcnt_get_event_status(pcnt_unit_t unit, uint32_t *status)
-{
-    return _pcnt_get_event_status(PCNT_PORT_0, unit, status);
-}
-
 esp_err_t pcnt_set_filter_value(pcnt_unit_t unit, uint16_t filter_val)
 {
     return _pcnt_set_filter_value(PCNT_PORT_0, unit, filter_val);
@@ -507,7 +502,7 @@ esp_err_t pcnt_isr_register(void (*fun)(void *), void *arg, int intr_alloc_flags
     esp_err_t ret = ESP_FAIL;
     PCNT_CHECK(fun != NULL, PCNT_ADDRESS_ERR_STR, ESP_ERR_INVALID_ARG);
     PCNT_ENTER_CRITICAL(&pcnt_spinlock);
-    ret = esp_intr_alloc(pcnt_periph_signals.irq, intr_alloc_flags, fun, arg, handle);
+    ret = esp_intr_alloc(ETS_PCNT_INTR_SOURCE, intr_alloc_flags, fun, arg, handle);
     PCNT_EXIT_CRITICAL(&pcnt_spinlock);
     return ret;
 }
@@ -532,5 +527,3 @@ void pcnt_isr_service_uninstall()
 {
     _pcnt_isr_service_uninstall(PCNT_PORT_0);
 }
-
-#endif // #if SOC_PCNT_SUPPORTED

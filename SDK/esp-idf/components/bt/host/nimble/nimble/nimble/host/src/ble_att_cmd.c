@@ -136,6 +136,13 @@ ble_att_error_rsp_write(void *payload, int len,
 }
 
 void
+ble_att_error_rsp_log(const struct ble_att_error_rsp *cmd)
+{
+    BLE_HS_LOG(DEBUG, "req_op=%d handle=0x%04x error_code=%d",
+               cmd->baep_req_op, cmd->baep_handle, cmd->baep_error_code);
+}
+
+void
 ble_att_mtu_req_parse(const void *payload, int len,
                       struct ble_att_mtu_cmd *dst)
 {
@@ -183,6 +190,12 @@ ble_att_mtu_rsp_write(void *payload, int len,
 }
 
 void
+ble_att_mtu_cmd_log(const struct ble_att_mtu_cmd *cmd)
+{
+    BLE_HS_LOG(DEBUG, "mtu=%d", cmd->bamc_mtu);
+}
+
+void
 ble_att_find_info_req_parse(const void *payload, int len,
                             struct ble_att_find_info_req *dst)
 {
@@ -209,6 +222,13 @@ ble_att_find_info_req_write(void *payload, int len,
 }
 
 void
+ble_att_find_info_req_log(const struct ble_att_find_info_req *cmd)
+{
+    BLE_HS_LOG(DEBUG, "start_handle=0x%04x end_handle=0x%04x",
+               cmd->bafq_start_handle, cmd->bafq_end_handle);
+}
+
+void
 ble_att_find_info_rsp_parse(const void *payload, int len,
                             struct ble_att_find_info_rsp *dst)
 {
@@ -230,6 +250,12 @@ ble_att_find_info_rsp_write(void *payload, int len,
                              BLE_ATT_FIND_INFO_RSP_BASE_SZ, len);
 
     dst->bafp_format = src->bafp_format;
+}
+
+void
+ble_att_find_info_rsp_log(const struct ble_att_find_info_rsp *cmd)
+{
+    BLE_HS_LOG(DEBUG, "format=%d", cmd->bafp_format);
 }
 
 void
@@ -261,6 +287,14 @@ ble_att_find_type_value_req_write(
 }
 
 void
+ble_att_find_type_value_req_log(const struct ble_att_find_type_value_req *cmd)
+{
+    BLE_HS_LOG(DEBUG, "start_handle=0x%04x end_handle=0x%04x attr_type=%d",
+               cmd->bavq_start_handle, cmd->bavq_end_handle,
+               cmd->bavq_attr_type);
+}
+
+void
 ble_att_read_type_req_parse(const void *payload, int len,
                             struct ble_att_read_type_req *dst)
 {
@@ -284,6 +318,13 @@ ble_att_read_type_req_write(void *payload, int len,
 
     dst->batq_start_handle = htole16(src->batq_start_handle);
     dst->batq_end_handle = htole16(src->batq_end_handle);
+}
+
+void
+ble_att_read_type_req_log(const struct ble_att_read_type_req *cmd)
+{
+    BLE_HS_LOG(DEBUG, "start_handle=0x%04x end_handle=0x%04x",
+               cmd->batq_start_handle, cmd->batq_end_handle);
 }
 
 void
@@ -311,6 +352,12 @@ ble_att_read_type_rsp_write(void *payload, int len,
 }
 
 void
+ble_att_read_type_rsp_log(const struct ble_att_read_type_rsp *cmd)
+{
+    BLE_HS_LOG(DEBUG, "length=%d", cmd->batp_length);
+}
+
+void
 ble_att_read_req_parse(const void *payload, int len,
                        struct ble_att_read_req *dst)
 {
@@ -332,6 +379,12 @@ ble_att_read_req_write(void *payload, int len,
                              BLE_ATT_READ_REQ_SZ, len);
 
     dst->barq_handle = htole16(src->barq_handle);
+}
+
+void
+ble_att_read_req_log(const struct ble_att_read_req *cmd)
+{
+    BLE_HS_LOG(DEBUG, "handle=0x%04x", cmd->barq_handle);
 }
 
 void
@@ -358,6 +411,13 @@ ble_att_read_blob_req_write(void *payload, int len,
 
     dst->babq_handle = htole16(src->babq_handle);
     dst->babq_offset = htole16(src->babq_offset);
+}
+
+void
+ble_att_read_blob_req_log(const struct ble_att_read_blob_req *cmd)
+{
+    BLE_HS_LOG(DEBUG, "handle=0x%04x offset=%d", cmd->babq_handle,
+               cmd->babq_offset);
 }
 
 void
@@ -415,6 +475,13 @@ ble_att_read_group_type_req_write(
 }
 
 void
+ble_att_read_group_type_req_log(const struct ble_att_read_group_type_req *cmd)
+{
+    BLE_HS_LOG(DEBUG, "start_handle=0x%04x end_handle=0x%04x",
+               cmd->bagq_start_handle, cmd->bagq_end_handle);
+}
+
+void
 ble_att_read_group_type_rsp_parse(const void *payload, int len,
                                   struct ble_att_read_group_type_rsp *dst)
 {
@@ -436,6 +503,12 @@ ble_att_read_group_type_rsp_write(
                              BLE_ATT_READ_GROUP_TYPE_RSP_BASE_SZ, len);
 
     dst->bagp_length = src->bagp_length;
+}
+
+void
+ble_att_read_group_type_rsp_log(const struct ble_att_read_group_type_rsp *cmd)
+{
+    BLE_HS_LOG(DEBUG, "length=%d", cmd->bagp_length);
 }
 
 void
@@ -481,6 +554,18 @@ ble_att_write_cmd_write(void *payload, int len,
     dst = ble_att_init_write(BLE_ATT_OP_WRITE_CMD, payload,
                              BLE_ATT_WRITE_REQ_BASE_SZ, len);
     dst->bawq_handle = htole16(src->bawq_handle);
+}
+
+void
+ble_att_write_cmd_log(const struct ble_att_write_cmd *cmd)
+{
+    BLE_HS_LOG(DEBUG, "handle=0x%04x", cmd->handle);
+}
+
+void
+ble_att_write_req_log(const struct ble_att_write_req *req)
+{
+    BLE_HS_LOG(DEBUG, "handle=0x%04x", req->bawq_handle);
 }
 
 void
@@ -536,6 +621,13 @@ ble_att_prep_write_rsp_write(void *payload, int len,
 }
 
 void
+ble_att_prep_write_cmd_log(const struct ble_att_prep_write_cmd *cmd)
+{
+    BLE_HS_LOG(DEBUG, "handle=0x%04x offset=%d", cmd->bapc_handle,
+               cmd->bapc_offset);
+}
+
+void
 ble_att_exec_write_req_parse(const void *payload, int len,
                              struct ble_att_exec_write_req *dst)
 {
@@ -557,6 +649,12 @@ ble_att_exec_write_req_write(void *payload, int len,
                              BLE_ATT_EXEC_WRITE_REQ_SZ, len);
 
     dst->baeq_flags = src->baeq_flags;
+}
+
+void
+ble_att_exec_write_req_log(const struct ble_att_exec_write_req *cmd)
+{
+    BLE_HS_LOG(DEBUG, "flags=0x%02x", cmd->baeq_flags);
 }
 
 void
@@ -598,6 +696,12 @@ ble_att_notify_req_write(void *payload, int len,
 }
 
 void
+ble_att_notify_req_log(const struct ble_att_notify_req *cmd)
+{
+    BLE_HS_LOG(DEBUG, "handle=0x%04x", cmd->banq_handle);
+}
+
+void
 ble_att_indicate_req_parse(const void *payload, int len,
                            struct ble_att_indicate_req *dst)
 {
@@ -619,6 +723,12 @@ ble_att_indicate_req_write(void *payload, int len,
                              BLE_ATT_INDICATE_REQ_BASE_SZ, len);
 
     dst->baiq_handle = htole16(src->baiq_handle);
+}
+
+void
+ble_att_indicate_req_log(const struct ble_att_indicate_req *cmd)
+{
+    BLE_HS_LOG(DEBUG, "handle=0x%04x", cmd->baiq_handle);
 }
 
 void

@@ -28,3 +28,4 @@ message WifiConnectedState {
     bytes bssid = 4;
     int32 channel = 5;
 }
+

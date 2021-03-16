@@ -148,6 +148,7 @@ void controlTask(void *arg)
 	// Inicia el timer de 10mS i 1 segundo
 	configTimers();
 	bool LastUserCon = false;
+	bool Iface_Con = BLE;
 	serialLocal.begin(115200, SERIAL_8N1, 34, 4); // pins: rx, tx
 
 	// INICIALIZO ELEMENTOS PARA AUTENTICACION
@@ -206,17 +207,35 @@ void controlTask(void *arg)
 						break;
 					case ESTADO_NORMAL:
 						proceso_recepcion();	
+					    if(serverbleGetConnected()){
+							Iface_Con = BLE;
+						}
+						else if(ConfigFirebase.ClientConnected){
+							Iface_Con = COMS;
+						}
 
-						if(LastUserCon != serverbleGetConnected()){
+						if(Iface_Con == BLE && LastUserCon != serverbleGetConnected()){
 							cnt_timeout_tx = TIMEOUT_TX_BLOQUE2 ;
 							buffer_tx_local[0] = HEADER_TX;
 							buffer_tx_local[1] = (uint8)(BLOQUE_STATUS >> 8);
 							buffer_tx_local[2] = (uint8)BLOQUE_STATUS;
 							buffer_tx_local[3] = 2;
-							buffer_tx_local[4] = serverbleGetConnected() || ConfigFirebase.ClientConnected;
+							buffer_tx_local[4] = serverbleGetConnected(); 
 							buffer_tx_local[5] = ESTADO_NORMAL;
 							serialLocal.write(buffer_tx_local, 6);
-							LastUserCon = serverbleGetConnected() || ConfigFirebase.ClientConnected;
+							LastUserCon = serverbleGetConnected() ;
+						}
+
+						else if(Iface_Con == COMS && LastUserCon != ConfigFirebase.ClientConnected){
+							cnt_timeout_tx = TIMEOUT_TX_BLOQUE2 ;
+							buffer_tx_local[0] = HEADER_TX;
+							buffer_tx_local[1] = (uint8)(BLOQUE_STATUS >> 8);
+							buffer_tx_local[2] = (uint8)BLOQUE_STATUS;
+							buffer_tx_local[3] = 2;
+							buffer_tx_local[4] = ConfigFirebase.ClientConnected;
+							buffer_tx_local[5] = ESTADO_NORMAL;
+							serialLocal.write(buffer_tx_local, 6);
+							LastUserCon = ConfigFirebase.ClientConnected;
 						}
 
 						if(cnt_timeout_tx == 0)

@@ -295,7 +295,15 @@ done:
 static struct os_mbuf *
 ble_hci_trans_acl_buf_alloc(void)
 {
-    return os_mbuf_get_pkthdr(&ble_hci_emspi_acl_mbuf_pool, 0);
+    uint8_t usrhdr_len;
+
+#if MYNEWT_VAL(BLE_HS_FLOW_CTRL)
+    usrhdr_len = BLE_MBUF_HS_HDR_LEN;
+#else
+    usrhdr_len = 0;
+#endif
+
+    return os_mbuf_get_pkthdr(&ble_hci_emspi_acl_mbuf_pool, usrhdr_len);
 }
 
 /**
@@ -386,7 +394,7 @@ ble_hci_emspi_tx_cmd(const uint8_t *data)
         return rc;
     }
 
-    len = data[2] + sizeof(struct ble_hci_cmd);
+    len = data[2] + BLE_HCI_CMD_HDR_LEN;
     rc = ble_hci_emspi_tx_flat(data, len);
     if (rc != 0) {
         return rc;
@@ -480,14 +488,14 @@ ble_hci_emspi_rx_evt(void)
     data = ble_hci_trans_buf_alloc(BLE_HCI_TRANS_BUF_EVT_HI);
     assert(data != NULL);
 
-    rc = ble_hci_emspi_rx(data, sizeof(struct ble_hci_ev));
+    rc = ble_hci_emspi_rx(data, BLE_HCI_EVENT_HDR_LEN);
     if (rc != 0) {
         goto err;
     }
 
     len = data[1];
     if (len > 0) {
-        rc = ble_hci_emspi_rx(data + sizeof(struct ble_hci_ev), len);
+        rc = ble_hci_emspi_rx(data + BLE_HCI_EVENT_HDR_LEN, len);
         if (rc != 0) {
             goto err;
         }

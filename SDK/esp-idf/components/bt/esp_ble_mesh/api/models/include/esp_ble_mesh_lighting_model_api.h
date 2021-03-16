@@ -1680,3 +1680,4 @@ esp_err_t esp_ble_mesh_register_lighting_server_callback(esp_ble_mesh_lighting_s
 #endif
 
 #endif /* _ESP_BLE_MESH_LIGHTING_MODEL_API_H_ */
+

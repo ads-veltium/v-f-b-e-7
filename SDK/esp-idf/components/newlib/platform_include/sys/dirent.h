@@ -52,3 +52,4 @@ void seekdir(DIR* pdir, long loc);
 void rewinddir(DIR* pdir);
 int closedir(DIR* pdir);
 int readdir_r(DIR* pdir, struct dirent* entry, struct dirent** out_dirent);
+

@@ -11,7 +11,6 @@
 #include <string.h>
 #include "param_test.h"
 #include "soc/io_mux_reg.h"
-#include "sdkconfig.h"
 
 // All the tests using the header should use this definition as much as possible,
 // so that the working host can be changed easily in the future.
@@ -49,7 +48,7 @@
 #define ESP_SPI_SLAVE_TV        (12.5*3.5)
 #define WIRE_DELAY              12.5
 
-#elif CONFIG_IDF_TARGET_ESP32S2 || CONFIG_IDF_TARGET_ESP32S3
+#elif CONFIG_IDF_TARGET_ESP32S2
 
 #define TEST_SPI_HOST   FSPI_HOST
 #define TEST_SLAVE_HOST HSPI_HOST
@@ -58,7 +57,6 @@
 #define PIN_NUM_MOSI    FSPI_IOMUX_PIN_NUM_MOSI
 #define PIN_NUM_CLK     FSPI_IOMUX_PIN_NUM_CLK
 #define PIN_NUM_CS      FSPI_IOMUX_PIN_NUM_CS
-
 #define PIN_NUM_WP      FSPI_IOMUX_PIN_NUM_WP
 #define PIN_NUM_HD      FSPI_IOMUX_PIN_NUM_HD
 
@@ -66,8 +64,8 @@
 #define SLAVE_PIN_NUM_MOSI    HSPI_IOMUX_PIN_NUM_MOSI
 #define SLAVE_PIN_NUM_CLK     HSPI_IOMUX_PIN_NUM_CLK
 #define SLAVE_PIN_NUM_CS      HSPI_IOMUX_PIN_NUM_CS
-#define SLAVE_PIN_NUM_WP      -1
-#define SLAVE_PIN_NUM_HD      -1
+#define SLAVE_PIN_NUM_WP      HSPI_IOMUX_PIN_NUM_WP
+#define SLAVE_PIN_NUM_HD      HSPI_IOMUX_PIN_NUM_HD
 
 #define SLAVE_IOMUX_PIN_MISO    -1
 #define SLAVE_IOMUX_PIN_MOSI    -1
@@ -81,41 +79,6 @@
 
 #define UNCONNECTED_PIN         41
 #define INPUT_ONLY_PIN          46
-#define GPIO_DELAY              0
-#define ESP_SPI_SLAVE_TV        0
-#define WIRE_DELAY              12.5
-
-#elif CONFIG_IDF_TARGET_ESP32C3
-
-#define TEST_SPI_HOST   FSPI_HOST
-#define TEST_SLAVE_HOST FSPI_HOST
-
-#define PIN_NUM_MISO    FSPI_IOMUX_PIN_NUM_MISO
-#define PIN_NUM_MOSI    FSPI_IOMUX_PIN_NUM_MOSI
-#define PIN_NUM_CLK     FSPI_IOMUX_PIN_NUM_CLK
-#define PIN_NUM_CS      FSPI_IOMUX_PIN_NUM_CS
-
-#define PIN_NUM_WP      FSPI_IOMUX_PIN_NUM_WP
-#define PIN_NUM_HD      FSPI_IOMUX_PIN_NUM_HD
-
-#define SLAVE_PIN_NUM_MISO    -1
-#define SLAVE_PIN_NUM_MOSI    -1
-#define SLAVE_PIN_NUM_CLK     -1
-#define SLAVE_PIN_NUM_CS      -1
-#define SLAVE_PIN_NUM_WP      -1
-#define SLAVE_PIN_NUM_HD      -1
-
-//NOTE: On esp32c3, there is only 1 GPSPI controller, so master-slave test on single board should be disabled
-#define SLAVE_IOMUX_PIN_MISO    FSPI_IOMUX_PIN_NUM_MISO
-#define SLAVE_IOMUX_PIN_MOSI    FSPI_IOMUX_PIN_NUM_MOSI
-#define SLAVE_IOMUX_PIN_SCLK    FSPI_IOMUX_PIN_NUM_CLK
-#define SLAVE_IOMUX_PIN_CS      FSPI_IOMUX_PIN_NUM_CS
-
-#define MASTER_IOMUX_PIN_MISO   FSPI_IOMUX_PIN_NUM_MISO
-#define MASTER_IOMUX_PIN_MOSI   FSPI_IOMUX_PIN_NUM_MOSI
-#define MASTER_IOMUX_PIN_SCLK   FSPI_IOMUX_PIN_NUM_CLK
-#define MASTER_IOMUX_PIN_CS     FSPI_IOMUX_PIN_NUM_CS
-
 #define GPIO_DELAY              0
 #define ESP_SPI_SLAVE_TV        0
 #define WIRE_DELAY              12.5
@@ -274,16 +237,6 @@ void spitest_slave_print_data(slave_rxdata_t *t, bool print_rxdata);
 // Check whether master and slave data match
 esp_err_t spitest_check_data(int len, spi_transaction_t *master_t, slave_rxdata_t *slave_t, bool check_master_data, bool check_slave_len, bool check_slave_data);
 
-#define spitest_cmp_or_dump(expected, actual, len) ({\
-    int r = memcmp(expected, actual, len);\
-    if (r != 0) {\
-        ESP_LOG_BUFFER_HEXDUMP("expected", expected, len, ESP_LOG_INFO);\
-        ESP_LOG_BUFFER_HEXDUMP("actual", actual, len, ESP_LOG_WARN);\
-        TEST_ASSERT_EQUAL_HEX8_ARRAY(expected, actual, len);\
-    }\
-    r;\
-})
-
 static inline int get_trans_len(spi_dup_t dup, spi_transaction_t *master_t)
 {
     if (dup!=HALF_DUPLEX_MISO) {
@@ -297,12 +250,5 @@ void master_free_device_bus(spi_device_handle_t spi);
 
 //use this function to fix the output source when assign multiple funcitons to a same pin
 void spitest_gpio_output_sel(uint32_t gpio_num, int func, uint32_t signal_idx);
-
-//use this function to fix the input source when assign multiple funcitons to a same pin
-void spitest_gpio_input_sel(uint32_t gpio_num, int func, uint32_t signal_idx);
-
-//Note this cs_num is the ID of the connected devices' ID, e.g. if 2 devices are connected to the bus,
-//then the cs_num of the 1st and 2nd devices are 0 and 1 respectively.
-void same_pin_func_sel(spi_bus_config_t bus, spi_device_interface_config_t dev, uint8_t cs_num);
 
 #endif  //_TEST_COMMON_SPI_H_

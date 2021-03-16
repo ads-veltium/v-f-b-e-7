@@ -48,14 +48,12 @@
 #include "driver/gpio.h"
 #include "esp_log.h"        // for esp_log
 #include "esp_err.h"        // for ESP_ERROR_CHECK macro
-
+   
 /* ----------------------- Modbus includes ----------------------------------*/
 #include "mb.h"
 #include "mbport.h"
 #include "sdkconfig.h"              // for KConfig options
 #include "port_serial_slave.h"
-
-// Note: This code uses mixed coding standard from legacy IDF code and used freemodbus stack
 
 // A queue to handle UART event.
 static QueueHandle_t xMbUartQueue;
@@ -285,3 +283,4 @@ BOOL xMBPortSerialGetByte(CHAR* pucByte)
     USHORT usLength = uart_read_bytes(ucUartNumber, (uint8_t*)pucByte, 1, MB_SERIAL_RX_TOUT_TICKS);
     return (usLength == 1);
 }
+

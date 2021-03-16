@@ -64,6 +64,8 @@ typedef enum {
  * buffer where this struct is of the exact size required to store a ring
  * buffer's control data structure.
  *
+ * @note The CONFIG_FREERTOS_SUPPORT_STATIC_ALLOCATION option must be enabled for
+ *       this structure to be available.
  */
 #if ( configSUPPORT_STATIC_ALLOCATION == 1)
 typedef struct xSTATIC_RINGBUFFER {
@@ -114,6 +116,9 @@ RingbufHandle_t xRingbufferCreateNoSplit(size_t xItemSize, size_t xItemNum);
  *              Storage area must of the same size as specified by xBufferSize
  * @param[in]   pxStaticRingbuffer Pointed to a struct of type StaticRingbuffer_t
  *              which will be used to hold the ring buffer's data structure
+ *
+ * @note    The CONFIG_FREERTOS_SUPPORT_STATIC_ALLOCATION option must be enabled
+ *          for this to be available
  *
  * @note    xBufferSize of no-split/allow-split buffers MUST be 32-bit aligned.
  *
@@ -250,7 +255,6 @@ void *xRingbufferReceive(RingbufHandle_t xRingbuffer, size_t *pxItemSize, TickTy
  *
  * @note    A call to vRingbufferReturnItemFromISR() is required after this to free the item retrieved.
  * @note    Byte buffers do not allow multiple retrievals before returning an item
- * @note    Two calls to RingbufferReceiveFromISR() are required if the bytes wrap around the end of the ring buffer.
  *
  * @return
  *      - Pointer to the retrieved item on success; *pxItemSize filled with the length of the item.
@@ -329,7 +333,6 @@ BaseType_t xRingbufferReceiveSplitFromISR(RingbufHandle_t xRingbuffer,
  * @note    A call to vRingbufferReturnItem() is required after this to free up the data retrieved.
  * @note    This function should only be called on byte buffers
  * @note    Byte buffers do not allow multiple retrievals before returning an item
- * @note    Two calls to RingbufferReceiveUpTo() are required if the bytes wrap around the end of the ring buffer.
  *
  * @return
  *      - Pointer to the retrieved item on success; *pxItemSize filled with
@@ -516,3 +519,4 @@ void xRingbufferPrintInfo(RingbufHandle_t xRingbuffer);
 #endif
 
 #endif /* FREERTOS_RINGBUF_H */
+

@@ -6,12 +6,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include "syscfg/syscfg.h"
-#define MESH_LOG_MODULE BLE_MESH_MODEL_LOG
-
 #include <string.h>
 #include <errno.h>
 #include <stdbool.h>
+
+#include "syscfg/syscfg.h"
+#define BT_DBG_ENABLED (MYNEWT_VAL(BLE_MESH_DEBUG_MODEL))
+#include "host/ble_hs_log.h"
 
 #include "mesh/mesh.h"
 #include "mesh_priv.h"
@@ -217,7 +218,8 @@ done:
 static void send_attention_status(struct bt_mesh_model *model,
 				  struct bt_mesh_msg_ctx *ctx)
 {
-	struct os_mbuf *msg = BT_MESH_MODEL_BUF(OP_ATTENTION_STATUS, 1);
+	/* Needed size: opcode (2 bytes) + msg + MIC */
+	struct os_mbuf *msg = NET_BUF_SIMPLE(2 + 1 + 4);
 	struct bt_mesh_health_srv *srv = model->user_data;
 	u8_t time;
 
@@ -271,7 +273,8 @@ static void attention_set(struct bt_mesh_model *model,
 static void send_health_period_status(struct bt_mesh_model *model,
 				      struct bt_mesh_msg_ctx *ctx)
 {
-	struct os_mbuf *msg = BT_MESH_MODEL_BUF(OP_HEALTH_PERIOD_STATUS, 1);
+	/* Needed size: opcode (2 bytes) + msg + MIC */
+	struct os_mbuf *msg = NET_BUF_SIMPLE(2 + 1 + 4);
 
 	bt_mesh_model_msg_init(msg, OP_HEALTH_PERIOD_STATUS);
 
@@ -344,10 +347,8 @@ static int health_pub_update(struct bt_mesh_model *mod)
 	BT_DBG("");
 
 	count = health_get_current(mod, pub->msg);
-	if (count) {
-		pub->fast_period = 1U;
-	} else {
-		pub->fast_period = 0U;
+	if (!count) {
+		pub->period_div = 0;
 	}
 
 	return 0;
@@ -362,15 +363,6 @@ int bt_mesh_fault_update(struct bt_mesh_elem *elem)
 		return -EINVAL;
 	}
 
-	/* Let periodic publishing, if enabled, take care of sending the
-	 * Health Current Status.
-	 */
-	if (bt_mesh_model_pub_period_get(mod)) {
-		return 0;
-	}
-
-	health_pub_update(mod);
-
 	return bt_mesh_model_publish(mod);
 }
 
@@ -384,12 +376,12 @@ static void attention_off(struct ble_npl_event *work)
 	}
 }
 
-static int health_srv_init(struct bt_mesh_model *model)
+int bt_mesh_health_srv_init(struct bt_mesh_model *model, bool primary)
 {
 	struct bt_mesh_health_srv *srv = model->user_data;
 
 	if (!srv) {
-		if (!bt_mesh_model_in_primary(model)) {
+		if (!primary) {
 			return 0;
 		}
 
@@ -409,16 +401,12 @@ static int health_srv_init(struct bt_mesh_model *model)
 
 	srv->model = model;
 
-	if (bt_mesh_model_in_primary(model)) {
+	if (primary) {
 		health_srv = srv;
 	}
 
 	return 0;
 }
-
-const struct bt_mesh_model_cb bt_mesh_health_srv_cb = {
-	.init = health_srv_init,
-};
 
 void bt_mesh_attention(struct bt_mesh_model *model, u8_t time)
 {

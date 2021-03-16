@@ -115,9 +115,26 @@ int SSL_use_certificate_ASN1(SSL *ssl, int len, const unsigned char *d);
 int X509_STORE_add_cert(X509_STORE *store, X509 *x);
 
 /**
+ * @brief load data in BIO
+ *
+ * Normally BIO_write should append data but that doesn't happen here, and
+ * 'data' cannot be freed after the function is called, it should remain valid 
+ * until BIO object is in use.
+ *
+ * @param b    - pointer to BIO 
+ * @param data - pointer to data
+ * @param dlen - data bytes
+ *
+ * @return result
+ *      0 : failed
+ *      1 : OK
+ */
+int BIO_write(BIO *b, const void *data, int dlen);
+
+/**
  * @brief load a character certification context into system context.
  *
- * If '*cert' is pointed to the certification, then load certification
+ * If '*cert' is pointed to the certification, then load certification 
  * into it, or create a new X509 certification object.
  *
  * @param bp     - pointer to  BIO
@@ -128,22 +145,28 @@ int X509_STORE_add_cert(X509_STORE *store, X509 *x);
  *
  * @return X509 certification object point
  */
-X509 * PEM_read_bio_X509(BIO *bp, X509 **x, pem_password_cb cb, void *u);
+X509 * PEM_read_bio_X509(BIO *bp, X509 **x, void *cb, void *u);
 
 /**
- * @brief load a character certification context into system context.
+ * @brief create a BIO object
+ * 
+ * @param method - pointer to BIO_METHOD
  *
- * Current implementation directly calls PEM_read_bio_X509
- *
- * @param bp     - pointer to  BIO
- * @param buffer - pointer to the certification context memory
- * @param cb     - pointer to the callback (not implemented)
- * @param u      - pointer to arbitrary data (not implemented)
- *
- * @return X509 certification object point
+ * @return pointer to BIO object
  */
-X509 *PEM_read_bio_X509_AUX(BIO *bp, X509 **cert, pem_password_cb *cb, void *u);
+BIO *BIO_new(void * method);
 
+/**
+ * @brief get the memory BIO method function
+ */
+void *BIO_s_mem(void);
+
+/**
+ * @brief free a BIO  object
+ *
+ * @param x - pointer to BIO object 
+ */
+void BIO_free(BIO *b);
 
 #ifdef __cplusplus
 }

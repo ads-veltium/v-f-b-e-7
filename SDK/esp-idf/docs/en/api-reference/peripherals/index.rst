@@ -8,16 +8,15 @@ Peripherals API
 
 
     ADC <adc>
-    :SOC_DAC_PERIPH_NUM: DAC <dac>
+    DAC <dac>
     GPIO (including RTC low power I/O) <gpio>
-    :SOC_DEDICATED_GPIO_SUPPORTED: Dedicated GPIO <dedic_gpio>
-    :SOC_HMAC_SUPPORTED: HMAC <hmac>
-    :SOC_DIG_SIGN_SUPPORTED: Digital Signature <ds>
+    :esp32s2: HMAC <hmac>
+    :esp32s2: Digital Signature <ds>
     I2C <i2c>
     I2S <i2s>
     LED Control <ledc>
     :SOC_MCPWM_SUPPORTED: MCPWM <mcpwm>
-    :SOC_PCNT_SUPPORTED: Pulse Counter <pcnt>
+    Pulse Counter <pcnt>
     Remote Control <rmt>
     :esp32: SD Pull-up Requirements <sd_pullup_requirements>
     :SOC_SDMMC_HOST_SUPPORTED: SDMMC Host <sdmmc_host>
@@ -27,14 +26,11 @@ Peripherals API
     SPI Master <spi_master>
     SPI Slave <spi_slave>
     :esp32: Secure Element <secure_element>
-    :esp32s2: SPI Slave Half Duplex <spi_slave_hd>
     :esp32s2: Temp sensor <temp_sensor>
     Timer <timer>
-    :SOC_TOUCH_SENSOR_NUM: Touch Sensor <touch_pad>
-    :esp32s2: Touch Element <touch_element>
+    Touch Sensor <touch_pad>
     TWAI <twai>
     UART <uart>
-    :SOC_USB_SUPPORTED: USB <usb>
 
 
 Code examples for this API section are provided in the :example:`peripherals` directory of ESP-IDF examples.

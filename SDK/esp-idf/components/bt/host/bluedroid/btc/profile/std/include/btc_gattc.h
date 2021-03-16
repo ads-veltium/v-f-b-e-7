@@ -24,9 +24,6 @@ typedef enum {
     BTC_GATTC_ACT_APP_REGISTER = 0,
     BTC_GATTC_ACT_APP_UNREGISTER,
     BTC_GATTC_ACT_OPEN,
-#if (BLE_50_FEATURE_SUPPORT == TRUE)
-    BTC_GATTC_ACT_AUX_OPEN,
-#endif // #if (BLE_50_FEATURE_SUPPORT == TRUE)
     BTC_GATTC_ACT_CLOSE,
     BTC_GATTC_ACT_CFG_MTU,
     BTC_GATTC_ACT_SEARCH_SERVICE,
@@ -63,7 +60,6 @@ typedef union {
         esp_bd_addr_t remote_bda;
         esp_ble_addr_type_t remote_addr_type;
         bool is_direct;
-        bool is_aux;
     } open;
     //BTC_GATTC_ACT_CLOSE,
     struct close_arg {
@@ -203,7 +199,7 @@ typedef union {
 void btc_gattc_call_handler(btc_msg_t *msg);
 void btc_gattc_cb_handler(btc_msg_t *msg);
 void btc_gattc_arg_deep_copy(btc_msg_t *msg, void *p_dest, void *p_src);
-esp_gatt_status_t btc_ble_gattc_get_service(uint16_t conn_id, esp_bt_uuid_t *svc_uuid,
+esp_gatt_status_t btc_ble_gattc_get_service(uint16_t conn_id, esp_bt_uuid_t *svc_uuid, 
                                             esp_gattc_service_elem_t *result,
                                             uint16_t *count, uint16_t offset);
 esp_gatt_status_t btc_ble_gattc_get_all_char(uint16_t conn_id,
@@ -249,7 +245,7 @@ esp_gatt_status_t btc_ble_gattc_get_attr_count(uint16_t conn_id,
                                                uint16_t char_handle,
                                                uint16_t *count);
 
-esp_gatt_status_t btc_ble_gattc_get_db(uint16_t conn_id, uint16_t start_handle, uint16_t end_handle,
+esp_gatt_status_t btc_ble_gattc_get_db(uint16_t conn_id, uint16_t start_handle, uint16_t end_handle, 
                                        esp_gattc_db_elem_t *db, uint16_t *count);
 
 

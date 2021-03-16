@@ -6,3 +6,4 @@
 PROJECT_NAME := console_prov
 
 include $(IDF_PATH)/make/project.mk
+

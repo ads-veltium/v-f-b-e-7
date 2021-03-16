@@ -67,3 +67,4 @@ typedef struct {
 } tBT_SECURITY;
 
 #endif  /* PROFILES_API_H */
+

@@ -25,7 +25,7 @@
 #include "soc/soc_caps.h"
 #include "driver/sdmmc_defs.h"
 
-#if SOC_SDMMC_HOST_SUPPORTED
+#ifdef SOC_SDMMC_HOST_SUPPORTED
 #include "driver/sdmmc_host.h"
 #endif
 

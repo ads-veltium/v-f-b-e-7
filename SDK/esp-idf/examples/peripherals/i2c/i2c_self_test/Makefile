@@ -6,3 +6,4 @@
 PROJECT_NAME := i2c-example
 
 include $(IDF_PATH)/make/project.mk
+

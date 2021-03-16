@@ -18,7 +18,7 @@
 static const char *TAG = "example";
 
 static rmt_channel_t example_tx_channel = RMT_CHANNEL_0;
-static rmt_channel_t example_rx_channel = RMT_CHANNEL_2;
+static rmt_channel_t example_rx_channel = RMT_CHANNEL_1;
 
 /**
  * @brief RMT Receive Task
@@ -28,7 +28,7 @@ static void example_ir_rx_task(void *arg)
 {
     uint32_t addr = 0;
     uint32_t cmd = 0;
-    size_t length = 0;
+    uint32_t length = 0;
     bool repeat = false;
     RingbufHandle_t rb = NULL;
     rmt_item32_t *items = NULL;
@@ -47,11 +47,10 @@ static void example_ir_rx_task(void *arg)
 
     //get RMT RX ringbuffer
     rmt_get_ringbuf_handle(example_rx_channel, &rb);
-    assert(rb != NULL);
     // Start receive
     rmt_rx_start(example_rx_channel, true);
-    while (1) {
-        items = (rmt_item32_t *) xRingbufferReceive(rb, &length, portMAX_DELAY);
+    while (rb) {
+        items = (rmt_item32_t *) xRingbufferReceive(rb, &length, 1000);
         if (items) {
             length /= 4; // one RMT = 4 Bytes
             if (ir_parser->input(ir_parser, items, length) == ESP_OK) {
@@ -61,6 +60,8 @@ static void example_ir_rx_task(void *arg)
             }
             //after parsing the data, return spaces to ringbuffer.
             vRingbufferReturnItem(rb, (void *) items);
+        } else {
+            break;
         }
     }
     ir_parser->del(ir_parser);
@@ -77,7 +78,7 @@ static void example_ir_tx_task(void *arg)
     uint32_t addr = 0x10;
     uint32_t cmd = 0x20;
     rmt_item32_t *items = NULL;
-    size_t length = 0;
+    uint32_t length = 0;
     ir_builder_t *ir_builder = NULL;
 
     rmt_config_t rmt_tx_config = RMT_DEFAULT_CONFIG_TX(CONFIG_EXAMPLE_RMT_TX_GPIO, example_tx_channel);

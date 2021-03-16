@@ -8,3 +8,5 @@
 COMPONENT_EMBED_TXTFILES := wpa2_ca.pem
 COMPONENT_EMBED_TXTFILES += wpa2_client.crt
 COMPONENT_EMBED_TXTFILES += wpa2_client.key
+
+

@@ -6,3 +6,4 @@
 PROJECT_NAME := ip_internal_network
 
 include $(IDF_PATH)/make/project.mk
+

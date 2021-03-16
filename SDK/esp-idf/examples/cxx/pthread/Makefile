@@ -6,3 +6,4 @@
 PROJECT_NAME := cpp_pthread
 
 include $(IDF_PATH)/make/project.mk
+

@@ -19,47 +19,36 @@
 #include "esp_attr.h"
 #include "esp_log.h"
 
-#include "esp_rom_sys.h"
-#include "esp_rom_uart.h"
 #if CONFIG_IDF_TARGET_ESP32
-#include "soc/dport_reg.h"
 #include "esp32/rom/cache.h"
+#include "esp32/rom/efuse.h"
+#include "esp32/rom/ets_sys.h"
 #include "esp32/rom/spi_flash.h"
+#include "esp32/rom/crc.h"
 #include "esp32/rom/rtc.h"
+#include "esp32/rom/uart.h"
+#include "esp32/rom/gpio.h"
 #include "esp32/rom/secure_boot.h"
 #elif CONFIG_IDF_TARGET_ESP32S2
 #include "esp32s2/rom/cache.h"
+#include "esp32s2/rom/efuse.h"
+#include "esp32s2/rom/ets_sys.h"
 #include "esp32s2/rom/spi_flash.h"
+#include "esp32s2/rom/crc.h"
 #include "esp32s2/rom/rtc.h"
+#include "esp32s2/rom/uart.h"
+#include "esp32s2/rom/gpio.h"
 #include "esp32s2/rom/secure_boot.h"
 #include "soc/extmem_reg.h"
 #include "soc/cache_memory.h"
-#elif CONFIG_IDF_TARGET_ESP32S3
-#include "esp32s3/rom/cache.h"
-#include "esp32s3/rom/spi_flash.h"
-#include "esp32s3/rom/rtc.h"
-#include "esp32s3/rom/secure_boot.h"
-#include "soc/extmem_reg.h"
-#include "soc/cache_memory.h"
-#elif CONFIG_IDF_TARGET_ESP32C3
-#include "esp32c3/rom/cache.h"
-#include "esp32c3/rom/efuse.h"
-#include "esp32c3/rom/ets_sys.h"
-#include "esp32c3/rom/spi_flash.h"
-#include "esp32c3/rom/crc.h"
-#include "esp32c3/rom/rtc.h"
-#include "esp32c3/rom/uart.h"
-#include "esp32c3/rom/gpio.h"
-#include "esp32c3/rom/secure_boot.h"
-#include "soc/extmem_reg.h"
-#include "soc/cache_memory.h"
-#else // CONFIG_IDF_TARGET_*
+#else
 #error "Unsupported IDF_TARGET"
 #endif
 
 #include "soc/soc.h"
 #include "soc/cpu.h"
 #include "soc/rtc.h"
+#include "soc/dport_reg.h"
 #include "soc/gpio_periph.h"
 #include "soc/efuse_periph.h"
 #include "soc/rtc_periph.h"
@@ -70,13 +59,12 @@
 #include "esp_secure_boot.h"
 #include "esp_flash_encrypt.h"
 #include "esp_flash_partitions.h"
-#include "bootloader_flash_priv.h"
+#include "bootloader_flash.h"
 #include "bootloader_random.h"
 #include "bootloader_config.h"
 #include "bootloader_common.h"
 #include "bootloader_utility.h"
 #include "bootloader_sha.h"
-#include "bootloader_console.h"
 #include "esp_efuse.h"
 
 static const char *TAG = "boot";
@@ -230,7 +218,7 @@ static esp_partition_pos_t index_to_partition(const bootloader_state_t *bs, int 
         return bs->test;
     }
 
-    if (index >= 0 && index < MAX_OTA_SLOTS && index < (int)bs->app_count) {
+    if (index >= 0 && index < MAX_OTA_SLOTS && index < bs->app_count) {
         return bs->ota[index];
     }
 
@@ -477,7 +465,7 @@ void bootloader_utility_load_boot_image(const bootloader_state_t *bs, int start_
     esp_image_metadata_t image_data;
 
     if (start_index == TEST_APP_INDEX) {
-        if (check_anti_rollback(&bs->test) && try_load_partition(&bs->test, &image_data)) {
+        if (try_load_partition(&bs->test, &image_data)) {
             load_image(&image_data);
         } else {
             ESP_LOGE(TAG, "No bootable test partition in the partition table");
@@ -500,7 +488,7 @@ void bootloader_utility_load_boot_image(const bootloader_state_t *bs, int start_
     }
 
     /* failing that work forwards from start_index, try valid OTA slots */
-    for (index = start_index + 1; index < (int)bs->app_count; index++) {
+    for (index = start_index + 1; index < bs->app_count; index++) {
         part = index_to_partition(bs, index);
         if (part.size == 0) {
             continue;
@@ -513,7 +501,7 @@ void bootloader_utility_load_boot_image(const bootloader_state_t *bs, int start_
         log_invalid_app_partition(index);
     }
 
-    if (check_anti_rollback(&bs->test) && try_load_partition(&bs->test, &image_data)) {
+    if (try_load_partition(&bs->test, &image_data)) {
         ESP_LOGW(TAG, "Falling back to test app as only bootable partition");
         load_image(&image_data);
     }
@@ -629,7 +617,7 @@ static void load_image(const esp_image_metadata_t *image_data)
            so issue a system reset to ensure flash encryption
            cache resets properly */
         ESP_LOGI(TAG, "Resetting with flash encryption enabled...");
-        esp_rom_uart_tx_wait_idle(0);
+        uart_tx_wait_idle(0);
         bootloader_reset();
     }
 #endif
@@ -702,12 +690,6 @@ static void set_cache_and_start_app(
 #elif CONFIG_IDF_TARGET_ESP32S2
     uint32_t autoload = Cache_Suspend_ICache();
     Cache_Invalidate_ICache_All();
-#elif CONFIG_IDF_TARGET_ESP32S3
-    uint32_t autoload = Cache_Suspend_DCache();
-    Cache_Invalidate_DCache_All();
-#elif CONFIG_IDF_TARGET_ESP32C3
-    uint32_t autoload = Cache_Suspend_ICache();
-    Cache_Invalidate_ICache_All();
 #endif
 
     /* Clear the MMU entries that are already set up,
@@ -717,8 +699,8 @@ static void set_cache_and_start_app(
     for (int i = 0; i < DPORT_FLASH_MMU_TABLE_SIZE; i++) {
         DPORT_PRO_FLASH_MMU_TABLE[i] = DPORT_FLASH_MMU_TABLE_INVALID_VAL;
     }
-#else
-    for (size_t i = 0; i < FLASH_MMU_TABLE_SIZE; i++) {
+#elif CONFIG_IDF_TARGET_ESP32S2
+    for (int i = 0; i < FLASH_MMU_TABLE_SIZE; i++) {
         FLASH_MMU_TABLE[i] = MMU_TABLE_INVALID_VAL;
     }
 #endif
@@ -730,10 +712,6 @@ static void set_cache_and_start_app(
     rc = cache_flash_mmu_set(0, 0, drom_load_addr_aligned, drom_addr & MMU_FLASH_MASK, 64, drom_page_count);
 #elif CONFIG_IDF_TARGET_ESP32S2
     rc = Cache_Ibus_MMU_Set(MMU_ACCESS_FLASH, drom_load_addr & 0xffff0000, drom_addr & 0xffff0000, 64, drom_page_count, 0);
-#elif CONFIG_IDF_TARGET_ESP32S3
-    rc = Cache_Dbus_MMU_Set(MMU_ACCESS_FLASH, drom_load_addr & 0xffff0000, drom_addr & 0xffff0000, 64, drom_page_count, 0);
-#elif CONFIG_IDF_TARGET_ESP32C3
-    rc = Cache_Dbus_MMU_Set(MMU_ACCESS_FLASH, drom_load_addr & 0xffff0000, drom_addr & 0xffff0000, 64, drom_page_count, 0);
 #endif
     ESP_LOGV(TAG, "rc=%d", rc);
 #if CONFIG_IDF_TARGET_ESP32
@@ -757,10 +735,6 @@ static void set_cache_and_start_app(
         REG_CLR_BIT(EXTMEM_PRO_ICACHE_CTRL1_REG, EXTMEM_PRO_ICACHE_MASK_IRAM1);
     }
     rc = Cache_Ibus_MMU_Set(MMU_ACCESS_FLASH, irom_load_addr & 0xffff0000, irom_addr & 0xffff0000, 64, irom_page_count, 0);
-#elif CONFIG_IDF_TARGET_ESP32S3
-    rc = Cache_Ibus_MMU_Set(MMU_ACCESS_FLASH, irom_load_addr & 0xffff0000, irom_addr & 0xffff0000, 64, irom_page_count, 0);
-#elif CONFIG_IDF_TARGET_ESP32C3
-    rc = Cache_Ibus_MMU_Set(MMU_ACCESS_FLASH, irom_load_addr & 0xffff0000, irom_addr & 0xffff0000, 64, irom_page_count, 0);
 #endif
     ESP_LOGV(TAG, "rc=%d", rc);
 #if CONFIG_IDF_TARGET_ESP32
@@ -776,28 +750,15 @@ static void set_cache_and_start_app(
                        DPORT_APP_CACHE_MASK_DRAM1 );
 #elif CONFIG_IDF_TARGET_ESP32S2
     REG_CLR_BIT( EXTMEM_PRO_ICACHE_CTRL1_REG, (EXTMEM_PRO_ICACHE_MASK_IRAM0) | (EXTMEM_PRO_ICACHE_MASK_IRAM1 & 0) | EXTMEM_PRO_ICACHE_MASK_DROM0 );
-#elif CONFIG_IDF_TARGET_ESP32S3
-    REG_CLR_BIT(EXTMEM_DCACHE_CTRL1_REG, EXTMEM_DCACHE_SHUT_CORE0_BUS);
-#if !CONFIG_FREERTOS_UNICORE
-    REG_CLR_BIT(EXTMEM_DCACHE_CTRL1_REG, EXTMEM_DCACHE_SHUT_CORE1_BUS);
-#endif
-#elif CONFIG_IDF_TARGET_ESP32C3
-    REG_CLR_BIT(EXTMEM_ICACHE_CTRL1_REG, EXTMEM_ICACHE_SHUT_IBUS);
-    REG_CLR_BIT(EXTMEM_ICACHE_CTRL1_REG, EXTMEM_ICACHE_SHUT_DBUS);
 #endif
 #if CONFIG_IDF_TARGET_ESP32
     Cache_Read_Enable(0);
 #elif CONFIG_IDF_TARGET_ESP32S2
     Cache_Resume_ICache(autoload);
-#elif CONFIG_IDF_TARGET_ESP32S3
-    Cache_Resume_DCache(autoload);
-#elif CONFIG_IDF_TARGET_ESP32C3
-    Cache_Resume_ICache(autoload);
 #endif
     // Application will need to do Cache_Flush(1) and Cache_Read_Enable(1)
 
     ESP_LOGD(TAG, "start: 0x%08x", entry_addr);
-    bootloader_atexit();
     typedef void (*entry_t)(void) __attribute__((noreturn));
     entry_t entry = ((entry_t) entry_addr);
 
@@ -809,8 +770,9 @@ static void set_cache_and_start_app(
 void bootloader_reset(void)
 {
 #ifdef BOOTLOADER_BUILD
-    bootloader_atexit();
-    esp_rom_delay_us(1000); /* Allow last byte to leave FIFO */
+    uart_tx_flush(0);    /* Ensure any buffered log output is displayed */
+    uart_tx_flush(1);
+    ets_delay_us(1000); /* Allow last byte to leave FIFO */
     REG_WRITE(RTC_CNTL_OPTIONS0_REG, RTC_CNTL_SW_SYS_RST);
     while (1) { }       /* This line will never be reached, used to keep gcc happy */
 #else
@@ -818,17 +780,12 @@ void bootloader_reset(void)
 #endif
 }
 
-void bootloader_atexit(void)
-{
-    bootloader_console_deinit();
-}
-
 esp_err_t bootloader_sha256_hex_to_str(char *out_str, const uint8_t *in_array_hex, size_t len)
 {
     if (out_str == NULL || in_array_hex == NULL || len == 0) {
         return ESP_ERR_INVALID_ARG;
     }
-    for (size_t i = 0; i < len; i++) {
+    for (int i = 0; i < len; i++) {
         for (int shift = 0; shift < 2; shift++) {
             uint8_t nibble = (in_array_hex[i] >> (shift ? 0 : 4)) & 0x0F;
             if (nibble < 10) {
@@ -848,7 +805,7 @@ void bootloader_debug_buffer(const void *buffer, size_t length, const char *labe
     const uint8_t *bytes = (const uint8_t *)buffer;
     char hexbuf[length * 2 + 1];
     hexbuf[length * 2] = 0;
-    for (size_t i = 0; i < length; i++) {
+    for (int i = 0; i < length; i++) {
         for (int shift = 0; shift < 2; shift++) {
             uint8_t nibble = (bytes[i] >> (shift ? 0 : 4)) & 0x0F;
             if (nibble < 10) {

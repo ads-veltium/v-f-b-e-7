@@ -8,3 +8,4 @@ PROJECT_NAME := ble_eddystone_demo
 COMPONENT_ADD_INCLUDEDIRS := components/include
 
 include $(IDF_PATH)/make/project.mk
+

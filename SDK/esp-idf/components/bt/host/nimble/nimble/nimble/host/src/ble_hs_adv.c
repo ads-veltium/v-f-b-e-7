@@ -63,8 +63,8 @@ ble_hs_adv_set_hdr(uint8_t type, uint8_t data_len, uint8_t max_len,
 
 static int
 ble_hs_adv_set_flat_mbuf(uint8_t type, int data_len, const void *data,
-                         uint8_t *dst, uint8_t *dst_len, uint8_t max_len,
-                         struct os_mbuf *om)
+                    uint8_t *dst, uint8_t *dst_len, uint8_t max_len,
+                    struct os_mbuf *om)
 {
     int rc;
 
@@ -235,10 +235,11 @@ adv_set_fields(const struct ble_hs_adv_fields *adv_fields,
 
     uint8_t type;
     int8_t tx_pwr_lvl;
-    uint8_t dst_len_local;
     int rc;
 
-    dst_len_local = 0;
+    if (dst_len) {
+        *dst_len = 0;
+    }
 
     /*** 0x01 - Flags. */
     /* The application has two options concerning the flags field:
@@ -250,7 +251,7 @@ adv_set_fields(const struct ble_hs_adv_fields *adv_fields,
      */
     if (adv_fields->flags != 0) {
         rc = ble_hs_adv_set_flat_mbuf(BLE_HS_ADV_TYPE_FLAGS, 1,
-                                      &adv_fields->flags, dst, &dst_len_local,
+                                      &adv_fields->flags, dst, dst_len,
                                       max_len, om);
 
         if (rc != 0) {
@@ -267,7 +268,7 @@ adv_set_fields(const struct ble_hs_adv_fields *adv_fields,
         }
 
         rc = ble_hs_adv_set_array_uuid16(type, adv_fields->num_uuids16,
-                                         adv_fields->uuids16, dst, &dst_len_local,
+                                         adv_fields->uuids16, dst, dst_len,
                                          max_len, om);
         if (rc != 0) {
             return rc;
@@ -283,7 +284,7 @@ adv_set_fields(const struct ble_hs_adv_fields *adv_fields,
         }
 
         rc = ble_hs_adv_set_array_uuid32(type, adv_fields->num_uuids32,
-                                         adv_fields->uuids32, dst, &dst_len_local,
+                                         adv_fields->uuids32, dst, dst_len,
                                          max_len, om);
         if (rc != 0) {
             return rc;
@@ -299,7 +300,7 @@ adv_set_fields(const struct ble_hs_adv_fields *adv_fields,
         }
 
         rc = ble_hs_adv_set_array_uuid128(type, adv_fields->num_uuids128,
-                                          adv_fields->uuids128, dst, &dst_len_local,
+                                          adv_fields->uuids128, dst, dst_len,
                                           max_len, om);
         if (rc != 0) {
             return rc;
@@ -315,7 +316,7 @@ adv_set_fields(const struct ble_hs_adv_fields *adv_fields,
         }
 
         rc = ble_hs_adv_set_flat_mbuf(type, adv_fields->name_len,
-                                      adv_fields->name, dst, &dst_len_local, max_len,
+                                      adv_fields->name, dst, dst_len, max_len,
                                       om);
         if (rc != 0) {
             return rc;
@@ -337,7 +338,7 @@ adv_set_fields(const struct ble_hs_adv_fields *adv_fields,
         }
 
         rc = ble_hs_adv_set_flat_mbuf(BLE_HS_ADV_TYPE_TX_PWR_LVL, 1,
-                                      &tx_pwr_lvl, dst, &dst_len_local, max_len, om);
+                                      &tx_pwr_lvl, dst, dst_len, max_len, om);
         if (rc != 0) {
             return rc;
         }
@@ -348,7 +349,7 @@ adv_set_fields(const struct ble_hs_adv_fields *adv_fields,
         rc = ble_hs_adv_set_flat_mbuf(BLE_HS_ADV_TYPE_SLAVE_ITVL_RANGE,
                                       BLE_HS_ADV_SLAVE_ITVL_RANGE_LEN,
                                       adv_fields->slave_itvl_range, dst,
-                                      &dst_len_local, max_len, om);
+                                      dst_len, max_len, om);
         if (rc != 0) {
             return rc;
         }
@@ -358,7 +359,7 @@ adv_set_fields(const struct ble_hs_adv_fields *adv_fields,
     if (adv_fields->svc_data_uuid16 != NULL && adv_fields->svc_data_uuid16_len) {
         rc = ble_hs_adv_set_flat_mbuf(BLE_HS_ADV_TYPE_SVC_DATA_UUID16,
                                       adv_fields->svc_data_uuid16_len,
-                                      adv_fields->svc_data_uuid16, dst, &dst_len_local,
+                                      adv_fields->svc_data_uuid16, dst, dst_len,
                                       max_len, om);
         if (rc != 0) {
             return rc;
@@ -372,7 +373,7 @@ adv_set_fields(const struct ble_hs_adv_fields *adv_fields,
         rc = ble_hs_adv_set_flat_mbuf(BLE_HS_ADV_TYPE_PUBLIC_TGT_ADDR,
                                  BLE_HS_ADV_PUBLIC_TGT_ADDR_ENTRY_LEN *
                                      adv_fields->num_public_tgt_addrs,
-                                 adv_fields->public_tgt_addr, dst, &dst_len_local,
+                                 adv_fields->public_tgt_addr, dst, dst_len,
                                  max_len, om);
         if (rc != 0) {
             return rc;
@@ -383,7 +384,7 @@ adv_set_fields(const struct ble_hs_adv_fields *adv_fields,
     if (adv_fields->appearance_is_present) {
         rc = ble_hs_adv_set_flat_mbuf(BLE_HS_ADV_TYPE_APPEARANCE,
                                       BLE_HS_ADV_APPEARANCE_LEN,
-                                      &adv_fields->appearance, dst, &dst_len_local,
+                                      &adv_fields->appearance, dst, dst_len,
                                       max_len, om);
         if (rc != 0) {
             return rc;
@@ -393,7 +394,7 @@ adv_set_fields(const struct ble_hs_adv_fields *adv_fields,
     /*** 0x1a - Advertising interval. */
     if (adv_fields->adv_itvl_is_present) {
         rc = ble_hs_adv_set_array16(BLE_HS_ADV_TYPE_ADV_ITVL, 1,
-                                    &adv_fields->adv_itvl, dst, &dst_len_local,
+                                    &adv_fields->adv_itvl, dst, dst_len,
                                     max_len, om);
         if (rc != 0) {
             return rc;
@@ -404,7 +405,7 @@ adv_set_fields(const struct ble_hs_adv_fields *adv_fields,
     if (adv_fields->svc_data_uuid32 != NULL && adv_fields->svc_data_uuid32_len) {
         rc = ble_hs_adv_set_flat_mbuf(BLE_HS_ADV_TYPE_SVC_DATA_UUID32,
                                      adv_fields->svc_data_uuid32_len,
-                                     adv_fields->svc_data_uuid32, dst, &dst_len_local,
+                                     adv_fields->svc_data_uuid32, dst, dst_len,
                                      max_len, om);
         if (rc != 0) {
             return rc;
@@ -416,7 +417,7 @@ adv_set_fields(const struct ble_hs_adv_fields *adv_fields,
         rc = ble_hs_adv_set_flat_mbuf(BLE_HS_ADV_TYPE_SVC_DATA_UUID128,
                                       adv_fields->svc_data_uuid128_len,
                                       adv_fields->svc_data_uuid128, dst,
-                                      &dst_len_local, max_len, om);
+                                      dst_len, max_len, om);
         if (rc != 0) {
             return rc;
         }
@@ -425,7 +426,7 @@ adv_set_fields(const struct ble_hs_adv_fields *adv_fields,
     /*** 0x24 - URI. */
     if (adv_fields->uri != NULL && adv_fields->uri_len) {
         rc = ble_hs_adv_set_flat_mbuf(BLE_HS_ADV_TYPE_URI, adv_fields->uri_len,
-                                      adv_fields->uri, dst, &dst_len_local, max_len,
+                                      adv_fields->uri, dst, dst_len, max_len,
                                       om);
         if (rc != 0) {
             return rc;
@@ -437,14 +438,10 @@ adv_set_fields(const struct ble_hs_adv_fields *adv_fields,
         rc = ble_hs_adv_set_flat_mbuf(BLE_HS_ADV_TYPE_MFG_DATA,
                                       adv_fields->mfg_data_len,
                                       adv_fields->mfg_data,
-                                      dst, &dst_len_local, max_len, om);
+                                      dst, dst_len, max_len, om);
         if (rc != 0) {
             return rc;
         }
-    }
-
-    if (dst_len) {
-        *dst_len = dst_len_local;
     }
 
     return 0;
@@ -492,7 +489,7 @@ ble_hs_adv_parse_uuids16(struct ble_hs_adv_fields *adv_fields,
 
     for (i = 0; i < adv_fields->num_uuids16; i++) {
         ble_uuid_init_from_buf(&uuid, data + i * 2, 2);
-        ble_hs_adv_uuids16[i] = uuid.u16;
+        adv_fields->uuids16[i] = uuid.u16;
     }
 
     return 0;
@@ -514,7 +511,7 @@ ble_hs_adv_parse_uuids32(struct ble_hs_adv_fields *adv_fields,
 
     for (i = 0; i < adv_fields->num_uuids32; i++) {
         ble_uuid_init_from_buf(&uuid, data + i * 4, 4);
-        ble_hs_adv_uuids32[i] = uuid.u32;
+        adv_fields->uuids32[i] = uuid.u32;
     }
 
     return 0;
@@ -536,7 +533,7 @@ ble_hs_adv_parse_uuids128(struct ble_hs_adv_fields *adv_fields,
 
     for (i = 0; i < adv_fields->num_uuids128; i++) {
         ble_uuid_init_from_buf(&uuid, data + i * 16, 16);
-        ble_hs_adv_uuids128[i] = uuid.u128;
+        adv_fields->uuids128[i] = uuid.u128;
     }
 
     return 0;
@@ -544,12 +541,11 @@ ble_hs_adv_parse_uuids128(struct ble_hs_adv_fields *adv_fields,
 
 static int
 ble_hs_adv_parse_one_field(struct ble_hs_adv_fields *adv_fields,
-                           uint8_t *total_len, const uint8_t *src,
-                           uint8_t src_len)
+                           uint8_t *total_len, uint8_t *src, uint8_t src_len)
 {
     uint8_t data_len;
     uint8_t type;
-    const uint8_t *data;
+    uint8_t *data;
     int rc;
 
     if (src_len < 1) {
@@ -719,8 +715,8 @@ ble_hs_adv_parse_one_field(struct ble_hs_adv_fields *adv_fields,
 }
 
 int
-ble_hs_adv_parse_fields(struct ble_hs_adv_fields *adv_fields,
-                        const uint8_t *src, uint8_t src_len)
+ble_hs_adv_parse_fields(struct ble_hs_adv_fields *adv_fields, uint8_t *src,
+                        uint8_t src_len)
 {
     uint8_t field_len;
     int rc;

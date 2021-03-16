@@ -6,3 +6,4 @@
 PROJECT_NAME := morse_code
 
 include $(IDF_PATH)/make/project.mk
+

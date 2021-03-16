@@ -6,3 +6,4 @@
 PROJECT_NAME := a2dp_sink
 
 include $(IDF_PATH)/make/project.mk
+

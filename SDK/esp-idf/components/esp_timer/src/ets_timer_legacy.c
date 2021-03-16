@@ -24,17 +24,17 @@
 #include "esp_log.h"
 #include "esp_attr.h"
 #include "esp_intr_alloc.h"
+#include "soc/frc_timer_reg.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
+#include "freertos/xtensa_api.h"
 #include "sdkconfig.h"
 #include "esp_timer.h"
 #if CONFIG_IDF_TARGET_ESP32
-#include "esp32/rom/ets_sys.h"  // for ETSTimer type
+#include "esp32/rom/ets_sys.h"
 #elif CONFIG_IDF_TARGET_ESP32S2
 #include "esp32s2/rom/ets_sys.h"
-#elif CONFIG_IDF_TARGET_ESP32S3
-#include "esp32s3/rom/ets_sys.h"
 #endif
 
 /* We abuse 'timer_arg' field of ETSTimer structure to hold a pointer to esp_timer */
@@ -126,3 +126,4 @@ void os_timer_disarm(ETSTimer *ptimer) __attribute__((alias("ets_timer_disarm"))
 void os_timer_arm_us(ETSTimer *ptimer,uint32_t u_seconds,bool repeat_flag) __attribute__((alias("ets_timer_arm_us")));
 void os_timer_arm(ETSTimer *ptimer,uint32_t milliseconds,bool repeat_flag) __attribute__((alias("ets_timer_arm")));
 void os_timer_done(ETSTimer *ptimer) __attribute__((alias("ets_timer_done")));
+

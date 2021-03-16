@@ -917,3 +917,4 @@ esp_err_t esp_ble_mesh_register_time_scene_server_callback(esp_ble_mesh_time_sce
 #endif
 
 #endif /* _ESP_BLE_MESH_TIME_SCENE_MODEL_API_H_ */
+

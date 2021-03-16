@@ -81,6 +81,6 @@ private:
   bool offline_;
 };
 
-} // namespace shrpx
+} // namespace
 
 #endif // SHRPX_CONNECT_BLOCKER_H

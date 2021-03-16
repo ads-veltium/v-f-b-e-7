@@ -237,3 +237,4 @@ STRUCT_END(XtosCoreState)
 //	... locked cache lines ...
 
 #endif /* _XTOS_CORE_STATE_H_ */
+

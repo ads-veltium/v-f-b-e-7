@@ -42,3 +42,4 @@ void register_ble_address(void)
     };
     ESP_ERROR_CHECK(esp_console_cmd_register(&cmd));
 }
+

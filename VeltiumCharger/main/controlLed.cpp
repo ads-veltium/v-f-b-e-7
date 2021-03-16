@@ -86,7 +86,6 @@ void LedControl_Task(void *arg){
 	uint8 subiendo=1, luminosidad_carga= 0, LedPointer =0,luminosidad_Actual=50, togle_led=0;
 	uint8 _LED_COLOR=0;
 	uint16 cnt_parpadeo=TIME_PARPADEO, Delay= 20;
-	uint8 Efectos=0;
 	bool LastBle=0;
 	initLeds();
 	vTaskDelay(pdMS_TO_TICKS(100));

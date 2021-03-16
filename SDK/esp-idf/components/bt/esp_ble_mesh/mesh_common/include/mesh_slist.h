@@ -465,3 +465,4 @@ static inline bool sys_slist_find_and_remove(sys_slist_t *list,
 #endif
 
 #endif /* _BLE_MESH_SLIST_H_ */
+

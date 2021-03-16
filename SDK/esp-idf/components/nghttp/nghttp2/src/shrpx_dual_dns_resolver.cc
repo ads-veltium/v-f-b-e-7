@@ -28,20 +28,21 @@ namespace shrpx {
 
 DualDNSResolver::DualDNSResolver(struct ev_loop *loop)
     : resolv4_(loop), resolv6_(loop) {
-  auto cb = [this](DNSResolverStatus, const Address *) {
+  auto cb = [this](int, const Address *) {
+    int rv;
     Address result;
 
-    auto status = this->get_status(&result);
-    switch (status) {
-    case DNSResolverStatus::ERROR:
-    case DNSResolverStatus::OK:
+    rv = this->get_status(&result);
+    switch (rv) {
+    case DNS_STATUS_ERROR:
+    case DNS_STATUS_OK:
       break;
     default:
       return;
     }
 
     auto cb = this->get_complete_cb();
-    cb(status, &result);
+    cb(rv, &result);
   };
 
   resolv4_.set_complete_cb(cb);
@@ -64,22 +65,23 @@ CompleteCb DualDNSResolver::get_complete_cb() const { return complete_cb_; }
 
 void DualDNSResolver::set_complete_cb(CompleteCb cb) { complete_cb_ = cb; }
 
-DNSResolverStatus DualDNSResolver::get_status(Address *result) const {
-  auto rv6 = resolv6_.get_status(result);
-  if (rv6 == DNSResolverStatus::OK) {
-    return DNSResolverStatus::OK;
+int DualDNSResolver::get_status(Address *result) const {
+  int rv4, rv6;
+  rv6 = resolv6_.get_status(result);
+  if (rv6 == DNS_STATUS_OK) {
+    return DNS_STATUS_OK;
   }
-  auto rv4 = resolv4_.get_status(result);
-  if (rv4 == DNSResolverStatus::OK) {
-    return DNSResolverStatus::OK;
+  rv4 = resolv4_.get_status(result);
+  if (rv4 == DNS_STATUS_OK) {
+    return DNS_STATUS_OK;
   }
-  if (rv4 == DNSResolverStatus::RUNNING || rv6 == DNSResolverStatus::RUNNING) {
-    return DNSResolverStatus::RUNNING;
+  if (rv4 == DNS_STATUS_RUNNING || rv6 == DNS_STATUS_RUNNING) {
+    return DNS_STATUS_RUNNING;
   }
-  if (rv4 == DNSResolverStatus::ERROR || rv6 == DNSResolverStatus::ERROR) {
-    return DNSResolverStatus::ERROR;
+  if (rv4 == DNS_STATUS_ERROR || rv6 == DNS_STATUS_ERROR) {
+    return DNS_STATUS_ERROR;
   }
-  return DNSResolverStatus::IDLE;
+  return DNS_STATUS_IDLE;
 }
 
 } // namespace shrpx

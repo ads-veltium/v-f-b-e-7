@@ -42,3 +42,4 @@ TEST_CASE("mbedtls RSA self-tests", "[bignum]")
     TEST_ASSERT_FALSE_MESSAGE(mbedtls_rsa_self_test(1), "RSA self-tests should pass.");
     verify_apb_access_loop();
 }
+

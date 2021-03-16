@@ -7,8 +7,7 @@ The parameters are encrypted using HMAC as a key-derivation function.
 In turn, the HMAC uses eFuses as input key.
 The whole process happens in hardware so that neither the decryption key for the RSA parameters nor the input key for the HMAC key derivation function can be seen by the software while calculating the signature.
 
-For more detailed information on the hardware involved in signature calculation and the registers used, see *{IDF_TARGET_NAME} Technical Reference Manual* > *Digital Signature (DS)* [`PDF <{IDF_TARGET_TRM_EN_URL}#digsig>`__].
-
+Look into the `{IDF_TARGET_NAME} Technical Reference Manual <{IDF_TARGET_TRM_EN_URL}>`_ (PDF) for more detailed information about the involved hardware during the signature calculation process and the used registers.
 
 Private Key Parameters
 ----------------------
@@ -21,16 +20,15 @@ Upon signature calculation invocation, the software only specifies which eFuse k
 
 Key Generation
 --------------
-Both the HMAC key and the RSA private key have to be created and stored before the DS peripheral can be used.
+Both the HMAC key and the RSA private key have to be created and stored before the DS module can be used.
 This needs to be done in software on the {IDF_TARGET_NAME} or alternatively on a host.
 For this context, the IDF provides :cpp:func:`esp_efuse_write_block` to set the HMAC key and :cpp:func:`esp_hmac_calculate` to encrypt the private RSA key parameters.
 
-You can find instructions on how to calculate and assemble the private key parameters in *{IDF_TARGET_NAME} Technical Reference Manual* > *Digital Signature (DS)* [`PDF <{IDF_TARGET_TRM_EN_URL}#digsig>`__].
+Instructions on how to calculate and assemble the private key parameters are described in the `{IDF_TARGET_NAME} Technical Reference Manual <{IDF_TARGET_TRM_EN_URL}>`_.
 
 Signature Calculation with IDF
 ------------------------------
-
-For more detailed information on the workflow and the registers used, see *{IDF_TARGET_NAME} Technical Reference Manual* > *Digital Signature (DS)* [`PDF <{IDF_TARGET_TRM_EN_URL}#digsig>`__].
+*For thorough information about involved registers and the workflow, please have a look at the* `{IDF_TARGET_NAME} Technical Reference Manual <{IDF_TARGET_TRM_EN_URL}>`_.
 
 Three parameters need to be prepared to calculate the digital signature:
 
@@ -47,37 +45,6 @@ Once the calculation has finished, :cpp:func:`esp_ds_finish_sign` can be called 
     Note that this is only the basic DS building block, the message length is fixed.
     To create signatures of arbitrary messages, the input is normally a hash of the actual message, padded up to the required length.
     An API to do this is planned in the future.
-
-Configure the DS peripheral for a TLS connection
-------------------------------------------------
-
-The DS peripheral on {IDF_TARGET_NAME} chip must be configured before it can be used for a TLS connection.
-The configuration involves the following steps -
-
-1) Randomly generate a 256 bit value called the `Initialization Vector` (IV).
-2) Randomly generate a 256 bit value called  the `HMAC_KEY`.
-3) Calculate the encrypted private key paramters from the client private key (RSA) and the parameters generated in the above steps.
-4) Then burn the 256 bit `HMAC_KEY` on the efuse, which can only be read by the DS peripheral.
-
-For more details, see *{IDF_TARGET_NAME} Technical Reference Manual* > *Digital Signature (DS)* [`PDF <{IDF_TARGET_TRM_EN_URL}#digsig>`__].
-
-To configure the DS peripheral for development purposes, you can use the python script :example_file:`configure_ds.py<protocols/mqtt/ssl_ds/configure_ds.py>`.
-More details about the `configure_ds.py` script can be found at :example_file:`mqtt example README <protocols/mqtt/ssl_ds/README.md>`.
-
-The encrypted private key parameters obtained after the DS peripheral configuration are then to be kept in flash. Furthermore, they are to be passed to the DS peripheral which makes use of those parameters for the Digital Signature operation.
-:doc:`Non Volatile Storage<../storage/nvs_flash>` can be used to store the encrypted private key parameters in flash.
-The script :example_file:`configure_ds.py<protocols/mqtt/ssl_ds/configure_ds.py>` creates an NVS partition for the encrypted private key parameters. Then the script flashes this partition onto the {IDF_TARGET_NAME}.
-The application then needs to read the DS data from NVS, which can be done with the function `esp_read_ds_data_from_nvs` in file :example_file:`ssl_mutual_auth/main/app_main.c <protocols/mqtt/ssl_mutual_auth/main/app_main.c>`
-
-The process of initializing the DS peripheral and then performing the Digital Signature operation is done internally with help of `ESP-TLS`. Please refer to `Digital Signature with ESP-TLS` in :doc:`ESP-TLS <../protocols/esp_tls>` for more details.
-As mentioned in the `ESP-TLS` documentation, the application only needs to provide the encrypted private key parameters to the esp_tls context (as `ds_data`), which internally performs
-all necessary operations for initializing the DS peripheral and then performing the DS operation.
-
-Example for SSL Mutual Authentication using DS
-----------------------------------------------
-The example :example:`ssl_ds<protocols/mqtt/ssl_ds>` shows how to use the DS peripheral for mutual authentication. The example uses `mqtt_client` (Implemented through `ESP-MQTT`)
-to connect to broker test.mosquitto.org using ssl transport with mutual authentication. The ssl part is internally performed with `ESP-TLS`.
-See :example_file:`example README<protocols/mqtt/ssl_ds/README.md>` for more details.
 
 API Reference
 -------------

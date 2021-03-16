@@ -21,21 +21,33 @@
 #include "esp_log.h"
 
 #include "esp_transport.h"
-#include "esp_transport_internal.h"
 #include "esp_transport_utils.h"
 
 static const char *TAG = "TRANSPORT";
 
 /**
- * Transport layer error structure including
- * * esp-tls last error storage
- * * sock-errno
+ * Transport layer structure, which will provide functions, basic properties for transport types
  */
-struct esp_transport_error_s {
-    struct esp_tls_last_error esp_tls_err_h_base;   /*!< esp-tls last error container */
-    // additional fields
-    int    sock_errno;                              /*!< last socket error captured for this transport */
+struct esp_transport_item_t {
+    int             port;
+    int             socket;         /*!< Socket to use in this transport */
+    char            *scheme;        /*!< Tag name */
+    void            *context;       /*!< Context data */
+    void            *data;          /*!< Additional transport data */
+    connect_func    _connect;       /*!< Connect function of this transport */
+    io_read_func    _read;          /*!< Read */
+    io_func         _write;         /*!< Write */
+    trans_func      _close;         /*!< Close */
+    poll_func       _poll_read;     /*!< Poll and read */
+    poll_func       _poll_write;    /*!< Poll and write */
+    trans_func      _destroy;       /*!< Destroy and free transport */
+    connect_async_func _connect_async;      /*!< non-blocking connect function of this transport */
+    payload_transfer_func  _parent_transfer;        /*!< Function returning underlying transport layer */
+    esp_tls_error_handle_t     error_handle;            /*!< Pointer to esp-tls error handle */
+    esp_transport_keep_alive_t *keep_alive_cfg;    /*!< TCP keep-alive config */
+    STAILQ_ENTRY(esp_transport_item_t) next;
 };
+
 
 /**
  * This list will hold all transport available
@@ -47,7 +59,7 @@ STAILQ_HEAD(esp_transport_list_t, esp_transport_item_t);
  */
 typedef struct esp_transport_internal {
     struct esp_transport_list_t list;                      /*!< List of transports */
-    struct esp_transport_error_s*  error_handle;           /*!< Pointer to the transport error container */
+    esp_tls_error_handle_t  error_handle;                               /*!< Pointer to the error tracker if enabled  */
 } esp_transport_internal_t;
 
 static esp_transport_handle_t esp_transport_get_default_parent(esp_transport_handle_t t)
@@ -63,7 +75,7 @@ esp_transport_list_handle_t esp_transport_list_init(void)
     esp_transport_list_handle_t transport = calloc(1, sizeof(esp_transport_internal_t));
     ESP_TRANSPORT_MEM_CHECK(TAG, transport, return NULL);
     STAILQ_INIT(&transport->list);
-    transport->error_handle = calloc(1, sizeof(struct esp_transport_error_s));
+    transport->error_handle = calloc(1, sizeof(esp_tls_last_error_t));
     return transport;
 }
 
@@ -283,43 +295,29 @@ esp_err_t esp_transport_set_parent_transport_func(esp_transport_handle_t t, payl
 esp_tls_error_handle_t esp_transport_get_error_handle(esp_transport_handle_t t)
 {
     if (t) {
-        return &t->error_handle->esp_tls_err_h_base;
+        return t->error_handle;
     }
     return NULL;
 }
 
-int esp_transport_get_errno(esp_transport_handle_t t)
-{
-    if (t && t->error_handle) {
-        int actual_errno = t->error_handle->sock_errno;
-        t->error_handle->sock_errno = 0;
-        return actual_errno;
-    }
-    return -1;
-}
-
 void esp_transport_set_errors(esp_transport_handle_t t, const esp_tls_error_handle_t error_handle)
 {
-    if (t && t->error_handle) {
-        memcpy(&t->error_handle->esp_tls_err_h_base, error_handle, sizeof(esp_tls_last_error_t));
-        int sock_error;
-        if (esp_tls_get_and_clear_error_type(error_handle, ESP_TLS_ERR_TYPE_SYSTEM, &sock_error) == ESP_OK) {
-            t->error_handle->sock_errno = sock_error;
-        }
+    if (t)  {
+        memcpy(t->error_handle, error_handle, sizeof(esp_tls_last_error_t));
     }
 }
 
-void esp_transport_capture_errno(esp_transport_handle_t t, int sock_errno)
+void esp_transport_set_keep_alive(esp_transport_handle_t t, esp_transport_keep_alive_t *keep_alive_cfg)
 {
-    if (t && t->error_handle) {
-        t->error_handle->sock_errno = sock_errno;
+    if (t && keep_alive_cfg) {
+        t->keep_alive_cfg = keep_alive_cfg;
     }
 }
 
-int esp_transport_get_socket(esp_transport_handle_t t)
+void *esp_transport_get_keep_alive(esp_transport_handle_t t)
 {
-    if (t && t->_get_socket)  {
-        return  t->_get_socket(t);
+    if (t) {
+        return t->keep_alive_cfg;
     }
-    return -1;
+    return NULL;
 }

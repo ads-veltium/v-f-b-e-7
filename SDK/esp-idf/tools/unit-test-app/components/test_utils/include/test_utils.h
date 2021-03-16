@@ -20,15 +20,9 @@
 #include "sdkconfig.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "unity.h"
-#include "soc/soc_caps.h"
+
 /* include performance pass standards header file */
 #include "idf_performance.h"
-#include "idf_performance_target.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /* For performance check with unity test on IDF */
 /* These macros should only be used with ESP-IDF.
@@ -41,36 +35,15 @@ extern "C" {
 #define PERFORMANCE_CON(a, b) _PERFORMANCE_CON(a, b)
 #define _PERFORMANCE_CON(a, b) a##b
 
-#if !CONFIG_UNITY_IGNORE_PERFORMANCE_TESTS
-#define _TEST_PERFORMANCE_ASSERT TEST_ASSERT
-#else
-#define _TEST_PERFORMANCE_ASSERT(ARG) printf("Ignoring performance test [%s]\n", PERFORMANCE_STR(ARG))
-#endif
-
 #define TEST_PERFORMANCE_LESS_THAN(name, value_fmt, value)  do { \
-    printf("[Performance][" PERFORMANCE_STR(name) "]: "value_fmt"\n", value); \
-    _TEST_PERFORMANCE_ASSERT(value < PERFORMANCE_CON(IDF_PERFORMANCE_MAX_, name)); \
+    printf("[Performance]["PERFORMANCE_STR(name)"]: "value_fmt"\n", value); \
+    TEST_ASSERT(value < PERFORMANCE_CON(IDF_PERFORMANCE_MAX_, name)); \
 } while(0)
 
 #define TEST_PERFORMANCE_GREATER_THAN(name, value_fmt, value)  do { \
-    printf("[Performance][" PERFORMANCE_STR(name) "]: "value_fmt"\n", value); \
-    _TEST_PERFORMANCE_ASSERT(value > PERFORMANCE_CON(IDF_PERFORMANCE_MIN_, name)); \
+    printf("[Performance]["PERFORMANCE_STR(name)"]: "value_fmt"\n", value); \
+    TEST_ASSERT(value > PERFORMANCE_CON(IDF_PERFORMANCE_MIN_, name)); \
 } while(0)
-
-/* Macros to be used when performance is calculated using the cache compensated timer
-   will not assert if ccomp not supported */
-#if SOC_CCOMP_TIMER_SUPPORTED
-#define TEST_PERFORMANCE_CCOMP_GREATER_THAN(name, value_fmt, value) \
-    TEST_PERFORMANCE_GREATER_THAN(name, value_fmt, value)
-#define TEST_PERFORMANCE_CCOMP_LESS_THAN(name, value_fmt, value) \
-    TEST_PERFORMANCE_LESS_THAN(name, value_fmt, value)
-#else
-#define TEST_PERFORMANCE_CCOMP_GREATER_THAN(name, value_fmt, value) \
-    printf("[Performance][" PERFORMANCE_STR(name) "]: "value_fmt"\n", value);
-#define TEST_PERFORMANCE_CCOMP_LESS_THAN(name, value_fmt, value) \
-    printf("[Performance][" PERFORMANCE_STR(name) "]: "value_fmt"\n", value);
-#endif //SOC_CCOMP_TIMER_SUPPORTED
-
 
 /* @brief macro to print IDF performance
  * @param mode :        performance item name. a string pointer.
@@ -304,7 +277,3 @@ void test_utils_free_exhausted_memory(test_utils_exhaust_memory_rec rec);
  * @param[in] thandle    Handle of task to be deleted (should not be NULL or self handle)
  */
 void test_utils_task_delete(TaskHandle_t thandle);
-
-#ifdef __cplusplus
-}
-#endif

@@ -57,7 +57,7 @@ public:
             uint8_t  span;
             uint8_t  chunkIndex;
             uint32_t crc32;
-            char     key[NVS_KEY_NAME_MAX_SIZE];
+            char     key[16];
             union {
                 struct {
                     uint16_t dataSize;

@@ -1,7 +1,6 @@
-import re
-
-import ttfw_idf
 from tiny_test_fw import Utility
+import ttfw_idf
+import re
 
 
 @ttfw_idf.idf_example_test(env_tag='UT_T1_SDMODE')

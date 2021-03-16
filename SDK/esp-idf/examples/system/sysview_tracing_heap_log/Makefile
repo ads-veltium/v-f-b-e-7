@@ -6,3 +6,4 @@
 PROJECT_NAME := sysview_tracing_heap_log
 
 include $(IDF_PATH)/make/project.mk
+

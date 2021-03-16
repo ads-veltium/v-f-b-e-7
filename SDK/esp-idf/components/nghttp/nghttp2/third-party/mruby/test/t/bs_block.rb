@@ -336,7 +336,7 @@ end
 
 assert('BS Block 28') do
   assert_equal(10) do
-    3.times{
+    3.times{|bl|
       break 10
     }
   end
@@ -408,43 +408,42 @@ assert('BS Block 32') do
 end
 
 assert('BS Block [ruby-core:14395]') do
-  assert_nothing_raised do
-    class Controller
-      def respond_to(&block)
-        responder = Responder.new
-        block.call(responder)
-        responder.respond
-      end
-      def test_for_bug
-        respond_to{|format|
-          format.js{
-            "in test"
-            render{|obj|
-              obj
-            }
+  class Controller
+    def respond_to(&block)
+      responder = Responder.new
+      block.call(responder)
+      responder.respond
+    end
+    def test_for_bug
+      respond_to{|format|
+        format.js{
+          "in test"
+          render{|obj|
+            obj
           }
         }
-      end
-      def render(&block)
-        "in render"
-      end
+      }
     end
-    class Responder
-      def method_missing(symbol, &block)
-        "enter method_missing"
-        @response = Proc.new{
-          'in method missing'
-          block.call
-        }
-        "leave method_missing"
-      end
-      def respond
-        @response.call
-      end
+    def render(&block)
+      "in render"
     end
-    t = Controller.new
-    t.test_for_bug
   end
+
+  class Responder
+    def method_missing(symbol, &block)
+      "enter method_missing"
+      @response = Proc.new{
+        'in method missing'
+        block.call
+      }
+      "leave method_missing"
+    end
+    def respond
+      @response.call
+    end
+  end
+  t = Controller.new
+  assert_true t.test_for_bug
 end
 
 assert("BS Block 33") do

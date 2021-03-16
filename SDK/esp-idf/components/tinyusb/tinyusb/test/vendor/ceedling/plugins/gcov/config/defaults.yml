@@ -11,7 +11,6 @@
       - -I"$": COLLECTION_PATHS_TEST_TOOLCHAIN_INCLUDE
       - -D$: COLLECTION_DEFINES_TEST_AND_VENDOR
       - -DGCOV_COMPILER
-      - -DCODE_COVERAGE
       - -c "${1}"
       - -o "${2}"
   :gcov_linker:
@@ -21,7 +20,6 @@
       - -ftest-coverage
       - ${1}
       - -o ${2}
-      - ${3}
   :gcov_fixture:
     :executable: ${1}
   :gcov_report:
@@ -38,8 +36,9 @@
     :arguments:
         - -p
         - -b
-        - ${1}
+        - -e "${1}"
         - --html
+        - -r .
         - -o GcovCoverageResults.html
   :gcov_post_report_basic:
     :executable: gcovr
@@ -47,8 +46,9 @@
     :arguments:
         - -p
         - -b
-        - ${1}
+        - -e "${1}"
         - --html
+        - -r .
         - -o  "$": GCOV_ARTIFACTS_FILE
   :gcov_post_report_advanced:
     :executable: gcovr
@@ -56,18 +56,11 @@
     :arguments:
         - -p
         - -b
-        - ${1}
+        - -e "${1}"
         - --html
         - --html-details
+        - -r .
         - -o  "$": GCOV_ARTIFACTS_FILE
-  :gcov_post_report_xml:
-    :executable: gcovr
-    :optional: TRUE
-    :arguments:
-        - -p
-        - -b
-        - ${1}
-        - --xml
-        - -o  "$": GCOV_ARTIFACTS_FILE_XML
+
 
 ...

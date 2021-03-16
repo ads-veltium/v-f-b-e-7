@@ -72,9 +72,9 @@ function run_tests()
     print_status "Updating component source file rebuilds component"
     # touch a file & do a build
     take_build_snapshot
-    touch ${IDF_PATH}/components/esp_system/port/cpu_start.c
+    touch ${IDF_PATH}/components/esp32/cpu_start.c
     idf.py build || failure "Failed to partial build"
-    assert_rebuilt ${APP_BINS} esp-idf/esp_system/libesp_system.a esp-idf/esp_system/CMakeFiles/${IDF_COMPONENT_PREFIX}_esp_system.dir/port/cpu_start.c.obj
+    assert_rebuilt ${APP_BINS} esp-idf/esp32/libesp32.a esp-idf/esp32/CMakeFiles/${IDF_COMPONENT_PREFIX}_esp32.dir/cpu_start.c.obj
     assert_not_rebuilt esp-idf/lwip/liblwip.a esp-idf/freertos/libfreertos.a ${BOOTLOADER_BINS} ${PARTITION_BIN}
 
     print_status "Bootloader source file rebuilds bootloader"
@@ -109,12 +109,12 @@ function run_tests()
 	echo "project-version-2.0(012345678901234567890123456789)" > ${TESTDIR}/template/version.txt
 	idf.py build || failure "Failed to rebuild with changed app version"
     assert_rebuilt ${APP_BINS}
-    assert_not_rebuilt ${BOOTLOADER_BINS} esp-idf/esp_system/libesp_system.a
+    assert_not_rebuilt ${BOOTLOADER_BINS} esp-idf/esp32/libesp32.a
 
     print_status "Re-building does not change app.bin"
     take_build_snapshot
     idf.py build
-    assert_not_rebuilt ${APP_BINS} ${BOOTLOADER_BINS} esp-idf/esp_system/libesp_system.a
+    assert_not_rebuilt ${APP_BINS} ${BOOTLOADER_BINS} esp-idf/esp32/libesp32.a
     rm -f ${IDF_PATH}/version.txt
     rm -f ${TESTDIR}/template/version.txt
 
@@ -138,13 +138,6 @@ function run_tests()
     rm -f sdkconfig.defaults
     rm -f sdkconfig
     rm -f ${TESTDIR}/template/version.txt
-
-    print_status "Use IDF version variables in component CMakeLists.txt file"
-    clean_build_dir
-    (echo -e "if (NOT IDF_VERSION_MAJOR)\n message(FATAL_ERROR \"IDF version not set\")\n endif()" \
-        && cat main/CMakeLists.txt) > main/CMakeLists.new && mv main/CMakeLists.new main/CMakeLists.txt
-    idf.py reconfigure || failure "Failed to use IDF_VERSION_MAJOR in component CMakeLists.txt"
-    git checkout -- main/CMakeLists.txt
 
     print_status "Moving BUILD_DIR_BASE out of tree"
     clean_build_dir
@@ -225,9 +218,9 @@ function run_tests()
     assert_rebuilt config/sdkconfig.h
     # pick one each of .c, .cpp, .S that #includes sdkconfig.h
     # and therefore should rebuild
-    assert_rebuilt esp-idf/newlib/CMakeFiles/${IDF_COMPONENT_PREFIX}_newlib.dir/newlib_init.c.obj
+    assert_rebuilt esp-idf/newlib/CMakeFiles/${IDF_COMPONENT_PREFIX}_newlib.dir/syscall_table.c.obj
     assert_rebuilt esp-idf/nvs_flash/CMakeFiles/${IDF_COMPONENT_PREFIX}_nvs_flash.dir/src/nvs_api.cpp.obj
-    assert_rebuilt esp-idf/freertos/CMakeFiles/${IDF_COMPONENT_PREFIX}_freertos.dir/port/xtensa/xtensa_vectors.S.obj
+    assert_rebuilt esp-idf/freertos/CMakeFiles/${IDF_COMPONENT_PREFIX}_freertos.dir/xtensa/xtensa_vectors.S.obj
     mv sdkconfig.bak sdkconfig
 
     print_status "Updating project CMakeLists.txt triggers full recompile"
@@ -240,9 +233,9 @@ function run_tests()
     idf.py build || failure "Build failed"
     mv CMakeLists.bak CMakeLists.txt
     # similar to previous test
-    assert_rebuilt esp-idf/newlib/CMakeFiles/${IDF_COMPONENT_PREFIX}_newlib.dir/newlib_init.c.obj
+    assert_rebuilt esp-idf/newlib/CMakeFiles/${IDF_COMPONENT_PREFIX}_newlib.dir/syscall_table.c.obj
     assert_rebuilt esp-idf/nvs_flash/CMakeFiles/${IDF_COMPONENT_PREFIX}_nvs_flash.dir/src/nvs_api.cpp.obj
-    assert_rebuilt esp-idf/freertos/CMakeFiles/${IDF_COMPONENT_PREFIX}_freertos.dir/port/xtensa/xtensa_vectors.S.obj
+    assert_rebuilt esp-idf/freertos/CMakeFiles/${IDF_COMPONENT_PREFIX}_freertos.dir/xtensa/xtensa_vectors.S.obj
     mv sdkconfig.bak sdkconfig
 
     print_status "Can build with Ninja (no idf.py)"
@@ -743,21 +736,6 @@ endmenu\n" >> ${IDF_PATH}/Kconfig
     assert_built ${APP_BINS} ${BOOTLOADER_BINS} ${PARTITION_BIN} "dfu.bin"
     rm -rf build sdkconfig
 
-    print_status "UF2 build works"
-    rm -f -r build sdkconfig
-    idf.py uf2 &> tmp.log
-    grep "build/uf2.bin\" has been written." tmp.log || (tail -n 100 tmp.log ; failure "UF2 build works for esp32")
-    assert_built ${APP_BINS} ${BOOTLOADER_BINS} ${PARTITION_BIN} "uf2.bin"
-    idf.py uf2-app &> tmp.log
-    grep "build/uf2-app.bin\" has been written." tmp.log || (tail -n 100 tmp.log ; failure "UF2 build works for application binary")
-    assert_built "uf2-app.bin"
-    idf.py set-target esp32s2
-    idf.py uf2 &> tmp.log
-    grep "build/uf2.bin\" has been written." tmp.log || (tail -n 100 tmp.log ; failure "UF2 build works for esp32s2")
-    rm tmp.log
-    assert_built ${APP_BINS} ${BOOTLOADER_BINS} ${PARTITION_BIN} "uf2.bin"
-    rm -rf build sdkconfig
-
     print_status "Loadable ELF build works"
     echo "CONFIG_APP_BUILD_TYPE_ELF_RAM=y" > sdkconfig
     idf.py reconfigure || failure "Couldn't configure for loadable ELF file"
@@ -776,57 +754,6 @@ endmenu\n" >> ${IDF_PATH}/Kconfig
     mv CMakeLists.txt.bak CMakeLists.txt
     rm -rf build
     popd
-
-    print_status "Getting component overriden dir"
-    clean_build_dir
-    mkdir -p components/esp32
-    echo "idf_component_get_property(overriden_dir \${COMPONENT_NAME} COMPONENT_OVERRIDEN_DIR)" >> components/esp32/CMakeLists.txt
-    echo "message(STATUS overriden_dir:\${overriden_dir})" >> components/esp32/CMakeLists.txt
-    (idf.py reconfigure | grep "overriden_dir:$IDF_PATH/components/esp32") || failure  "Failed to get overriden dir" # no registration, overrides registration as well
-    print_status "Overriding Kconfig"
-    echo "idf_component_register(KCONFIG \${overriden_dir}/Kconfig)" >> components/esp32/CMakeLists.txt
-    echo "idf_component_get_property(kconfig \${COMPONENT_NAME} KCONFIG)" >> components/esp32/CMakeLists.txt
-    echo "message(STATUS kconfig:\${overriden_dir}/Kconfig)" >> components/esp32/CMakeLists.txt
-    (idf.py reconfigure | grep "kconfig:$IDF_PATH/components/esp32/Kconfig") || failure  "Failed to verify original `main` directory"
-    rm -rf components
-
-    print_status "Create project using idf.py and build it"
-    echo "Trying to create project."
-    (idf.py -C projects create-project temp_test_project) || failure "Failed to create the project."
-    cd "$IDF_PATH/projects/temp_test_project"
-    echo "Building the project temp_test_project . . ."
-    idf.py build || failure "Failed to build the project."
-    cd "$IDF_PATH"
-    rm -rf "$IDF_PATH/projects/temp_test_project"
-
-    print_status "Create component using idf.py, create project using idf.py."
-    print_status "Add the component to the created project and build the project."
-    echo "Trying to create project . . ."
-    (idf.py -C projects create-project temp_test_project) || failure "Failed to create the project."
-    echo "Trying to create component . . ."
-    (idf.py -C components create-component temp_test_component) || failure "Failed to create the component."
-    ${SED} -i '5i\\tfunc();' "$IDF_PATH/projects/temp_test_project/main/temp_test_project.c"
-    ${SED} -i '5i#include "temp_test_component.h"' "$IDF_PATH/projects/temp_test_project/main/temp_test_project.c"
-    cd "$IDF_PATH/projects/temp_test_project"
-    idf.py build || failure "Failed to build the project."
-    cd "$IDF_PATH"
-    rm -rf "$IDF_PATH/projects/temp_test_project"
-    rm -rf "$IDF_PATH/components/temp_test_component"
-
-    print_status "Check that command for creating new project will fail if the target folder is not empty."
-    mkdir "$IDF_PATH/example_proj/"
-    touch "$IDF_PATH/example_proj/tmp_130698"
-    EXPECTED_EXIT_VALUE=3
-    expected_failure $EXPECTED_EXIT_VALUE idf.py create-project --path "$IDF_PATH/example_proj/" temp_test_project  || failure "Command exit value is wrong."
-    rm -rf "$IDF_PATH/example_proj/"
-
-    print_status "Check that command for creating new project will fail if the target path is file."
-    touch "$IDF_PATH/example_proj"
-    EXPECTED_EXIT_VALUE=4
-    expected_failure $EXPECTED_EXIT_VALUE idf.py create-project --path "$IDF_PATH/example_proj" temp_test_project || failure "Command exit value is wrong."
-    rm -rf "$IDF_PATH/example_proj"
-
-
 
     print_status "All tests completed"
     if [ -n "${FAILURES}" ]; then
@@ -850,15 +777,6 @@ function failure()
     echo "FAILURE: $1"
     echo "!!!!!!!!!!!!!!!!!!!"
     FAILURES="${FAILURES}${STATUS} :: $1\n"
-}
-
-function expected_failure() {
-    "${@:2}"
-    EXIT_VALUE=$?
-    if [ $EXIT_VALUE != "$1" ]; then
-        echo "[ERROR] Exit value of executed command is $EXIT_VALUE (expected $1)"; return 1
-    else return 0
-    fi
 }
 
 TESTDIR=${PWD}/build_system_tests_$$

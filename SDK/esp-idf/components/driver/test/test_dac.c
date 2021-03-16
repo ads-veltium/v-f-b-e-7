@@ -4,6 +4,7 @@
 #include "esp_system.h"
 
 #include "driver/adc.h"
+#include "driver/dac.h"
 #include "unity.h"
 #include "esp_system.h"
 #include "esp_event.h"
@@ -13,8 +14,6 @@
 #include "test_utils.h"
 #include "driver/i2s.h"
 
-#if !DISABLED_FOR_TARGETS(ESP32C3) && !TEMPORARY_DISABLED_FOR_TARGETS(ESP32S3)
-#include "driver/dac.h"
 #include "esp_adc_cal.h"
 
 static const char *TAG = "test_dac";
@@ -136,16 +135,13 @@ static bool subtest_adc_dac(int mV_ref, esp_adc_cal_characteristics_t * chars)
     int raw;
     adc2_get_raw((adc2_channel_t)ADC_TEST_CHANNEL_NUM, ADC_WIDTH_BIT_13, &raw);
     uint32_t voltage = esp_adc_cal_raw_to_voltage(raw, chars);
-    TEST_ASSERT_INT_WITHIN( 200, mV_ref, voltage ); // 200 mV error allowance, because both DAC and ADC have error
+    TEST_ASSERT_INT_WITHIN( 120, mV_ref, voltage ); // 120 mV error allowance, because both DAC and ADC have error
     return true;
 }
 
 TEST_CASE("esp32s2 adc2-dac with adc2 calibration", "[adc-dac]")
 {
     gpio_num_t adc_gpio_num, dac_gpio_num;
-    if (esp_adc_cal_check_efuse(ESP_ADC_CAL_VAL_EFUSE_TP) != ESP_OK) {
-        TEST_IGNORE_MESSAGE("Warning: This esp32s2 board does not support calibration. This test will be skipped.\n");
-    }
     TEST_ESP_OK( adc2_pad_get_io_num( ADC_TEST_CHANNEL_NUM, &adc_gpio_num ) );
     TEST_ESP_OK( dac_pad_get_io_num( DAC_TEST_CHANNEL_NUM, &dac_gpio_num ) );
     printf("Please connect ADC2 CH%d-GPIO%d <--> DAC CH%d-GPIO%d.\n", ADC_TEST_CHANNEL_NUM, adc_gpio_num,
@@ -164,7 +160,7 @@ TEST_CASE("esp32s2 adc2-dac with adc2 calibration", "[adc-dac]")
     adc2_config_channel_atten((adc2_channel_t)ADC_TEST_CHANNEL_NUM, ADC_ATTEN_DB_2_5);
     esp_adc_cal_characterize(ADC_UNIT_2, ADC_ATTEN_DB_2_5, ADC_WIDTH_BIT_13, 0, &chars);
     printf("a %d, b %d\n", chars.coeff_a, chars.coeff_b);
-    subtest_adc_dac(1100, &chars);
+     subtest_adc_dac(1100, &chars);
 
     printf("Test 6dB atten...\n");
     adc2_config_channel_atten((adc2_channel_t)ADC_TEST_CHANNEL_NUM, ADC_ATTEN_DB_6);
@@ -181,5 +177,3 @@ TEST_CASE("esp32s2 adc2-dac with adc2 calibration", "[adc-dac]")
     subtest_adc_dac(2500, &chars);
 }
 #endif
-
-#endif // !DISABLED_FOR_TARGETS(ESP32C3) && !TEMPORARY_DISABLED_FOR_TARGETS(ESP32S3)

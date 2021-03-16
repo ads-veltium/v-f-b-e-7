@@ -2,15 +2,7 @@
 快速入门
 ***********
 
-{IDF_TARGET_CORE_NUM:default="2", esp32="2", esp32s2="1", esp32c3="1"}
-
-{IDF_TARGET_FEATURES:default="WiFi/BT/BLE, silicon revision 1, 2MB external flash", esp32="WiFi/BT/BLE, silicon revision 1, 2MB external flash", esp32s2="WiFi, silicon revision 0, 2MB external flash", esp32c3="WiFi/BLE, silicon revision 0, 2MB external flash"}
-
-{IDF_TARGET_HEAP_SIZE:default="298968", esp32="298968", esp32s2="253900", esp32c3="337332"}
-
 :link_to_translation:`en:[English]`
-
-.. 请保证 README.md 文件与该文件保持同步
 
 本文档旨在指导用户搭建 {IDF_TARGET_NAME} 硬件开发的软件环境，通过一个简单的示例展示如何使用 ESP-IDF (Espressif IoT Development Framework) 配置菜单，并编译、下载固件至 {IDF_TARGET_NAME} 开发板等步骤。
 
@@ -24,8 +16,8 @@
     ESP32 SoC 芯片支持以下功能：
 
     * 2.4 GHz Wi-Fi
-    * 蓝牙
-    * 高性能 Xtensa® 32 位 LX6 双核处理器
+    * 蓝牙 4.2
+    * 高性能双核
     * 超低功耗协处理器
     * 多种外设
 
@@ -34,21 +26,11 @@
     ESP32-S2 SoC 芯片支持以下功能：
 
     * 2.4 GHz Wi-Fi
-    * 高性能 Xtensa® 32 位 LX7 单核处理器
+    * 高性能单核
     * 运行 RISC-V 或 FSM 内核的超低功耗协处理器
     * 多种外设
     * 内置安全硬件
     * USB OTG 接口
-
-.. only:: esp32c3
-
-    ESP32-C3 SoC 芯片支持以下功能：
-
-    * 2.4 GHz Wi-Fi
-    * 低能耗蓝牙
-    * 高性能 32 位 RISC-V 单核处理器
-    * 多种外设
-    * 内置安全硬件
 
 {IDF_TARGET_NAME} 采用 40 nm 工艺制成，具有最佳的功耗性能、射频性能、稳定性、通用性和可靠性，适用于各种应用场景和不同功耗需求。
 
@@ -60,8 +42,8 @@
 硬件：
 
 * 一款 **{IDF_TARGET_NAME}** 开发板
-* **USB 数据线**  (A 转 Micro-B)
-* 电脑（Windows、Linux 或 Mac OS）
+* **USB 数据线**  （A 转 Micro-B）
+* 电脑（Windows、Linux 或 mac OS）
 
 软件：
 
@@ -76,6 +58,7 @@
     * `Eclipse 插件 <https://github.com/espressif/idf-eclipse-plugin>`_ (`安装 <https://github.com/espressif/idf-eclipse-plugin#installing-idf-plugin-using-update-site-url>`__)
     * `VS Code 插件 <https://github.com/espressif/vscode-esp-idf-extension>`_ (`安装 <https://github.com/espressif/vscode-esp-idf-extension/blob/master/docs/ONBOARDING.md>`__)
 
+
 .. figure:: ../../_static/what-you-need.png
     :align: center
     :alt: {IDF_TARGET_NAME} 应用程序开发
@@ -87,7 +70,7 @@
 开发板简介
 ===========================
 
-请点击下方连接，了解有关开发板的详细信息。
+请点击下方连接，了解有关具体开发板的详细信息。
 
 .. only:: esp32
 
@@ -99,9 +82,6 @@
         ESP32-PICO-KIT <../hw-reference/esp32/get-started-pico-kit>
         ESP32-Ethernet-Kit <../hw-reference/esp32/get-started-ethernet-kit>
         ESP32-DevKit-S(-R) <../hw-reference/esp32/user-guide-devkits-r-v1.1>
-        ESP32-PICO-KIT-1 <../hw-reference/esp32/get-started-pico-kit-1>
-        ESP32-PICO-DevKitM-2 <../hw-reference/esp32/get-started-pico-devkitm-2>
-        ESP32-DevKitM-1 <../hw-reference/esp32/user-guide-devkitm-1>
 
 .. only:: esp32s2
 
@@ -109,15 +89,7 @@
         :maxdepth: 1
 
         ESP32-S2-Saola-1 <../hw-reference/esp32s2/user-guide-saola-1-v1.2>
-        ESP32-S2-DevKitM-1(U) <../hw-reference/esp32s2/user-guide-devkitm-1-v1>
         ESP32-S2-Kaluga-Kit <../hw-reference/esp32s2/user-guide-esp32-s2-kaluga-1-kit>
-
-.. only:: esp32c3
-
-    .. toctree::
-        :maxdepth: 1
-
-        ESP32-C3-DevKitM-1 <../hw-reference/esp32c3/user-guide-devkitm-1>
 
 .. _get-started-step-by-step:
 
@@ -162,7 +134,7 @@
 +-------------------+-------------------+-------------------+
 | |windows-logo|    | |linux-logo|      | |macos-logo|      |
 +-------------------+-------------------+-------------------+
-| `Windows`_        | `Linux`_          | `macOS`_          |
+| `Windows`_        | `Linux`_          | `mac OS`_         |
 +-------------------+-------------------+-------------------+
 
 .. |windows-logo| image:: ../../_static/windows-logo.png
@@ -176,13 +148,10 @@
 
 .. _Windows: ../get-started/windows-setup.html
 .. _Linux: ../get-started/linux-setup.html
-.. _macOS: ../get-started/macos-setup.html
-
-.. note::
-
-    在本文档中，Linux 和 macOS 操作系统中 ESP-IDF 的默认安装路径为 ``~/esp``；Windows 操作系统中的默认安装路径为 ``%userprofile%\esp``。您也可以将 ESP-IDF 安装在任何其他路径下，但请注意在使用命令行时进行相应替换。注意，ESP-IDF 不支持带有空格的路径。
+.. _mac OS: ../get-started/macos-setup.html
 
 .. _get-started-get-esp-idf:
+
 
 第二步：获取 ESP-IDF
 =================================
@@ -191,10 +160,14 @@
 
 获取 ESP-IDF 的本地副本：打开终端，切换到您要保存 ESP-IDF 的工作目录，使用 ``git clone`` 命令克隆远程仓库。针对不同操作系统的详细步骤，请见下文。
 
+.. note::
+
+    在本文档中，Linux 和 macOS 操作系统中 ESP-IDF 的默认安装路径为 ``~/esp``；Windows 操作系统的默认路径为 ``%userprofile%\esp``。您也可以将 ESP-IDF 安装在任何其他路径下，但请注意在使用命令行时进行相应替换。注意，ESP-IDF 不支持带有空格的路径。
+
 Linux 和 macOS 操作系统
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-打开终端，后运行以下命令：
+打开终端后运行以下命令：
 
 .. include-build-file:: inc/git-clone-bash.inc
 
@@ -245,44 +218,14 @@ Linux 和 macOS 操作系统
     cd ~/esp/esp-idf
     ./install.sh
 
-下载工具备选方案
-~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-ESP-IDF 工具安装器会下载 Github 发布版本中附带的一些工具，如果访问 Github 较为缓慢，则可以设置一个环境变量，实现优先选择 Espressif 的下载服务器进行 Github 资源下载。
-
-.. 注解:: 该设置只影响从 Github 发布版本中下载的单个工具，它并不会改变访问任何 Git 仓库的 URL。
-
-Windows 操作系统
------------------
-
-如果希望在运行 ESP-IDF 工具安装器或在使用命令行安装工具时优先选择 Espressif 下载服务器，可通过以下方式设置：打开系统控制面板，然后点击高级设置，添加一个新的环境变量（类型为用户或系统都可以，名称为 ``IDF_GITHUB_ASSETS``，值为 ``dl.espressif.com/github_assets``），最后点击确定。
-
-如果在添加新的环境变量前命令行窗口或 ESP-IDF 工具安装器窗口已经打开，请关闭这些窗口后重新打开。
-
-当设置好这个新的环境变量后，ESP-IDF 工具安装器以及命令行安装程序将会优先选择 Espressif 下载服务器。
-
-.. 在 ESP-IDF 工具安装器的二进制文件更新后（导入复选框），这段需要重新更新
-
-Linux 和 macOS 操作系统
---------------------------
-
-要在安装工具时优先选择 Espressif 下载服务器，请在运行 ``install.sh`` 时使用以下命令：
-
-.. code-block:: bash
-
-    cd ~/esp/esp-idf
-    export IDF_GITHUB_ASSETS="dl.espressif.com/github_assets"
-    ./install.sh
-
 自定义工具安装路径
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-本步骤中介绍的脚本将 ESP-IDF 所需的编译工具默认安装在用户的根目录中，即 Linux 和 macOS 系统中的 ``$HOME/.espressif`` 和 Windows 系统的 ``%USERPROFILE%\.espressif``。此外，您可以将工具安装到其他目录中，但请在运行安装脚本前，重新设置环境变量 ``IDF_TOOLS_PATH``。注意，请确保您的用户已经具备了读写该路径的权限。
+本步骤中介绍的脚本将 ESP-IDF 所需的编译工具默认安装在用户根文件夹中，即 Linux 和 macOS 系统中的 ``$HOME/.espressif`` 和 Windows 系统的 ``%USERPROFILE%\.espressif``。您也可以选择将工具安装到其他目录中，但请在运行安装脚本前，重新设置环境变量 ``IDF_TOOLS_PATH``。注意，请确保您的用户已经具备了读写该路径的权限。
 
-如果修改了 ``IDF_TOOLS_PATH`` 变量，请确保该变量在每次执行安装脚本 (``install.bat``、``install.ps1`` 或 ``install.sh``) 和导出脚本 (``export.bat``、``export.ps1`` 或 ``export.sh``) 均保持一致。
+如果修改了 ``IDF_TOOLS_PATH`` 变量，请确保该变量在每次执行“安装脚本” （``install.bat``、``install.ps1`` 或 ``install.sh``）和导出脚本 （``export.bat``、``export.ps1`` 或 ``export.sh``）时均保持一致。
 
 .. _get-started-set-up-env:
-
 
 第四步：设置环境变量
 =======================================
@@ -306,22 +249,14 @@ Windows 安装器（:ref:`get-started-windows-tools-installer` ）可在“开�
 
     .$HOME/esp/esp-idf/export.ps1
 
-.. _get-started-export:
-
 Linux 和 macOS 操作系统
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-请在需要运行 ESP-IDF 的终端窗口运行以下命令：
+请在您需要运行 ESP-IDF 的“命令提示符”窗口运行以下命令：
 
 .. code-block:: bash
 
     . $HOME/esp/esp-idf/export.sh
-
-对于 fish shell（仅支持 fish 3.0.0 及以上版本），请运行以下命令：
-
-.. code-block:: bash
-
-    . $HOME/esp/esp-idf/export.fish
 
 注意，命令开始的 "." 与路径之间应有一个空格！
 
@@ -346,7 +281,7 @@ Linux 和 macOS 操作系统
 
 现在，您可以开始准备开发 {IDF_TARGET_NAME} 应用程序了。您可以从 ESP-IDF 中 :idf:`examples` 目录下的 :example:`get-started/hello_world` 工程开始。
 
-将 :example:`get-started/hello_world` 工程复制至您本地的 ``~/esp`` 目录下：
+将 :example:`get-started/hello_world` 复制至您本地的 ``~/esp`` 目录下：
 
 Linux 和 macOS 操作系统
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -369,8 +304,6 @@ ESP-IDF 的 :idf:`examples` 目录下有一系列示例工程，都可以按照�
 .. important::
 
     ESP-IDF 编译系统不支持带有空格的路径。
-
-
 
 .. _get-started-connect:
 
@@ -417,7 +350,7 @@ Windows 操作系统
     idf.py set-target {IDF_TARGET_PATH_NAME}
     idf.py menuconfig
 
-打开一个新项目后，应首先设置“目标”芯片 ``idf.py set-target {IDF_TARGET_PATH_NAME}``。注意，此操作将清除并初始化项目之前的编译和配置（如有）。 您也可以直接将“目标”配置为环境变量（此时可跳过该步骤）。更多信息，请见 :ref:`selecting-idf-target`。
+打开一个新项目后，应首先设置“目标”芯片 ``idf.py set-target {IDF_TARGET_PATH_NAME}``。注意，此操作将清除并初始化项目之前的编译和配置（如有）。 您也可以直接将“目标”配置为环境变量（则可跳过该步骤）。更多信息，请见 :ref:`selecting-idf-target`。
 
 如果之前的步骤都正确，则会显示下面的菜单：
 
@@ -426,7 +359,7 @@ Windows 操作系统
     :alt: 工程配置 — 主窗口
     :figclass: align-center
 
-    工程配置 — 主窗口
+工程配置 — 主窗口
 
 您可以通过此菜单设置项目的具体变量，包括 Wi-Fi 网络名称、密码和处理器速度等. ``hello_world`` 示例项目会以默认配置运行，因此可以跳过使用 ``menuconfig`` 进行项目配置这一步骤。
 
@@ -442,13 +375,10 @@ Windows 操作系统
 
 .. _get-started-build:
 
-
 第八步：编译工程
 =========================
 
-请使用以下命令，编译烧录工程：
-
-.. code-block:: batch
+请使用以下命令，编译烧录工程：::
 
     idf.py build
 
@@ -456,23 +386,23 @@ Windows 操作系统
 
 .. code-block:: none
 
-    $ idf.py build
-    Running cmake in directory /path/to/hello_world/build
-    Executing "cmake -G Ninja --warn-uninitialized /path/to/hello_world"...
-    Warn about uninitialized values.
-    -- Found Git:/usr/bin/git (found version "2.17.0")
-    -- Building empty aws_iot component due to configuration
-    -- Component names: ...
-    -- Component paths: ...
+   $ idf.py build
+   Running cmake in directory /path/to/hello_world/build
+   Executing "cmake -G Ninja --warn-uninitialized /path/to/hello_world"...
+   Warn about uninitialized values.
+   -- Found Git: /usr/bin/git (found version "2.17.0")
+   -- Building empty aws_iot component due to configuration
+   -- Component names: ...
+   -- Component paths: ...
 
-    ... (more lines of build system output)
+   ... (more lines of build system output)
 
-    [527/527] Generating hello-world.bin
-    esptool.py v2.3.1
+   [527/527] Generating hello-world.bin
+   esptool.py v2.3.1
 
-    Project build complete. To flash, run this command:
-    ../../../components/esptool_py/esptool/esptool.py -p (PORT) -b 921600 write_flash --flash_mode dio --flash_size detect --flash_freq 40m 0x10000 build/hello-world.bin  build 0x1000 build/bootloader/bootloader.bin 0x8000 build/partition_table/partition-table.bin
-    or run 'idf.py -p PORT flash'
+   Project build complete. To flash, run this command:
+   ../../../components/esptool_py/esptool/esptool.py -p (PORT) -b 921600 write_flash --flash_mode dio --flash_size detect --flash_freq 40m 0x10000 build/hello-world.bin  build 0x1000 build/bootloader/bootloader.bin 0x8000 build/partition_table/partition-table.bin
+   or run 'idf.py -p PORT flash'
 
 如果一切正常，编译完成后将生成 .bin 文件。
 
@@ -482,11 +412,9 @@ Windows 操作系统
 第九步：烧录到设备
 =============================
 
-请使用以下命令，将刚刚生成的二进制文件 (bootloader.bin, partition-table.bin 和 hello-world.bin) 烧录至您的 {IDF_TARGET_NAME} 开发板：
+请使用以下命令，将刚刚生成的二进制文件烧录（bootloader.bin, partition-table.bin 和 hello-world.bin）至您的 {IDF_TARGET_NAME} 开发板：
 
-.. code-block:: bash
-
-    idf.py -p PORT [-b BAUD] flash
+    ``idf.py -p PORT [-b BAUD] flash``
 
 请将 PORT 替换为 {IDF_TARGET_NAME} 开发板的串口名称，具体可见 :ref:`get-started-connect`。
 
@@ -501,22 +429,21 @@ Windows 操作系统
 
 烧录过程中可能遇到的问题
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-{IDF_TARGET_STRAP_GPIO:default="GPIO0", esp32="GPIO0", esp32s2="GPIO0", esp32c3="GPIO9"}
 
-如果在运行给定命令时出现如“连接失败”这样的错误，原因之一则可能是运行 ``esptool.py`` 出现错误。``esptool.py`` 是构建系统调用的程序，用于重置芯片、与 ROM 引导加载器交互以及烧录固件的工具。解决该问题的一个简单的方法就是按照以下步骤进行手动复位。如果问题仍未解决，请参考 `Troubleshooting <https://github.com/espressif/esptool#bootloader-wont-respond>`_ 获取更多信息。
+如果在运行给定命令时出现如“连接失败”这样的错误，原因之一则可能是运行 ``esptool.py`` 出现错误。``esptool.py`` 是编译系统调用的程序，用于重置芯片、与 ROM 引导加载器交互以及烧录固件的工具。解决该问题的一个简单的方法就是按照以下步骤进行手动复位。如果问题仍未解决，请参考 `Troubleshooting <https://github.com/espressif/esptool#bootloader-wont-respond>`_ 获取更多信息。
 
-``esptool.py`` 通过使 USB 转串口转接器芯片（如 FTDI 或 CP210x）的 DTR 和 RTS 控制线生效来自动复位 {IDF_TARGET_NAME}（请参考 :doc:`establish-serial-connection` 获取更多详细信息)。DTR 和 RTS 控制线又连接到 {IDF_TARGET_NAME} 的 ``{IDF_TARGET_STRAP_GPIO}`` 和 ``CHIP_PU`` (EN) 管脚上，因此 DTR 和 RTS 的电压电平变化会使 {IDF_TARGET_NAME} 进入固件下载模式。相关示例可查看 ESP32 DevKitC 开发板的 `原理图 <https://dl.espressif.com/dl/schematics/esp32_devkitc_v4-sch-20180607a.pdf>`_。
+
+``esptool.py`` 通过使 USB 转串口转接器芯片（如 FTDI 或 CP210x）的 DTR 和 RTS 控制线生效来自动复位 {IDF_TARGET_NAME}（请参考 :doc:`establish-serial-connection` 获取更多详细信息)。DTR 和 RTS 控制线又连接到 {IDF_TARGET_NAME} 的 ``GPIO0`` 和 ``CHIP_PU`` (EN) 管脚上，因此 DTR 和 RTS 的电压水平变化会使 {IDF_TARGET_NAME} 进入固件下载模式。相关示例可查看 ESP32 DevKitC 开发板的 `原理图 <https://dl.espressif.com/dl/schematics/esp32_devkitc_v4-sch-20180607a.pdf>`_。
 
 一般来说，使用官方的 esp-idf 开发板不会出现问题。但是，``esptool.py`` 在以下情况下不能自动重置硬件。
 
-- 您的硬件没有连接到 ``{IDF_TARGET_STRAP_GPIO}`` 和 ``CIHP_PU`` 的 DTR 和 RTS 控制线。
+- 您的硬件没有连接到 ``GPIO0`` 和 ``CIHP_PU`` 的 DTR 和 RTS 控制线。
 - DTR 和 RTS 控制线的配置方式不同
 - 根本没有这样的串行控制线路
 
 根据您硬件的种类，也可以将您 {IDF_TARGET_NAME} 开发板手动设置成固件下载模式（复位）。
-
-- 对于 Espressif 的开发板，您可以参考对应开发板的入门指南或用户指南。例如，可以通过按住 **Boot** 按钮 (``{IDF_TARGET_STRAP_GPIO}``) 再按住 **EN** 按钮(``CHIP_PU``) 来手动复位 esp-idf 开发板。
-- 对于其他类型的硬件，可以尝试将 ``{IDF_TARGET_STRAP_GPIO}`` 拉低。
+- 对于 Espressif 的开发板，您可以参考对应开发板的入门指南或用户指南。例如，可以通过按住 **Boot** 按钮 (``GPIO0``) 再按住 **EN** 按钮(``CHIP_PU``) 来手动复位 esp-idf 开发板。
+- 对于其他类型的硬件，可以尝试将 ``GPIO0`` 拉低。
 
 
 常规操作
@@ -604,47 +531,6 @@ Windows 操作系统
         Hard resetting via RTS pin...
         Done
 
-.. only:: esp32c3
-
-    .. code-block:: none
-
-        ...
-        esptool.py --chip esp32c3 -p /dev/ttyUSB0 -b 460800 --before=default_reset --after=hard_reset write_flash --flash_mode dio --flash_freq 80m --flash_size 2MB 0x8000 partition_table/partition-table.bin 0x0 bootloader/bootloader.bin 0x10000 hello-world.bin
-        esptool.py v3.0
-        Serial port /dev/ttyUSB0
-        Connecting....
-        Chip is ESP32-C3
-        Features: Wi-Fi
-        Crystal is 40MHz
-        MAC: 7c:df:a1:40:02:a4
-        Uploading stub...
-        Running stub...
-        Stub running...
-        Changing baud rate to 460800
-        Changed.
-        Configuring flash size...
-        Compressed 3072 bytes to 103...
-        Writing at 0x00008000... (100 %)
-        Wrote 3072 bytes (103 compressed) at 0x00008000 in 0.0 seconds (effective 4238.1 kbit/s)...
-        Hash of data verified.
-        Compressed 18960 bytes to 11311...
-        Writing at 0x00000000... (100 %)
-        Wrote 18960 bytes (11311 compressed) at 0x00000000 in 0.3 seconds (effective 584.9 kbit/s)...
-        Hash of data verified.
-        Compressed 145520 bytes to 71984...
-        Writing at 0x00010000... (20 %)
-        Writing at 0x00014000... (40 %)
-        Writing at 0x00018000... (60 %)
-        Writing at 0x0001c000... (80 %)
-        Writing at 0x00020000... (100 %)
-        Wrote 145520 bytes (71984 compressed) at 0x00010000 in 2.3 seconds (effective 504.4 kbit/s)...
-        Hash of data verified.
-
-        Leaving...
-        Hard resetting via RTS pin...
-        Done        
-
-
 如果一切顺利，烧录完成后，开发板将会复位，应用程序 "hello_world" 开始运行。
 
 如果您希望使用 Eclipse 或是 VS Code IDE，而非 ``idf.py``，请参考 :doc:`Eclipse 指南 <eclipse-setup>`，以及 :doc:`VS Code 指南 <vscode-setup>`。
@@ -655,9 +541,9 @@ Windows 操作系统
 第十步：监视器
 ===============
 
-您可以使用 ``idf.py -p PORT monitor`` 命令，监视 “hello_world” 工程的运行情况。注意，不要忘记将 PORT 替换为您的串口名称。
+您可以使用 ``idf.py -p PORT monitor`` 命令，监视 “hello_world” 的运行情况。注意，不要忘记将 PORT 替换为您的串口名称。
 
-运行该命令后，:doc:`IDF 监视器 <../api-guides/tools/idf-monitor>` 应用程序将启动：::
+运行该命令后，:doc:`IDF 监视器 <../api-guides/tools/idf-monitor>` 应用程序将启动::
 
     $ idf.py -p /dev/ttyUSB0 monitor
     Running idf_monitor in directory [...]/esp/hello_world/build
@@ -674,20 +560,19 @@ Windows 操作系统
 
 .. code-block:: none
 
-    	...
-    	Hello world!
-    	Restarting in 10 seconds...
-    	This is {IDF_TARGET_PATH_NAME} chip with {IDF_TARGET_CORE_NUM} CPU core(s), {IDF_TARGET_FEATURES}
-	Minimum free heap size: {IDF_TARGET_HEAP_SIZE} bytes
-    	Restarting in 9 seconds...
-    	Restarting in 8 seconds...
-    	Restarting in 7 seconds...
+    ...
+    Hello world!
+    Restarting in 10 seconds...
+    This is esp32 chip with 2 CPU cores, WiFi/BT/BLE, silicon revision 1, 2MB external flash
+    Restarting in 9 seconds...
+    Restarting in 8 seconds...
+    Restarting in 7 seconds...
 
 您可使用快捷键 ``Ctrl+]``，退出 IDF 监视器。
 
 .. only:: esp32
 
-    如果 IDF 监视器在烧录后很快发生错误，或打印信息全是乱码（如下），很有可能是因为您的开发板采用了 26 MHz 晶振，而 ESP-IDF 默认支持大多数开发板使用的 40 MHz 晶振。
+    如果 IDF 监视器在烧录后很快发生错误，或打印信息全是乱码（见下），很有可能是因为您的开发板采用了 26 MHz 晶振，而 ESP-IDF 默认支持大多数开发板使用的 40 MHz 晶振。
 
     .. figure:: ../../_static/get-started-garbled-output.png
         :align: center
@@ -718,15 +603,14 @@ Windows 操作系统
 
 .. 重要::
 
-	一些示例程序不支持 {IDF_TARGET_NAME}，因为 {IDF_TARGET_NAME} 中不包含所需的硬件。
+    一些示例程序不支持 {IDF_TARGET_NAME}，因为 {IDF_TARGET_NAME} 中不包含所需的硬件。
 
-	在编译示例程序前请查看 README 文件中 ``Supported Targets`` 表格。如果表格中包含 {IDF_TARGET_NAME}， 或者不存在这个表格，那么即表示 {IDF_TARGET_NAME} 支持这个示例程序。
-
+    在编译示例程序前请查看 README 文件中 ``Supported Targets`` 表格。如果表格中包含 {IDF_TARGET_NAME}， 或者不存在这个表格，那么即表示 {IDF_TARGET_NAME} 支持这个示例程序。
 
 更新 ESP-IDF
 ================
 
-乐鑫会不时推出更新版本的 ESP-IDF，修复 bug 或提供新的功能。因此，您在使用时，也应注意更新您本地的版本。最简单的方法是：直接删除您本地的 ``esp-idf`` 文件夹，然后按照 :ref:`get-started-get-esp-idf` 中的指示，重新完成克隆。
+乐鑫会不定期推出更新版本的 ESP-IDF，修复 bug 或提供新的功能。因此，您在使用时，也应注意更新您本地的版本。最简单的方法是：直接删除您本地的 ``esp-idf`` 文件夹，然后按照 :ref:`get-started-get-esp-idf` 中的指示，重新完成克隆。
 
 此外，您可以仅更新变更部分。具体方式，请前往 :ref:`更新 <updating>` 章节查看。
 

@@ -18,7 +18,6 @@ Don't put any other code into this file. */
 
 #include "adc2_wifi_private.h"
 #include "hal/adc_hal.h"
-#include "esp_private/adc_cali.h"
 
 /**
  * @brief Set initial code to ADC2 after calibration. ADC2 RTC and ADC2 PWDET controller share the initial code.
@@ -26,10 +25,7 @@ Don't put any other code into this file. */
  */
 static __attribute__((constructor)) void adc2_init_code_calibration(void)
 {
-    const adc_ll_num_t adc_n = ADC_NUM_2;
-    const adc_atten_t atten = ADC_ATTEN_DB_11;
-    const adc_channel_t channel = 0;
-    adc_cal_offset(adc_n, channel, atten);
+    adc_hal_set_calibration_param(ADC_NUM_2, adc_hal_calibration(ADC_NUM_2, 0, ADC_ATTEN_DB_11, true, false));
 }
 
 /** Don't call `adc2_cal_include` in user code. */

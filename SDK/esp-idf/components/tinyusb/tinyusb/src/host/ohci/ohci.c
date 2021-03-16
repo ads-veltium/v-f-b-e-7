@@ -166,7 +166,7 @@ bool hcd_init(void)
   OHCI_REG->interrupt_disable = OHCI_REG->interrupt_enable; // disable all interrupts
   OHCI_REG->interrupt_status  = OHCI_REG->interrupt_status; // clear current set bits
   OHCI_REG->interrupt_enable  = OHCI_INT_WRITEBACK_DONEHEAD_MASK | OHCI_INT_RESUME_DETECTED_MASK |
-      OHCI_INT_UNRECOVERABLE_ERROR_MASK | OHCI_INT_FRAME_OVERFLOW_MASK | OHCI_INT_RHPORT_STATUS_CHANGE_MASK |
+      OHCI_INT_UNRECOVERABLE_ERROR_MASK | /*OHCI_INT_FRAME_OVERFLOW_MASK |*/ OHCI_INT_RHPORT_STATUS_CHANGE_MASK |
       OHCI_INT_MASTER_ENABLE_MASK;
 
   OHCI_REG->control |= OHCI_CONTROL_CONTROL_BULK_RATIO | OHCI_CONTROL_LIST_CONTROL_ENABLE_MASK |
@@ -180,13 +180,6 @@ bool hcd_init(void)
 
   return true;
 }
-
-uint32_t hcd_uframe_number(uint8_t rhport)
-{
-  (void) rhport;
-  return (ohci_data.frame_number_hi << 16 | OHCI_REG->frame_number) << 3;
-}
-
 
 //--------------------------------------------------------------------+
 // PORT API
@@ -306,11 +299,6 @@ bool hcd_setup_send(uint8_t rhport, uint8_t dev_addr, uint8_t const setup_packet
   return true;
 }
 
-// TODO move around
-static ohci_ed_t * ed_from_addr(uint8_t dev_addr, uint8_t ep_addr);
-static ohci_gtd_t * gtd_find_free(void);
-static void td_insert_to_ed(ohci_ed_t* p_ed, ohci_gtd_t * p_gtd);
-
 bool hcd_edpt_xfer(uint8_t rhport, uint8_t dev_addr, uint8_t ep_addr, uint8_t * buffer, uint16_t buflen)
 {
   (void) rhport;
@@ -334,21 +322,6 @@ bool hcd_edpt_xfer(uint8_t rhport, uint8_t dev_addr, uint8_t ep_addr, uint8_t * 
     p_ed->td_head.address = (uint32_t) p_data;
 
     OHCI_REG->command_status_bit.control_list_filled = 1;
-  }else
-  {
-    ohci_ed_t * p_ed = ed_from_addr(dev_addr, ep_addr);
-    ohci_gtd_t* p_gtd = gtd_find_free();
-
-    TU_ASSERT(p_gtd);
-
-    gtd_init(p_gtd, buffer, buflen);
-    p_gtd->index = p_ed-ohci_data.ed_pool;
-    p_gtd->delay_interrupt = OHCI_INT_ON_COMPLETE_YES;
-
-    td_insert_to_ed(p_ed, p_gtd);
-
-    tusb_xfer_type_t xfer_type = ed_get_xfer_type( ed_from_addr(dev_addr, ep_addr) );
-    if (TUSB_XFER_BULK == xfer_type) OHCI_REG->command_status_bit.bulk_list_filled = 1;
   }
 
   return true;
@@ -357,7 +330,7 @@ bool hcd_edpt_xfer(uint8_t rhport, uint8_t dev_addr, uint8_t ep_addr, uint8_t * 
 //--------------------------------------------------------------------+
 // BULK/INT/ISO PIPE API
 //--------------------------------------------------------------------+
-static ohci_ed_t * ed_from_addr(uint8_t dev_addr, uint8_t ep_addr)
+static inline ohci_ed_t * ed_from_addr(uint8_t dev_addr, uint8_t ep_addr)
 {
   if ( tu_edpt_number(ep_addr) == 0 ) return &ohci_data.control[dev_addr].ed;
 
@@ -375,7 +348,7 @@ static ohci_ed_t * ed_from_addr(uint8_t dev_addr, uint8_t ep_addr)
   return NULL;
 }
 
-static ohci_ed_t * ed_find_free(void)
+static inline ohci_ed_t * ed_find_free(void)
 {
   ohci_ed_t* ed_pool = ohci_data.ed_pool;
 
@@ -619,25 +592,19 @@ static void done_queue_isr(uint8_t hostid)
 
       hcd_event_xfer_complete(p_ed->dev_addr,
                               tu_edpt_addr(p_ed->ep_number, p_ed->pid == OHCI_PID_IN),
-                              xferred_bytes, event, true);
+                              event, xferred_bytes);
     }
 
     td_head = (ohci_td_item_t*) td_head->next;
   }
 }
 
-void hcd_int_handler(uint8_t hostid)
+void hal_hcd_isr(uint8_t hostid)
 {
   uint32_t const int_en     = OHCI_REG->interrupt_enable;
   uint32_t const int_status = OHCI_REG->interrupt_status & int_en;
 
   if (int_status == 0) return;
-
-  // Frame number overflow
-  if ( int_status & OHCI_INT_FRAME_OVERFLOW_MASK )
-  {
-    ohci_data.frame_number_hi++;
-  }
 
   //------------- RootHub status -------------//
   if ( int_status & OHCI_INT_RHPORT_STATUS_CHANGE_MASK )
@@ -652,10 +619,10 @@ void hcd_int_handler(uint8_t hostid)
       {
         // TODO reset port immediately, without this controller will got 2-3 (debouncing connection status change)
         OHCI_REG->rhport_status[0] = OHCI_RHPORT_PORT_RESET_STATUS_MASK;
-        hcd_event_device_attach(hostid, true);
+        hcd_event_device_attach(0);
       }else
       {
-        hcd_event_device_remove(hostid, true);
+        hcd_event_device_remove(0);
       }
     }
 

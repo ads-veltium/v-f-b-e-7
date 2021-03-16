@@ -477,3 +477,4 @@ void bta_dm_co_ble_oob_support(UINT8 enable)
 }
 
 #endif
+

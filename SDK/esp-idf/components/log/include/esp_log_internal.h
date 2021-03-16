@@ -21,3 +21,4 @@ void esp_log_buffer_char_internal(const char *tag, const void *buffer, uint16_t 
 void esp_log_buffer_hexdump_internal( const char *tag, const void *buffer, uint16_t buff_len, esp_log_level_t log_level);
 
 #endif
+

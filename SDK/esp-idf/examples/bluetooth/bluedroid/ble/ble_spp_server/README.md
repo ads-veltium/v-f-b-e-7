@@ -1,5 +1,5 @@
-| Supported Targets | ESP32 | ESP32-C3 |
-| ----------------- | ----- | -------- |
+| Supported Targets | ESP32 |
+| ----------------- | ----- |
 
 ## ESP-IDF GATT SERVER SPP demo
 

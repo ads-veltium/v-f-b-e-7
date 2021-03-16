@@ -1605,7 +1605,7 @@ static void _mdns_init_pcb_probe(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_proto
         mdns_srv_item_t * new_probe_services[len];
         int new_probe_service_len = 0;
         bool found;
-        for (size_t j=0; j < len; ++j) {
+        for (int j=0; j < len; ++j) {
             found = false;
             for (int i=0; i < pcb->probe_services_len; ++i) {
                 if (pcb->probe_services[i] == services[j]) {
@@ -2508,10 +2508,11 @@ static int _mdns_txt_items_count_get(const uint8_t * data, size_t len)
  */
 static int _mdns_txt_item_name_get_len(const uint8_t * data, size_t len)
 {
+    int i;
     if (*data == '=') {
         return -1;
     }
-    for (size_t i = 0; i < len; i++) {
+    for (i = 0; i < len; i++) {
         if (data[i] == '=') {
             return i;
         }
@@ -3482,6 +3483,7 @@ static void _mdns_search_result_add_srv(mdns_search_once_t * search, const char 
  */
 static void _mdns_search_result_add_txt(mdns_search_once_t * search, mdns_txt_item_t * txt, size_t txt_count, mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
 {
+    int i;
     mdns_result_t * r = search->result;
     while (r) {
         if (r->tcpip_if == tcpip_if && r->ip_protocol == ip_protocol) {
@@ -3513,7 +3515,7 @@ static void _mdns_search_result_add_txt(mdns_search_once_t * search, mdns_txt_it
     return;
 
 free_txt:
-    for (size_t i=0; i<txt_count; i++) {
+    for (i=0; i<txt_count; i++) {
         free((char *)(txt[i].key));
         free((char *)(txt[i].value));
     }
@@ -4700,6 +4702,7 @@ void mdns_query_results_free(mdns_result_t * results)
 {
     mdns_result_t * r;
     mdns_ip_addr_t * a;
+    int i;
 
     while (results) {
         r = results;
@@ -4707,7 +4710,7 @@ void mdns_query_results_free(mdns_result_t * results)
         free((char *)(r->hostname));
         free((char *)(r->instance_name));
 
-        for (size_t i=0; i<r->txt_count; i++) {
+        for (i=0; i<r->txt_count; i++) {
             free((char *)(r->txt[i].key));
             free((char *)(r->txt[i].value));
         }

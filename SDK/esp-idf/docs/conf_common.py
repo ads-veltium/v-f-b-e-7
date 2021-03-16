@@ -14,17 +14,17 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-from __future__ import print_function, unicode_literals
-
+from __future__ import print_function
+from __future__ import unicode_literals
+import sys
 import os
 import os.path
 import re
 import subprocess
-import sys
-
-from get_github_rev import get_github_rev
-from idf_extensions.util import download_file_if_missing
 from sanitize_version import sanitize_version
+from idf_extensions.util import download_file_if_missing
+from get_github_rev import get_github_rev
+
 
 # build_docs on the CI server sometimes fails under Python3. This is a workaround:
 sys.setrecursionlimit(3500)
@@ -46,7 +46,6 @@ suppress_warnings = ['image.nonlocal_uri']
 extensions = ['breathe',
 
               'sphinx.ext.todo',
-              'sphinx_copybutton',
               'sphinx_idf_theme',
               'sphinxcontrib.blockdiag',
               'sphinxcontrib.seqdiag',
@@ -54,7 +53,6 @@ extensions = ['breathe',
               'sphinxcontrib.nwdiag',
               'sphinxcontrib.rackdiag',
               'sphinxcontrib.packetdiag',
-              'sphinxcontrib.cairosvgconverter',
 
               'extensions.html_redirects',
               'extensions.toctree_filter',
@@ -133,6 +131,7 @@ print('Version: {0}  Release: {1}'.format(version, release))
 # directories to ignore when looking for source files.
 exclude_patterns = ['**/inc/**', '_static/', '_build/**']
 
+
 BT_DOCS = ['api-guides/blufi.rst',
            'api-guides/esp-ble-mesh/**',
            'api-reference/bluetooth/**']
@@ -141,19 +140,10 @@ SDMMC_DOCS = ['api-reference/peripherals/sdmmc_host.rst',
               'api-reference/peripherals/sd_pullup_requirements.rst']
 
 SDIO_SLAVE_DOCS = ['api-reference/peripherals/sdio_slave.rst',
-                   'api-reference/protocols/esp_sdio_slave_protocol.rst']
+                   'api-reference/peripherals/esp_slave_protocol.rst',
+                   'api-reference/protocols/esp_serial_slave_link.rst']
 
 MCPWM_DOCS = ['api-reference/peripherals/mcpwm.rst']
-
-DEDIC_GPIO_DOCS = ['api-reference/peripherals/dedic_gpio.rst']
-
-PCNT_DOCS = ['api-reference/peripherals/pcnt.rst']
-
-DAC_DOCS = ['api-reference/peripherals/dac.rst']
-
-TOUCH_SENSOR_DOCS = ['api-reference/peripherals/touch_pad.rst']
-
-SPIRAM_DOCS = ['api-guides/external-ram.rst']
 
 LEGACY_DOCS = ['api-guides/build-system-legacy.rst',
                'gnu-make-legacy.rst',
@@ -161,61 +151,29 @@ LEGACY_DOCS = ['api-guides/build-system-legacy.rst',
                'api-guides/unit-tests-legacy.rst',
                'get-started-legacy/**']
 
-USB_DOCS = ['api-reference/peripherals/usb.rst',
-            'api-guides/usb-console.rst',
-            'api-guides/dfu.rst']
-
-ULP_DOCS = ['api-guides/ulp.rst', 'api-guides/ulp_macros.rst']
-
-RISCV_COPROC_DOCS = ['api-guides/ulp-risc-v.rst',]
-
-XTENSA_DOCS = ['api-guides/hlinterrupts.rst']
-
-RISCV_DOCS = []
-
 ESP32_DOCS = ['api-guides/ulp_instruction_set.rst',
               'api-reference/system/himem.rst',
               'api-guides/RF_calibration.rst',
-              'api-guides/romconsole.rst',
               'api-reference/system/ipc.rst',
               'security/secure-boot-v1.rst',
               'api-reference/peripherals/secure_element.rst',
-              'api-reference/peripherals/dac.rst',
               'hw-reference/esp32/**'] + LEGACY_DOCS
 
 ESP32S2_DOCS = ['hw-reference/esp32s2/**',
                 'api-guides/ulps2_instruction_set.rst',
-                'api-guides/usb-console.rst',
+                'api-guides/dfu.rst',
                 'api-reference/peripherals/hmac.rst',
                 'api-reference/peripherals/ds.rst',
-                'api-reference/peripherals/spi_slave_hd.rst',
-                'api-reference/peripherals/temp_sensor.rst',
-                'api-reference/system/async_memcpy.rst',
-                'api-reference/peripherals/touch_element.rst',
-                'api-reference/peripherals/dac.rst']
-
-ESP32C3_DOCS = ['hw-reference/esp32c3/**']
+                'api-reference/peripherals/temp_sensor.rst'
+                '']
 
 # format: {tag needed to include: documents to included}, tags are parsed from sdkconfig and peripheral_caps.h headers
 conditional_include_dict = {'SOC_BT_SUPPORTED':BT_DOCS,
                             'SOC_SDMMC_HOST_SUPPORTED':SDMMC_DOCS,
                             'SOC_SDIO_SLAVE_SUPPORTED':SDIO_SLAVE_DOCS,
                             'SOC_MCPWM_SUPPORTED':MCPWM_DOCS,
-                            'SOC_USB_SUPPORTED':USB_DOCS,
-                            'SOC_DEDICATED_GPIO_SUPPORTED':DEDIC_GPIO_DOCS,
-                            'SOC_SPIRAM_SUPPORTED':SPIRAM_DOCS,
-                            'SOC_PCNT_SUPPORTED':PCNT_DOCS,
-                            'SOC_DAC_PERIPH_NUM':DAC_DOCS,
-                            'SOC_TOUCH_SENSOR_NUM':TOUCH_SENSOR_DOCS,
-                            'SOC_ULP_SUPPORTED':ULP_DOCS,
-                            'SOC_RISCV_COPROC_SUPPORTED':RISCV_COPROC_DOCS,
-                            'SOC_DIG_SIGN_SUPPORTED':['api-reference/peripherals/ds.rst'],
-                            'SOC_HMAC_SUPPORTED':['api-reference/peripherals/hmac.rst'],
-                            'CONFIG_IDF_TARGET_ARCH_XTENSA':XTENSA_DOCS,
-                            'CONFIG_IDF_TARGET_ARCH_RISCV':RISCV_DOCS,
                             'esp32':ESP32_DOCS,
-                            'esp32s2':ESP32S2_DOCS,
-                            'esp32c3':ESP32C3_DOCS}
+                            'esp32s2':ESP32S2_DOCS}
 
 # The reST default role (used for this markup: `text`) to use for all
 # documents.
@@ -246,10 +204,10 @@ pygments_style = 'sphinx'
 project_slug = 'esp-idf'
 versions_url = 'https://dl.espressif.com/dl/esp-idf/idf_versions.js'
 
-idf_targets = ['esp32', 'esp32s2', 'esp32c3']
+idf_targets = ['esp32', 'esp32s2']
 languages = ['en', 'zh_CN']
 
-project_homepage = 'https://github.com/espressif/esp-idf'
+project_homepage = "https://github.com/espressif/esp-idf"
 
 # -- Options for HTML output ----------------------------------------------
 
@@ -257,11 +215,11 @@ project_homepage = 'https://github.com/espressif/esp-idf'
 #
 # Redirects should be listed in page_redirects.xt
 #
-with open('../page_redirects.txt') as f:
-    lines = [re.sub(' +', ' ', line.strip()) for line in f.readlines() if line.strip() != '' and not line.startswith('#')]
+with open("../page_redirects.txt") as f:
+    lines = [re.sub(" +", " ", line.strip()) for line in f.readlines() if line.strip() != "" and not line.startswith("#")]
     for line in lines:  # check for well-formed entries
         if len(line.split(' ')) != 2:
-            raise RuntimeError('Invalid line in page_redirects.txt: %s' % line)
+            raise RuntimeError("Invalid line in page_redirects.txt: %s" % line)
 html_redirect_pages = [tuple(line.split(' ')) for line in lines]
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
@@ -271,10 +229,10 @@ html_theme = 'sphinx_idf_theme'
 
 # context used by sphinx_idf_theme
 html_context = {
-    'display_github': True,  # Add 'Edit on Github' link instead of 'View page source'
-    'github_user': 'espressif',
-    'github_repo': 'esp-idf',
-    'github_version': get_github_rev(),
+    "display_github": True,  # Add 'Edit on Github' link instead of 'View page source'
+    "github_user": "espressif",
+    "github_repo": "esp-idf",
+    "github_version": get_github_rev(),
 }
 
 # Theme options are theme-specific and customize the look and feel of a theme
@@ -294,7 +252,7 @@ html_context = {
 
 # The name of an image file (relative to this directory) to place at the top
 # of the sidebar.
-html_logo = '../_static/espressif-logo.svg'
+html_logo = "../_static/espressif-logo.svg"
 
 
 # The name of an image file (within the static path) to use as favicon of the
@@ -387,7 +345,7 @@ latex_elements = {
 
 # The name of an image file (relative to this directory) to place at the bottom of
 # the title page.
-latex_logo = '../_static/espressif2.pdf'
+latex_logo = "../_static/espressif2.pdf"
 latex_engine = 'xelatex'
 latex_use_xindy = False
 
@@ -434,7 +392,7 @@ def setup(app):
     app.add_stylesheet('theme_overrides.css')
 
     # these two must be pushed in by build_docs.py
-    if 'idf_target' not in app.config:
+    if "idf_target" not in app.config:
         app.add_config_value('idf_target', None, 'env')
         app.add_config_value('idf_targets', None, 'env')
 
@@ -443,8 +401,8 @@ def setup(app):
 
     # Breathe extension variables (depend on build_dir)
     # note: we generate into xml_in and then copy_if_modified to xml dir
-    app.config.breathe_projects = {'esp32-idf': os.path.join(app.config.build_dir, 'xml_in/')}
-    app.config.breathe_default_project = 'esp32-idf'
+    app.config.breathe_projects = {"esp32-idf": os.path.join(app.config.build_dir, "xml_in/")}
+    app.config.breathe_default_project = "esp32-idf"
 
     setup_diag_font(app)
 
@@ -457,19 +415,18 @@ def setup_config_values(app, config):
     # Sets up global config values needed by other extensions
     idf_target_title_dict = {
         'esp32': 'ESP32',
-        'esp32s2': 'ESP32-S2',
-        'esp32c3': 'ESP32-C3'
+        'esp32s2': 'ESP32-S2'
     }
 
     app.add_config_value('idf_target_title_dict', idf_target_title_dict, 'env')
 
-    pdf_name = 'esp-idf-{}-{}-{}'.format(app.config.language, app.config.version, app.config.idf_target)
+    pdf_name = "esp-idf-{}-{}-{}".format(app.config.language, app.config.version, app.config.idf_target)
     app.add_config_value('pdf_file', pdf_name, 'env')
 
 
 def setup_html_context(app, config):
     # Setup path for 'edit on github'-link
-    config.html_context['conf_py_path'] = '/docs/{}/'.format(app.config.language)
+    config.html_context['conf_py_path'] = "/docs/{}/".format(app.config.language)
 
 
 def setup_diag_font(app):
@@ -484,7 +441,7 @@ def setup_diag_font(app):
     font_dir = os.path.join(config_dir, '_static')
     assert os.path.exists(font_dir)
 
-    print('Downloading font file %s for %s' % (font_name, app.config.language))
+    print("Downloading font file %s for %s" % (font_name, app.config.language))
     download_file_if_missing('https://dl.espressif.com/dl/esp-idf/docs/_static/{}'.format(font_name), font_dir)
 
     font_path = os.path.abspath(os.path.join(font_dir, font_name))

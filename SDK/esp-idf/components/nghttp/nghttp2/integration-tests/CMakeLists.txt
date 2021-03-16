@@ -1,6 +1,7 @@
 set(GO_FILES
   nghttpx_http1_test.go
   nghttpx_http2_test.go
+  nghttpx_spdy_test.go
   server_tester.go
 )
 
@@ -21,6 +22,7 @@ set(EXTRA_DIST
 add_custom_target(itprep
   COMMAND go get -d -v golang.org/x/net/http2
   COMMAND go get -d -v github.com/tatsuhiro-t/go-nghttp2
+  COMMAND go get -d -v github.com/tatsuhiro-t/spdy
   COMMAND go get -d -v golang.org/x/net/websocket
 )
 

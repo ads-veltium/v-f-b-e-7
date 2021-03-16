@@ -26,8 +26,6 @@
 #include "testutil/testutil.h"
 #include "ble_hs_test_util.h"
 
-#define BLE_HCI_READ_RSSI_ACK_PARAM_LEN     (3)  /* No status byte. */
-
 TEST_CASE_SELF(ble_hs_hci_test_event_bad)
 {
     uint8_t *buf;
@@ -39,7 +37,7 @@ TEST_CASE_SELF(ble_hs_hci_test_event_bad)
 
     buf[0] = 0xff;
     buf[1] = 0;
-    rc = ble_hs_hci_evt_process((void*)buf);
+    rc = ble_hs_hci_evt_process(buf);
     TEST_ASSERT(rc == BLE_HS_ENOTSUP);
 
     ble_hs_test_util_assert_mbufs_freed(NULL);
@@ -92,6 +90,7 @@ TEST_CASE_SELF(ble_hs_hci_test_rssi)
 TEST_CASE_SELF(ble_hs_hci_acl_one_conn)
 {
     struct ble_hs_test_util_hci_num_completed_pkts_entry ncpe[2];
+    struct hci_disconn_complete evt;
     uint8_t peer_addr[6] = { 1, 2, 3, 4, 5, 6 };
     uint8_t data[256];
     int rc;
@@ -165,7 +164,10 @@ TEST_CASE_SELF(ble_hs_hci_acl_one_conn)
     /* Receive a disconnection-complete event. Ensure available buffer count
      * increases.
      */
-    ble_hs_test_util_hci_rx_disconn_complete_event(1, 0, BLE_ERR_CONN_TERM_LOCAL);
+    evt.connection_handle = 1;
+    evt.status = 0;
+    evt.reason = BLE_ERR_CONN_TERM_LOCAL;
+    ble_hs_test_util_hci_rx_disconn_complete_event(&evt);
     TEST_ASSERT_FATAL(ble_hs_hci_avail_pkts == 5);
 
     ble_hs_test_util_assert_mbufs_freed(NULL);

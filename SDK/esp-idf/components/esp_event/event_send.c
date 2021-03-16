@@ -52,9 +52,6 @@ static system_event_id_t esp_event_legacy_wifi_event_id(int32_t event_id)
     case WIFI_EVENT_STA_AUTHMODE_CHANGE:
         return SYSTEM_EVENT_STA_AUTHMODE_CHANGE;
 
-    case WIFI_EVENT_STA_BSS_RSSI_LOW:
-	return SYSTEM_EVENT_STA_BSS_RSSI_LOW;
-
     case WIFI_EVENT_STA_WPS_ER_SUCCESS:
         return SYSTEM_EVENT_STA_WPS_ER_SUCCESS;
 
@@ -84,15 +81,6 @@ static system_event_id_t esp_event_legacy_wifi_event_id(int32_t event_id)
 
     case WIFI_EVENT_AP_PROBEREQRECVED:
         return SYSTEM_EVENT_AP_PROBEREQRECVED;
-
-    case WIFI_EVENT_ACTION_TX_STATUS:
-        return SYSTEM_EVENT_ACTION_TX_STATUS;
-
-    case WIFI_EVENT_ROC_DONE:
-        return SYSTEM_EVENT_ROC_DONE;
-
-    case WIFI_EVENT_FTM_REPORT:
-        return SYSTEM_EVENT_FTM_REPORT;
 
     default:
         ESP_LOGE(TAG, "invalid wifi event id %d", event_id);
@@ -176,3 +164,4 @@ esp_err_t esp_event_send_internal(esp_event_base_t event_base,
 
     return esp_event_send_legacy(&event);
 }
+

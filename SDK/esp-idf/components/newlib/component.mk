@@ -12,11 +12,9 @@ ifdef CONFIG_SPIRAM_CACHE_WORKAROUND
 COMPONENT_ADD_LDFRAGMENTS := esp32-spiram-rom-functions-c.lf
 endif
 
-COMPONENT_PRIV_INCLUDEDIRS := priv_include
-COMPONENT_SRCDIRS := . port
-
-# Forces the linker to include heap, syscalls, and pthread from this component,
+# Forces the linker to include locks, heap, and syscalls from this component,
 # instead of the implementations provided by newlib.
+COMPONENT_ADD_LDFLAGS += -u newlib_include_locks_impl
 COMPONENT_ADD_LDFLAGS += -u newlib_include_heap_impl
 COMPONENT_ADD_LDFLAGS += -u newlib_include_syscalls_impl
 

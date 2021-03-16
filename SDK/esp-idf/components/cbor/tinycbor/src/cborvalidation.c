@@ -130,112 +130,112 @@
     <td>0</td>
     <td>UTF-8 text string</td>
     <td>Standard date/time string</td>
-  </tr>
+  </td>
   <tr>
     <td>1</td>
     <td>integer</td>
     <td>Epoch-based date/time</td>
-  </tr>
+  </td>
   <tr>
     <td>2</td>
     <td>byte string</td>
     <td>Positive bignum</td>
-  </tr>
+  </td>
   <tr>
     <td>3</td>
     <td>byte string</td>
     <td>Negative bignum</td>
-  </tr>
+  </td>
   <tr>
     <td>4</td>
     <td>array</td>
     <td>Decimal fraction</td>
-  </tr>
+  </td>
   <tr>
     <td>5</td>
     <td>array</td>
     <td>Bigfloat</td>
-  </tr>
+  </td>
   <tr>
     <td>16</td>
     <td>array</td>
     <td>COSE Single Recipient Encrypted Data Object (RFC 8152)</td>
-  </tr>
+  </td>
   <tr>
     <td>17</td>
     <td>array</td>
     <td>COSE Mac w/o Recipients Object (RFC 8152)</td>
-  </tr>
+  </td>
   <tr>
     <td>18</td>
     <td>array</td>
     <td>COSE Single Signer Data Object (RFC 8162)</td>
-  </tr>
+  </td>
   <tr>
     <td>21</td>
     <td>byte string, array, map</td>
     <td>Expected conversion to base64url encoding</td>
-  </tr>
+  </td>
   <tr>
     <td>22</td>
     <td>byte string, array, map</td>
     <td>Expected conversion to base64 encoding</td>
-  </tr>
+  </td>
   <tr>
     <td>23</td>
     <td>byte string, array, map</td>
     <td>Expected conversion to base16 encoding</td>
-  </tr>
+  </td>
   <tr>
     <td>24</td>
     <td>byte string</td>
     <td>Encoded CBOR data item</td>
-  </tr>
+  </td>
   <tr>
     <td>32</td>
     <td>UTF-8 text string</td>
     <td>URI</td>
-  </tr>
+  </td>
   <tr>
     <td>33</td>
     <td>UTF-8 text string</td>
     <td>base64url</td>
-  </tr>
+  </td>
   <tr>
     <td>34</td>
     <td>UTF-8 text string</td>
     <td>base64</td>
-  </tr>
+  </td>
   <tr>
     <td>35</td>
     <td>UTF-8 text string</td>
     <td>Regular expression</td>
-  </tr>
+  </td>
   <tr>
     <td>36</td>
     <td>UTF-8 text string</td>
     <td>MIME message</td>
-  </tr>
+  </td>
   <tr>
     <td>96</td>
     <td>array</td>
     <td>COSE Encrypted Data Object (RFC 8152)</td>
-  </tr>
+  </td>
   <tr>
     <td>97</td>
     <td>array</td>
     <td>COSE MACed Data Object (RFC 8152)</td>
-  </tr>
+  </td>
   <tr>
     <td>98</td>
     <td>array</td>
     <td>COSE Signed Data Object (RFC 8152)</td>
-  </tr>
+  </td>
   <tr>
     <td>55799</td>
     <td>any</td>
     <td>Self-describe CBOR</td>
-  </tr>
+  </td>
 </table>
  */
 

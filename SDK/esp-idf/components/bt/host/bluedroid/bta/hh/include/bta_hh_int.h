@@ -398,3 +398,4 @@ extern void bta_hh_trace_dev_db(void);
 
 #endif  ///defined(BTA_HH_INCLUDED) && (BTA_HH_INCLUDED == TRUE)
 #endif
+

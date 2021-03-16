@@ -7,11 +7,13 @@
  */
 
 #include "syscfg/syscfg.h"
-#define MESH_LOG_MODULE BLE_MESH_LOW_POWER_LOG
 
 #if MYNEWT_VAL(BLE_MESH_LOW_POWER)
 
 #include <stdint.h>
+
+#define BT_DBG_ENABLED (MYNEWT_VAL(BLE_MESH_DEBUG_LOW_POWER))
+#include "host/ble_hs_log.h"
 
 #include "mesh/mesh.h"
 #include "mesh_priv.h"
@@ -64,7 +66,7 @@
 
 static void (*lpn_cb)(u16_t friend_addr, bool established);
 
-#if MYNEWT_VAL(BLE_MESH_LOW_POWER_LOG_LVL) == LOG_LEVEL_DEBUG
+#if MYNEWT_VAL(BLE_MESH_DEBUG_LOW_POWER)
 static const char *state2str(int state)
 {
 	switch (state) {
@@ -90,11 +92,11 @@ static const char *state2str(int state)
 		return "(unknown)";
 	}
 }
-#endif
+#endif /* CONFIG_BLUETOOTH_MESH_DEBUG_LPN */
 
 static inline void lpn_set_state(int state)
 {
-#if MYNEWT_VAL(BLE_MESH_LOW_POWER_LOG_LVL) == LOG_LEVEL_DEBUG
+#if MYNEWT_VAL(BLE_MESH_DEBUG_LOW_POWER)
 	BT_DBG("%s -> %s", state2str(bt_mesh.lpn.state), state2str(state));
 #endif
 	bt_mesh.lpn.state = state;
@@ -194,7 +196,6 @@ static int send_friend_clear(void)
 
 static void clear_friendship(bool force, bool disable)
 {
-	struct bt_mesh_cfg_srv *cfg = bt_mesh_cfg_get();
 	struct bt_mesh_lpn *lpn = &bt_mesh.lpn;
 
 	BT_DBG("force %u disable %u", force, disable);
@@ -241,10 +242,6 @@ static void clear_friendship(bool force, bool disable)
 	 * modified meanwhile.
 	 */
 	lpn->groups_changed = 1;
-
-	if (cfg->hb_pub.feat & BT_MESH_FEAT_LOW_POWER) {
-		bt_mesh_heartbeat_send();
-	}
 
 	if (disable) {
 		lpn_set_state(BT_MESH_LPN_DISABLED);
@@ -314,7 +311,7 @@ static void req_sent(u16_t duration, int err, void *user_data)
 {
 	struct bt_mesh_lpn *lpn = &bt_mesh.lpn;
 
-#if MYNEWT_VAL(BLE_MESH_LOW_POWER_LOG_LVL) == LOG_LEVEL_DEBUG
+#if BT_DBG_ENABLED
 	BT_DBG("req 0x%02x duration %u err %d state %s",
 	       lpn->sent_req, duration, err, state2str(lpn->state));
 #endif
@@ -728,7 +725,7 @@ static void lpn_timeout(struct ble_npl_event *work)
 {
 	struct bt_mesh_lpn *lpn = &bt_mesh.lpn;
 
-#if MYNEWT_VAL(BLE_MESH_LOW_POWER_LOG_LVL) == LOG_LEVEL_DEBUG
+#if MYNEWT_VAL(BLE_MESH_DEBUG_LOW_POWER)
 	BT_DBG("state: %s", state2str(lpn->state));
 #endif
 
@@ -761,7 +758,6 @@ static void lpn_timeout(struct ble_npl_event *work)
 		}
 		lpn->counter++;
 		lpn_set_state(BT_MESH_LPN_ENABLED);
-		lpn->sent_req = 0U;
 		k_delayed_work_submit(&lpn->timer, FRIEND_REQ_RETRY_TIMEOUT);
 		break;
 	case BT_MESH_LPN_ESTABLISHED:
@@ -944,8 +940,6 @@ int bt_mesh_lpn_friend_update(struct bt_mesh_net_rx *rx,
 	}
 
 	if (!lpn->established) {
-		struct bt_mesh_cfg_srv *cfg = bt_mesh_cfg_get();
-
 		/* This is normally checked on the transport layer, however
 		 * in this state we're also still accepting master
 		 * credentials so we need to ensure the right ones (Friend
@@ -959,10 +953,6 @@ int bt_mesh_lpn_friend_update(struct bt_mesh_net_rx *rx,
 		lpn->established = 1;
 
 		BT_INFO("Friendship established with 0x%04x", lpn->frnd);
-
-		if (cfg->hb_pub.feat & BT_MESH_FEAT_LOW_POWER) {
-			bt_mesh_heartbeat_send();
-		}
 
 		if (lpn_cb) {
 			lpn_cb(lpn->frnd, true);

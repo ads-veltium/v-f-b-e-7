@@ -10,14 +10,7 @@ assert('Time', '15.2.19') do
 end
 
 assert('Time.at', '15.2.19.6.1') do
-  assert_kind_of(Time, Time.at(1300000000.0))
-
-  assert_raise(FloatDomainError) { Time.at(Float::NAN) }
-  assert_raise(FloatDomainError) { Time.at(Float::INFINITY) }
-  assert_raise(FloatDomainError) { Time.at(-Float::INFINITY) }
-  assert_raise(FloatDomainError) { Time.at(0, Float::NAN) }
-  assert_raise(FloatDomainError) { Time.at(0, Float::INFINITY) }
-  assert_raise(FloatDomainError) { Time.at(0, -Float::INFINITY) }
+  Time.at(1300000000.0)
 end
 
 assert('Time.gm', '15.2.19.6.2') do
@@ -44,22 +37,14 @@ assert('Time#+', '15.2.19.7.1') do
   t1 = Time.at(1300000000.0)
   t2 = t1.+(60)
 
-  assert_equal(t2.utc.asctime, "Sun Mar 13 07:07:40 UTC 2011")
-
-  assert_raise(FloatDomainError) { Time.at(0) + Float::NAN }
-  assert_raise(FloatDomainError) { Time.at(0) + Float::INFINITY }
-  assert_raise(FloatDomainError) { Time.at(0) + -Float::INFINITY }
+  t2.utc.asctime == "Sun Mar 13 07:07:40 UTC 2011"
 end
 
 assert('Time#-', '15.2.19.7.2') do
   t1 = Time.at(1300000000.0)
   t2 = t1.-(60)
 
-  assert_equal(t2.utc.asctime, "Sun Mar 13 07:05:40 UTC 2011")
-
-  assert_raise(FloatDomainError) { Time.at(0) - Float::NAN }
-  assert_raise(FloatDomainError) { Time.at(0) - Float::INFINITY }
-  assert_raise(FloatDomainError) { Time.at(0) - -Float::INFINITY }
+  t2.utc.asctime == "Sun Mar 13 07:05:40 UTC 2011"
 end
 
 assert('Time#<=>', '15.2.19.7.3') do
@@ -225,8 +210,4 @@ assert('2000 times 500us make a second') do
     t += 0.0005
   end
   t.usec == 0
-end
-
-assert('Time.gm with Dec 31 23:59:59 1969 raise ArgumentError') do
-  assert_raise(ArgumentError) {Time.gm(1969, 12, 31, 23, 59, 59)}
 end

@@ -135,7 +135,7 @@ static int esp_mbedtls_alloc_tx_buf(mbedtls_ssl_context *ssl, int len)
 
     /**
      * Mark the out_msg offset from ssl->out_buf.
-     *
+     * 
      * In mbedtls, ssl->out_msg = ssl->out_buf + offset;
      */
     ssl->out_msg = (unsigned char *)MBEDTLS_SSL_HEADER_LEN;
@@ -198,14 +198,14 @@ int esp_mbedtls_reset_add_rx_buffer(mbedtls_ssl_context *ssl)
 
     /**
      * Mark the in_msg offset from ssl->in_buf.
-     *
+     * 
      * In mbedtls, ssl->in_msg = ssl->in_buf + offset;
      */
     ssl->in_msg = (unsigned char *)MBEDTLS_SSL_HEADER_LEN;
 
     init_rx_buffer(ssl, buf);
 
-    return 0;
+    return 0;  
 }
 
 void esp_mbedtls_reset_free_rx_buffer(mbedtls_ssl_context *ssl)
@@ -214,7 +214,7 @@ void esp_mbedtls_reset_free_rx_buffer(mbedtls_ssl_context *ssl)
 
     mbedtls_free(ssl->in_buf);
 
-    init_rx_buffer(ssl, NULL);
+    init_rx_buffer(ssl, NULL);    
 }
 
 int esp_mbedtls_add_tx_buffer(mbedtls_ssl_context *ssl, size_t buffer_len)
@@ -317,13 +317,9 @@ int esp_mbedtls_add_rx_buffer(mbedtls_ssl_context *ssl)
     ESP_LOGV(TAG, "--> add rx");
 
     if (ssl->in_buf) {
-        if (ssl->in_iv) {
-            ESP_LOGV(TAG, "in buffer is not empty");
-            ret = 0;
-            goto exit;
-        } else {
-            cached = 1;
-        }
+        ESP_LOGV(TAG, "in buffer is not empty");
+        ret = 0;
+        goto exit;
     }
 
     ssl->in_hdr = msg_head;
@@ -337,7 +333,7 @@ int esp_mbedtls_add_rx_buffer(mbedtls_ssl_context *ssl)
         } else {
             ESP_LOGE(TAG, "mbedtls_ssl_fetch_input error=-0x%x", -ret);
         }
-
+        
         goto exit;
     }
 
@@ -350,12 +346,6 @@ int esp_mbedtls_add_rx_buffer(mbedtls_ssl_context *ssl)
     ESP_LOGV(TAG, "message length is %d RX buffer length should be %d left is %d",
                 (int)in_msglen, (int)buffer_len, (int)ssl->in_left);
 
-    if (cached) {
-        memcpy(cache_buf, ssl->in_buf, 16);
-        mbedtls_free(ssl->in_buf);
-        init_rx_buffer(ssl, NULL);
-    }
-
     buf = mbedtls_calloc(1, buffer_len);
     if (!buf) {
         ESP_LOGE(TAG, "alloc(%d bytes) failed", buffer_len);
@@ -364,6 +354,12 @@ int esp_mbedtls_add_rx_buffer(mbedtls_ssl_context *ssl)
     }
 
     ESP_LOGV(TAG, "add in buffer %d bytes @ %p", buffer_len, buf);
+
+    if (ssl->in_ctr) {
+        memcpy(cache_buf, ssl->in_ctr, 16);
+        mbedtls_free(ssl->in_ctr);
+        cached = 1;
+    }
 
     init_rx_buffer(ssl, buf);
 
@@ -379,7 +375,7 @@ int esp_mbedtls_add_rx_buffer(mbedtls_ssl_context *ssl)
 exit:
     ESP_LOGV(TAG, "<-- add rx");
 
-    return ret;
+    return ret; 
 }
 
 int esp_mbedtls_free_rx_buffer(mbedtls_ssl_context *ssl)
@@ -393,8 +389,7 @@ int esp_mbedtls_free_rx_buffer(mbedtls_ssl_context *ssl)
     /**
      * When have read multi messages once, can't free the input buffer directly.
      */
-    if (!ssl->in_buf || (ssl->in_hslen && (ssl->in_hslen < ssl->in_msglen)) ||
-        (ssl->in_buf && !ssl->in_iv)) {
+    if (!ssl->in_buf || (ssl->in_hslen && (ssl->in_hslen < ssl->in_msglen))) {
         ret = 0;
         goto exit;
     }
@@ -423,8 +418,7 @@ int esp_mbedtls_free_rx_buffer(mbedtls_ssl_context *ssl)
     }
 
     memcpy(pdata, buf, 16);
-    init_rx_buffer(ssl, pdata);
-    ssl->in_iv = NULL;
+    ssl->in_ctr = pdata;
 
 exit:
     ESP_LOGV(TAG, "<-- free rx");
@@ -440,7 +434,7 @@ size_t esp_mbedtls_get_crt_size(mbedtls_x509_crt *cert, size_t *num)
     while (cert) {
         bytes += cert->raw.len;
         n++;
-
+    
         cert = cert->next;
     }
 
@@ -520,19 +514,6 @@ void esp_mbedtls_free_peer_cert(mbedtls_ssl_context *ssl)
         mbedtls_x509_crt_free( ssl->session_negotiate->peer_cert );
         mbedtls_free( ssl->session_negotiate->peer_cert );
         ssl->session_negotiate->peer_cert = NULL;
-    }
-}
-
-bool esp_mbedtls_ssl_is_rsa(mbedtls_ssl_context *ssl)
-{
-    const mbedtls_ssl_ciphersuite_t *ciphersuite_info =
-        ssl->transform_negotiate->ciphersuite_info;
-
-    if (ciphersuite_info->key_exchange == MBEDTLS_KEY_EXCHANGE_RSA ||
-        ciphersuite_info->key_exchange == MBEDTLS_KEY_EXCHANGE_RSA_PSK) {
-        return true;
-    } else {
-        return false;
     }
 }
 #endif

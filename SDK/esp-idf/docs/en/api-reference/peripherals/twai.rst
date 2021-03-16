@@ -152,7 +152,7 @@ The TWAI driver contains an alert feature that is used to notify the application
 
 .. note::
     When enabling alerts, the ``TWAI_ALERT_AND_LOG`` flag can be used to cause the TWAI driver to log any raised alerts to UART. However, alert logging is disabled and ``TWAI_ALERT_AND_LOG`` if the :ref:`CONFIG_TWAI_ISR_IN_IRAM` option is enabled (see :ref:`placing-isr-into-iram`).
-    
+  
 .. note::
     The ``TWAI_ALERT_ALL`` and ``TWAI_ALERT_NONE`` macros can also be used to enable/disable all alerts during configuration/reconfiguration.
 

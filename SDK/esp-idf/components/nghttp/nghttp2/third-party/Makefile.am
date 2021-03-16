@@ -27,18 +27,10 @@ EXTRA_DIST = CMakeLists.txt
 
 if ENABLE_THIRD_PARTY
 
-noinst_LTLIBRARIES = liburl-parser.la
-liburl_parser_la_SOURCES = \
-	url-parser/url_parser.c \
-	url-parser/url_parser.h
-
-noinst_LTLIBRARIES += libllhttp.la
-libllhttp_la_SOURCES = \
-	llhttp/src/api.c \
-	llhttp/src/http.c \
-	llhttp/src/llhttp.c \
-	llhttp/include/llhttp.h
-libllhttp_la_CPPFLAGS = -I${srcdir}/llhttp/include
+noinst_LTLIBRARIES = libhttp-parser.la
+libhttp_parser_la_SOURCES = \
+	http-parser/http_parser.c \
+	http-parser/http_parser.h
 
 if HAVE_NEVERBLEED
 noinst_LTLIBRARIES += libneverbleed.la
@@ -57,9 +49,8 @@ mruby:
 	MRUBY_CONFIG="${srcdir}/build_config.rb" \
 	BUILD_DIR="${abs_builddir}/mruby/build" \
 	INSTALL_DIR="${abs_builddir}/mruby/build/install/bin" \
-	CC="${CC}" CXX="$(firstword $(CXX))" LD="${LD}" \
-	CFLAGS="${CPPFLAGS} ${CFLAGS}" \
-	CXXFLAGS="$(wordlist 2, $(words $(CXX)), $(CXX)) ${CPPFLAGS} ${CXXFLAGS}" \
+	CC="${CC}" CXX="${CXX}" LD="${LD}" \
+	CFLAGS="${CPPFLAGS} ${CFLAGS}" CXXFLAGS="${CPPFLAGS} ${CXXFLAGS}" \
 	LDFLAGS="${LDFLAGS}" \
 	"${srcdir}/mruby/minirake" -f "${srcdir}/mruby/Rakefile"
 

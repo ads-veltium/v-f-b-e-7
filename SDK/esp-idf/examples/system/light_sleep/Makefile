@@ -6,3 +6,4 @@
 PROJECT_NAME := light_sleep_example
 
 include $(IDF_PATH)/make/project.mk
+

@@ -116,3 +116,4 @@
 #define INTCLEAR	227
 
 #endif /* XTENSA_SPECREG_H */
+

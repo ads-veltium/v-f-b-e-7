@@ -15,14 +15,14 @@
 #include <string.h>
 #include "esp_err.h"
 #include "driver/uart.h"
-#include "esp_rom_uart.h"
+#include "esp32s2/rom/uart.h"
 
 #define ROM_UART_DRIVER_ENABLE 0
 
 #if ROM_UART_DRIVER_ENABLE
 static uint8_t scope_uart_num = 0;
 static int8_t uart_used = 0;
-#else
+#else 
 static uint8_t scope_uart_num = 255;
 static int8_t uart_used = -1;
 #endif
@@ -127,10 +127,10 @@ int test_tp_print_to_scope(float *data, unsigned char channel_num)
     if(uart_num != uart_used) {
         return 0;
     } else {
-#if ROM_UART_DRIVER_ENABLE
-        esp_rom_uart_tx_wait_idle(uart_num);   // Default print uart mumber is 0.
+#if ROM_UART_DRIVER_ENABLE  
+        uart_tx_wait_idle(uart_num);   // Default print uart mumber is 0.
         for(int i=0; i<out_len; i++) {
-            esp_rom_uart_tx_one_char(out_data[i]);
+            uart_tx_one_char(out_data[i]);
         }
         return out_len;
 #else
@@ -161,10 +161,11 @@ int test_tp_print_to_scope(float *data, unsigned char channel_num)
   */
 esp_err_t test_tp_scope_debug_init(uint8_t uart_num, int tx_io_num, int rx_io_num, int baud_rate)
 {
-#if ROM_UART_DRIVER_ENABLE
-    esp_rom_uart_tx_wait_idle(0);   // Default print uart mumber is 0.
+#if ROM_UART_DRIVER_ENABLE    
+    uart_tx_wait_idle(0);   // Default print uart mumber is 0.
     if(uart_num != 0) {
-        esp_rom_uart_set_as_console(uart_num);
+        uart_tx_switch(uart_num);
+        // uart_div_modify(uart_num, baud_rate); //DivLatchValue : (clock << 4)/baudrate.
     }
 #else
     if(uart_used == uart_num) {

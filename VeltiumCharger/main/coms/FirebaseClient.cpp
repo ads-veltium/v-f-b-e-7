@@ -1,14 +1,3 @@
-////////////////////////////////////////////////////////////////////////////////////////////////////
-//
-//  FirebaseClient.h
-//  Veltium Smart Charger on ESP32
-//
-//  Created by David Crespo on 26/05/2020.
-//  Copyright © 2020 Virtual Code SL. All rights reserved.
-//  Edited by Joël Martínez on 05/01/2020
-//
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
 #include "VeltFirebase.h"
 
 Firebase Database   EXT_RAM_ATTR;
@@ -51,7 +40,6 @@ bool initFirebaseClient(){
     #endif
     project += "/";
     Database.RTDB.begin(project, ConfigFirebase.Device_Db_ID);
-    UpdateStatus.BetaPermission = Database.RTDB.checkPermisions();
     Serial.printf("Usuario tiene permiso de firmware beta : %s \n", UpdateStatus.BetaPermission ? "Si" : "No");
     
     return true;
@@ -337,7 +325,7 @@ bool ReadFirebaseControl(String Path){
  *****************************************************/
 bool CheckForUpdate(){
   //Check Permisions
-
+  UpdateStatus.BetaPermission = Database.RTDB.checkPermisions();
   //Check Beta Firmware
   if(UpdateStatus.BetaPermission){
     if(Database.RTDB.Send_Command("/prod/fw/beta/",&Lectura, READ_FW)){
@@ -714,7 +702,8 @@ void Firebase_Conn_Task(void *args){
       LastStatus= ConnectionState;
     }
     
-    vTaskDelay(pdMS_TO_TICKS(ConfigFirebase.ClientConnected ? 100:2500));
+    vTaskDelay(pdMS_TO_TICKS(ConfigFirebase.ClientConnected ? 150:2500));
+    Serial.println(ESP.getFreePsram());
 
   }
 }

@@ -1,13 +1,12 @@
 from __future__ import print_function
-
 import re
 
 import ttfw_idf
 
 STARTING_TIMERS_REGEX = re.compile(r'Started timers, time since boot: (\d+) us')
 
-# name, period, next_alarm, times_started, times_fired, times_skipped, cb_exec_time
-TIMER_DUMP_LINE_REGEX = re.compile(r'([\w-]+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)')
+# name, period, next_alarm, times_started, times_fired, cb_exec_time
+TIMER_DUMP_LINE_REGEX = re.compile(r'([\w-]+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)')
 
 PERIODIC_TIMER_REGEX = re.compile(r'Periodic timer called, time since boot: (\d+) us')
 

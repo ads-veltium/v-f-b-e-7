@@ -645,3 +645,4 @@ void multiprecision_inv_mod(DWORD *aminus, DWORD *u, uint32_t keyLength)
         multiprecision_copy(aminus, C, keyLength);
     }
 }
+

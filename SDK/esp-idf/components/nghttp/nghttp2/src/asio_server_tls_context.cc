@@ -35,14 +35,12 @@ namespace nghttp2 {
 namespace asio_http2 {
 namespace server {
 
-#ifndef OPENSSL_NO_NEXTPROTONEG
 namespace {
 std::vector<unsigned char> &get_alpn_token() {
   static auto alpn_token = util::get_default_alpn();
   return alpn_token;
 }
 } // namespace
-#endif // !OPENSSL_NO_NEXTPROTONEG
 
 #if OPENSSL_VERSION_NUMBER >= 0x10002000L
 namespace {
@@ -84,7 +82,6 @@ configure_tls_context_easy(boost::system::error_code &ec,
   }
 #endif /* OPENSSL_NO_EC */
 
-#ifndef OPENSSL_NO_NEXTPROTONEG
   SSL_CTX_set_next_protos_advertised_cb(
       ctx,
       [](SSL *s, const unsigned char **data, unsigned int *len, void *arg) {
@@ -96,7 +93,6 @@ configure_tls_context_easy(boost::system::error_code &ec,
         return SSL_TLSEXT_ERR_OK;
       },
       nullptr);
-#endif // !OPENSSL_NO_NEXTPROTONEG
 
 #if OPENSSL_VERSION_NUMBER >= 0x10002000L
   // ALPN selection callback

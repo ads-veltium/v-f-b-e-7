@@ -3,8 +3,9 @@ from __future__ import print_function
 
 import ttfw_idf
 
+
 # TWAI Self Test Example constants
-STR_EXPECT = ('TWAI Self Test: Driver installed', 'TWAI Self Test: Driver uninstalled')
+STR_EXPECT = ("TWAI Self Test: Driver installed", "TWAI Self Test: Driver uninstalled")
 EXPECT_TIMEOUT = 20
 
 

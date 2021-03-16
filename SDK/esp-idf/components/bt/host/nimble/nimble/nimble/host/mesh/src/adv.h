@@ -42,12 +42,15 @@ struct bt_mesh_adv {
 		  busy:1;
 	u8_t      xmit;
 
-	/* For transport layer segment sending */
-	struct {
-		u8_t attempts;
-	} seg;
+	union {
+		/* Address, used e.g. for Friend Queue messages */
+		u16_t addr;
 
-	u8_t flags;
+		/* For transport layer segment sending */
+		struct {
+			u8_t attempts;
+		} seg;
+	};
 
 	int ref_cnt;
 	struct ble_npl_event ev;

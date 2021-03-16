@@ -193,7 +193,9 @@ typedef struct {
  */
 #define ETH_PHY_DEFAULT_CONFIG()     \
     {                                \
-        .phy_addr = 1,               \
+        .phy_addr = 0,               \
+        .phy_addr1 = 1,              \
+        .phy_addr2 = 2,              \
         .reset_timeout_ms = 100,     \
         .autonego_timeout_ms = 4000, \
         .reset_gpio_num = 5,         \

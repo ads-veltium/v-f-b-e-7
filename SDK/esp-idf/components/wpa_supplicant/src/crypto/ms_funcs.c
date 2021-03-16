@@ -525,3 +525,4 @@ int old_nt_password_hash_encrypted_with_new_nt_password_hash(
 					      encrypted_password_hash);
 	return 0;
 }
+

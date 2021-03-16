@@ -20,9 +20,11 @@
 #include "soc/soc_memory_layout.h"
 #include "soc/cpu.h"
 
-#include "sdkconfig.h"
-
-#include "esp_rom_sys.h"
+#if CONFIG_IDF_TARGET_ESP32
+#include "esp32/rom/ets_sys.h"
+#elif CONFIG_IDF_TARGET_ESP32S2
+#include "esp32s2/rom/ets_sys.h"
+#endif
 
 bool IRAM_ATTR esp_backtrace_get_next_frame(esp_backtrace_frame_t *frame)
 {
@@ -47,8 +49,8 @@ esp_err_t IRAM_ATTR esp_backtrace_print(int depth)
     esp_backtrace_frame_t stk_frame;
     esp_backtrace_get_start(&(stk_frame.pc), &(stk_frame.sp), &(stk_frame.next_pc));
     //esp_cpu_get_backtrace_start(&stk_frame);
-    esp_rom_printf("\r\n\r\nBacktrace:");
-    esp_rom_printf("0x%08X:0x%08X ", esp_cpu_process_stack_pc(stk_frame.pc), stk_frame.sp);
+    ets_printf("\r\n\r\nBacktrace:");
+    ets_printf("0x%08X:0x%08X ", esp_cpu_process_stack_pc(stk_frame.pc), stk_frame.sp);
 
     //Check if first frame is valid
     bool corrupted = (esp_stack_ptr_is_sane(stk_frame.sp) &&
@@ -60,17 +62,17 @@ esp_err_t IRAM_ATTR esp_backtrace_print(int depth)
         if (!esp_backtrace_get_next_frame(&stk_frame)) {    //Get previous stack frame
             corrupted = true;
         }
-        esp_rom_printf("0x%08X:0x%08X ", esp_cpu_process_stack_pc(stk_frame.pc), stk_frame.sp);
+        ets_printf("0x%08X:0x%08X ", esp_cpu_process_stack_pc(stk_frame.pc), stk_frame.sp);
     }
 
     //Print backtrace termination marker
     esp_err_t ret = ESP_OK;
     if (corrupted) {
-        esp_rom_printf(" |<-CORRUPTED");
+        ets_printf(" |<-CORRUPTED");
         ret =  ESP_FAIL;
     } else if (stk_frame.next_pc != 0) {    //Backtrace continues
-        esp_rom_printf(" |<-CONTINUES");
+        ets_printf(" |<-CONTINUES");
     }
-    esp_rom_printf("\r\n\r\n");
+    ets_printf("\r\n\r\n");
     return ret;
 }

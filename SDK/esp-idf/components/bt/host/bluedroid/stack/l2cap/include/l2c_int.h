@@ -25,6 +25,7 @@
 #define L2C_INT_H
 
 #include <stdbool.h>
+
 #include "stack/btm_api.h"
 #include "stack/l2c_api.h"
 #include "stack/l2cdefs.h"
@@ -371,14 +372,13 @@ typedef struct {
 
 #endif /* (L2CAP_ROUND_ROBIN_CHANNEL_SERVICE == TRUE) */
 
-
 /* Define a link control block. There is one link control block between
 ** this device and any other device (i.e. BD ADDR).
 */
 typedef struct t_l2c_linkcb {
     BOOLEAN             in_use;                     /* TRUE when in use, FALSE when not */
     tL2C_LINK_STATE     link_state;
-    BOOLEAN             is_aux;                     /* This variable used for BLE 5.0 or higher version when do auxiliary connection */
+
     TIMER_LIST_ENT      timer_entry;                /* Timer list entry for timeout evt */
     UINT16              handle;                     /* The handle used with LM          */
     UINT16              completed_packets;          /* The number of conpleted packets  */
@@ -466,7 +466,6 @@ typedef struct t_l2c_linkcb {
 
 } tL2C_LCB;
 
-
 /* Define the L2CAP control structure
 */
 typedef struct {
@@ -479,10 +478,12 @@ typedef struct {
 
     BOOLEAN         is_cong_cback_context;
 
-    list_t          *p_lcb_pool;                    /* Link Control Block pool          */
-    list_t          *p_ccb_pool;                    /* Channel Control Block pool       */
+    tL2C_LCB        lcb_pool[MAX_L2CAP_LINKS];      /* Link Control Block pool          */
+    tL2C_CCB        ccb_pool[MAX_L2CAP_CHANNELS];   /* Channel Control Block pool       */
     tL2C_RCB        rcb_pool[MAX_L2CAP_CLIENTS];    /* Registration info pool           */
 
+    tL2C_CCB        *p_free_ccb_first;              /* Pointer to first free CCB        */
+    tL2C_CCB        *p_free_ccb_last;               /* Pointer to last  free CCB        */
 
     UINT8           desire_role;                    /* desire to be master/slave when accepting a connection */
     BOOLEAN         disallow_switch;                /* FALSE, to allow switch at create conn */
@@ -609,7 +610,6 @@ extern void     l2cu_change_pri_ccb (tL2C_CCB *p_ccb, tL2CAP_CHNL_PRIORITY prior
 extern tL2C_CCB *l2cu_allocate_ccb (tL2C_LCB *p_lcb, UINT16 cid);
 extern void     l2cu_release_ccb (tL2C_CCB *p_ccb);
 extern tL2C_CCB *l2cu_find_ccb_by_cid (tL2C_LCB *p_lcb, UINT16 local_cid);
-extern tL2C_CCB *l2cu_find_free_ccb(void);
 extern tL2C_CCB *l2cu_find_ccb_by_remote_cid (tL2C_LCB *p_lcb, UINT16 remote_cid);
 extern void     l2cu_adj_id (tL2C_LCB *p_lcb, UINT8 adj_mask);
 extern BOOLEAN  l2c_is_cmd_rejected (UINT8 cmd_code, UINT8 id, tL2C_LCB *p_lcb);

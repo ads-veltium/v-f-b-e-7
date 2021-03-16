@@ -1,8 +1,6 @@
 from __future__ import unicode_literals
-
 import re
 import textwrap
-
 import ttfw_idf
 
 
