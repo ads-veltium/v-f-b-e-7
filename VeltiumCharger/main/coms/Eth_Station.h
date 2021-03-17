@@ -42,6 +42,8 @@ typedef struct Parametros_Ping
 //Prototipos de funciones
 void BuscarContador_Task(void *args);
 void initialize_ethernet(void);
+void initialize_ethernet_1(void);
+void initialize_ethernet_2(void);
 bool stop_ethernet(void);
 void kill_ethernet(void);
 bool restart_ethernet(void);

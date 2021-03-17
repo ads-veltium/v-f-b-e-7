@@ -129,7 +129,7 @@ int WiFiClientSecure::connect(const char *host, uint16_t port, const char *_CA_c
     int ret = start_ssl_client(sslclient, host, port, _timeout, _CA_cert, _cert, _private_key, NULL, NULL);
     _lastError = ret;
     if (ret < 0) {
-        log_e("start_ssl_client: %d", ret);
+        //log_e("start_ssl_client: %d", ret);
         stop();
         return 0;
     }

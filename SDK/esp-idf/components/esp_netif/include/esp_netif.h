@@ -188,6 +188,7 @@ esp_err_t esp_netif_receive(esp_netif_t *esp_netif, void *buffer, size_t len, vo
  * @param data
  */
 void esp_netif_action_start(void *esp_netif, esp_event_base_t base, int32_t event_id, void *data);
+void esp_netif_action_start2(void *esp_netif, esp_event_base_t base, int32_t event_id, void *data);
 
 /**
  * @brief Default building block for network interface action upon IO driver stop event
@@ -200,6 +201,7 @@ void esp_netif_action_start(void *esp_netif, esp_event_base_t base, int32_t even
  * @param data
  */
 void esp_netif_action_stop(void *esp_netif, esp_event_base_t base, int32_t event_id, void *data);
+void esp_netif_action_stop2(void *esp_netif, esp_event_base_t base, int32_t event_id, void *data);
 
 /**
  * @brief Default building block for network interface action upon IO driver connected event
@@ -212,6 +214,7 @@ void esp_netif_action_stop(void *esp_netif, esp_event_base_t base, int32_t event
  * @param data
  */
 void esp_netif_action_connected(void *esp_netif, esp_event_base_t base, int32_t event_id, void *data);
+void esp_netif_action_connected2(void *esp_netif, esp_event_base_t base, int32_t event_id, void *data);
 
 /**
  * @brief Default building block for network interface action upon IO driver disconnected event
@@ -224,6 +227,7 @@ void esp_netif_action_connected(void *esp_netif, esp_event_base_t base, int32_t 
  * @param data
  */
 void esp_netif_action_disconnected(void *esp_netif, esp_event_base_t base, int32_t event_id, void *data);
+void esp_netif_action_disconnected2(void *esp_netif, esp_event_base_t base, int32_t event_id, void *data);
 
 /**
  * @brief Default building block for network interface action upon network got IP event
@@ -236,6 +240,10 @@ void esp_netif_action_disconnected(void *esp_netif, esp_event_base_t base, int32
  * @param data
  */
 void esp_netif_action_got_ip(void *esp_netif, esp_event_base_t base, int32_t event_id, void *data);
+void esp_netif_action_got_ip2(void *esp_netif, esp_event_base_t base, int32_t event_id, void *data);
+
+void esp_netif_set_started(esp_netif_t *esp_netif, bool value);
+bool esp_netif_get_started(esp_netif_t *esp_netif);
 
 /**
  * @}
@@ -273,7 +281,6 @@ esp_err_t esp_netif_set_mac(esp_netif_t *esp_netif, uint8_t mac[]);
  *         - ESP_ERR_NOT_SUPPORTED - mac not supported on this interface
  */
 esp_err_t esp_netif_get_mac(esp_netif_t *esp_netif, uint8_t mac[]);
-
 /**
  * @brief  Set the hostname of an interface
  *

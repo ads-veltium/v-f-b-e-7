@@ -554,10 +554,10 @@ void procesar_bloque(uint16 tipo_bloque){
 				modifyCharacteristic(&buffer_rx_local[13], 1, ERROR_STATUS_ERROR_CODE_CHAR_HANDLE);	
 
 				//FaseA	
-				modifyCharacteristic(&buffer_rx_local[14], 2, MEASURES_INST_CURRENT_CHAR_HANDLE);
 				Status.Measures.instant_current = buffer_rx_local[14] + (buffer_rx_local[15] * 0x100);
 				if(((Status.Measures.instant_current) != (inst_current_anterior)) && (serverbleGetConnected())&& (--cnt_diferencia == 0))
 				{
+					modifyCharacteristic(&buffer_rx_local[14], 2, MEASURES_INST_CURRENT_CHAR_HANDLE);
 					cnt_diferencia = 2; // A.D.S. Cambiado de 30 a 5
 					inst_current_anterior = Status.Measures.instant_current;
 					serverbleNotCharacteristic(&buffer_rx_local[14], 2, MEASURES_INST_CURRENT_CHAR_HANDLE); 

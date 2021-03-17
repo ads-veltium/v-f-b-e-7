@@ -583,6 +583,15 @@ esp_err_t esp_netif_get_mac(esp_netif_t *esp_netif, uint8_t mac[])
     return ESP_OK;
 }
 
+bool esp_netif_get_started(esp_netif_t *esp_netif)
+{
+    return esp_netif->started;
+}
+
+void esp_netif_set_started(esp_netif_t *esp_netif, bool value)
+{
+    esp_netif->started = value;
+}
 
 static void esp_netif_dhcps_cb(u8_t client_ip[4])
 {

@@ -99,4 +99,5 @@ struct esp_netif_obj {
     char * if_key;
     char * if_desc;
     int route_prio;
+    bool started;
 };

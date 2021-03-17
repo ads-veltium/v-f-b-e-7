@@ -1127,18 +1127,18 @@ int WiFiGenericClass::hostByName(const char* aHostname, IPAddress& aResult)
 {
     ip_addr_t addr;
     aResult = static_cast<uint32_t>(0);
-    waitStatusBits(WIFI_DNS_IDLE_BIT, 16000);
+    waitStatusBits(WIFI_DNS_IDLE_BIT, 8000);
     clearStatusBits(WIFI_DNS_IDLE_BIT | WIFI_DNS_DONE_BIT);
     err_t err = dns_gethostbyname(aHostname, &addr, &wifi_dns_found_callback, &aResult);
     if(err == ERR_OK && addr.u_addr.ip4.addr) {
         aResult = addr.u_addr.ip4.addr;
     } else if(err == ERR_INPROGRESS) {
-        waitStatusBits(WIFI_DNS_DONE_BIT, 15000);  //real internal timeout in lwip library is 14[s]
+        waitStatusBits(WIFI_DNS_DONE_BIT, 7500);  //real internal timeout in lwip library is 14[s]
         clearStatusBits(WIFI_DNS_DONE_BIT);
     }
     setStatusBits(WIFI_DNS_IDLE_BIT);
     if((uint32_t)aResult == 0){
-        log_e("DNS Failed for %s", aHostname);
+        //log_e("DNS Failed for %s", aHostname);
     }
     return (uint32_t)aResult != 0;
 }

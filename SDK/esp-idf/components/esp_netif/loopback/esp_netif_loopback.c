@@ -58,6 +58,7 @@ struct esp_netif_obj {
     char * if_key;
     char * if_desc;
     int route_prio;
+    bool started = false;
 };
 
 void esp_netif_set_ip4_addr(esp_ip4_addr_t *addr, uint8_t a, uint8_t b, uint8_t c, uint8_t d)

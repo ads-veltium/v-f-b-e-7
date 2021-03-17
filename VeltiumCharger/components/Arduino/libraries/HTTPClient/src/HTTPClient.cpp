@@ -565,16 +565,16 @@ int HTTPClient::sendRequest(const char * type, uint8_t * payload, size_t size)
         if(!connect()) {
             return returnError(HTTPC_ERROR_CONNECTION_REFUSED);
         }
-
+        log_d("conectado \n");
         if(payload && size > 0) {
             addHeader(F("Content-Length"), String(size));
         }
-
+        log_d("header \n");
         // send Header
         if(!sendHeader(type)) {
             return returnError(HTTPC_ERROR_SEND_HEADER_FAILED);
         }
-
+        log_d("header2 \n");
         // send Payload if needed
         if(payload && size > 0) {
             if(_client->write(&payload[0], size) != size) {
@@ -908,7 +908,7 @@ int HTTPClient::writeToStream(Stream * stream)
         return returnError(HTTPC_ERROR_ENCODING);
     }
 
-//    end();
+    end();
     disconnect(true);
     return ret;
 }

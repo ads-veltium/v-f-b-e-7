@@ -213,19 +213,19 @@ bool ReadFirebaseComs(String Path){
       if(!Coms.ETH.Auto){
         IPAddress addr;
         addr.fromString(Lectura["eth"]["ip1"].as<String>());
-        Coms.RestartConection = (Coms.ETH.IP1 != addr) ? true : Coms.RestartConection; //Si el valor no es le mismo que el que tenemos acutalmente, reincia la conexion para aplicarlo
+        //Coms.RestartConection = (Coms.ETH.IP1 != addr) ? true : Coms.RestartConection; //Si el valor no es le mismo que el que tenemos acutalmente, reincia la conexion para aplicarlo
         Coms.ETH.IP1     = addr;
        
         addr.fromString(Lectura["eth"]["ip2"].as<String>());
-        Coms.RestartConection = (Coms.ETH.IP2 != addr) ? true : Coms.RestartConection; 
+        //Coms.RestartConection = (Coms.ETH.IP2 != addr) ? true : Coms.RestartConection; 
         Coms.ETH.IP2     = addr;
 
         addr.fromString(Lectura["eth"]["gateway"].as<String>());
-        Coms.RestartConection = (Coms.ETH.Gateway != addr) ? true : Coms.RestartConection; 
+        //Coms.RestartConection = (Coms.ETH.Gateway != addr) ? true : Coms.RestartConection; 
         Coms.ETH.Gateway = addr;
 
         addr.fromString(Lectura["eth"]["mask"].as<String>());
-        Coms.RestartConection = (Coms.ETH.Mask != addr) ? true : Coms.RestartConection;
+        //Coms.RestartConection = (Coms.ETH.Mask != addr) ? true : Coms.RestartConection;
         Coms.ETH.Mask    = addr; 
       }
 
@@ -703,7 +703,11 @@ void Firebase_Conn_Task(void *args){
     }
     
     vTaskDelay(pdMS_TO_TICKS(ConfigFirebase.ClientConnected ? 150:2500));
-    Serial.println(ESP.getFreePsram());
+    //chivatos de la ram
+    if(ESP.getFreePsram() < 2000000 || ESP.getFreeHeap() < 20000){
+        Serial.println(ESP.getFreePsram());
+        Serial.println(ESP.getFreeHeap());
+    }
 
   }
 }
