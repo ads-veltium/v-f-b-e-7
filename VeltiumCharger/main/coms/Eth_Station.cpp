@@ -4,6 +4,8 @@
 #include "esp_http_client.h"
 #include "Wifi_Station.h"
 
+
+
 bool eth_link_up     = false;
 bool eth_connected   = false;
 bool eth_connecting  = false;
@@ -29,6 +31,8 @@ esp_netif_t *eth_netif1;
 esp_netif_t *eth_netif2;
 //Variables para buscar el contador
 xParametrosPing ParametrosPing EXT_RAM_ATTR;
+
+
 
 bool CheckContador(int ip4){
     Contador ContadorCheck;
@@ -176,78 +180,130 @@ bool ComprobarConexion(){
 }
 
 static void eth_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data){
-    switch (event_id) {
-    case ETHERNET_EVENT_CONNECTED:
+    if(event_base == ETH_EVENT){
+        switch (event_id) {
+            case ETHERNET_EVENT_CONNECTED:
 
-        if(phy1->link1 && phy2->link1)Coms.ETH.Puerto = 3;
-        else if(phy1->link1)Coms.ETH.Puerto = 1;
-        else if(phy2->link1)Coms.ETH.Puerto = 2;
-
-        Serial.printf( "Ethernet Link Up: %u \n", Coms.ETH.Puerto);
-        if(phy1->link1){
-            esp_eth_ioctl(s_eth_handle1, ETH_CMD_G_MAC_ADDR, s_eth_mac);
-            Serial.printf("Ethernet1 HW Addr %02x:%02x:%02x:%02x:%02x:%02x \n",s_eth_mac[0], s_eth_mac[1], s_eth_mac[2], s_eth_mac[3], s_eth_mac[4], s_eth_mac[5]);
+                Serial.printf( "Ethernet Link Up: %u \n", 1);
+                esp_eth_ioctl(s_eth_handle1, ETH_CMD_G_MAC_ADDR, s_eth_mac);
+                Serial.printf("Ethernet1 HW Addr %02x:%02x:%02x:%02x:%02x:%02x \n",s_eth_mac[0], s_eth_mac[1], s_eth_mac[2], s_eth_mac[3], s_eth_mac[4], s_eth_mac[5]);
+                
+                break;
+            case ETHERNET_EVENT_CONNECTED2:
+                Serial.printf( "Ethernet Link Up: %u \n", 2);
+                esp_eth_ioctl(s_eth_handle2, ETH_CMD_G_MAC_ADDR, s_eth_mac);
+                Serial.printf("Ethernet2 HW Addr %02x:%02x:%02x:%02x:%02x:%02x \n",s_eth_mac[0], s_eth_mac[1], s_eth_mac[2], s_eth_mac[3], s_eth_mac[4], s_eth_mac[5]);
+                
+                break;
+            case ETHERNET_EVENT_DISCONNECTED:
+                Serial.println( "Ethernet Link 1 Down");
+                eth_connected = false;
+                eth_link_up = false;
+                Coms.ETH.conectado = false;
+                break;
+            case ETHERNET_EVENT_DISCONNECTED2:
+                Serial.println( "Ethernet Link 2 Down");
+                eth_connected = false;
+                eth_link_up = false;
+                Coms.ETH.conectado = false;
+                break;
+            case ETHERNET_EVENT_START:
+                Serial.println( "Ethernet 1 Started");
+                break;
+            case ETHERNET_EVENT_START2:
+                Serial.println( "Ethernet 2 Started");
+                break;
+            case ETHERNET_EVENT_STOP:
+                Serial.println( "Ethernet 1 Stopped");
+                eth_connected = false;
+                break;
+            case ETHERNET_EVENT_STOP2:
+                Serial.println( "Ethernet 2 Stopped");
+                eth_connected = false;
+                break;
+            default:
+                break;
         }
-        if(phy2->link1){
-            esp_eth_ioctl(s_eth_handle2, ETH_CMD_G_MAC_ADDR, s_eth_mac);
-            Serial.printf("Ethernet2 HW Addr %02x:%02x:%02x:%02x:%02x:%02x \n",s_eth_mac[0], s_eth_mac[1], s_eth_mac[2], s_eth_mac[3], s_eth_mac[4], s_eth_mac[5]);
-        }
-        break;
-    case ETHERNET_EVENT_DISCONNECTED:
-        Serial.println( "Ethernet Link Down");
-        eth_connected = false;
-        eth_link_up = false;
-        Coms.ETH.conectado = false;
-        break;
-    case ETHERNET_EVENT_START:
-        Serial.println( "Ethernet Started");
-        break;
-    case ETHERNET_EVENT_STOP:
-        Serial.println( "Ethernet Stopped");
-        eth_connected = false;
-        break;
-    case IP_EVENT_ETH_GOT_IP:{
-        ip_event_got_ip_t *event = (ip_event_got_ip_t *) event_data;
-        const esp_netif_ip_info_t *ip_info = &event->ip_info;
+    }
+    else{
+        if(event_id == IP_EVENT_ETH_GOT_IP){
+            ip_event_got_ip_t *event = (ip_event_got_ip_t *) event_data;
+            const esp_netif_ip_info_t *ip_info = &event->ip_info;
 
-        Serial.println( "Ethernet Got IP Address");
-        Serial.printf( "ETHIP: %d %d %d %d\n",IP2STR(&ip_info->ip));
-        Coms.ETH.IP1[0] =ip4_addr1(&ip_info->ip);
-        Coms.ETH.IP1[1] =ip4_addr2(&ip_info->ip);
-        Coms.ETH.IP1[2] =ip4_addr3(&ip_info->ip);
-        Coms.ETH.IP1[3] =ip4_addr4(&ip_info->ip);
-
-        if(Coms.ETH.Puerto==1){
+            Serial.println( "Ethernet 1 Got IP Address");
+            Serial.printf( "ETHIP: %d %d %d %d\n",IP2STR(&ip_info->ip));
             Coms.ETH.IP1[0] =ip4_addr1(&ip_info->ip);
             Coms.ETH.IP1[1] =ip4_addr2(&ip_info->ip);
             Coms.ETH.IP1[2] =ip4_addr3(&ip_info->ip);
-            Coms.ETH.IP1[3] =ip4_addr4(&ip_info->ip);               
-            modifyCharacteristic(&Coms.ETH.IP1[0], 4, COMS_CONFIGURATION_LAN_IP1);
-            modifyCharacteristic(ZeroBuffer, 4, COMS_CONFIGURATION_LAN_IP2);
-        }
-        else if(Coms.ETH.Puerto==2){
-            Coms.ETH.IP2[0] =ip4_addr1(&ip_info->ip);
-            Coms.ETH.IP2[1] =ip4_addr2(&ip_info->ip);
-            Coms.ETH.IP2[2] =ip4_addr3(&ip_info->ip);
-            Coms.ETH.IP2[3] =ip4_addr4(&ip_info->ip); 
-            modifyCharacteristic(&Coms.ETH.IP2[0], 4, COMS_CONFIGURATION_LAN_IP2);
-            modifyCharacteristic(ZeroBuffer, 4, COMS_CONFIGURATION_LAN_IP1);
-        }
+            Coms.ETH.IP1[3] =ip4_addr4(&ip_info->ip);
 
-        eth_connected = true;
-        eth_connecting = false;
+            if(Coms.ETH.Puerto==1){
+                Coms.ETH.IP1[0] =ip4_addr1(&ip_info->ip);
+                Coms.ETH.IP1[1] =ip4_addr2(&ip_info->ip);
+                Coms.ETH.IP1[2] =ip4_addr3(&ip_info->ip);
+                Coms.ETH.IP1[3] =ip4_addr4(&ip_info->ip);               
+                modifyCharacteristic(&Coms.ETH.IP1[0], 4, COMS_CONFIGURATION_LAN_IP1);
+                modifyCharacteristic(ZeroBuffer, 4, COMS_CONFIGURATION_LAN_IP2);
+            }
+            else if(Coms.ETH.Puerto==2){
+                Coms.ETH.IP2[0] =ip4_addr1(&ip_info->ip);
+                Coms.ETH.IP2[1] =ip4_addr2(&ip_info->ip);
+                Coms.ETH.IP2[2] =ip4_addr3(&ip_info->ip);
+                Coms.ETH.IP2[3] =ip4_addr4(&ip_info->ip); 
+                modifyCharacteristic(&Coms.ETH.IP2[0], 4, COMS_CONFIGURATION_LAN_IP2);
+                modifyCharacteristic(ZeroBuffer, 4, COMS_CONFIGURATION_LAN_IP1);
+            }
 
-        //Si el ethernet tiene conexion a internet, deasactivamos el wifi
-        delay(1000);
-        if(ComprobarConexion()){
-            ConfigFirebase.InternetConection = true;
-            Coms.Wifi.ON = false;
+            eth_connected = true;
+            eth_connecting = false;
+
+            //Si el ethernet tiene conexion a internet, deasactivamos el wifi
+            delay(1000);
+            if(ComprobarConexion()){
+                ConfigFirebase.InternetConection = true;
+                Coms.Wifi.ON = false;
+            }
+            Coms.ETH.conectado = true;
         }
-        Coms.ETH.conectado = true;
-        break;
-    }
-    default:
-        break;
+        if(event_id == IP_EVENT_ETH_GOT_IP2){
+            ip_event_got_ip_t *event = (ip_event_got_ip_t *) event_data;
+            const esp_netif_ip_info_t *ip_info = &event->ip_info;
+
+            Serial.println( "Ethernet 2 Got IP Address");
+            Serial.printf( "ETHIP: %d %d %d %d\n",IP2STR(&ip_info->ip));
+            Coms.ETH.IP1[0] =ip4_addr1(&ip_info->ip);
+            Coms.ETH.IP1[1] =ip4_addr2(&ip_info->ip);
+            Coms.ETH.IP1[2] =ip4_addr3(&ip_info->ip);
+            Coms.ETH.IP1[3] =ip4_addr4(&ip_info->ip);
+
+            if(Coms.ETH.Puerto==1){
+                Coms.ETH.IP1[0] =ip4_addr1(&ip_info->ip);
+                Coms.ETH.IP1[1] =ip4_addr2(&ip_info->ip);
+                Coms.ETH.IP1[2] =ip4_addr3(&ip_info->ip);
+                Coms.ETH.IP1[3] =ip4_addr4(&ip_info->ip);               
+                modifyCharacteristic(&Coms.ETH.IP1[0], 4, COMS_CONFIGURATION_LAN_IP1);
+                modifyCharacteristic(ZeroBuffer, 4, COMS_CONFIGURATION_LAN_IP2);
+            }
+            else if(Coms.ETH.Puerto==2){
+                Coms.ETH.IP2[0] =ip4_addr1(&ip_info->ip);
+                Coms.ETH.IP2[1] =ip4_addr2(&ip_info->ip);
+                Coms.ETH.IP2[2] =ip4_addr3(&ip_info->ip);
+                Coms.ETH.IP2[3] =ip4_addr4(&ip_info->ip); 
+                modifyCharacteristic(&Coms.ETH.IP2[0], 4, COMS_CONFIGURATION_LAN_IP2);
+                modifyCharacteristic(ZeroBuffer, 4, COMS_CONFIGURATION_LAN_IP1);
+            }
+
+            eth_connected = true;
+            eth_connecting = false;
+
+            //Si el ethernet tiene conexion a internet, deasactivamos el wifi
+            delay(1000);
+            if(ComprobarConexion()){
+                ConfigFirebase.InternetConection = true;
+                Coms.Wifi.ON = false;
+            }
+            Coms.ETH.conectado = true;
+        }
     }
 }
 
@@ -328,6 +384,7 @@ void initialize_ethernet_2(void)
     esp_netif_config_t cfg = ESP_NETIF_DEFAULT_ETH();
     esp_netif_inherent_config inherent_cfg = *cfg.base;
     inherent_cfg.if_key = "ETH2";
+    inherent_cfg.get_ip_event = IP_EVENT_ETH_GOT_IP2;
     cfg.base = &inherent_cfg;
 
 
@@ -340,16 +397,17 @@ void initialize_ethernet_2(void)
     IP4_ADDR(&info.ip, 192, 168, 1, 5);
     IP4_ADDR(&info.gw, 192, 168, 1, 1);
     IP4_ADDR(&info.netmask, 255, 255, 255, 0);
-    ESP_ERROR_CHECK(esp_netif_set_ip_info(eth_netif2, &info));  */
+    ESP_ERROR_CHECK(esp_netif_set_ip_info(eth_netif2, &info)); */
 
     esp_eth_set_default_handlers2(eth_netif2);
-
+    ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_ETH_GOT_IP2, eth_event_handler, NULL));
     eth_phy_config_t phy_config = ETH_PHY_DEFAULT_CONFIG();
 
     phy_config.phy_addr = 1;
     phy_config.reset_gpio_num = ETH_POWER_PIN;
     phy2 = esp_eth_phy_new_lan8720(&phy_config);
     esp_eth_config_t config = ETH_DEFAULT_CONFIG(mac, phy2);
+    config.Port=2;
 
     ESP_ERROR_CHECK(esp_eth_driver_install(&config, &s_eth_handle2));
     ESP_ERROR_CHECK(esp_netif_attach(eth_netif2, esp_eth_new_netif_glue(s_eth_handle2)));
@@ -382,6 +440,8 @@ void initialize_ethernet_1(void)
     phy_config.reset_gpio_num = ETH_POWER_PIN;
     phy1 = esp_eth_phy_new_lan8720(&phy_config);
     esp_eth_config_t config = ETH_DEFAULT_CONFIG(mac, phy1);
+
+    config.Port=1;
 
     ESP_ERROR_CHECK(esp_eth_driver_install(&config, &s_eth_handle1));
     ESP_ERROR_CHECK(esp_netif_attach(eth_netif1, esp_eth_new_netif_glue(s_eth_handle1)));

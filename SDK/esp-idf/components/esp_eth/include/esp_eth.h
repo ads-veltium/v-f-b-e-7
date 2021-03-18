@@ -34,6 +34,8 @@ typedef void *esp_eth_handle_t;
 *
 */
 typedef struct {
+
+    uint8_t Port;
     /**
     * @brief Ethernet MAC object
     *

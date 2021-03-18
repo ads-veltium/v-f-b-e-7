@@ -91,6 +91,20 @@ esp_err_t esp_eth_clear_default_handlers(void *esp_netif)
 
     return ESP_OK;
 }
+esp_err_t esp_eth_clear_default_handlers2(void *esp_netif)
+{
+    if (!esp_netif) {
+        ESP_LOGE(TAG, "esp-netif handle can't be null");
+        return ESP_ERR_INVALID_ARG;
+    }
+    esp_event_handler_unregister(ETH_EVENT, ETHERNET_EVENT_START2, esp_netif_action_start);
+    esp_event_handler_unregister(ETH_EVENT, ETHERNET_EVENT_STOP2, esp_netif_action_stop);
+    esp_event_handler_unregister(ETH_EVENT, ETHERNET_EVENT_CONNECTED2, esp_netif_action_connected);
+    esp_event_handler_unregister(ETH_EVENT, ETHERNET_EVENT_DISCONNECTED2, esp_netif_action_disconnected);
+    esp_event_handler_unregister(IP_EVENT, IP_EVENT_ETH_GOT_IP2, esp_netif_action_got_ip);
+
+    return ESP_OK;
+}
 
 esp_err_t esp_eth_set_default_handlers(void *esp_netif)
 {
@@ -142,27 +156,27 @@ esp_err_t esp_eth_set_default_handlers2(void *esp_netif)
         return ESP_ERR_INVALID_ARG;
     }
 
-    ret = esp_event_handler_register(ETH_EVENT, ETHERNET_EVENT_START, esp_netif_action_start2, esp_netif);
+    ret = esp_event_handler_register(ETH_EVENT, ETHERNET_EVENT_START2, esp_netif_action_start2, esp_netif);
     if (ret != ESP_OK) {
         goto fail;
     }
 
-    ret = esp_event_handler_register(ETH_EVENT, ETHERNET_EVENT_STOP, esp_netif_action_stop2, esp_netif);
+    ret = esp_event_handler_register(ETH_EVENT, ETHERNET_EVENT_STOP2, esp_netif_action_stop2, esp_netif);
     if (ret != ESP_OK) {
         goto fail;
     }
 
-    ret = esp_event_handler_register(ETH_EVENT, ETHERNET_EVENT_CONNECTED, esp_netif_action_connected2, esp_netif);
+    ret = esp_event_handler_register(ETH_EVENT, ETHERNET_EVENT_CONNECTED2, esp_netif_action_connected2, esp_netif);
     if (ret != ESP_OK) {
         goto fail;
     }
 
-    ret = esp_event_handler_register(ETH_EVENT, ETHERNET_EVENT_DISCONNECTED, esp_netif_action_disconnected2, esp_netif);
+    ret = esp_event_handler_register(ETH_EVENT, ETHERNET_EVENT_DISCONNECTED2, esp_netif_action_disconnected2, esp_netif);
     if (ret != ESP_OK) {
         goto fail;
     }
 
-    ret = esp_event_handler_register(IP_EVENT, IP_EVENT_ETH_GOT_IP, esp_netif_action_got_ip2, esp_netif);
+    ret = esp_event_handler_register(IP_EVENT, IP_EVENT_ETH_GOT_IP2, esp_netif_action_got_ip2, esp_netif);
     if (ret != ESP_OK) {
         goto fail;
     }
@@ -170,6 +184,6 @@ esp_err_t esp_eth_set_default_handlers2(void *esp_netif)
     return ESP_OK;
 
 fail:
-    esp_eth_clear_default_handlers(esp_netif);
+    esp_eth_clear_default_handlers2(esp_netif);
     return ret;
 }
