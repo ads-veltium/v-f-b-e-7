@@ -65,11 +65,11 @@ uint8 dispositivo_inicializado = 0;
 uint8 cnt_timeout_inicio = 0;
 uint16 cnt_repeticiones_inicio = 500;	//1000;
 
-uint8 status_hpt_anterior[2] = {'0','V' };
+uint8 status_hpt_anterior[2] = {'F','F'};
 uint16 inst_current_anterior = 0x0000;
 uint16 cnt_diferencia = 1;
 
-uint8 version_firmware[11] = {"VBLE2_0509"};	
+uint8 version_firmware[11] = {"VBLE2_0507"};	
 uint8 PSOC5_version_firmware[11] ;		
 
 uint8 systemStarted = 0;
@@ -472,14 +472,20 @@ void procesar_bloque(uint16 tipo_bloque){
 				luminosidad = buffer_rx_local[0];
 
 				//Hilo piloto
-				modifyCharacteristic(&buffer_rx_local[1], 2, STATUS_HPT_STATUS_CHAR_HANDLE);
-
 				if((memcmp(&buffer_rx_local[1], status_hpt_anterior, 2) != 0))
 				{
+					modifyCharacteristic(&buffer_rx_local[1], 1, STATUS_HPT_STATUS_CHAR_HANDLE);
 					Serial.printf("%c %c \n",buffer_rx_local[1],buffer_rx_local[2]);
 					memcpy(status_hpt_anterior, &buffer_rx_local[1], 2);
 					if(serverbleGetConnected()){
-						serverbleNotCharacteristic(&buffer_rx_local[1], 2, STATUS_HPT_STATUS_CHAR_HANDLE); 
+						if(buffer_rx_local[1]!= 'E' && buffer_rx_local[1]!= 'F'){
+							modifyCharacteristic(&buffer_rx_local[1], 2, STATUS_HPT_STATUS_CHAR_HANDLE);
+							serverbleNotCharacteristic(&buffer_rx_local[1], 2, STATUS_HPT_STATUS_CHAR_HANDLE); 
+						}
+						else{
+							modifyCharacteristic(&buffer_rx_local[1], 1, STATUS_HPT_STATUS_CHAR_HANDLE);
+							serverbleNotCharacteristic(&buffer_rx_local[1], 1, STATUS_HPT_STATUS_CHAR_HANDLE); 
+						}
 					}
 					#ifdef CONNECTED
 						ConfigFirebase.WriteStatus=true;
