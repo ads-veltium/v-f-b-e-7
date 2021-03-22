@@ -298,7 +298,7 @@ void controlTask(void *arg)
 
 #ifdef CONNECTED
 			//Si el equipo es trifasico, buscamos el contador, si lo encontramos lo leemos
-			if(Status.Trifasico && Coms.ETH.conectado && !ContadorExt.ContadorConectado ){
+			if(Status.Trifasico && Coms.ETH.conectado1 && !ContadorExt.ContadorConectado ){
 				if(--TimeFromStart == 0){
 					Counter.find();
 				}

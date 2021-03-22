@@ -199,13 +199,13 @@ static void eth_event_handler(void *arg, esp_event_base_t event_base, int32_t ev
                 Serial.println( "Ethernet Link 1 Down");
                 eth_connected = false;
                 eth_link_up = false;
-                Coms.ETH.conectado = false;
+                Coms.ETH.conectado1 = false;
                 break;
             case ETHERNET_EVENT_DISCONNECTED2:
                 Serial.println( "Ethernet Link 2 Down");
                 eth_connected = false;
                 eth_link_up = false;
-                Coms.ETH.conectado = false;
+                Coms.ETH.conectado2 = false;
                 break;
             case ETHERNET_EVENT_START:
                 Serial.println( "Ethernet 1 Started");
@@ -263,7 +263,7 @@ static void eth_event_handler(void *arg, esp_event_base_t event_base, int32_t ev
                 ConfigFirebase.InternetConection = true;
                 Coms.Wifi.ON = false;
             }
-            Coms.ETH.conectado = true;
+            Coms.ETH.conectado1 = true;
         }
         if(event_id == IP_EVENT_ETH_GOT_IP2){
             ip_event_got_ip_t *event = (ip_event_got_ip_t *) event_data;
@@ -302,7 +302,7 @@ static void eth_event_handler(void *arg, esp_event_base_t event_base, int32_t ev
                 ConfigFirebase.InternetConection = true;
                 Coms.Wifi.ON = false;
             }
-            Coms.ETH.conectado = true;
+            Coms.ETH.conectado2 = true;
         }
     }
 }
@@ -394,26 +394,47 @@ void initialize_ethernet_2(void)
     /*ESP_ERROR_CHECK(esp_netif_dhcpc_stop(eth_netif2));
     esp_netif_ip_info_t  info;
     memset(&info, 0, sizeof(info));
-    IP4_ADDR(&info.ip, 192, 168, 1, 5);
-    IP4_ADDR(&info.gw, 192, 168, 1, 1);
-    IP4_ADDR(&info.netmask, 255, 255, 255, 0);
+    IP4_ADDR(&info.ip, 192, 168, 20, 167);
+    IP4_ADDR(&info.gw, 192, 168, 100, 254);
+    IP4_ADDR(&info.netmask, 255, 255, 0, 0);
     ESP_ERROR_CHECK(esp_netif_set_ip_info(eth_netif2, &info)); */
 
-    esp_eth_set_default_handlers2(eth_netif2);
+    esp_netif_inherent_config_t config1;
+    config1 = *cfg.base;
+    config1.flags = (esp_netif_flags_t)(ESP_NETIF_DHCP_SERVER | ESP_NETIF_FLAG_AUTOUP);
+    config1.route_prio = 10;
+    cfg.base = &config1;
+    eth_netif2= esp_netif_new(&cfg);
+    ESP_ERROR_CHECK(esp_netif_dhcpc_stop(eth_netif2));
+    ESP_ERROR_CHECK(esp_netif_dhcps_stop(eth_netif2));
+
+    esp_netif_ip_info_t DHCP_Server_IP;
+    IP4_ADDR(&DHCP_Server_IP.ip, 192, 168, 1, 1);
+    IP4_ADDR(&DHCP_Server_IP.gw, 192, 168, 1, 1);
+    IP4_ADDR(&DHCP_Server_IP.netmask, 255, 255, 255, 0);
+    ESP_ERROR_CHECK(esp_netif_set_ip_info(eth_netif2, &DHCP_Server_IP)); 
+
+    ESP_ERROR_CHECK(esp_netif_dhcps_start(eth_netif2));
+
+    esp_event_handler_register(ETH_EVENT, ETHERNET_EVENT_START2, esp_netif_action_start2, eth_netif2);
+    esp_event_handler_register(ETH_EVENT, ETHERNET_EVENT_STOP2, esp_netif_action_stop2, eth_netif2);
+    eth_connected = true;
+
+    //esp_eth_set_default_handlers2(eth_netif2);
     ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_ETH_GOT_IP2, eth_event_handler, NULL));
     eth_phy_config_t phy_config = ETH_PHY_DEFAULT_CONFIG();
+
+    
 
     phy_config.phy_addr = 1;
     phy_config.reset_gpio_num = ETH_POWER_PIN;
     phy2 = esp_eth_phy_new_lan8720(&phy_config);
     esp_eth_config_t config = ETH_DEFAULT_CONFIG(mac, phy2);
     config.Port=2;
-
     ESP_ERROR_CHECK(esp_eth_driver_install(&config, &s_eth_handle2));
     ESP_ERROR_CHECK(esp_netif_attach(eth_netif2, esp_eth_new_netif_glue(s_eth_handle2)));
-    esp_eth_ioctl(s_eth_handle2, ETH_CMD_S_PROMISCUOUS, (void *)true);
+    //esp_eth_ioctl(s_eth_handle2, ETH_CMD_S_PROMISCUOUS, (void *)true);
     ESP_ERROR_CHECK(esp_eth_start(s_eth_handle2));
-
     eth_connecting = true;
     eth_started = true;
 }
@@ -426,6 +447,16 @@ void initialize_ethernet_1(void)
     cfg.base = &inherent_cfg;
 
     eth_netif1 = esp_netif_new(&cfg);
+
+    //ip estatica
+    ESP_ERROR_CHECK(esp_netif_dhcpc_stop(eth_netif1));
+    esp_netif_ip_info_t  info;
+    memset(&info, 0, sizeof(info));
+    IP4_ADDR(&info.ip, 192, 168, 20, 200);
+    IP4_ADDR(&info.gw, 192, 168, 100, 254);
+    IP4_ADDR(&info.netmask, 255, 255, 0, 0);
+    ESP_ERROR_CHECK(esp_netif_set_ip_info(eth_netif1, &info));
+
     esp_eth_set_default_handlers(eth_netif1);
 
     ESP_ERROR_CHECK(esp_event_handler_register(ETH_EVENT, ESP_EVENT_ANY_ID, eth_event_handler, NULL));
@@ -440,9 +471,7 @@ void initialize_ethernet_1(void)
     phy_config.reset_gpio_num = ETH_POWER_PIN;
     phy1 = esp_eth_phy_new_lan8720(&phy_config);
     esp_eth_config_t config = ETH_DEFAULT_CONFIG(mac, phy1);
-
     config.Port=1;
-
     ESP_ERROR_CHECK(esp_eth_driver_install(&config, &s_eth_handle1));
     ESP_ERROR_CHECK(esp_netif_attach(eth_netif1, esp_eth_new_netif_glue(s_eth_handle1)));
     esp_eth_ioctl(s_eth_handle1, ETH_CMD_S_PROMISCUOUS, (void *)true);

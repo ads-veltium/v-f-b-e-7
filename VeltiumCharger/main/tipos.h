@@ -174,9 +174,10 @@ typedef struct{
 	IPAddress IP2;
 	IPAddress Gateway;
 	IPAddress Mask;
-	uint8_t Puerto;
+	uint8_t   Puerto;
 
-	bool conectado;
+	bool conectado1 = false;
+	bool conectado2 = false;
 }carac_ETH;
 
 typedef struct{
