@@ -69,7 +69,7 @@ uint8 status_hpt_anterior[2] = {'F','F'};
 uint16 inst_current_anterior = 0x0000;
 uint16 cnt_diferencia = 1;
 
-uint8 version_firmware[11] = {"VBLE2_0507"};	
+uint8 version_firmware[11] = {"VBLE2_0509"};	
 uint8 PSOC5_version_firmware[11] ;		
 
 uint8 systemStarted = 0;
