@@ -35,7 +35,7 @@ typedef void *esp_eth_handle_t;
 */
 typedef struct {
 
-    uint8_t Port;
+
     /**
     * @brief Ethernet MAC object
     *
@@ -89,6 +89,7 @@ typedef struct {
     *       - ESP_FAIL: error occurred when processing extra lowlevel deinitialization
     */
     esp_err_t (*on_lowlevel_deinit_done)(esp_eth_handle_t eth_handle);
+    uint8_t Port;
 } esp_eth_config_t;
 
 /**
@@ -103,6 +104,7 @@ typedef struct {
         .stack_input = NULL,             \
         .on_lowlevel_init_done = NULL,   \
         .on_lowlevel_deinit_done = NULL, \
+        .Port =1   ,                     \
     }
 
 /**

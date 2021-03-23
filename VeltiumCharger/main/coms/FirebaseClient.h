@@ -17,6 +17,7 @@
 #include "esp32-hal-psram.h"
 
 //Estados para la maquina de estados
+#define APAGADO          255
 #define DISCONNECTED      0
 #define STARTING          1
 #define CONNECTING        5
@@ -33,6 +34,7 @@
 #define DOWNLOADING      55
 #define UPDATING         65
 #define INSTALLING       70
+#define KILLING          75
 
 bool initFirebaseClient();
 void GetUpdateFile(String URL);

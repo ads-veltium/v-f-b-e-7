@@ -1,42 +1,42 @@
-{
-   "actionButtons": {
-        "defaultColor": "#ff0034", // Can also use string color names.
-        "loadNpmCommands":false, // Disables automatic generation of actions for npm commands.
-        "reloadButton":"♻️", // Custom reload button text or icon (default ↻). null value enables automatic reload on configuration change
-        "commands": [
-            {
-                "name": "BUILD",
-                "color": "white",
-                "singleInstance": true,
-                "command": ". /home/jon/Documentos/repositorio/fw-bird-esp32/SDK/esp-idf/./export.sh && cd /home/jon/Documentos/repositorio/fw-bird-esp32/VeltiumCharger/ && make",
-            },
-            {
-                "name": "MFM",
-                "color": "white",
-                "singleInstance": true,
-                "command": ". /home/jon/Documentos/repositorio/fw-bird-esp32/SDK/esp-idf/./export.sh && cd /home/jon/Documentos/repositorio/fw-bird-esp32/VeltiumCharger/ && make flash monitor",
-            },
-            {
-                "name": "MONITOR",
-                "color": "white",
-                "singleInstance": true,
-                "command": ". /home/jon/Documentos/repositorio/fw-bird-esp32/SDK/esp-idf/./export.sh && cd /home/jon/Documentos/repositorio/fw-bird-esp32/VeltiumCharger/ && make monitor",
-            },
-            {
-                "name": "MENUCONFIG",
-                "color": "white",
-                "singleInstance": true,
-                "command": ". /home/jon/Documentos/repositorio/fw-bird-esp32/SDK/esp-idf/./export.sh && cd /home/jon/Documentos/repositorio/fw-bird-esp32/VeltiumCharger && make menuconfig",
-            },
-            {
-                "name": "FLASH",
-                "color": "white",
-                "singleInstance": true,
-                "command": ". /home/jon/Documentos/repositorio/fw-bird-esp32/SDK/esp-idf/./export.sh && cd /home/jon/Documentos/repositorio/firmware/fw-bird-esp32/VeltiumCharger/ && make flash",
-            },
 
-        ]
-    },
-    "C_Cpp.errorSquiggles": "Enabled",
-    "C_Cpp.dimInactiveRegions": false
-}
+"actionButtons": {
+    "defaultColor": "#ff0034", // Can also use string color names.
+    "loadNpmCommands":false, // Disables automatic generation of actions for npm commands.
+    "reloadButton":"♻️", // Custom reload button text or icon (default ↻). null value enables automatic reload on configuration change
+    "commands": [
+        {
+            "name": "BUILD",
+            "color": "white",
+            "singleInstance": true,
+            "command": ". /home/joel/Documents/fw-bird-esp32/SDK/esp-idf/./export.sh && cd /home/joel/Documents/fw-bird-esp32/VeltiumCharger/ && make",
+        },
+        {
+            "name": "MFM",
+            "color": "white",
+            "singleInstance": true,
+            "command": ". /home/joel/Documents/fw-bird-esp32/SDK/esp-idf/./export.sh && cd /home/joel/Documents/fw-bird-esp32/VeltiumCharger/ && make flash monitor",
+        },
+        {
+            "name": "MONITOR",
+            "color": "white",
+            "singleInstance": true,
+            "command": ". /home/joel/Documents/fw-bird-esp32/SDK/esp-idf/./export.sh && cd /home/joel/Documents/fw-bird-esp32/VeltiumCharger/ && make monitor",
+        },
+        {
+            "name": "MENUCONFIG",
+            "color": "white",
+            "singleInstance": true,
+            "command": ". /home/joel/Documents/fw-bird-esp32/SDK/esp-idf/./export.sh && cd /home/joel/Documents/fw-bird-esp32/VeltiumCharger && make menuconfig",
+        },
+        {
+            "name": "FLASH",
+            "color": "white",
+            "singleInstance": true,
+            "command": ". /home/joel/Documents/fw-bird-esp32/SDK/esp-idf/./export.sh && cd /home/joel/Documents/firmware/fw-bird-esp32/VeltiumCharger/ && make flash",
+        },
+
+    ]
+},
+"C_Cpp.errorSquiggles": "Enabled",
+"C_Cpp.dimInactiveRegions": false
+

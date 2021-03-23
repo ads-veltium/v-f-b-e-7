@@ -31,8 +31,6 @@ carac_Params   Params       EXT_RAM_ATTR;
 carac_Coms     Coms         EXT_RAM_ATTR;
 carac_Contador ContadorExt  EXT_RAM_ATTR;
 
-//Contador trifasico
-Contador Counter   EXT_RAM_ATTR;
 /* VARIABLES BLE */
 uint8 device_ID[16] = {"VCD17010001"};
 uint8 deviceSerNum[10] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};     //{0x00, 0x00, 0x00, 0x00, 0x0B, 0xCD, 0x17, 0x01, 0x00, 0x05};
@@ -292,40 +290,9 @@ void controlTask(void *arg)
 			}
 
 		}
-
+		// Eventos 1 segundo
 		if(cont_seg != cont_seg_ant){
 			cont_seg_ant = cont_seg;
-
-#ifdef CONNECTED
-			//Si el equipo es trifasico, buscamos el contador, si lo encontramos lo leemos
-			if(Status.Trifasico && Coms.ETH.conectado1 && !ContadorExt.ContadorConectado ){
-				if(--TimeFromStart == 0){
-					Counter.find();
-				}
-			}
-			if(ContadorExt.ContadorConectado && Coms.ETH.ON){
-				if(!Counter.Inicializado){
-					Counter.begin(ContadorExt.ContadorIp);
-				}
-				Counter.read();
-				Counter.parse();
-				uint8 buffer_contador[7] = {0}; 
-
-				buffer_contador[0] = ContadorExt.ContadorConectado;
-				buffer_contador[1] = (uint8)(ContadorExt.DomesticCurrentA& 0x00FF);
-				buffer_contador[2] = (uint8)((ContadorExt.DomesticCurrentA >> 8) & 0x00FF);
-
-				if(Status.Trifasico){
-					buffer_contador[3] = (uint8)(ContadorExt.DomesticCurrentB & 0x00FF);
-					buffer_contador[4] = (uint8)((ContadorExt.DomesticCurrentB >> 8) & 0x00FF);
-
-					buffer_contador[5] = (uint8)(ContadorExt.DomesticCurrentC & 0x00FF);
-					buffer_contador[6] = (uint8)((ContadorExt.DomesticCurrentC >> 8) & 0x00FF);
-				}
-
-				SendToPSOC5(buffer_contador,7,MEASURES_EXTERNAL_COUNTER);
-			}
-#endif
 		}
 
 		// Eventos 1 minuto
@@ -453,7 +420,7 @@ void procesar_bloque(uint16 tipo_bloque){
 
 	switch(tipo_bloque){
 		case BLOQUE_INICIALIZACION:
-			if (!systemStarted && buffer_rx_local[238]==0x36) {
+			if (!systemStarted && buffer_rx_local[239]==0x36) {
 				memcpy(device_ID, buffer_rx_local, 11);
 				//esp_ble_gap_set_device_name((const char *)device_ID);
 				changeAdvName(device_ID);
@@ -496,7 +463,8 @@ void procesar_bloque(uint16 tipo_bloque){
 					memcpy(Params.Fw_Update_mode, &buffer_rx_local[234],2);
 					Comands.desired_current = buffer_rx_local[233];
 					Coms.Wifi.ON = buffer_rx_local[236];
-					Coms.ETH.ON = buffer_rx_local[237];			
+					Coms.ETH.ON = buffer_rx_local[237];	
+					Coms.ETH.DHCP = buffer_rx_local[238];		
 
 					//Params.Sensor_Conectado = (buffer_rx_local[232]  >> 0) & 0x01;
 					//Params.CDP_On           = (buffer_rx_local[232]  >> 1) & 0x01;
@@ -529,13 +497,12 @@ void procesar_bloque(uint16 tipo_bloque){
 				{
 					Serial.printf("%c %c \n",buffer_rx_local[1],buffer_rx_local[2]);
 					memcpy(status_hpt_anterior, &buffer_rx_local[1], 2);
+					modifyCharacteristic(&buffer_rx_local[1], 2, STATUS_HPT_STATUS_CHAR_HANDLE);
 					if(serverbleGetConnected()){
 						if(buffer_rx_local[1]!= 'E' && buffer_rx_local[1]!= 'F'){
-							modifyCharacteristic(&buffer_rx_local[1], 2, STATUS_HPT_STATUS_CHAR_HANDLE);
 							serverbleNotCharacteristic(&buffer_rx_local[1], 2, STATUS_HPT_STATUS_CHAR_HANDLE); 
 						}
 						else{
-							modifyCharacteristic(&buffer_rx_local[1], 1, STATUS_HPT_STATUS_CHAR_HANDLE);
 							serverbleNotCharacteristic(&buffer_rx_local[1], 1, STATUS_HPT_STATUS_CHAR_HANDLE); 
 						}
 					}
@@ -842,6 +809,11 @@ void procesar_bloque(uint16 tipo_bloque){
 			Serial.println(Coms.ETH.ON);
 			modifyCharacteristic(buffer_rx_local,  1, COMS_CONFIGURATION_ETH_ON);
 		}
+		else if(COMS_CONFIGURATION_ETH_DHCP== tipo_bloque){
+			Coms.ETH.DHCP    =  buffer_rx_local[0];
+			Serial.print("DHCP ON:");
+			Serial.println(Coms.ETH.DHCP);
+		}
 		/*else if(COMS_CONFIGURATION_LAN_IP1){
 			
 			Coms.ETH.IP1[0] =  buffer_rx_local[0];
@@ -882,7 +854,7 @@ int controlSendToSerialLocal ( uint8_t * data, int len ){
 	if(!isMainFwUpdateActive()){
 	    int ret=0;
 		ret = serialLocal.write(data, len);
-		cnt_timeout_tx = TIMEOUT_TX_BLOQUE;
+		cnt_timeout_tx = TIMEOUT_TX_BLOQUE2;
 		return ret;
 	}
 	return 0;
@@ -1105,6 +1077,10 @@ void controlInit(void){
 	#endif
 }
 
+uint32 GetStateTime(TickType_t xStart){
+	return (pdTICKS_TO_MS(xTaskGetTickCount() - xStart));
+}
+
 
 #ifdef CONNECTED
 /***************************************************
@@ -1119,7 +1095,6 @@ void SendToPSOC5(uint8 data, uint16 attrHandle){
   buffer_tx_local[3] = 1; //size
   buffer_tx_local[4] = data;
   controlSendToSerialLocal(buffer_tx_local, 5);
-  delay(5);
 }
 
 void SendToPSOC5(uint8 *data, uint16 len, uint16 attrHandle){
@@ -1131,7 +1106,7 @@ void SendToPSOC5(uint8 *data, uint16 len, uint16 attrHandle){
   buffer_tx_local[3] = len; //size
   memcpy(&buffer_tx_local[4],data,len);
   controlSendToSerialLocal(buffer_tx_local, len+4);
-  delay(5);
+
 }
 
 void SendToPSOC5(uint16 attrHandle){

@@ -32,16 +32,12 @@ static const char *TAG2 = "esp_netif_handlers2";
 void esp_netif_action_start(void *esp_netif, esp_event_base_t base, int32_t event_id, void *data)
 {
     ESP_LOGD(TAG, "esp_netif action has started with netif%p from event_id=%d", esp_netif, event_id);
-    if(!esp_netif_get_started(esp_netif)){
-        ESP_LOGD(TAG, "esp_netif action has started with netif%p from event_id=%d", esp_netif, event_id);
-        esp_netif_start(esp_netif);
-        esp_netif_set_started(esp_netif, true);
-    }
+    esp_netif_start(esp_netif);
 }
 
 void esp_netif_action_stop(void *esp_netif, esp_event_base_t base, int32_t event_id, void *data)
 {
-    ESP_LOGE(TAG, "esp_netif action stopped with netif%p from event_id=%d", esp_netif, event_id);
+    ESP_LOGD(TAG, "esp_netif action stopped with netif%p from event_id=%d", esp_netif, event_id);
     esp_netif_stop(esp_netif);
 }
 

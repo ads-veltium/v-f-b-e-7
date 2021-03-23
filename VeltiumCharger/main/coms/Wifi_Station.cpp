@@ -5,6 +5,11 @@ esp_netif_t *ap_netif;
 
 extern carac_Coms  Coms;
 extern carac_Firebase_Configuration ConfigFirebase;
+extern carac_Status Status;
+extern carac_Contador   ContadorExt;
+
+//Contador trifasico
+Contador Counter   EXT_RAM_ATTR;
 
 extern bool eth_connected;
 extern bool eth_connecting;
@@ -15,7 +20,6 @@ bool wifi_connected  = false;
 bool wifi_connecting = false;
 
 static uint8 Reintentos = 0;
-static void smartconfig_example_task(void * parm);
 
 static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data){
     
@@ -282,9 +286,109 @@ void start_wifi(void)
     }
 }
 
+void Eth_Loop(){
+    static TickType_t xStart = 0;
+    static bool finding = false;
+    static uint8_t LastStatus = APAGADO;
+    switch (Coms.ETH.State){
+        case APAGADO:
+            if(Coms.ETH.ON){
+                initialize_ethernet();
+                Coms.ETH.State = CONNECTING;
+                xStart = xTaskGetTickCount();
+            }
+        break;
+        case CONNECTING:
+            if(eth_connected){
+                Coms.ETH.State = CONECTADO;
+                xStart = xTaskGetTickCount();
+                if(ComprobarConexion()){
+                    ConfigFirebase.InternetConection = true;
+                    Coms.Wifi.ON = false;
+                }
+            }
+            else if(GetStateTime(xStart) > 60000){
+                Coms.ETH.State = KILLING;
+                kill_ethernet();
+            }
+            
+        break;
+
+        case CONECTADO:
+            if(/*Status.Trifasico && */!finding){
+                if(GetStateTime(xStart) > 60000){
+                    Serial.println("Iniciando fase busqueda ");
+                    xTaskCreate( BuscarContador_Task, "BuscarContador", 4096*4, NULL, 5, NULL); 
+                    finding = true;
+                }
+            }
+            if(!Coms.ETH.ON){
+                stop_ethernet();
+                Coms.ETH.State = DISCONNECTING;
+            }
+
+			if(ContadorExt.ContadorConectado){
+				if(!Counter.Inicializado){
+					Counter.begin(ContadorExt.ContadorIp);
+				}
+				Serial.println("Reading");
+				Counter.read();
+				Counter.parse();
+				uint8 buffer_contador[7] = {0}; 
+
+				buffer_contador[0] = ContadorExt.ContadorConectado;
+				buffer_contador[1] = (uint8)(ContadorExt.DomesticCurrentA& 0x00FF);
+				buffer_contador[2] = (uint8)((ContadorExt.DomesticCurrentA >> 8) & 0x00FF);
+
+				if(Status.Trifasico){
+					buffer_contador[3] = (uint8)(ContadorExt.DomesticCurrentB & 0x00FF);
+					buffer_contador[4] = (uint8)((ContadorExt.DomesticCurrentB >> 8) & 0x00FF);
+
+					buffer_contador[5] = (uint8)(ContadorExt.DomesticCurrentC & 0x00FF);
+					buffer_contador[6] = (uint8)((ContadorExt.DomesticCurrentC >> 8) & 0x00FF);
+				}
+
+				SendToPSOC5(buffer_contador,7,MEASURES_EXTERNAL_COUNTER);
+			}
+        break;
+
+        case DISCONNECTING:
+            if(!eth_connected && !eth_connecting){
+                Coms.ETH.State = DISCONNECTED;
+                Coms.ETH.DHCP  = 0;
+                SendToPSOC5(Coms.ETH.DHCP,COMS_CONFIGURATION_ETH_DHCP);
+            }
+        break;
+
+        case DISCONNECTED:
+            if(Coms.ETH.ON){
+                restart_ethernet();
+                Coms.ETH.State = CONNECTING;
+                xStart = xTaskGetTickCount();
+            }
+        break;
+        case KILLING:
+            if(!eth_connected && !eth_connecting){
+                Coms.ETH.DHCP  = 1;
+                Coms.ETH.State = CONNECTING;
+                initialize_ethernet();
+                xStart = xTaskGetTickCount();
+                SendToPSOC5(Coms.ETH.DHCP,COMS_CONFIGURATION_ETH_DHCP);
+            }
+        break;
+
+        default:
+            Serial.println("Estado no implementado en maquina de ETH!!!");
+        break;
+    }
+    if(LastStatus!= Coms.ETH.State){
+      Serial.printf("Maquina de estados de ETH de % i a %i \n", LastStatus, Coms.ETH.State);
+      LastStatus= Coms.ETH.State;
+    }
+}
 void ComsTask(void *args){
     bool ServidorArrancado = false;
-
+    Coms.ETH.State=APAGADO;
     while(!Coms.StartConnection){
         vTaskDelay(pdMS_TO_TICKS(500));
     }
@@ -298,12 +402,12 @@ void ComsTask(void *args){
     ESP_ERROR_CHECK(esp_netif_init());  
     ESP_ERROR_CHECK(esp_event_loop_create_default());       
 
-        /* Register our event handler for Wi-Fi, IP and Provisioning related events */
     ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &event_handler, NULL)); 
 
     while (1){
         if(Coms.StartConnection){
+            Eth_Loop();
             //Arranque del provisioning
             if(Coms.StartProvisioning || Coms.StartSmartconfig){
                 ConfigFirebase.InternetConection=0;
@@ -342,22 +446,7 @@ void ComsTask(void *args){
             else if(!Coms.Wifi.ON && (wifi_connected || wifi_connecting)){
                 stop_wifi();
             }
-
-            if(Coms.ETH.ON){
-                if(!eth_started){
-                    initialize_ethernet_1();
-                    delay(1000);
-                    initialize_ethernet_2();
-                }
-                else if((!eth_connected && !eth_connecting && eth_link_up)){
-                    restart_ethernet();
-                }
-            }
-            else if(eth_connected){
-                stop_ethernet();
-            }
-
-            if(ConfigFirebase.InternetConection && !ServidorArrancado){
+            if((eth_connected || wifi_connected ) && !ServidorArrancado){
                 InitServer();
                 ServidorArrancado = true;
             }
@@ -365,5 +454,3 @@ void ComsTask(void *args){
         vTaskDelay(pdMS_TO_TICKS(500));
     }
 }
-
-

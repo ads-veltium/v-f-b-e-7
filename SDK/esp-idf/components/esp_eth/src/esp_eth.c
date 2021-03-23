@@ -211,7 +211,6 @@ esp_err_t esp_eth_driver_install(const esp_eth_config_t *config, esp_eth_handle_
     eth_driver->mediator.stack_input = eth_stack_input;
     eth_driver->mediator.on_state_changed = eth_on_state_changed;
     eth_driver->Port=config->Port;
-
     /* some PHY can't output RMII clock if in reset state, so hardware reset PHY chip firstly */
     //Pero solo si es la primera vez que entramos por aqui
     if(config->Port==1){
@@ -222,14 +221,12 @@ esp_err_t esp_eth_driver_install(const esp_eth_config_t *config, esp_eth_handle_
         ETH_CHECK(phy->init(phy) == ESP_OK, "init phy failed", err_init_phy, ESP_FAIL);
     }
     else{
-        //ETH_CHECK(mac->set_mediator(mac, &eth_driver->mediator) == ESP_OK, "set mediator for mac failed", err_mediator, ESP_FAIL);
         ETH_CHECK(phy->set_mediator(phy, &eth_driver->mediator) == ESP_OK, "set mediator for phy failed", err_mediator, ESP_FAIL);
         ETH_CHECK(phy->init(phy) == ESP_OK, "init phy failed", err_init_phy, ESP_FAIL);
-    }
-    
- 
+    }    
     eth_driver->check_link_timer = xTimerCreate("eth_link_timer" 
     , pdMS_TO_TICKS(config->check_link_period_ms), pdTRUE, eth_driver, eth_check_link_timer_cb);
+    
     ETH_CHECK(eth_driver->check_link_timer, "create eth_link_timer failed", err_create_timer, ESP_FAIL);
 
     *out_hdl = (esp_eth_handle_t)eth_driver;
@@ -324,11 +321,11 @@ esp_err_t esp_eth_stop(esp_eth_handle_t hdl)
     ETH_CHECK(xTimerStop(eth_driver->check_link_timer, 0) == pdPASS,
               "stop eth_link_timer failed", err, ESP_FAIL);
     if(eth_driver->Port==1){
-        ETH_CHECK(esp_event_post(ETH_EVENT, ETHERNET_EVENT_START, &eth_driver, sizeof(eth_driver), 0) == ESP_OK,
+        ETH_CHECK(esp_event_post(ETH_EVENT, ETHERNET_EVENT_STOP, &eth_driver, sizeof(eth_driver), 0) == ESP_OK,
             "send ETHERNET_EVENT_STOP event failed", err, ESP_FAIL);
     }
     else if(eth_driver->Port==2){
-        ETH_CHECK(esp_event_post(ETH_EVENT, ETHERNET_EVENT_START2, &eth_driver, sizeof(eth_driver), 0) == ESP_OK,
+        ETH_CHECK(esp_event_post(ETH_EVENT, ETHERNET_EVENT_STOP2, &eth_driver, sizeof(eth_driver), 0) == ESP_OK,
             "send ETHERNET_EVENT_STOP2 event failed", err, ESP_FAIL);
     }
     return ESP_OK;

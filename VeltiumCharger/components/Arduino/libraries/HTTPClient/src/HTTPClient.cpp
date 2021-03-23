@@ -644,7 +644,6 @@ int HTTPClient::sendRequest(const char * type, uint8_t * payload, size_t size)
                     break;
             }
         }
-
     } while (redirect);
     // handle Server Response (Header)
     return returnError(code);

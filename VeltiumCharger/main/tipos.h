@@ -167,13 +167,15 @@ typedef struct{
 
 typedef struct{
 	bool ON;
-	bool Auto;
-	bool Alone;
+	bool Auto = 1;
+	bool DHCP = 0;
 
 	IPAddress IP1;
 	IPAddress IP2;
 	IPAddress Gateway;
 	IPAddress Mask;
+
+	uint8_t   State;
 	uint8_t   Puerto;
 
 	bool conectado1 = false;
@@ -572,16 +574,18 @@ typedef struct{
 #define COMS_CONFIGURATION_ETH_ON	       (0x00B9u)
 #define COMS_CONFIGURATION_LAN_IP1	       (0x00BBu)
 #define COMS_CONFIGURATION_LAN_IP2	       (0x00BDu)
-
-#define COMS_FW_UPDATEMODE_CHAR_HANDLE     (0x00BFu)
-
-//Handlers para el medidor trifásico 
+#define COMS_CONFIGURATION_ETH_DHCP        (0x00BFu)
 #define MEASURES_INST_CURRENTB_CHAR_HANDLE (0x00C1u)
 #define MEASURES_INST_CURRENTC_CHAR_HANDLE (0x00C3u)
 #define MEASURES_EXTERNAL_COUNTER		   (0x00C5u)
+#define COMS_FW_UPDATEMODE_CHAR_HANDLE     (0x00C7u)
 
 #define ENERGY_PARTIAL_RECORD_1			   (0x00D0u)
 #define ENERGY_PARTIAL_RECORD_2			   (0x00D1u)
+
+//Handlers para el medidor trifásico 
+
+
 
 
 #endif

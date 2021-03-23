@@ -16,8 +16,11 @@
 #include "WiFi.h"
 #include "contador.h"
 #include "../control.h"
-#include "esp_ping.h"
-#include "ping/ping.h"
+#include "esp_netif.h"
+#include "esp_eth_netif_glue.h"
+#include "esp_http_client.h"
+#include "Wifi_Station.h"
+
 
 #define ETH_POWER_PIN  	12 
 #define ETH_TYPE        ETH_PHY_LAN8720
