@@ -160,6 +160,7 @@ typedef struct{
 typedef struct{
 	bool ON;
 	bool Auto;
+	bool Internet = false;
 	uint8_t AP[34]={'\0'};
 	String Pass;
 	IPAddress IP;
@@ -169,6 +170,7 @@ typedef struct{
 	bool ON;
 	bool Auto = 1;
 	bool DHCP = 0;
+	bool Internet = false;
 
 	IPAddress IP1;
 	IPAddress IP2;

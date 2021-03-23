@@ -27,10 +27,12 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
     if (event_base == WIFI_EVENT){
         switch(event_id){
             case WIFI_EVENT_STA_START:{
+                Coms.Wifi.Internet = false;
                 esp_wifi_connect();
             break;
             }
             case WIFI_EVENT_STA_DISCONNECTED:
+                Coms.Wifi.Internet = false;
                 if(!Coms.StartSmartconfig && ! Coms.StartProvisioning){
                     esp_wifi_connect();
                     Serial.println("Reconectando...");
@@ -79,8 +81,10 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
         Reintentos = 0;
         wifi_connected = true;
         wifi_connecting = false;
-        delay(1000);
-        ConfigFirebase.InternetConection = ComprobarConexion();
+        if(!Coms.Provisioning){
+            delay(1000);
+            Coms.Wifi.Internet = ComprobarConexion();
+        }
     }
 
     else if(event_base == SC_EVENT){
@@ -150,6 +154,7 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
                          "\n\tPlease reset to factory and retry provisioning\n",
                          (*reason == WIFI_PROV_STA_AUTH_ERROR) ?
                          "Wi-Fi station authentication failed" : "Wi-Fi access-point not found");
+                esp_wifi_connect();
                 break;
             }
             case WIFI_PROV_CRED_SUCCESS:
@@ -180,8 +185,15 @@ void stop_wifi(void){
     esp_wifi_disconnect();
     esp_wifi_stop();
     esp_wifi_deinit();
-    esp_netif_destroy(sta_netif);
+
+    if(sta_netif != NULL){
+        esp_wifi_clear_default_wifi_driver_and_handlers(sta_netif);
+        esp_netif_destroy(sta_netif);
+        sta_netif = NULL;
+    }
+
     delay(50);
+    Coms.Wifi.Internet = false;
     wifi_connected  = false;
     wifi_connecting = false;
 }
@@ -189,7 +201,7 @@ void stop_wifi(void){
 void initialise_smartconfig(void)
 {
     stop_wifi();
-
+    wifi_connecting = true;
     ESP_ERROR_CHECK(esp_event_handler_register(SC_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL));
 
     sta_netif = esp_netif_create_default_wifi_sta();
@@ -211,9 +223,12 @@ void initialise_smartconfig(void)
 
 void initialise_provisioning(void){
     stop_wifi();
-    esp_netif_destroy(ap_netif);
+    if(ap_netif != NULL){
+        esp_netif_destroy(ap_netif);
+    }
     wifi_prov_mgr_stop_provisioning();
     wifi_prov_mgr_deinit();
+    wifi_connecting = true;
 
     //borrar credenciales almacenadas
     wifi_config_t conf;
@@ -223,7 +238,6 @@ void initialise_provisioning(void){
         ESP_ERROR_CHECK(esp_wifi_init(&cfg));
         esp_wifi_set_config(WIFI_IF_STA, &conf);
     }
-
     ESP_ERROR_CHECK(esp_event_handler_register(WIFI_PROV_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL));
     //configuracion del provision
     sta_netif = esp_netif_create_default_wifi_sta();
@@ -245,12 +259,13 @@ void initialise_provisioning(void){
 
     /* Start provisioning service */
     wifi_prov_mgr_start_provisioning(security,  ConfigFirebase.Device_Ser_num, POP,service_key);
+    
 }
 
 void start_wifi(void)
 {
+
     wifi_connected  = false;
-    wifi_connecting = true;
     Serial.println("Starting wifi");
     /* Initialize Wi-Fi including netif with default config */
     sta_netif = esp_netif_create_default_wifi_sta();
@@ -270,12 +285,12 @@ void start_wifi(void)
     /* Let's find out if the device is provisioned */
     ESP_ERROR_CHECK(wifi_prov_mgr_is_provisioned(&provisioned));
 
-    /* If device is not yet provisioned start provisioning service */
+    /* If device is not yet provisioned stop the wifi, else, arranca el wifi */
     if (!provisioned) {
         Serial.printf( "Sin credenciales almacenadas, pausando wifi\n");    
-        wifi_prov_mgr_deinit();   
-        esp_wifi_stop();
-
+        stop_wifi();
+        wifi_prov_mgr_stop_provisioning();
+        wifi_prov_mgr_deinit();
         Coms.Wifi.ON=false;
         SendToPSOC5(Coms.Wifi.ON,COMS_CONFIGURATION_WIFI_ON);
     } else {
@@ -302,9 +317,11 @@ void Eth_Loop(){
             if(eth_connected){
                 Coms.ETH.State = CONECTADO;
                 xStart = xTaskGetTickCount();
-                if(ComprobarConexion()){
-                    ConfigFirebase.InternetConection = true;
-                    Coms.Wifi.ON = false;
+                if(!Coms.ETH.DHCP){
+                    if(ComprobarConexion()){
+                        Coms.ETH.Internet = true;
+                        Coms.Wifi.ON = false;
+                    }
                 }
             }
             else if(GetStateTime(xStart) > 60000){
@@ -323,10 +340,19 @@ void Eth_Loop(){
                 }
             }
             if(!Coms.ETH.ON){
-                stop_ethernet();
-                Coms.ETH.State = DISCONNECTING;
+                if(Coms.ETH.DHCP){
+                    kill_ethernet();
+                    Coms.ETH.DHCP  = 0;
+                    SendToPSOC5(Coms.ETH.DHCP,COMS_CONFIGURATION_ETH_DHCP);
+                }
+                else{
+                    stop_ethernet();
+                    Coms.ETH.State = DISCONNECTING;
+                }
+                
             }
 
+            //Lectura del contador
 			if(ContadorExt.ContadorConectado){
 				if(!Counter.Inicializado){
 					Counter.begin(ContadorExt.ContadorIp);
@@ -354,9 +380,9 @@ void Eth_Loop(){
 
         case DISCONNECTING:
             if(!eth_connected && !eth_connecting){
+                finding = false;
                 Coms.ETH.State = DISCONNECTED;
-                Coms.ETH.DHCP  = 0;
-                SendToPSOC5(Coms.ETH.DHCP,COMS_CONFIGURATION_ETH_DHCP);
+                Coms.ETH.Internet = false;
             }
         break;
 
@@ -368,7 +394,13 @@ void Eth_Loop(){
             }
         break;
         case KILLING:
+        
             if(!eth_connected && !eth_connecting){
+                Coms.ETH.Internet = false;
+                if(!Coms.ETH.ON){
+                    Coms.ETH.State = APAGADO;
+                    break;
+                }
                 Coms.ETH.DHCP  = 1;
                 Coms.ETH.State = CONNECTING;
                 initialize_ethernet();
@@ -404,7 +436,6 @@ void ComsTask(void *args){
 
     ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &event_handler, NULL)); 
-
     while (1){
         if(Coms.StartConnection){
             Eth_Loop();
@@ -412,17 +443,17 @@ void ComsTask(void *args){
             if(Coms.StartProvisioning || Coms.StartSmartconfig){
                 ConfigFirebase.InternetConection=0;
                 Serial.println("Starting provisioning sistem");
-
+                Coms.Wifi.ON = true;
                 if(ServidorArrancado){
                     StopServer();
                     ServidorArrancado = false;
                 }
                 if(eth_connected || eth_connecting){
-                    kill_ethernet();
+                    Coms.ETH.State = KILLING;
                     Coms.ETH.ON = false;
+                    kill_ethernet();
                 }
                 delay(100);
-                wifi_connecting=true;
                 if(Coms.StartSmartconfig){
                     initialise_smartconfig();
                 }
@@ -435,13 +466,18 @@ void ComsTask(void *args){
             }
 
             //Comprobar si hemos perdido todas las conexiones
-            if(!eth_connected && !wifi_connected){
+            if(!Coms.ETH.Internet && !Coms.Wifi.Internet){
                 ConfigFirebase.InternetConection=false;
+            }
+            else{
+                ConfigFirebase.InternetConection=true;
             }
 
             //Encendido de las interfaces          
             if(Coms.Wifi.ON && !wifi_connected && !wifi_connecting){
-                start_wifi();                     
+                if(!Coms.ETH.Internet){
+                    start_wifi();                     
+                }
             }
             else if(!Coms.Wifi.ON && (wifi_connected || wifi_connecting)){
                 stop_wifi();

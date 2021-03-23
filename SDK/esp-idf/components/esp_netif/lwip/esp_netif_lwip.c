@@ -495,16 +495,23 @@ static esp_err_t esp_netif_lwip_add(esp_netif_t *esp_netif)
     }
     return ESP_OK;
 }
-
+static void esp_netif_destroy_related(esp_netif_t *esp_netif)
+{
+    if (esp_netif->is_ppp_netif) {
+        esp_netif_destroy_ppp(esp_netif->netif_handle);
+    }
+}
 void esp_netif_destroy(esp_netif_t *esp_netif)
 {
-    if (esp_netif) {
+   
+    if (esp_netif){
         esp_netif_remove_from_list(esp_netif);
         free(esp_netif->ip_info);
         free(esp_netif->ip_info_old);
         free(esp_netif->if_key);
         free(esp_netif->if_desc);
         esp_netif_lwip_remove(esp_netif);
+        esp_netif_destroy_related(esp_netif);
         if (esp_netif->is_ppp_netif) {
             esp_netif_destroy_ppp(esp_netif->netif_handle);
         }

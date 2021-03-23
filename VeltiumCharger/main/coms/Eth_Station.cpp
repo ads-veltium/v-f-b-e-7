@@ -31,10 +31,35 @@ xParametrosPing ParametrosPing EXT_RAM_ATTR;
 
 
 bool CheckContador(int ip4){
-    Contador ContadorCheck;
-
     char ip[15]={"0"};
     sprintf(ip,"%i.%i.%i.%i", ip4_addr1(&ParametrosPing.BaseAdress),ip4_addr2(&ParametrosPing.BaseAdress),ip4_addr3(&ParametrosPing.BaseAdress),ip4);
+    
+    char url[100] = "http://";
+    strcat(url, ip);
+    strcat(url, "/get_command?command=get_measurements");
+    Serial.println(url);
+    esp_http_client_config_t config = {
+        .url = url,
+    };
+    esp_http_client_handle_t client = esp_http_client_init(&config);
+
+    //for(int i =0;i<=5;i++){
+    esp_err_t err = esp_http_client_perform(client);
+    if (err == ESP_OK) {
+        if(esp_http_client_get_status_code(client) == 200){
+            esp_http_client_cleanup(client);
+            memcpy(ContadorExt.ContadorIp, ip,15);
+            Serial.println("Detectado contador!");
+            return true;
+        }
+    }
+    delay(250);
+    //}
+
+    esp_http_client_cleanup(client);
+	return false;
+
+    /*Contador ContadorCheck;
     ContadorCheck.begin(ip);
 
     if(ContadorCheck.read()){           
@@ -50,7 +75,7 @@ bool CheckContador(int ip4){
     }
 
     ContadorCheck.end();
-    return false;
+    return false;*/
 }
 
 void BuscarContador_Task(void *args){
@@ -69,7 +94,7 @@ void BuscarContador_Task(void *args){
         if(ParametrosPing.NextOne){
             if(Sentido && !TopeInf){ //Pabajo
                 i = ip4_addr4(&ParametrosPing.BaseAdress) - inf > 1 ? ip4_addr4(&ParametrosPing.BaseAdress) - inf : 0;
-                if(i != 0 ){
+                if(i > 0 ){
                     inf++;
                     Sentido = false;
                 }
@@ -91,7 +116,7 @@ void BuscarContador_Task(void *args){
                     continue;
                 }
             }
-            if(i==-1){
+            if(i-1==-1){
                 break;
             }
             ParametrosPing.NextOne = false;
@@ -388,9 +413,6 @@ void kill_ethernet(void){
 }
 
 bool stop_ethernet(void){
-    if(Coms.ETH.DHCP){
-        ESP_ERROR_CHECK(esp_netif_dhcps_stop(eth_netif));
-    }
     if(esp_eth_stop(s_eth_handle) != ESP_OK){
         Serial.println("esp_eth_stop failed");
         return false;
@@ -402,9 +424,6 @@ bool stop_ethernet(void){
 }
 
 bool restart_ethernet(void){
-    if(Coms.ETH.DHCP){
-        esp_netif_dhcps_start(eth_netif);
-    }
     if(esp_eth_start(s_eth_handle) != ESP_OK){
         Serial.println("esp_eth_stop failed");
         return false;

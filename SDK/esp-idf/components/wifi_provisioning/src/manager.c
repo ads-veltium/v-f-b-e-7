@@ -1314,7 +1314,7 @@ void wifi_prov_mgr_wait(void)
 void wifi_prov_mgr_deinit(void)
 {
     if (!prov_ctx_lock) {
-        ESP_LOGE(TAG, "Provisioning manager not initialized");
+        ESP_LOGD(TAG, "Provisioning manager not initialized");
         return;
     }
 
@@ -1536,7 +1536,7 @@ exit:
 void wifi_prov_mgr_stop_provisioning(void)
 {
     if (!prov_ctx_lock) {
-        ESP_LOGE(TAG, "Provisioning manager not initialized");
+        ESP_LOGD(TAG, "Provisioning manager not initialized");
         return;
     }
 
