@@ -348,6 +348,7 @@ void Eth_Loop(){
                     kill_ethernet();
                     Coms.ETH.DHCP  = 0;
                     SendToPSOC5(Coms.ETH.DHCP,COMS_CONFIGURATION_ETH_DHCP);
+                    Coms.ETH.State = KILLING;
                 }
                 else{
                     stop_ethernet();
