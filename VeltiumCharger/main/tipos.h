@@ -171,6 +171,7 @@ typedef struct{
 	bool Auto = 1;
 	bool DHCP = 0;
 	bool Internet = false;
+	bool Wifi_Perm = false;
 
 	IPAddress IP1;
 	IPAddress IP2;

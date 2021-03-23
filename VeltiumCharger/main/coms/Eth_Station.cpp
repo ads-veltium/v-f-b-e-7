@@ -141,6 +141,7 @@ void BuscarContador_Task(void *args){
     if(!ContadorExt.ContadorConectado){
         Serial.println("No he encontrado ningun medidor");
     }
+    Coms.ETH.Wifi_Perm = true;
     vTaskDelete(NULL);
 }
 

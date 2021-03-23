@@ -223,8 +223,11 @@ void initialise_smartconfig(void)
 
 void initialise_provisioning(void){
     stop_wifi();
+
     if(ap_netif != NULL){
+        esp_wifi_clear_default_wifi_driver_and_handlers(ap_netif);
         esp_netif_destroy(ap_netif);
+        ap_netif = NULL;
     }
     wifi_prov_mgr_stop_provisioning();
     wifi_prov_mgr_deinit();
@@ -339,6 +342,7 @@ void Eth_Loop(){
                     finding = true;
                 }
             }
+
             if(!Coms.ETH.ON){
                 if(Coms.ETH.DHCP){
                     kill_ethernet();
@@ -354,6 +358,7 @@ void Eth_Loop(){
 
             //Lectura del contador
 			if(ContadorExt.ContadorConectado){
+                
 				if(!Counter.Inicializado){
 					Counter.begin(ContadorExt.ContadorIp);
 				}
@@ -418,6 +423,7 @@ void Eth_Loop(){
       LastStatus= Coms.ETH.State;
     }
 }
+
 void ComsTask(void *args){
     bool ServidorArrancado = false;
     Coms.ETH.State=APAGADO;
@@ -475,7 +481,7 @@ void ComsTask(void *args){
 
             //Encendido de las interfaces          
             if(Coms.Wifi.ON && !wifi_connected && !wifi_connecting){
-                if(!Coms.ETH.Internet){
+                if(!Coms.ETH.Internet && Coms.ETH.Wifi_Perm){
                     start_wifi();                     
                 }
             }
