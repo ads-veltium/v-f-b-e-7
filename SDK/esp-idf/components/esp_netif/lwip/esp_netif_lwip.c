@@ -279,11 +279,12 @@ esp_err_t esp_netif_init(void)
         esp_fill_random(rand_buf, sizeof(rand_buf));
         lwip_init_tcp_isn(esp_log_timestamp(), rand_buf);
 #endif
-        tcpip_init(NULL, NULL);
+        
         ESP_LOGD(TAG, "LwIP stack has been initialized");
     }
 
     if (!api_sync_sem) {
+        tcpip_init(NULL, NULL);
         if (ERR_OK != sys_sem_new(&api_sync_sem, 0)) {
             ESP_LOGE(TAG, "esp netif api sync sem init fail");
             return ESP_FAIL;
@@ -303,7 +304,10 @@ esp_err_t esp_netif_init(void)
 
 esp_err_t esp_netif_deinit(void)
 {
+
     if (tcpip_initialized == true) {
+        
+        tcpip_initialized = false;
         /* deinit of LwIP not supported:
          * do not deinit semaphores and states,
          * so init could be called multiple times

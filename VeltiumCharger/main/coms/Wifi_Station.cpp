@@ -22,12 +22,12 @@ bool wifi_connecting = false;
 static uint8 Reintentos = 0;
 
 static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data){
-    
-
+    Serial.printf("Evento de wifi %s %i\n", event_base, event_id );
     if (event_base == WIFI_EVENT){
         switch(event_id){
             case WIFI_EVENT_STA_START:{
                 Coms.Wifi.Internet = false;
+                esp_wifi_disconnect();
                 esp_wifi_connect();
             break;
             }
@@ -52,6 +52,10 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
                     Coms.Wifi.ON = false;
                     SendToPSOC5(Coms.Wifi.ON,COMS_CONFIGURATION_WIFI_ON);
                 }
+            break;
+            case WIFI_EVENT_STA_CONNECTED:
+               wifi_connected = true;
+                wifi_connecting = false;
             break;
         }
     }
@@ -103,7 +107,6 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
                 wifi_config_t wifi_config;
                 uint8_t ssid[33] = { 0 };
                 uint8_t password[65] = { 0 };
-                uint8_t rvd_data[33] = { 0 };
 
                 bzero(&wifi_config, sizeof(wifi_config_t));
                 memcpy(wifi_config.sta.ssid, evt->ssid, sizeof(wifi_config.sta.ssid));
@@ -183,7 +186,10 @@ void stop_wifi(void){
     Serial.println("Stoping wifi");
     Reintentos = 0;
     esp_wifi_disconnect();
-    esp_wifi_stop();
+    esp_err_t err = esp_wifi_stop();
+    if(err==ESP_ERR_WIFI_NOT_INIT){
+        return;
+    }
     esp_wifi_deinit();
 
     if(sta_netif != NULL){
@@ -191,15 +197,15 @@ void stop_wifi(void){
         esp_netif_destroy(sta_netif);
         sta_netif = NULL;
     }
+    esp_netif_deinit();
+    ESP_ERROR_CHECK(esp_netif_init());
 
-    delay(50);
     Coms.Wifi.Internet = false;
     wifi_connected  = false;
     wifi_connecting = false;
 }
 
-void initialise_smartconfig(void)
-{
+void initialise_smartconfig(void){
     stop_wifi();
     wifi_connecting = true;
     ESP_ERROR_CHECK(esp_event_handler_register(SC_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL));
@@ -267,16 +273,16 @@ void initialise_provisioning(void){
 
 void start_wifi(void)
 {
-
     wifi_connected  = false;
     Serial.println("Starting wifi");
-    /* Initialize Wi-Fi including netif with default config */
+    //Station_Begin();
+    //Wifi de esp
+
     sta_netif = esp_netif_create_default_wifi_sta();
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
 
-    /* Configuration for the provisioning manager */
     wifi_prov_mgr_config_t config = {
         .scheme = wifi_prov_scheme_softap,
         .scheme_event_handler = WIFI_PROV_EVENT_HANDLER_NONE
@@ -285,10 +291,9 @@ void start_wifi(void)
     ESP_ERROR_CHECK(wifi_prov_mgr_init(config));
 
     bool provisioned = false;
-    /* Let's find out if the device is provisioned */
+
     ESP_ERROR_CHECK(wifi_prov_mgr_is_provisioned(&provisioned));
 
-    /* If device is not yet provisioned stop the wifi, else, arranca el wifi */
     if (!provisioned) {
         Serial.printf( "Sin credenciales almacenadas, pausando wifi\n");    
         stop_wifi();
@@ -301,6 +306,8 @@ void start_wifi(void)
         ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
         ESP_ERROR_CHECK(esp_wifi_start());
         wifi_connecting = true;
+        esp_wifi_connect();
+        Serial.println("Hay credenciales y nos conectamos");
     }
 }
 
@@ -359,7 +366,7 @@ void Eth_Loop(){
 
             //Lectura del contador
 			if(ContadorExt.ContadorConectado){
-                
+                Coms.ETH.Wifi_Perm = true;
 				if(!Counter.Inicializado){
 					Counter.begin(ContadorExt.ContadorIp);
 				}
@@ -407,6 +414,8 @@ void Eth_Loop(){
                     Coms.ETH.State = APAGADO;
                     break;
                 }
+                Coms.ETH.Wifi_Perm = false;
+                stop_wifi();
                 Coms.ETH.DHCP  = 1;
                 Coms.ETH.State = CONNECTING;
                 initialize_ethernet();
@@ -482,9 +491,14 @@ void ComsTask(void *args){
 
             //Encendido de las interfaces          
             if(Coms.Wifi.ON && !wifi_connected && !wifi_connecting){
-                if(!Coms.ETH.Internet && Coms.ETH.Wifi_Perm){
-                    start_wifi();                     
+                if(Coms.ETH.ON){
+                    if(!Coms.ETH.Internet && Coms.ETH.Wifi_Perm){
+                        start_wifi();                     
+                    }
                 }
+                else{
+                    start_wifi();
+                }                
             }
             else if(!Coms.Wifi.ON && (wifi_connected || wifi_connecting)){
                 stop_wifi();
@@ -494,6 +508,6 @@ void ComsTask(void *args){
                 ServidorArrancado = true;
             }
         }
-        vTaskDelay(pdMS_TO_TICKS(500));
+        delay(500);
     }
 }

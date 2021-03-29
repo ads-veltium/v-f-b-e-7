@@ -562,8 +562,10 @@ int HTTPClient::sendRequest(const char * type, uint8_t * payload, size_t size)
         log_d("request type: '%s' redirCount: %d\n", type, redirectCount);
         
         // connect to server
-        if(!connect()) {
-            return returnError(HTTPC_ERROR_CONNECTION_REFUSED);
+
+        int error = connect();
+        if(error < 0) {
+            return returnError(error);
         }
         log_d("conectado \n");
         if(payload && size > 0) {
@@ -1060,7 +1062,7 @@ bool HTTPClient::hasHeader(const char* name)
  * init TCP connection and handle ssl verify if needed
  * @return true if connection is ok
  */
-bool HTTPClient::connect(void)
+int HTTPClient::connect(void)
 {
     if(connected()) {
         if(_reuse) {
@@ -1096,9 +1098,11 @@ bool HTTPClient::connect(void)
         return false;
     }	
 #endif
-    if(!_client->connect(_host.c_str(), _port, _connectTimeout)) {
-        log_d("failed connect to %s:%u", _host.c_str(), _port);
-        return false;
+    int returned = _client->connect(_host.c_str(), _port, _connectTimeout);
+    if(returned<0) {
+        _client->stop();
+        //log_e("failed connect to %s:%u", _host.c_str(), _port);
+        return returned;
     }
 
     // set Timeout for WiFiClient and for Stream::readBytesUntil() and Stream::readStringUntil()

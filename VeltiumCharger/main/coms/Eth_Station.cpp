@@ -403,6 +403,7 @@ void initialize_ethernet_1(void){
 }
 
 #endif
+
 void kill_ethernet(void){
     stop_ethernet();
     esp_eth_clear_default_handlers(eth_netif);

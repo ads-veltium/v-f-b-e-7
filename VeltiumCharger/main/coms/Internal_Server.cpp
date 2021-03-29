@@ -29,7 +29,6 @@ const char* INST_CURR_LIM = "inst_curr_lim";
 const char* POT_CONT = "potencia_cont";
 const char* UBI_CDP = "ubi_cdp";
 
-uint8 AuthErrorCount =0;
 
 /************* Internal server configuration ****************/
 void notFound(AsyncWebServerRequest *request) {

@@ -36,6 +36,7 @@ bool Real_Time_Database::LogIn(void){
         Serial.println(status);
         Serial.printf("HTTP error: %s\n", 
         AutenticationClient.errorToString(status).c_str());
+        AutenticationClient.end();
         return false;
     }
 

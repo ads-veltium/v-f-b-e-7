@@ -1247,6 +1247,7 @@ esp_err_t esp_http_client_close(esp_http_client_handle_t client)
         http_dispatch_event(client, HTTP_EVENT_DISCONNECTED, esp_transport_get_error_handle(client->transport), 0);
         client->state = HTTP_STATE_INIT;
         return esp_transport_close(client->transport);
+
     }
     return ESP_OK;
 }

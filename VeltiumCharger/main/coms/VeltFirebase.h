@@ -70,18 +70,8 @@ class Real_Time_Database{
     void begin(String Host, String DatabaseID);
     void restart();
     void end();
+    Real_Time_Database(){}
 
 };
-
-class Firebase{
-    
-  public:
-    Real_Time_Database RTDB;
-
-
-};
-
-
-
 
 #endif

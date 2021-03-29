@@ -21,6 +21,8 @@
 #include "esp_smartconfig.h"
 #include "../control.h"
 #include "wifi_provisioning/scheme_softap.h"
+#include <WiFi.h>
+#include "WiFiProv.h"
 
 void initialise_smartconfig(void);
 void start_wifi(void);

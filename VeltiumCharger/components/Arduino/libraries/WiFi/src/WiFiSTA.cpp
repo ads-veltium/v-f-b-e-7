@@ -129,6 +129,7 @@ void WiFiSTAClass::_setStatus(wl_status_t status)
  */
 wl_status_t WiFiSTAClass::status()
 {
+    return WL_CONNECTED;
     if(!_sta_status_group){
         return _sta_status;
     }

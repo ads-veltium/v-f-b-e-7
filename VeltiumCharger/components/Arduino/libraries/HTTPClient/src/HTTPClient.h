@@ -224,7 +224,7 @@ protected:
     void disconnect(bool preserveClient = false);
     void clear();
     int returnError(int error);
-    bool connect(void);
+    int connect(void);
     bool sendHeader(const char * type);
     int handleHeaderResponse();
     int writeToStreamDataBlock(Stream * stream, int len);

@@ -145,7 +145,15 @@
                 "${workspaceFolder}/components/esp-nimble-cpp/src",
                 "${workspaceFolder}/main/coms",
                 "/home/joel/Documents/fw-bird-esp32/SDK/esp-idf/components/esp_netif/include",
-                "/home/joel/Documents/fw-bird-esp32/SDK/esp-idf/components/esp_http_client/include"
+                "/home/joel/Documents/fw-bird-esp32/SDK/esp-idf/components/esp_http_client/include",
+                "${workspaceFolder}/components/Arduino/libraries/AsyncUDP/src",
+                "${workspaceFolder}/components/Arduino/libraries/Ethernet/src",
+                "${workspaceFolder}/components/Arduino/libraries/CoAP-library",
+                "${workspaceFolder}/components/mongoose",
+                "${workspaceFolder}/components/Arduino/libraries/ArduinoMongoose/src",
+                "${workspaceFolder}/components/Arduino/libraries/Firebase-ESP32/src",
+                "${workspaceFolder}/components/Arduino/tools/sdk/esp32/include/newlib/platform_include",
+                "/home/joel/Documents/fw-bird-esp32/SDK/esp-idf/components/mqtt/esp-mqtt/include"
             ],
             "intelliSenseMode": "clang-x64",
             "browse": {

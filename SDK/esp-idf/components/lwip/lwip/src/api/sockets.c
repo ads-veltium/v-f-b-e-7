@@ -2133,7 +2133,9 @@ lwip_select(int maxfdp1, fd_set *readset, fd_set *writeset, fd_set *exceptset,
         /* Call lwip_selscan again: there could have been events between
            the last scan (without us on the list) and putting us on the list! */
         nready = lwip_selscan(maxfdp1, readset, writeset, exceptset, &lreadset, &lwriteset, &lexceptset);
-        if (!nready) {
+        if (nready < 0) {
+          set_errno(EBADF);
+        } else if (!nready) {
           /* Still none ready, just wait to be woken */
           if (timeout == 0) {
             /* Wait forever */
@@ -2207,6 +2209,11 @@ lwip_select(int maxfdp1, fd_set *readset, fd_set *writeset, fd_set *exceptset,
         /* See what's set now after waiting */
         nready = lwip_selscan(maxfdp1, readset, writeset, exceptset, &lreadset, &lwriteset, &lexceptset);
         LWIP_DEBUGF(SOCKETS_DEBUG, ("lwip_select: nready=%d\n", nready));
+        if (nready < 0) {
+          set_errno(EBADF);
+          lwip_select_dec_sockets_used(maxfdp1, &used_sockets);
+          return -1;
+        }
       }
     }
   }
@@ -2747,8 +2754,6 @@ lwip_shutdown(int s, int how)
   err_t err;
   u8_t shut_rx = 0, shut_tx = 0;
 
-  LWIP_DEBUGF(SOCKETS_DEBUG, ("lwip_shutdown(%d, how=%d)\n", s, how));
-
   sock = get_socket(s);
   if (!sock) {
     return -1;
@@ -2778,6 +2783,7 @@ lwip_shutdown(int s, int how)
     done_socket(sock);
     return -1;
   }
+
   err = netconn_shutdown(sock->conn, shut_rx, shut_tx);
 
   sock_set_errno(sock, err_to_errno(err));
