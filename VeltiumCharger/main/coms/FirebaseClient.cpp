@@ -534,9 +534,6 @@ void Firebase_Conn_Task(void *args){
       //comprobar si hay usuarios observando:    
       ts_app_req=Database->Get_Timestamp("/status/ts_app_req",&Lectura);
       if(ts_app_req < 1){//connection refused o autenticacion terminada, comprobar respuesta
-        if(ts_app_req == -3){
-          ConnectionState=DISCONNECTING;
-        }
         String ResponseString = Lectura["error"];
         Serial.println(ResponseString);
         serializeJson(Lectura,Serial);
@@ -552,13 +549,6 @@ void Firebase_Conn_Task(void *args){
             ConnectionState=DISCONNECTING;
         }
         else{
-          Serial.println("Delaying");
-          int ram = ESP.getFreePsram();        
-          while(ram <= ESP.getFreePsram()){
-              delay(1000);
-              Serial.println(ram);
-              Serial.println(ESP.getFreePsram());
-          }
           if(++null_count>=3){
               ConnectionState=DISCONNECTING;
           }

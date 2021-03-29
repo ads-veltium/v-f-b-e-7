@@ -3025,8 +3025,8 @@ lwip_getsockopt_impl(int s, int level, int optname, void *optval, socklen_t *opt
 
           LWIP_SOCKOPT_CHECK_OPTLEN_CONN_PCB(sock, *optlen, int);
           *(int *)optval = ip_get_option(sock->conn->pcb.ip, optname);
-          LWIP_DEBUGF(SOCKETS_DEBUG, ("lwip_getsockopt(%d, SOL_SOCKET, optname=0x%x, ..) = %s\n",
-                                      s, optname, (*(int *)optval ? "on" : "off")));
+          printf("lwip_getsockopt(%d, SOL_SOCKET, optname=0x%x, ..) = %s\n",
+                                      s, optname, (*(int *)optval ? "on" : "off"));
           break;
 
         case SO_TYPE:
@@ -3471,8 +3471,8 @@ lwip_setsockopt_impl(int s, int level, int optname, const void *optval, socklen_
           } else {
             ip_reset_option(sock->conn->pcb.ip, optname);
           }
-          LWIP_DEBUGF(SOCKETS_DEBUG, ("lwip_setsockopt(%d, SOL_SOCKET, optname=0x%x, ..) -> %s\n",
-                                      s, optname, (*(const int *)optval ? "on" : "off")));
+          printf("lwip_setsockopt(%d, SOL_SOCKET, optname=0x%x, ..) -> %s\n",
+                                      s, optname, (*(const int *)optval ? "on" : "off"));
           break;
 
           /* SO_TYPE is get-only */

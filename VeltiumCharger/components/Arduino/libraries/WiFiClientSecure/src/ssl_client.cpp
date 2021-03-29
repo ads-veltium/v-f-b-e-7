@@ -66,7 +66,8 @@ int start_ssl_client(sslclient_context *ssl_client, const char *host, uint32_t p
         log_e("ERROR opening socket");
         return ssl_client->socket;
     }
-
+    int yes = 1;
+    setsockopt(ssl_client->socket,SOL_SOCKET,SO_REUSEADDR,&yes,sizeof(yes));
     IPAddress srv((uint32_t)0);
     if(!WiFiGenericClass::hostByName(host, srv)){
         return -5;
