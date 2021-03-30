@@ -1962,7 +1962,7 @@
  *   and prevent a task pending on this during/after deletion
  */
 #if !defined LWIP_NETCONN_FULLDUPLEX || defined __DOXYGEN__
-#define LWIP_NETCONN_FULLDUPLEX         0
+#define LWIP_NETCONN_FULLDUPLEX         1
 #endif
 /**
  * @}

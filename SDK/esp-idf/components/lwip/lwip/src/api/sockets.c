@@ -2133,9 +2133,7 @@ lwip_select(int maxfdp1, fd_set *readset, fd_set *writeset, fd_set *exceptset,
         /* Call lwip_selscan again: there could have been events between
            the last scan (without us on the list) and putting us on the list! */
         nready = lwip_selscan(maxfdp1, readset, writeset, exceptset, &lreadset, &lwriteset, &lexceptset);
-        if (nready < 0) {
-          set_errno(EBADF);
-        } else if (!nready) {
+        if (!nready) {
           /* Still none ready, just wait to be woken */
           if (timeout == 0) {
             /* Wait forever */
@@ -2209,11 +2207,6 @@ lwip_select(int maxfdp1, fd_set *readset, fd_set *writeset, fd_set *exceptset,
         /* See what's set now after waiting */
         nready = lwip_selscan(maxfdp1, readset, writeset, exceptset, &lreadset, &lwriteset, &lexceptset);
         LWIP_DEBUGF(SOCKETS_DEBUG, ("lwip_select: nready=%d\n", nready));
-        if (nready < 0) {
-          set_errno(EBADF);
-          lwip_select_dec_sockets_used(maxfdp1, &used_sockets);
-          return -1;
-        }
       }
     }
   }
@@ -2754,6 +2747,8 @@ lwip_shutdown(int s, int how)
   err_t err;
   u8_t shut_rx = 0, shut_tx = 0;
 
+  LWIP_DEBUGF(SOCKETS_DEBUG, ("lwip_shutdown(%d, how=%d)\n", s, how));
+
   sock = get_socket(s);
   if (!sock) {
     return -1;
@@ -2783,7 +2778,6 @@ lwip_shutdown(int s, int how)
     done_socket(sock);
     return -1;
   }
-
   err = netconn_shutdown(sock->conn, shut_rx, shut_tx);
 
   sock_set_errno(sock, err_to_errno(err));
@@ -3025,8 +3019,8 @@ lwip_getsockopt_impl(int s, int level, int optname, void *optval, socklen_t *opt
 
           LWIP_SOCKOPT_CHECK_OPTLEN_CONN_PCB(sock, *optlen, int);
           *(int *)optval = ip_get_option(sock->conn->pcb.ip, optname);
-          printf("lwip_getsockopt(%d, SOL_SOCKET, optname=0x%x, ..) = %s\n",
-                                      s, optname, (*(int *)optval ? "on" : "off"));
+          LWIP_DEBUGF(SOCKETS_DEBUG, ("lwip_getsockopt(%d, SOL_SOCKET, optname=0x%x, ..) = %s\n",
+                                      s, optname, (*(int *)optval ? "on" : "off")));
           break;
 
         case SO_TYPE:
@@ -3471,8 +3465,8 @@ lwip_setsockopt_impl(int s, int level, int optname, const void *optval, socklen_
           } else {
             ip_reset_option(sock->conn->pcb.ip, optname);
           }
-          printf("lwip_setsockopt(%d, SOL_SOCKET, optname=0x%x, ..) -> %s\n",
-                                      s, optname, (*(const int *)optval ? "on" : "off"));
+          LWIP_DEBUGF(SOCKETS_DEBUG, ("lwip_setsockopt(%d, SOL_SOCKET, optname=0x%x, ..) -> %s\n",
+                                      s, optname, (*(const int *)optval ? "on" : "off")));
           break;
 
           /* SO_TYPE is get-only */

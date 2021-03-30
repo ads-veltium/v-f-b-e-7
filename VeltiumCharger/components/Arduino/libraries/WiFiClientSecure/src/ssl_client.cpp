@@ -62,6 +62,7 @@ int start_ssl_client(sslclient_context *ssl_client, const char *host, uint32_t p
     ssl_client->socket = -1;
 
     ssl_client->socket = lwip_socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    printf("New socket %i \n",ssl_client->socket);
     if (ssl_client->socket < 0) {
         log_e("ERROR opening socket");
         return ssl_client->socket;

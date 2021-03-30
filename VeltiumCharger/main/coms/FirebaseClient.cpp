@@ -28,8 +28,8 @@ uint16 ParseFirmwareVersion(String Texto){
  Client control functions
 *************************/
 bool initFirebaseClient(){
-    coap_start();
-    delay(5000);
+    //coap_start();
+    //delay(5000);
     Serial.println("INIT Firebase Client");
     Database->deviceID = ConfigFirebase.Device_Id;
     if(!Database->LogIn()){
@@ -715,7 +715,8 @@ void Firebase_Conn_Task(void *args){
       LastStatus= ConnectionState;
     }
     
-    vTaskDelay(pdMS_TO_TICKS(ConfigFirebase.ClientConnected ? 1000:5000));
+    vTaskDelay(pdMS_TO_TICKS(ConfigFirebase.ClientConnected ? 100:250));
+
     //chivatos de la ram
     if(ESP.getFreePsram() < 3800000 || ESP.getFreeHeap() < 20000){
         Serial.println(ESP.getFreePsram());

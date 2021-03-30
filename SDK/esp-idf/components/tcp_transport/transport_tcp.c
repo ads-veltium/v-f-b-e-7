@@ -109,6 +109,8 @@ static int tcp_connect(esp_transport_handle_t t, const char *host, int port, int
 
     setsockopt(tcp->sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
     setsockopt(tcp->sock, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
+    int one =1;
+    setsockopt(tcp->sock, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
     // Set socket keep-alive option
     if (keep_alive_cfg && keep_alive_cfg->keep_alive_enable) {
         if (tcp_enable_keep_alive(tcp->sock, keep_alive_cfg) < 0) {
