@@ -198,10 +198,6 @@ typedef enum {
     ETHERNET_EVENT_STOP,         /*!< Ethernet driver stop */
     ETHERNET_EVENT_CONNECTED,    /*!< Ethernet got a valid link */
     ETHERNET_EVENT_DISCONNECTED, /*!< Ethernet lost a valid link */
-    ETHERNET_EVENT_START2,        /*!< Ethernet driver start */
-    ETHERNET_EVENT_STOP2,         /*!< Ethernet driver stop */
-    ETHERNET_EVENT_CONNECTED2,    /*!< Ethernet got a valid link */
-    ETHERNET_EVENT_DISCONNECTED2, /*!< Ethernet lost a valid link */
 } eth_event_t;
 
 /**

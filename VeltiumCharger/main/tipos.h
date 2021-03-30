@@ -183,6 +183,7 @@ typedef struct{
 
 	bool conectado1 = false;
 	bool conectado2 = false;
+	bool conectado = false;
 }carac_ETH;
 
 typedef struct{

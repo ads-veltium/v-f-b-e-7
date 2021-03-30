@@ -91,19 +91,6 @@ esp_err_t esp_eth_clear_default_handlers(void *esp_netif)
 
     return ESP_OK;
 }
-esp_err_t esp_eth_clear_default_handlers2(void *esp_netif)
-{
-    if (!esp_netif) {
-        ESP_LOGE(TAG, "esp-netif handle can't be null");
-        return ESP_ERR_INVALID_ARG;
-    }
-    esp_event_handler_unregister(ETH_EVENT, ETHERNET_EVENT_START2, esp_netif_action_start);
-    esp_event_handler_unregister(ETH_EVENT, ETHERNET_EVENT_STOP2, esp_netif_action_stop);
-    esp_event_handler_unregister(ETH_EVENT, ETHERNET_EVENT_CONNECTED2, esp_netif_action_connected);
-    esp_event_handler_unregister(ETH_EVENT, ETHERNET_EVENT_DISCONNECTED2, esp_netif_action_disconnected);
-
-    return ESP_OK;
-}
 
 esp_err_t esp_eth_set_default_handlers(void *esp_netif)
 {
@@ -145,4 +132,3 @@ fail:
     esp_eth_clear_default_handlers(esp_netif);
     return ret;
 }
-

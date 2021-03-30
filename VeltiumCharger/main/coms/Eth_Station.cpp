@@ -168,97 +168,76 @@ bool ComprobarConexion(void){
 	return false;
 }
 
-static void eth_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data){
-    if(event_base == ETH_EVENT){
-        switch (event_id) {
-            case ETHERNET_EVENT_CONNECTED:
-                Serial.printf( "Ethernet Link Up: %u \n", 1);
-                esp_eth_ioctl(s_eth_handle, ETH_CMD_G_MAC_ADDR, s_eth_mac);
-                Serial.printf("Ethernet HW Addr %02x:%02x:%02x:%02x:%02x:%02x \n",s_eth_mac[0], s_eth_mac[1], s_eth_mac[2], s_eth_mac[3], s_eth_mac[4], s_eth_mac[5]);       
-                break;
-            case ETHERNET_EVENT_START:
-                Serial.println( "Ethernet Started");
-                break;
-            case ETHERNET_EVENT_STOP:
-                Serial.println( "Ethernet Stopped");
-                eth_connected = false;
-                break;
-            case ETHERNET_EVENT_DISCONNECTED:
-                Serial.println( "Ethernet Link Down");
-                eth_connected = false;
-                eth_link_up = false;
-                Coms.ETH.conectado1 = false;
-                break;
-#ifdef DOUBLE
-            case ETHERNET_EVENT_CONNECTED2:
-                Serial.printf( "Ethernet Link Up: %u \n", 2);
-                esp_eth_ioctl(s_eth_handle2, ETH_CMD_G_MAC_ADDR, s_eth_mac);
-                Serial.printf("Ethernet2 HW Addr %02x:%02x:%02x:%02x:%02x:%02x \n",s_eth_mac[0], s_eth_mac[1], s_eth_mac[2], s_eth_mac[3], s_eth_mac[4], s_eth_mac[5]);
-                
-                break;
-            case ETHERNET_EVENT_DISCONNECTED2:
-                Serial.println( "Ethernet Link 2 Down");
-                eth_connected = false;
-                eth_link_up = false;
-                Coms.ETH.conectado2 = false;
-                break;
-            case ETHERNET_EVENT_START2:
-                Serial.println( "Ethernet 2 Started");
-                break;
+static void eth_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
+{
+    switch (event_id) {
+    case ETHERNET_EVENT_CONNECTED:
 
-            case ETHERNET_EVENT_STOP2:
-                Serial.println( "Ethernet 2 Stopped");
-                eth_connected = false;
-                break;
-#endif
-            default:
-                break;
-        }
-    }
-    else{
-        if(event_id == IP_EVENT_ETH_GOT_IP){
-            ip_event_got_ip_t *event = (ip_event_got_ip_t *) event_data;
-            const esp_netif_ip_info_t *ip_info = &event->ip_info;
+        if(phy->link1 && phy->link2)Coms.ETH.Puerto = 3;
+        else if(phy->link1)Coms.ETH.Puerto = 1;
+        else if(phy->link2)Coms.ETH.Puerto = 2;
 
-            Serial.println( "Ethernet 1 Got IP Address");
-            Serial.printf( "ETHIP: %d %d %d %d\n",IP2STR(&ip_info->ip));
-            Coms.ETH.IP1[0] =ip4_addr1(&ip_info->ip);
+        Serial.printf( "Ethernet Link Up: %u \n", Coms.ETH.Puerto);
+        eth_link_up    = true;
+        esp_eth_ioctl(s_eth_handle, ETH_CMD_G_MAC_ADDR, s_eth_mac);
+        break;
+    case ETHERNET_EVENT_DISCONNECTED:
+        Serial.println( "Ethernet Link Down");
+        eth_connected = false;
+        eth_link_up = false;
+        Coms.ETH.conectado = false;
+        break;
+    case ETHERNET_EVENT_START:
+        Serial.println( "Ethernet Started");
+        break;
+    case ETHERNET_EVENT_STOP:
+        Serial.println( "Ethernet Stopped");
+        eth_connected = false;
+        break;
+    case IP_EVENT_ETH_GOT_IP:{
+        ip_event_got_ip_t *event = (ip_event_got_ip_t *) event_data;
+        const esp_netif_ip_info_t *ip_info = &event->ip_info;
+
+        Serial.println( "Ethernet Got IP Address");
+        Serial.printf( "ETHIP: %d %d %d %d\n",IP2STR(&ip_info->ip));
+        Coms.ETH.IP1[0] =ip4_addr1(&ip_info->ip);
             Coms.ETH.IP1[1] =ip4_addr2(&ip_info->ip);
             Coms.ETH.IP1[2] =ip4_addr3(&ip_info->ip);
             Coms.ETH.IP1[3] =ip4_addr4(&ip_info->ip);
-            ParametrosPing.BaseAdress.addr = ip_info->ip.addr;
-            
+
+        if(Coms.ETH.Puerto==1){
+            Coms.ETH.IP1[0] =ip4_addr1(&ip_info->ip);
+            Coms.ETH.IP1[1] =ip4_addr2(&ip_info->ip);
+            Coms.ETH.IP1[2] =ip4_addr3(&ip_info->ip);
+            Coms.ETH.IP1[3] =ip4_addr4(&ip_info->ip);               
             modifyCharacteristic(&Coms.ETH.IP1[0], 4, COMS_CONFIGURATION_LAN_IP1);
-
-            eth_connected = true;
-            eth_connecting = false;
-
-            //Si el ethernet tiene conexion a internet, deasactivamos el wifi
-            delay(5000);
-            Coms.ETH.conectado1 = true;
+            modifyCharacteristic(ZeroBuffer, 4, COMS_CONFIGURATION_LAN_IP2);
         }
-#ifdef DOUBLE
-        if(event_id == IP_EVENT_ETH_GOT_IP2){
-            ip_event_got_ip_t *event = (ip_event_got_ip_t *) event_data;
-            const esp_netif_ip_info_t *ip_info = &event->ip_info;
-
-            Serial.println( "Ethernet 2 Got IP Address");
-            Serial.printf( "ETHIP: %d %d %d %d\n",IP2STR(&ip_info->ip));
+        else if(Coms.ETH.Puerto==2){
             Coms.ETH.IP2[0] =ip4_addr1(&ip_info->ip);
             Coms.ETH.IP2[1] =ip4_addr2(&ip_info->ip);
             Coms.ETH.IP2[2] =ip4_addr3(&ip_info->ip);
-            Coms.ETH.IP2[3] =ip4_addr4(&ip_info->ip);
+            Coms.ETH.IP2[3] =ip4_addr4(&ip_info->ip); 
             modifyCharacteristic(&Coms.ETH.IP2[0], 4, COMS_CONFIGURATION_LAN_IP2);
-            eth_connected = true;
-            eth_connecting = false;
-
-            //Si el ethernet tiene conexion a internet, deasactivamos el wifi
-            delay(1000);
-            Coms.ETH.conectado2 = true;
+            modifyCharacteristic(ZeroBuffer, 4, COMS_CONFIGURATION_LAN_IP1);
         }
-#endif
+
+        eth_connected = true;
+        eth_connecting = false;
+
+        
+        //Comprobar si la red tiene conexion a internet
+        IP4_ADDR(&ParametrosPing.BaseAdress , 8,8,8,8);
+        ParametrosPing.CheckingConn = true;
+        ComprobarConexion();
+        Coms.ETH.conectado = true;
+        break;
+    }
+    default:
+        break;
     }
 }
+
 
 void initialize_ethernet(void){  
 

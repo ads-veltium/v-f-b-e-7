@@ -156,7 +156,6 @@ void Real_Time_Database::begin(String Host, String DatabaseID){
         .timeout_ms = 5000,
         .event_handler = _http_event_handle,
         .buffer_size_tx = 2048,
-        .keep_alive_enable = true,
     };
 
     RTDB_client = esp_http_client_init(&config);
@@ -176,7 +175,6 @@ void Real_Time_Database::reload (){
         .timeout_ms = 5000,
         .event_handler = _http_event_handle,
         .buffer_size_tx = 2048,
-        .keep_alive_enable = true,
     };
     esp_http_client_cleanup(RTDB_client);
     RTDB_client = esp_http_client_init(&config);

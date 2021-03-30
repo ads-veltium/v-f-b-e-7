@@ -12,17 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include <sys/cdefs.h>
+#include <stdatomic.h>
 #include "esp_log.h"
 #include "esp_eth.h"
-#include <stdio.h>
 #include "esp_event.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/timers.h"
-
-#include <stdatomic.h>
-
-
 
 static const char *TAG = "esp_eth";
 #define ETH_CHECK(a, str, goto_tag, ret_value, ...)                               \
@@ -67,9 +63,7 @@ typedef struct {
     esp_err_t (*stack_input)(esp_eth_handle_t eth_handle, uint8_t *buffer, uint32_t length, void *priv);
     esp_err_t (*on_lowlevel_init_done)(esp_eth_handle_t eth_handle);
     esp_err_t (*on_lowlevel_deinit_done)(esp_eth_handle_t eth_handle);
-    uint8_t Port;
 } esp_eth_driver_t;
-
 
 ////////////////////////////////Mediator Functions////////////////////////////////////////////
 // Following functions are owned by mediator, which will get invoked by MAC or PHY.
@@ -128,23 +122,11 @@ static esp_err_t eth_on_state_changed(esp_eth_mediator_t *eth, esp_eth_state_t s
         ETH_CHECK(mac->set_link(mac, link) == ESP_OK, "ethernet mac set link failed", err, ESP_FAIL);
         eth_driver->link = link;
         if (link == ETH_LINK_UP) {
-            if(eth_driver->Port==1){
-                ETH_CHECK(esp_event_post(ETH_EVENT, ETHERNET_EVENT_CONNECTED, &eth_driver, sizeof(eth_driver), 0) == ESP_OK,
-                    "send ETHERNET_EVENT_CONNECTED event failed", err, ESP_FAIL);
-            }
-            else if(eth_driver->Port==2){
-                ETH_CHECK(esp_event_post(ETH_EVENT, ETHERNET_EVENT_CONNECTED2, &eth_driver, sizeof(eth_driver), 0) == ESP_OK,
-                    "send ETHERNET_EVENT_CONNECTED2 event failed", err, ESP_FAIL);
-            }
+            ETH_CHECK(esp_event_post(ETH_EVENT, ETHERNET_EVENT_CONNECTED, &eth_driver, sizeof(eth_driver), 0) == ESP_OK,
+                      "send ETHERNET_EVENT_CONNECTED event failed", err, ESP_FAIL);
         } else if (link == ETH_LINK_DOWN) {
-            if(eth_driver->Port==1){
-                ETH_CHECK(esp_event_post(ETH_EVENT, ETHERNET_EVENT_DISCONNECTED, &eth_driver, sizeof(eth_driver), 0) == ESP_OK,
-                    "send ETHERNET_EVENT_DISCONNECTED event failed", err, ESP_FAIL);
-            }
-            else if(eth_driver->Port==2){
-                ETH_CHECK(esp_event_post(ETH_EVENT, ETHERNET_EVENT_DISCONNECTED2, &eth_driver, sizeof(eth_driver), 0) == ESP_OK,
-                    "send ETHERNET_EVENT_DISCONNECTED2 event failed", err, ESP_FAIL);
-            }
+            ETH_CHECK(esp_event_post(ETH_EVENT, ETHERNET_EVENT_DISCONNECTED, &eth_driver, sizeof(eth_driver), 0) == ESP_OK,
+                      "send ETHERNET_EVENT_DISCONNECTED event failed", err, ESP_FAIL);
         }
         break;
     }
@@ -193,7 +175,6 @@ esp_err_t esp_eth_driver_install(const esp_eth_config_t *config, esp_eth_handle_
     esp_eth_phy_t *phy = config->phy;
     ETH_CHECK(mac && phy, "can't set eth->mac or eth->phy to null", err, ESP_ERR_INVALID_ARG);
     // eth_driver contains an atomic variable, which should not be put in PSRAM
-    
     esp_eth_driver_t *eth_driver = heap_caps_calloc(1, sizeof(esp_eth_driver_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
     ETH_CHECK(eth_driver, "request memory for eth_driver failed", err, ESP_ERR_NO_MEM);
     atomic_init(&eth_driver->ref_count, 1);
@@ -210,25 +191,15 @@ esp_err_t esp_eth_driver_install(const esp_eth_config_t *config, esp_eth_handle_
     eth_driver->mediator.phy_reg_write = eth_phy_reg_write;
     eth_driver->mediator.stack_input = eth_stack_input;
     eth_driver->mediator.on_state_changed = eth_on_state_changed;
-    eth_driver->Port=config->Port;
     /* some PHY can't output RMII clock if in reset state, so hardware reset PHY chip firstly */
-    //Pero solo si es la primera vez que entramos por aqui
-    if(config->Port==1){
-        phy->reset_hw(phy);
-        ETH_CHECK(mac->set_mediator(mac, &eth_driver->mediator) == ESP_OK, "set mediator for mac failed", err_mediator, ESP_FAIL);
-        ETH_CHECK(phy->set_mediator(phy, &eth_driver->mediator) == ESP_OK, "set mediator for phy failed", err_mediator, ESP_FAIL);
-        ETH_CHECK(mac->init(mac) == ESP_OK, "init mac failed", err_init_mac, ESP_FAIL);
-        ETH_CHECK(phy->init(phy) == ESP_OK, "init phy failed", err_init_phy, ESP_FAIL);
-    }
-    else{
-        ETH_CHECK(phy->set_mediator(phy, &eth_driver->mediator) == ESP_OK, "set mediator for phy failed", err_mediator, ESP_FAIL);
-        ETH_CHECK(phy->init(phy) == ESP_OK, "init phy failed", err_init_phy, ESP_FAIL);
-    }    
-    eth_driver->check_link_timer = xTimerCreate("eth_link_timer" 
-    , pdMS_TO_TICKS(config->check_link_period_ms), pdTRUE, eth_driver, eth_check_link_timer_cb);
-    
+    phy->reset_hw(phy);
+    ETH_CHECK(mac->set_mediator(mac, &eth_driver->mediator) == ESP_OK, "set mediator for mac failed", err_mediator, ESP_FAIL);
+    ETH_CHECK(phy->set_mediator(phy, &eth_driver->mediator) == ESP_OK, "set mediator for phy failed", err_mediator, ESP_FAIL);
+    ETH_CHECK(mac->init(mac) == ESP_OK, "init mac failed", err_init_mac, ESP_FAIL);
+    ETH_CHECK(phy->init(phy) == ESP_OK, "init phy failed", err_init_phy, ESP_FAIL);
+    eth_driver->check_link_timer = xTimerCreate("eth_link_timer", pdMS_TO_TICKS(config->check_link_period_ms), pdTRUE,
+                                   eth_driver, eth_check_link_timer_cb);
     ETH_CHECK(eth_driver->check_link_timer, "create eth_link_timer failed", err_create_timer, ESP_FAIL);
-
     *out_hdl = (esp_eth_handle_t)eth_driver;
     return ESP_OK;
 err_create_timer:
@@ -255,7 +226,7 @@ esp_err_t esp_eth_driver_uninstall(esp_eth_handle_t hdl)
         goto err;
     }
     // don't uninstall driver unless there's only one reference
-    int expected_ref_count = 2;
+    int expected_ref_count = 1;
     if (!atomic_compare_exchange_strong(&eth_driver->ref_count, &expected_ref_count, 0)) {
         ESP_LOGE(TAG, "%d ethernet reference in use", expected_ref_count);
         ret = ESP_ERR_INVALID_STATE;
@@ -287,16 +258,8 @@ esp_err_t esp_eth_start(esp_eth_handle_t hdl)
     ETH_CHECK(eth_driver->phy->reset(eth_driver->phy) == ESP_OK, "reset phy failed", err, ESP_FAIL);
     ETH_CHECK(xTimerStart(eth_driver->check_link_timer, 0) == pdPASS,
               "start eth_link_timer failed", err, ESP_FAIL);
-
-    if(eth_driver->Port==1){
-        ETH_CHECK(esp_event_post(ETH_EVENT, ETHERNET_EVENT_START, &eth_driver, sizeof(eth_driver), 0) == ESP_OK,
-            "send ETHERNET_EVENT_START event failed", err_event, ESP_FAIL);
-    }
-    else if(eth_driver->Port==2){
-        ETH_CHECK(esp_event_post(ETH_EVENT, ETHERNET_EVENT_START2, &eth_driver, sizeof(eth_driver), 0) == ESP_OK,
-            "send ETHERNET_EVENT_START2 event failed", err_event, ESP_FAIL);
-    }
-
+    ETH_CHECK(esp_event_post(ETH_EVENT, ETHERNET_EVENT_START, &eth_driver, sizeof(eth_driver), 0) == ESP_OK,
+              "send ETHERNET_EVENT_START event failed", err_event, ESP_FAIL);
     return ESP_OK;
 err_event:
     xTimerStop(eth_driver->check_link_timer, 0);
@@ -320,14 +283,8 @@ esp_err_t esp_eth_stop(esp_eth_handle_t hdl)
     ETH_CHECK(mac->stop(mac) == ESP_OK, "stop mac failed", err, ESP_FAIL);
     ETH_CHECK(xTimerStop(eth_driver->check_link_timer, 0) == pdPASS,
               "stop eth_link_timer failed", err, ESP_FAIL);
-    if(eth_driver->Port==1){
-        ETH_CHECK(esp_event_post(ETH_EVENT, ETHERNET_EVENT_STOP, &eth_driver, sizeof(eth_driver), 0) == ESP_OK,
-            "send ETHERNET_EVENT_STOP event failed", err, ESP_FAIL);
-    }
-    else if(eth_driver->Port==2){
-        ETH_CHECK(esp_event_post(ETH_EVENT, ETHERNET_EVENT_STOP2, &eth_driver, sizeof(eth_driver), 0) == ESP_OK,
-            "send ETHERNET_EVENT_STOP2 event failed", err, ESP_FAIL);
-    }
+    ETH_CHECK(esp_event_post(ETH_EVENT, ETHERNET_EVENT_STOP, &eth_driver, sizeof(eth_driver), 0) == ESP_OK,
+              "send ETHERNET_EVENT_STOP event failed", err, ESP_FAIL);
     return ESP_OK;
 err:
     return ret;

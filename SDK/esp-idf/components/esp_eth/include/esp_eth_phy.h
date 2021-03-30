@@ -13,21 +13,20 @@
 // limitations under the License.
 #pragma once
 
-#include <stdbool.h>
-#include "esp_eth_com.h"
-#include "sdkconfig.h"
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#define ESP_ETH_PHY_ADDR_AUTO (-1)
+#include <stdbool.h>
+#include "esp_eth_com.h"
+#include "sdkconfig.h"
 
 /**
 * @brief Ethernet PHY
 *
 */
 typedef struct esp_eth_phy_s esp_eth_phy_t;
+
 
 /**
 * @brief Ethernet PHY
@@ -36,7 +35,7 @@ typedef struct esp_eth_phy_s esp_eth_phy_t;
 struct esp_eth_phy_s {
     uint8_t link1;
     uint8_t link2;
-        /**
+    /**
     * @brief Set mediator for PHY
     *
     * @param[in] phy: Ethernet PHY instance
@@ -180,9 +179,10 @@ struct esp_eth_phy_s {
 *
 */
 typedef struct {
-    int32_t phy_addr;             /*!< PHY address, set -1 to enable PHY address detection at initialization stage */
+    uint32_t phy_addr;            /*!< PHY address */
     uint32_t phy_addr1;
-    uint32_t phy_addr2;    uint32_t reset_timeout_ms;    /*!< Reset timeout value (Unit: ms) */
+    uint32_t phy_addr2;
+    uint32_t reset_timeout_ms;    /*!< Reset timeout value (Unit: ms) */
     uint32_t autonego_timeout_ms; /*!< Auto-negotiation timeout value (Unit: ms) */
     int reset_gpio_num;           /*!< Reset GPIO number, -1 means no hardware reset */
 } eth_phy_config_t;
@@ -191,14 +191,12 @@ typedef struct {
  * @brief Default configuration for Ethernet PHY object
  *
  */
-#define ETH_PHY_DEFAULT_CONFIG()           \
-    {                                      \
-        .phy_addr = 0, \
-         .phy_addr1 = 1,              \
-        .phy_addr2 = 2,              \
-        .reset_timeout_ms = 100,           \
-        .autonego_timeout_ms = 4000,       \
-        .reset_gpio_num = 5,               \
+#define ETH_PHY_DEFAULT_CONFIG()     \
+    {                                \
+        .phy_addr = 1,               \
+        .reset_timeout_ms = 100,     \
+        .autonego_timeout_ms = 4000, \
+        .reset_gpio_num = 5,         \
     }
 
 /**
@@ -232,6 +230,9 @@ esp_eth_phy_t *esp_eth_phy_new_rtl8201(const eth_phy_config_t *config);
 *      - instance: create PHY instance successfully
 *      - NULL: create PHY instance failed because some error occurred
 */
+
+
+
 esp_eth_phy_t *esp_eth_phy_new_lan8720(const eth_phy_config_t *config);
 
 /**

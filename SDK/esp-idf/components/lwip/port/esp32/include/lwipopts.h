@@ -885,8 +885,8 @@ u32_t lwip_hook_tcp_isn(const struct ip_addr *local_ip, u16_t local_port,
  * DHCP_DEBUG: Enable debugging in dhcp.c.
  */
 #define DHCP_DEBUG                      LWIP_DBG_OFF
-#define LWIP_DEBUG                      LWIP_DBG_ON
-#define TCP_DEBUG                       LWIP_DBG_ON
+#define LWIP_DEBUG                      LWIP_DBG_OFF
+#define TCP_DEBUG                       LWIP_DBG_OFF
 
 #define CHECKSUM_CHECK_UDP              0
 #define CHECKSUM_CHECK_IP               0

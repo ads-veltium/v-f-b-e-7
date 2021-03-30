@@ -188,7 +188,7 @@ bool WriteFirebaseFW(String Path){
   Escritura["VBLE2"] = "VBLE2_"+String(UpdateStatus.ESP_Act_Ver);
   Escritura["VELT2"] = "VELT2_"+String(UpdateStatus.PSOC5_Act_Ver);
 
-  if(Database->Send_Command(Path,&Escritura,WRITE)){
+  if(Database->Send_Command(Path,&Escritura,UPDATE)){
     return true;
   }
 

@@ -322,7 +322,7 @@ esp_tls_t *esp_tls_conn_new(const char *hostname, int hostlen, int port, const e
             return tls;
         } else if (ret == -1) {
             esp_tls_conn_delete(tls);
-            ESP_LOGE(TAG, "Failed to open new connection new");
+            ESP_LOGE(TAG, "Failed to open new connection");
             return NULL;
         } else if (ret == 0 && cfg->timeout_ms >= 0) {
             size_t timeout_ticks = pdMS_TO_TICKS(cfg->timeout_ms);
@@ -347,7 +347,7 @@ int esp_tls_conn_new_sync(const char *hostname, int hostlen, int port, const esp
         if (ret == 1) {
             return ret;
         } else if (ret == -1) {
-            ESP_LOGE(TAG, "Failed to open new connection new sync");
+            ESP_LOGE(TAG, "Failed to open new connection");
             return -1;
         } else if (ret == 0 && cfg->timeout_ms >= 0) {
             size_t timeout_ticks = pdMS_TO_TICKS(cfg->timeout_ms);
