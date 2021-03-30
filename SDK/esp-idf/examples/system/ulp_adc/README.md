@@ -1,6 +1,3 @@
-| Supported Targets | ESP32 |
-| ----------------- | ----- |
-
 # ULP ADC Example
 
 This example demonstrates how to use the ULP coprocessor to poll ADC in deep sleep.

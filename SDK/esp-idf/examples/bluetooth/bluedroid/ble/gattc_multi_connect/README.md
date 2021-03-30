@@ -1,6 +1,3 @@
-| Supported Targets | ESP32 |
-| ----------------- | ----- |
-
 ESP-IDF Gatt Client Multi Connection Demo
 ========================
 

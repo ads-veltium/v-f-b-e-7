@@ -246,6 +246,7 @@ TEST_CASE_MULTIPLE_STAGES("reset reason ESP_RST_BROWNOUT after brownout event",
 
 #ifdef CONFIG_SPIRAM_ALLOW_STACK_EXTERNAL_MEMORY
 #ifndef CONFIG_FREERTOS_UNICORE
+#include "soc/soc_memory_layout.h"
 #include "xt_instr_macros.h"
 #include "xtensa/config/specreg.h"
 

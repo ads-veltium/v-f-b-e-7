@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # This script finds executable files in the repository, excluding some directories,
 # then prints the list of all files which are not in executable-list.txt.
 # Returns with error if this list is non-empty.

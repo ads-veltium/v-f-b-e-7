@@ -4,10 +4,8 @@ Standard Setup of Toolchain for Windows
 
 :link_to_translation:`zh_CN:[中文]`
 
-.. only:: esp32
-
-    .. note::
-        Currently only 64-bit versions of Windows are supported. 32-bit Windows can use the :doc:`Legacy GNU Make Build System<../get-started-legacy/windows-setup>`.
+.. note::
+      Currently only 64-bit versions of Windows are supported. 32-bit Windows can use the :doc:`Legacy GNU Make Build System<../get-started-legacy/windows-setup>`.
 
 Introduction
 ============
@@ -16,10 +14,8 @@ ESP-IDF requires some prerequisite tools to be installed so you can build firmwa
 
 For this Getting Started we're going to use the Command Prompt, but after ESP-IDF is installed you can use :doc:`Eclipse <eclipse-setup>` or another graphical IDE with CMake support instead.
 
-.. only:: esp32
-
-    .. note::
-        Previous versions of ESP-IDF used the :doc:`Legacy GNU Make Build System<../get-started-legacy/windows-setup>` and MSYS2_ Unix compatibility environment. This is no longer required, ESP-IDF can be used from the Windows Command Prompt.
+.. note::
+   Previous versions of ESP-IDF used the :doc:`Legacy GNU Make Build System<../get-started-legacy/windows-setup>` and MSYS2_ Unix compatibility environment. This is no longer required, ESP-IDF can be used from the Windows Command Prompt.
 
 .. _get-started-windows-tools-installer:
 
@@ -61,7 +57,6 @@ For advanced users who want to customize the install process:
     :maxdepth: 1
 
     windows-setup-update
-
 
 .. _MSYS2: https://www.msys2.org/
 .. _cmake: https://cmake.org/download/

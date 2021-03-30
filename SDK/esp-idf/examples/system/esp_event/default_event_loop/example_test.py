@@ -27,9 +27,7 @@ def _test_timer_events(dut):
 
     dut.expect("TIMER_EVENTS:TIMER_EVENT_STARTED: posting to default loop")
     print("Posted timer started event")
-    dut.expect("TIMER_EVENTS:TIMER_EVENT_STARTED: timer_started_handler, instance 0")
-    dut.expect("TIMER_EVENTS:TIMER_EVENT_STARTED: timer_started_handler, instance 1")
-    dut.expect("TIMER_EVENTS:TIMER_EVENT_STARTED: timer_started_handler_2")
+    dut.expect("TIMER_EVENTS:TIMER_EVENT_STARTED: timer_started_handler")
     dut.expect("TIMER_EVENTS:TIMER_EVENT_STARTED: timer_any_handler")
     dut.expect("TIMER_EVENTS:TIMER_EVENT_STARTED: all_event_handler")
     print("Handled timer started event")
@@ -81,7 +79,7 @@ def _test_iteration_events(dut):
     print("Deleted task event source")
 
 
-@ttfw_idf.idf_example_test(env_tag='Example_GENERIC')
+@ttfw_idf.idf_example_test(env_tag='Example_WIFI')
 def test_default_event_loop_example(env, extra_data):
     dut = env.get_dut('default_event_loop', 'examples/system/esp_event/default_event_loop')
 

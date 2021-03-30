@@ -1,3 +1,8 @@
-idf_component_register(SRCS "cmd_wifi.c" "iperf.c"
-                    INCLUDE_DIRS  "."
-                    REQUIRES lwip console)
+set(COMPONENT_SRCS "cmd_wifi.c"
+                   "iperf.c")
+
+set(COMPONENT_ADD_INCLUDEDIRS .)
+
+set(COMPONENT_REQUIRES lwip console)
+
+register_component()

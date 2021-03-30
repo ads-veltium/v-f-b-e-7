@@ -1,6 +1,3 @@
-| Supported Targets | ESP32 |
-| ----------------- | ----- |
-
 # ESP-IDF iBeacon demo
 
 From welcoming people as they arrive at a sporting event to providing information about a nearby museum exhibit, iBeacon opens a new world of possibilities for location awareness, and countless opportunities for interactivity between iOS devices and iBeacon hardware.

@@ -1,6 +1,3 @@
-| Supported Targets | ESP32 |
-| ----------------- | ----- |
-
 # ADC2 Example
 
 (See the README.md file in the upper level 'examples' directory for more information about examples.)
@@ -20,7 +17,7 @@ We use ADC1_CHANNEL_7 (GPIO27) and DAC_CHANNEL_1 (GPIO25) by default, you need t
 
 #### ESP32-S2 platform
 
-* A development board with ESP32S2 SoC
+* A development board with ESP32S2BETA SoC
 * A USB cable for power supply and programming
 
 We use ADC1_CHANNEL_7 (GPIO18) and DAC_CHANNEL_1 (GPIO17) by default, you need to short the two GPIOs (if you have changed the ADC2 and DAC channel, please refer to the `ESP32S2 Technical Reference Manual` to get the pin number).

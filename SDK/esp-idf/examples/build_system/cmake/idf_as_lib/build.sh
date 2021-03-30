@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 rm -rf build && mkdir build && cd build
 cmake .. 
 cmake --build .

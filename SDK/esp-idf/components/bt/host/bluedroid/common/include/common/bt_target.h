@@ -127,11 +127,6 @@
 #define BT_SSP_INCLUDED             TRUE
 #endif /* UC_BT_SSP_ENABLED */
 
-#if UC_BT_HID_HOST_ENABLED
-#define HID_HOST_INCLUDED           TRUE
-#define BTA_HH_INCLUDED             TRUE
-#endif /* UC_BT_HID_HOST_ENABLED */
-
 #endif /* UC_BT_CLASSIC_ENABLED */
 
 /* This is set to enable use of GAP L2CAP connections. */

@@ -18,4 +18,4 @@ Application Example
 API Reference
 -------------
 
-.. include-build-file:: inc/esp_bt_device.inc
+.. include:: /_build/inc/esp_bt_device.inc

@@ -102,7 +102,7 @@ def test_examples_protocol_mdns(env, extra_data):
     binary_file = os.path.join(dut1.app.binary_path, "mdns-test.bin")
     bin_size = os.path.getsize(binary_file)
     ttfw_idf.log_performance("mdns-test_bin_size", "{}KB".format(bin_size // 1024))
-    ttfw_idf.check_performance("mdns-test_bin_size", bin_size // 1024, dut1.TARGET)
+    ttfw_idf.check_performance("mdns-test_bin_size", bin_size // 1024)
     # 1. start mdns application
     dut1.start_app()
     # 2. get the dut host name (and IP address)
@@ -117,11 +117,11 @@ def test_examples_protocol_mdns(env, extra_data):
         stop_mdns_server.set()
         thread1.join()
         raise ValueError('ENV_TEST_FAILURE: Cannot connect to AP')
+    # 3. check the mdns name is accessible
+    if not esp_answered.wait(timeout=30):
+        raise ValueError('Test has failed: did not receive mdns answer within timeout')
+    # 4. check DUT output if mdns advertized host is resolved
     try:
-        # 3. check the mdns name is accessible
-        if not esp_answered.wait(timeout=30):
-            raise ValueError('Test has failed: did not receive mdns answer within timeout')
-        # 4. check DUT output if mdns advertized host is resolved
         dut1.expect(re.compile(r"mdns-test: Query A: tinytester.local resolved to: 127.0.0.1"), timeout=30)
         dut1.expect(re.compile(r"mdns-test: gethostbyname: tinytester-lwip.local resolved to: 127.0.0.1"), timeout=30)
         dut1.expect(re.compile(r"mdns-test: getaddrinfo: tinytester-lwip.local resolved to: 127.0.0.1"), timeout=30)

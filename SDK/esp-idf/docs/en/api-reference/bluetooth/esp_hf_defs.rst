@@ -11,6 +11,6 @@ Overview
 API Reference
 -------------
 
-.. include-build-file:: inc/esp_hf_defs.inc
+.. include:: /_build/inc/esp_hf_defs.inc
 
 

@@ -3,7 +3,7 @@
  *
  * \brief NIST SP800-38B compliant CMAC implementation for AES and 3DES
  *
- *  Copyright The Mbed TLS Contributors
+ *  Copyright (C) 2006-2016, ARM Limited, All Rights Reserved
  *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
  *
  *  This file is provided under the Apache License 2.0, or the
@@ -44,6 +44,8 @@
  *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  *
  *  **********
+ *
+ *  This file is part of mbed TLS (https://tls.mbed.org)
  */
 
 /*
@@ -450,7 +452,7 @@ exit:
  */
 int mbedtls_aes_cmac_prf_128( const unsigned char *key, size_t key_length,
                               const unsigned char *input, size_t in_len,
-                              unsigned char output[16] )
+                              unsigned char *output )
 {
     int ret;
     const mbedtls_cipher_info_t *cipher_info;

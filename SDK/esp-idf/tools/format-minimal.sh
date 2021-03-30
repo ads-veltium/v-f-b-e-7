@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # Runs astyle with parameters which should be checked in a pre-commit hook
 astyle \
 	--style=otbs \

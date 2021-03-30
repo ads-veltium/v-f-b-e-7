@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#! /bin/bash
 
 # Regexp for matching job names which are incompatible with Python 3
 # - UT_009_ - multi-device tests are not compatible

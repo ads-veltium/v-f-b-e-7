@@ -30,7 +30,7 @@
 #define ACTION_SUSPEND  0x02
 #define ACTION_EXIT     0x03
 
-const uint8_t *bt_mesh_fast_prov_dev_key_get(uint16_t dst)
+const u8_t *bt_mesh_fast_prov_dev_key_get(u16_t dst)
 {
     if (!BLE_MESH_ADDR_IS_UNICAST(dst)) {
         BT_ERR("Invalid unicast address 0x%04x", dst);
@@ -44,7 +44,7 @@ const uint8_t *bt_mesh_fast_prov_dev_key_get(uint16_t dst)
     return bt_mesh_provisioner_dev_key_get(dst);
 }
 
-struct bt_mesh_subnet *bt_mesh_fast_prov_subnet_get(uint16_t net_idx)
+struct bt_mesh_subnet *bt_mesh_fast_prov_subnet_get(u16_t net_idx)
 {
     struct bt_mesh_subnet *sub = NULL;
     int i;
@@ -66,7 +66,7 @@ struct bt_mesh_subnet *bt_mesh_fast_prov_subnet_get(uint16_t net_idx)
     return NULL;
 }
 
-struct bt_mesh_app_key *bt_mesh_fast_prov_app_key_find(uint16_t app_idx)
+struct bt_mesh_app_key *bt_mesh_fast_prov_app_key_find(u16_t app_idx)
 {
     struct bt_mesh_app_key *key = NULL;
     int i;
@@ -90,7 +90,7 @@ struct bt_mesh_app_key *bt_mesh_fast_prov_app_key_find(uint16_t app_idx)
     return NULL;
 }
 
-uint8_t bt_mesh_set_fast_prov_net_idx(uint16_t net_idx)
+u8_t bt_mesh_set_fast_prov_net_idx(u16_t net_idx)
 {
     /* Set net_idx for fast provisioning */
     bt_mesh_provisioner_set_fast_prov_net_idx(net_idx);
@@ -104,9 +104,9 @@ uint8_t bt_mesh_set_fast_prov_net_idx(uint16_t net_idx)
     return 0x0; /* status: Succeed */
 }
 
-uint8_t bt_mesh_fast_prov_net_key_add(const uint8_t net_key[16])
+u8_t bt_mesh_fast_prov_net_key_add(const u8_t net_key[16])
 {
-    uint16_t net_idx = 0U;
+    u16_t net_idx = 0U;
     int err = 0;
 
     net_idx = bt_mesh_provisioner_get_fast_prov_net_idx();
@@ -122,7 +122,7 @@ uint8_t bt_mesh_fast_prov_net_key_add(const uint8_t net_key[16])
     return 0x0; /* status: Succeed */
 }
 
-const uint8_t *bt_mesh_fast_prov_net_key_get(uint16_t net_idx)
+const u8_t *bt_mesh_fast_prov_net_key_get(u16_t net_idx)
 {
     struct bt_mesh_subnet *sub = NULL;
 
@@ -135,7 +135,7 @@ const uint8_t *bt_mesh_fast_prov_net_key_get(uint16_t net_idx)
     return (sub->kr_flag ? sub->keys[1].net : sub->keys[0].net);
 }
 
-const uint8_t *bt_mesh_get_fast_prov_app_key(uint16_t net_idx, uint16_t app_idx)
+const u8_t *bt_mesh_get_fast_prov_app_key(u16_t net_idx, u16_t app_idx)
 {
     struct bt_mesh_app_key *key = NULL;
 
@@ -148,7 +148,7 @@ const uint8_t *bt_mesh_get_fast_prov_app_key(uint16_t net_idx, uint16_t app_idx)
     return (key->updated ? key->keys[1].val : key->keys[0].val);
 }
 
-uint8_t bt_mesh_set_fast_prov_action(uint8_t action)
+u8_t bt_mesh_set_fast_prov_action(u8_t action)
 {
     if (!action || action > ACTION_EXIT) {
         return 0x01;

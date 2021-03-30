@@ -6,7 +6,7 @@ API Reference
 .. toctree::
     :maxdepth: 2
 
-    :SOC_BT_SUPPORTED: Bluetooth <bluetooth/index>
+    Bluetooth <bluetooth/index>
     Networking <network/index>
     Peripherals <peripherals/index>
     Protocols <protocols/index>

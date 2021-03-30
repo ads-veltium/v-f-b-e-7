@@ -17,26 +17,24 @@ from __future__ import print_function
 from future.utils import tobytes
 
 import socket
-try:
-    from http.client import HTTPConnection, HTTPSConnection
-except ImportError:
-    # Python 2 fallback
-    from httplib import HTTPConnection, HTTPSConnection
+import http.client
+import ssl
 
 from .transport import Transport
 
 
 class Transport_HTTP(Transport):
-    def __init__(self, hostname, ssl_context=None):
+    def __init__(self, hostname, certfile=None):
         try:
             socket.gethostbyname(hostname.split(':')[0])
         except socket.gaierror:
             raise RuntimeError("Unable to resolve hostname :" + hostname)
 
-        if ssl_context is None:
-            self.conn = HTTPConnection(hostname, timeout=45)
+        if certfile is None:
+            self.conn = http.client.HTTPConnection(hostname, timeout=45)
         else:
-            self.conn = HTTPSConnection(hostname, context=ssl_context, timeout=45)
+            ssl_ctx = ssl.create_default_context(cafile=certfile)
+            self.conn = http.client.HTTPSConnection(hostname, context=ssl_ctx, timeout=45)
         try:
             print("Connecting to " + hostname)
             self.conn.connect()

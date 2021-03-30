@@ -1,7 +1,7 @@
 /*
  *  Certificate generation and signing
  *
- *  Copyright The Mbed TLS Contributors
+ *  Copyright (C) 2006-2015, ARM Limited, All Rights Reserved
  *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
  *
  *  This file is provided under the Apache License 2.0, or the
@@ -42,6 +42,8 @@
  *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  *
  *  **********
+ *
+ *  This file is part of mbed TLS (https://tls.mbed.org)
  */
 
 #if !defined(MBEDTLS_CONFIG_FILE)
@@ -145,9 +147,8 @@ int main( void )
     "    is_ca=%%d                default: 0 (disabled)\n"  \
     "    max_pathlen=%%d          default: -1 (none)\n"     \
     "    md=%%s                   default: SHA256\n"        \
-    "                            Supported values (if enabled):\n"      \
-    "                            MD2, MD4, MD5, RIPEMD160, SHA1,\n" \
-    "                            SHA224, SHA256, SHA384, SHA512\n" \
+    "                            Supported values:\n"       \
+    "                            MD2, MD4, MD5, SHA1, SHA256, SHA512\n"\
     "    version=%%d              default: 3\n"            \
     "                            Possible values: 1, 2, 3\n"\
     "    subject_identifier=%%s   default: 1\n"             \
@@ -381,14 +382,23 @@ int main( int argc, char *argv[] )
         }
         else if( strcmp( p, "md" ) == 0 )
         {
-            const mbedtls_md_info_t *md_info =
-                mbedtls_md_info_from_string( q );
-            if( md_info == NULL )
+            if( strcmp( q, "SHA1" ) == 0 )
+                opt.md = MBEDTLS_MD_SHA1;
+            else if( strcmp( q, "SHA256" ) == 0 )
+                opt.md = MBEDTLS_MD_SHA256;
+            else if( strcmp( q, "SHA512" ) == 0 )
+                opt.md = MBEDTLS_MD_SHA512;
+            else if( strcmp( q, "MD2" ) == 0 )
+                opt.md = MBEDTLS_MD_MD2;
+            else if( strcmp( q, "MD4" ) == 0 )
+                opt.md = MBEDTLS_MD_MD4;
+            else if( strcmp( q, "MD5" ) == 0 )
+                opt.md = MBEDTLS_MD_MD5;
+            else
             {
                 mbedtls_printf( "Invalid argument for option %s\n", p );
                 goto usage;
             }
-            opt.md = mbedtls_md_get_type( md_info );
         }
         else if( strcmp( p, "version" ) == 0 )
         {

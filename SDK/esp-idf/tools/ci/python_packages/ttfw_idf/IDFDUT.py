@@ -226,9 +226,7 @@ class IDFDUT(DUT.SerialDUT):
                 nvs_file = tempfile.TemporaryFile()
                 nvs_file.write(b'\xff' * size)
                 nvs_file.seek(0)
-                if not isinstance(address, int):
-                    address = int(address, 0)
-                flash_files.append((address, nvs_file))
+                flash_files.append((int(address, 0), nvs_file))
 
             # fake flasher args object, this is a hack until
             # esptool Python API is improved
@@ -429,7 +427,7 @@ class ESP32DUT(IDFDUT):
 
 
 class ESP32S2DUT(IDFDUT):
-    TARGET = "esp32s2"
+    TARGET = "esp32s2beta"
     TOOLCHAIN_PREFIX = "xtensa-esp32s2-elf-"
 
     @classmethod

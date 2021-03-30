@@ -1,6 +1,3 @@
-| Supported Targets | ESP32 |
-| ----------------- | ----- |
-
 ESP BLE Mesh Vendor Server Example
 ==================================
 

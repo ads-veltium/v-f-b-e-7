@@ -4,4 +4,4 @@ Legacy event loop
 API Reference
 -------------
 
-.. include-build-file:: inc/esp_event_legacy.inc
+.. include:: /_build/inc/esp_event_legacy.inc

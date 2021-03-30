@@ -19,5 +19,5 @@ Check :example:`bluetooth/bluedroid/ble` folder in ESP-IDF examples, which conta
 API Reference
 -------------
 
-.. include-build-file:: inc/esp_blufi_api.inc
+.. include:: /_build/inc/esp_blufi_api.inc
 

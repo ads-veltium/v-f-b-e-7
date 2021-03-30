@@ -1,6 +1,3 @@
-| Supported Targets | ESP32 |
-| ----------------- | ----- |
-
 ESP-IDF BLE throughput GATT SERVER demo
 ========================
 

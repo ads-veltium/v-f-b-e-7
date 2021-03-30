@@ -81,7 +81,6 @@ struct esp_netif_obj {
     // io driver related
     void* driver_handle;
     esp_err_t (*driver_transmit)(void *h, void *buffer, size_t len);
-    esp_err_t (*driver_transmit_wrap)(void *h, void *buffer, size_t len, void *pbuf);
     void (*driver_free_rx_buffer)(void *h, void* buffer);
 
     // dhcp related
@@ -99,5 +98,4 @@ struct esp_netif_obj {
     char * if_key;
     char * if_desc;
     int route_prio;
-    bool started;
 };

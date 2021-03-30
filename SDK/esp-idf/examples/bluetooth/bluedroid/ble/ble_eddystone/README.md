@@ -1,6 +1,3 @@
-| Supported Targets | ESP32 |
-| ----------------- | ----- |
-
 ESP-IDF Eddystone demo
 ========================
 This example demonstrates Eddystone-compatible BLE scanning of eddystone frame,including UID,URL.

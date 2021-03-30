@@ -40,6 +40,7 @@ typedef struct {
     uint32_t version;
 } i2s_hal_context_t;
 
+
 /**
  * @brief Get I2S interrupt status
  *
@@ -151,7 +152,6 @@ void i2s_hal_set_rx_mode(i2s_hal_context_t *hal, i2s_channel_t ch, i2s_bits_per_
  */
 void i2s_hal_set_in_link(i2s_hal_context_t *hal, uint32_t rx_eof_num, uint32_t addr);
 
-#if SOC_I2S_SUPPORTS_PDM
 /**
  * @brief Get I2S tx pdm
  *
@@ -160,7 +160,6 @@ void i2s_hal_set_in_link(i2s_hal_context_t *hal, uint32_t rx_eof_num, uint32_t a
  * @param fs tx pdm fs
  */
 void i2s_hal_get_tx_pdm(i2s_hal_context_t *hal, int *fp, int *fs);
-#endif
 
 /**
  * @brief Get I2S rx sinc dsr 16 en
@@ -241,7 +240,6 @@ void i2s_hal_stop_tx(i2s_hal_context_t *hal);
  */
 void i2s_hal_stop_rx(i2s_hal_context_t *hal);
 
-#if SOC_I2S_SUPPORTS_PDM
 /**
  * @brief Set I2S pdm rx down sample
  *
@@ -249,7 +247,6 @@ void i2s_hal_stop_rx(i2s_hal_context_t *hal);
  * @param dsr 0:disable, 1: enable
  */
 #define i2s_hal_set_pdm_rx_down_sample(hal, dsr) i2s_ll_set_rx_sinc_dsr_16_en((hal)->dev, dsr)
-#endif
 
 /**
  * @brief Config I2S param

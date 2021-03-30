@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
 # Now git submodules are redirected to mirror automatically according to relative URLs in .gitmodules
 

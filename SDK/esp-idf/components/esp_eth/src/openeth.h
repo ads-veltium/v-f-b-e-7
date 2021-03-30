@@ -27,11 +27,9 @@ extern "C" {
 // See comments in esp_eth_mac_openeth.c for more details about this driver.
 
 // DMA buffers configuration
-#define CONFIG_ETH_OPENETH_DMA_TX_BUFFER_NUM 10
-#define CONFIG_ETH_OPENETH_DMA_RX_BUFFER_NUM 10
 #define DMA_BUF_SIZE    1600
-#define RX_BUF_COUNT    CONFIG_ETH_OPENETH_DMA_RX_BUFFER_NUM
-#define TX_BUF_COUNT    CONFIG_ETH_OPENETH_DMA_TX_BUFFER_NUM
+#define RX_BUF_COUNT    CONFIG_ETH_DMA_RX_BUFFER_NUM
+#define TX_BUF_COUNT    CONFIG_ETH_DMA_TX_BUFFER_NUM
 
 // This driver uses the interrupt source number of the internal EMAC of the ESP32 chip,
 // and uses the same register address base. This of course only works in QEMU, where

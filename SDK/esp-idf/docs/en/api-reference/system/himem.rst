@@ -30,4 +30,4 @@ An example doing a simple memory test of the high memory range is available in e
 API Reference
 -------------
 
-.. include-build-file:: inc/himem.inc
+.. include:: /_build/inc/himem.inc

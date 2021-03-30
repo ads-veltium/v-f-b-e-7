@@ -665,7 +665,7 @@ int coap_can_exit(coap_context_t *context);
  * Returns the current value of an internal tick counter. The counter counts \c
  * COAP_TICKS_PER_SECOND ticks every second.
  */
-//void coap_ticks(coap_tick_t *);
+void coap_ticks(coap_tick_t *);
 
 /**
  * Verifies that @p pdu contains no unknown critical options. Options must be

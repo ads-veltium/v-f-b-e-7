@@ -16,27 +16,27 @@ and :doc:`ESP-IDF FreeRTOS Additions<freertos_additions>`.
 Task API
 --------
 
-.. include-build-file:: inc/task.inc
+.. include:: /_build/inc/task.inc
 
 Queue API
 ---------
 
-.. include-build-file:: inc/queue.inc
+.. include:: /_build/inc/queue.inc
 
 Semaphore API
 -------------
 
-.. include-build-file:: inc/semphr.inc
+.. include:: /_build/inc/semphr.inc
 
 Timer API
 ---------
 
-.. include-build-file:: inc/timers.inc
+.. include:: /_build/inc/timers.inc
 
 
 Event Group API
 ---------------
 
-.. include-build-file:: inc/event_groups.inc
+.. include:: /_build/inc/event_groups.inc
 
 

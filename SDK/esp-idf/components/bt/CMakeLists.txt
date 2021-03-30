@@ -47,7 +47,6 @@ if(CONFIG_BT_ENABLED)
             host/bluedroid/btc/profile/esp/blufi/include
             host/bluedroid/btc/profile/esp/include
             host/bluedroid/btc/profile/std/a2dp/include
-            host/bluedroid/btc/profile/std/hid/include
             host/bluedroid/btc/profile/std/include
             host/bluedroid/btc/include
             host/bluedroid/stack/btm/include
@@ -167,8 +166,6 @@ if(CONFIG_BT_ENABLED)
                    "host/bluedroid/btc/profile/std/hf_ag/btc_hf_ag.c"
                    "host/bluedroid/btc/profile/std/hf_client/btc_hf_client.c"
                    "host/bluedroid/btc/profile/std/hf_client/bta_hf_client_co.c"
-                   "host/bluedroid/btc/profile/std/hid/hidh_api.c"
-                   "host/bluedroid/btc/profile/std/hid/hidh_conn.c"
                    "host/bluedroid/btc/profile/std/gap/btc_gap_ble.c"
                    "host/bluedroid/btc/profile/std/gap/btc_gap_bt.c"
                    "host/bluedroid/btc/profile/std/gap/bta_gap_bt_co.c"
@@ -340,7 +337,6 @@ if(CONFIG_BT_ENABLED)
                     "esp_ble_mesh/api/models/esp_ble_mesh_lighting_model_api.c"
                     "esp_ble_mesh/api/models/esp_ble_mesh_sensor_model_api.c"
                     "esp_ble_mesh/api/models/esp_ble_mesh_time_scene_model_api.c"
-                    "esp_ble_mesh/btc/btc_ble_mesh_ble.c"
                     "esp_ble_mesh/btc/btc_ble_mesh_config_model.c"
                     "esp_ble_mesh/btc/btc_ble_mesh_generic_model.c"
                     "esp_ble_mesh/btc/btc_ble_mesh_health_model.c"
@@ -390,9 +386,7 @@ if(CONFIG_BT_ENABLED)
                     "esp_ble_mesh/mesh_core/provisioner_prov.c"
                     "esp_ble_mesh/mesh_core/proxy_client.c"
                     "esp_ble_mesh/mesh_core/proxy_server.c"
-                    "esp_ble_mesh/mesh_core/settings_uid.c"
                     "esp_ble_mesh/mesh_core/settings.c"
-                    "esp_ble_mesh/mesh_core/scan.c"
                     "esp_ble_mesh/mesh_core/test.c"
                     "esp_ble_mesh/mesh_core/transport.c"
                     "esp_ble_mesh/mesh_models/common/device_property.c"
@@ -559,15 +553,13 @@ if(CONFIG_BT_ENABLED)
 
         endif()
     endif()
-
 endif()
 
 # requirements can't depend on config
 idf_component_register(SRCS "${srcs}"
                 INCLUDE_DIRS "${include_dirs}"
                 PRIV_INCLUDE_DIRS "${priv_include_dirs}"
-                REQUIRES nvs_flash soc esp_timer
-                PRIV_REQUIRES esp_ipc)
+                REQUIRES nvs_flash soc)
 
 if(CONFIG_BT_ENABLED)
     target_compile_options(${COMPONENT_LIB} PRIVATE -Wno-implicit-fallthrough -Wno-unused-const-variable)

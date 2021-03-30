@@ -16,6 +16,9 @@
 #include <stdbool.h>
 #include "esp_eth_com.h"
 #include "sdkconfig.h"
+#if CONFIG_ETH_USE_SPI_ETHERNET
+#include "driver/spi_master.h"
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -250,31 +253,6 @@ struct esp_eth_mac_s {
     esp_err_t (*set_promiscuous)(esp_eth_mac_t *mac, bool enable);
 
     /**
-    * @brief Enable flow control on MAC layer or not
-    *
-    * @param[in] mac: Ethernet MAC instance
-    * @param[in] enable: set true to enable flow control; set false to disable flow control
-    *
-    * @return
-    *      - ESP_OK: set flow control successfully
-    *      - ESP_FAIL: set flow control failed because some error occurred
-    *
-    */
-    esp_err_t (*enable_flow_ctrl)(esp_eth_mac_t *mac, bool enable);
-
-    /**
-    * @brief Set the PAUSE ability of peer node
-    *
-    * @param[in] mac: Ethernet MAC instance
-    * @param[in] ability: zero indicates that pause function is supported by link partner; non-zero indicates that pause function is not supported by link partner
-    *
-    * @return
-    *      - ESP_OK: set peer pause ability successfully
-    *      - ESP_FAIL: set peer pause ability failed because some error occurred
-    */
-    esp_err_t (*set_peer_pause_ability)(esp_eth_mac_t *mac, uint32_t ability);
-
-    /**
     * @brief Free memory of Ethernet MAC
     *
     * @param[in] mac: Ethernet MAC instance
@@ -295,8 +273,8 @@ typedef struct {
     uint32_t sw_reset_timeout_ms; /*!< Software reset timeout value (Unit: ms) */
     uint32_t rx_task_stack_size;  /*!< Stack size of the receive task */
     uint32_t rx_task_prio;        /*!< Priority of the receive task */
-    int smi_mdc_gpio_num;         /*!< SMI MDC GPIO number, set to -1 could bypass the SMI GPIO configuration */
-    int smi_mdio_gpio_num;        /*!< SMI MDIO GPIO number, set to -1 could bypass the SMI GPIO configuration */
+    int  smi_mdc_gpio_num;         /*!< SMI MDC GPIO number */
+    int  smi_mdio_gpio_num;        /*!< SMI MDIO GPIO number */
     uint32_t flags;               /*!< Flags that specify extra capability for mac driver */
 } eth_mac_config_t;
 
@@ -328,7 +306,7 @@ typedef struct {
 *      - NULL: create MAC instance failed because some error occurred
 */
 esp_eth_mac_t *esp_eth_mac_new_esp32(const eth_mac_config_t *config);
-#endif // CONFIG_ETH_USE_ESP32_EMAC
+#endif
 
 #if CONFIG_ETH_SPI_ETHERNET_DM9051
 /**
@@ -336,8 +314,8 @@ esp_eth_mac_t *esp_eth_mac_new_esp32(const eth_mac_config_t *config);
  *
  */
 typedef struct {
-    void *spi_hdl;     /*!< Handle of SPI device driver */
-    int int_gpio_num;  /*!< Interrupt GPIO number */
+    spi_device_handle_t spi_hdl; /*!< Handle of SPI device driver */
+    int int_gpio_num;            /*!< Interrupt GPIO number */
 } eth_dm9051_config_t;
 
 /**
@@ -361,53 +339,12 @@ typedef struct {
 *      - NULL: create MAC instance failed because some error occurred
 */
 esp_eth_mac_t *esp_eth_mac_new_dm9051(const eth_dm9051_config_t *dm9051_config, const eth_mac_config_t *mac_config);
-#endif // CONFIG_ETH_SPI_ETHERNET_DM9051
-
-#if CONFIG_ETH_SPI_ETHERNET_W5500
-/**
- * @brief W5500 specific configuration
- *
- */
-typedef struct {
-    void *spi_hdl;     /*!< Handle of SPI device driver */
-    int int_gpio_num;  /*!< Interrupt GPIO number */
-} eth_w5500_config_t;
-
-/**
- * @brief Default W5500 specific configuration
- *
- */
-#define ETH_W5500_DEFAULT_CONFIG(spi_device) \
-    {                                        \
-        .spi_hdl = spi_device,               \
-        .int_gpio_num = 4,                   \
-    }
-
-/**
-* @brief Create W5500 Ethernet MAC instance
-*
-* @param w5500_config: W5500 specific configuration
-* @param mac_config: Ethernet MAC configuration
-*
-* @return
-*      - instance: create MAC instance successfully
-*      - NULL: create MAC instance failed because some error occurred
-*/
-esp_eth_mac_t *esp_eth_mac_new_w5500(const eth_w5500_config_t *w5500_config, const eth_mac_config_t *mac_config);
-#endif // CONFIG_ETH_SPI_ETHERNET_W5500
+#endif
 
 #if CONFIG_ETH_USE_OPENETH
-/**
-* @brief Create OpenCores Ethernet MAC instance
-*
-* @param config: Ethernet MAC configuration
-*
-* @return
-*      - instance: create MAC instance successfully
-*      - NULL: create MAC instance failed because some error occurred
-*/
 esp_eth_mac_t *esp_eth_mac_new_openeth(const eth_mac_config_t *config);
 #endif // CONFIG_ETH_USE_OPENETH
+
 #ifdef __cplusplus
 }
 #endif

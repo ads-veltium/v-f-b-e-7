@@ -55,6 +55,7 @@ function(__project_get_revision var)
             endif()
         endif()
     endif()
+    message(STATUS "Project version: ${PROJECT_VER}")
     set(${var} "${PROJECT_VER}" PARENT_SCOPE)
 endfunction()
 
@@ -465,7 +466,7 @@ macro(project project_name)
     idf_build_get_property(idf_path IDF_PATH)
     idf_build_get_property(python PYTHON)
 
-    set(idf_size ${python} ${idf_path}/tools/idf_size.py --target ${IDF_TARGET})
+    set(idf_size ${python} ${idf_path}/tools/idf_size.py)
     if(DEFINED OUTPUT_JSON AND OUTPUT_JSON)
         list(APPEND idf_size "--json")
     endif()
@@ -485,9 +486,6 @@ macro(project project_name)
         )
 
     unset(idf_size)
-
-    # Add DFU build and flash targets
-    __add_dfu_targets()
 
     idf_build_executable(${project_elf})
 

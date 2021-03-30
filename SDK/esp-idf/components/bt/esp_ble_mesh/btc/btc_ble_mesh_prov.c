@@ -29,7 +29,6 @@
 #include "mesh.h"
 #include "access.h"
 #include "prov.h"
-#include "settings_uid.h"
 #include "proxy_server.h"
 #include "proxy_client.h"
 #include "provisioner_prov.h"
@@ -467,7 +466,7 @@ static void btc_ble_mesh_client_model_timeout_cb(struct k_work *work)
 
 static void btc_ble_mesh_model_send_comp_cb(esp_ble_mesh_model_t *model,
                                             esp_ble_mesh_msg_ctx_t *ctx,
-                                            uint32_t opcode, int err)
+                                            u32_t opcode, int err)
 {
     esp_ble_mesh_model_cb_param_t mesh_param = {0};
 
@@ -552,7 +551,7 @@ static void btc_ble_mesh_oob_pub_key_cb(void)
     return;
 }
 
-static int btc_ble_mesh_output_number_cb(bt_mesh_output_action_t act, uint32_t num)
+static int btc_ble_mesh_output_number_cb(bt_mesh_output_action_t act, u32_t num)
 {
     esp_ble_mesh_prov_cb_param_t mesh_param = {0};
     bt_status_t ret = BT_STATUS_SUCCESS;
@@ -580,7 +579,7 @@ static int btc_ble_mesh_output_string_cb(const char *str)
     return (ret == BT_STATUS_SUCCESS) ? 0 : -1;
 }
 
-static int btc_ble_mesh_input_cb(bt_mesh_input_action_t act, uint8_t size)
+static int btc_ble_mesh_input_cb(bt_mesh_input_action_t act, u8_t size)
 {
     esp_ble_mesh_prov_cb_param_t mesh_param = {0};
     bt_status_t ret = BT_STATUS_SUCCESS;
@@ -618,8 +617,8 @@ static void btc_ble_mesh_link_close_cb(bt_mesh_prov_bearer_t bearer)
     return;
 }
 
-static void btc_ble_mesh_complete_cb(uint16_t net_idx, const uint8_t net_key[16],
-                                     uint16_t addr, uint8_t flags, uint32_t iv_index)
+static void btc_ble_mesh_complete_cb(u16_t net_idx, const u8_t net_key[16],
+                                     u16_t addr, u8_t flags, u32_t iv_index)
 {
     esp_ble_mesh_prov_cb_param_t mesh_param = {0};
 
@@ -675,10 +674,10 @@ static void btc_ble_mesh_prov_set_complete_cb(esp_ble_mesh_prov_cb_param_t *para
 }
 
 #if CONFIG_BLE_MESH_PROVISIONER
-static void btc_ble_mesh_provisioner_recv_unprov_adv_pkt_cb(const uint8_t addr[6], const uint8_t addr_type,
-                                                            const uint8_t adv_type, const uint8_t dev_uuid[16],
-                                                            uint16_t oob_info, bt_mesh_prov_bearer_t bearer,
-                                                            int8_t rssi)
+static void btc_ble_mesh_provisioner_recv_unprov_adv_pkt_cb(const u8_t addr[6], const u8_t addr_type,
+                                                            const u8_t adv_type, const u8_t dev_uuid[16],
+                                                            u16_t oob_info, bt_mesh_prov_bearer_t bearer,
+                                                            s8_t rssi)
 {
     esp_ble_mesh_prov_cb_param_t mesh_param = {0};
 
@@ -702,7 +701,7 @@ static void btc_ble_mesh_provisioner_recv_unprov_adv_pkt_cb(const uint8_t addr[6
     return;
 }
 
-static int btc_ble_mesh_provisioner_prov_read_oob_pub_key_cb(uint8_t link_idx)
+static int btc_ble_mesh_provisioner_prov_read_oob_pub_key_cb(u8_t link_idx)
 {
     esp_ble_mesh_prov_cb_param_t mesh_param = {0};
     bt_status_t ret = BT_STATUS_SUCCESS;
@@ -715,8 +714,8 @@ static int btc_ble_mesh_provisioner_prov_read_oob_pub_key_cb(uint8_t link_idx)
     return (ret == BT_STATUS_SUCCESS) ? 0 : -1;
 }
 
-static int btc_ble_mesh_provisioner_prov_input_cb(uint8_t method, bt_mesh_output_action_t act,
-                                                  uint8_t size, uint8_t link_idx)
+static int btc_ble_mesh_provisioner_prov_input_cb(u8_t method, bt_mesh_output_action_t act,
+                                                  u8_t size, u8_t link_idx)
 {
     esp_ble_mesh_prov_cb_param_t mesh_param = {0};
     bt_status_t ret = BT_STATUS_SUCCESS;
@@ -732,8 +731,8 @@ static int btc_ble_mesh_provisioner_prov_input_cb(uint8_t method, bt_mesh_output
     return (ret == BT_STATUS_SUCCESS) ? 0 : -1;
 }
 
-static int btc_ble_mesh_provisioner_prov_output_cb(uint8_t method, bt_mesh_input_action_t act,
-                                                   void *data, uint8_t size, uint8_t link_idx)
+static int btc_ble_mesh_provisioner_prov_output_cb(u8_t method, bt_mesh_input_action_t act,
+                                                   void *data, u8_t size, u8_t link_idx)
 {
     esp_ble_mesh_prov_cb_param_t mesh_param = {0};
     bt_status_t ret = BT_STATUS_SUCCESS;
@@ -747,7 +746,7 @@ static int btc_ble_mesh_provisioner_prov_output_cb(uint8_t method, bt_mesh_input
     if (act == BLE_MESH_ENTER_STRING) {
         strncpy(mesh_param.provisioner_prov_output.string, (char *)data, size);
     } else {
-        mesh_param.provisioner_prov_output.number = sys_get_le32((uint8_t *)data);
+        mesh_param.provisioner_prov_output.number = sys_get_le32((u8_t *)data);
     }
 
     ret = btc_ble_mesh_prov_callback(&mesh_param, ESP_BLE_MESH_PROVISIONER_PROV_OUTPUT_EVT);
@@ -766,7 +765,7 @@ static void btc_ble_mesh_provisioner_link_open_cb(bt_mesh_prov_bearer_t bearer)
     return;
 }
 
-static void btc_ble_mesh_provisioner_link_close_cb(bt_mesh_prov_bearer_t bearer, uint8_t reason)
+static void btc_ble_mesh_provisioner_link_close_cb(bt_mesh_prov_bearer_t bearer, u8_t reason)
 {
     esp_ble_mesh_prov_cb_param_t mesh_param = {0};
 
@@ -779,9 +778,9 @@ static void btc_ble_mesh_provisioner_link_close_cb(bt_mesh_prov_bearer_t bearer,
     return;
 }
 
-static void btc_ble_mesh_provisioner_prov_complete_cb(uint16_t node_idx, const uint8_t device_uuid[16],
-                                                      uint16_t unicast_addr, uint8_t element_num,
-                                                      uint16_t netkey_idx)
+static void btc_ble_mesh_provisioner_prov_complete_cb(u16_t node_idx, const u8_t device_uuid[16],
+                                                      u16_t unicast_addr, u8_t element_num,
+                                                      u16_t netkey_idx)
 {
     esp_ble_mesh_prov_cb_param_t mesh_param = {0};
 
@@ -812,7 +811,7 @@ esp_ble_mesh_node_t *btc_ble_mesh_provisioner_get_node_with_name(const char *nam
     return (esp_ble_mesh_node_t *)bt_mesh_provisioner_get_node_with_name(name);
 }
 
-uint16_t btc_ble_mesh_provisioner_get_prov_node_count(void)
+u16_t btc_ble_mesh_provisioner_get_prov_node_count(void)
 {
     return bt_mesh_provisioner_get_node_count();
 }
@@ -821,46 +820,9 @@ const esp_ble_mesh_node_t **btc_ble_mesh_provisioner_get_node_table_entry(void)
 {
     return (const esp_ble_mesh_node_t **)bt_mesh_provisioner_get_node_table_entry();
 }
-
-#if CONFIG_BLE_MESH_PROVISIONER_RECV_HB
-static void btc_ble_mesh_provisioner_recv_heartbeat_cb(uint16_t hb_src, uint16_t hb_dst,
-                                                       uint8_t init_ttl, uint8_t rx_ttl,
-                                                       uint8_t hops, uint16_t feat, int8_t rssi)
-{
-    esp_ble_mesh_prov_cb_param_t mesh_param = {0};
-
-    mesh_param.provisioner_recv_heartbeat.hb_src = hb_src;
-    mesh_param.provisioner_recv_heartbeat.hb_dst = hb_dst;
-    mesh_param.provisioner_recv_heartbeat.init_ttl = init_ttl;
-    mesh_param.provisioner_recv_heartbeat.rx_ttl = rx_ttl;
-    mesh_param.provisioner_recv_heartbeat.hops = hops;
-    mesh_param.provisioner_recv_heartbeat.feature = feat;
-    mesh_param.provisioner_recv_heartbeat.rssi = rssi;
-
-    btc_ble_mesh_prov_callback(&mesh_param, ESP_BLE_MESH_PROVISIONER_RECV_HEARTBEAT_MESSAGE_EVT);
-}
-#endif /* CONFIG_BLE_MESH_PROVISIONER_RECV_HB */
-
-#if CONFIG_BLE_MESH_USE_MULTIPLE_NAMESPACE
-const char *btc_ble_mesh_provisioner_get_settings_uid(uint8_t index)
-{
-    return bt_mesh_provisioner_get_settings_uid(index);
-}
-
-uint8_t btc_ble_mesh_provisioner_get_settings_index(const char *uid)
-{
-    return bt_mesh_provisioner_get_settings_index(uid);
-}
-
-uint8_t btc_ble_mesh_provisioner_get_free_settings_count(void)
-{
-    return bt_mesh_provisioner_get_free_settings_count();
-}
-#endif /* CONFIG_BLE_MESH_USE_MULTIPLE_NAMESPACE */
-
 #endif /* CONFIG_BLE_MESH_PROVISIONER */
 
-static void btc_ble_mesh_node_recv_heartbeat_cb(uint8_t hops, uint16_t feature)
+static void btc_ble_mesh_heartbeat_msg_recv_cb(u8_t hops, u16_t feature)
 {
     esp_ble_mesh_prov_cb_param_t mesh_param = {0};
 
@@ -874,10 +836,10 @@ static void btc_ble_mesh_node_recv_heartbeat_cb(uint8_t hops, uint16_t feature)
 }
 
 #if CONFIG_BLE_MESH_LOW_POWER
-static void btc_ble_mesh_lpn_cb(uint16_t friend_addr, bool established)
+static void btc_ble_mesh_lpn_cb(u16_t friend_addr, bool established)
 {
     esp_ble_mesh_prov_cb_param_t mesh_param = {0};
-    uint8_t act = 0U;
+    u8_t act = 0U;
 
     BT_DBG("%s", __func__);
 
@@ -895,10 +857,10 @@ static void btc_ble_mesh_lpn_cb(uint16_t friend_addr, bool established)
 #endif /* CONFIG_BLE_MESH_LOW_POWER */
 
 #if CONFIG_BLE_MESH_FRIEND
-void btc_ble_mesh_friend_cb(bool establish, uint16_t lpn_addr, uint8_t reason)
+void btc_ble_mesh_friend_cb(bool establish, u16_t lpn_addr, u8_t reason)
 {
     esp_ble_mesh_prov_cb_param_t mesh_param = {0};
-    uint8_t act = 0U;
+    u8_t act = 0U;
 
     BT_DBG("%s", __func__);
 
@@ -922,8 +884,8 @@ void btc_ble_mesh_friend_cb(bool establish, uint16_t lpn_addr, uint8_t reason)
 #endif /* CONFIG_BLE_MESH_FRIEND */
 
 #if CONFIG_BLE_MESH_GATT_PROXY_CLIENT
-static void btc_ble_mesh_proxy_client_adv_recv_cb(const bt_mesh_addr_t *addr, uint8_t type,
-                                                  bt_mesh_proxy_adv_ctx_t *ctx, int8_t rssi)
+static void btc_ble_mesh_proxy_client_adv_recv_cb(const bt_mesh_addr_t *addr, u8_t type,
+                                                  bt_mesh_proxy_adv_ctx_t *ctx, s8_t rssi)
 {
     esp_ble_mesh_prov_cb_param_t mesh_param = {0};
 
@@ -945,7 +907,7 @@ static void btc_ble_mesh_proxy_client_adv_recv_cb(const bt_mesh_addr_t *addr, ui
 }
 
 static void btc_ble_mesh_proxy_client_connect_cb(const bt_mesh_addr_t *addr,
-                                                 uint8_t conn_handle, uint16_t net_idx)
+                                                 u8_t conn_handle, u16_t net_idx)
 {
     esp_ble_mesh_prov_cb_param_t mesh_param = {0};
 
@@ -965,8 +927,8 @@ static void btc_ble_mesh_proxy_client_connect_cb(const bt_mesh_addr_t *addr,
     return;
 }
 
-static void btc_ble_mesh_proxy_client_disconnect_cb(const bt_mesh_addr_t *addr, uint8_t conn_handle,
-                                                    uint16_t net_idx, uint8_t reason)
+static void btc_ble_mesh_proxy_client_disconnect_cb(const bt_mesh_addr_t *addr, u8_t conn_handle,
+                                                    u16_t net_idx, u8_t reason)
 {
     esp_ble_mesh_prov_cb_param_t mesh_param = {0};
 
@@ -987,8 +949,8 @@ static void btc_ble_mesh_proxy_client_disconnect_cb(const bt_mesh_addr_t *addr, 
     return;
 }
 
-static void btc_ble_mesh_proxy_client_filter_status_recv_cb(uint8_t conn_handle, uint16_t src, uint16_t net_idx,
-                                                            uint8_t filter_type, uint16_t list_size)
+static void btc_ble_mesh_proxy_client_filter_status_recv_cb(u8_t conn_handle, u16_t src, u16_t net_idx,
+                                                            u8_t filter_type, u16_t list_size)
 {
     esp_ble_mesh_prov_cb_param_t mesh_param = {0};
 
@@ -1048,7 +1010,7 @@ uint16_t *btc_ble_mesh_model_find_group(esp_ble_mesh_model_t *mod, uint16_t addr
     return bt_mesh_model_find_group((struct bt_mesh_model *)mod, addr);
 }
 
-esp_ble_mesh_elem_t *btc_ble_mesh_elem_find(uint16_t addr)
+esp_ble_mesh_elem_t *btc_ble_mesh_elem_find(u16_t addr)
 {
     return (esp_ble_mesh_elem_t *)bt_mesh_elem_find(addr);
 }
@@ -1235,7 +1197,7 @@ static void btc_ble_mesh_model_op_set(esp_ble_mesh_model_t *model)
         model->cb = (esp_ble_mesh_model_cbs_t *)&bt_mesh_cfg_srv_cb;
         struct bt_mesh_cfg_srv *srv = (struct bt_mesh_cfg_srv *)model->user_data;
         if (srv) {
-            srv->hb_sub.func = btc_ble_mesh_node_recv_heartbeat_cb;
+            srv->hb_sub.func = btc_ble_mesh_heartbeat_msg_recv_cb;
         }
         break;
     }
@@ -1873,15 +1835,13 @@ void btc_ble_mesh_prov_call_handler(btc_msg_t *msg)
         act = ESP_BLE_MESH_PROVISIONER_PROV_INPUT_STRING_COMP_EVT;
         param.provisioner_prov_input_str_comp.err_code =
             bt_mesh_provisioner_set_oob_input_data(arg->provisioner_input_str.link_idx,
-                                                   (const uint8_t *)&arg->provisioner_input_str.string,
-                                                   false);
+                (const u8_t *)&arg->provisioner_input_str.string, false);
         break;
     case BTC_BLE_MESH_ACT_PROVISIONER_INPUT_NUM:
         act = ESP_BLE_MESH_PROVISIONER_PROV_INPUT_NUMBER_COMP_EVT;
         param.provisioner_prov_input_num_comp.err_code =
             bt_mesh_provisioner_set_oob_input_data(arg->provisioner_input_num.link_idx,
-                                                   (const uint8_t *)&arg->provisioner_input_num.number,
-                                                   true);
+                                            (const u8_t *)&arg->provisioner_input_num.number, true);
         break;
     case BTC_BLE_MESH_ACT_PROVISIONER_ENABLE:
         act = ESP_BLE_MESH_PROVISIONER_PROV_ENABLE_COMP_EVT;
@@ -1966,8 +1926,8 @@ void btc_ble_mesh_prov_call_handler(btc_msg_t *msg)
             bt_mesh_provisioner_set_node_name(arg->set_node_name.index, arg->set_node_name.name);
         break;
     case BTC_BLE_MESH_ACT_PROVISIONER_ADD_LOCAL_APP_KEY: {
-        const uint8_t *app_key = NULL;
-        const uint8_t zero[16] = {0};
+        const u8_t *app_key = NULL;
+        const u8_t zero[16] = {0};
         if (memcmp(arg->add_local_app_key.app_key, zero, 16)) {
             app_key = arg->add_local_app_key.app_key;
         }
@@ -2000,8 +1960,8 @@ void btc_ble_mesh_prov_call_handler(btc_msg_t *msg)
                     arg->local_mod_app_bind.app_idx);
         break;
     case BTC_BLE_MESH_ACT_PROVISIONER_ADD_LOCAL_NET_KEY: {
-        const uint8_t *net_key = NULL;
-        const uint8_t zero[16] = {0};
+        const u8_t *net_key = NULL;
+        const u8_t zero[16] = {0};
         if (memcmp(arg->add_local_net_key.net_key, zero, 16)) {
             net_key = arg->add_local_net_key.net_key;
         }
@@ -2037,83 +1997,6 @@ void btc_ble_mesh_prov_call_handler(btc_msg_t *msg)
         param.provisioner_delete_node_with_addr_comp.err_code =
             bt_mesh_provisioner_delete_node_with_node_addr(arg->delete_node_with_addr.unicast_addr);
         break;
-#if CONFIG_BLE_MESH_PROVISIONER_RECV_HB
-    case BTC_BLE_MESH_ACT_PROVISIONER_ENABLE_HEARTBEAT_RECV:
-        act = ESP_BLE_MESH_PROVISIONER_ENABLE_HEARTBEAT_RECV_COMP_EVT;
-        param.provisioner_enable_heartbeat_recv_comp.enable = arg->enable_heartbeat_recv.enable;
-        param.provisioner_enable_heartbeat_recv_comp.err_code =
-            bt_mesh_provisioner_recv_heartbeat(arg->enable_heartbeat_recv.enable ?
-                                               btc_ble_mesh_provisioner_recv_heartbeat_cb : NULL);
-        break;
-    case BTC_BLE_MESH_ACT_PROVISIONER_SET_HEARTBEAT_FILTER_TYPE:
-        act = ESP_BLE_MESH_PROVISIONER_SET_HEARTBEAT_FILTER_TYPE_COMP_EVT;
-        param.provisioner_set_heartbeat_filter_type_comp.type = arg->set_heartbeat_filter_type.type;
-        param.provisioner_set_heartbeat_filter_type_comp.err_code =
-            bt_mesh_provisioner_set_heartbeat_filter_type(arg->set_heartbeat_filter_type.type);
-        break;
-    case BTC_BLE_MESH_ACT_PROVISIONER_SET_HEARTBEAT_FILTER_INFO:
-        act = ESP_BLE_MESH_PROVISIONER_SET_HEARTBEAT_FILTER_INFO_COMP_EVT;
-        param.provisioner_set_heartbeat_filter_info_comp.op = arg->set_heartbeat_filter_info.op;
-        param.provisioner_set_heartbeat_filter_info_comp.hb_src = arg->set_heartbeat_filter_info.hb_src;
-        param.provisioner_set_heartbeat_filter_info_comp.hb_dst = arg->set_heartbeat_filter_info.hb_dst;
-        param.provisioner_set_heartbeat_filter_info_comp.err_code =
-            bt_mesh_provisioner_set_heartbeat_filter_info(arg->set_heartbeat_filter_info.op,
-                                                          arg->set_heartbeat_filter_info.hb_src,
-                                                          arg->set_heartbeat_filter_info.hb_dst);
-        break;
-#endif /* CONFIG_BLE_MESH_PROVISIONER_RECV_HB */
-#if CONFIG_BLE_MESH_SETTINGS
-    case BTC_BLE_MESH_ACT_PROVISIONER_DIRECT_ERASE_SETTINGS:
-        act = ESP_BLE_MESH_PROVISIONER_DRIECT_ERASE_SETTINGS_COMP_EVT;
-        param.provisioner_direct_erase_settings_comp.err_code = bt_mesh_provisioner_direct_erase_settings();
-        break;
-#endif /* CONFIG_BLE_MESH_SETTINGS */
-#if CONFIG_BLE_MESH_USE_MULTIPLE_NAMESPACE
-    case BTC_BLE_MESH_ACT_PROVISIONER_OPEN_SETTINGS_WITH_INDEX:
-        act = ESP_BLE_MESH_PROVISIONER_OPEN_SETTINGS_WITH_INDEX_COMP_EVT;
-        param.provisioner_open_settings_with_index_comp.index = arg->open_settings_with_index.index;
-        param.provisioner_open_settings_with_index_comp.err_code =
-            bt_mesh_provisioner_open_settings_with_index(arg->open_settings_with_index.index);
-        break;
-    case BTC_BLE_MESH_ACT_PROVISIONER_OPEN_SETTINGS_WITH_UID:
-        act = ESP_BLE_MESH_PROVISIONER_OPEN_SETTINGS_WITH_UID_COMP_EVT;
-        strncpy(param.provisioner_open_settings_with_uid_comp.uid,
-                arg->open_settings_with_uid.uid, ESP_BLE_MESH_SETTINGS_UID_SIZE + 1);
-        param.provisioner_open_settings_with_uid_comp.err_code =
-            bt_mesh_provisioner_open_settings_with_uid(arg->open_settings_with_uid.uid,
-                                                       &param.provisioner_open_settings_with_uid_comp.index);
-        break;
-    case BTC_BLE_MESH_ACT_PROVISIONER_CLOSE_SETTINGS_WITH_INDEX:
-        act = ESP_BLE_MESH_PROVISIONER_CLOSE_SETTINGS_WITH_INDEX_COMP_EVT;
-        param.provisioner_close_settings_with_index_comp.index = arg->close_settings_with_index.index;
-        param.provisioner_close_settings_with_index_comp.err_code =
-            bt_mesh_provisioner_close_settings_with_index(arg->close_settings_with_index.index,
-                                                          arg->close_settings_with_index.erase);
-        break;
-    case BTC_BLE_MESH_ACT_PROVISIONER_CLOSE_SETTINGS_WITH_UID:
-        act = ESP_BLE_MESH_PROVISIONER_CLOSE_SETTINGS_WITH_UID_COMP_EVT;
-        strncpy(param.provisioner_close_settings_with_uid_comp.uid,
-                arg->close_settings_with_uid.uid, ESP_BLE_MESH_SETTINGS_UID_SIZE + 1);
-        param.provisioner_close_settings_with_uid_comp.err_code =
-            bt_mesh_provisioner_close_settings_with_uid(arg->close_settings_with_uid.uid,
-                                                        arg->close_settings_with_uid.erase,
-                                                        &param.provisioner_close_settings_with_uid_comp.index);
-        break;
-    case BTC_BLE_MESH_ACT_PROVISIONER_DELETE_SETTINGS_WITH_INDEX:
-        act = ESP_BLE_MESH_PROVISIONER_DELETE_SETTINGS_WITH_INDEX_COMP_EVT;
-        param.provisioner_delete_settings_with_index_comp.index = arg->delete_settings_with_index.index;
-        param.provisioner_delete_settings_with_index_comp.err_code =
-            bt_mesh_provisioner_delete_settings_with_index(arg->delete_settings_with_index.index);
-        break;
-    case BTC_BLE_MESH_ACT_PROVISIONER_DELETE_SETTINGS_WITH_UID:
-        act = ESP_BLE_MESH_PROVISIONER_DELETE_SETTINGS_WITH_UID_COMP_EVT;
-        strncpy(param.provisioner_delete_settings_with_uid_comp.uid,
-                arg->delete_settings_with_uid.uid, ESP_BLE_MESH_SETTINGS_UID_SIZE + 1);
-        param.provisioner_delete_settings_with_uid_comp.err_code =
-            bt_mesh_provisioner_delete_settings_with_uid(arg->delete_settings_with_uid.uid,
-                                                         &param.provisioner_delete_settings_with_uid_comp.index);
-        break;
-#endif /* CONFIG_BLE_MESH_USE_MULTIPLE_NAMESPACE */
 #endif /* CONFIG_BLE_MESH_PROVISIONER */
 #if CONFIG_BLE_MESH_FAST_PROV
     case BTC_BLE_MESH_ACT_SET_FAST_PROV_INFO:
@@ -2209,6 +2092,26 @@ void btc_ble_mesh_prov_call_handler(btc_msg_t *msg)
         break;
     }
 #endif /* CONFIG_BLE_MESH_GATT_PROXY_CLIENT */
+#if CONFIG_BLE_MESH_SUPPORT_BLE_ADV
+    case BTC_BLE_MESH_ACT_START_BLE_ADVERTISING: {
+        struct bt_mesh_ble_adv_param *set = (struct bt_mesh_ble_adv_param *)&arg->start_ble_advertising.param;
+        struct bt_mesh_ble_adv_data *data = NULL;
+        if (arg->start_ble_advertising.data.adv_data_len ||
+            arg->start_ble_advertising.data.scan_rsp_data_len) {
+            data = (struct bt_mesh_ble_adv_data *)&arg->start_ble_advertising.data;
+        }
+        act = ESP_BLE_MESH_START_BLE_ADVERTISING_COMP_EVT;
+        param.start_ble_advertising_comp.err_code =
+            bt_mesh_start_ble_advertising(set, data, &param.start_ble_advertising_comp.index);
+        break;
+    }
+    case BTC_BLE_MESH_ACT_STOP_BLE_ADVERTISING:
+        act = ESP_BLE_MESH_STOP_BLE_ADVERTISING_COMP_EVT;
+        param.stop_ble_advertising_comp.index = arg->stop_ble_advertising.index;
+        param.stop_ble_advertising_comp.err_code =
+            bt_mesh_stop_ble_advertising(arg->stop_ble_advertising.index);
+        break;
+#endif /* CONFIG_BLE_MESH_SUPPORT_BLE_ADV */
     case BTC_BLE_MESH_ACT_MODEL_SUBSCRIBE_GROUP_ADDR:
         act = ESP_BLE_MESH_MODEL_SUBSCRIBE_GROUP_ADDR_COMP_EVT;
         param.model_sub_group_addr_comp.element_addr = arg->model_sub_group_addr.element_addr;

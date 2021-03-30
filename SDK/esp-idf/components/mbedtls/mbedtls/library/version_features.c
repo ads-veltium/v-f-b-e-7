@@ -1,7 +1,7 @@
 /*
  *  Version feature information
  *
- *  Copyright The Mbed TLS Contributors
+ *  Copyright (C) 2006-2015, ARM Limited, All Rights Reserved
  *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
  *
  *  This file is provided under the Apache License 2.0, or the
@@ -42,6 +42,8 @@
  *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  *
  *  **********
+ *
+ *  This file is part of mbed TLS (https://tls.mbed.org)
  */
 
 #if !defined(MBEDTLS_CONFIG_FILE)
@@ -277,12 +279,6 @@ static const char *features[] = {
 #if defined(MBEDTLS_ECP_NORMALIZE_MXZ_ALT)
     "MBEDTLS_ECP_NORMALIZE_MXZ_ALT",
 #endif /* MBEDTLS_ECP_NORMALIZE_MXZ_ALT */
-#if defined(MBEDTLS_TEST_CONSTANT_FLOW_MEMSAN)
-    "MBEDTLS_TEST_CONSTANT_FLOW_MEMSAN",
-#endif /* MBEDTLS_TEST_CONSTANT_FLOW_MEMSAN */
-#if defined(MBEDTLS_TEST_CONSTANT_FLOW_VALGRIND)
-    "MBEDTLS_TEST_CONSTANT_FLOW_VALGRIND",
-#endif /* MBEDTLS_TEST_CONSTANT_FLOW_VALGRIND */
 #if defined(MBEDTLS_TEST_NULL_ENTROPY)
     "MBEDTLS_TEST_NULL_ENTROPY",
 #endif /* MBEDTLS_TEST_NULL_ENTROPY */

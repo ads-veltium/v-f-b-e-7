@@ -24,22 +24,23 @@ mainmenu "Espressif IoT Development Framework Configuration"
         bool
         default "y" if IDF_TARGET="esp32"
 
-    config IDF_TARGET_ESP32S2
+    config IDF_TARGET_ESP32S2BETA
         bool
-        default "y" if IDF_TARGET="esp32s2"
+        default "y" if IDF_TARGET="esp32s2beta"
         select FREERTOS_UNICORE
 
     config IDF_FIRMWARE_CHIP_ID
         hex
         default 0x0000 if IDF_TARGET_ESP32
-        default 0x0002 if IDF_TARGET_ESP32S2
+        # note: S2 beta uses Chip ID 0 still, S2 will use 0x0002
+        default 0x0000 if IDF_TARGET_ESP32S2BETA
         default 0xFFFF
 
     menu "SDK tool configuration"
         config SDK_TOOLPREFIX
             string "Compiler toolchain path/prefix"
             default "xtensa-esp32-elf-" if IDF_TARGET_ESP32
-            default "xtensa-esp32s2-elf-" if IDF_TARGET_ESP32S2
+            default "xtensa-esp32s2-elf-" if IDF_TARGET_ESP32S2BETA
             help
                 The prefix/path that is used to call the toolchain. The default setting assumes
                 a crosstool-ng gcc setup that is in your PATH.
@@ -133,8 +134,8 @@ mainmenu "Espressif IoT Development Framework Configuration"
                     CONFIG_APP_BUILD_TYPE_ELF_RAM=y
                     CONFIG_VFS_SUPPORT_TERMIOS=
                     CONFIG_NEWLIB_NANO_FORMAT=y
-                    CONFIG_ESP_SYSTEM_PANIC_PRINT_HALT=y
-                    CONFIG_ESP_DEBUG_STUBS_ENABLE=
+                    CONFIG_ESP32_PANIC_PRINT_HALT=y
+                    CONFIG_ESP32_DEBUG_STUBS_ENABLE=
                     CONFIG_ESP_ERR_TO_NAME_LOOKUP=
 
 

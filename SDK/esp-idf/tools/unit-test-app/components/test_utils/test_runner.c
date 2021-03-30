@@ -87,17 +87,14 @@ void setUp(void)
 
 static void check_leak(size_t before_free, size_t after_free, const char *type)
 {
-    int free_delta = (int)after_free - (int)before_free;
-    printf("MALLOC_CAP_%s usage: Free memory delta: %d Leak threshold: -%u \n",
-           type,
-           free_delta,
-           critical_leak_threshold);
+    printf("MALLOC_CAP_%s leak: Leak threshold is: %u \n",
+            type, 
+            critical_leak_threshold);
 
-    if (free_delta > 0) {
-        return; // free memory went up somehow
+    if (before_free <= after_free) {
+        return;
     }
-
-    size_t leaked = (size_t)(free_delta * -1);
+    size_t leaked = before_free - after_free;
     if (leaked <= warn_leak_threshold) {
         return;
     }
@@ -120,15 +117,15 @@ static bool leak_check_required(void)
         const char *sub_leaks = strstr(Unity.CurrentDetail1, leaks);
         if (sub_leaks != NULL) {
             if (sub_leaks[len_leaks] == ']') {
-                return false;
+                return true;
             } else if (sub_leaks[len_leaks] == '=') {
                 critical_leak_threshold = strtol(&sub_leaks[len_leaks + 1], NULL, 10);
                 warn_leak_threshold = critical_leak_threshold;
-                return true;
+                return false;
             }
         }
     }
-    return true;
+    return false;
 }
 
 /* tearDown runs after every test */
@@ -140,6 +137,8 @@ void tearDown(void)
     /* clean up some of the newlib's lazy allocations */
     esp_reent_cleanup();
 
+    size_t after_free_8bit = heap_caps_get_free_size(MALLOC_CAP_8BIT);
+    size_t after_free_32bit = heap_caps_get_free_size(MALLOC_CAP_32BIT);
     /* We want the teardown to have this file in the printout if TEST_ASSERT fails */
     const char *real_testfile = Unity.TestFile;
     Unity.TestFile = __FILE__;
@@ -153,11 +152,9 @@ void tearDown(void)
     heap_trace_dump();
 #endif
 
-    if (leak_check_required()) {
-          size_t after_free_8bit = heap_caps_get_free_size(MALLOC_CAP_8BIT);
-          size_t after_free_32bit = heap_caps_get_free_size(MALLOC_CAP_32BIT);
-          check_leak(before_free_8bit, after_free_8bit, "8BIT");
-          check_leak(before_free_32bit, after_free_32bit, "32BIT");
+    if (leak_check_required() == false) {
+        check_leak(before_free_8bit, after_free_8bit, "8BIT");
+        check_leak(before_free_32bit, after_free_32bit, "32BIT");
     }
 
     Unity.TestFile = real_testfile; // go back to the real filename

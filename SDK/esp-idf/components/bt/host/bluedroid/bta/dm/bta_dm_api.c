@@ -2663,7 +2663,9 @@ void BTA_VendorCleanup (void)
     }
 #endif
 
-    btm_ble_multi_adv_cleanup();
+    if (cmn_ble_vsc_cb.adv_inst_max > 0) {
+        btm_ble_multi_adv_cleanup();
+    }
 }
 
 #endif

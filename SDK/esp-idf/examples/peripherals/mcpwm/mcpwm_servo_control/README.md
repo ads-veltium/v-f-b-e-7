@@ -1,6 +1,3 @@
-| Supported Targets | ESP32 |
-| ----------------- | ----- |
-
 # MCPWM servo motor control Example
 
 This example will show you how to use MCPWM module to control servo motor

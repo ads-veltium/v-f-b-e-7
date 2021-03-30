@@ -1,6 +1,3 @@
-| Supported Targets | ESP32 |
-| ----------------- | ----- |
-
 # BLE Mesh example
 
 (See the README.md file in the upper level 'examples' directory for more information about examples.)

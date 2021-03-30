@@ -1,7 +1,3 @@
-================= =====
-Supported Targets ESP32
-================= =====
-
 ESP-IDF BT-SPP-INITATOR demo
 ======================
 

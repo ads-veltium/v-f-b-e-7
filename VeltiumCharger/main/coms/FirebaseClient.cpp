@@ -715,7 +715,7 @@ void Firebase_Conn_Task(void *args){
       LastStatus= ConnectionState;
     }
     
-    vTaskDelay(pdMS_TO_TICKS(ConfigFirebase.ClientConnected ? 1000:5000));
+    vTaskDelay(pdMS_TO_TICKS(ConfigFirebase.ClientConnected ? 150:200));
     //chivatos de la ram
     if(ESP.getFreePsram() < 3800000 || ESP.getFreeHeap() < 20000){
         Serial.println(ESP.getFreePsram());

@@ -35,10 +35,7 @@ def dict_from_sdkconfig(path):
         for line in f:
             m = regex.match(line)
             if m:
-                val = m.group(2)
-                if val.startswith('"') and val.endswith('"'):
-                    val = val[1:-1]
-                result[m.group(1)] = val
+                result[m.group(1)] = m.group(2)
     return result
 
 

@@ -1,6 +1,3 @@
-| Supported Targets | ESP32 |
-| ----------------- | ----- |
-
 # MCPWM BLDC motor control(hall sensor feedback) Example
 
 This example will show you how to use MCPWM module to control bldc motor with hall sensor feedback

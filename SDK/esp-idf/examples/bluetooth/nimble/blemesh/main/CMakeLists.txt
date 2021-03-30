@@ -1,2 +1,4 @@
-idf_component_register(SRCS "app_mesh.c"
-                    INCLUDE_DIRS ".")
+set(COMPONENT_SRCS "app_mesh.c")
+set(COMPONENT_ADD_INCLUDEDIRS ".")
+
+register_component()

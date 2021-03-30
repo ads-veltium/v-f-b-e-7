@@ -28,8 +28,6 @@
 
 #define ESP_SPP_RINGBUF_SIZE 1000
 
-#define BTC_SPP_INVALID_SCN 0x00
-
 typedef enum {
     BTC_SPP_ACT_INIT = 0,
     BTC_SPP_ACT_UNINIT,
@@ -76,10 +74,6 @@ typedef union {
         UINT8 max_session;
         char name[ESP_SPP_SERVER_NAME_MAX + 1];
     } start_srv;
-    //BTC_SPP_ACT_STOP_SRV
-    struct stop_srv_arg {
-        UINT8 scn;
-    } stop_srv;
     //BTC_SPP_ACT_WRITE
     struct write_arg {
         UINT32 handle;

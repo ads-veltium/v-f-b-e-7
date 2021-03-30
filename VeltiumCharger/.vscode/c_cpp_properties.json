@@ -153,7 +153,14 @@
                 "${workspaceFolder}/components/Arduino/libraries/ArduinoMongoose/src",
                 "${workspaceFolder}/components/Arduino/libraries/Firebase-ESP32/src",
                 "${workspaceFolder}/components/Arduino/tools/sdk/esp32/include/newlib/platform_include",
-                "/home/joel/Documents/fw-bird-esp32/SDK/esp-idf/components/mqtt/esp-mqtt/include"
+                "/home/joel/Documents/fw-bird-esp32/SDK/esp-idf/components/mqtt/esp-mqtt/include",
+                "${workspaceFolder}/components/Arduino/tools/sdk/esp32/include/hal/include",
+                "${workspaceFolder}/components/Arduino/tools/sdk/esp32/include/hal/esp32/include",
+                "${workspaceFolder}/components/Arduino/tools/sdk/esp32/include/xtensa/esp32/include",
+                "${workspaceFolder}/components/Arduino/tools/sdk/esp32/include/newlib/platform_include",
+                "${workspaceFolder}/components/Arduino/tools/sdk/esp32/include/newlib/platform_include",
+                "${workspaceFolder}/components/Arduino/tools/sdk/esp32/include/newlib/platform_include",
+                "${workspaceFolder}/components/Arduino/tools/sdk/esp32/include/newlib/platform_include"
             ],
             "intelliSenseMode": "clang-x64",
             "browse": {

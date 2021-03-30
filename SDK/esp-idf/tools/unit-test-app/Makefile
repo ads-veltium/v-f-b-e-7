@@ -5,8 +5,6 @@
 
 PROJECT_NAME := unit-test-app
 
-EXTRA_COMPONENT_DIRS += ${IDF_PATH}/examples/peripherals/rmt/ir_protocols/components
-
 ifeq ($(MAKELEVEL),0)
 # Set default target
 all:

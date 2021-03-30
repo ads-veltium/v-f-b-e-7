@@ -1,4 +1,4 @@
-set(srcs "ble_mesh_adapter.c"
+set(COMPONENT_SRCS "ble_mesh_adapter.c"
         "ble_mesh_cfg_srv_model.c"
         "ble_mesh_console_lib.c"
         "ble_mesh_console_main.c"
@@ -11,5 +11,6 @@ set(srcs "ble_mesh_adapter.c"
         "transaction.c"
         "register_bluetooth.c")
 
-idf_component_register(SRCS "${srcs}"
-                    INCLUDE_DIRS  ".")
+set(COMPONENT_ADD_INCLUDEDIRS ".")
+
+register_component()

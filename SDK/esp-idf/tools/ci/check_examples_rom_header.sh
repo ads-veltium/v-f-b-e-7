@@ -1,9 +1,9 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
 # Examples shouldn't include rom headers directly
 
 output=$(find ${IDF_PATH}/examples -name "*.[chS]" -o -name "*.cpp" -not -path "**/build/**")
-files=$(egrep ".*include.*\<rom\>.*h" ${output} | cut -d ":" -f 1)
+files=$(grep ".*include.*rom.*h" ${output} | cut -d ":" -f 1)
 found_rom=0
 for file in ${files}
 do

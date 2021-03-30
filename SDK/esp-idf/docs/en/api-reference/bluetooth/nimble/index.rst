@@ -41,4 +41,4 @@ This documentation does not cover NimBLE APIs. Refer to `NimBLE tutorial <https:
 API Reference
 =============
 
-.. include-build-file:: inc/esp_nimble_hci.inc
+.. include:: /_build/inc/esp_nimble_hci.inc

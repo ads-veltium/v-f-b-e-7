@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 #
 # Short script to verify behaviour of configure_ci_environment.sh
 #

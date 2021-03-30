@@ -81,8 +81,8 @@ push_to_github:
     - deploy
     - shiny
   dependencies:
-    - build_docs_html
-    - build_docs_pdf
+    - build_docs_en
+    - build_docs_zh_CN
   variables:
     DOCS_BUILD_DIR: "${IDF_PATH}/docs/_build/"
     PYTHONUNBUFFERED: 1
@@ -172,7 +172,7 @@ deploy_test_result:
     # artifacts of job update_test_cases creates test-management folder
     # we need to remove it so we can clone test-management folder again
     - rm -r test-management
-    - ./tools/ci/retry_failed.sh git clone $TEST_MANAGEMENT_REPO
+    - git clone $TEST_MANAGEMENT_REPO
     - python3 $CHECKOUT_REF_SCRIPT test-management test-management
     - cd test-management
     - echo $BOT_JIRA_ACCOUNT > ${BOT_ACCOUNT_CONFIG_FILE}

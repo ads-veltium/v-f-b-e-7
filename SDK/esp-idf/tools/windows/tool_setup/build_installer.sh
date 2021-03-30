@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 #
 # Script to build the IDF Tools installer for Windows with Inno Setup.
 # This script should be executed inside wine-innosetup docker image.

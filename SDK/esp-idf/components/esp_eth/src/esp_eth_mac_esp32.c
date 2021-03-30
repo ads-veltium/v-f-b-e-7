@@ -26,7 +26,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
-#include "hal/cpu_hal.h"
+#include "freertos/portable.h"
 #include "hal/emac.h"
 #include "soc/soc.h"
 #include "sdkconfig.h"
@@ -171,11 +171,9 @@ static esp_err_t emac_esp32_set_speed(esp_eth_mac_t *mac, eth_speed_t speed)
     switch (speed) {
     case ETH_SPEED_10M:
         emac_hal_set_speed(&emac->hal, EMAC_SPEED_10M);
-        ESP_LOGD(TAG, "working in 10Mbps");
         break;
     case ETH_SPEED_100M:
         emac_hal_set_speed(&emac->hal, EMAC_SPEED_100M);
-        ESP_LOGD(TAG, "working in 100Mbps");
         break;
     default:
         MAC_CHECK(false, "unknown speed", err, ESP_ERR_INVALID_ARG);
@@ -193,11 +191,9 @@ static esp_err_t emac_esp32_set_duplex(esp_eth_mac_t *mac, eth_duplex_t duplex)
     switch (duplex) {
     case ETH_DUPLEX_HALF:
         emac_hal_set_duplex(&emac->hal, EMAC_DUPLEX_HALF);
-        ESP_LOGD(TAG, "working in half duplex");
         break;
     case ETH_DUPLEX_FULL:
         emac_hal_set_duplex(&emac->hal, EMAC_DUPLEX_FULL);
-        ESP_LOGD(TAG, "working in full duplex");
         break;
     default:
         MAC_CHECK(false, "unknown duplex", err, ESP_ERR_INVALID_ARG);
@@ -458,7 +454,7 @@ esp_eth_mac_t *esp_eth_mac_new_esp32(const eth_mac_config_t *config)
     /* create rx task */
     BaseType_t core_num = tskNO_AFFINITY;
     if (config->flags & ETH_MAC_FLAG_PIN_TO_CORE) {
-        core_num = cpu_hal_get_core_id();
+        core_num = xPortGetCoreID();
     }
     BaseType_t xReturned = xTaskCreatePinnedToCore(emac_esp32_rx_task, "emac_rx", config->rx_task_stack_size, emac,
                            config->rx_task_prio, &emac->rx_task_hdl, core_num);

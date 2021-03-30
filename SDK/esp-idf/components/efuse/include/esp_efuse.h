@@ -21,12 +21,11 @@ extern "C" {
 #include <stdint.h>
 #include "esp_err.h"
 #include "esp_log.h"
-#include "soc/soc_caps.h"
 #include "sdkconfig.h"
 #if CONFIG_IDF_TARGET_ESP32
 #include "esp32/esp_efuse.h"
-#elif CONFIG_IDF_TARGET_ESP32S2
-#include "esp32s2/esp_efuse.h"
+#elif CONFIG_IDF_TARGET_ESP32S2BETA
+#include "esp32s2beta/esp_efuse.h"
 #endif
 
 #define ESP_ERR_EFUSE                              0x1600                     /*!< Base error code for efuse api. */
@@ -36,18 +35,13 @@ extern "C" {
 #define ESP_ERR_CODING                            (ESP_ERR_EFUSE + 0x04)      /*!< Error while a encoding operation. */
 
 /**
- * @brief Structure eFuse field
+* @brief Structure eFuse field
  */
-struct esp_efuse_desc_s {
+typedef struct {
     esp_efuse_block_t   efuse_block: 8; /**< Block of eFuse */
     uint8_t             bit_start;      /**< Start bit [0..255] */
     uint16_t            bit_count;      /**< Length of bit field [1..-]*/
-};
-
-/**
- * @brief Type definition for an eFuse field
- */
-typedef struct esp_efuse_desc_s esp_efuse_desc_t;
+} esp_efuse_desc_t;
 
 /**
  * @brief   Reads bits from EFUSE field and writes it into an array.
@@ -303,18 +297,15 @@ void esp_efuse_burn_new_values(void);
  */
 void esp_efuse_reset(void);
 
-#ifdef CONFIG_IDF_TARGET_ESP32
 /* @brief Disable BASIC ROM Console via efuse
  *
  * By default, if booting from flash fails the ESP32 will boot a
  * BASIC console in ROM.
  *
- * Call this function (from bootloader or app) to permanently disable the console on this chip.
- *
+ * Call this function (from bootloader or app) to permanently
+ * disable the console on this chip.
  */
 void esp_efuse_disable_basic_rom_console(void);
-#endif
-
 
 /* @brief Disable ROM Download Mode via eFuse
  *
@@ -332,24 +323,6 @@ void esp_efuse_disable_basic_rom_console(void);
  * - ESP_ERR_INVALID_STATE (ESP32 only) This eFuse is write protected and cannot be written
  */
 esp_err_t esp_efuse_disable_rom_download_mode(void);
-
-#if SOC_SUPPORTS_SECURE_DL_MODE
-/* @brief Switch ROM Download Mode to Secure Download mode via eFuse
- *
- * Permanently enables Secure Download mode. This mode limits the use of ROM Download Mode functions
- * to simple flash read, write and erase operations, plus a command to return a summary of currently
- * enabled security features.
- *
- * @note If Secure Download mode is already enabled, this function does nothing and returns success.
- *
- * @note Disabling the ROM Download Mode also disables Secure Download Mode.
- *
- * @return
- * - ESP_OK If the eFuse was successfully burned, or had already been burned.
- * - ESP_ERR_INVALID_STATE ROM Download Mode has been disabled via eFuse, so Secure Download mode is unavailable.
- */
-esp_err_t esp_efuse_enable_rom_secure_download_mode(void);
-#endif
 
 /* @brief Write random data to efuse key block write registers
  *
@@ -457,6 +430,11 @@ esp_err_t esp_efuse_batch_write_cancel(void);
  *          - ESP_ERR_INVALID_STATE: The deferred writing mode was not set.
  */
 esp_err_t esp_efuse_batch_write_commit(void);
+
+inline static bool soc_has_cache_lock_bug(void)
+{
+    return (esp_efuse_get_chip_ver() == 3);
+}
 
 #ifdef __cplusplus
 }

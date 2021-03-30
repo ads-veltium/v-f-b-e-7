@@ -1,2 +1,4 @@
-idf_component_register(SRCS "gattc_gatts_coex.c"
-                    INCLUDE_DIRS  ".")
+set(COMPONENT_SRCS "gattc_gatts_coex.c")
+set(COMPONENT_ADD_INCLUDEDIRS ".")
+
+register_component()

@@ -18,7 +18,7 @@
 #include <setjmp.h>
 #include <string.h>
 
-StackType_t *xtensa_shared_stack;
+StackType_t *xtensa_shared_stack;  
 shared_stack_function xtensa_shared_stack_callback;
 jmp_buf xtensa_shared_stack_env;
 bool xtensa_shared_stack_function_done = false;
@@ -30,9 +30,8 @@ extern void esp_shared_stack_invoke_function(void);
 static void esp_switch_stack_setup(StackType_t *stack, size_t stack_size)
 {
 #if CONFIG_FREERTOS_WATCHPOINT_END_OF_STACK
-    esp_clear_watchpoint(1);
-    uint32_t watchpoint_place = ((uint32_t)stack + 32) & ~0x1f ;
-#endif
+    int watchpoint_place = (((int)stack + 31) & ~31);
+#endif    
     //We need also to tweak current task stackpointer to avoid erroneous
     //stack overflow indication, so fills the stack with freertos known pattern:
     memset(stack, 0xa5U, stack_size * sizeof(StackType_t));
@@ -45,10 +44,17 @@ static void esp_switch_stack_setup(StackType_t *stack, size_t stack_size)
     StackType_t *top_of_stack = stack + stack_size;
 
     //Align stack to a 16byte boundary, as required by CPU specific:
-    top_of_stack =  (StackType_t *)(((UBaseType_t)(top_of_stack - 16) & ~0xf));
+    top_of_stack =  (StackType_t *)(((UBaseType_t)(top_of_stack - 31) -
+                                    ALIGNUP(0x10, sizeof(XtSolFrame) )) & 
+                                    ~0xf);
+
+    //Fake stack frame to do not break the backtrace
+    XtSolFrame *frame = (XtSolFrame *)top_of_stack;
+    frame->a0 = 0;
+    frame->a1 = (UBaseType_t)top_of_stack;
 
 #if CONFIG_FREERTOS_WATCHPOINT_END_OF_STACK
-    esp_set_watchpoint(1, (uint8_t *)watchpoint_place, 32, ESP_WATCHPOINT_STORE);
+    esp_set_watchpoint(2, (char*)watchpoint_place, 32, ESP_WATCHPOINT_STORE);    
 #endif
 
     xtensa_shared_stack = top_of_stack;
@@ -68,10 +74,10 @@ void esp_execute_shared_stack_function(SemaphoreHandle_t lock, void *stack, size
     esp_switch_stack_setup(stack, stack_size);
     xtensa_shared_stack_callback = function;
     portEXIT_CRITICAL(&xtensa_shared_stack_spinlock);
-
-    setjmp(xtensa_shared_stack_env);
+    
+    setjmp(xtensa_shared_stack_env);    
     if(!xtensa_shared_stack_function_done) {
-        esp_shared_stack_invoke_function();
+        esp_shared_stack_invoke_function();             
     }
 
     portENTER_CRITICAL(&xtensa_shared_stack_spinlock);

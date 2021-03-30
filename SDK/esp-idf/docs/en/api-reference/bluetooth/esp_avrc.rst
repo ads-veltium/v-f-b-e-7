@@ -18,6 +18,6 @@ Application Example
 API Reference
 -------------
 
-.. include-build-file:: inc/esp_avrc_api.inc
+.. include:: /_build/inc/esp_avrc_api.inc
 
 

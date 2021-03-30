@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
 # gitlab-ci script to push current tested revision (tag or branch) to github
 

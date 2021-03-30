@@ -17,6 +17,6 @@ Application Example
 API Reference
 -------------
 
-.. include-build-file:: inc/esp_bt_main.inc
+.. include:: /_build/inc/esp_bt_main.inc
 
 

@@ -460,22 +460,22 @@ static bool _start_network_event_task(){
         }
     }
 
-    if(esp_event_handler_instance_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &_arduino_event_cb, NULL, NULL)){
+    if(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &_arduino_event_cb, NULL)){
         log_e("event_handler_instance_register for WIFI_EVENT Failed!");
         return false;
     }
 
-    if(esp_event_handler_instance_register(IP_EVENT, ESP_EVENT_ANY_ID, &_arduino_event_cb, NULL, NULL)){
+    if(esp_event_handler_register(IP_EVENT, ESP_EVENT_ANY_ID, &_arduino_event_cb, NULL)){
         log_e("event_handler_instance_register for IP_EVENT Failed!");
         return false;
     }
 
-    if(esp_event_handler_instance_register(SC_EVENT, ESP_EVENT_ANY_ID, &_arduino_event_cb, NULL, NULL)){
+    if(esp_event_handler_register(SC_EVENT, ESP_EVENT_ANY_ID, &_arduino_event_cb, NULL)){
         log_e("event_handler_instance_register for SC_EVENT Failed!");
         return false;
     }
 
-    if(esp_event_handler_instance_register(WIFI_PROV_EVENT, ESP_EVENT_ANY_ID, &_arduino_event_cb, NULL, NULL)){
+    if(esp_event_handler_register(WIFI_PROV_EVENT, ESP_EVENT_ANY_ID, &_arduino_event_cb, NULL)){
         log_e("event_handler_instance_register for WIFI_PROV_EVENT Failed!");
         return false;
     }

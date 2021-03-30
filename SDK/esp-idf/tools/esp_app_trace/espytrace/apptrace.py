@@ -1,4 +1,3 @@
-from __future__ import print_function
 import sys
 import os
 try:
@@ -594,7 +593,7 @@ class BaseLogTraceDataProcessorImpl:
         msg = event.get_message(self.felf)
         self.messages.append(msg)
         if self.print_log_events:
-            print(msg, end='')
+            print(msg),
 
 
 class HeapTraceParseError(ParseError):

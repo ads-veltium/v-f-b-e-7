@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 #
 # Explicitly switches the relative submodules locations on GitHub to the original public URLs
 #

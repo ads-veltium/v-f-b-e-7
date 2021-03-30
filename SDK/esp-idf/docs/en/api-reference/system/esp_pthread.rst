@@ -68,5 +68,5 @@ The API can also be used for inheriting the settings across threads. For example
 API Reference
 -------------
 
-.. include-build-file:: inc/esp_pthread.inc
+.. include:: /_build/inc/esp_pthread.inc
 

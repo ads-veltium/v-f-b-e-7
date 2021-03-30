@@ -178,12 +178,7 @@ esp_err_t tcpip_adapter_set_default_wifi_handlers(void)
 
 esp_err_t tcpip_adapter_clear_default_wifi_handlers(void)
 {
-    if (s_tcpip_adapter_compat) {
-        // Clear default handlers only if tcpip-adapter mode used
-        return _esp_wifi_clear_default_wifi_handlers();
-    }
-    // No action if tcpip-adapter compatibility enabled, but interfaces created/configured with esp-netif
-    return ESP_OK;
+    return _esp_wifi_clear_default_wifi_handlers();
 }
 
 tcpip_adapter_if_t tcpip_adapter_if_from_esp_netif(esp_netif_t *esp_netif)

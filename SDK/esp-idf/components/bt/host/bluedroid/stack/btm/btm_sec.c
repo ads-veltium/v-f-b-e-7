@@ -36,6 +36,7 @@
 #include "osi/fixed_queue.h"
 #include "osi/alarm.h"
 #include "stack/btm_ble_api.h"
+#include "esp_bt.h"
 
 #if (BT_USE_TRACES == TRUE && BT_TRACE_VERBOSE == FALSE)
 /* needed for sprintf() */
@@ -2630,6 +2631,15 @@ void btm_sec_conn_req (UINT8 *bda, UINT8 *dc)
         return;
     }
 
+    /* Check if peer device's and our BD_ADDR is same or not. It
+       should be different to avoid 'Impersonation in the Pin Pairing
+       Protocol' (CVE-2020-26555) vulnerability. */
+    if (memcmp(bda, esp_bt_get_mac(), sizeof (BD_ADDR)) == 0) {
+        BTM_TRACE_ERROR ("Security Manager: connect request from device with same BD_ADDR\n");
+        btsnd_hcic_reject_conn (bda, HCI_ERR_HOST_REJECT_DEVICE);
+        return;
+    }
+
     /* Security guys wants us not to allow connection from not paired devices */
 
     /* Check if connection is allowed for only paired devices */
@@ -4567,9 +4577,7 @@ void btm_sec_disconnected (UINT16 handle, UINT8 reason)
     /* If page was delayed for disc complete, can do it now */
     btm_cb.discing = FALSE;
 
-#if (CLASSIC_BT_INCLUDED == TRUE)
     btm_acl_resubmit_page();
-#endif
 
     if (!p_dev_rec) {
         return;

@@ -23,6 +23,7 @@
 #include "sdkconfig.h"
 #include "esp_heap_caps.h"
 #include "esp_flash_internal.h"
+#include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include "esp_timer.h"
 
@@ -706,7 +707,7 @@ esp_err_t esp_flash_app_disable_protect(bool disable)
     if (disable) {
         return esp_flash_app_disable_os_functions(esp_flash_default_chip);
     } else {
-        return esp_flash_app_enable_os_functions(esp_flash_default_chip);
+        return esp_flash_app_init_os_functions(esp_flash_default_chip);
     }
 }
 #endif

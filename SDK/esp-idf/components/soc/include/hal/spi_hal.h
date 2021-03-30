@@ -37,7 +37,6 @@
 #include "hal/spi_ll.h"
 #include <esp_err.h>
 #include "soc/lldesc.h"
-#include "soc/spi_caps.h"
 
 /**
  * Timing configuration structure that should be calculated by

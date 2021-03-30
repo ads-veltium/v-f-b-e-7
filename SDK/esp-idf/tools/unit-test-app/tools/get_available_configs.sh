@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
 cd ${IDF_PATH}/tools/unit-test-app
 

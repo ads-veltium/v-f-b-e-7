@@ -7,7 +7,7 @@
 # cmake -D CMAKE_BUILD_TYPE=Release .
 # scripts/ecc-heap.sh | tee ecc-heap.log
 #
-# Copyright The Mbed TLS Contributors
+# Copyright (C) 2014-2015, Arm Limited, All Rights Reserved
 # SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
 #
 # This file is provided under the Apache License 2.0, or the
@@ -48,6 +48,8 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 #
 # **********
+#
+# This file is part of Mbed TLS (https://tls.mbed.org)
 
 set -eu
 

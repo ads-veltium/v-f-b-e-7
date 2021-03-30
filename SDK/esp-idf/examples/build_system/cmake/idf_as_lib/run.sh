@@ -1,3 +1,3 @@
-#!/usr/bin/env bash
+#!/bin/bash
 cd build
 ./idf_as_lib.elf

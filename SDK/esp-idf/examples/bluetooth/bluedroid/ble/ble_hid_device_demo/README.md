@@ -1,6 +1,3 @@
-| Supported Targets | ESP32 |
-| ----------------- | ----- |
-
 ESP-IDF BLE HID device demo
 ========================
 This example Implemented BLE HID device profile related functions, in which the HID device has 

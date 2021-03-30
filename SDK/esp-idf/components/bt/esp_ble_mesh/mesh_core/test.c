@@ -11,7 +11,6 @@
 #include <errno.h>
 
 #include "adv.h"
-#include "scan.h"
 #include "mesh.h"
 #include "test.h"
 #include "crypto.h"

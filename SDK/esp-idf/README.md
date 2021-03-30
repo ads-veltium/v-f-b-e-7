@@ -2,7 +2,9 @@
 
 * [中文版](./README_CN.md)
 
-ESP-IDF is the official development framework for the **ESP32** and **ESP32-S** Series SoCs provided for Windows, Linux and macOS.
+[![Documentation Status](https://readthedocs.com/projects/espressif-esp-idf/badge/?version=latest)](https://docs.espressif.com/projects/esp-idf/en/latest/?badge=latest)
+
+ESP-IDF is the official development framework for the [ESP32](https://espressif.com/en/products/hardware/esp32/overview) chip provided for Windows, Linux and macOS.
 
 # Developing With ESP-IDF
 
@@ -10,12 +12,8 @@ ESP-IDF is the official development framework for the **ESP32** and **ESP32-S** 
 
 See setup guides for detailed instructions to set up the ESP-IDF:
 
-| Chip | Getting Started Guides for ESP-IDF |
-|:----:|:----|
-| <img src="docs/_static/chip-esp32.svg" height="85" alt="ESP32"> |  <ul><li>[stable](https://docs.espressif.com/projects/esp-idf/en/stable/get-started/) version</li><li>[latest (master branch)](https://docs.espressif.com/projects/esp-idf/en/latest/get-started/) version</li></ul> |
-| <img src="docs/_static/chip-esp32-s2.svg" height="100" alt="ESP32-S2"> | <ul><li>[latest (master branch)](https://docs.espressif.com/projects/esp-idf/en/latest/esp32s2/get-started/) version</li></ul> |
-
-**Note:** Each ESP-IDF release has its own documentation. Please see Section [Versions](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/versions.html) how to find documentation and how to checkout specific release of ESP-IDF.
+* [Getting Started Guide for the stable ESP-IDF version](https://docs.espressif.com/projects/esp-idf/en/stable/get-started/)
+* [Getting Started Guide for the latest (master branch) ESP-IDF version](https://docs.espressif.com/projects/esp-idf/en/latest/get-started/)
 
 ### Non-GitHub forks
 
@@ -42,13 +40,12 @@ See the Getting Started guide links above for a detailed setup guide. This is a 
 (See the Getting Started guide listed above for a full list of required steps with more details.)
 
 * Install host build dependencies mentioned in the Getting Started guide.
-* Run the install script to set up the build environment. The options include `install.bat` or `install.ps1` for Windows, and `install.sh` or `install.fish` for Unix shells.
+* Run the install script to set up the build environment. The options include `install.bat` or `install.ps1` for Windows, and `install.sh` for Unix shells.
 * Run the export script on Windows (`export.bat`) or source it on Unix (`source export.sh`) in every shell environment before using ESP-IDF.
 
 ## Configuring the Project
 
-* `idf.py set-target <chip_name>` sets the target of the project to `<chip_name>`. Run `idf.py set-target` without any arguments to see a list of supported targets.
-* `idf.py menuconfig` opens a text-based configuration menu where you can configure the project.
+`idf.py menuconfig` opens a text-based configuration menu where you can configure the project.
 
 ## Compiling the Project
 
@@ -70,7 +67,7 @@ You don't need to run `idf.py build` before running `idf.py flash`, `idf.py flas
 
 ## Viewing Serial Output
 
-The `idf.py monitor` target uses the [idf_monitor tool](https://docs.espressif.com/projects/esp-idf/en/latest/get-started/idf-monitor.html) to display serial output from ESP32 or ESP32-S Series SoCs. idf_monitor also has a range of features to decode crash output and interact with the device. [Check the documentation page for details](https://docs.espressif.com/projects/esp-idf/en/latest/get-started/idf-monitor.html).
+The `idf.py monitor` target uses the [idf_monitor tool](https://docs.espressif.com/projects/esp-idf/en/latest/get-started/idf-monitor.html) to display serial output from the ESP32. idf_monitor also has a range of features to decode crash output and interact with the device. [Check the documentation page for details](https://docs.espressif.com/projects/esp-idf/en/latest/get-started/idf-monitor.html).
 
 Exit the monitor by typing Ctrl-].
 

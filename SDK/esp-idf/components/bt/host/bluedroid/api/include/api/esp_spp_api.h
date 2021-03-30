@@ -26,12 +26,11 @@ typedef enum {
     ESP_SPP_SUCCESS   = 0,          /*!< Successful operation. */
     ESP_SPP_FAILURE,                /*!< Generic failure. */
     ESP_SPP_BUSY,                   /*!< Temporarily can not handle this request. */
-    ESP_SPP_NO_DATA,                /*!< No data */
+    ESP_SPP_NO_DATA,                /*!< no data. */
     ESP_SPP_NO_RESOURCE,            /*!< No more resource */
     ESP_SPP_NEED_INIT,              /*!< SPP module shall init first */
     ESP_SPP_NEED_DEINIT,            /*!< SPP module shall deinit first */
-    ESP_SPP_NO_CONNECTION,          /*!< Connection may have been closed */
-    ESP_SPP_NO_SERVER,              /*!< No SPP server */
+    ESP_SPP_NO_CONNECTION,          /*!< connection may have been closed */
 } esp_spp_status_t;
 
 /* Security Setting Mask, Suggest to use ESP_SPP_SEC_NONE, ESP_SPP_SEC_AUTHORIZE or ESP_SPP_SEC_AUTHENTICATE only.*/
@@ -97,10 +96,9 @@ typedef union {
      * @brief SPP_DISCOVERY_COMP_EVT
      */
     struct spp_discovery_comp_evt_param {
-        esp_spp_status_t status;                   /*!< status */
-        uint8_t scn_num;                           /*!< The num of scn_num */
-        uint8_t scn[ESP_SPP_MAX_SCN];              /*!< channel # */
-        const char *service_name[ESP_SPP_MAX_SCN]; /*!< service_name */
+        esp_spp_status_t    status;         /*!< status */
+        uint8_t             scn_num;        /*!< The num of scn_num */
+        uint8_t             scn[ESP_SPP_MAX_SCN];    /*!< channel # */
     } disc_comp;                            /*!< SPP callback param of SPP_DISCOVERY_COMP_EVT */
 
     /**
@@ -140,7 +138,6 @@ typedef union {
         esp_spp_status_t    status;         /*!< status */
         uint32_t            handle;         /*!< The connection handle */
         uint8_t             sec_id;         /*!< security ID used by this server */
-        uint8_t             scn;            /*!< Server channel number */
         bool                use_co;         /*!< TRUE to use co_rfc_data */
     } start;                                /*!< SPP callback param of ESP_SPP_START_EVT */
 
@@ -149,8 +146,7 @@ typedef union {
      */
     struct spp_srv_stop_evt_param {
         esp_spp_status_t    status;         /*!< status */
-        uint8_t             scn;            /*!< Server channel number */
-    } srv_stop;                             /*!< SPP callback param of ESP_SPP_SRV_STOP_EVT */
+    } srv_stop;                                 /*!< SPP callback param of ESP_SPP_SRV_STOP_EVT */
 
     /**
      * @brief ESP_SPP_CL_INIT_EVT
@@ -298,33 +294,15 @@ esp_err_t esp_spp_start_srv(esp_spp_sec_t sec_mask,
                             esp_spp_role_t role, uint8_t local_scn, const char *name);
 
 /**
- * @brief       This function stops all SPP servers.
- *              The operation will close all active SPP connection first, then the callback function will be called
- *              with ESP_SPP_CLOSE_EVT, and the number of ESP_SPP_CLOSE_EVT is equal to the number of connection.
- *              When the operation is completed, the callback is called with ESP_SPP_SRV_STOP_EVT.
- *              This funciton must be called after esp_spp_init() successful and before esp_spp_deinit().
+ * @brief       This function stops a SPP server
+ *              When the server is stopped successfully, the callback is called
+ *              with ESP_SPP_SRV_STOP_EVT.
  *
  * @return
  *              - ESP_OK: success
  *              - other: failed
  */
-
 esp_err_t esp_spp_stop_srv(void);
-
-/**
- * @brief       This function stops a specific SPP server.
- *              The operation will close all active SPP connection first on the specific SPP server, then the callback function will be called
- *              with ESP_SPP_CLOSE_EVT, and the number of ESP_SPP_CLOSE_EVT is equal to the number of connection.
- *              When the operation is completed, the callback is called with ESP_SPP_SRV_STOP_EVT.
- *              This funciton must be called after esp_spp_init() successful and before esp_spp_deinit().
- *
- * @param[in]   scn:         Server channel number.
- *
- * @return
- *              - ESP_OK: success
- *              - other: failed
- */
-esp_err_t esp_spp_stop_srv_scn(uint8_t scn);
 
 /**
  * @brief       This function is used to write data, only for ESP_SPP_MODE_CB.

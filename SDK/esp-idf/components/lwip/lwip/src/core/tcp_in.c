@@ -541,15 +541,7 @@ tcp_input(struct pbuf *p, struct netif *inp)
             TCP_EVENT_CLOSED(pcb, err);
             if (err == ERR_ABRT) {
               goto aborted;
-#if ESP_LWIP
-            } else if (err == ERR_MEM) {
-                tcp_set_flags(pcb, TF_CLOSEPEND);
-#endif /* ESP_LWIP */
             }
-            else if (err!=0){
-              printf("Error %i\n", err);
-              tcp_set_flags(pcb, TF_CLOSEPEND);
-              }
           }
         }
 
