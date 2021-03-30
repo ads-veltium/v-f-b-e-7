@@ -40,7 +40,8 @@ uint16  ParseFirmwareVersion(String Texto);
 
 class Real_Time_Database{
     String RTDB_url, Read_url, Write_url, Base_Path;
-    HTTPClient RTDBClient, AutenticationClient; 
+    esp_http_client_handle_t RTDB_client, *Auth_client; 
+    
     
     
     String Auth_url= "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=";
@@ -68,7 +69,7 @@ class Real_Time_Database{
     bool Send_Command(String path, JsonDocument *doc, uint8_t Command);
     long long  Get_Timestamp(String path,JsonDocument *response);
     void begin(String Host, String DatabaseID);
-    void restart();
+    void reload();
     void end();
     Real_Time_Database(){}
 

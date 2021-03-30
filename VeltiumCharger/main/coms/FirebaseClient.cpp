@@ -28,8 +28,8 @@ uint16 ParseFirmwareVersion(String Texto){
  Client control functions
 *************************/
 bool initFirebaseClient(){
-    coap_start();
-    delay(5000);
+    //coap_start();
+    //delay(5000);
     Serial.println("INIT Firebase Client");
     Database->deviceID = ConfigFirebase.Device_Id;
     if(!Database->LogIn()){
