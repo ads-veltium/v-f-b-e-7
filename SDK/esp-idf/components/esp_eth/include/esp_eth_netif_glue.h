@@ -49,6 +49,7 @@ esp_err_t esp_eth_del_netif_glue(void *glue);
  */
 
 esp_err_t esp_eth_set_default_handlers(void *esp_netif);
+esp_err_t esp_eth_set_default_handlers2(void *esp_netif);
 
 /**
  * @brief Unregister default IP layer handlers for Ethernet

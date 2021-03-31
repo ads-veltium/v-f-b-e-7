@@ -42,11 +42,11 @@ class Real_Time_Database{
     String RTDB_url, Read_url, Write_url, Base_Path;
     esp_http_client_handle_t RTDB_client, *Auth_client; 
     
-    
+
     
     String Auth_url= "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=";
     StaticJsonDocument<256> AuthDoc;
-    
+
   public:
     #define WRITE     0
     #define UPDATE    1
@@ -72,6 +72,36 @@ class Real_Time_Database{
     void reload();
     void end();
     Real_Time_Database(){}
+
+};
+
+class Cliente_HTTP{
+    String _url;
+    esp_http_client_handle_t _client; 
+    String _response;
+    
+    int  _timeout;
+    
+  public:
+    #define WRITE     0
+    #define UPDATE    1
+    #define TIMESTAMP 4
+    #define READ      5
+    #define READ_FW   6
+    
+    
+    //Functions
+    bool Send_Command(String url,  uint8_t Command);
+    void begin();
+    void end();
+    void ObtenerRespuesta(String *Respuesta);
+
+
+    //Constructor
+    Cliente_HTTP(String url, int Timeout){
+      _url=url;
+      _timeout = Timeout;
+    }
 
 };
 

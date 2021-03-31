@@ -65,7 +65,7 @@ const esp_netif_inherent_config_t _g_esp_netif_inherent_eth_config = {
         .flags = ESP_NETIF_DHCP_CLIENT | ESP_NETIF_FLAG_GARP | ESP_NETIF_FLAG_EVENT_IP_MODIFIED,
         .if_key = "ETH_DEF",
         .if_desc = "eth",
-        .route_prio = 50
+        .route_prio = 10
 };
 
 const esp_netif_inherent_config_t _g_esp_netif_inherent_ppp_config = {

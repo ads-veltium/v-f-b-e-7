@@ -512,7 +512,7 @@ void Firebase_Conn_Task(void *args){
       Comands.last_ts_app_req = Database->Get_Timestamp("/control/ts_app_req",&Lectura);
       Coms.last_ts_app_req    = Database->Get_Timestamp("/coms/ts_app_req",&Lectura);
       Serial.println("Conectado a firebase!");
-      Error_Count+=!WriteFirebaseFW("/fw/current");
+      //Error_Count+=!WriteFirebaseFW("/fw/current");
       ConnectionState=IDLE;
       break;
 
@@ -575,7 +575,7 @@ void Firebase_Conn_Task(void *args){
         ConfigFirebase.ClientConnected  = true;
         xStarted = xTaskGetTickCount();
         Serial.println("User connected!");
-        ConnectionState = WRITTING_COMS;
+        ConnectionState = WRITTING_STATUS;
         break;
       }
  

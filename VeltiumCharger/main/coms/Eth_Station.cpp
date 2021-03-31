@@ -1,5 +1,5 @@
 #include "Eth_Station.h"
-
+#include "VeltFirebase.h"
 
 
 bool eth_link_up     = false;
@@ -14,8 +14,11 @@ extern carac_Firebase_Configuration ConfigFirebase;
 extern carac_Contador   ContadorExt;
 
 static esp_eth_handle_t s_eth_handle = NULL;
+
+#ifdef DOUBLE
 static esp_eth_handle_t s_eth_handle1 = NULL;
 static esp_eth_handle_t s_eth_handle2 = NULL;
+#endif
 static uint8_t s_eth_mac[6];
 esp_eth_mac_t *mac = NULL;
 esp_eth_phy_t *phy=NULL;
@@ -26,74 +29,25 @@ esp_netif_t *eth_netif;
 esp_netif_t *eth_netif1;
 esp_netif_t *eth_netif2;
 //Variables para buscar el contador
-xParametrosPing ParametrosPing EXT_RAM_ATTR;
-
-
-
-bool CheckContador(int ip4){
-    char ip[15]={"0"};
-    sprintf(ip,"%i.%i.%i.%i", ip4_addr1(&ParametrosPing.BaseAdress),ip4_addr2(&ParametrosPing.BaseAdress),ip4_addr3(&ParametrosPing.BaseAdress),ip4);
-    
-    char url[100] = "http://";
-    strcat(url, ip);
-    strcat(url, "/get_command?command=get_measurements");
-    Serial.println(url);
-    esp_http_client_config_t config = {
-        .url = url,
-    };
-    esp_http_client_handle_t client = esp_http_client_init(&config);
-
-    //for(int i =0;i<=5;i++){
-    esp_err_t err = esp_http_client_perform(client);
-    if (err == ESP_OK) {
-        if(esp_http_client_get_status_code(client) == 200){
-            esp_http_client_cleanup(client);
-            memcpy(ContadorExt.ContadorIp, ip,15);
-            Serial.println("Detectado contador!");
-            return true;
-        }
-    }
-    delay(250);
-    //}
-
-    esp_http_client_cleanup(client);
-	return false;
-
-    /*Contador ContadorCheck;
-    ContadorCheck.begin(ip);
-
-    if(ContadorCheck.read()){           
-        if(ContadorCheck.parseModel()){
-            ContadorCheck.end();
-            memcpy(ContadorExt.ContadorIp, ip,15);
-            return true;
-        }
-        else{
-            ContadorCheck.end();
-            return false;
-        } 
-    }
-
-    ContadorCheck.end();
-    return false;*/
-}
 
 void BuscarContador_Task(void *args){
 
-    ip4_addr_t BaseAdress = ParametrosPing.BaseAdress;
     uint8 i = 100;
     uint8 Sup = 1, inf = 1 ;
+    char ip[16]={"0"};
     bool Sentido = 0;
     bool TopeInf = false;
     bool TopeSup = false;
-    i = ip4_addr4(&BaseAdress);
-    ParametrosPing.Found = false;
-    ParametrosPing.NextOne =true;
+    i = Coms.ETH.IP1[3];
+    bool NextOne =true;
+
+    Cliente_HTTP Cliente("http://192.168.1.1", 100);
+    Cliente.begin();
 
     while(!TopeSup || !TopeInf){
-        if(ParametrosPing.NextOne){
+        if(NextOne){
             if(Sentido && !TopeInf){ //Pabajo
-                i = ip4_addr4(&ParametrosPing.BaseAdress) - inf > 1 ? ip4_addr4(&ParametrosPing.BaseAdress) - inf : 0;
+                i = Coms.ETH.IP1[3] - inf > 1 ? Coms.ETH.IP1[3] - inf : 0;
                 if(i > 0 ){
                     inf++;
                     Sentido = false;
@@ -105,7 +59,7 @@ void BuscarContador_Task(void *args){
                 }
             }
             else if(!Sentido && !TopeSup){ //Parriba
-                i = ip4_addr4(&ParametrosPing.BaseAdress) + Sup < 255 ? ip4_addr4(&ParametrosPing.BaseAdress) + Sup : 255;
+                i = Coms.ETH.IP1[3] + Sup < 255 ? Coms.ETH.IP1[3] + Sup : 255;
                 if(i != 254 ){
                     Sup++;
                     Sentido = true;
@@ -119,22 +73,23 @@ void BuscarContador_Task(void *args){
             if(i-1==-1){
                 break;
             }
-            ParametrosPing.NextOne = false;
-            ParametrosPing.Found = true;
+            NextOne = false;
             i++;
         }
-        else if(ParametrosPing.Found ){
-            if(CheckContador(i-1)){
-                Serial.println("Busqueda finalizada!");
-                Serial.printf("Contador encontrado en %d %d %d %d \n", ip4_addr1(&BaseAdress), ip4_addr2(&BaseAdress), ip4_addr3(&BaseAdress), i-1);
-	            ContadorExt.ContadorConectado = true;
-                break;
+        else{            
+            sprintf(ip,"%i.%i.%i.%i", Coms.ETH.IP1[0],Coms.ETH.IP1[1],Coms.ETH.IP1[2],i-1); 
+            char url[100] = "http://";
+            strcat(url, ip);
+            //strcat(url, "/index.html");
+            Serial.println(url);
+            
+            if (Cliente.Send_Command(url,READ)) {
+                String respuesta;
+                Cliente.ObtenerRespuesta(&respuesta);
+                Serial.println(respuesta);
             }
-            else{
-                Serial.println("Nada, seguimos buscando");
-                ParametrosPing.Found= false;
-                ParametrosPing.NextOne = true;
-            }
+            Serial.println("Nada, seguimos buscando");
+            NextOne = true;
         }
         delay(20);
     }
@@ -142,6 +97,7 @@ void BuscarContador_Task(void *args){
         Serial.println("No he encontrado ningun medidor");
     }
     Coms.ETH.Wifi_Perm = true;
+    Cliente.end();
     vTaskDelete(NULL);
 }
 
@@ -168,77 +124,99 @@ bool ComprobarConexion(void){
 	return false;
 }
 
-static void eth_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
-{
-    switch (event_id) {
-    case ETHERNET_EVENT_CONNECTED:
+static void eth_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data){
+    if(event_base == ETH_EVENT){
+        switch (event_id) {
+            case ETHERNET_EVENT_CONNECTED:
+                Serial.printf( "Ethernet Link Up: %u \n", 1);
+                esp_eth_ioctl(s_eth_handle1, ETH_CMD_G_MAC_ADDR, s_eth_mac);
+                Serial.printf("Ethernet HW Addr %02x:%02x:%02x:%02x:%02x:%02x \n",s_eth_mac[0], s_eth_mac[1], s_eth_mac[2], s_eth_mac[3], s_eth_mac[4], s_eth_mac[5]);       
+                break;
+            case ETHERNET_EVENT_START:
+                Serial.println( "Ethernet Started");
+                break;
+            case ETHERNET_EVENT_STOP:
+                Serial.println( "Ethernet Stopped");
+                eth_connected = false;
+                break;
+            case ETHERNET_EVENT_DISCONNECTED:
+                Serial.println( "Ethernet Link Down");
+                eth_connected = false;
+                eth_link_up = false;
+                Coms.ETH.conectado1 = false;
+                break;
+#ifdef DOUBLE
+            case ETHERNET_EVENT_CONNECTED2:
+                Serial.printf( "Ethernet Link Up: %u \n", 2);
+                esp_eth_ioctl(s_eth_handle2, ETH_CMD_G_MAC_ADDR, s_eth_mac);
+                Serial.printf("Ethernet2 HW Addr %02x:%02x:%02x:%02x:%02x:%02x \n",s_eth_mac[0], s_eth_mac[1], s_eth_mac[2], s_eth_mac[3], s_eth_mac[4], s_eth_mac[5]);
+                
+                break;
+            case ETHERNET_EVENT_DISCONNECTED2:
+                Serial.println( "Ethernet Link 2 Down");
+                eth_connected = false;
+                eth_link_up = false;
+                Coms.ETH.conectado2 = false;
+                break;
+            case ETHERNET_EVENT_START2:
+                Serial.println( "Ethernet 2 Started");
+                break;
 
-        if(phy->link1 && phy->link2)Coms.ETH.Puerto = 3;
-        else if(phy->link1)Coms.ETH.Puerto = 1;
-        else if(phy->link2)Coms.ETH.Puerto = 2;
+            case ETHERNET_EVENT_STOP2:
+                Serial.println( "Ethernet 2 Stopped");
+                eth_connected = false;
+                break;
+#endif
+            default:
+                break;
+        }
+    }
+    else{
+        if(event_id == IP_EVENT_ETH_GOT_IP){
+            ip_event_got_ip_t *event = (ip_event_got_ip_t *) event_data;
+            const esp_netif_ip_info_t *ip_info = &event->ip_info;
 
-        Serial.printf( "Ethernet Link Up: %u \n", Coms.ETH.Puerto);
-        eth_link_up    = true;
-        esp_eth_ioctl(s_eth_handle, ETH_CMD_G_MAC_ADDR, s_eth_mac);
-        break;
-    case ETHERNET_EVENT_DISCONNECTED:
-        Serial.println( "Ethernet Link Down");
-        eth_connected = false;
-        eth_link_up = false;
-        Coms.ETH.conectado = false;
-        break;
-    case ETHERNET_EVENT_START:
-        Serial.println( "Ethernet Started");
-        break;
-    case ETHERNET_EVENT_STOP:
-        Serial.println( "Ethernet Stopped");
-        eth_connected = false;
-        break;
-    case IP_EVENT_ETH_GOT_IP:{
-        ip_event_got_ip_t *event = (ip_event_got_ip_t *) event_data;
-        const esp_netif_ip_info_t *ip_info = &event->ip_info;
-
-        Serial.println( "Ethernet Got IP Address");
-        Serial.printf( "ETHIP: %d %d %d %d\n",IP2STR(&ip_info->ip));
-        Coms.ETH.IP1[0] =ip4_addr1(&ip_info->ip);
-            Coms.ETH.IP1[1] =ip4_addr2(&ip_info->ip);
-            Coms.ETH.IP1[2] =ip4_addr3(&ip_info->ip);
-            Coms.ETH.IP1[3] =ip4_addr4(&ip_info->ip);
-
-        if(Coms.ETH.Puerto==1){
+            Serial.println( "Ethernet 1 Got IP Address");
+            Serial.printf( "ETHIP: %d %d %d %d\n",IP2STR(&ip_info->ip));
             Coms.ETH.IP1[0] =ip4_addr1(&ip_info->ip);
             Coms.ETH.IP1[1] =ip4_addr2(&ip_info->ip);
             Coms.ETH.IP1[2] =ip4_addr3(&ip_info->ip);
-            Coms.ETH.IP1[3] =ip4_addr4(&ip_info->ip);               
+            Coms.ETH.IP1[3] =ip4_addr4(&ip_info->ip);
+            
             modifyCharacteristic(&Coms.ETH.IP1[0], 4, COMS_CONFIGURATION_LAN_IP1);
-            modifyCharacteristic(ZeroBuffer, 4, COMS_CONFIGURATION_LAN_IP2);
+
+            eth_connected = true;
+            eth_connecting = false;
+
+            //Si el ethernet tiene conexion a internet, deasactivamos el wifi
+            delay(5000);
+            Coms.ETH.conectado1 = true;
         }
-        else if(Coms.ETH.Puerto==2){
+#ifdef DOUBLE
+        if(event_id == IP_EVENT_ETH_GOT_IP2){
+            ip_event_got_ip_t *event = (ip_event_got_ip_t *) event_data;
+            const esp_netif_ip_info_t *ip_info = &event->ip_info;
+
+            Serial.println( "Ethernet 2 Got IP Address");
+            Serial.printf( "ETHIP: %d %d %d %d\n",IP2STR(&ip_info->ip));
             Coms.ETH.IP2[0] =ip4_addr1(&ip_info->ip);
             Coms.ETH.IP2[1] =ip4_addr2(&ip_info->ip);
             Coms.ETH.IP2[2] =ip4_addr3(&ip_info->ip);
-            Coms.ETH.IP2[3] =ip4_addr4(&ip_info->ip); 
+            Coms.ETH.IP2[3] =ip4_addr4(&ip_info->ip);
             modifyCharacteristic(&Coms.ETH.IP2[0], 4, COMS_CONFIGURATION_LAN_IP2);
-            modifyCharacteristic(ZeroBuffer, 4, COMS_CONFIGURATION_LAN_IP1);
+            eth_connected = true;
+            eth_connecting = false;
+
+            //Si el ethernet tiene conexion a internet, deasactivamos el wifi
+            delay(1000);
+            Coms.ETH.conectado2 = true;
         }
-
-        eth_connected = true;
-        eth_connecting = false;
-
-        
-        //Comprobar si la red tiene conexion a internet
-        IP4_ADDR(&ParametrosPing.BaseAdress , 8,8,8,8);
-        ParametrosPing.CheckingConn = true;
-        ComprobarConexion();
-        Coms.ETH.conectado = true;
-        break;
-    }
-    default:
-        break;
+#endif
     }
 }
 
 
+#ifndef DOUBLE
 void initialize_ethernet(void){  
 
     esp_netif_config_t cfg = ESP_NETIF_DEFAULT_ETH();
@@ -271,7 +249,6 @@ void initialize_ethernet(void){
         Coms.ETH.IP1[1] =ip4_addr2(&DHCP_Server_IP.ip);
         Coms.ETH.IP1[2] =ip4_addr3(&DHCP_Server_IP.ip);
         Coms.ETH.IP1[3] =ip4_addr4(&DHCP_Server_IP.ip);
-        ParametrosPing.BaseAdress.addr = DHCP_Server_IP.ip.addr;
         
         modifyCharacteristic(&Coms.ETH.IP1[0], 4, COMS_CONFIGURATION_LAN_IP1);
     }   
@@ -315,14 +292,14 @@ void initialize_ethernet(void){
 
     ESP_ERROR_CHECK(esp_eth_driver_install(&config, &s_eth_handle));
     ESP_ERROR_CHECK(esp_netif_attach(eth_netif, esp_eth_new_netif_glue(s_eth_handle)));
-    //esp_eth_ioctl(s_eth_handle, ETH_CMD_S_PROMISCUOUS, (void *)true);
+    esp_eth_ioctl(s_eth_handle, ETH_CMD_S_PROMISCUOUS, (void *)true);
     ESP_ERROR_CHECK(esp_eth_start(s_eth_handle));
 
     eth_connecting = true;
     eth_started = true;
 }
 
-#ifdef DOUBLE
+#else
 void initialize_ethernet_2(void){  
     esp_netif_config_t cfg = ESP_NETIF_DEFAULT_ETH();
     esp_netif_inherent_config inherent_cfg = *cfg.base;

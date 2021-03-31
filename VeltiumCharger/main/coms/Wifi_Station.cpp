@@ -318,7 +318,12 @@ void Eth_Loop(){
     switch (Coms.ETH.State){
         case APAGADO:
             if(Coms.ETH.ON){
+#ifndef DOUBLE
                 initialize_ethernet();
+#else
+                initialize_ethernet_1();
+                initialize_ethernet_2();
+#endif
                 Coms.ETH.State = CONNECTING;
                 xStart = xTaskGetTickCount();
             }
@@ -334,15 +339,20 @@ void Eth_Loop(){
                     }
                 }
             }
-            else if(GetStateTime(xStart) > 60000){
+            /*else if(GetStateTime(xStart) > 60000){
                 Coms.ETH.State = KILLING;
                 kill_ethernet();
+            }*/
+
+            else if(!Coms.ETH.ON){
+                stop_ethernet();
+                Coms.ETH.State = DISCONNECTING;                
             }
             
         break;
 
         case CONECTADO:
-            if(/*Status.Trifasico && */!finding){
+            if(Status.Trifasico && !finding){
                 if(GetStateTime(xStart) > 60000){
                     Serial.println("Iniciando fase busqueda ");
                     xTaskCreate( BuscarContador_Task, "BuscarContador", 4096*4, NULL, 5, NULL); 
@@ -418,7 +428,14 @@ void Eth_Loop(){
                 stop_wifi();
                 Coms.ETH.DHCP  = 1;
                 Coms.ETH.State = CONNECTING;
+                #ifdef DOUBLE
+                initialize_ethernet_1();
+                initialize_ethernet_2();
+                #else   
                 initialize_ethernet();
+
+                #endif
+                
                 xStart = xTaskGetTickCount();
                 SendToPSOC5(Coms.ETH.DHCP,COMS_CONFIGURATION_ETH_DHCP);
             }

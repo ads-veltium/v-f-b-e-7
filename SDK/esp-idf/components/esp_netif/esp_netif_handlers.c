@@ -27,6 +27,7 @@
 //
 
 static const char *TAG = "esp_netif_handlers";
+static const char *TAG2 = "esp_netif_handlers2";
 
 void esp_netif_action_start(void *esp_netif, esp_event_base_t base, int32_t event_id, void *data)
 {
@@ -47,9 +48,15 @@ void esp_netif_action_connected(void *esp_netif, esp_event_base_t base, int32_t 
     ESP_LOGD(TAG, "esp_netif action connected with netif%p from event_id=%d", esp_netif, event_id);
     esp_netif_up(esp_netif);
 
-    esp_netif_dhcpc_get_status(esp_netif, &status);
+    if (!(esp_netif_get_flags(esp_netif) & ESP_NETIF_DHCP_CLIENT)) {
+        // No more actions for interfaces without DHCP client flag
+        return;
+    }
+
+    ESP_NETIF_CALL_CHECK("connected action: dhcpc failed", esp_netif_dhcpc_get_status(esp_netif, &status), ESP_OK);
     if (status == ESP_NETIF_DHCP_INIT) {
         esp_netif_dhcpc_start(esp_netif);
+        ESP_LOGD(TAG, "Arrancado DHCP ");
     } else if (status == ESP_NETIF_DHCP_STOPPED) {
         //
         esp_netif_ip_info_t ip;
@@ -93,9 +100,84 @@ void esp_netif_action_got_ip(void *esp_netif, esp_event_base_t base, int32_t eve
 {
     ESP_LOGD(TAG, "esp_netif action got_ip with netif%p from event_id=%d", esp_netif, event_id);
     const ip_event_got_ip_t *event = (const ip_event_got_ip_t *) data;
-    ESP_LOGI(TAG, "%s ip: " IPSTR ", mask: " IPSTR ", gw: " IPSTR, esp_netif_get_desc(esp_netif),
+    ESP_LOGD(TAG, "%s ip: " IPSTR ", mask: " IPSTR ", gw: " IPSTR, esp_netif_get_desc(esp_netif),
              IP2STR(&event->ip_info.ip),
              IP2STR(&event->ip_info.netmask),
              IP2STR(&event->ip_info.gw));
 }
 
+
+void esp_netif_action_start2(void *esp_netif, esp_event_base_t base, int32_t event_id, void *data)
+{
+    ESP_LOGD(TAG2, "esp_netif action has started with netif%p from event_id=%d", esp_netif, event_id);
+    esp_netif_start(esp_netif);
+}
+
+void esp_netif_action_stop2(void *esp_netif, esp_event_base_t base, int32_t event_id, void *data)
+{
+    ESP_LOGD(TAG2, "esp_netif action stopped with netif%p from event_id=%d", esp_netif, event_id);
+    esp_netif_stop(esp_netif);
+}
+
+void esp_netif_action_connected2(void *esp_netif, esp_event_base_t base, int32_t event_id, void *data)
+{
+    esp_netif_dhcp_status_t status;
+
+    ESP_LOGD(TAG2, "esp_netif action connected with netif%p from event_id=%d", esp_netif, event_id);
+    esp_netif_up(esp_netif);
+
+    if (!(esp_netif_get_flags(esp_netif) & ESP_NETIF_DHCP_CLIENT)) {
+        // No more actions for interfaces without DHCP client flag
+        return;
+    }
+
+    ESP_NETIF_CALL_CHECK("connected action: dhcpc failed", esp_netif_dhcpc_get_status(esp_netif, &status), ESP_OK);
+    if (status == ESP_NETIF_DHCP_INIT) {
+        esp_netif_dhcpc_start(esp_netif);
+    } else if (status == ESP_NETIF_DHCP_STOPPED) {
+        //
+        esp_netif_ip_info_t ip;
+        esp_netif_ip_info_t old_ip;
+
+        esp_netif_get_ip_info(esp_netif, &ip);
+        esp_netif_get_old_ip_info(esp_netif, &old_ip);
+
+        if (esp_netif_is_valid_static_ip(&ip)) {
+            ip_event_got_ip_t evt = {
+                    .esp_netif = esp_netif,
+                    .if_index = -1, // to indicate ptr to if used
+                    .ip_changed = false,
+            };
+
+            if (memcmp(&ip, &old_ip, sizeof(ip))) {
+                evt.ip_changed = true;
+            }
+
+            memcpy(&evt.ip_info, &ip, sizeof(esp_netif_ip_info_t));
+            esp_netif_set_old_ip_info(esp_netif, &ip);
+
+            ESP_NETIF_CALL_CHECK("esp_event_send_internal in esp_netif_action_connected",
+                    esp_event_send_internal(IP_EVENT, esp_netif_get_event_id(esp_netif, ESP_NETIF_IP_EVENT_GOT_IP) ,
+                                                    &evt, sizeof(evt), 0), ESP_OK);
+            ESP_LOGD(TAG2, "static ip: ip changed=%d", evt.ip_changed);
+        } else {
+            ESP_LOGE(TAG2, "invalid static ip");
+        }
+    }
+}
+
+void esp_netif_action_disconnected2(void *esp_netif, esp_event_base_t base, int32_t event_id, void *data)
+{
+    ESP_LOGD(TAG2, "esp_netif action disconnected with netif%p from event_id=%d", esp_netif, event_id);
+    esp_netif_down(esp_netif);
+}
+
+void esp_netif_action_got_ip2(void *esp_netif, esp_event_base_t base, int32_t event_id, void *data)
+{
+    ESP_LOGD(TAG2, "esp_netif action got_ip with netif%p from event_id=%d", esp_netif, event_id);
+    const ip_event_got_ip_t *event = (const ip_event_got_ip_t *) data;
+    ESP_LOGD(TAG2, "%s ip: " IPSTR ", mask: " IPSTR ", gw: " IPSTR, esp_netif_get_desc(esp_netif),
+             IP2STR(&event->ip_info.ip),
+             IP2STR(&event->ip_info.netmask),
+             IP2STR(&event->ip_info.gw));
+}

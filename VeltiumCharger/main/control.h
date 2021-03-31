@@ -4,7 +4,9 @@
 //configuration
 #define USE_COMS
 #define USE_DRACO_BLE
+
 //#define DEVELOPMENT
+#define DOUBLE
 
 #include "Arduino.h"
 #include "tipos.h"

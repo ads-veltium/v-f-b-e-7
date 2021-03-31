@@ -621,14 +621,22 @@ esp_err_t esp_http_client_cleanup(esp_http_client_handle_t client)
     }
     esp_http_client_close(client);
     esp_transport_list_destroy(client->transport_list);
-    http_header_destroy(client->request->headers);
-    free(client->request->buffer->data);
-    free(client->request->buffer);
-    free(client->request);
-    http_header_destroy(client->response->headers);
-    free(client->response->buffer->data);
-    free(client->response->buffer);
-    free(client->response);
+    if (client->request) {
+        http_header_destroy(client->request->headers);
+        if (client->request->buffer) {
+            free(client->request->buffer->data);
+        }
+        free(client->request->buffer);
+        free(client->request);
+    }
+    if (client->response) {
+        http_header_destroy(client->response->headers);
+        if (client->response->buffer) {
+            free(client->response->buffer->data);
+        }
+        free(client->response->buffer);
+        free(client->response);
+    }
 
     free(client->parser);
     free(client->parser_settings);
@@ -641,6 +649,7 @@ esp_err_t esp_http_client_cleanup(esp_http_client_handle_t client)
     free(client);
     return ESP_OK;
 }
+
 
 esp_err_t esp_http_client_set_redirection(esp_http_client_handle_t client)
 {
