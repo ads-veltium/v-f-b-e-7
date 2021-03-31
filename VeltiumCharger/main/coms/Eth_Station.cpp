@@ -128,10 +128,14 @@ static void eth_event_handler(void *arg, esp_event_base_t event_base, int32_t ev
     if(event_base == ETH_EVENT){
         switch (event_id) {
             case ETHERNET_EVENT_CONNECTED:
-                Serial.printf( "Ethernet Link Up: %u \n", 1);
-                esp_eth_ioctl(s_eth_handle1, ETH_CMD_G_MAC_ADDR, s_eth_mac);
-                Serial.printf("Ethernet HW Addr %02x:%02x:%02x:%02x:%02x:%02x \n",s_eth_mac[0], s_eth_mac[1], s_eth_mac[2], s_eth_mac[3], s_eth_mac[4], s_eth_mac[5]);       
-                break;
+                if(phy->link1 && phy->link2)Coms.ETH.Puerto = 3;
+                else if(phy->link1)Coms.ETH.Puerto = 1;
+                else if(phy->link2)Coms.ETH.Puerto = 2;
+
+                Serial.printf( "Ethernet Link Up: %u \n", Coms.ETH.Puerto);
+                eth_link_up    = true;
+                esp_eth_ioctl(s_eth_handle, ETH_CMD_G_MAC_ADDR, s_eth_mac);
+              break;
             case ETHERNET_EVENT_START:
                 Serial.println( "Ethernet Started");
                 break;
@@ -362,19 +366,39 @@ void initialize_ethernet_1(void){
 
 void kill_ethernet(void){
     stop_ethernet();
+#ifndef DOUBLE
     esp_eth_clear_default_handlers(eth_netif);
     
     esp_netif_destroy(eth_netif);
     esp_eth_driver_uninstall(s_eth_handle);
+#else
+  
+    esp_eth_clear_default_handlers(eth_netif1);
+    esp_eth_clear_default_handlers2(eth_netif2);
+    
+    esp_netif_destroy(eth_netif);
+    esp_eth_driver_uninstall(s_eth_handle);
+    esp_netif_destroy(eth_netif2);
+    esp_eth_driver_uninstall(s_eth_handle2);
+    ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_ETH_GOT_IP2, eth_event_handler, NULL));
+
+#endif
     ESP_ERROR_CHECK(esp_event_handler_unregister(ETH_EVENT, ESP_EVENT_ANY_ID, eth_event_handler));
     ESP_ERROR_CHECK(esp_event_handler_unregister(IP_EVENT, IP_EVENT_ETH_GOT_IP, eth_event_handler));
 }
 
 bool stop_ethernet(void){
+#ifndef DOUBLE
     if(esp_eth_stop(s_eth_handle) != ESP_OK){
         Serial.println("esp_eth_stop failed");
         return false;
     }
+#else
+    if(esp_eth_stop(s_eth_handle1) != ESP_OK || esp_eth_stop(s_eth_handle2) != ESP_OK){
+        Serial.println("esp_eth_stop failed");
+        return false;
+    }
+#endif
     eth_connected  = false;
     eth_connecting = false;
     delay(500);

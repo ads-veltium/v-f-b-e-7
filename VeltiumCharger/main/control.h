@@ -6,7 +6,7 @@
 #define USE_DRACO_BLE
 
 //#define DEVELOPMENT
-#define DOUBLE
+//#define DOUBLE
 
 #include "Arduino.h"
 #include "tipos.h"
