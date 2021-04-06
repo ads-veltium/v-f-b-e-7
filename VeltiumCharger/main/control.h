@@ -52,6 +52,7 @@
 #define PRIORIDAD_BLE      2
 #define PRIORIDAD_FIREBASE 2
 #define PRIORIDAD_COMS	   1
+#define PRIORIDAD_MQTT     2
 
 // ESTADO GENERAL
 #define	ESTADO_ARRANQUE			0

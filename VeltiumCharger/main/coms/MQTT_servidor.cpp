@@ -8,7 +8,11 @@ void mqtt_server(void *pvParameters);
 extern carac_Coms  Coms;
 extern carac_Firebase_Configuration ConfigFirebase;
 
+static StackType_t xSERVERStack [1024*6]     EXT_RAM_ATTR;
+StaticTask_t xSERVERBuffer ;
 
+static StackType_t xPUBStack [1024*6]     EXT_RAM_ATTR;
+StaticTask_t xPUBBuffer ;
 
 typedef struct{
     carac_charger charger_table[10];
@@ -26,10 +30,13 @@ void stop_MQTT(){
 void send_alive(){
     //Arrancar el servidor udp para escuchar cuando el maestro nos lo ordene
     if(udp.listen(1234)) {
-        udp.onPacket([](AsyncUDPPacket packet) {
-            
+        udp.onPacket([](AsyncUDPPacket packet) {         
             int size = packet.length();
             if(size<=8){
+                if(packet.isBroadcast()){
+                    packet.print((char*)ConfigFirebase.Device_Id);
+                }
+                
                 char buffer[size] ;
                 memcpy(buffer, packet.data(), size);
 
@@ -38,31 +45,16 @@ void send_alive(){
                         return;
                     }
                 }
-                Serial.print("El cargador VCD");
-                Serial.write(buffer, size);
-                Serial.print(" con ip ");
-                Serial.print(packet.remoteIP());
-                Serial.print(" se ha añadido a la lista");
-                Serial.println();
+                Serial.printf("El cargador VCD%s con ip %s se ha añadido a la lista\n", buffer, packet.remoteIP().toString().c_str());
 
                 ip4addr_aton(packet.remoteIP().toString().c_str(),&group.charger_table[group.size].IP);
                 memcpy(group.charger_table[group.size].name, buffer, size);
-                group.size++;
+                group.size++;              
 
-                
-
-                for(int i =0; i< group.size;i++){
-                    Serial.print(group.charger_table[i].name);
-                    Serial.println("-->");
-                    Serial.print(group.charger_table[i].IP.addr);
-                    Serial.println();
+                for(int i =0; i< group.size;i++){                  
+                    Serial.printf("%s --> %s\n",group.charger_table[i].name, ip4addr_ntoa(&group.charger_table[i].IP));
                 }
-
-                Serial.println();
-                //reply to the client
-                //packet.printf("Got %u bytes of data", packet.length());
-            }
-            
+            }            
         });
     }
 
@@ -75,7 +67,7 @@ void start_MQTT_server()
     send_alive();
 
 	/* Start MQTT Server using tcp transport */
-	xTaskCreate(mqtt_server, "BROKER", 1024*4, NULL, 2, NULL);
+    xTaskCreateStatic(mqtt_server,"BROKER",1024*6,NULL,PRIORIDAD_MQTT,xSERVERStack,&xSERVERBuffer); 
 	vTaskDelay(10);	// You need to wait until the task launch is complete.
     Serial.println("Servidor creado");
 
@@ -89,7 +81,7 @@ void start_MQTT_server()
     publisher.Pub_Sub_Topic = "Koxka";
     publisher.Topic_Message = "Elur";
 
-	xTaskCreate(mqtt_publisher, "PUBLISH", 1024*4, &publisher, 2, NULL);
+    xTaskCreateStatic(mqtt_publisher,"PUBLISH",1024*6,&publisher,PRIORIDAD_MQTT,xPUBStack,&xPUBBuffer); 
 	vTaskDelay(500);	// You need to wait until the task launch is complete.
 
     mqtt_sub_pub_opts publisher2;
