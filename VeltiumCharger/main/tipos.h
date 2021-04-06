@@ -257,7 +257,7 @@ typedef struct{
 }carac_Firebase_Configuration;
 
 typedef struct{
-	char* name;
+	char name[8];
 	ip4_addr_t IP;
 }carac_charger;
 

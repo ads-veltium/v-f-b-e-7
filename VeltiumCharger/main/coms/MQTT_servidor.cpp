@@ -27,37 +27,47 @@ void send_alive(){
     //Arrancar el servidor udp para escuchar cuando el maestro nos lo ordene
     if(udp.listen(1234)) {
         udp.onPacket([](AsyncUDPPacket packet) {
+            
+            int size = packet.length();
+            if(size<=8){
+                char buffer[size] ;
+                memcpy(buffer, packet.data(), size);
 
-            for(int i =0; i< group.size;i++){
-                if(memcmp(group.charger_table[i].name, packet.data(), packet.length())==0){
-                    return;
+                for(int i =0; i < group.size;i++){
+                    if(memcmp(group.charger_table[i].name, buffer, size)==0){
+                        return;
+                    }
                 }
-            }
-            ip4addr_aton(packet.remoteIP().toString().c_str(),&group.charger_table[group.size].IP);
-            memcpy(group.charger_table[group.size].name, packet.data(), packet.length());
-            group.size++;
-
-            Serial.print("El cargador VCD");
-            Serial.write(packet.data(), packet.length());
-            Serial.print("con ip ");
-            Serial.print(packet.remoteIP());
-            Serial.print("se ha añadido a la lista");
-
-            for(int i =0; i< group.size;i++){
-                Serial.print(group.charger_table[i].name);
-                Serial.println("-->");
-                Serial.print(group.charger_table[i].IP.addr);
+                Serial.print("El cargador VCD");
+                Serial.write(buffer, size);
+                Serial.print(" con ip ");
+                Serial.print(packet.remoteIP());
+                Serial.print(" se ha añadido a la lista");
                 Serial.println();
-            }
 
-            Serial.println();
-            //reply to the client
-            //packet.printf("Got %u bytes of data", packet.length());
+                ip4addr_aton(packet.remoteIP().toString().c_str(),&group.charger_table[group.size].IP);
+                memcpy(group.charger_table[group.size].name, buffer, size);
+                group.size++;
+
+                
+
+                for(int i =0; i< group.size;i++){
+                    Serial.print(group.charger_table[i].name);
+                    Serial.println("-->");
+                    Serial.print(group.charger_table[i].IP.addr);
+                    Serial.println();
+                }
+
+                Serial.println();
+                //reply to the client
+                //packet.printf("Got %u bytes of data", packet.length());
+            }
+            
         });
     }
 
     //Avisar al resto de equipos de que estamos aqui!
-    udp.broadcast(ConfigFirebase.Device_Id);
+    udp.broadcast((char*)ConfigFirebase.Device_Id);
 }
 
 void start_MQTT_server()
