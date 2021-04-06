@@ -6,6 +6,16 @@ AsyncUDP udp;
 void mqtt_server(void *pvParameters);
 
 extern carac_Coms  Coms;
+extern carac_Firebase_Configuration ConfigFirebase;
+
+
+
+typedef struct{
+    carac_charger charger_table[10];
+    int size = 0;
+}carac_chargers;
+
+carac_chargers group;
 
 void stop_MQTT(){
     SetStopMQTT(true);
@@ -17,28 +27,37 @@ void send_alive(){
     //Arrancar el servidor udp para escuchar cuando el maestro nos lo ordene
     if(udp.listen(1234)) {
         udp.onPacket([](AsyncUDPPacket packet) {
-            Serial.print("UDP Packet Type: ");
-            Serial.print(packet.isBroadcast()?"Broadcast":packet.isMulticast()?"Multicast":"Unicast");
-            Serial.print(", From: ");
-            Serial.print(packet.remoteIP());
-            Serial.print(":");
-            Serial.print(packet.remotePort());
-            Serial.print(", To: ");
-            Serial.print(packet.localIP());
-            Serial.print(":");
-            Serial.print(packet.localPort());
-            Serial.print(", Length: ");
-            Serial.print(packet.length());
-            Serial.print(", Data: ");
+
+            for(int i =0; i< group.size;i++){
+                if(memcmp(group.charger_table[i].name, packet.data(), packet.length())==0){
+                    return;
+                }
+            }
+            ip4addr_aton(packet.remoteIP().toString().c_str(),&group.charger_table[group.size].IP);
+            memcpy(group.charger_table[group.size].name, packet.data(), packet.length());
+            group.size++;
+
+            Serial.print("El cargador VCD");
             Serial.write(packet.data(), packet.length());
+            Serial.print("con ip ");
+            Serial.print(packet.remoteIP());
+            Serial.print("se ha añadido a la lista");
+
+            for(int i =0; i< group.size;i++){
+                Serial.print(group.charger_table[i].name);
+                Serial.println("-->");
+                Serial.print(group.charger_table[i].IP.addr);
+                Serial.println();
+            }
+
             Serial.println();
             //reply to the client
-            packet.printf("Got %u bytes of data", packet.length());
+            //packet.printf("Got %u bytes of data", packet.length());
         });
     }
 
     //Avisar al resto de equipos de que estamos aqui!
-    udp.broadcast("Anyone here?");
+    udp.broadcast(ConfigFirebase.Device_Id);
 }
 
 void start_MQTT_server()

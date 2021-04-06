@@ -257,6 +257,11 @@ typedef struct{
 }carac_Firebase_Configuration;
 
 typedef struct{
+	char* name;
+	ip4_addr_t IP;
+}carac_charger;
+
+typedef struct{
 	//configuracion
 	bool BetaPermission = false;
 	uint16 PSOC5_Act_Ver;
