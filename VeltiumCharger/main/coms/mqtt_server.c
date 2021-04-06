@@ -407,7 +407,7 @@ void mqtt_publisher(void *pvParameters)
             
             mg_mqtt_pub(mgc, &topic, &data);
         }
-		mg_mgr_poll(&mgr, 0);
+		mg_mgr_poll(&mgr, 10);
 		vTaskDelay(1);
 	}
 
@@ -417,36 +417,31 @@ void mqtt_publisher(void *pvParameters)
 
 void mqtt_subscriber(void *pvParameters)
 {
-	char *task_parameter = (char *)pvParameters;
-	//ESP_LOGE(pcTaskGetTaskName(NULL), "Start task_parameter=%s", task_parameter);
-	char url[64];
-	strcpy(url, task_parameter);
-	//ESP_LOGE(pcTaskGetTaskName(NULL),  "started on %s", url);
+	mqtt_sub_pub_opts *pub_opts = (mqtt_sub_pub_opts*)pvParameters;
 
 	/* Starting Subscriber */
-	struct mg_mqtt_opts opts;  // MQTT connection options
 	struct mg_mgr mgr;
 	mg_mgr_init(&mgr);
-	memset(&opts, 0, sizeof(opts));					// Set MQTT options
-	opts.client_id = mg_str(pcTaskGetTaskName(NULL));	// Set Client ID
-	opts.qos = 1;									// Set QoS to 1
-	opts.will_topic = mg_str(will_topic);			// Set last will topic
-	opts.will_message = mg_str("goodbye");			// And last will message
+	struct mg_mqtt_opts opts;  // MQTT connection options
 
-	//ESP_LOGE(pcTaskGetTaskName(NULL), "url=[%s]", url);
+	memset(&opts, 0, sizeof(opts));					// Set MQTT options
+	opts.client_id = mg_str(pub_opts->Client_ID);   // Set Client ID
+	opts.qos = 1;									// Set QoS to 1
+	opts.will_topic = mg_str(pub_opts->Will_Topic);			// Set last will topic
+	opts.will_message = mg_str(pub_opts->Will_Message);			// And last will message
 
 	struct mg_connection *mgc;
-	mgc = mg_mqtt_connect(&mgr, url, &opts, fn, &url);	// Create client connection
+	mgc = mg_mqtt_connect(&mgr, pub_opts->url, &opts, publisher_fn, &pub_opts->url);	// Create client connection
 
-	struct mg_str topic = mg_str(sub_topic);
+	struct mg_str topic = mg_str(pub_opts->Pub_Sub_Topic);
 	mg_mqtt_sub(mgc, &topic);
-	//ESP_LOGE(pcTaskGetTaskName(NULL), "SUBSCRIBED to %.*s", (int) topic.len, topic.ptr);
 
 	while (1) {
-		mg_mgr_poll(&mgr, 0);
+		mg_mgr_poll(&mgr, 3);
 		vTaskDelay(1);
 	}
 
 	vTaskDelete(NULL);
+	mg_mgr_free(&mgr);
 							
 }
