@@ -236,10 +236,10 @@ void InitServer(void) {
 
         Serial.println((char*)Coms.Wifi.AP);
         Serial.println(Coms.Wifi.Pass);
-        Serial.println(Coms.ETH.IP1 );
-        Serial.println(Coms.ETH.IP2);
-        Serial.println(Coms.ETH.Gateway);
-        Serial.println(Coms.ETH.Mask);
+        Serial.println(ip4addr_ntoa(&Coms.ETH.IP1) );
+        Serial.println(ip4addr_ntoa(&Coms.ETH.IP2));
+        Serial.println(ip4addr_ntoa(&Coms.ETH.Gateway));
+        Serial.println(ip4addr_ntoa(&Coms.ETH.Mask));
         Serial.println(Coms.GSM.APN);
         Serial.println(Coms.GSM.Pass);
         Serial.println(Comands.desired_current);

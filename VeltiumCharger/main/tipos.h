@@ -14,6 +14,7 @@
 #ifndef TIPOS_H
 #define TIPOS_H
 
+#include "lwip/ip_addr.h"
 
 #define EXT_FLASH_SIZE								8*1024*1024
 #define EXT_FLASH_PAGE_SIZE							4096
@@ -144,6 +145,7 @@ typedef struct{
 } carac_Status;
 
 typedef struct{
+	bool   Tipo_Sensor;
 	bool   Ubicacion_Sensor;
 	bool   CDP_On;
 	bool   Sensor_Conectado;
@@ -163,7 +165,7 @@ typedef struct{
 	bool Internet = false;
 	uint8_t AP[34]={'\0'};
 	String Pass;
-	IPAddress IP;
+	ip4_addr_t IP;
 }carac_WIFI;
 
 typedef struct{
@@ -173,10 +175,10 @@ typedef struct{
 	bool Internet = false;
 	bool Wifi_Perm = false;
 
-	IPAddress IP1;
-	IPAddress IP2;
-	IPAddress Gateway;
-	IPAddress Mask;
+	ip4_addr_t IP1;
+	ip4_addr_t IP2;
+	ip4_addr_t Gateway;
+	ip4_addr_t Mask;
 
 	uint8_t   State;
 	uint8_t   Puerto;

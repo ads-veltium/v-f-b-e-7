@@ -7,6 +7,7 @@ extern carac_Coms  Coms;
 extern carac_Firebase_Configuration ConfigFirebase;
 extern carac_Status Status;
 extern carac_Contador   ContadorExt;
+extern carac_Params Params;
 
 //Contador trifasico
 Contador Counter   EXT_RAM_ATTR;
@@ -66,11 +67,11 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
         Serial.println( "Wifi got IP Address\n");
         Serial.printf( "Wifi: %d %d %d %d\n",IP2STR(&ip_info->ip));
 
-
-        Coms.Wifi.IP[0] =ip4_addr1(&ip_info->ip);
+        Coms.Wifi.IP.addr = ip_info->ip.addr;
+        /*Coms.Wifi.IP[0] =ip4_addr1(&ip_info->ip);
         Coms.Wifi.IP[1] =ip4_addr2(&ip_info->ip);
         Coms.Wifi.IP[2] =ip4_addr3(&ip_info->ip);
-        Coms.Wifi.IP[3] =ip4_addr4(&ip_info->ip);
+        Coms.Wifi.IP[3] =ip4_addr4(&ip_info->ip);*/
 
         wifi_config_t wifi_actual_config;
         esp_wifi_get_config(WIFI_IF_STA, &wifi_actual_config);
@@ -331,6 +332,7 @@ void Eth_Loop(){
         case CONNECTING:
             if(eth_connected){
                 Coms.ETH.State = CONECTADO;
+                start_MQTT_server();
                 xStart = xTaskGetTickCount();
                 if(!Coms.ETH.DHCP){
                     if(ComprobarConexion()){
@@ -352,7 +354,7 @@ void Eth_Loop(){
         break;
 
         case CONECTADO:
-            if(Status.Trifasico && !finding){
+            if(Params.Tipo_Sensor && !finding){
                 if(GetStateTime(xStart) > 60000){
                     Serial.println("Iniciando fase busqueda ");
                     xTaskCreate( BuscarContador_Task, "BuscarContador", 4096*4, NULL, 5, NULL); 
@@ -372,6 +374,11 @@ void Eth_Loop(){
                     Coms.ETH.State = DISCONNECTING;
                 }
                 
+            }
+
+            //Desconexion del cable
+            if(!eth_connected && !eth_link_up){
+                Coms.ETH.State = CONNECTING;
             }
 
             //Lectura del contador

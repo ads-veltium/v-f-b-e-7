@@ -1,5 +1,7 @@
 #include "Eth_Station.h"
 #include "VeltFirebase.h"
+#include "lwip/sys.h"
+
 
 
 bool eth_link_up     = false;
@@ -38,7 +40,7 @@ void BuscarContador_Task(void *args){
     bool Sentido = 0;
     bool TopeInf = false;
     bool TopeSup = false;
-    i = Coms.ETH.IP1[3];
+    i =ip4_addr4(&Coms.ETH.IP1);
     bool NextOne =true;
 
     Cliente_HTTP Cliente("http://192.168.1.1", 100);
@@ -47,7 +49,7 @@ void BuscarContador_Task(void *args){
     while(!TopeSup || !TopeInf){
         if(NextOne){
             if(Sentido && !TopeInf){ //Pabajo
-                i = Coms.ETH.IP1[3] - inf > 1 ? Coms.ETH.IP1[3] - inf : 0;
+                i = ip4_addr4(&Coms.ETH.IP1) - inf > 1 ? ip4_addr4(&Coms.ETH.IP1) - inf : 0;
                 if(i > 0 ){
                     inf++;
                     Sentido = false;
@@ -59,7 +61,7 @@ void BuscarContador_Task(void *args){
                 }
             }
             else if(!Sentido && !TopeSup){ //Parriba
-                i = Coms.ETH.IP1[3] + Sup < 255 ? Coms.ETH.IP1[3] + Sup : 255;
+                i = ip4_addr4(&Coms.ETH.IP1) + Sup < 255 ? ip4_addr4(&Coms.ETH.IP1) + Sup : 255;
                 if(i != 254 ){
                     Sup++;
                     Sentido = true;
@@ -77,7 +79,7 @@ void BuscarContador_Task(void *args){
             i++;
         }
         else{            
-            sprintf(ip,"%i.%i.%i.%i", Coms.ETH.IP1[0],Coms.ETH.IP1[1],Coms.ETH.IP1[2],i-1); 
+            sprintf(ip,"%i.%i.%i.%i", ip4_addr1(&Coms.ETH.IP1),ip4_addr2(&Coms.ETH.IP1),ip4_addr3(&Coms.ETH.IP1),i-1); 
             char url[100] = "http://";
             strcat(url, ip);
             //strcat(url, "/index.html");
@@ -183,12 +185,15 @@ static void eth_event_handler(void *arg, esp_event_base_t event_base, int32_t ev
 
             Serial.println( "Ethernet 1 Got IP Address");
             Serial.printf( "ETHIP: %d %d %d %d\n",IP2STR(&ip_info->ip));
-            Coms.ETH.IP1[0] =ip4_addr1(&ip_info->ip);
+            
+            Coms.ETH.IP1.addr = ip_info->ip.addr;
+            /*Coms.ETH.IP1[0] =ip4_addr1(&ip_info->ip);
             Coms.ETH.IP1[1] =ip4_addr2(&ip_info->ip);
             Coms.ETH.IP1[2] =ip4_addr3(&ip_info->ip);
-            Coms.ETH.IP1[3] =ip4_addr4(&ip_info->ip);
-            
-            modifyCharacteristic(&Coms.ETH.IP1[0], 4, COMS_CONFIGURATION_LAN_IP1);
+            Coms.ETH.IP1[3] =ip4_addr4(&ip_info->ip);*/
+
+            uint8_t ip_Array[4] = { ip4_addr1(&Coms.ETH.IP1),ip4_addr2(&Coms.ETH.IP1),ip4_addr3(&Coms.ETH.IP1),ip4_addr4(&Coms.ETH.IP1)};
+            modifyCharacteristic(&ip_Array[0], 4, COMS_CONFIGURATION_LAN_IP1);
 
             eth_connected = true;
             eth_connecting = false;
@@ -250,12 +255,13 @@ void initialize_ethernet(void){
         esp_event_handler_register(ETH_EVENT, ETHERNET_EVENT_STOP, esp_netif_action_stop, eth_netif);
         eth_connected = true;
 
-        Coms.ETH.IP1[0] =ip4_addr1(&DHCP_Server_IP.ip);
+        /*Coms.ETH.IP1[0] =ip4_addr1(&DHCP_Server_IP.ip);
         Coms.ETH.IP1[1] =ip4_addr2(&DHCP_Server_IP.ip);
         Coms.ETH.IP1[2] =ip4_addr3(&DHCP_Server_IP.ip);
-        Coms.ETH.IP1[3] =ip4_addr4(&DHCP_Server_IP.ip);
+        Coms.ETH.IP1[3] =ip4_addr4(&DHCP_Server_IP.ip);*/
         
-        modifyCharacteristic(&Coms.ETH.IP1[0], 4, COMS_CONFIGURATION_LAN_IP1);
+        uint8_t ip_Array[4] = { ip4_addr1(&Coms.ETH.IP1),ip4_addr2(&Coms.ETH.IP1),ip4_addr3(&Coms.ETH.IP1),ip4_addr4(&Coms.ETH.IP1)};
+        modifyCharacteristic(&ip_Array[0], 4, COMS_CONFIGURATION_LAN_IP1);
     }   
     //Si fijamos una IP estatica:
     else if(!Coms.ETH.Auto){

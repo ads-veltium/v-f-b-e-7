@@ -792,6 +792,7 @@ void procesar_bloque(uint16 tipo_bloque){
 			//Params.Sensor_Conectado = (buffer_rx_local[0]  >> 0) & 0x01;
 			//Params.CDP_On           = (buffer_rx_local[0]  >> 1) & 0x01;
 			//Params.Ubicacion_Sensor = (buffer_rx_local[0]  >> 2) & 0x03;
+			Params.Tipo_Sensor        = (buffer_rx_local[0]  >> 3) & 0x01;
 			Params.CDP				  = buffer_rx_local[0];
 		#endif
 	}

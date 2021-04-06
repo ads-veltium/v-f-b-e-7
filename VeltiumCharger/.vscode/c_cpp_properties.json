@@ -160,6 +160,11 @@
                 "${workspaceFolder}/components/Arduino/tools/sdk/esp32/include/newlib/platform_include",
                 "${workspaceFolder}/components/Arduino/tools/sdk/esp32/include/newlib/platform_include",
                 "${workspaceFolder}/components/Arduino/tools/sdk/esp32/include/newlib/platform_include",
+                "${workspaceFolder}/components/Arduino/tools/sdk/esp32/include/newlib/platform_include",
+                "${workspaceFolder}/components/Arduino/tools/sdk/esp32/include/newlib/platform_include",
+                "${workspaceFolder}/components/Arduino/tools/sdk/esp32/include/newlib/platform_include",
+                "${workspaceFolder}/components/Arduino/tools/sdk/esp32/include/newlib/platform_include",
+                "${workspaceFolder}/components/Arduino/tools/sdk/esp32/include/newlib/platform_include",
                 "${workspaceFolder}/components/Arduino/tools/sdk/esp32/include/newlib/platform_include"
             ],
             "intelliSenseMode": "clang-x64",

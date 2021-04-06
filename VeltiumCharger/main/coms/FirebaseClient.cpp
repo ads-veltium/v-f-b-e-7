@@ -146,10 +146,10 @@ bool WriteFirebaseComs(String Path){
     //Escritura["wifi/passwd"] = Coms.Wifi.Pass;
 
     if(Coms.ETH.Auto){
-      Escritura["eth/ip1"]      = Coms.ETH.IP1.toString();
-      Escritura["eth/ip2"]      = Coms.ETH.IP2.toString();
-      Escritura["eth/gateway"]  = Coms.ETH.Gateway.toString();
-      Escritura["eth/mask"]     = Coms.ETH.Mask.toString();
+      Escritura["eth/ip1"]      = ip4addr_ntoa(&Coms.ETH.IP1);
+      Escritura["eth/ip2"]      = ip4addr_ntoa(&Coms.ETH.IP2);
+      Escritura["eth/gateway"]  = ip4addr_ntoa(&Coms.ETH.Gateway);
+      Escritura["eth/mask"]     = ip4addr_ntoa(&Coms.ETH.Mask);
     }
 
 
@@ -212,24 +212,16 @@ bool ReadFirebaseComs(String Path){
       Coms.ETH.ON   = Lectura["eth"]["on"];
       Coms.ETH.Auto = Lectura["eth"]["auto"];
       
-      if(!Coms.ETH.Auto){
-        IPAddress addr;
-        addr.fromString(Lectura["eth"]["ip1"].as<String>());
+      /*if(!Coms.ETH.Auto){
         //Coms.RestartConection = (Coms.ETH.IP1 != addr) ? true : Coms.RestartConection; //Si el valor no es le mismo que el que tenemos acutalmente, reincia la conexion para aplicarlo
-        Coms.ETH.IP1     = addr;
+        Coms.ETH.IP1     = ip4addr_aton(Lectura["eth"]["ip1"].as<char*>());
        
-        addr.fromString(Lectura["eth"]["ip2"].as<String>());
-        //Coms.RestartConection = (Coms.ETH.IP2 != addr) ? true : Coms.RestartConection; 
-        Coms.ETH.IP2     = addr;
+        Coms.ETH.IP2     = ip4addr_aton(Lectura["eth"]["ip2"].as<char*>());
 
-        addr.fromString(Lectura["eth"]["gateway"].as<String>());
-        //Coms.RestartConection = (Coms.ETH.Gateway != addr) ? true : Coms.RestartConection; 
-        Coms.ETH.Gateway = addr;
+        Coms.ETH.Gateway = ip4addr_aton(Lectura["eth"]["gateway"].as<char*>());
 
-        addr.fromString(Lectura["eth"]["mask"].as<String>());
-        //Coms.RestartConection = (Coms.ETH.Mask != addr) ? true : Coms.RestartConection;
-        Coms.ETH.Mask    = addr; 
-      }
+        Coms.ETH.Mask    = ip4addr_aton(Lectura["eth"]["mask"].as<char*>());
+      }*/
 
       #ifdef USE_GSM
         Coms.GSM.ON    = Lectura["modem"]["on"];

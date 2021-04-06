@@ -11,7 +11,7 @@ extern carac_Contador   ContadorExt;
 //Buscar el contador
 void Contador::find(){
     Serial.println("Iniciando fase busqueda ");
-    IP4_ADDR(&ParametrosPing.BaseAdress , Coms.ETH.IP1[0],Coms.ETH.IP1[1],Coms.ETH.IP1[2],Coms.ETH.IP1[3]);
+    IP4_ADDR(&ParametrosPing.BaseAdress , ip4_addr1(&Coms.ETH.IP1),ip4_addr2(&Coms.ETH.IP1),ip4_addr3(&Coms.ETH.IP1),ip4_addr4(&Coms.ETH.IP1));
     xTaskCreate( BuscarContador_Task, "BuscarContador", 4096*4, NULL, 5, NULL);   
 }
 
