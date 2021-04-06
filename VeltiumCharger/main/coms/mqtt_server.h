@@ -48,5 +48,6 @@ typedef struct{
 void mqtt_server(void *pvParameters);
 void mqtt_publisher(void *pvParameters);
 void mqtt_subscriber(void *pvParameters);
+void SetStopMQTT(bool value);
 
 #endif /* MAIN_MQTT_SERVER_H_ */

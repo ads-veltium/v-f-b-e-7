@@ -1,11 +1,49 @@
 #include "MQTT_servidor.h"
+#include "ESPmDNS.h"
+#include "AsyncUDP.h"
 
+AsyncUDP udp;
 void mqtt_server(void *pvParameters);
 
 extern carac_Coms  Coms;
 
+void stop_MQTT(){
+    SetStopMQTT(true);
+    delay(1000);
+    SetStopMQTT(false);
+}
+
+void send_alive(){
+    //Arrancar el servidor udp para escuchar cuando el maestro nos lo ordene
+    if(udp.listen(1234)) {
+        udp.onPacket([](AsyncUDPPacket packet) {
+            Serial.print("UDP Packet Type: ");
+            Serial.print(packet.isBroadcast()?"Broadcast":packet.isMulticast()?"Multicast":"Unicast");
+            Serial.print(", From: ");
+            Serial.print(packet.remoteIP());
+            Serial.print(":");
+            Serial.print(packet.remotePort());
+            Serial.print(", To: ");
+            Serial.print(packet.localIP());
+            Serial.print(":");
+            Serial.print(packet.localPort());
+            Serial.print(", Length: ");
+            Serial.print(packet.length());
+            Serial.print(", Data: ");
+            Serial.write(packet.data(), packet.length());
+            Serial.println();
+            //reply to the client
+            packet.printf("Got %u bytes of data", packet.length());
+        });
+    }
+
+    //Avisar al resto de equipos de que estamos aqui!
+    udp.broadcast("Anyone here?");
+}
+
 void start_MQTT_server()
 {
+    send_alive();
 
 	/* Start MQTT Server using tcp transport */
 	xTaskCreate(mqtt_server, "BROKER", 1024*4, NULL, 2, NULL);
@@ -37,19 +75,5 @@ void start_MQTT_server()
 
 	xTaskCreate(mqtt_publisher, "PUBLISH2", 1024*4, &publisher2, 2, NULL);
 	vTaskDelay(500);	// You need to wait until the task launch is complete.
-
-    mqtt_sub_pub_opts subscriber;
-
-	/* Start Publisher */
-	sprintf(subscriber.url, "mqtt://%s:1883", ip4addr_ntoa(&Coms.ETH.IP1));
-    subscriber.Client_ID = "VCD12345";
-    subscriber.Will_Topic = "NODE_DEAD";
-    subscriber.Will_Message = "VCD12345";
-    subscriber.Pub_Sub_Topic = "Koxka";
-    subscriber.Topic_Message = "Elur";
-
-	xTaskCreate(mqtt_subscriber, "Susbcriber", 1024*4, &subscriber, 2, NULL);
-	vTaskDelay(500);	// You need to wait until the task launch is complete.
-
 }
 

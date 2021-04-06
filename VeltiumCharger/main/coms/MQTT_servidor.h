@@ -11,5 +11,6 @@ extern "C" {
 }
 
 void start_MQTT_server();
+void stop_MQTT();
 
 #endif

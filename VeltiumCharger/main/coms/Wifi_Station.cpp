@@ -348,7 +348,8 @@ void Eth_Loop(){
 
             else if(!Coms.ETH.ON){
                 stop_ethernet();
-                Coms.ETH.State = DISCONNECTING;                
+                Coms.ETH.State = DISCONNECTING;  
+                              
             }
             
         break;
@@ -410,6 +411,7 @@ void Eth_Loop(){
 
         case DISCONNECTING:
             if(!eth_connected && !eth_connecting){
+                stop_MQTT();
                 finding = false;
                 Coms.ETH.State = DISCONNECTED;
                 Coms.ETH.Internet = false;
@@ -528,6 +530,7 @@ void ComsTask(void *args){
                 stop_wifi();
             }
             if((eth_connected || wifi_connected ) && !ServidorArrancado){
+
                 InitServer();
                 ServidorArrancado = true;
             }

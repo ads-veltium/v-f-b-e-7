@@ -16,6 +16,8 @@ struct sub *s_subs = NULL;
 // A list of will topic & message, held in memory
 struct will *s_wills = NULL;
 
+bool StopMQTT = false;
+
 // Wildcard(#/+) support version
 int _mg_strcmp(const struct mg_str str1, const struct mg_str str2) {
 	size_t i1 = 0;
@@ -135,6 +137,9 @@ int _mg_mqtt_status() {
 	return 0;
 }
 
+void SetStopMQTT(bool value){
+	StopMQTT = value;
+}
 // Event handler function
 static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
   if (ev == MG_EV_MQTT_CMD) {
@@ -339,10 +344,14 @@ void mqtt_server(void *pvParameters)
 	while (1) {
 		mg_mgr_poll(&mgr, 0);
 		vTaskDelay(1);
+		if(StopMQTT){
+			break;
+		}
 	}
 
 	// Never reach here
 	ESP_LOGI(pcTaskGetTaskName(NULL), "finish");
+	
 	vTaskDelete(NULL);
 	mg_mgr_free(&mgr);
 }
@@ -409,8 +418,11 @@ void mqtt_publisher(void *pvParameters)
         }
 		mg_mgr_poll(&mgr, 10);
 		vTaskDelay(1);
+		if(StopMQTT){
+			break;
+		}
 	}
-
+	mg_mqtt_disconnect(mgc);
 	vTaskDelete(NULL);
 	mg_mgr_free(&mgr);								// Finished, cleanup
 }
@@ -439,8 +451,11 @@ void mqtt_subscriber(void *pvParameters)
 	while (1) {
 		mg_mgr_poll(&mgr, 3);
 		vTaskDelay(1);
+		if(StopMQTT){
+			break;
+		}
 	}
-
+	mg_mqtt_disconnect(mgc);
 	vTaskDelete(NULL);
 	mg_mgr_free(&mgr);
 							
