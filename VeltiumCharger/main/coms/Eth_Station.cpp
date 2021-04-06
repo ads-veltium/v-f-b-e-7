@@ -148,6 +148,7 @@ static void eth_event_handler(void *arg, esp_event_base_t event_base, int32_t ev
                 eth_connected = false;
                 eth_link_up = false;
                 Coms.ETH.conectado1 = false;
+                Coms.ETH.Internet = false;
                 break;
 #ifdef DOUBLE
             case ETHERNET_EVENT_CONNECTED2:
