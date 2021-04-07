@@ -4,8 +4,9 @@
 
 AsyncUDP udp;
 void mqtt_server(void *pvParameters);
-bool Decipher(String input, String &output);
-bool Encipher(String input, String &output);
+void start_MQTT_client();
+String Decipher(String input);
+String Encipher(String input);
 
 extern carac_Coms  Coms;
 extern carac_Firebase_Configuration ConfigFirebase;
@@ -40,16 +41,16 @@ void start_udp(){
     if(udp.listen(1234)) {
         udp.onPacket([](AsyncUDPPacket packet) {         
             int size = packet.length();
-            if(size<=8){
-                if(packet.isBroadcast()){
-                    packet.print((char*)ConfigFirebase.Device_Id);
-                }
-                
-                char buffer[size] ;
-                memcpy(buffer, packet.data(), size);
+            char buffer[size] ;
+            memcpy(buffer, packet.data(), size);
 
-                String Desencriptado;
-                Decipher(String(buffer), Desencriptado);
+            String Desencriptado;
+            Desencriptado = Decipher(String(buffer));
+
+            if(size<=8){
+                if(packet.isBroadcast()){                   
+                    packet.print(Encipher(String(ConfigFirebase.Device_Id)).c_str());
+                }
 
                 for(int i =0; i < group.size;i++){
                     if(memcmp(group.charger_table[i].name, Desencriptado.c_str(), size)==0){
@@ -63,16 +64,19 @@ void start_udp(){
                 group.size++;              
 
                 for(int i =0; i< group.size;i++){                  
-                    Serial.printf("%s --> %s\n",group.charger_table[i].name, ip4addr_ntoa(&group.charger_table[i].IP));
+                    Serial.printf("%s --> %s\n",String(group.charger_table[i].name).c_str(), ip4addr_ntoa(&group.charger_table[i].IP));
+                }
+            }
+            else{
+                if(!strcmp(Desencriptado.c_str(), "Start client")){
+                    start_MQTT_client();
                 }
             }            
         });
     }
 
     //Avisar al resto de equipos de que estamos aqui!
-    String output;
-    Encipher(String(ConfigFirebase.Device_Id),output);
-    udp.broadcast(output.c_str());
+    udp.broadcast(Encipher(String(ConfigFirebase.Device_Id)).c_str());
 }
 
 void start_MQTT_server(){
@@ -80,14 +84,12 @@ void start_MQTT_server(){
     udp.broadcast((char*)ConfigFirebase.Device_Id);
     delay(250);
 
-    udp.broadcast("Start client");
+    udp.broadcast(Encipher("Start client").c_str());
 
 	/* Start MQTT Server using tcp transport */
     xTaskCreateStatic(mqtt_server,"BROKER",1024*6,NULL,PRIORIDAD_MQTT,xSERVERStack,&xSERVERBuffer); 
 	delay(10);	// You need to wait until the task launch is complete.
     Serial.println("Servidor creado, avisando al resto de equipos");
-
-    udp.broadcast("Satrt group!");
 
     mqtt_sub_pub_opts publisher;
     
@@ -95,8 +97,6 @@ void start_MQTT_server(){
     publisher.Client_ID = "VCD12345";
     publisher.Will_Topic = "NODE_DEAD";
     publisher.Will_Message = "VCD12345";
-    publisher.Pub_Sub_Topic = "Koxka";
-    publisher.Topic_Message = "Elur";
 
     mqtt_connect(&publisher);
 
@@ -108,3 +108,15 @@ void start_MQTT_server(){
     xTaskCreateStatic(mqtt_publisher,"PUBLISH",1024*6,NULL,PRIORIDAD_MQTT,xPUBStack,&xPUBBuffer); 
 }
 
+void start_MQTT_client(){
+    mqtt_sub_pub_opts publisher;
+    
+	sprintf(publisher.url, "mqtt://%s:1883", ip4addr_ntoa(&Coms.ETH.IP1));
+    strcpy(publisher.Client_ID,ConfigFirebase.Device_Id);
+    publisher.Will_Topic = "NODE_DEAD";
+    strcpy(publisher.Will_Message,ConfigFirebase.Device_Id);
+
+    mqtt_connect(&publisher);
+
+    mqtt_subscribe("Lada");
+}

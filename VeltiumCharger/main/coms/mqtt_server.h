@@ -41,8 +41,6 @@ typedef struct{
   char *Client_ID;
   char *Will_Topic;
   char *Will_Message;
-  char *Pub_Sub_Topic;
-  char *Topic_Message;
 }mqtt_sub_pub_opts;
 
 void mqtt_server(void *pvParameters);
