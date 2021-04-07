@@ -455,6 +455,12 @@ void mqtt_publisher(void *pvParameters)
 	vTaskDelete(NULL);
 }
 
+void mqtt_publish(char* Topic, char* Data){
+	struct mg_str topic = mg_str(Topic);
+	struct mg_str data = mg_str(Data);
+	mg_mqtt_pub(mgc, &topic, &data);
+}
+
 void mqtt_subscribe(char* Topic)
 {
 	struct mg_str topic = mg_str(Topic);

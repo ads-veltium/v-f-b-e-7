@@ -38,15 +38,16 @@ struct will {
 //Estructura para la creacion de pubs y subs
 typedef struct{
   char url[64];
-  char *Client_ID;
+  char Client_ID[8];
   char *Will_Topic;
-  char *Will_Message;
+  char Will_Message[8];
 }mqtt_sub_pub_opts;
 
 void mqtt_server(void *pvParameters);
 void mqtt_connect(mqtt_sub_pub_opts *pub_opts);
 void mqtt_publisher(void *pvParameters);
 void mqtt_subscribe(char* Topic);
+void mqtt_publish(char* Topic, char* Data);
 void SetStopMQTT(bool value);
 
 #endif /* MAIN_MQTT_SERVER_H_ */
