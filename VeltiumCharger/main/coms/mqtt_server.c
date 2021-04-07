@@ -380,12 +380,11 @@ static void publisher_fn(struct mg_connection *c, int ev, void *ev_data, void *f
 		case MG_EV_MQTT_OPEN:
 			//ESP_LOGE(pcTaskGetTaskName(NULL), "MG_EV_OPEN");
 			// MQTT connect is successful
-			printf("conectado a %s", (char *)fn_data);
 			break;
 		case MG_EV_MQTT_MSG:{
 			// When we get echo response, print it
 			struct mg_mqtt_message *mm = (struct mg_mqtt_message *) ev_data;
-			printf("Recibido %.*s <- %.*s", (int) mm->data.len, mm->data.ptr, (int) mm->topic.len, mm->topic.ptr);
+			printf("Recibido %.*s <- %.*s \n", (int) mm->data.len, mm->data.ptr, (int) mm->topic.len, mm->topic.ptr);
 			break;
 		}
 	}

@@ -33,8 +33,9 @@ void start_udp(){
     if(udp.listen(1234)) {
         udp.onPacket([](AsyncUDPPacket packet) {         
             int size = packet.length();
-            char buffer[size] ;
+            char buffer[size+1] ;
             memcpy(buffer, packet.data(), size);
+            buffer[size] = '\0';
 
             String Desencriptado;
             Desencriptado = Decipher(String(buffer));
@@ -45,14 +46,14 @@ void start_udp(){
                 }
 
                 for(int i =0; i < group.size;i++){
-                    if(memcmp(group.charger_table[i].name, Desencriptado.c_str(), 8)==0){
+                    if(memcmp(group.charger_table[i].name, Desencriptado.c_str(), 9)==0){
                         return;
                     }
                 }
                 Serial.printf("El cargador VCD%s con ip %s se ha añadido a la lista\n", Desencriptado.c_str(), packet.remoteIP().toString().c_str());
 
                 ip4addr_aton(packet.remoteIP().toString().c_str(),&group.charger_table[group.size].IP);
-                memcpy(group.charger_table[group.size].name, Desencriptado.c_str(), 8);
+                memcpy(group.charger_table[group.size].name, Desencriptado.c_str(), 9);
                 group.size++;              
 
                 for(int i =0; i< group.size;i++){                  
@@ -60,7 +61,7 @@ void start_udp(){
                 }
             }
             else{
-                if(!strcmp(Desencriptado.c_str(), "Start client")){
+                if(!memcmp(Desencriptado.c_str(), "Start client", 13)){
                     start_MQTT_client();
                 }
             }            
