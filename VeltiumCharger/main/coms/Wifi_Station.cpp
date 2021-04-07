@@ -332,7 +332,7 @@ void Eth_Loop(){
         case CONNECTING:
             if(eth_connected){
                 Coms.ETH.State = CONECTADO;
-                start_MQTT_server();
+                start_udp();
                 xStart = xTaskGetTickCount();
                 if(!Coms.ETH.DHCP){
                     if(ComprobarConexion()){

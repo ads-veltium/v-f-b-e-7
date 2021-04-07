@@ -1,9 +1,5 @@
 #include "mqtt_server.h"
 
-static const char *sub_topic = "";
-static const char *pub_topic = "Test";
-static const char *will_topic = "WILL";
-
 static const char *s_listen_on = "mqtt://0.0.0.0:1883";
 
 
@@ -142,12 +138,17 @@ void SetStopMQTT(bool value){
 }
 // Event handler function
 static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
+  /*if (ev != 1){
+	  ESP_LOGE(pcTaskGetTaskName(NULL),"cmd %d", ev);
+  }*/
+  
   if (ev == MG_EV_MQTT_CMD) {
 	struct mg_mqtt_message *mm = (struct mg_mqtt_message *) ev_data;
 	ESP_LOGD(pcTaskGetTaskName(NULL),"cmd %d qos %d", mm->cmd, mm->qos);
 	switch (mm->cmd) {
 	  case MQTT_CMD_CONNECT: {
-		ESP_LOGI(pcTaskGetTaskName(NULL), "CONNECT");
+		//printf("Nuevo cargador conectado, \n\tram total = %i\n\tram interna = %i \n", esp_get_free_heap_size(), esp_get_free_internal_heap_size());
+		//ESP_LOGE(pcTaskGetTaskName(NULL), "CONNECT");
 
 		// Parse the header to retrieve will information.
 		//_mg_mqtt_dump("CONNECT", mm);
@@ -157,7 +158,7 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
 		uint8_t qos;
 		uint8_t retain;
 		int willFlag = _mg_mqtt_parse_header(mm, &cid, &topic, &payload, &qos, &retain);
-		ESP_LOGI(pcTaskGetTaskName(NULL), "cid=[%.*s] willFlag=%d", cid.len, cid.ptr, willFlag);
+		//ESP_LOGE(pcTaskGetTaskName(NULL), "cid=[%.*s] willFlag=%d", cid.len, cid.ptr, willFlag);
 
 		// Client connects. Add to the client-id list
 		struct client *client = calloc(1, sizeof(*client));
@@ -195,11 +196,13 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
 		uint8_t response[] = {0, 0};
 		mg_mqtt_send_header(c, MQTT_CMD_CONNACK, 0, sizeof(response));
 		mg_send(c, response, sizeof(response));
+		//printf("Nuevo cargador almacenado, \n\tram total = %i\n\tram interna = %i\n", esp_get_free_heap_size(), esp_get_free_internal_heap_size());
 		break;
 	  }
 	  case MQTT_CMD_SUBSCRIBE: {
+		//printf("Nueva subscripcion, \n\tram total = %i\n\tram interna = %i\n", esp_get_free_heap_size(), esp_get_free_internal_heap_size());
 		// Client subscribe. Add to the subscription list
-		ESP_LOGI(pcTaskGetTaskName(NULL), "MQTT_CMD_SUBSCRIBE");
+		//ESP_LOGE(pcTaskGetTaskName(NULL), "MQTT_CMD_SUBSCRIBE");
 		//_mg_mqtt_dump("SUBSCRIBE", mm);
 		int pos = 4;  // Initial topic offset, where ID ends
 		uint8_t qos;
@@ -210,7 +213,7 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
 		  sub->topic = mg_strdup(topic);
 		  sub->qos = qos;
 		  LIST_ADD_HEAD(struct sub, &s_subs, sub);
-		  ESP_LOGI(pcTaskGetTaskName(NULL), "SUB ADD %p [%.*s]", c->fd, (int) sub->topic.len, sub->topic.ptr);
+		  //ESP_LOGE(pcTaskGetTaskName(NULL), "SUB ADD %p [%.*s]", c->fd, (int) sub->topic.len, sub->topic.ptr);
 
 #if 0
 		  for (struct sub *sub = s_subs; sub != NULL; sub = sub->next) {
@@ -219,16 +222,17 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
 #endif
 		}
 		_mg_mqtt_status();
+		//printf("Nueva subscripcion guardad, \n\tram total = %i\n\tram interna = %i\n", esp_get_free_heap_size(), esp_get_free_internal_heap_size());
 		break;
 	  }
 	  case MQTT_CMD_UNSUBSCRIBE: {
 		// Client unsubscribes. Remove from the subscription list
-		ESP_LOGI(pcTaskGetTaskName(NULL), "MQTT_CMD_UNSUBSCRIBE");
+		//ESP_LOGE(pcTaskGetTaskName(NULL), "MQTT_CMD_UNSUBSCRIBE");
 		//_mg_mqtt_dump("UNSUBSCRIBE", mm);
 		int pos = 4;  // Initial topic offset, where ID ends
 		struct mg_str topic;
 		while ((pos = mg_mqtt_next_unsub(mm, &topic, pos)) > 0) {
-		  ESP_LOGI(pcTaskGetTaskName(NULL), "UNSUB %p [%.*s]", c->fd, (int) topic.len, topic.ptr);
+		  //ESP_LOGE(pcTaskGetTaskName(NULL), "UNSUB %p [%.*s]", c->fd, (int) topic.len, topic.ptr);
 		  // Remove from the subscription list
 		  for (struct sub *sub = s_subs; sub != NULL; sub = sub->next) {
 			ESP_LOGI(pcTaskGetTaskName(NULL), "SUB[b] %p [%.*s]", sub->c->fd, (int) sub->topic.len, sub->topic.ptr);
@@ -250,8 +254,8 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
 	  }
 	  case MQTT_CMD_PUBLISH: {
 		// Client published message. Push to all subscribed channels
-		ESP_LOGI(pcTaskGetTaskName(NULL), "PUB %p [%.*s] -> [%.*s]", c->fd, (int) mm->data.len,
-					  mm->data.ptr, (int) mm->topic.len, mm->topic.ptr);
+		//ESP_LOGE(pcTaskGetTaskName(NULL), "PUB %p [%.*s] -> [%.*s]", c->fd, (int) mm->data.len,
+					  //mm->data.ptr, (int) mm->topic.len, mm->topic.ptr);
 		for (struct sub *sub = s_subs; sub != NULL; sub = sub->next) {
 		  //if (mg_strcmp(mm->topic, sub->topic) != 0) continue;
 		  if (_mg_strcmp(mm->topic, sub->topic) != 0) continue;
@@ -260,12 +264,14 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
 		break;
 	  }
 	  case MQTT_CMD_PINGREQ: {
-		ESP_LOGI(pcTaskGetTaskName(NULL), "PINGREQ %p", c->fd);
+		//ESP_LOGE(pcTaskGetTaskName(NULL), "PINGREQ %p", c->fd);
 		mg_mqtt_pong(c); // Send PINGRESP
 		break;
 	  }
 	}
   } else if (ev == MG_EV_CLOSE) {
+	printf("Cargador desconectado, \n\tram total = %i\n\tram interna = %i\n", esp_get_free_heap_size(), esp_get_free_internal_heap_size());
+		
 	ESP_LOGI(pcTaskGetTaskName(NULL), "MG_EV_CLOSE %p", c->fd);
 	// Client disconnects. Remove from the client-id list
 	for (struct client *client = s_clients; client != NULL; client = client->next) {
@@ -328,12 +334,14 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
 			//will->c->fd, (int) will->topic.len, will->topic.ptr, (int) will->payload.len, will->payload.ptr, will->qos, will->retain);
 	}
 	_mg_mqtt_status();
+	printf("Nuevo cargador eliminado, \n\tram total = %i\n\tram interna = %i ", esp_get_free_heap_size(), esp_get_free_internal_heap_size());
+		
   }
   (void) fn_data;
 }
 
-void mqtt_server(void *pvParameters)
-{
+void mqtt_server(void *pvParameters){
+
 	mg_log_set("1"); // Set to log level to LL_ERROR
 
 	struct mg_mgr mgr;
@@ -351,9 +359,8 @@ void mqtt_server(void *pvParameters)
 
 	// Never reach here
 	ESP_LOGI(pcTaskGetTaskName(NULL), "finish");
-	
-	vTaskDelete(NULL);
 	mg_mgr_free(&mgr);
+	vTaskDelete(NULL);
 }
 
 
@@ -371,92 +378,85 @@ static void publisher_fn(struct mg_connection *c, int ev, void *ev_data, void *f
 			break;
 
 		case MG_EV_MQTT_OPEN:
-			ESP_LOGE(pcTaskGetTaskName(NULL), "MG_EV_OPEN");
+			//ESP_LOGE(pcTaskGetTaskName(NULL), "MG_EV_OPEN");
 			// MQTT connect is successful
-			ESP_LOGE(pcTaskGetTaskName(NULL), "CONNECTED to %s", (char *)fn_data);
+			printf("conectado a %s", (char *)fn_data);
 			break;
 		case MG_EV_MQTT_MSG:{
 			// When we get echo response, print it
 			struct mg_mqtt_message *mm = (struct mg_mqtt_message *) ev_data;
-			ESP_LOGE(pcTaskGetTaskName(NULL), "RECEIVED %.*s <- %.*s", (int) mm->data.len, mm->data.ptr, (int) mm->topic.len, mm->topic.ptr);
+			printf("Recibido %.*s <- %.*s", (int) mm->data.len, mm->data.ptr, (int) mm->topic.len, mm->topic.ptr);
 			break;
 		}
 	}
 }
+static StackType_t xPOLLstack [1024*6]     EXT_RAM_ATTR;
+StaticTask_t xPOLLBuffer ;
+struct mg_connection *mgc;
+struct mg_mgr mgr;
 
+void mqtt_polling(void *params){
+
+	//struct mg_connection *mgc = (struct mg_connection*)params;
+	while (1) {
+		mg_mgr_poll(&mgr, 5);
+		vTaskDelay(1);
+		if(StopMQTT){
+			break;
+		}
+	}
+	mg_mqtt_disconnect(mgc);
+	mg_mgr_free(&mgr);
+	vTaskDelete(NULL);
+}
+
+//conectar al broker
+void mqtt_connect(mqtt_sub_pub_opts *pub_opts){
+
+	/* Arrancar la conexion*/	
+	mg_mgr_init(&mgr);
+	struct mg_mqtt_opts opts;  // MQTT connection options
+
+	memset(&opts, 0, sizeof(opts));					// Set MQTT options
+	opts.client_id = mg_str(pub_opts->Client_ID);   // Set Client ID
+	opts.qos = 1;									// Set QoS to 1
+	opts.will_topic = mg_str(pub_opts->Will_Topic);			// Set last will topic
+	opts.will_message = mg_str(pub_opts->Will_Message);			// And last will message
+
+	mgc = mg_mqtt_connect(&mgr, pub_opts->url, &opts, publisher_fn, &pub_opts->url);	// Create client connection
+	//printf("%s\n",mgr.userdata);
+	
+	xTaskCreateStatic(mqtt_polling,"POLLER",1024*6,NULL,2,xPOLLstack,&xPOLLBuffer); 
+
+	
+}
 
 void mqtt_publisher(void *pvParameters)
 {
-	ESP_LOGE(pcTaskGetTaskName(NULL), "started on ");
-	mqtt_sub_pub_opts *pub_opts = (mqtt_sub_pub_opts*)pvParameters;
+	//ESP_LOGE(pcTaskGetTaskName(NULL), "started on ");
+	//struct mg_connection *mgc = (struct mg_connection*)pvParameters;
 
-	/* Starting Publisher */	
-	struct mg_mgr mgr;
-	mg_mgr_init(&mgr);
-	struct mg_mqtt_opts opts;  // MQTT connection options
-
-	memset(&opts, 0, sizeof(opts));					// Set MQTT options
-	opts.client_id = mg_str(pub_opts->Client_ID);   // Set Client ID
-	opts.qos = 1;									// Set QoS to 1
-	opts.will_topic = mg_str(pub_opts->Will_Topic);			// Set last will topic
-	opts.will_message = mg_str(pub_opts->Will_Message);			// And last will message
-
-	
-	struct mg_connection *mgc;
-	mgc = mg_mqtt_connect(&mgr, pub_opts->url, &opts, publisher_fn, &pub_opts->url);	// Create client connection
-
-	/* Processing events */
+	/* Arrancar el publisher */
 	int32_t counter = 0;
-	struct mg_str topic = mg_str(pub_opts->Pub_Sub_Topic);
-	struct mg_str data = mg_str(pub_opts->Topic_Message);
+	struct mg_str topic = mg_str("Koxka");
+	struct mg_str data = mg_str("Elyur");
+
 	while (1) {
         counter++;
         if (counter > 1000) {
-            counter=0;
-            
+            counter=0;            
             mg_mqtt_pub(mgc, &topic, &data);
         }
-		mg_mgr_poll(&mgr, 10);
 		vTaskDelay(1);
 		if(StopMQTT){
 			break;
 		}
 	}
-	mg_mqtt_disconnect(mgc);
 	vTaskDelete(NULL);
-	mg_mgr_free(&mgr);								// Finished, cleanup
 }
 
-void mqtt_subscriber(void *pvParameters)
+void mqtt_subscribe(char* Topic)
 {
-	mqtt_sub_pub_opts *pub_opts = (mqtt_sub_pub_opts*)pvParameters;
-
-	/* Starting Subscriber */
-	struct mg_mgr mgr;
-	mg_mgr_init(&mgr);
-	struct mg_mqtt_opts opts;  // MQTT connection options
-
-	memset(&opts, 0, sizeof(opts));					// Set MQTT options
-	opts.client_id = mg_str(pub_opts->Client_ID);   // Set Client ID
-	opts.qos = 1;									// Set QoS to 1
-	opts.will_topic = mg_str(pub_opts->Will_Topic);			// Set last will topic
-	opts.will_message = mg_str(pub_opts->Will_Message);			// And last will message
-
-	struct mg_connection *mgc;
-	mgc = mg_mqtt_connect(&mgr, pub_opts->url, &opts, publisher_fn, &pub_opts->url);	// Create client connection
-
-	struct mg_str topic = mg_str(pub_opts->Pub_Sub_Topic);
-	mg_mqtt_sub(mgc, &topic);
-
-	while (1) {
-		mg_mgr_poll(&mgr, 3);
-		vTaskDelay(1);
-		if(StopMQTT){
-			break;
-		}
-	}
-	mg_mqtt_disconnect(mgc);
-	vTaskDelete(NULL);
-	mg_mgr_free(&mgr);
-							
+	struct mg_str topic = mg_str(Topic);
+	mg_mqtt_sub(mgc, &topic);							
 }
