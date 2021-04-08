@@ -262,6 +262,12 @@ typedef struct{
 }carac_charger;
 
 typedef struct{
+	bool GroupActive = false;
+	bool GroupMaster = false;
+	bool ServerActive = false;
+}carac_group;
+
+typedef struct{
 	//configuracion
 	bool BetaPermission = false;
 	uint16 PSOC5_Act_Ver;

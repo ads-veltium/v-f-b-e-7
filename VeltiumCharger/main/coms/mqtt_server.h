@@ -44,7 +44,7 @@ typedef struct{
 }mqtt_sub_pub_opts;
 
 void mqtt_server(void *pvParameters);
-void mqtt_connect(mqtt_sub_pub_opts *pub_opts);
+bool mqtt_connect(mqtt_sub_pub_opts *pub_opts);
 void mqtt_publisher(void *pvParameters);
 void mqtt_subscribe(char* Topic);
 void mqtt_publish(char* Topic, char* Data);

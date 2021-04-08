@@ -393,6 +393,7 @@ static StackType_t xPOLLstack [1024*6]     EXT_RAM_ATTR;
 StaticTask_t xPOLLBuffer ;
 struct mg_connection *mgc;
 struct mg_mgr mgr;
+TaskHandle_t PollerHandle = NULL;
 
 void mqtt_polling(void *params){
 
@@ -406,12 +407,16 @@ void mqtt_polling(void *params){
 	}
 	mg_mqtt_disconnect(mgc);
 	mg_mgr_free(&mgr);
+	PollerHandle = NULL;
 	vTaskDelete(NULL);
 }
 
 //conectar al broker
-void mqtt_connect(mqtt_sub_pub_opts *pub_opts){
+bool mqtt_connect(mqtt_sub_pub_opts *pub_opts){
 
+	if(PollerHandle ==NULL){
+		return false;
+	}
 	/* Arrancar la conexion*/	
 	mg_mgr_init(&mgr);
 	struct mg_mqtt_opts opts;  // MQTT connection options
@@ -425,9 +430,9 @@ void mqtt_connect(mqtt_sub_pub_opts *pub_opts){
 	mgc = mg_mqtt_connect(&mgr, pub_opts->url, &opts, publisher_fn, &pub_opts->url);	// Create client connection
 	//printf("%s\n",mgr.userdata);
 	
-	xTaskCreateStatic(mqtt_polling,"POLLER",1024*6,NULL,2,xPOLLstack,&xPOLLBuffer); 
+	PollerHandle = xTaskCreateStatic(mqtt_polling,"POLLER",1024*6,NULL,2,xPOLLstack,&xPOLLBuffer); 
 
-	
+	return true;
 }
 
 void mqtt_publisher(void *pvParameters)

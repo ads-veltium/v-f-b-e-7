@@ -11,6 +11,8 @@ String Encipher(String input);
 extern carac_Coms  Coms;
 extern carac_Firebase_Configuration ConfigFirebase;
 
+carac_group ChargingGroup;
+
 static StackType_t xSERVERStack [1024*6]     EXT_RAM_ATTR;
 StaticTask_t xSERVERBuffer ;
 
@@ -19,7 +21,8 @@ typedef struct{
     int size = 0;
 }carac_chargers;
 
-carac_chargers group;
+carac_chargers net_group;
+carac_chargers _group;
 
 void stop_MQTT(){
     udp.close();
@@ -29,6 +32,7 @@ void stop_MQTT(){
 }
 
 void start_udp(){
+
     //Arrancar el servidor udp para escuchar cuando el maestro nos lo ordene
     if(udp.listen(1234)) {
         udp.onPacket([](AsyncUDPPacket packet) {         
@@ -47,9 +51,14 @@ void start_udp(){
 
                 for(int i =0; i < group.size;i++){
                     if(memcmp(group.charger_table[i].name, Desencriptado.c_str(), 9)==0){
+                        //si ya lo tenemos en la lista pero nos envía una llamada, es que se ha reiniciado, le hacemos entrar en el grupo
+                        if(ChargingGroup.GroupMaster){
+                            packet.print(Encipher("Start client").c_str());
+                        }
                         return;
                     }
                 }
+                
                 Serial.printf("El cargador VCD%s con ip %s se ha añadido a la lista\n", Desencriptado.c_str(), packet.remoteIP().toString().c_str());
 
                 ip4addr_aton(packet.remoteIP().toString().c_str(),&group.charger_table[group.size].IP);
@@ -74,8 +83,18 @@ void start_udp(){
     start_MQTT_server();
 }
 
-void start_MQTT_server(){
+void Publisher(void* args){
 
+
+    while(1){
+        mqtt_publish("Topic", "9A");
+        delay(500);
+    }
+}
+
+void start_MQTT_server(){
+    ChargingGroup.GroupMaster =true;
+    ChargingGroup.GroupActive = true;
     udp.broadcast((char*)ConfigFirebase.Device_Id);
     delay(250);
     
@@ -95,11 +114,14 @@ void start_MQTT_server(){
 
     mqtt_connect(&publisher);
 
-    mqtt_subscribe("Lada");
-    mqtt_publish("Lada", "Datos!");
+    mqtt_subscribe("Topic");
+    xTaskCreate(Publisher,"Publisger",1024,NULL,2,NULL);
 }
 
+
+
 void start_MQTT_client(){
+
     mqtt_sub_pub_opts publisher;
     
 	sprintf(publisher.url, "mqtt://%s:1883", ip4addr_ntoa(&Coms.ETH.IP1));
@@ -107,8 +129,9 @@ void start_MQTT_client(){
     publisher.Will_Topic = "NODE_DEAD";
     strcpy(publisher.Will_Message,ConfigFirebase.Device_Id);
 
-    mqtt_connect(&publisher);
-
-    mqtt_subscribe("Lada");
-    mqtt_publish("Lada", "Datos2!");
+    if(mqtt_connect(&publisher)){
+        mqtt_subscribe("Topic");
+        mqtt_publish("Topic", "9A");
+        xTaskCreate(Publisher,"Publisher",1024,NULL,2,NULL);
+    }
 }
