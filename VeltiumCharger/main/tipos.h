@@ -152,7 +152,7 @@ typedef struct{
 	bool   NewData;
 	char   Fw_Update_mode[2];
 	char   autentication_mode[2];
-	uint8  Fase;
+	uint8  Fase =1;
 	uint8  CDP;
 	uint8  inst_current_limit;
 	uint16 potencia_contratada;
@@ -260,7 +260,7 @@ typedef struct{
 
 
 typedef struct{
-	char     name[8];
+	char     name[9];
 	IPAddress     IP;
 	char      HPT[2];
 	uint8_t     Fase;

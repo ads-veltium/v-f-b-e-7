@@ -100,7 +100,7 @@ void Publisher(void* args){
     while(1){
         if(ChargingGroup.SendNewData){
             //Preparar data
-            sprintf(buffer, "%s%s%i%i", ConfigFirebase.Device_Id,Status.HPT_status,Params.Fase,Status.Measures.instant_voltage);
+            sprintf(buffer, "%s%i%s%i", ConfigFirebase.Device_Id,Params.Fase,Status.HPT_status,Status.Measures.instant_voltage);
             
             mqtt_publish(TopicName, (buffer));
             ChargingGroup.SendNewData = false;
