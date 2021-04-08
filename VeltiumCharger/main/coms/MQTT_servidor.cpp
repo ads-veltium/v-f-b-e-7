@@ -2,7 +2,7 @@
 #include "ESPmDNS.h"
 #include "AsyncUDP.h"
 
-AsyncUDP udp;
+AsyncUDP udp EXT_RAM_ATTR;
 void mqtt_server(void *pvParameters);
 void start_MQTT_client(IPAddress remoteIP);
 
@@ -11,22 +11,17 @@ String Encipher(String input);
 
 extern carac_Coms  Coms;
 extern carac_Firebase_Configuration ConfigFirebase;
-
-carac_group ChargingGroup;
+extern carac_Status Status;
+extern carac_Params Params;
+extern carac_group  ChargingGroup;
 
 static StackType_t xSERVERStack [1024*6]     EXT_RAM_ATTR;
 StaticTask_t xSERVERBuffer ;
-
-typedef struct{
-    carac_charger charger_table[10];
-    int size = 0;
-}carac_chargers;
 
 carac_chargers net_group;
 carac_chargers group;
 
 void stop_MQTT(){
-    udp.close();
     SetStopMQTT(true);
     delay(1000);
     SetStopMQTT(false);
@@ -63,7 +58,7 @@ void start_udp(){
                 }
                 
                 Serial.printf("El cargador VCD%s con ip %s se ha añadido a la lista\n", Desencriptado.c_str(), packet.remoteIP().toString().c_str());
-
+                memcpy(net_group.charger_table[net_group.size].name, Desencriptado.c_str(), 9);
                 net_group.charger_table[net_group.size].IP = packet.remoteIP();
                 net_group.size++;              
 
@@ -85,25 +80,35 @@ void start_udp(){
     start_MQTT_server();
 }
 
+
+/*Tarea para publicar los datos del equipo cada segundo*/
 void Publisher(void* args){
-
-
+    char TopicName[14] = "Device_Status";
+    char buffer[250];
+    Params.Fase = 1;
     while(1){
-        mqtt_publish("Topic", "9A");
-        delay(500);
+        if(ChargingGroup.SendNewData){
+            //Preparar data
+            sprintf(buffer, "%s%s%i%i", ConfigFirebase.Device_Id,Status.HPT_status,Params.Fase,Status.Measures.instant_voltage);
+            
+            mqtt_publish(TopicName, (buffer));
+            ChargingGroup.SendNewData = false;
+
+        }
+
+        delay(1000);
     }
+    vTaskDelete(NULL);
 }
 
 void start_MQTT_server(){
     
     ChargingGroup.GroupMaster = true;
     ChargingGroup.GroupActive = true;
-    udp.broadcast((char*)ConfigFirebase.Device_Id);
-    delay(250);
     
 	/* Start MQTT Server using tcp transport */
     xTaskCreateStatic(mqtt_server,"BROKER",1024*6,NULL,PRIORIDAD_MQTT,xSERVERStack,&xSERVERBuffer); 
-	delay(10);	// You need to wait until the task launch is complete.
+	delay(500);	// You need to wait until the task launch is complete.
     Serial.println("Servidor creado, avisando al resto de equipos");
 
     udp.broadcast(Encipher("Start client").c_str());
@@ -116,8 +121,8 @@ void start_MQTT_server(){
     memcpy(publisher.Will_Message,ConfigFirebase.Device_Id, 8);
 
     if(mqtt_connect(&publisher)){
-        mqtt_subscribe("Topic");
-        xTaskCreate(Publisher,"Publisger",1024,NULL,2,NULL);
+        mqtt_subscribe("Device_Status");
+        xTaskCreate(Publisher,"Publisger",4096,NULL,2,NULL);
     }
 }
 
@@ -131,8 +136,7 @@ void start_MQTT_client(IPAddress remoteIP){
     strcpy(publisher.Will_Message,ConfigFirebase.Device_Id);
 
     if(mqtt_connect(&publisher)){
-        mqtt_subscribe("Topic");
-        mqtt_publish("Topic", "9A");
-        xTaskCreate(Publisher,"Publisher",1024,NULL,2,NULL);
+        mqtt_subscribe("Device_Status");
+        xTaskCreate(Publisher,"Publisher",4096,NULL,2,NULL);
     }
 }

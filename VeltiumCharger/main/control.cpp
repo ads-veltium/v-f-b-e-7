@@ -25,11 +25,12 @@ StaticTask_t xFirebaseBuffer ;
 //Variables Firebase
 carac_Update_Status UpdateStatus EXT_RAM_ATTR;
 carac_Firebase_Configuration ConfigFirebase EXT_RAM_ATTR;
-carac_Comands  Comands      EXT_RAM_ATTR;
-carac_Status   Status       EXT_RAM_ATTR;
-carac_Params   Params       EXT_RAM_ATTR;
-carac_Coms     Coms         EXT_RAM_ATTR;
-carac_Contador ContadorExt  EXT_RAM_ATTR;
+carac_Comands  Comands       EXT_RAM_ATTR;
+carac_Status   Status        EXT_RAM_ATTR;
+carac_Params   Params        EXT_RAM_ATTR;
+carac_Coms     Coms          EXT_RAM_ATTR;
+carac_Contador ContadorExt   EXT_RAM_ATTR;
+carac_group    ChargingGroup EXT_RAM_ATTR;
 
 /* VARIABLES BLE */
 uint8 device_ID[16] = {"VCD17010001"};
@@ -506,9 +507,10 @@ void procesar_bloque(uint16 tipo_bloque){
 							serverbleNotCharacteristic(&buffer_rx_local[1], 1, STATUS_HPT_STATUS_CHAR_HANDLE); 
 						}
 					}
-					#ifdef CONNECTED
-						ConfigFirebase.WriteStatus=true;
-					#endif
+#ifdef CONNECTED
+					ChargingGroup.SendNewData  = true;
+					ConfigFirebase.WriteStatus = true;
+#endif
 				}
 
 				//Medidas
@@ -533,9 +535,8 @@ void procesar_bloque(uint16 tipo_bloque){
 						serverbleNotCharacteristic(&buffer_rx_local[24],2,MEASURES_INST_CURRENTB_CHAR_HANDLE);
 						serverbleNotCharacteristic(&buffer_rx_local[34],2,MEASURES_INST_CURRENTC_CHAR_HANDLE);
 					}
-
-
-						ConfigFirebase.WriteStatus=true;
+					ChargingGroup.SendNewData  = true;
+					ConfigFirebase.WriteStatus = true;
 #endif
 				}
 
@@ -550,28 +551,26 @@ void procesar_bloque(uint16 tipo_bloque){
 #ifdef CONNECTED					
 					Status.ICP_status 		= (memcmp(&buffer_rx_local[3],  "CL" ,2) == 0 )? true : false;
 					Status.DC_Leack_status  = (memcmp(&buffer_rx_local[5], "TR" ,2) >  0 )? true : false;
-					Status.Con_Lock   		= (memcmp(&buffer_rx_local[7], "UL",3) == 0 )? true : false;
-					
+					Status.Con_Lock   		= (memcmp(&buffer_rx_local[7], "UL",3) == 0 )? true : false;			
 
-					Status.Measures.max_current_cable=buffer_rx_local[9];					
-					Status.Measures.instant_voltage = buffer_rx_local[16] + (buffer_rx_local[17] * 0x100);
-					Status.Measures.active_power = buffer_rx_local[18] + (buffer_rx_local[19] * 0x100);
-					Status.Measures.active_energy = buffer_rx_local[20] + (buffer_rx_local[21] * 0x100) +(buffer_rx_local[22] * 0x1000) +(buffer_rx_local[23] * 0x10000);
+					Status.Measures.max_current_cable = buffer_rx_local[9];					
+					Status.Measures.instant_voltage   = buffer_rx_local[16] + (buffer_rx_local[17] * 0x100);
+					Status.Measures.active_power      = buffer_rx_local[18] + (buffer_rx_local[19] * 0x100);
+					Status.Measures.active_energy     = buffer_rx_local[20] + (buffer_rx_local[21] * 0x100) +(buffer_rx_local[22] * 0x1000) +(buffer_rx_local[23] * 0x10000);
 					
 					Status.Trifasico= buffer_rx_local[44]==3;
 					
-
 					if(Status.Trifasico){
 						Status.MeasuresB.instant_current = buffer_rx_local[24] + (buffer_rx_local[25] * 0x100);
 						Status.MeasuresB.instant_voltage = buffer_rx_local[26] + (buffer_rx_local[27] * 0x100);
-						Status.MeasuresB.active_power = buffer_rx_local[28] + (buffer_rx_local[29] * 0x100);
-						Status.MeasuresB.active_energy = buffer_rx_local[30] + (buffer_rx_local[31] * 0x100) +(buffer_rx_local[32] * 0x1000) +(buffer_rx_local[33] * 0x10000);
+						Status.MeasuresB.active_power    = buffer_rx_local[28] + (buffer_rx_local[29] * 0x100);
+						Status.MeasuresB.active_energy   = buffer_rx_local[30] + (buffer_rx_local[31] * 0x100) +(buffer_rx_local[32] * 0x1000) +(buffer_rx_local[33] * 0x10000);
 
 
 						Status.MeasuresC.instant_current = buffer_rx_local[34] + (buffer_rx_local[35] * 0x100);
 						Status.MeasuresC.instant_voltage = buffer_rx_local[36] + (buffer_rx_local[37] * 0x100);
-						Status.MeasuresC.active_power = buffer_rx_local[38] + (buffer_rx_local[39] * 0x100);
-						Status.MeasuresC.active_energy = buffer_rx_local[40] + (buffer_rx_local[41] * 0x100) +(buffer_rx_local[42] * 0x1000) +(buffer_rx_local[43] * 0x10000);
+						Status.MeasuresC.active_power    = buffer_rx_local[38] + (buffer_rx_local[39] * 0x100);
+						Status.MeasuresC.active_energy   = buffer_rx_local[40] + (buffer_rx_local[41] * 0x100) +(buffer_rx_local[42] * 0x1000) +(buffer_rx_local[43] * 0x10000);
 
 					}
 

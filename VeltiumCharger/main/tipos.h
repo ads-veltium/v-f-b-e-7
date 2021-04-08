@@ -152,6 +152,7 @@ typedef struct{
 	bool   NewData;
 	char   Fw_Update_mode[2];
 	char   autentication_mode[2];
+	uint8  Fase;
 	uint8  CDP;
 	uint8  inst_current_limit;
 	uint16 potencia_contratada;
@@ -262,9 +263,10 @@ typedef struct{
 }carac_charger;
 
 typedef struct{
-	bool GroupActive = false;
-	bool GroupMaster = false;
+	bool GroupActive  = false;
+	bool GroupMaster  = false;
 	bool ServerActive = false;
+	bool SendNewData  = false;
 }carac_group;
 
 typedef struct{
@@ -277,7 +279,6 @@ typedef struct{
 	bool ESP_UpdateAvailable   = false;
 	bool DescargandoArchivo    = false;
 	bool InstalandoArchivo     = false;
-	
 
 } carac_Update_Status;
 #define RCD_NO_ACTIVO

@@ -334,7 +334,7 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
 			//will->c->fd, (int) will->topic.len, will->topic.ptr, (int) will->payload.len, will->payload.ptr, will->qos, will->retain);
 	}
 	_mg_mqtt_status();
-	printf("Nuevo cargador eliminado, \n\tram total = %i\n\tram interna = %i ", esp_get_free_heap_size(), esp_get_free_internal_heap_size());
+	//printf("Nuevo cargador eliminado, \n\tram total = %i\n\tram interna = %i ", esp_get_free_heap_size(), esp_get_free_internal_heap_size());
 		
   }
   (void) fn_data;
@@ -384,7 +384,7 @@ static void publisher_fn(struct mg_connection *c, int ev, void *ev_data, void *f
 		case MG_EV_MQTT_MSG:{
 			// When we get echo response, print it
 			struct mg_mqtt_message *mm = (struct mg_mqtt_message *) ev_data;
-			printf("Recibido %.*s <- %.*s \n", (int) mm->data.len, mm->data.ptr, (int) mm->topic.len, mm->topic.ptr);
+			//printf("Recibido %.*s <- %.*s \n", (int) mm->data.len, mm->data.ptr, (int) mm->topic.len, mm->topic.ptr);
 			break;
 		}
 	}
@@ -428,7 +428,6 @@ bool mqtt_connect(mqtt_sub_pub_opts *pub_opts){
 	opts.will_message = mg_str(pub_opts->Will_Message);			// And last will message
 
 	mgc = mg_mqtt_connect(&mgr, pub_opts->url, &opts, publisher_fn, &pub_opts->url);	// Create client connection
-	//printf("%s\n",mgr.userdata);
 	
 	PollerHandle = xTaskCreateStatic(mqtt_polling,"POLLER",1024*6,NULL,2,xPOLLstack,&xPOLLBuffer); 
 
@@ -441,8 +440,7 @@ void mqtt_publish(char* Topic, char* Data){
 	mg_mqtt_pub(mgc, &topic, &data);
 }
 
-void mqtt_subscribe(char* Topic)
-{
+void mqtt_subscribe(char* Topic){
 	struct mg_str topic = mg_str(Topic);
 	mg_mqtt_sub(mgc, &topic);							
 }

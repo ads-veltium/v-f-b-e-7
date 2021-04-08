@@ -11,6 +11,11 @@ extern "C" {
 #include "mqtt_server.h"
 }
 
+typedef struct{
+    carac_charger charger_table[10];
+    int size = 0;
+}carac_chargers;
+
 void start_MQTT_server();
 void stop_MQTT();
 void start_udp();
