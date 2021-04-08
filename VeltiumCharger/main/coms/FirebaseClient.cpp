@@ -1,5 +1,4 @@
 #include "VeltFirebase.h"
-#include "COAP_Server.h"
 
 Real_Time_Database *Database = new Real_Time_Database();
 
@@ -28,8 +27,7 @@ uint16 ParseFirmwareVersion(String Texto){
  Client control functions
 *************************/
 bool initFirebaseClient(){
-    //coap_start();
-    //delay(5000);
+
     Serial.println("INIT Firebase Client");
     Database->deviceID = ConfigFirebase.Device_Id;
     if(!Database->LogIn()){

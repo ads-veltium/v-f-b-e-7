@@ -1,4 +1,5 @@
-#include "Internal_Server.h"
+#include "ESPAsyncWebServer.h"
+#include "../control.h"
 
 /*********************** Globals ************************/
 extern carac_Comands                Comands;

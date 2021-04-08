@@ -25,7 +25,6 @@
 #include "cybtldr/cybtldr_parse.h"
 #include "cybtldr/cybtldr_api.h"
 
-
 #include "ble/dev_auth.h"
 #include "Update.h"
 #include <stdio.h>
@@ -33,7 +32,8 @@
 #include "HardwareSerialMOD.h"
 #include <math.h>
 #include "SPIFFS.h"
-//#include "NimBLEDevice.h"
+#include "helpers.h"
+
 
 /*********** Pruebas tar.gz **************/
 //Descomentar para probar el sistema de actualizacion con firmware comprimido

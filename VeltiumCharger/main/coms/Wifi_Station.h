@@ -4,7 +4,6 @@
 #include "Eth_Station.h"
 #include "../control.h"
 #include "FirebaseClient.h"
-#include "Internal_Server.h"
 
 #include <string.h>
 #include <stdlib.h>
@@ -21,7 +20,6 @@
 #include "esp_smartconfig.h"
 #include "../control.h"
 #include "wifi_provisioning/scheme_softap.h"
-#include "MQTT_servidor.h"
 
 void initialise_smartconfig(void);
 void start_wifi(void);

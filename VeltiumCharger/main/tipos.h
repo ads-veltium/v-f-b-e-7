@@ -257,10 +257,21 @@ typedef struct{
 
 }carac_Firebase_Configuration;
 
+
+
 typedef struct{
-	char name[8];
-	IPAddress IP;
+	char     name[8];
+	IPAddress     IP;
+	char      HPT[2];
+	uint8_t     Fase;
+	uint16_t Voltage;
+
 }carac_charger;
+
+typedef struct{
+    carac_charger charger_table[10];
+    int size = 0;
+}carac_chargers;
 
 typedef struct{
 	bool GroupActive  = false;

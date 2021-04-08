@@ -1,10 +1,13 @@
-#include "MQTT_servidor.h"
-#include "ESPmDNS.h"
+#include "../control.h"
 #include "AsyncUDP.h"
 
+extern "C" {
+#include "mongoose.h"
+#include "mqtt_server.h"
+}
+
 AsyncUDP udp EXT_RAM_ATTR;
-void mqtt_server(void *pvParameters);
-void start_MQTT_client(IPAddress remoteIP);
+
 
 String Decipher(String input);
 String Encipher(String input);
@@ -20,6 +23,14 @@ StaticTask_t xSERVERBuffer ;
 
 carac_chargers net_group;
 carac_chargers group;
+
+//Prototipos de funciones externas
+void mqtt_server(void *pvParameters);
+
+//Prototipos de funciones internas
+void start_MQTT_server();
+void start_MQTT_client(IPAddress remoteIP);
+
 
 void stop_MQTT(){
     SetStopMQTT(true);
@@ -127,7 +138,6 @@ void start_MQTT_server(){
 }
 
 void start_MQTT_client(IPAddress remoteIP){
-
     mqtt_sub_pub_opts publisher;
     
 	sprintf(publisher.url, "mqtt://%s:1883", remoteIP.toString().c_str());

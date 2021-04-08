@@ -1,4 +1,5 @@
 #include "mqtt_server.h"
+#include "../group_control.h"
 
 static const char *s_listen_on = "mqtt://0.0.0.0:1883";
 
@@ -384,6 +385,9 @@ static void publisher_fn(struct mg_connection *c, int ev, void *ev_data, void *f
 		case MG_EV_MQTT_MSG:{
 			// When we get echo response, print it
 			struct mg_mqtt_message *mm = (struct mg_mqtt_message *) ev_data;
+			if(!memcmp(mm->topic.ptr, "Device_Status", mm->topic.len)){
+				New_Data(mm->data.ptr);
+			}
 			//printf("Recibido %.*s <- %.*s \n", (int) mm->data.len, mm->data.ptr, (int) mm->topic.len, mm->topic.ptr);
 			break;
 		}

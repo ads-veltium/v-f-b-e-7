@@ -22,6 +22,11 @@ bool wifi_connecting = false;
 
 static uint8 Reintentos = 0;
 
+void stop_MQTT();
+void start_udp();
+void InitServer(void);
+void StopServer(void);
+
 static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data){
     Serial.printf("Evento de wifi %s %i\n", event_base, event_id );
     if (event_base == WIFI_EVENT){
