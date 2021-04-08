@@ -4,7 +4,7 @@
 
 AsyncUDP udp;
 void mqtt_server(void *pvParameters);
-void start_MQTT_client(IPAddress remoteIP)
+void start_MQTT_client(IPAddress remoteIP);
 
 String Decipher(String input);
 String Encipher(String input);
@@ -54,7 +54,9 @@ void start_udp(){
                     if(memcmp(net_group.charger_table[i].name, Desencriptado.c_str(), 9)==0){
                         //si ya lo tenemos en la lista pero nos envía una llamada, es que se ha reiniciado, le hacemos entrar en el grupo
                         if(ChargingGroup.GroupMaster){
-                            udp.sendTo(Encipher("Start client").c_str(),packet.remoteIP(),1234);
+                            AsyncUDPMessage mensaje (13);
+                            mensaje.write((uint8_t*)(Encipher("Start client").c_str()), 13);
+                            udp.sendTo(mensaje,packet.remoteIP(),1234);
                         }
                         return;
                     }
@@ -66,7 +68,7 @@ void start_udp(){
                 net_group.size++;              
 
                 for(int i =0; i< net_group.size;i++){                  
-                    Serial.printf("%s --> %s\n",String(net_group.charger_table[i].name).c_str(), ip4addr_ntoa(&net_group.charger_table[i].IP));
+                    Serial.printf("%s --> %s\n",String(net_group.charger_table[i].name).c_str(), net_group.charger_table[i].IP.toString().c_str());
                 }
             }
             else{
@@ -123,7 +125,7 @@ void start_MQTT_client(IPAddress remoteIP){
 
     mqtt_sub_pub_opts publisher;
     
-	sprintf(publisher.url, "mqtt://%s:1883", remoteIP.toString());
+	sprintf(publisher.url, "mqtt://%s:1883", remoteIP.toString().c_str());
     strcpy(publisher.Client_ID,ConfigFirebase.Device_Id);
     publisher.Will_Topic = "NODE_DEAD";
     strcpy(publisher.Will_Message,ConfigFirebase.Device_Id);
