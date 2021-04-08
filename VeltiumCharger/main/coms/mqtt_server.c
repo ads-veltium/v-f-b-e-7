@@ -386,7 +386,7 @@ static void publisher_fn(struct mg_connection *c, int ev, void *ev_data, void *f
 			// When we get echo response, print it
 			struct mg_mqtt_message *mm = (struct mg_mqtt_message *) ev_data;
 			if(!memcmp(mm->topic.ptr, "Device_Status", mm->topic.len)){
-				New_Data(mm->data.ptr);
+				New_Data(mm->data.ptr, mm->data.len);
 			}
 			//printf("Recibido %.*s <- %.*s \n", (int) mm->data.len, mm->data.ptr, (int) mm->topic.len, mm->topic.ptr);
 			break;

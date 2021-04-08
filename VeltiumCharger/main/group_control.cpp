@@ -1,5 +1,6 @@
 #include "group_control.h"
 #include "control.h"
+#include <string.h>
 
 extern carac_Params Params;
 extern carac_Status Status;
@@ -15,13 +16,13 @@ static void print_table(){
     printf("=============== Grupo de cargadores ===================\n");
     printf("      ID     Fase   HPT   V\n");
     for(int i=0; i< FaseChargers.size;i++){     //comprobar si el cargador ya está almacenado
-        printf("   %s   %i   %s  %i  \n", FaseChargers.charger_table[i].name,FaseChargers.charger_table[i].Fase,FaseChargers.charger_table[i].HPT,FaseChargers.charger_table[i].Voltage);
+        printf("   %s    %i    %s   %i  \n", FaseChargers.charger_table[i].name,FaseChargers.charger_table[i].Fase,FaseChargers.charger_table[i].HPT,FaseChargers.charger_table[i].Voltage);
     }
     printf("=======================================================\n");
 }
 
 //Funcion para procesar los nuevos datos recibidos
-void New_Data(char* Data){
+void New_Data(char* Data, int Data_size){
     printf("New Data!\n");
     if(memcmp(Data, ConfigFirebase.Device_Id, 8)!=0){   //comprobar que no son nuestros propios datos
         char fase = Data[8];
@@ -29,10 +30,14 @@ void New_Data(char* Data){
             printf("Mi fase!\n");
             for(int i=0; i< FaseChargers.size;i++){     //comprobar si el cargador ya está almacenado
                 if(!memcmp(Data, FaseChargers.charger_table[i].name,8)){ //Si el cargador ya existe, actualizar sus datos
-                    FaseChargers.charger_table[i].name[8]='\0';
-                    FaseChargers.charger_table[i].Fase = Params.Fase;
+
                     memcpy(FaseChargers.charger_table[i].HPT,&Data[9],2);
-                    str_to_uint16(&Data[11], &FaseChargers.charger_table[i].Voltage);
+                    
+                    char current[Data_size-11+1];
+                    memcpy( current, &Data[11], Data_size-11 );
+                    current[Data_size-11] = '\0';          
+                    FaseChargers.charger_table[i].Voltage = atoi(current);
+
                     print_table();
                     return;
                 }
@@ -40,6 +45,11 @@ void New_Data(char* Data){
 
             //Si el cargador no está en la tabla, añadirlo
             memcpy(FaseChargers.charger_table[FaseChargers.size].name, Data,8);
+            FaseChargers.charger_table[FaseChargers.size].name[8]='\0';
+            FaseChargers.charger_table[FaseChargers.size].Fase = Params.Fase;
+            memcpy(FaseChargers.charger_table[FaseChargers.size].HPT,&Data[9],2);
+            str_to_uint16(&Data[11], &FaseChargers.charger_table[FaseChargers.size].Voltage);
+
             FaseChargers.size++;
             print_table();
         }

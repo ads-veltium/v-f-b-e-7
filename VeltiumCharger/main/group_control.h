@@ -5,7 +5,7 @@
 extern "C" {
 #endif
 
-void New_Data(char* Data);
+void New_Data(char* Data, int Data_size);
 
 #ifdef __cplusplus
 }
