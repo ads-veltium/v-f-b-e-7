@@ -414,7 +414,7 @@ void mqtt_polling(void *params){
 //conectar al broker
 bool mqtt_connect(mqtt_sub_pub_opts *pub_opts){
 
-	if(PollerHandle ==NULL){
+	if(PollerHandle != NULL){
 		return false;
 	}
 	/* Arrancar la conexion*/	
@@ -433,30 +433,6 @@ bool mqtt_connect(mqtt_sub_pub_opts *pub_opts){
 	PollerHandle = xTaskCreateStatic(mqtt_polling,"POLLER",1024*6,NULL,2,xPOLLstack,&xPOLLBuffer); 
 
 	return true;
-}
-
-void mqtt_publisher(void *pvParameters)
-{
-	//ESP_LOGE(pcTaskGetTaskName(NULL), "started on ");
-	//struct mg_connection *mgc = (struct mg_connection*)pvParameters;
-
-	/* Arrancar el publisher */
-	int32_t counter = 0;
-	struct mg_str topic = mg_str("Koxka");
-	struct mg_str data = mg_str("Elyur");
-
-	while (1) {
-        counter++;
-        if (counter > 1000) {
-            counter=0;            
-            mg_mqtt_pub(mgc, &topic, &data);
-        }
-		vTaskDelay(1);
-		if(StopMQTT){
-			break;
-		}
-	}
-	vTaskDelete(NULL);
 }
 
 void mqtt_publish(char* Topic, char* Data){

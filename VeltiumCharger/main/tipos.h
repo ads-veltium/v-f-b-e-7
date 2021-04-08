@@ -258,7 +258,7 @@ typedef struct{
 
 typedef struct{
 	char name[8];
-	ip4_addr_t IP;
+	IPAddress IP;
 }carac_charger;
 
 typedef struct{
