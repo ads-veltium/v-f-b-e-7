@@ -288,6 +288,10 @@ typedef struct{
 	bool ESP_UpdateAvailable   = false;
 	bool DescargandoArchivo    = false;
 	bool InstalandoArchivo     = false;
+	bool DobleUpdate  		   = false;
+	
+	String ESP_url;
+	String PSOC_url;
 
 } carac_Update_Status;
 #define RCD_NO_ACTIVO

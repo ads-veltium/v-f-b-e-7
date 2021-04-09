@@ -5,8 +5,6 @@ Real_Time_Database *Database = new Real_Time_Database();
 StaticJsonDocument<1024>  Lectura        EXT_RAM_ATTR;
 StaticJsonDocument<1024>  Escritura      EXT_RAM_ATTR;
 
-String url;
-
 //Extern variables
 extern carac_Firebase_Configuration ConfigFirebase;
 extern carac_Comands                Comands;
@@ -298,6 +296,7 @@ bool ReadFirebaseControl(String Path){
  *              Sistema de Actualización
  *****************************************************/
 bool CheckForUpdate(){
+  bool update= false;
   //Check Permisions
   UpdateStatus.BetaPermission = Database->checkPermisions();
   //Check Beta Firmware
@@ -307,22 +306,22 @@ bool CheckForUpdate(){
       uint16 VELT_int_Version=ParseFirmwareVersion(PSOC5_Ver);
 
       if(VELT_int_Version>UpdateStatus.PSOC5_Act_Ver){
-        Serial.println("Actualizando PSOC5 a version beta");
-        Serial.print(PSOC5_Ver);
+        Serial.print("Actualizando PSOC5 a version beta");
+        Serial.println(PSOC5_Ver);
         UpdateStatus.PSOC5_UpdateAvailable= true;
-        url = Lectura["VELT2"]["url"].as<String>();
-        return true;
+        UpdateStatus.PSOC_url = Lectura["VELT2"]["url"].as<String>();
+        update = true;
       }    
 
       String ESP_Ver   = Lectura["VBLE2"]["verstr"].as<String>();
       uint16 ESP_int_Version=ParseFirmwareVersion(ESP_Ver);
 
       if(ESP_int_Version>UpdateStatus.ESP_Act_Ver){
-        Serial.println("Actualizando ESP32 a version beta");
-        Serial.print(ESP_Ver);
+        Serial.print("Actualizando ESP32 a version beta");
+        Serial.println(ESP_Ver);
         UpdateStatus.ESP_UpdateAvailable= true;
-        url = Lectura["VBLE2"]["url"].as<String>();
-        return true;
+        UpdateStatus.ESP_url = Lectura["VBLE2"]["url"].as<String>();
+        update = true;
       }  
     }
   }
@@ -336,25 +335,25 @@ bool CheckForUpdate(){
     uint16 VELT_int_Version=ParseFirmwareVersion(PSOC5_Ver);
 
     if(VELT_int_Version>UpdateStatus.PSOC5_Act_Ver){
-      Serial.println("Actualizando PSOC5 a version ");
-      Serial.print(PSOC5_Ver);
+      Serial.print("Actualizando PSOC5 a version ");
+      Serial.println(PSOC5_Ver);
       UpdateStatus.PSOC5_UpdateAvailable= true;
-      url = Lectura["VELT2"]["url"].as<String>();
-      return true;
+      UpdateStatus.PSOC_url = Lectura["VELT2"]["url"].as<String>();
+      update = true;
     }    
 
     String ESP_Ver   = Lectura["VBLE2"]["verstr"].as<String>();
     uint16 ESP_int_Version=ParseFirmwareVersion(ESP_Ver);
 
     if(ESP_int_Version>UpdateStatus.ESP_Act_Ver){
-      Serial.println("Actualizando ESP32 a version ");
-      Serial.print(ESP_Ver);
+      Serial.print("Actualizando ESP32 a version ");
+      Serial.println(ESP_Ver);
       UpdateStatus.ESP_UpdateAvailable= true;
-      url = Lectura["VBLE2"]["url"].as<String>();
-      return true;
+      UpdateStatus.ESP_url = Lectura["VBLE2"]["url"].as<String>();
+      update = true;
     }  
   }
-  return false;
+  return update;
 }
 
 void DownloadFileTask(void *args){
@@ -362,9 +361,10 @@ void DownloadFileTask(void *args){
 
   File UpdateFile;
   String FileName;
-
+  String url;
   //Si descargamos actualizacion para el PSOC5, debemos crear el archivo en el SPIFFS
   if(UpdateStatus.PSOC5_UpdateAvailable){
+    url=UpdateStatus.PSOC_url;
     SPIFFS.begin(0,"/spiffs",1,"PSOC5");
     FileName="/FreeRTOS_V6.cyacd";
     if(SPIFFS.exists(FileName)){
@@ -373,6 +373,9 @@ void DownloadFileTask(void *args){
     }
     vTaskDelay(pdMS_TO_TICKS(50));
     UpdateFile = SPIFFS.open(FileName, FILE_WRITE);
+  }
+  else{
+    url=UpdateStatus.ESP_url;
   }
 
 
@@ -388,7 +391,7 @@ void DownloadFileTask(void *args){
     stream = DownloadClient.getStreamPtr();
     uint8_t buff[1024] = { 0 };
 
-    if(UpdateStatus.ESP_UpdateAvailable){
+    if(UpdateStatus.ESP_UpdateAvailable && !UpdateStatus.PSOC5_UpdateAvailable){
       if(!Update.begin(total)){
         Serial.println("Error with size");
       };
@@ -417,7 +420,7 @@ void DownloadFileTask(void *args){
     }
   }
 
-  if(UpdateStatus.ESP_UpdateAvailable){
+  if(UpdateStatus.ESP_UpdateAvailable && !UpdateStatus.PSOC5_UpdateAvailable){
     if(Update.end()){	
       Serial.println("Micro Actualizado!"); 
       //reboot
@@ -534,7 +537,7 @@ void Firebase_Conn_Task(void *args){
       }
 
       //Comprobar actualizaciones automaticas
-      if(++UpdateCheckTimeout>8640){ // Unas 12 horas
+      if(++UpdateCheckTimeout>100){ // Unas 12 horas
         if(!memcmp(Status.HPT_status, "A1",2) || !memcmp(Status.HPT_status, "0V",2) ){
           UpdateCheckTimeout=0;
           if(!memcmp(Params.Fw_Update_mode, "AA",2)){
@@ -674,6 +677,10 @@ void Firebase_Conn_Task(void *args){
       break;
 
     case INSTALLING:
+      if(UpdateStatus.DobleUpdate){
+        xTaskCreate(DownloadFileTask,"DOWNLOAD FILE", 4096*2, NULL, 1,NULL);
+        ConnectionState=DOWNLOADING;
+      }
       //Do nothing
       break;
 

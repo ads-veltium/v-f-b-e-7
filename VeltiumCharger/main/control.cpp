@@ -73,7 +73,7 @@ uint8 status_hpt_anterior[2] = {'F','F' };
 uint16 inst_current_anterior = 0x0000;
 uint16 cnt_diferencia = 1;
 
-uint8 version_firmware[11] = {"VBLE2_0504"};	
+uint8 version_firmware[11] = {"VBLE2_0507"};	
 uint8 PSOC5_version_firmware[11] ;		
 
 uint8 systemStarted = 0;
@@ -956,6 +956,7 @@ int Convert_To_Epoch(uint8* data){
  * Update Tasks
  * **********************************************/
 void UpdateTask(void *arg){
+	UpdateStatus.InstalandoArchivo = true;
 	Serial.println("\nComenzando actualizacion del PSOC5!!");
 	
 	int Nlinea =0;
@@ -1025,10 +1026,17 @@ void UpdateTask(void *arg){
 				updateTaskrunning=0;
 				setMainFwUpdateActive(0);
 				UpdateStatus.InstalandoArchivo=0;
-				Serial.println("Reiniciando en 4 segundos!"); 
-				vTaskDelay(pdMS_TO_TICKS(4000));
-				MAIN_RESET_Write(0);						
-				ESP.restart();
+				if(!UpdateStatus.ESP_UpdateAvailable){
+					Serial.println("Reiniciando en 4 segundos!"); 
+					vTaskDelay(pdMS_TO_TICKS(4000));
+					MAIN_RESET_Write(0);						
+					ESP.restart();
+				}
+				else{
+					UpdateStatus.PSOC5_UpdateAvailable = false;
+					UpdateStatus.DobleUpdate 		   = true;
+				}
+
 				vTaskDelete(NULL);		
 			}
 			
