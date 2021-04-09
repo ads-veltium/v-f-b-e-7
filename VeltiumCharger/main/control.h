@@ -5,7 +5,7 @@
 #define USE_COMS
 #define USE_DRACO_BLE
 
-//#define DEVELOPMENT
+#define DEVELOPMENT
 //#define DOUBLE
 
 #include "Arduino.h"
@@ -104,7 +104,7 @@ void UpdateESP();
 void modifyCharacteristic(uint8* data, uint16 len, uint16 attrHandle);
 
 void SendToPSOC5(uint8 data, uint16 attrHandle);
-void SendToPSOC5(uint8 *data, uint16 len, uint16 attrHandle);
-void SendToPSOC5(uint16 attrHandle);
+void SendToPSOC5(char *data, uint16 len, uint16 attrHandle);
+
 uint32 GetStateTime(TickType_t xStart);
 #endif // __CONTROL_MAIN

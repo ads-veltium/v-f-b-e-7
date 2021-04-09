@@ -31,6 +31,7 @@ carac_Params   Params        EXT_RAM_ATTR;
 carac_Coms     Coms          EXT_RAM_ATTR;
 carac_Contador ContadorExt   EXT_RAM_ATTR;
 carac_group    ChargingGroup EXT_RAM_ATTR;
+carac_chargers FaseChargers  EXT_RAM_ATTR;
 
 /* VARIABLES BLE */
 uint8 device_ID[16] = {"VCD17010001"};
@@ -423,7 +424,6 @@ void procesar_bloque(uint16 tipo_bloque){
 		case BLOQUE_INICIALIZACION:
 			if (!systemStarted && buffer_rx_local[239]==0x36) {
 				memcpy(device_ID, buffer_rx_local, 11);
-				//esp_ble_gap_set_device_name((const char *)device_ID);
 				changeAdvName(device_ID);
 				printf("Change name set device name to %s\r\n",device_ID);
 				modifyCharacteristic(device_ID, 11, VCD_NAME_USERS_CHARGER_DEVICE_ID_CHAR_HANDLE);
@@ -451,6 +451,7 @@ void procesar_bloque(uint16 tipo_bloque){
 				luminosidad=buffer_rx_local[231];
 				modifyCharacteristic(&buffer_rx_local[232], 1, DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE);
 				modifyCharacteristic(&buffer_rx_local[233], 1, MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
+				modifyCharacteristic(&buffer_rx_local[234], 2, COMS_FW_UPDATEMODE_CHAR_HANDLE);
 				modifyCharacteristic(&buffer_rx_local[236], 1, COMS_CONFIGURATION_WIFI_ON);
 				modifyCharacteristic(&buffer_rx_local[237], 1, COMS_CONFIGURATION_ETH_ON);						
 
@@ -465,7 +466,7 @@ void procesar_bloque(uint16 tipo_bloque){
 					Comands.desired_current = buffer_rx_local[233];
 					Coms.Wifi.ON = buffer_rx_local[236];
 					Coms.ETH.ON = buffer_rx_local[237];	
-					Coms.ETH.DHCP = buffer_rx_local[238];		
+					Coms.ETH.DHCP = buffer_rx_local[238];	
 
 					//Params.Sensor_Conectado = (buffer_rx_local[232]  >> 0) & 0x01;
 					//Params.CDP_On           = (buffer_rx_local[232]  >> 1) & 0x01;
@@ -492,7 +493,7 @@ void procesar_bloque(uint16 tipo_bloque){
 				modifyCharacteristic(buffer_rx_local, 1, LED_LUMIN_COLOR_LUMINOSITY_LEVEL_CHAR_HANDLE);
 
 				luminosidad = buffer_rx_local[0];
-
+				ChargingGroup.SendNewData  = true;
 				//Hilo piloto
 				if((memcmp(&buffer_rx_local[1], status_hpt_anterior, 2) != 0))
 				{
@@ -814,25 +815,14 @@ void procesar_bloque(uint16 tipo_bloque){
 			Serial.print("DHCP ON:");
 			Serial.println(Coms.ETH.DHCP);
 		}
-		/*else if(COMS_CONFIGURATION_LAN_IP1){
-			
-			Coms.ETH.IP1[0] =  buffer_rx_local[0];
-			Coms.ETH.IP1[1] =  buffer_rx_local[1];
-			Coms.ETH.IP1[2] =  buffer_rx_local[2];
-			Coms.ETH.IP1[3] =  buffer_rx_local[3];
-			Serial.print("Direccion IP1 Recibida: ");
-			Serial.println(Coms.ETH.IP1.toString());
-			modifyCharacteristic(buffer_rx_local, 4, COMS_CONFIGURATION_LAN_IP1);
+		else if(COMS_FW_UPDATEMODE_CHAR_HANDLE == tipo_bloque){
+			memcpy(Params.Fw_Update_mode,buffer_rx_local,2);
+			Serial.printf("Nuevo fw_update:%c %c \n", buffer_rx_local[0],buffer_rx_local[1]);
 		}
-		else if(COMS_CONFIGURATION_LAN_IP2== tipo_bloque){
-			Coms.ETH.IP2[0] =  buffer_rx_local[0];
-			Coms.ETH.IP2[1] =  buffer_rx_local[1];
-			Coms.ETH.IP2[2] =  buffer_rx_local[2];
-			Coms.ETH.IP2[3] =  buffer_rx_local[3];
-			Serial.print("Direccion IP1 Recibida: ");
-			Serial.println(Coms.ETH.IP2.toString());
-			modifyCharacteristic(buffer_rx_local, 4, COMS_CONFIGURATION_LAN_IP2);
-		}*/
+		else if(COMS_CONFIGURATION_LAN_IP == tipo_bloque ){
+			Serial.print("Direccion IP Eth Recibida: ");
+			modifyCharacteristic(buffer_rx_local, 4, COMS_CONFIGURATION_LAN_IP);
+		}
 	#endif
 }
  
@@ -1097,7 +1087,7 @@ void SendToPSOC5(uint8 data, uint16 attrHandle){
   controlSendToSerialLocal(buffer_tx_local, 5);
 }
 
-void SendToPSOC5(uint8 *data, uint16 len, uint16 attrHandle){
+void SendToPSOC5(char *data, uint16 len, uint16 attrHandle){
 
   cnt_timeout_tx = TIMEOUT_TX_BLOQUE2;
   buffer_tx_local[0] = HEADER_TX;
@@ -1106,34 +1096,6 @@ void SendToPSOC5(uint8 *data, uint16 len, uint16 attrHandle){
   buffer_tx_local[3] = len; //size
   memcpy(&buffer_tx_local[4],data,len);
   controlSendToSerialLocal(buffer_tx_local, len+4);
-
 }
-
-void SendToPSOC5(uint16 attrHandle){
-  uint8 data[20] = {0};
-  uint8 len;
-
-  switch(attrHandle){
-
-	  case CONFIGURACION_AUTENTICATION_MODES_CHAR_HANDLE:
-	  	len = 2;
-	    data[0] =Params.autentication_mode[0];
-		data[1] =Params.autentication_mode[1];
-	  break;
-
-	  default:
-	  return;
-  }
-
-  
-  cnt_timeout_tx = TIMEOUT_TX_BLOQUE2;
-  buffer_tx_local[0] = HEADER_TX;
-  buffer_tx_local[1] = (uint8)(attrHandle >> 8);
-  buffer_tx_local[2] = (uint8)(attrHandle);
-  buffer_tx_local[3] = len; //size
-  memcpy(&buffer_tx_local[4],data,len);
-  controlSendToSerialLocal(buffer_tx_local, len+4);
-}
-
 #endif
 

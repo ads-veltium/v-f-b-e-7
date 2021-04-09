@@ -364,6 +364,22 @@ void mqtt_server(void *pvParameters){
 	vTaskDelete(NULL);
 }
 
+//Controlar que equipos siguen con vida y cuales no
+static void Ping_Control(char* Data){
+	/*for(int i =0; i < net_group.size;i++){
+		if(memcmp(net_group.charger_table[i].name, Desencriptado.c_str(), 9)==0){
+			//si ya lo tenemos en la lista pero nos envía una llamada, es que se ha reiniciado, le hacemos entrar en el grupo
+			if(ChargingGroup.GroupMaster){
+				AsyncUDPMessage mensaje (13);
+				mensaje.write((uint8_t*)(Encipher("Start client").c_str()), 13);
+				udp.sendTo(mensaje,packet.remoteIP(),1234);
+			}
+			return;
+		}
+	}*/
+
+}
+
 
 static void publisher_fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
 	switch(ev){
@@ -387,6 +403,9 @@ static void publisher_fn(struct mg_connection *c, int ev, void *ev_data, void *f
 			struct mg_mqtt_message *mm = (struct mg_mqtt_message *) ev_data;
 			if(!memcmp(mm->topic.ptr, "Device_Status", mm->topic.len)){
 				New_Data(mm->data.ptr, mm->data.len);
+			}
+			else if(!memcmp(mm->topic.ptr, "Ping", mm->topic.len)){
+				Ping_Control(mm->data.ptr);
 			}
 			//printf("Recibido %.*s <- %.*s \n", (int) mm->data.len, mm->data.ptr, (int) mm->topic.len, mm->topic.ptr);
 			break;

@@ -5,9 +5,10 @@ extern "C" {
 #include "mongoose.h"
 #include "mqtt_server.h"
 }
+bool check_in_group(const char* ID, carac_chargers group);
+bool add_to_group(const char* ID, IPAddress IP, carac_chargers group);
 
 AsyncUDP udp EXT_RAM_ATTR;
-
 
 String Decipher(String input);
 String Encipher(String input);
@@ -22,7 +23,6 @@ static StackType_t xSERVERStack [1024*6]     EXT_RAM_ATTR;
 StaticTask_t xSERVERBuffer ;
 
 carac_chargers net_group;
-carac_chargers group;
 
 //Prototipos de funciones externas
 void mqtt_server(void *pvParameters);
@@ -31,11 +31,60 @@ void mqtt_server(void *pvParameters);
 void start_MQTT_server();
 void start_MQTT_client(IPAddress remoteIP);
 
-
 void stop_MQTT(){
     SetStopMQTT(true);
     delay(1000);
     SetStopMQTT(false);
+    ChargingGroup.GroupActive = false;
+}
+
+
+//Añadir un cargador a un equipo
+bool add_to_group(const char* ID, IPAddress IP, carac_chargers group){
+    if(group.size < sizeof(group.charger_table)){
+        if(!check_in_group(ID,group)){
+            memcpy(group.charger_table[group.size].name, ID, 9);
+            group.charger_table[group.size].IP = IP;
+            group.size++;
+            return true;
+        }
+    }
+    return false;
+}
+
+//comprobar si un cargador está almacenado en las tablas de equipos
+bool check_in_group(const char* ID, carac_chargers group){
+    for(int j=0;j < group.size;j++){
+        if(!memcmp(ID,  group.charger_table[j].name,8)){
+            return true;
+        }
+    }
+    return false;
+}
+
+//Enviar mensajes solo a los miembros del grupo
+void broadcast_a_grupo(char* Mensaje){
+    AsyncUDPMessage mensaje (13);
+    mensaje.write((uint8_t*)(Encipher(Mensaje).c_str()), 13);
+
+    //QUITAR!!!!!!!!!!!!!!!!!
+    memcpy(ChargingGroup.group_chargers.charger_table[0].name, "FT63D732",8);
+    memcpy(ChargingGroup.group_chargers.charger_table[1].name, "31B70630",8);
+    memcpy(ChargingGroup.group_chargers.charger_table[2].name, "1SDVD734",8);
+    memcpy(ChargingGroup.group_chargers.charger_table[3].name, "J4D9M1FT",8);
+    //memcpy(ChargingGroup.group_chargers.charger_table[4].name, "31B70630",8);
+    //memcpy(ChargingGroup.group_chargers.charger_table[5].name, "J3P10DNR",8);
+    ChargingGroup.group_chargers.size = 4;
+
+    for(int i =0; i < net_group.size;i++){
+        for(int j=0;j < ChargingGroup.group_chargers.size;j++){
+            if(check_in_group(net_group.charger_table[i].name, ChargingGroup.group_chargers)){
+
+                udp.sendTo(mensaje, net_group.charger_table[i].IP,1234);
+                ChargingGroup.group_chargers.charger_table[j].IP = net_group.charger_table[i].IP; 
+            }
+        }
+    }
 }
 
 void start_udp(){
@@ -55,31 +104,26 @@ void start_udp(){
                 if(packet.isBroadcast()){                   
                     packet.print(Encipher(String(ConfigFirebase.Device_Id)).c_str());
                 }
-
-                for(int i =0; i < net_group.size;i++){
-                    if(memcmp(net_group.charger_table[i].name, Desencriptado.c_str(), 9)==0){
-                        //si ya lo tenemos en la lista pero nos envía una llamada, es que se ha reiniciado, le hacemos entrar en el grupo
-                        if(ChargingGroup.GroupMaster){
+          
+                if(check_in_group(Desencriptado.c_str(), net_group)){
+                    //si ya lo tenemos en la lista pero nos envía una llamada, es que se ha reiniciado, comprobamos si está en el grupo
+                    if(ChargingGroup.GroupMaster){
+                        if(check_in_group(Desencriptado.c_str(), ChargingGroup.group_chargers)){
                             AsyncUDPMessage mensaje (13);
                             mensaje.write((uint8_t*)(Encipher("Start client").c_str()), 13);
                             udp.sendTo(mensaje,packet.remoteIP(),1234);
                         }
-                        return;
                     }
-                }
-                
-                Serial.printf("El cargador VCD%s con ip %s se ha añadido a la lista\n", Desencriptado.c_str(), packet.remoteIP().toString().c_str());
-                memcpy(net_group.charger_table[net_group.size].name, Desencriptado.c_str(), 9);
-                net_group.charger_table[net_group.size].IP = packet.remoteIP();
-                net_group.size++;              
-
-                for(int i =0; i< net_group.size;i++){                  
-                    Serial.printf("%s --> %s\n",String(net_group.charger_table[i].name).c_str(), net_group.charger_table[i].IP.toString().c_str());
-                }
+                    return;
+                }    
+                Serial.printf("El cargador VCD%s con ip %s se ha añadido a la lista\n", Desencriptado.c_str(), packet.remoteIP().toString().c_str());  
+                add_to_group(Desencriptado.c_str(), packet.remoteIP(), net_group);
             }
             else{
                 if(!memcmp(Desencriptado.c_str(), "Start client", 13)){
-                    start_MQTT_client(packet.remoteIP());
+                    if(!ChargingGroup.GroupActive && !ChargingGroup.GroupMaster){
+                        start_MQTT_client(packet.remoteIP());
+                    }
                 }
             }            
         });
@@ -90,7 +134,6 @@ void start_udp(){
     delay(2000);
     start_MQTT_server();
 }
-
 
 /*Tarea para publicar los datos del equipo cada segundo*/
 void Publisher(void* args){
@@ -108,6 +151,9 @@ void Publisher(void* args){
         }
 
         delay(1000);
+        if(!ChargingGroup.GroupMaster){ //Avisar al maestro de que seguimos aqui
+            mqtt_publish("Ping", ConfigFirebase.Device_Id);
+        }
     }
     vTaskDelete(NULL);
 }
@@ -119,31 +165,32 @@ void start_MQTT_server(){
     
 	/* Start MQTT Server using tcp transport */
     xTaskCreateStatic(mqtt_server,"BROKER",1024*6,NULL,PRIORIDAD_MQTT,xSERVERStack,&xSERVERBuffer); 
-	delay(500);	// You need to wait until the task launch is complete.
+	delay(500);
     Serial.println("Servidor creado, avisando al resto de equipos");
 
-    udp.broadcast(Encipher("Start client").c_str());
+    broadcast_a_grupo("Start client");
     mqtt_sub_pub_opts publisher;
     
-	sprintf(publisher.url, "mqtt://%s:1883", ip4addr_ntoa(&Coms.ETH.IP1));
-    
+	sprintf(publisher.url, "mqtt://%s:1883", ip4addr_ntoa(&Coms.ETH.IP));
     memcpy(publisher.Client_ID,ConfigFirebase.Device_Id, 8);
-    publisher.Will_Topic = "NODE_DEAD";
     memcpy(publisher.Will_Message,ConfigFirebase.Device_Id, 8);
+    publisher.Will_Topic = "NODE_DEAD";
 
     if(mqtt_connect(&publisher)){
         mqtt_subscribe("Device_Status");
+        mqtt_subscribe("Ping");
         xTaskCreate(Publisher,"Publisger",4096,NULL,2,NULL);
     }
 }
 
 void start_MQTT_client(IPAddress remoteIP){
+    ChargingGroup.GroupActive = true;
     mqtt_sub_pub_opts publisher;
     
 	sprintf(publisher.url, "mqtt://%s:1883", remoteIP.toString().c_str());
     strcpy(publisher.Client_ID,ConfigFirebase.Device_Id);
-    publisher.Will_Topic = "NODE_DEAD";
     strcpy(publisher.Will_Message,ConfigFirebase.Device_Id);
+    publisher.Will_Topic = "NODE_DEAD";
 
     if(mqtt_connect(&publisher)){
         mqtt_subscribe("Device_Status");

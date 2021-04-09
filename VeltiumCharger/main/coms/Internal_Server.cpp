@@ -223,9 +223,7 @@ void InitServer(void) {
     server.on("/get", HTTP_GET_A, [](AsyncWebServerRequest *request){
         memcpy(Coms.Wifi.AP,request->getParam(AP)->value().c_str(),32);
         Coms.Wifi.Pass = request->getParam(WIFI_PWD)->value();
-        //Coms.ETH.IP1 = request->getParam(IP1)->value().toInt();
-        //Coms.ETH.IP2 = request->getParam(IP2)->value().toInt();
-        //Coms.ETH.Gateway = request->getParam(GATEWAY)->value().toInt();
+        //Coms.ETH.IP = request->getParam(IP1)->value().toInt();       //Coms.ETH.Gateway = request->getParam(GATEWAY)->value().toInt();
         //Coms.ETH.Mask = request->getParam(MASK)->value().toInt();
         Coms.GSM.APN = request->getParam(APN)->value();
         Coms.GSM.Pass = request->getParam(GSM_PWD)->value();
@@ -237,8 +235,7 @@ void InitServer(void) {
 
         Serial.println((char*)Coms.Wifi.AP);
         Serial.println(Coms.Wifi.Pass);
-        Serial.println(ip4addr_ntoa(&Coms.ETH.IP1) );
-        Serial.println(ip4addr_ntoa(&Coms.ETH.IP2));
+        Serial.println(ip4addr_ntoa(&Coms.ETH.IP) );
         Serial.println(ip4addr_ntoa(&Coms.ETH.Gateway));
         Serial.println(ip4addr_ntoa(&Coms.ETH.Mask));
         Serial.println(Coms.GSM.APN);

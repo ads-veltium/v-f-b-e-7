@@ -176,16 +176,12 @@ typedef struct{
 	bool Internet = false;
 	bool Wifi_Perm = false;
 
-	ip4_addr_t IP1;
-	ip4_addr_t IP2;
+	ip4_addr_t IP;
 	ip4_addr_t Gateway;
 	ip4_addr_t Mask;
 
 	uint8_t   State;
 	uint8_t   Puerto;
-
-	bool conectado1 = false;
-	bool conectado2 = false;
 	bool conectado = false;
 }carac_ETH;
 
@@ -278,6 +274,8 @@ typedef struct{
 	bool GroupMaster  = false;
 	bool ServerActive = false;
 	bool SendNewData  = false;
+
+	carac_chargers group_chargers;
 }carac_group;
 
 typedef struct{
@@ -601,8 +599,7 @@ typedef struct{
 #define COMS_CONFIGURATION_WIFI_SSID_2	   (0x00B5u)
 #define COMS_CONFIGURATION_WIFI_START_PROV (0x00B7u)
 #define COMS_CONFIGURATION_ETH_ON	       (0x00B9u)
-#define COMS_CONFIGURATION_LAN_IP1	       (0x00BBu)
-#define COMS_CONFIGURATION_LAN_IP2	       (0x00BDu)
+#define COMS_CONFIGURATION_LAN_IP	       (0x00BBu)
 #define COMS_CONFIGURATION_ETH_DHCP        (0x00BFu)
 #define MEASURES_INST_CURRENTB_CHAR_HANDLE (0x00C1u)
 #define MEASURES_INST_CURRENTC_CHAR_HANDLE (0x00C3u)

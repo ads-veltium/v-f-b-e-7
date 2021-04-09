@@ -40,7 +40,6 @@ bool initFirebaseClient(){
     #endif
     project += "/";
     Database->begin(project, ConfigFirebase.Device_Db_ID);
-    Serial.printf("Usuario tiene permiso de firmware beta : %s \n", UpdateStatus.BetaPermission ? "Si" : "No");
     
     return true;
 
@@ -141,11 +140,9 @@ bool WriteFirebaseComs(String Path){
       Escritura["wifi/ssid"]    = Coms.Wifi.AP;
       Escritura["eth/on"]    = Coms.ETH.ON;
       Escritura["eth/auto"]    = Coms.ETH.Auto;
-    //Escritura["wifi/passwd"] = Coms.Wifi.Pass;
 
     if(Coms.ETH.Auto){
-      Escritura["eth/ip1"]      = ip4addr_ntoa(&Coms.ETH.IP1);
-      Escritura["eth/ip2"]      = ip4addr_ntoa(&Coms.ETH.IP2);
+      Escritura["eth/ip1"]      = ip4addr_ntoa(&Coms.ETH.IP);
       Escritura["eth/gateway"]  = ip4addr_ntoa(&Coms.ETH.Gateway);
       Escritura["eth/mask"]     = ip4addr_ntoa(&Coms.ETH.Mask);
     }
@@ -211,11 +208,9 @@ bool ReadFirebaseComs(String Path){
       Coms.ETH.Auto = Lectura["eth"]["auto"];
       
       /*if(!Coms.ETH.Auto){
-        //Coms.RestartConection = (Coms.ETH.IP1 != addr) ? true : Coms.RestartConection; //Si el valor no es le mismo que el que tenemos acutalmente, reincia la conexion para aplicarlo
-        Coms.ETH.IP1     = ip4addr_aton(Lectura["eth"]["ip1"].as<char*>());
+        //Coms.RestartConection = (Coms.ETH.IP != addr) ? true : Coms.RestartConection; //Si el valor no es le mismo que el que tenemos acutalmente, reincia la conexion para aplicarlo
+        Coms.ETH.IP     = ip4addr_aton(Lectura["eth"]["ip1"].as<char*>());
        
-        Coms.ETH.IP2     = ip4addr_aton(Lectura["eth"]["ip2"].as<char*>());
-
         Coms.ETH.Gateway = ip4addr_aton(Lectura["eth"]["gateway"].as<char*>());
 
         Coms.ETH.Mask    = ip4addr_aton(Lectura["eth"]["mask"].as<char*>());
@@ -248,26 +243,13 @@ bool ReadFirebaseParams(String Path){
 
       if(memcmp(Params.autentication_mode,Lectura["auth_mode"].as<String>().c_str(),2)){
         memcpy(Params.autentication_mode, Lectura["auth_mode"].as<String>().c_str(),2);
-        SendToPSOC5(CONFIGURACION_AUTENTICATION_MODES_CHAR_HANDLE);
+        SendToPSOC5(Params.autentication_mode,2,CONFIGURACION_AUTENTICATION_MODES_CHAR_HANDLE);
       }     
-        
-      /*if(Lectura["inst_curr_limit"] != Params.inst_current_limit){
-        Params.inst_current_limit  = Lectura["inst_curr_limit"];
-        SendToPSOC5(Params.inst_current_limit, MEASURES_INSTALATION_CURRENT_LIMIT_CHAR_HANDLE);
-      }
-      
-      if(Params.potencia_contratada != Lectura["contract_power"]){
-        Params.potencia_contratada = Lectura["contract_power"];
-        SendToPSOC5(Params.potencia_contratada, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_CHAR_HANDLE);
-      }
-      if(Params.CDP != Lectura["dpc"]){
-        Params.CDP = Lectura["dpc"];
-        SendToPSOC5(Params.CDP, DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE);
-      }*/
       
       if(memcmp(Params.Fw_Update_mode, Lectura["fw_auto"].as<String>().c_str(),2)!=0){
+        Serial.println("Nuevo modo de autenticacion detectado!");
         memcpy(Params.Fw_Update_mode, Lectura["fw_auto"].as<String>().c_str(),2);
-        SendToPSOC5((uint8* )Params.Fw_Update_mode, 2, COMS_FW_UPDATEMODE_CHAR_HANDLE);
+        SendToPSOC5(Params.Fw_Update_mode, 2, COMS_FW_UPDATEMODE_CHAR_HANDLE);
       }
 
       
@@ -349,6 +331,8 @@ bool CheckForUpdate(){
   //Check Normal Firmware
   if(Database->Send_Command("/prod/fw/prod/",&Lectura, READ_FW)){
     String PSOC5_Ver   = Lectura["VELT2"]["verstr"].as<String>();
+    Serial.println(PSOC5_Ver);
+    Serial.println(UpdateStatus.PSOC5_Act_Ver);
     uint16 VELT_int_Version=ParseFirmwareVersion(PSOC5_Ver);
 
     if(VELT_int_Version>UpdateStatus.PSOC5_Act_Ver){
@@ -549,14 +533,15 @@ void Firebase_Conn_Task(void *args){
         null_count=0;
       }
 
-      //Comprobar actualizaciones
-      //TODO: Comprobar el estado del Hilo Piloto y horas inactivo
+      //Comprobar actualizaciones automaticas
       if(++UpdateCheckTimeout>8640){ // Unas 12 horas
+        if(!memcmp(Status.HPT_status, "A1",2) || !memcmp(Status.HPT_status, "0V",2) ){
           UpdateCheckTimeout=0;
-          Serial.println("Comprobando firmware nuevo");
           if(!memcmp(Params.Fw_Update_mode, "AA",2)){
+            Serial.println("Comprobando firmware nuevo");
             ConnectionState = UPDATING;
             break;
+          }
         }
       }
       
@@ -610,11 +595,14 @@ void Firebase_Conn_Task(void *args){
 
         //Comprobar actualizaciones
         else if(Comands.fw_update){
-          Serial.println("Starting update sistem");
-          Comands.fw_update=0;
-          ConnectionState = UPDATING;
-          break;
+          if(!memcmp(Status.HPT_status, "A1",2) || !memcmp(Status.HPT_status, "0V",2) ){
+            UpdateCheckTimeout=0;
+            Comands.fw_update=0;
+            ConnectionState = UPDATING;
+            break;
+          }
         }
+        
 
         //Mientras hay un cliente conectado y nada que hacer, miramos control
         ConnectionState=READING_CONTROL;
@@ -668,6 +656,7 @@ void Firebase_Conn_Task(void *args){
 
     /*********************** UPDATING states **********************/
     case UPDATING:
+      Serial.println("Comprobando firmware nuevo");
       if(CheckForUpdate()){
         xTaskCreate(DownloadFileTask,"DOWNLOAD FILE", 4096*2, NULL, 1,NULL);
         ConnectionState=DOWNLOADING;

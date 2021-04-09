@@ -410,7 +410,7 @@ void Eth_Loop(){
 					buffer_contador[6] = (uint8)((ContadorExt.DomesticCurrentC >> 8) & 0x00FF);
 				}
 
-				SendToPSOC5(buffer_contador,7,MEASURES_EXTERNAL_COUNTER);
+				SendToPSOC5((char*)buffer_contador,7,MEASURES_EXTERNAL_COUNTER);
 			}
         break;
 
