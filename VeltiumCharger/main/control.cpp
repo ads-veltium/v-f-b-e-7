@@ -422,7 +422,7 @@ void procesar_bloque(uint16 tipo_bloque){
 
 	switch(tipo_bloque){
 		case BLOQUE_INICIALIZACION:
-			if (!systemStarted && (buffer_rx_local[239]==0x36 || buffer_rx_local[238]==0x36) {
+			if (!systemStarted && buffer_rx_local[239]==0x36) {
 				memcpy(device_ID, buffer_rx_local, 11);
 				changeAdvName(device_ID);
 				printf("Change name set device name to %s\r\n",device_ID);
@@ -466,11 +466,11 @@ void procesar_bloque(uint16 tipo_bloque){
 					Comands.desired_current = buffer_rx_local[233];
 					Coms.Wifi.ON = buffer_rx_local[236];
 					Coms.ETH.ON = buffer_rx_local[237];	
-					Coms.ETH.DHCP = buffer_rx_local[238];	
+				#ifdef GROUPS
+					Coms.ETH.DHCP = buffer_rx_local[240];	
 
-					//Params.Sensor_Conectado = (buffer_rx_local[232]  >> 0) & 0x01;
-					//Params.CDP_On           = (buffer_rx_local[232]  >> 1) & 0x01;
-					//Params.Ubicacion_Sensor = (buffer_rx_local[232]  >> 2) & 0x03;
+				#endif
+
 				#endif
 
 				startSystem();
@@ -790,10 +790,6 @@ void procesar_bloque(uint16 tipo_bloque){
 	else if (DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE== tipo_bloque){
 		modifyCharacteristic(buffer_rx_local, 1, DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE);
 		#ifdef CONNECTED
-			//Caution!!!!!	
-			//Params.Sensor_Conectado = (buffer_rx_local[0]  >> 0) & 0x01;
-			//Params.CDP_On           = (buffer_rx_local[0]  >> 1) & 0x01;
-			//Params.Ubicacion_Sensor = (buffer_rx_local[0]  >> 2) & 0x03;
 			Params.Tipo_Sensor        = (buffer_rx_local[0]  >> 3) & 0x01;
 			Params.CDP				  = buffer_rx_local[0];
 		#endif
@@ -812,11 +808,13 @@ void procesar_bloque(uint16 tipo_bloque){
 			Serial.println(Coms.ETH.ON);
 			modifyCharacteristic(buffer_rx_local,  1, COMS_CONFIGURATION_ETH_ON);
 		}
+	#ifdef GROUPS
 		else if(COMS_CONFIGURATION_ETH_DHCP== tipo_bloque){
 			Coms.ETH.DHCP    =  buffer_rx_local[0];
 			Serial.print("DHCP ON:");
 			Serial.println(Coms.ETH.DHCP);
 		}
+	#endif
 		else if(COMS_FW_UPDATEMODE_CHAR_HANDLE == tipo_bloque){
 			memcpy(Params.Fw_Update_mode,buffer_rx_local,2);
 			Serial.printf("Nuevo fw_update:%c %c \n", buffer_rx_local[0],buffer_rx_local[1]);

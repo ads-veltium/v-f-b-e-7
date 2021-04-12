@@ -324,12 +324,7 @@ void Eth_Loop(){
     switch (Coms.ETH.State){
         case APAGADO:
             if(Coms.ETH.ON){
-#ifndef DOUBLE
                 initialize_ethernet();
-#else
-                initialize_ethernet_1();
-                initialize_ethernet_2();
-#endif
                 Coms.ETH.State = CONNECTING;
                 xStart = xTaskGetTickCount();
             }
@@ -337,7 +332,9 @@ void Eth_Loop(){
         case CONNECTING:
             if(eth_connected){
                 Coms.ETH.State = CONECTADO;
+            #ifdef GROUPS
                 start_udp();
+            #endif
                 xStart = xTaskGetTickCount();
                 if(!Coms.ETH.DHCP){
                     if(ComprobarConexion()){
@@ -346,10 +343,12 @@ void Eth_Loop(){
                     }
                 }
             }
-            /*else if(GetStateTime(xStart) > 60000){
-                Coms.ETH.State = KILLING;
-                kill_ethernet();
-            }*/
+            #ifdef GROUPS
+                else if(GetStateTime(xStart) > 60000){
+                    Coms.ETH.State = KILLING;
+                    kill_ethernet();
+                }
+            #endif
 
             else if(!Coms.ETH.ON){
                 stop_ethernet();
@@ -360,6 +359,7 @@ void Eth_Loop(){
         break;
 
         case CONECTADO:
+            #ifdef GROUPS
             if(Params.Tipo_Sensor && !finding){
                 if(GetStateTime(xStart) > 60000){
                     Serial.println("Iniciando fase busqueda ");
@@ -367,8 +367,10 @@ void Eth_Loop(){
                     finding = true;
                 }
             }
+            #endif
 
             if(!Coms.ETH.ON){
+            #ifdef GROUPS
                 if(Coms.ETH.DHCP){
                     kill_ethernet();
                     Coms.ETH.DHCP  = 0;
@@ -376,9 +378,12 @@ void Eth_Loop(){
                     Coms.ETH.State = KILLING;
                 }
                 else{
+            #endif
                     stop_ethernet();
                     Coms.ETH.State = DISCONNECTING;
+            #ifdef GROUPS
                 }
+            #endif
                 
             }
 
@@ -386,7 +391,7 @@ void Eth_Loop(){
             if(!eth_connected && !eth_link_up){
                 Coms.ETH.State = CONNECTING;
             }
-
+            #ifdef GROUPS
             //Lectura del contador
 			if(ContadorExt.ContadorConectado){
                 Coms.ETH.Wifi_Perm = true;
@@ -412,11 +417,14 @@ void Eth_Loop(){
 
 				SendToPSOC5((char*)buffer_contador,7,MEASURES_EXTERNAL_COUNTER);
 			}
+            #endif
         break;
 
         case DISCONNECTING:
             if(!eth_connected && !eth_connecting){
+            #ifdef GROUPS
                 stop_MQTT();
+            #endif
                 finding = false;
                 Coms.ETH.State = DISCONNECTED;
                 Coms.ETH.Internet = false;
@@ -442,13 +450,7 @@ void Eth_Loop(){
                 stop_wifi();
                 Coms.ETH.DHCP  = 1;
                 Coms.ETH.State = CONNECTING;
-                #ifdef DOUBLE
-                initialize_ethernet_1();
-                initialize_ethernet_2();
-                #else   
                 initialize_ethernet();
-
-                #endif
                 
                 xStart = xTaskGetTickCount();
                 SendToPSOC5(Coms.ETH.DHCP,COMS_CONFIGURATION_ETH_DHCP);
