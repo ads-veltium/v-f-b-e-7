@@ -430,6 +430,7 @@ void mqtt_polling(void *params){
 	}
 	mg_mqtt_disconnect(mgc);
 	mg_mgr_free(&mgr);
+	mgc = NULL;
 	PollerHandle = NULL;
 	vTaskDelete(NULL);
 }

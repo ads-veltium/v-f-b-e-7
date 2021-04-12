@@ -32,10 +32,11 @@ void start_MQTT_server();
 void start_MQTT_client(IPAddress remoteIP);
 
 void stop_MQTT(){
+    ChargingGroup.GroupActive = false;
+    delay(500);
     SetStopMQTT(true);
     delay(1000);
     SetStopMQTT(false);
-    ChargingGroup.GroupActive = false;
 }
 
 
@@ -131,8 +132,6 @@ void start_udp(){
 
     //Avisar al resto de equipos de que estamos aqui!
     udp.broadcast(Encipher(String(ConfigFirebase.Device_Id)).c_str());
-    delay(2000);
-    start_MQTT_server();
 }
 
 /*Tarea para publicar los datos del equipo cada segundo*/
@@ -154,19 +153,20 @@ void Publisher(void* args){
         if(!ChargingGroup.GroupMaster){ //Avisar al maestro de que seguimos aqui
             mqtt_publish("Ping", ConfigFirebase.Device_Id);
         }
+        if(!ChargingGroup.GroupActive){
+            break;
+        }
     }
     vTaskDelete(NULL);
 }
 
 void start_MQTT_server(){
-    
-    ChargingGroup.GroupMaster = true;
+    Serial.println("Arrancando servidor MQTT");
     ChargingGroup.GroupActive = true;
     
 	/* Start MQTT Server using tcp transport */
     xTaskCreateStatic(mqtt_server,"BROKER",1024*6,NULL,PRIORIDAD_MQTT,xSERVERStack,&xSERVERBuffer); 
 	delay(500);
-    Serial.println("Servidor creado, avisando al resto de equipos");
 
     broadcast_a_grupo("Start client");
     mqtt_sub_pub_opts publisher;
@@ -179,7 +179,7 @@ void start_MQTT_server(){
     if(mqtt_connect(&publisher)){
         mqtt_subscribe("Device_Status");
         mqtt_subscribe("Ping");
-        xTaskCreate(Publisher,"Publisger",4096,NULL,2,NULL);
+        xTaskCreate(Publisher,"Publisher",4096,NULL,2,NULL);
     }
 }
 

@@ -8,6 +8,7 @@ extern carac_Firebase_Configuration ConfigFirebase;
 extern carac_Status Status;
 extern carac_Contador   ContadorExt;
 extern carac_Params Params;
+extern carac_group  ChargingGroup;
 
 //Contador trifasico
 Contador Counter   EXT_RAM_ATTR;
@@ -26,6 +27,7 @@ void stop_MQTT();
 void start_udp();
 void InitServer(void);
 void StopServer(void);
+void start_MQTT_server();
 
 static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data){
     Serial.printf("Evento de wifi %s %i\n", event_base, event_id );
@@ -367,10 +369,17 @@ void Eth_Loop(){
                     finding = true;
                 }
             }
+
+            else if(!ChargingGroup.GroupActive){
+                if(ChargingGroup.GroupMaster){
+                    start_MQTT_server();
+                }
+            }
             #endif
 
             if(!Coms.ETH.ON){
             #ifdef GROUPS
+                
                 if(Coms.ETH.DHCP){
                     kill_ethernet();
                     Coms.ETH.DHCP  = 0;
@@ -389,7 +398,7 @@ void Eth_Loop(){
 
             //Desconexion del cable
             if(!eth_connected && !eth_link_up){
-                Coms.ETH.State = CONNECTING;
+                Coms.ETH.State = DISCONNECTING;
             }
             #ifdef GROUPS
             //Lectura del contador

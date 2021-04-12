@@ -5,8 +5,8 @@
 #define USE_COMS
 #define USE_DRACO_BLE
 
-//#define DEVELOPMENT
-//#define DOUBLE
+#define DEVELOPMENT
+#define GROUPS
 
 #include "Arduino.h"
 #include "tipos.h"

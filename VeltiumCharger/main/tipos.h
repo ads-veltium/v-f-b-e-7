@@ -253,8 +253,6 @@ typedef struct{
 
 }carac_Firebase_Configuration;
 
-
-
 typedef struct{
 	char     name[9];
 	IPAddress     IP;
@@ -276,6 +274,9 @@ typedef struct{
 	bool SendNewData  = false;
 
 	carac_chargers group_chargers;
+
+	char GroupId[10] = {'0'};
+	long long last_ts_app_req= 0;
 }carac_group;
 
 typedef struct{

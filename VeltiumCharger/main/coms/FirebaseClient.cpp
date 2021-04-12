@@ -12,6 +12,7 @@ extern carac_Status                 Status;
 extern carac_Update_Status          UpdateStatus;
 extern carac_Params                 Params;
 extern carac_Coms                   Coms;
+extern carac_group                  ChargingGroup;
 
 
 void DownloadTask(void *arg);
@@ -187,9 +188,28 @@ bool WriteFirebaseFW(String Path){
 
   return false;
 }
+
 /***************************************************
   Funciones de lectura
 ***************************************************/
+bool ReadFirebaseGroups(String Path){
+
+  long long ts_app_req=Database->Get_Timestamp(Path+"/ts_app_req",&Lectura);
+  if(ts_app_req > ChargingGroup.last_ts_app_req){
+    Lectura.clear();
+    if(Database->Send_Command(Path,&Lectura, READ)){
+      ChargingGroup.last_ts_app_req=ts_app_req;
+
+      ChargingGroup.GroupMaster =  Lectura["master"];
+
+      if(!Database->Send_Command(Path+"/ts_dev_ack",&Lectura,TIMESTAMP)){
+          return false;
+      } 
+    }
+  }
+  return true;
+
+}
 bool ReadFirebaseComs(String Path){
 
   long long ts_app_req=Database->Get_Timestamp(Path+"/ts_app_req",&Lectura);
@@ -199,21 +219,10 @@ bool ReadFirebaseComs(String Path){
       Coms.last_ts_app_req=ts_app_req;
 
       Coms.Wifi.ON   = Lectura["wifi"]["on"];
-      //Coms.Wifi.AP   = Lectura["wifi"]["apn"].as<String>();
-      //Coms.Wifi.Pass = Lectura["wifi"]["passwd"].as<String>();
 
       Coms.ETH.ON   = Lectura["eth"]["on"];
       Coms.ETH.Auto = Lectura["eth"]["auto"];
       
-      /*if(!Coms.ETH.Auto){
-        //Coms.RestartConection = (Coms.ETH.IP != addr) ? true : Coms.RestartConection; //Si el valor no es le mismo que el que tenemos acutalmente, reincia la conexion para aplicarlo
-        Coms.ETH.IP     = ip4addr_aton(Lectura["eth"]["ip1"].as<char*>());
-       
-        Coms.ETH.Gateway = ip4addr_aton(Lectura["eth"]["gateway"].as<char*>());
-
-        Coms.ETH.Mask    = ip4addr_aton(Lectura["eth"]["mask"].as<char*>());
-      }*/
-
       #ifdef USE_GSM
         Coms.GSM.ON    = Lectura["modem"]["on"];
         Coms.GSM.APN   = Lectura["modem"]["apn"];
@@ -642,19 +651,25 @@ void Firebase_Conn_Task(void *args){
     case READING_CONTROL:
       Error_Count+=!ReadFirebaseControl("/control");
       ConnectionState=IDLE;
-      //NextState=WRITTING_STATUS;
       break;
 
     case READING_PARAMS:
       Error_Count+=!ReadFirebaseParams("/params");
       ConnectionState=IDLE;
-      NextState=WRITTING_STATUS;
+      NextState=READING_GROUP;
       break;
     
-    case READING_COMS: //Está preparado pero nunca lee las comunicaciones de firebase
+    //Está preparado pero nunca lee las comunicaciones de firebase
+    case READING_COMS: 
       Error_Count+=!ReadFirebaseComs("/coms");
       ConnectionState=IDLE;
       NextState=READING_PARAMS;
+      break;
+
+    case READING_GROUP:
+      Error_Count+=!ReadFirebaseGroups("/group");
+      ConnectionState=IDLE;
+      NextState=WRITTING_STATUS;
       break;
 
     /*********************** UPDATING states **********************/
