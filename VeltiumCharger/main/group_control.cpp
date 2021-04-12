@@ -36,7 +36,7 @@ void New_Data(char* Data, int Data_size){
                     current[Data_size-11] = '\0';          
                     FaseChargers.charger_table[i].Voltage = atoi(current);
 
-                    print_table();
+                    //print_table();
                     return;
                 }
             }
@@ -53,7 +53,11 @@ void New_Data(char* Data, int Data_size){
             FaseChargers.charger_table[FaseChargers.size].Voltage = atoi(current);
 
             FaseChargers.size++;
-            print_table();
+            //print_table();
         }
     }
+}
+
+void New_Params(char* Data, int Data_size){
+    printf("New params received: %s \n", Data);
 }

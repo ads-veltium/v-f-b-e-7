@@ -417,9 +417,10 @@ static void publisher_fn(struct mg_connection *c, int ev, void *ev_data, void *f
 				mqtt_publish("Pong", "ABCD");
 			}
 			else if(!memcmp(mm->topic.ptr, "Pong", mm->topic.len)){
-				xStart=xTaskGetTickCount();
+				xStart = xTaskGetTickCount();
 			}
-			else if(!memcmp(mm->topic.ptr, "Pong", mm->topic.len)){
+			else if(!memcmp(mm->topic.ptr, "Params", mm->topic.len)){
+				New_Params(mm->data.ptr, mm->data.len);
 				xStart = xTaskGetTickCount();
 			}
 			//printf("Recibido %.*s <- %.*s \n", (int) mm->data.len, mm->data.ptr, (int) mm->topic.len, mm->topic.ptr);
@@ -427,9 +428,6 @@ static void publisher_fn(struct mg_connection *c, int ev, void *ev_data, void *f
 		}
 	}
 }
-
-
-
 
 //Bucle principal del cliente mqtt
 void mqtt_polling(void *params){

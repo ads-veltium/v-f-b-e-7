@@ -264,7 +264,7 @@ typedef struct{
 
 typedef struct{
     carac_charger charger_table[10];
-    int size = 0;
+    uint8_t size = 0;
 }carac_chargers;
 
 typedef struct{
@@ -272,6 +272,7 @@ typedef struct{
 	bool GroupMaster  = false;
 	bool ServerActive = false;
 	bool SendNewData  = false;
+	bool SendNewParams = false;
 
 	carac_chargers group_chargers;
 

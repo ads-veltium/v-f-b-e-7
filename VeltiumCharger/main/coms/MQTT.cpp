@@ -70,7 +70,7 @@ void broadcast_a_grupo(char* Mensaje){
     mensaje.write((uint8_t*)(Encipher(Mensaje).c_str()), 13);
 
     //QUITAR!!!!!!!!!!!!!!!!!
-    memcpy(ChargingGroup.group_chargers.charger_table[0].name, "FT63D732",8);
+    memcpy(ChargingGroup.group_chargers.charger_table[0].name, "28434012",8);
     memcpy(ChargingGroup.group_chargers.charger_table[1].name, "31B70630",8);
     memcpy(ChargingGroup.group_chargers.charger_table[2].name, "1SDVD734",8);
     memcpy(ChargingGroup.group_chargers.charger_table[3].name, "J4D9M1FT",8);
@@ -87,6 +87,8 @@ void broadcast_a_grupo(char* Mensaje){
             }
         }
     }
+    delay(500);
+    ChargingGroup.SendNewParams = true;
 }
 
 void start_udp(){
@@ -115,6 +117,9 @@ void start_udp(){
                             AsyncUDPMessage mensaje (13);
                             mensaje.write((uint8_t*)(Encipher("Start client").c_str()), 13);
                             udp.sendTo(mensaje,packet.remoteIP(),1234);
+                            delay(500);
+                            ChargingGroup.SendNewParams = true;
+
                         }
                     }
                     return;
@@ -140,7 +145,7 @@ void start_udp(){
 
 /*Tarea para publicar los datos del equipo cada segundo*/
 void Publisher(void* args){
-    char TopicName[14] = "Device_Status";
+
     char buffer[250];
     Params.Fase = 1;
     while(1){
@@ -148,12 +153,24 @@ void Publisher(void* args){
             //Preparar data
             sprintf(buffer, "%s%i%s%i", ConfigFirebase.Device_Id,Params.Fase,Status.HPT_status,Status.Measures.instant_voltage);
             
-            mqtt_publish(TopicName, (buffer));
+            mqtt_publish("Device_Status", (buffer));
             ChargingGroup.SendNewData = false;
         }
+        else if( ChargingGroup.SendNewParams){
+            
+            buffer[0] = ChargingGroup.group_chargers.size;
+            for(int i=0;i< ChargingGroup.group_chargers.size;i++){
+                memcpy(&buffer[i*8+1],ChargingGroup.group_chargers.charger_table[i].name,8);   
+            }
+            
+            mqtt_publish("Params", buffer);
+            ChargingGroup.SendNewParams = false;
+        }
+
         if(!ChargingGroup.GroupMaster){ //Avisar al maestro de que seguimos aqui
             mqtt_publish("Ping", ConfigFirebase.Device_Id);
         }
+
         delay(1000);
 
         if(!ChargingGroup.GroupActive || GetStopMQTT()){
@@ -170,7 +187,7 @@ void start_MQTT_server(){
     
 	/* Start MQTT Server using tcp transport */
     xTaskCreateStatic(mqtt_server,"BROKER",1024*6,NULL,PRIORIDAD_MQTT,xSERVERStack,&xSERVERBuffer); 
-	delay(500);
+	delay(5000);
 
     broadcast_a_grupo("Start client");
     mqtt_sub_pub_opts publisher;
@@ -199,6 +216,7 @@ void start_MQTT_client(IPAddress remoteIP){
     if(mqtt_connect(&publisher)){
         mqtt_subscribe("Device_Status");
         mqtt_subscribe("Pong");
+        mqtt_subscribe("Params");
         xTaskCreate(Publisher,"Publisher",4096,NULL,2,NULL);
     }
 }
