@@ -133,6 +133,9 @@ int _mg_mqtt_status() {
 
 	return 0;
 }
+bool GetStopMQTT(){
+	return StopMQTT;
+}
 
 void SetStopMQTT(bool value){
 	StopMQTT = value;
@@ -379,7 +382,12 @@ static void Ping_Control(char* Data){
 	}*/
 
 }
-
+static StackType_t xPOLLstack [1024*6]     EXT_RAM_ATTR;
+StaticTask_t xPOLLBuffer ;
+struct mg_connection *mgc;
+struct mg_mgr mgr;
+TaskHandle_t PollerHandle = NULL;
+TickType_t xStart;
 
 static void publisher_fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
 	switch(ev){
@@ -403,27 +411,37 @@ static void publisher_fn(struct mg_connection *c, int ev, void *ev_data, void *f
 			struct mg_mqtt_message *mm = (struct mg_mqtt_message *) ev_data;
 			if(!memcmp(mm->topic.ptr, "Device_Status", mm->topic.len)){
 				New_Data(mm->data.ptr, mm->data.len);
+				xStart = xTaskGetTickCount();
 			}
 			else if(!memcmp(mm->topic.ptr, "Ping", mm->topic.len)){
 				Ping_Control(mm->data.ptr);
+			}
+			else if(!memcmp(mm->topic.ptr, "Pong", mm->topic.len)){
+				xStart = xTaskGetTickCount();
 			}
 			//printf("Recibido %.*s <- %.*s \n", (int) mm->data.len, mm->data.ptr, (int) mm->topic.len, mm->topic.ptr);
 			break;
 		}
 	}
 }
-static StackType_t xPOLLstack [1024*6]     EXT_RAM_ATTR;
-StaticTask_t xPOLLBuffer ;
-struct mg_connection *mgc;
-struct mg_mgr mgr;
-TaskHandle_t PollerHandle = NULL;
 
+
+
+
+//Bucle principal del cliente mqtt
 void mqtt_polling(void *params){
-
+	xStart = xTaskGetTickCount();
 	//struct mg_connection *mgc = (struct mg_connection*)params;
 	while (1) {
 		mg_mgr_poll(&mgr, 5);
 		vTaskDelay(1);
+		uint32_t transcurrido = pdTICKS_TO_MS(xTaskGetTickCount() - xStart);
+		
+		if(transcurrido > 2500){
+			StopMQTT = true;
+			break;
+		}
+		
 		if(StopMQTT){
 			break;
 		}
