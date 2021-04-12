@@ -151,12 +151,13 @@ void Publisher(void* args){
             mqtt_publish(TopicName, (buffer));
             ChargingGroup.SendNewData = false;
         }
-
-        delay(1000);
         if(!ChargingGroup.GroupMaster){ //Avisar al maestro de que seguimos aqui
             mqtt_publish("Ping", ConfigFirebase.Device_Id);
         }
-        if(!ChargingGroup.GroupActive){
+        delay(1000);
+
+        if(!ChargingGroup.GroupActive || GetStopMQTT()){
+            stop_MQTT();
             break;
         }
     }
@@ -197,6 +198,7 @@ void start_MQTT_client(IPAddress remoteIP){
 
     if(mqtt_connect(&publisher)){
         mqtt_subscribe("Device_Status");
+        mqtt_subscribe("Pong");
         xTaskCreate(Publisher,"Publisher",4096,NULL,2,NULL);
     }
 }

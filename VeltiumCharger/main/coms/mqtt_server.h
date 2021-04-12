@@ -48,5 +48,6 @@ bool mqtt_connect(mqtt_sub_pub_opts *pub_opts);
 void mqtt_subscribe(char* Topic);
 void mqtt_publish(char* Topic, char* Data);
 void SetStopMQTT(bool value);
+bool GetStopMQTT();
 
 #endif /* MAIN_MQTT_SERVER_H_ */
