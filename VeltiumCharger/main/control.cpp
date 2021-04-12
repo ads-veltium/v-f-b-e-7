@@ -422,7 +422,7 @@ void procesar_bloque(uint16 tipo_bloque){
 
 	switch(tipo_bloque){
 		case BLOQUE_INICIALIZACION:
-			if (!systemStarted && buffer_rx_local[239]==0x36) {
+			if (!systemStarted && (buffer_rx_local[239]==0x36 || buffer_rx_local[238]==0x36) {
 				memcpy(device_ID, buffer_rx_local, 11);
 				changeAdvName(device_ID);
 				printf("Change name set device name to %s\r\n",device_ID);
@@ -653,11 +653,13 @@ void procesar_bloque(uint16 tipo_bloque){
 	else if(CHARGING_BLE_MANUAL_START_CHAR_HANDLE == tipo_bloque)
 	{
 		Comands.start=0;
+		Serial.println("Start recibido");
 		modifyCharacteristic(buffer_rx_local, 1, CHARGING_BLE_MANUAL_START_CHAR_HANDLE);
 	}
 	else if(CHARGING_BLE_MANUAL_STOP_CHAR_HANDLE == tipo_bloque)
 	{
 		Comands.stop=0;
+		Serial.println("Stop recibido");
 		modifyCharacteristic(buffer_rx_local, 1, CHARGING_BLE_MANUAL_STOP_CHAR_HANDLE);
 	}
 	else if(SCHED_CHARGING_SCHEDULE_MATRIX_CHAR_HANDLE == tipo_bloque)
@@ -832,7 +834,7 @@ uint8_t sendBinaryBlock ( uint8_t *data, int len )
 	{
 		int ret=0;
 		ret = serialLocal.write(data, len);
-		cnt_timeout_tx = TIMEOUT_TX_BLOQUE;
+		cnt_timeout_tx = 254;
 		return ret;
 	}
 
@@ -841,7 +843,7 @@ uint8_t sendBinaryBlock ( uint8_t *data, int len )
 
 int controlSendToSerialLocal ( uint8_t * data, int len ){
 
-	if(!isMainFwUpdateActive()){
+	if(!mainFwUpdateActive){
 	    int ret=0;
 		ret = serialLocal.write(data, len);
 		cnt_timeout_tx = TIMEOUT_TX_BLOQUE2;
@@ -1001,6 +1003,7 @@ void UpdateTask(void *arg){
 		Serial.println(err);
 		
 		while(1){
+			delay(1);
 			if (file.available() && err == 0) {   
 				Buffer=file.readStringUntil('\n'); 
 				longitud = Buffer.length()-1; 
@@ -1105,5 +1108,6 @@ void SendToPSOC5(char *data, uint16 len, uint16 attrHandle){
   memcpy(&buffer_tx_local[4],data,len);
   controlSendToSerialLocal(buffer_tx_local, len+4);
 }
+
 #endif
 

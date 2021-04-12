@@ -537,7 +537,7 @@ void Firebase_Conn_Task(void *args){
       }
 
       //Comprobar actualizaciones automaticas
-      if(++UpdateCheckTimeout>100){ // Unas 12 horas
+      if(++UpdateCheckTimeout>8575){ // Unas 12 horas
         if(!memcmp(Status.HPT_status, "A1",2) || !memcmp(Status.HPT_status, "0V",2) ){
           UpdateCheckTimeout=0;
           if(!memcmp(Params.Fw_Update_mode, "AA",2)){
