@@ -5,6 +5,7 @@ void setup()
 	Serial.begin(115200);
 	Serial.println("FREE HEAP MEMORY [initial] **************************");
 	Serial.println(ESP.getFreePsram());
+	Serial.println(ESP.getFreeHeap());
 
 	DRACO_GPIO_Init();
 	

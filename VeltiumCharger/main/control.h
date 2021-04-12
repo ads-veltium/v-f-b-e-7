@@ -8,6 +8,8 @@
 #define DEVELOPMENT
 #define GROUPS
 
+#define MAX_GROUP_SIZE 10
+
 #include "Arduino.h"
 #include "tipos.h"
 

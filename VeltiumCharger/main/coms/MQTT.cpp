@@ -5,8 +5,8 @@ extern "C" {
 #include "mongoose.h"
 #include "mqtt_server.h"
 }
-bool check_in_group(const char* ID, carac_chargers group);
-bool add_to_group(const char* ID, IPAddress IP, carac_chargers group);
+bool check_in_group(const char* ID, carac_chargers* group);
+bool add_to_group(const char* ID, IPAddress IP, carac_chargers* group);
 
 AsyncUDP udp EXT_RAM_ATTR;
 
@@ -41,22 +41,24 @@ void stop_MQTT(){
 
 
 //Añadir un cargador a un equipo
-bool add_to_group(const char* ID, IPAddress IP, carac_chargers group){
-    if(group.size < sizeof(group.charger_table)){
+bool add_to_group(const char* ID, IPAddress IP, carac_chargers* group){
+    if(group->size < MAX_GROUP_SIZE){
         if(!check_in_group(ID,group)){
-            memcpy(group.charger_table[group.size].name, ID, 9);
-            group.charger_table[group.size].IP = IP;
-            group.size++;
+            printf("Almacenando %s \n", ID);
+            memcpy(group->charger_table[group->size].name, ID, 9);
+            group->charger_table[group->size].IP = IP;
+            group->size++;
             return true;
         }
     }
+    printf("Error al añadir al grupo \n");
     return false;
 }
 
 //comprobar si un cargador está almacenado en las tablas de equipos
-bool check_in_group(const char* ID, carac_chargers group){
-    for(int j=0;j < group.size;j++){
-        if(!memcmp(ID,  group.charger_table[j].name,8)){
+bool check_in_group(const char* ID, carac_chargers* group){
+    for(int j=0;j < group->size;j++){
+        if(!memcmp(ID,  group->charger_table[j].name,8)){
             return true;
         }
     }
@@ -73,14 +75,14 @@ void broadcast_a_grupo(char* Mensaje){
     memcpy(ChargingGroup.group_chargers.charger_table[1].name, "31B70630",8);
     memcpy(ChargingGroup.group_chargers.charger_table[2].name, "1SDVD734",8);
     memcpy(ChargingGroup.group_chargers.charger_table[3].name, "J4D9M1FT",8);
-    //memcpy(ChargingGroup.group_chargers.charger_table[4].name, "31B70630",8);
+    memcpy(ChargingGroup.group_chargers.charger_table[4].name, "626965F5",8);
     //memcpy(ChargingGroup.group_chargers.charger_table[5].name, "J3P10DNR",8);
+
     ChargingGroup.group_chargers.size = 4;
 
     for(int i =0; i < net_group.size;i++){
         for(int j=0;j < ChargingGroup.group_chargers.size;j++){
-            if(check_in_group(net_group.charger_table[i].name, ChargingGroup.group_chargers)){
-
+            if(check_in_group(net_group.charger_table[i].name, &ChargingGroup.group_chargers)){
                 udp.sendTo(mensaje, net_group.charger_table[i].IP,1234);
                 ChargingGroup.group_chargers.charger_table[j].IP = net_group.charger_table[i].IP; 
             }
@@ -106,23 +108,25 @@ void start_udp(){
                     packet.print(Encipher(String(ConfigFirebase.Device_Id)).c_str());
                 }
           
-                if(check_in_group(Desencriptado.c_str(), net_group)){
+                if(check_in_group(Desencriptado.c_str(), &net_group)){
                     //si ya lo tenemos en la lista pero nos envía una llamada, es que se ha reiniciado, comprobamos si está en el grupo
                     if(ChargingGroup.GroupMaster){
-                        if(check_in_group(Desencriptado.c_str(), ChargingGroup.group_chargers)){
+                        if(check_in_group(Desencriptado.c_str(), &ChargingGroup.group_chargers)){
                             AsyncUDPMessage mensaje (13);
                             mensaje.write((uint8_t*)(Encipher("Start client").c_str()), 13);
                             udp.sendTo(mensaje,packet.remoteIP(),1234);
                         }
                     }
                     return;
-                }    
+                } 
+
                 Serial.printf("El cargador VCD%s con ip %s se ha añadido a la lista\n", Desencriptado.c_str(), packet.remoteIP().toString().c_str());  
-                add_to_group(Desencriptado.c_str(), packet.remoteIP(), net_group);
+                add_to_group(Desencriptado.c_str(), packet.remoteIP(), &net_group);
             }
             else{
                 if(!memcmp(Desencriptado.c_str(), "Start client", 13)){
                     if(!ChargingGroup.GroupActive && !ChargingGroup.GroupMaster){
+                        printf("Soy parte de un grupo !!\n");
                         start_MQTT_client(packet.remoteIP());
                     }
                 }
@@ -146,7 +150,6 @@ void Publisher(void* args){
             
             mqtt_publish(TopicName, (buffer));
             ChargingGroup.SendNewData = false;
-
         }
 
         delay(1000);
