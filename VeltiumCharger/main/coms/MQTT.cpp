@@ -44,7 +44,6 @@ void stop_MQTT(){
 bool add_to_group(const char* ID, IPAddress IP, carac_chargers* group){
     if(group->size < MAX_GROUP_SIZE){
         if(!check_in_group(ID,group)){
-            printf("Almacenando %s \n", ID);
             memcpy(group->charger_table[group->size].name, ID, 9);
             group->charger_table[group->size].IP = IP;
             group->size++;
@@ -78,7 +77,7 @@ void broadcast_a_grupo(char* Mensaje){
     memcpy(ChargingGroup.group_chargers.charger_table[4].name, "626965F5",8);
     //memcpy(ChargingGroup.group_chargers.charger_table[5].name, "J3P10DNR",8);
 
-    ChargingGroup.group_chargers.size = 4;
+    ChargingGroup.group_chargers.size = 5;
 
     for(int i =0; i < net_group.size;i++){
         for(int j=0;j < ChargingGroup.group_chargers.size;j++){
@@ -112,6 +111,7 @@ void start_udp(){
                     //si ya lo tenemos en la lista pero nos envía una llamada, es que se ha reiniciado, comprobamos si está en el grupo
                     if(ChargingGroup.GroupMaster){
                         if(check_in_group(Desencriptado.c_str(), &ChargingGroup.group_chargers)){
+                            Serial.printf("El cargador VCD%s está en el grupo de carga\n", Desencriptado.c_str());  
                             AsyncUDPMessage mensaje (13);
                             mensaje.write((uint8_t*)(Encipher("Start client").c_str()), 13);
                             udp.sendTo(mensaje,packet.remoteIP(),1234);
