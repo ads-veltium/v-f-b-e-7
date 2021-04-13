@@ -146,7 +146,7 @@ void start_udp(){
 /*Tarea para publicar los datos del equipo cada segundo*/
 void Publisher(void* args){
 
-    char buffer[250];
+    char buffer[100];
     Params.Fase = 1;
     while(1){
         if(ChargingGroup.SendNewData){
@@ -156,13 +156,15 @@ void Publisher(void* args){
             mqtt_publish("Device_Status", (buffer));
             ChargingGroup.SendNewData = false;
         }
-        else if( ChargingGroup.SendNewParams){
-            
-            buffer[0] = ChargingGroup.group_chargers.size;
+        if( ChargingGroup.SendNewParams){
+            printf("Publicando nuevos parametros\n");
+            char size = ChargingGroup.group_chargers.size;
+            printf("Tamaño = %c\n", size);
+            buffer[0]=size;  
             for(int i=0;i< ChargingGroup.group_chargers.size;i++){
-                memcpy(&buffer[i*8+1],ChargingGroup.group_chargers.charger_table[i].name,8);   
+                memcpy(&buffer[(i*8)+1],ChargingGroup.group_chargers.charger_table[i].name,8);   
             }
-            
+
             mqtt_publish("Params", buffer);
             ChargingGroup.SendNewParams = false;
         }

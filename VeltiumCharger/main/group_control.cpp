@@ -59,5 +59,5 @@ void New_Data(char* Data, int Data_size){
 }
 
 void New_Params(char* Data, int Data_size){
-    printf("New params received: %s \n", Data);
+    printf("New params received: %s %i\n", Data, Data_size);
 }
