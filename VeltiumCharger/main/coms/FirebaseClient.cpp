@@ -547,6 +547,16 @@ void Firebase_Conn_Task(void *args){
           }
         }
       }
+
+      //Comprobar actualizaciones manualmente
+      else if(Comands.fw_update){
+        if(!memcmp(Status.HPT_status, "A1",2) || !memcmp(Status.HPT_status, "0V",2) ){
+          UpdateCheckTimeout=0;
+          Comands.fw_update=0;
+          ConnectionState = UPDATING;
+          break;
+        }
+      }
       
       if(ts_app_req > Status.last_ts_app_req){
         Status.last_ts_app_req= ts_app_req;
@@ -594,18 +604,7 @@ void Firebase_Conn_Task(void *args){
           ConnectionState = READING_PARAMS;
           Params_Coms_Timeout = 0;
           break; 
-        }
-
-        //Comprobar actualizaciones
-        else if(Comands.fw_update){
-          if(!memcmp(Status.HPT_status, "A1",2) || !memcmp(Status.HPT_status, "0V",2) ){
-            UpdateCheckTimeout=0;
-            Comands.fw_update=0;
-            ConnectionState = UPDATING;
-            break;
-          }
-        }
-        
+        }        
 
         //Mientras hay un cliente conectado y nada que hacer, miramos control
         ConnectionState=READING_CONTROL;

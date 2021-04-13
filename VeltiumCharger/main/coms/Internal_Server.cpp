@@ -331,6 +331,7 @@ void InitServer(void) {
 
         case 3:
             Comands.fw_update = true;
+            Serial.printf("Update firmware order received");
         break;
 
         case 4:
