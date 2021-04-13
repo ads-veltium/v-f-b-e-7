@@ -44,14 +44,16 @@
 #include "esp_private/system_internal.h"
 #include "sdkconfig.h"
 #include "esp_ota_ops.h"
+#include "driver/timer.h"
+#include "hal/timer_ll.h"
 #if CONFIG_SYSVIEW_ENABLE
 #include "SEGGER_RTT.h"
 #endif
 
-#if CONFIG_ESP32_APPTRACE_ONPANIC_HOST_FLUSH_TMO == -1
+#if CONFIG_APPTRACE_ONPANIC_HOST_FLUSH_TMO == -1
 #define APPTRACE_ONPANIC_HOST_FLUSH_TMO   ESP_APPTRACE_TMO_INFINITE
 #else
-#define APPTRACE_ONPANIC_HOST_FLUSH_TMO   (1000*CONFIG_ESP32_APPTRACE_ONPANIC_HOST_FLUSH_TMO)
+#define APPTRACE_ONPANIC_HOST_FLUSH_TMO   (1000*CONFIG_APPTRACE_ONPANIC_HOST_FLUSH_TMO)
 #endif
 /*
   Panic handlers; these get called when an unhandled exception occurs or the assembly-level
@@ -139,14 +141,14 @@ esp_reset_reason_t __attribute__((weak)) esp_reset_reason_get_hint(void)
 
 static bool abort_called;
 
-static __attribute__((noreturn)) inline void invoke_abort()
+static __attribute__((noreturn)) inline void invoke_abort(void)
 {
     abort_called = true;
-#if CONFIG_ESP32_APPTRACE_ENABLE
+#if CONFIG_APPTRACE_ENABLE
 #if CONFIG_SYSVIEW_ENABLE
-    SEGGER_RTT_ESP32_FlushNoLock(CONFIG_ESP32_APPTRACE_POSTMORTEM_FLUSH_THRESH, APPTRACE_ONPANIC_HOST_FLUSH_TMO);
+    SEGGER_RTT_ESP32_FlushNoLock(CONFIG_APPTRACE_POSTMORTEM_FLUSH_THRESH, APPTRACE_ONPANIC_HOST_FLUSH_TMO);
 #else
-    esp_apptrace_flush_nolock(ESP_APPTRACE_DEST_TRAX, CONFIG_ESP32_APPTRACE_POSTMORTEM_FLUSH_THRESH,
+    esp_apptrace_flush_nolock(ESP_APPTRACE_DEST_TRAX, CONFIG_APPTRACE_POSTMORTEM_FLUSH_THRESH,
                               APPTRACE_ONPANIC_HOST_FLUSH_TMO);
 #endif
 #endif
@@ -158,7 +160,7 @@ static __attribute__((noreturn)) inline void invoke_abort()
     }
 }
 
-void abort()
+void abort(void)
 {
 #if !CONFIG_ESP32_PANIC_SILENT_REBOOT
     ets_printf("abort() was called at PC 0x%08x on core %d\r\n", (intptr_t)__builtin_return_address(0) - 3, xPortGetCoreID());
@@ -188,13 +190,15 @@ static const char *edesc[] = {
 
 #define NUM_EDESCS (sizeof(edesc) / sizeof(char *))
 
+extern int _invalid_pc_placeholder;
+
 static void commonErrorHandler(XtExcFrame *frame);
-static inline void disableAllWdts();
+static inline void disableAllWdts(void);
 static void illegal_instruction_helper(XtExcFrame *frame);
 
 //The fact that we've panic'ed probably means the other CPU is now running wild, possibly
 //messing up the serial output, so we stall it here.
-static void haltOtherCore()
+static void haltOtherCore(void)
 {
     esp_cpu_stall( xPortGetCoreID() == 0 ? 1 : 0 );
 }
@@ -309,15 +313,23 @@ void panicHandler(XtExcFrame *frame)
 
     if (esp_cpu_in_ocd_debug_mode()) {
         disableAllWdts();
+        if (!(esp_ptr_executable((void *)((frame->pc & 0x3fffffffU) | 0x40000000U)) && (frame->pc & 0xC0000000U))) {
+            /* Xtensa ABI sets the 2 MSBs of the PC according to the windowed call size
+             * Incase the PC is invalid, GDB will fail to translate addresses to function names
+             * Hence replacing the PC to a placeholder address in case of invalid PC
+             */
+            frame->pc = (uint32_t)&_invalid_pc_placeholder;
+        }
+
         if (frame->exccause == PANIC_RSN_INTWDT_CPU0 ||
             frame->exccause == PANIC_RSN_INTWDT_CPU1) {
-            TIMERG1.int_clr_timers.wdt = 1;
+            timer_ll_wdt_clear_intr_status(&TIMERG1);
         }
-#if CONFIG_ESP32_APPTRACE_ENABLE
+#if CONFIG_APPTRACE_ENABLE
 #if CONFIG_SYSVIEW_ENABLE
-        SEGGER_RTT_ESP32_FlushNoLock(CONFIG_ESP32_APPTRACE_POSTMORTEM_FLUSH_THRESH, APPTRACE_ONPANIC_HOST_FLUSH_TMO);
+        SEGGER_RTT_ESP32_FlushNoLock(CONFIG_APPTRACE_POSTMORTEM_FLUSH_THRESH, APPTRACE_ONPANIC_HOST_FLUSH_TMO);
 #else
-        esp_apptrace_flush_nolock(ESP_APPTRACE_DEST_TRAX, CONFIG_ESP32_APPTRACE_POSTMORTEM_FLUSH_THRESH,
+        esp_apptrace_flush_nolock(ESP_APPTRACE_DEST_TRAX, CONFIG_APPTRACE_POSTMORTEM_FLUSH_THRESH,
                                   APPTRACE_ONPANIC_HOST_FLUSH_TMO);
 #endif
 #endif
@@ -346,21 +358,29 @@ void xt_unhandled_exception(XtExcFrame *frame)
             panicPutStr(" at pc=");
             panicPutHex(frame->pc);
             panicPutStr(". Setting bp and returning..\r\n");
-#if CONFIG_ESP32_APPTRACE_ENABLE
+#if CONFIG_APPTRACE_ENABLE
 #if CONFIG_SYSVIEW_ENABLE
-            SEGGER_RTT_ESP32_FlushNoLock(CONFIG_ESP32_APPTRACE_POSTMORTEM_FLUSH_THRESH, APPTRACE_ONPANIC_HOST_FLUSH_TMO);
+            SEGGER_RTT_ESP32_FlushNoLock(CONFIG_APPTRACE_POSTMORTEM_FLUSH_THRESH, APPTRACE_ONPANIC_HOST_FLUSH_TMO);
 #else
-            esp_apptrace_flush_nolock(ESP_APPTRACE_DEST_TRAX, CONFIG_ESP32_APPTRACE_POSTMORTEM_FLUSH_THRESH,
+            esp_apptrace_flush_nolock(ESP_APPTRACE_DEST_TRAX, CONFIG_APPTRACE_POSTMORTEM_FLUSH_THRESH,
                                       APPTRACE_ONPANIC_HOST_FLUSH_TMO);
 #endif
 #endif
+            if (!(esp_ptr_executable((void *)((frame->pc & 0x3fffffffU) | 0x40000000U)) && (frame->pc & 0xC0000000U))) {
+                /* Xtensa ABI sets the 2 MSBs of the PC according to the windowed call size
+                 * Incase the PC is invalid, GDB will fail to translate addresses to function names
+                 * Hence replacing the PC to a placeholder address in case of invalid PC
+                 */
+                frame->pc = (uint32_t)&_invalid_pc_placeholder;
+            }
+
             //Stick a hardware breakpoint on the address the handler returns to. This way, the OCD debugger
             //will kick in exactly at the context the error happened.
             setFirstBreakpoint(frame->pc);
             return;
         }
         panicPutStr(". Exception was unhandled.\r\n");
-        if (exccause == 0 /* IllegalInstruction */) {
+        if (exccause == EXCCAUSE_ILLEGAL) {
             illegal_instruction_helper(frame);
         }
         esp_reset_reason_set_hint(ESP_RST_PANIC);
@@ -399,40 +419,43 @@ static void illegal_instruction_helper(XtExcFrame *frame)
   all watchdogs except the timer group 0 watchdog, and it reconfigures that to reset the chip after
   one second.
 */
-static void reconfigureAllWdts()
+static void reconfigureAllWdts(void)
 {
-    TIMERG0.wdt_wprotect = TIMG_WDT_WKEY_VALUE;
-    TIMERG0.wdt_feed = 1;
-    TIMERG0.wdt_config0.sys_reset_length = 7;           //3.2uS
-    TIMERG0.wdt_config0.cpu_reset_length = 7;           //3.2uS
-    TIMERG0.wdt_config0.stg0 = TIMG_WDT_STG_SEL_RESET_SYSTEM; //1st stage timeout: reset system
-    TIMERG0.wdt_config1.clk_prescale = 80 * 500;        //Prescaler: wdt counts in ticks of 0.5mS
-    TIMERG0.wdt_config2 = 2000;                         //1 second before reset
-    TIMERG0.wdt_config0.en = 1;
-    TIMERG0.wdt_wprotect = 0;
+    timer_ll_wdt_set_protect(&TIMERG0, false);
+    timer_ll_wdt_feed(&TIMERG0);
+    timer_ll_wdt_init(&TIMERG0);
+    timer_ll_wdt_set_tick(&TIMERG0, TG0_WDT_TICK_US); //Prescaler: wdt counts in ticks of TG0_WDT_TICK_US
+    //1st stage timeout: reset system
+    timer_ll_wdt_set_timeout_behavior(&TIMERG0, 0, TIMER_WDT_RESET_SYSTEM);
+    //1 second before reset
+    timer_ll_wdt_set_timeout(&TIMERG0, 0, 1000*1000/TG0_WDT_TICK_US);
+    timer_ll_wdt_set_enable(&TIMERG0, true);
+    timer_ll_wdt_set_protect(&TIMERG0, true);
+
     //Disable wdt 1
-    TIMERG1.wdt_wprotect = TIMG_WDT_WKEY_VALUE;
-    TIMERG1.wdt_config0.en = 0;
-    TIMERG1.wdt_wprotect = 0;
+    timer_ll_wdt_set_protect(&TIMERG1, false);
+    timer_ll_wdt_set_enable(&TIMERG1, false);
+    timer_ll_wdt_set_protect(&TIMERG1, true);
 }
 
 /*
   This disables all the watchdogs for when we call the gdbstub.
 */
-static inline void disableAllWdts()
+static inline void disableAllWdts(void)
 {
-    TIMERG0.wdt_wprotect = TIMG_WDT_WKEY_VALUE;
-    TIMERG0.wdt_config0.en = 0;
-    TIMERG0.wdt_wprotect = 0;
-    TIMERG1.wdt_wprotect = TIMG_WDT_WKEY_VALUE;
-    TIMERG1.wdt_config0.en = 0;
-    TIMERG1.wdt_wprotect = 0;
+    timer_ll_wdt_set_protect(&TIMERG0, false);
+    timer_ll_wdt_set_enable(&TIMERG0, false);
+    timer_ll_wdt_set_protect(&TIMERG0, true);
+
+    timer_ll_wdt_set_protect(&TIMERG1, false);
+    timer_ll_wdt_set_enable(&TIMERG1, false);
+    timer_ll_wdt_set_protect(&TIMERG1, true);
 }
 
 #if CONFIG_ESP32_PANIC_PRINT_REBOOT || CONFIG_ESP32_PANIC_SILENT_REBOOT
-static void esp_panic_dig_reset() __attribute__((noreturn));
+static void esp_panic_dig_reset(void) __attribute__((noreturn));
 
-static void esp_panic_dig_reset()
+static void esp_panic_dig_reset(void)
 {
     // make sure all the panic handler output is sent from UART FIFO
     uart_tx_wait_idle(CONFIG_ESP_CONSOLE_UART_NUM);
@@ -445,7 +468,7 @@ static void esp_panic_dig_reset()
         ;
     }
 }
-#endif
+#endif // CONFIG_ESP32_PANIC_PRINT_REBOOT || CONFIG_ESP32_PANIC_SILENT_REBOOT
 
 static void putEntry(uint32_t pc, uint32_t sp)
 {
@@ -463,9 +486,10 @@ static void doBacktrace(XtExcFrame *exc_frame, int depth)
     putEntry(esp_cpu_process_stack_pc(stk_frame.pc), stk_frame.sp);
 
     //Check if first frame is valid
-    bool corrupted = (esp_stack_ptr_is_sane(stk_frame.sp) &&
-                      esp_ptr_executable((void*)esp_cpu_process_stack_pc(stk_frame.pc))) ?
-                      false : true;
+    bool corrupted = !(esp_stack_ptr_is_sane(stk_frame.sp) &&
+                       (esp_ptr_executable((void *)esp_cpu_process_stack_pc(stk_frame.pc)) ||
+                        /* Ignore the first corrupted PC in case of InstrFetchProhibited */
+                        exc_frame->exccause == EXCCAUSE_INSTR_PROHIBITED));
     uint32_t i = ((depth <= 0) ? INT32_MAX : depth) - 1;    //Account for stack frame that's already printed
     while (i-- > 0 && stk_frame.next_pc != 0 && !corrupted) {
         if (!esp_backtrace_get_next_frame(&stk_frame)) {    //Get next stack frame
@@ -592,15 +616,23 @@ static __attribute__((noreturn)) void commonErrorHandler(XtExcFrame *frame)
     }
 #endif //!CONFIG_FREERTOS_UNICORE
 
-#if CONFIG_ESP32_APPTRACE_ENABLE
+#if CONFIG_APPTRACE_ENABLE
     disableAllWdts();
 #if CONFIG_SYSVIEW_ENABLE
-    SEGGER_RTT_ESP32_FlushNoLock(CONFIG_ESP32_APPTRACE_POSTMORTEM_FLUSH_THRESH, APPTRACE_ONPANIC_HOST_FLUSH_TMO);
+    SEGGER_RTT_ESP32_FlushNoLock(CONFIG_APPTRACE_POSTMORTEM_FLUSH_THRESH, APPTRACE_ONPANIC_HOST_FLUSH_TMO);
 #else
-    esp_apptrace_flush_nolock(ESP_APPTRACE_DEST_TRAX, CONFIG_ESP32_APPTRACE_POSTMORTEM_FLUSH_THRESH,
+    esp_apptrace_flush_nolock(ESP_APPTRACE_DEST_TRAX, CONFIG_APPTRACE_POSTMORTEM_FLUSH_THRESH,
                               APPTRACE_ONPANIC_HOST_FLUSH_TMO);
 #endif
     reconfigureAllWdts();
+#endif
+
+#if !CONFIG_ESP_PANIC_HANDLER_IRAM
+    // Re-enable CPU cache for current CPU if it was disabled
+    if (!spi_flash_cache_enabled()) {
+        spi_flash_enable_cache(core_id);
+        panicPutStr("Re-enable cpu cache.\r\n");
+    }
 #endif
 
 #if CONFIG_ESP32_PANIC_GDBSTUB

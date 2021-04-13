@@ -22,6 +22,7 @@ AC_INIT([libcoap], [libcoap_version], [libcoap-developers@lists.sourceforge.net]
 AC_PREREQ([2.64])
 AM_INIT_AUTOMAKE([1.10 -Wall no-define no-dist-gzip dist-bzip2])
 PKG_PROG_PKG_CONFIG([0.20])
+AM_SILENT_RULES([yes])
 
 # Generate one configuration header file for building the library itself with
 # an auto generated template. We need later a second one (include/libcoap.h)
@@ -37,8 +38,7 @@ AM_PROG_AR
 
 AC_C_BIGENDIAN
 
-# enable the automatically build of shared and static libraries, the unit
-# tests needs the static library
+# enable the automatically build of shared and static libraries
 LT_INIT([shared static])
 
 # Setting the libtool versioning
@@ -394,10 +394,6 @@ if test "x$build_dtls" = "xyes"; then
 
     # The user wants to use explicit OpenSSL if '--with-tinydtls was set'.
     if test "x$with_tinydtls" = "xyes" ; then
-        if test "x$enable_shared" = "xyes"; then
-            AC_MSG_ERROR([==> You want to build libcoap with DTLS support by tinyDTLS but have enabled shared libraries.
-                      Please pass '--disable-shared' to configure or select a different DTLS library.])
-        fi
         if test -d "$srcdir/ext/tinydtls"; then
            AC_CONFIG_SUBDIRS([ext/tinydtls])
            have_tinydtls="yes"
@@ -446,9 +442,15 @@ if test "x$build_dtls" = "xyes"; then
         AC_DEFINE(HAVE_OPENSSL, [1], [Define if the system has libssl1.1])
     fi
     if test "x$with_tinydtls" = "xyes"; then
-       DTLS_CFLAGS="-I \$(top_srcdir)/ext/tinydtls"
-       DTLS_LIBS="-L\$(top_srcdir)/ext/tinydtls -ltinydtls"
-       AC_DEFINE(HAVE_LIBTINYDTLS, [1], [Define if the system has libtinydtls])
+        DTLS_CFLAGS="-I \$(top_srcdir)/ext/tinydtls"
+        if test "x$enable_shared" = "xyes"; then
+            DTLS_LIBS="-L\$(top_builddir)/ext/tinydtls -ltinydtls"
+        else
+            # Needed as TinyDTLS compiling does not recognize --disable-shared
+            # and still builds libtinydtls.so which gets linked in otherwise
+            DTLS_LIBS="-L\$(top_builddir)/ext/tinydtls -l:libtinydtls.a"
+        fi
+        AC_DEFINE(HAVE_LIBTINYDTLS, [1], [Define if the system has libtinydtls])
     fi
     AC_SUBST(DTLS_CFLAGS)
     AC_SUBST(DTLS_LIBS)
@@ -473,6 +475,7 @@ fi
 
 AC_SUBST(LIBCOAP_NAME_SUFFIX)
 AC_SUBST(LIBCOAP_DTLS_LIB_EXTENSION_NAME)
+AC_SUBST([DOLLAR_SIGN],[$])
 
 # configure options
 # __tests__
@@ -581,6 +584,11 @@ AC_SEARCH_LIBS([inet_ntop], [nsl])
 
 # Check if clock_gettime() requires librt, when available
 AC_SEARCH_LIBS([clock_gettime], [rt])
+
+#check for struct cmsghdr
+AC_CHECK_TYPES([struct cmsghdr],,,[
+AC_INCLUDES_DEFAULT
+#include <sys/socket.h>])
 
 AC_MSG_CHECKING([operating system])
 

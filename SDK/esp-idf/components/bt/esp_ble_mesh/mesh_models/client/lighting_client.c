@@ -17,7 +17,10 @@
 
 #include "btc_ble_mesh_lighting_model.h"
 
+#include "mesh_config.h"
 #include "model_opcode.h"
+
+#if CONFIG_BLE_MESH_LIGHTING_CLIENT
 #include "lighting_client.h"
 
 /* The followings are the macro definitions of Lighting client
@@ -127,10 +130,12 @@ static void bt_mesh_light_client_mutex_new(void)
     }
 }
 
+#if CONFIG_BLE_MESH_DEINIT
 static void bt_mesh_light_client_mutex_free(void)
 {
     bt_mesh_mutex_free(&light_client_lock);
 }
+#endif /* CONFIG_BLE_MESH_DEINIT */
 
 static void bt_mesh_light_client_lock(void)
 {
@@ -726,7 +731,7 @@ static void light_status(struct bt_mesh_model *model,
     return;
 }
 
-const struct bt_mesh_model_op light_lightness_cli_op[] = {
+const struct bt_mesh_model_op bt_mesh_light_lightness_cli_op[] = {
     { BLE_MESH_MODEL_OP_LIGHT_LIGHTNESS_STATUS,         2, light_status },
     { BLE_MESH_MODEL_OP_LIGHT_LIGHTNESS_LINEAR_STATUS,  2, light_status },
     { BLE_MESH_MODEL_OP_LIGHT_LIGHTNESS_LAST_STATUS,    2, light_status },
@@ -735,7 +740,7 @@ const struct bt_mesh_model_op light_lightness_cli_op[] = {
     BLE_MESH_MODEL_OP_END,
 };
 
-const struct bt_mesh_model_op light_ctl_cli_op[] = {
+const struct bt_mesh_model_op bt_mesh_light_ctl_cli_op[] = {
     { BLE_MESH_MODEL_OP_LIGHT_CTL_STATUS,                   4, light_status },
     { BLE_MESH_MODEL_OP_LIGHT_CTL_TEMPERATURE_STATUS,       4, light_status },
     { BLE_MESH_MODEL_OP_LIGHT_CTL_TEMPERATURE_RANGE_STATUS, 5, light_status },
@@ -743,7 +748,7 @@ const struct bt_mesh_model_op light_ctl_cli_op[] = {
     BLE_MESH_MODEL_OP_END,
 };
 
-const struct bt_mesh_model_op light_hsl_cli_op[] = {
+const struct bt_mesh_model_op bt_mesh_light_hsl_cli_op[] = {
     { BLE_MESH_MODEL_OP_LIGHT_HSL_STATUS,            6, light_status },
     { BLE_MESH_MODEL_OP_LIGHT_HSL_TARGET_STATUS,     6, light_status },
     { BLE_MESH_MODEL_OP_LIGHT_HSL_HUE_STATUS,        2, light_status },
@@ -753,7 +758,7 @@ const struct bt_mesh_model_op light_hsl_cli_op[] = {
     BLE_MESH_MODEL_OP_END,
 };
 
-const struct bt_mesh_model_op light_xyl_cli_op[] = {
+const struct bt_mesh_model_op bt_mesh_light_xyl_cli_op[] = {
     { BLE_MESH_MODEL_OP_LIGHT_XYL_STATUS,         6, light_status },
     { BLE_MESH_MODEL_OP_LIGHT_XYL_TARGET_STATUS,  6, light_status },
     { BLE_MESH_MODEL_OP_LIGHT_XYL_DEFAULT_STATUS, 6, light_status },
@@ -761,7 +766,7 @@ const struct bt_mesh_model_op light_xyl_cli_op[] = {
     BLE_MESH_MODEL_OP_END,
 };
 
-const struct bt_mesh_model_op light_lc_cli_op[] = {
+const struct bt_mesh_model_op bt_mesh_light_lc_cli_op[] = {
     { BLE_MESH_MODEL_OP_LIGHT_LC_MODE_STATUS,        1, light_status },
     { BLE_MESH_MODEL_OP_LIGHT_LC_OM_STATUS,          1, light_status },
     { BLE_MESH_MODEL_OP_LIGHT_LC_LIGHT_ONOFF_STATUS, 1, light_status },
@@ -1324,21 +1329,19 @@ int bt_mesh_light_client_set_state(bt_mesh_client_common_param_t *common, void *
     return light_set_state(common, set, length, need_ack);
 }
 
-static int light_client_init(struct bt_mesh_model *model, bool primary)
+static int lighting_client_init(struct bt_mesh_model *model)
 {
     light_internal_data_t *internal = NULL;
     bt_mesh_light_client_t *client = NULL;
 
-    BT_DBG("primary %u", primary);
-
     if (!model) {
-        BT_ERR("%s, Invalid parameter", __func__);
+        BT_ERR("Invalid Lighting client model");
         return -EINVAL;
     }
 
     client = (bt_mesh_light_client_t *)model->user_data;
     if (!client) {
-        BT_ERR("Invalid Lighting client user data");
+        BT_ERR("No Lighting client context provided");
         return -EINVAL;
     }
 
@@ -1364,43 +1367,19 @@ static int light_client_init(struct bt_mesh_model *model, bool primary)
     return 0;
 }
 
-int bt_mesh_light_lightness_cli_init(struct bt_mesh_model *model, bool primary)
-{
-    return light_client_init(model, primary);
-}
-
-int bt_mesh_light_ctl_cli_init(struct bt_mesh_model *model, bool primary)
-{
-    return light_client_init(model, primary);
-}
-
-int bt_mesh_light_hsl_cli_init(struct bt_mesh_model *model, bool primary)
-{
-    return light_client_init(model, primary);
-}
-
-int bt_mesh_light_xyl_cli_init(struct bt_mesh_model *model, bool primary)
-{
-    return light_client_init(model, primary);
-}
-
-int bt_mesh_light_lc_cli_init(struct bt_mesh_model *model, bool primary)
-{
-    return light_client_init(model, primary);
-}
-
-static int light_client_deinit(struct bt_mesh_model *model, bool primary)
+#if CONFIG_BLE_MESH_DEINIT
+static int lighting_client_deinit(struct bt_mesh_model *model)
 {
     bt_mesh_light_client_t *client = NULL;
 
     if (!model) {
-        BT_ERR("%s, Invalid parameter", __func__);
+        BT_ERR("Invalid Lighting client model");
         return -EINVAL;
     }
 
     client = (bt_mesh_light_client_t *)model->user_data;
     if (!client) {
-        BT_ERR("Invalid Lighting client user data");
+        BT_ERR("No Lighting client context provided");
         return -EINVAL;
     }
 
@@ -1417,28 +1396,13 @@ static int light_client_deinit(struct bt_mesh_model *model, bool primary)
 
     return 0;
 }
+#endif /* CONFIG_BLE_MESH_DEINIT */
 
-int bt_mesh_light_lightness_cli_deinit(struct bt_mesh_model *model, bool primary)
-{
-    return light_client_deinit(model, primary);
-}
+const struct bt_mesh_model_cb bt_mesh_lighting_client_cb = {
+    .init = lighting_client_init,
+#if CONFIG_BLE_MESH_DEINIT
+    .deinit = lighting_client_deinit,
+#endif /* CONFIG_BLE_MESH_DEINIT */
+};
 
-int bt_mesh_light_ctl_cli_deinit(struct bt_mesh_model *model, bool primary)
-{
-    return light_client_deinit(model, primary);
-}
-
-int bt_mesh_light_hsl_cli_deinit(struct bt_mesh_model *model, bool primary)
-{
-    return light_client_deinit(model, primary);
-}
-
-int bt_mesh_light_xyl_cli_deinit(struct bt_mesh_model *model, bool primary)
-{
-    return light_client_deinit(model, primary);
-}
-
-int bt_mesh_light_lc_cli_deinit(struct bt_mesh_model *model, bool primary)
-{
-    return light_client_deinit(model, primary);
-}
+#endif /* CONFIG_BLE_MESH_LIGHTING_CLIENT */

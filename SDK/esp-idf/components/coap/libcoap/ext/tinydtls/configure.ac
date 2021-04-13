@@ -1,7 +1,7 @@
 #                                               -*- Autoconf -*-
 # Process this file with autoconf to produce a configure script.
 #
-# Copyright (c) 2011-2020 Olaf Bergmann (TZI) and others.
+# Copyright (c) 2011, 2012, 2013, 2014, 2015 Olaf Bergmann (TZI) and others.
 # All rights reserved. This program and the accompanying materials
 # are made available under the terms of the Eclipse Public License v1.0
 # and Eclipse Distribution License v. 1.0 which accompanies this distribution.
@@ -80,33 +80,6 @@ AC_ARG_WITH(psk,
   [AC_DEFINE(DTLS_PSK, 1, [Define to 1 if building with PSK support])
    DTLS_PSK=1])
 
-# configure options
-# __tests__
-AC_ARG_ENABLE([tests],
-              [AS_HELP_STRING([--enable-tests],
-                              [Enable building the binary testsuite [default=no]])],
-              [build_tests="$enableval"],
-              [build_tests="no"])
-
-if test "x$build_tests" = "xyes"; then
-    PKG_CHECK_MODULES([CUNIT],
-                      [cunit],
-                      [have_cunit=yes
-                       AC_DEFINE(HAVE_LIBCUNIT, [1], [Define if the system has libcunit])]
-                       AC_DEFINE(TEST_INCLUDE, [1], [Define to include test wrappers for static functions])],
-                      [have_cunit=no])
-fi
-
-AC_SUBST(have_cunit)
-
-AC_ARG_ENABLE(shared,
-  [AS_HELP_STRING([--disable-shared],[disable build of shared library])],
-  [],
-  [enable_shared=yes])
-if test "$enable_shared" = "yes" ; then
-  ENABLE_SHARED=1
-fi
-
 CPPFLAGS="${CPPFLAGS} -DDTLSv12 -DWITH_SHA256"
 OPT_OBJS="${OPT_OBJS} sha2/sha2.o"
 
@@ -114,7 +87,6 @@ AC_SUBST(OPT_OBJS)
 AC_SUBST(NDEBUG)
 AC_SUBST(DTLS_ECC)
 AC_SUBST(DTLS_PSK)
-AC_SUBST(ENABLE_SHARED)
 AC_SUBST(AR)
 
 # Checks for header files.
@@ -133,7 +105,7 @@ AC_CHECK_MEMBER([struct sockaddr_in6.sin6_len],
 		[#include <netinet/in.h>])
 
 # Checks for library functions.
-AC_CHECK_FUNCS([memset select socket strdup strerror strnlen fls vprintf getrandom])
+AC_CHECK_FUNCS([memset select socket strdup strerror strnlen fls vprintf])
 
 AC_CONFIG_HEADERS([dtls_config.h])
 
@@ -142,7 +114,6 @@ AC_CONFIG_FILES([Makefile
                  doc/Makefile
                  doc/Doxyfile
                  tests/Makefile
-                 tests/unit-tests/Makefile
                  platform-specific/Makefile
 		 sha2/Makefile
 		 aes/Makefile

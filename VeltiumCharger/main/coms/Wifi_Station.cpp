@@ -1,717 +1,547 @@
 #include "Wifi_Station.h"
 
+esp_netif_t *sta_netif;
+esp_netif_t *ap_netif;
 
-
-/*********************** Globals ************************/
-
-static bool eth_link_up     = false;
-static bool eth_connected   = false;
-static bool eth_connecting  = false;
-static bool eth_started     = false;
-static bool wifi_connected  = false;
-static bool wifi_connecting = false;
-
+extern carac_Coms  Coms;
 extern carac_Firebase_Configuration ConfigFirebase;
-extern carac_Update_Status          UpdateStatus;
-extern carac_Comands                Comands;
-extern carac_Status                 Status;
-extern carac_Params                 Params;
-extern carac_Coms                   Coms;
+extern carac_Status Status;
+extern carac_Contador   ContadorExt;
+extern carac_Params Params;
 
-void WiFiEvent(arduino_event_id_t event, arduino_event_info_t info);
-void Station_Stop();
-AsyncWebServer server(80);
-/*************** Wifi and ETH event handlers *****************/
+//Contador trifasico
+Contador Counter   EXT_RAM_ATTR;
 
-const char* NUM_BOTON = "output";
-const char* ESTADO = "state";
-const char* USER = "userid";
-const char* PASSWORD = "pwd";
-const char* SALIDA = "com";
+extern bool eth_connected;
+extern bool eth_connecting;
+extern bool eth_link_up;
+extern bool eth_started;
 
-const char* AP = "w_ap";
-const char* WIFI_PWD = "w_pass";
-const char* IP1 = "ip1";
-const char* IP2 = "ip2";
-const char* GATEWAY = "gateway";
-const char* MASK = "mask";
-const char* APN = "apn";
-const char* GSM_PWD = "m_pass";
-const char* CURR_COMAND = "curr_comand";
-const char* AUTH_MODE = "auth_mode";
-const char* INST_CURR_LIM = "inst_curr_lim";
-const char* POT_CONT = "potencia_cont";
-const char* UBI_CDP = "ubi_cdp";
+bool wifi_connected  = false;
+bool wifi_connecting = false;
 
-uint8 AuthErrorCount =0;
-uint8 ZeroBuffer[10] ={'0'};
+static uint8 Reintentos = 0;
 
-/************* Internal server configuration ****************/
-void notFound(AsyncWebServerRequest *request) {
-  request->send(404, "text/plain", "Not found");
-}
+void stop_MQTT();
+void start_udp();
+void InitServer(void);
+void StopServer(void);
 
-//Función para ver estado de la variable de actualizaciones automáticas 
-String outputState(){
-  if(!memcpy(Params.autentication_mode,"AA",2)){
-    return "checked";
-  }
-  else {
-    return "";
-  }
-}
-//Función para ver estado de la variable de encender Wifi 
-String outputStateWifi(bool com){
-  if(com == true){
-      return "checked";
-  }else{
-    return "";  
-  }
-}
-
-//Funcion para sustituir los placeholders de los archivos html
-String processor(const String& var){
-	if (var == "HP")
-	{
-		return String(Status.HPT_status);
-	}
-    else if (var == "ICP")
-	{
-		return String(Status.ICP_status);
-	}
-    else if (var == "LEAK")
-	{
-		return String(Status.DC_Leack_status);
-	}
-    else if (var == "LOCKSTATUS")
-	{
-		return String(Status.Con_Lock);
-	}
-    else if (var == "MAXCABLE")
-	{
-		return String(Status.Measures.max_current_cable);
-	}
-    else if (var == "POTENCIARE")
-	{
-		return String(Status.Measures.reactive_power);
-	}
-    else if (var == "POTENCIAP")
-	{
-		return String(Status.Measures.apparent_power);
-	}
-    else if (var == "ENERGIA")
-	{
-		return String(Status.Measures.active_energy);
-	}
-    else if (var == "ENERGIARE")
-	{
-		return String(Status.Measures.reactive_energy);
-	}
-    else if (var == "POWERFACTOR")
-	{
-		return String(Status.Measures.power_factor);
-	}
-    else if (var == "CORRIENTEDOM")
-	{
-		return String(Status.Measures.consumo_domestico);
-	}
-    /*
-    else if (var == "CONT")
-	{
-		return String(Status.Time.connect_date_time);
-	}
-    else if (var == "DESCONT")
-	{
-		return String(Status.Time.disconnect_date_time);
-	}
-    else if (var == "STARTTIME")
-	{
-		return String(Status.Time.charge_start_time);
-	}
-    else if (var == "STOPTIME")
-	{
-		return Status.Time.charge_stop_time.toString();
-	}*/
-	else if (var=="CORRIENTE")
-	{
-		return String(Status.Measures.instant_current);
-	}
-	else if (var=="VOLTAJE")
-	{
-		return String(Status.Measures.instant_voltage);
-	}
-	else if (var=="POTENCIA")
-	{
-		return String(Status.Measures.active_power);
-	}
-	else if (var=="ERROR")
-	{
-		return String(Status.error_code);
-	}
-	else if (var == "BUTTONPLACEHOLDER")
-	{
-		String buttons = "";
-		
-		buttons += "<p><label class=\"button\"><input type=\"button\" value=\"Cargar ahora\" style='height:30px;width:100px;background:#3498db;color:#fff' onclick=\"Startbutton(this)\" id=\"1\"></label></p>";
-		buttons += "<p><label class=\"button\"><input type=\"button\" value=\"Parar\" style='height:30px;width:100px;background:#3498db;color:#fff' onclick=\"Startbutton(this)\" id=\"2\"></label></p>";	
-		buttons += "<p><label class=\"button\"><input type=\"button\" value=\"Reset\" style='height:30px;width:100px;background:#3498db;color:#fff' onclick=\"Startbutton(this)\" id=\"4\"></label></p>";
-		buttons += "<p><label class=\"button\"><input type=\"button\" value=\"Actualizar\" style='height:30px;width:100px;background:#3498db;color:#fff' onclick=\"Startbutton(this)\" id=\"3\"></label></p>";
-        return buttons;
-	}
-	else if (var == "AUTOUPDATE")
-	{
-		String checkbox = "";
-
-		checkbox += "<label class=\"switch\"><input type=\"checkbox\" onchange=\"toggleCheckbox(this)\" id=\"11\" "+outputState()+"><span class=\"slider\"></span></label>";
-		return checkbox;
-	}
-    else if (var == "WON")
-	{
-		String checkbox = "";
-
-		checkbox += "<label class=\"switch\"><input type=\"checkbox\" onchange=\"toggleCheckbox(this)\" id=\"12\" "+outputStateWifi(Coms.Wifi.ON )+"><span class=\"slider\"></span></label>";
-		return checkbox;
-	}
-    else if (var == "EON")
-	{
-		String checkbox = "";
-
-		checkbox += "<label class=\"switch\"><input type=\"checkbox\" onchange=\"toggleCheckbox(this)\" id=\"13\""+outputStateWifi(Coms.ETH.ON )+"><span class=\"slider\"></span></label>";
-		return checkbox;
-	}
-    else if (var == "EAUTO")
-	{
-		String checkbox = "";
-
-		checkbox += "<label class=\"switch\"><input type=\"checkbox\" onchange=\"toggleCheckbox(this)\" id=\"14\""+outputStateWifi(Coms.ETH.Auto)+"><span class=\"slider\"></span></label>";
-		return checkbox;
-	}
-    else if (var == "MON")
-	{
-		String checkbox = "";
-
-		checkbox += "<label class=\"switch\"><input type=\"checkbox\" onchange=\"toggleCheckbox(this)\" id=\"15\""+outputStateWifi(Coms.GSM.ON)+"><span class=\"slider\"></span></label>";
-		return checkbox;
-    }
-    else if (var == "CDP")
-	{
-		String checkbox = "";
-
-		checkbox += "<label class=\"switch\"><input type=\"checkbox\" onchange=\"toggleCheckbox(this)\" id=\"16\""+outputStateWifi(Params.CDP_On)+"><span class=\"slider\"></span></label>";
-		return checkbox;
-    }
-    else if (var == "CDP")
-	{
-		String checkbox = "";
-
-		checkbox += "<label class=\"switch\"><input type=\"checkbox\" onchange=\"toggleCheckbox(this)\" id=\"17\""+outputStateWifi(Comands.conn_lock)+"><span class=\"slider\"></span></label>";
-		return checkbox;
-    }
-	return String();
-}
-
-void InitServer(void) {
-	
-	//Cargar los archivos del servidor
-	Serial.println(ESP.getFreeHeap());
-
-    server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
-     request->send(SPIFFS, "/login.html");
-    });
-
-    server.on("/login", HTTP_GET, [](AsyncWebServerRequest *request){
-     request->send(SPIFFS, "/login.html");
-    });
-
-     server.on("/datos", HTTP_GET, [](AsyncWebServerRequest *request){
-     request->send(SPIFFS, "/datos.html",String(), false, processor);
-    });
-
-    server.on("/style.css", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send(SPIFFS, "/style.css", "text/css");
-    });
-
-    server.on("/get", HTTP_GET, [](AsyncWebServerRequest *request){
-        memcpy(Coms.Wifi.AP,request->getParam(AP)->value().c_str(),32);
-        Coms.Wifi.Pass = request->getParam(WIFI_PWD)->value();
-        //Coms.ETH.IP1 = request->getParam(IP1)->value().toInt();
-        //Coms.ETH.IP2 = request->getParam(IP2)->value().toInt();
-        //Coms.ETH.Gateway = request->getParam(GATEWAY)->value().toInt();
-        //Coms.ETH.Mask = request->getParam(MASK)->value().toInt();
-        Coms.GSM.APN = request->getParam(APN)->value();
-        Coms.GSM.Pass = request->getParam(GSM_PWD)->value();
-        Comands.desired_current = request->getParam(CURR_COMAND)->value().toInt();
-        //Params.autentication_mode = request->getParam(AUTH_MODE)->value();
-        Params.CDP = request->getParam(UBI_CDP)->value().toInt();
-        Params.inst_current_limit = request->getParam(INST_CURR_LIM)->value().toInt();
-        Params.potencia_contratada = request->getParam(POT_CONT)->value().toInt();
-
-        Serial.println((char*)Coms.Wifi.AP);
-        Serial.println(Coms.Wifi.Pass);
-        Serial.println(Coms.ETH.IP1 );
-        Serial.println(Coms.ETH.IP2);
-        Serial.println(Coms.ETH.Gateway);
-        Serial.println(Coms.ETH.Mask);
-        Serial.println(Coms.GSM.APN);
-        Serial.println(Coms.GSM.Pass);
-        Serial.println(Comands.desired_current);
-        Serial.println(Params.autentication_mode );
-        Serial.println(Params.CDP);
-        Serial.println(Params.inst_current_limit);
-        Serial.println(Params.potencia_contratada);
-
-
-    //SPIFFS.begin(false,"/spiffs",1,"WebServer");
-    request->send(SPIFFS, "/datos.html",String(), false, processor);
-    //SPIFFS.end();
-    });
-    
-
-    server.on("/hp", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send_P(200, "text/plain", String(Status.HPT_status).c_str());
-    });
-
-    server.on("/icp", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send_P(200, "text/plain", String(Status.ICP_status).c_str());
-    });
-
-    server.on("/dcleak", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send_P(200, "text/plain", String(Status.DC_Leack_status).c_str());
-    });
-
-    server.on("/conlock", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send_P(200, "text/plain", String(Status.Con_Lock).c_str());
-    });
-
-    server.on("/maxcable", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send_P(200, "text/plain", String(Status.Measures.max_current_cable).c_str());
-    });
-
-    server.on("/potenciare", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send_P(200, "text/plain", String(Status.Measures.reactive_power).c_str());
-    });
-
-    server.on("/potenciap", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send_P(200, "text/plain", String(Status.Measures.apparent_power).c_str());
-    });
-
-    server.on("/energia", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send_P(200, "text/plain", String(Status.Measures.active_energy).c_str());
-    });
-
-    server.on("/energiare", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send_P(200, "text/plain", String(Status.Measures.reactive_energy).c_str());
-    });
-
-    server.on("/powerfactor", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send_P(200, "text/plain", String(Status.Measures.power_factor).c_str());
-    });
-
-    server.on("/corrientedom", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send_P(200, "text/plain", String(Status.Measures.consumo_domestico).c_str());
-    });
-
-   server.on("/corriente", HTTP_GET, [](AsyncWebServerRequest *request){
-        request->send_P(200, "text/plain", String(Status.Measures.instant_current).c_str());
-  });
-
-  server.on("/voltaje", HTTP_GET, [](AsyncWebServerRequest *request){
-        request->send_P(200, "text/plain", String(Status.Measures.instant_voltage).c_str());
-  });
-
-   server.on("/potencia", HTTP_GET, [](AsyncWebServerRequest *request){
-        request->send_P(200, "text/plain", String(Status.Measures.active_power).c_str());
-  });
-
-   server.on("/error", HTTP_GET, [](AsyncWebServerRequest *request){
-        request->send_P(200, "text/plain", String(Status.error_code).c_str());
-  });
-
-  
-  
-   server.on("/update", HTTP_GET, [] (AsyncWebServerRequest *request) {
-
-		int entrada;
-		entrada = request->getParam(NUM_BOTON)->value().toInt();
-		
-	    switch(entrada){
-        case 1:
-            Comands.start = true;
-        break;
-
-        case 2:
-            Comands.stop = true;
-        break;
-
-        case 3:
-            Comands.fw_update = true;
-        break;
-
-        case 4:
-            Comands.reset = true;
-        break;
-
-        default:
-
+static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data){
+    Serial.printf("Evento de wifi %s %i\n", event_base, event_id );
+    if (event_base == WIFI_EVENT){
+        switch(event_id){
+            case WIFI_EVENT_STA_START:{
+                Coms.Wifi.Internet = false;
+                esp_wifi_disconnect();
+                esp_wifi_connect();
             break;
-    }
-
-   });
-
-   server.on("/autoupdate", HTTP_GET, [] (AsyncWebServerRequest *request) {
-    	bool estado;
-        int numero;
-	
-		estado = request->getParam(ESTADO)->value().toInt();
-        numero = request->getParam(SALIDA)->value().toInt();
-        
-         switch (numero)
-        {
-            case 11:
-                if (estado){
-                    memcpy(Params.autentication_mode,"AA",2);
+            }
+            case WIFI_EVENT_STA_DISCONNECTED:
+                Coms.Wifi.Internet = false;
+                if(!Coms.StartSmartconfig && ! Coms.StartProvisioning){
+                    esp_wifi_connect();
+                    Serial.println("Reconectando...");
                 }
-                else{
-                    memcpy(Params.autentication_mode,"MA",2);
-                }
-            break;
 
-            case 12:
-                while(Coms.Wifi.ON != estado){
-                    SendToPSOC5(estado,COMS_CONFIGURATION_WIFI_ON);
-                    delay(50);
-                }
-                
-                break;
-            case 13:
-                while(Coms.ETH.ON != estado){
-                    SendToPSOC5(estado,COMS_CONFIGURATION_ETH_ON);
-                    delay(50);
-                }
-                
-                break;
-            case 14:
-                Coms.ETH.Auto = estado;
-                break;
-            case 15:
-                Coms.GSM.ON = estado;
-                break;
-            case 16:
-                Params.CDP_On = estado;
-                break;
-            case 17:
-                
-                while(Comands.conn_lock != estado){
-                    SendToPSOC5(estado,STATUS_CONN_LOCK_STATUS_CHAR_INDEX);
-                }               
-                break;
-        default:
-            break;
-        }
-   });
-  
-   Serial.println(ESP.getFreeHeap());
-
-}
-/********************* Conection Functions **************************/
-void WiFiEvent(arduino_event_id_t event, arduino_event_info_t info){ 
-    //Serial.println(event);
-	switch (event) {
-
-//********************** WIFI Cases **********************//
-		case ARDUINO_EVENT_WIFI_STA_DISCONNECTED:
-            wifi_connected = false;
-            if(Coms.Provisioning){
-                if (info.wifi_sta_disconnected.reason == WIFI_REASON_AUTH_FAIL || info.wifi_sta_disconnected.reason == WIFI_REASON_CONNECTION_FAIL){
-                    if(++AuthErrorCount > 3){
-                        AuthErrorCount=0;
-                        Serial.println("Contraseña incorrecta, deteniendo sistema");  
-                        WiFiProv.StopProvision();
-                        wifi_connected = false;
-                        wifi_connecting = false;
-                        Coms.Wifi.ON = 0;
-                        SendToPSOC5(Coms.Wifi.ON,COMS_CONFIGURATION_WIFI_ON);
-                        vTaskDelay(50);
+                if(++Reintentos>=7 ){
+                    Serial.println("Intentado demasiadas veces, desconectando");
+                    stop_wifi();
+                    if(Coms.StartSmartconfig){
+                        Coms.StartSmartconfig = 0;
+                        esp_smartconfig_stop();
                     }
+                    else if(Coms.StartProvisioning){
+                        Coms.StartProvisioning = 0;
+                        wifi_prov_mgr_deinit();
+                    }
+                    Coms.Wifi.ON = false;
+                    SendToPSOC5(Coms.Wifi.ON,COMS_CONFIGURATION_WIFI_ON);
                 }
-                else if(info.wifi_sta_disconnected.reason == WIFI_REASON_AUTH_EXPIRE){
-                        AuthErrorCount=0;
-                        Serial.println("autorizacion expirada, deteniendo sistema");  
-                        WiFiProv.StopProvision();
-                        wifi_connected = false;
-                        wifi_connecting = false;
-                        Coms.Wifi.ON = 0;
-                        SendToPSOC5(Coms.Wifi.ON,COMS_CONFIGURATION_WIFI_ON);                   
-                        vTaskDelay(50);
-                }   
-            }
-             
-            else if(info.wifi_sta_disconnected.reason!=WIFI_REASON_ASSOC_LEAVE ){
-                Serial.println("Reconectando...");
-			    WiFi.reconnect();
-            }
-            else{
-                Serial.println(info.wifi_sta_disconnected.reason);
-            }
-		break;
-
-		case ARDUINO_EVENT_WIFI_STA_GOT_IP:{
-			Serial.print("Connected with IP: ");
-			Serial.println(WiFi.localIP());
-            Coms.Wifi.IP=WiFi.localIP();
-
-
-            uint8_t len= WiFi.SSID().length() <=32 ? WiFi.SSID().length():32;
-            memcpy(Coms.Wifi.AP,WiFi.SSID().c_str(),len);
-
-            /*String longWifi = "EthErEAlm6-24G-with-a-loong-name";
-            uint8_t len= longWifi.length() <=32 ? longWifi.length():32;
-            memcpy(Coms.Wifi.AP,longWifi.c_str(),len);     */  
-            Serial.println((char*)Coms.Wifi.AP);
-            modifyCharacteristic((uint8_t*)Coms.Wifi.AP, 16, COMS_CONFIGURATION_WIFI_SSID_1);
-
-            if(len>16){
-                modifyCharacteristic(&Coms.Wifi.AP[16], 16, COMS_CONFIGURATION_WIFI_SSID_2);
-            }
-            if(Coms.Provisioning){
-                delay(7000);
-                MAIN_RESET_Write(0);
-                ESP.restart();
-            }
-            wifi_connected = true;
-            wifi_connecting = false;
-            ConfigFirebase.InternetConection=1;
+            break;
+            case WIFI_EVENT_STA_CONNECTED:
+               wifi_connected = true;
+                wifi_connecting = false;
+            break;
         }
-		break;
-
-//********************** ETH Cases **********************//
-        case ARDUINO_EVENT_ETH_START:
-            Serial.println("ETH Started");
-            //set eth hostname here
-            ETH.setHostname("velitum-ethernet");
-            break;
-        case ARDUINO_EVENT_ETH_CONNECTED:
-            Serial.println("ETH Connected");
-            if(Coms.Wifi.ON){
-                Station_Stop();
-            }
-            Coms.ETH.Puerto = ETH.linkUp();
-            eth_link_up    = true;
-            break;
-        case SYSTEM_EVENT_ETH_GOT_IP:
-            Serial.print("ETH MAC: ");
-            Serial.print(ETH.macAddress());
-            Serial.print(", IPv4: ");
-            Serial.print(ETH.localIP()[0]);
-            Serial.println();
-            uint8 IpBuffer[4];
-            IpBuffer[0]= ETH.localIP()[0];
-            IpBuffer[1]= ETH.localIP()[1];
-            IpBuffer[2]= ETH.localIP()[2];
-            IpBuffer[3]= ETH.localIP()[3];
-            if(Coms.ETH.Puerto==1){
-                Coms.ETH.IP1 = ETH.localIP();               
-                modifyCharacteristic(IpBuffer, 4, COMS_CONFIGURATION_LAN_IP1);
-                modifyCharacteristic(ZeroBuffer, 4, COMS_CONFIGURATION_LAN_IP2);
-            }
-            else if(Coms.ETH.Puerto==2){
-                Coms.ETH.IP2 = ETH.localIP();
-                modifyCharacteristic(IpBuffer, 4, COMS_CONFIGURATION_LAN_IP2);
-                modifyCharacteristic(ZeroBuffer, 4, COMS_CONFIGURATION_LAN_IP1);
-            }
-            if(Coms.ETH.Auto){
-                Coms.ETH.Gateway = ETH.gatewayIP();
-                Serial.println(Coms.ETH.Gateway);
-                Coms.ETH.Mask    = ETH.subnetMask();
-                Serial.println(Coms.ETH.Mask);
-            }
-            eth_connected = true;
-            eth_connecting = false;
-            ConfigFirebase.InternetConection=true; 
-            break;
-        case ARDUINO_EVENT_ETH_DISCONNECTED:
-            eth_connected = false;
-            eth_link_up = false;
-            Serial.println("ETH Disconnected");
-            
-            break;
-
-        case ARDUINO_EVENT_ETH_STOP:
-            Serial.println("ETH Stopped");
-            eth_connected = false;
-            break;
-
-	    default:
-		    break;
-	}
-}
-
-void Delete_Credentials(){
-    nvs_flash_erase();
-    nvs_flash_init();
-}
-
-void StartSmarConfig(){
-    //Init WiFi as Station, start SmartConfig
-    WiFi.mode(WIFI_AP_STA);
-    WiFi.beginSmartConfig();
-
-    //Wait for WiFi to connect to AP
-    Serial.println("Waiting for WiFi");
-    while (WiFi.status() != WL_CONNECTED) {
-        delay(300);
     }
 
-    Serial.println("WiFi Connected.");
+    else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP){
+        ip_event_got_ip_t *event = (ip_event_got_ip_t *) event_data;
+        const esp_netif_ip_info_t *ip_info = &event->ip_info;
+        Serial.println( "Wifi got IP Address\n");
+        Serial.printf( "Wifi: %d %d %d %d\n",IP2STR(&ip_info->ip));
 
-    Serial.print("IP Address: ");
-    Serial.println(WiFi.localIP());
-}
+        Coms.Wifi.IP.addr = ip_info->ip.addr;
+        /*Coms.Wifi.IP[0] =ip4_addr1(&ip_info->ip);
+        Coms.Wifi.IP[1] =ip4_addr2(&ip_info->ip);
+        Coms.Wifi.IP[2] =ip4_addr3(&ip_info->ip);
+        Coms.Wifi.IP[3] =ip4_addr4(&ip_info->ip);*/
 
+        wifi_config_t wifi_actual_config;
+        esp_wifi_get_config(WIFI_IF_STA, &wifi_actual_config);
 
-void Station_Begin(){
-    
-    //Comprobar si esta encendida ya
-    Serial.println("Station begin");
-    if(wifi_connecting || wifi_connected){
-        Station_Stop();
-    }
-    wifi_connecting = true;
-    char POP [20] ="WF_";
-    strcat(POP,ConfigFirebase.Device_Id);
-    uint8 result = WiFiProv.beginProvision(WIFI_PROV_SCHEME_SOFTAP, WIFI_PROV_SCHEME_HANDLER_NONE, WIFI_PROV_SECURITY_1, ConfigFirebase.Device_Ser_num, POP,Coms.StartProvisioning);
-    if(result == 6){
-        Serial.println("Not provisioned and not provisioning!");
-        WiFiProv.StopProvision();
-        Coms.Wifi.ON=false;
-        SendToPSOC5(Coms.Wifi.ON,COMS_CONFIGURATION_WIFI_ON);
-    }
-} 
+        uint8_t len= sizeof(wifi_actual_config.sta.ssid) <=32 ? sizeof(wifi_actual_config.sta.ssid):32;
+        memcpy(Coms.Wifi.AP,wifi_actual_config.sta.ssid,len);
 
-void Station_Stop(){
-    if(WiFi.disconnect(true)){
-        Serial.println("Wifi Paused");
-        delay(500);
+        modifyCharacteristic((uint8_t*)Coms.Wifi.AP, 16, COMS_CONFIGURATION_WIFI_SSID_1);
+        if(len>16){
+            modifyCharacteristic(&Coms.Wifi.AP[16], 16, COMS_CONFIGURATION_WIFI_SSID_2);
+        }
+        Reintentos = 0;
+        wifi_connected = true;
         wifi_connecting = false;
-        wifi_connected  = false;
+        if(!Coms.Provisioning){
+            delay(1000);
+            Coms.Wifi.Internet = ComprobarConexion();
+        }
+    }
+
+    else if(event_base == SC_EVENT){
+         switch(event_id){
+            case SC_EVENT_SCAN_DONE:
+                Reintentos = 0;
+                Serial.printf( "Scan done\n");
+            break;
+            case SC_EVENT_FOUND_CHANNEL:
+                 Serial.printf( "Found channel\n");
+            break;
+            case SC_EVENT_GOT_SSID_PSWD:{
+                Serial.printf( "Got SSID and password\n");
+
+                smartconfig_event_got_ssid_pswd_t *evt = (smartconfig_event_got_ssid_pswd_t *)event_data;
+                wifi_config_t wifi_config;
+                uint8_t ssid[33] = { 0 };
+                uint8_t password[65] = { 0 };
+
+                bzero(&wifi_config, sizeof(wifi_config_t));
+                memcpy(wifi_config.sta.ssid, evt->ssid, sizeof(wifi_config.sta.ssid));
+                memcpy(wifi_config.sta.password, evt->password, sizeof(wifi_config.sta.password));
+                wifi_config.sta.bssid_set = evt->bssid_set;
+                if (wifi_config.sta.bssid_set == true) {
+                    memcpy(wifi_config.sta.bssid, evt->bssid, sizeof(wifi_config.sta.bssid));
+                }
+
+                memcpy(ssid, evt->ssid, sizeof(evt->ssid));
+                memcpy(password, evt->password, sizeof(evt->password));
+                Serial.printf( "SSID:%s\n", ssid);
+                Serial.printf( "PASSWORD:%s\n", password);
+
+                ESP_ERROR_CHECK( esp_wifi_disconnect() );
+
+                ESP_ERROR_CHECK( esp_wifi_set_config(WIFI_IF_STA, &wifi_config) );
+                ESP_ERROR_CHECK( esp_wifi_connect() );
+                Serial.println("Pass recibido");
+            
+            break;}
+
+            case SC_EVENT_SEND_ACK_DONE:
+                ESP_ERROR_CHECK(esp_event_handler_unregister(SC_EVENT, ESP_EVENT_ANY_ID, &event_handler));
+                Serial.printf( "smartconfig over\n");
+                esp_smartconfig_stop();
+            break;
+         }
+    }
+    else if(event_base == WIFI_PROV_EVENT){
+        switch (event_id) {
+            case WIFI_PROV_START:
+                Serial.println( "Provisioning started");
+                Reintentos = 0;
+                Coms.Provisioning = true;
+                break;
+            case WIFI_PROV_CRED_RECV: {
+                wifi_sta_config_t *wifi_sta_cfg = (wifi_sta_config_t *)event_data;
+                Serial.printf( "Received Wi-Fi credentials"
+                         "\n\tSSID     : %s\n\tPassword : %s\n",
+                         (const char *) wifi_sta_cfg->ssid,
+                         (const char *) wifi_sta_cfg->password);
+                break;
+            }
+            case WIFI_PROV_CRED_FAIL: {
+                wifi_prov_sta_fail_reason_t *reason = (wifi_prov_sta_fail_reason_t *)event_data;
+                Serial.printf( "Provisioning failed!\n\tReason : %s"
+                         "\n\tPlease reset to factory and retry provisioning\n",
+                         (*reason == WIFI_PROV_STA_AUTH_ERROR) ?
+                         "Wi-Fi station authentication failed" : "Wi-Fi access-point not found");
+                esp_wifi_connect();
+                break;
+            }
+            case WIFI_PROV_CRED_SUCCESS:
+                Serial.printf("Provisioning successful\n");
+                Coms.Wifi.ON = true;
+                SendToPSOC5(Coms.Wifi.ON,COMS_CONFIGURATION_WIFI_ON);
+                Coms.Provisioning = false;
+                break;
+            case WIFI_PROV_END:
+                Serial.printf("Provisioning service deinit\n");
+                ESP_ERROR_CHECK(esp_event_handler_unregister(WIFI_PROV_EVENT, ESP_EVENT_ANY_ID, &event_handler));
+                wifi_prov_mgr_deinit();
+                if(!Coms.Provisioning){
+                    MAIN_RESET_Write(0);
+                    ESP.restart();
+                }   
+;
+                break;
+            default:
+                break;
+        }
+    }
+}
+
+void stop_wifi(void){
+    Serial.println("Stoping wifi");
+    Reintentos = 0;
+    esp_wifi_disconnect();
+    esp_err_t err = esp_wifi_stop();
+    if(err==ESP_ERR_WIFI_NOT_INIT){
         return;
     }
-    Serial.println("Error Disconecting");
-} 
+    esp_wifi_deinit();
 
-void ETH_Stop(){
-    eth_connected  = false;
-    eth_connecting = false;
-    ETH.end();
-    delay(500);
+    if(sta_netif != NULL){
+        esp_wifi_clear_default_wifi_driver_and_handlers(sta_netif);
+        esp_netif_destroy(sta_netif);
+        sta_netif = NULL;
+    }
+    esp_netif_deinit();
+    ESP_ERROR_CHECK(esp_netif_init());
 
+    Coms.Wifi.Internet = false;
+    wifi_connected  = false;
+    wifi_connecting = false;
 }
 
-void ETH_Restart(){
-    ETH.restart();
-    eth_connecting = true;
+void initialise_smartconfig(void){
+    stop_wifi();
+    wifi_connecting = true;
+    ESP_ERROR_CHECK(esp_event_handler_register(SC_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL));
+
+    sta_netif = esp_netif_create_default_wifi_sta();
+
+    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+    ESP_ERROR_CHECK( esp_wifi_init(&cfg) );   
+
+    ESP_ERROR_CHECK( esp_wifi_set_mode(WIFI_MODE_STA) );
+    esp_err_t err = (esp_wifi_start());
+    if(err != ESP_OK){
+        Serial.printf("Error de wifi start de smartconfig %i \n", err);
+    }
+
     delay(100);
+    esp_smartconfig_set_type(SC_TYPE_ESPTOUCH);
+    smartconfig_start_config_t cfg2 = SMARTCONFIG_START_CONFIG_DEFAULT();
+    esp_smartconfig_start(&cfg2);
 }
 
-void ETH_begin(){
-    if(eth_connected || eth_connecting){
-        ETH_Stop();
+void initialise_provisioning(void){
+    stop_wifi();
+
+    if(ap_netif != NULL){
+        esp_wifi_clear_default_wifi_driver_and_handlers(ap_netif);
+        esp_netif_destroy(ap_netif);
+        ap_netif = NULL;
     }
+    wifi_prov_mgr_stop_provisioning();
+    wifi_prov_mgr_deinit();
+    wifi_connecting = true;
+
+    //borrar credenciales almacenadas
+    wifi_config_t conf;
+    memset(&conf, 0, sizeof(wifi_config_t));
+    if(esp_wifi_set_config(WIFI_IF_STA, &conf)){
+        wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+        ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+        esp_wifi_set_config(WIFI_IF_STA, &conf);
+    }
+    ESP_ERROR_CHECK(esp_event_handler_register(WIFI_PROV_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL));
+    //configuracion del provision
+    sta_netif = esp_netif_create_default_wifi_sta();
+    ap_netif = esp_netif_create_default_wifi_ap();
+
+    /* Configuration for the provisioning manager */
+    wifi_prov_mgr_config_t config = {
+        .scheme = wifi_prov_scheme_softap,
+        .scheme_event_handler = WIFI_PROV_EVENT_HANDLER_NONE
+    };
+
+    ESP_ERROR_CHECK(wifi_prov_mgr_init(config));
+
+    char POP [20] ="WF_";
+    strcat(POP,ConfigFirebase.Device_Id);
+    wifi_prov_security_t security = WIFI_PROV_SECURITY_1;
+
+    const char *service_key = NULL;
+
+    /* Start provisioning service */
+    wifi_prov_mgr_start_provisioning(security,  ConfigFirebase.Device_Ser_num, POP,service_key);
     
-    if(Coms.ETH.Auto){
-        ETH.begin(ETH_ADDR, ETH_POWER_PIN, ETH_MDC_PIN, ETH_MDIO_PIN, ETH_TYPE);
+}
+
+void start_wifi(void)
+{
+    wifi_connected  = false;
+    Serial.println("Starting wifi");
+    //Station_Begin();
+    //Wifi de esp
+
+    sta_netif = esp_netif_create_default_wifi_sta();
+
+    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+
+    wifi_prov_mgr_config_t config = {
+        .scheme = wifi_prov_scheme_softap,
+        .scheme_event_handler = WIFI_PROV_EVENT_HANDLER_NONE
+    };
+
+    ESP_ERROR_CHECK(wifi_prov_mgr_init(config));
+
+    bool provisioned = false;
+
+    ESP_ERROR_CHECK(wifi_prov_mgr_is_provisioned(&provisioned));
+
+    if (!provisioned) {
+        Serial.printf( "Sin credenciales almacenadas, pausando wifi\n");    
+        stop_wifi();
+        wifi_prov_mgr_stop_provisioning();
+        wifi_prov_mgr_deinit();
+        Coms.Wifi.ON=false;
+        SendToPSOC5(Coms.Wifi.ON,COMS_CONFIGURATION_WIFI_ON);
+    } else {
+        wifi_prov_mgr_deinit();
+        ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
+        ESP_ERROR_CHECK(esp_wifi_start());
+        wifi_connecting = true;
+        esp_wifi_connect();
+        Serial.println("Hay credenciales y nos conectamos");
     }
-	else{   
-        ETH.begin(ETH_ADDR, ETH_POWER_PIN, ETH_MDC_PIN, ETH_MDIO_PIN, ETH_TYPE);
-        IPAddress primaryDNS(8, 8, 8, 8); //optional
-        IPAddress secondaryDNS(8, 8, 4, 4); //optional
-        ETH.config(Coms.ETH.IP1,Coms.ETH.Gateway,Coms.ETH.Mask, primaryDNS, secondaryDNS);
+}
+
+void Eth_Loop(){
+    static TickType_t xStart = 0;
+    static bool finding = false;
+    static uint8_t LastStatus = APAGADO;
+    switch (Coms.ETH.State){
+        case APAGADO:
+            if(Coms.ETH.ON){
+                initialize_ethernet();
+                Coms.ETH.State = CONNECTING;
+                xStart = xTaskGetTickCount();
+            }
+        break;
+        case CONNECTING:
+            if(eth_connected){
+                Coms.ETH.State = CONECTADO;
+            #ifdef GROUPS
+                start_udp();
+            #endif
+                xStart = xTaskGetTickCount();
+                if(!Coms.ETH.DHCP){
+                    if(ComprobarConexion()){
+                        Coms.ETH.Internet = true;
+                        Coms.Wifi.ON = false;
+                    }
+                }
+            }
+            #ifdef GROUPS
+                else if(GetStateTime(xStart) > 60000){
+                    Coms.ETH.State = KILLING;
+                    kill_ethernet();
+                }
+            #endif
+
+            else if(!Coms.ETH.ON){
+                stop_ethernet();
+                Coms.ETH.State = DISCONNECTING;  
+                              
+            }
+            
+        break;
+
+        case CONECTADO:
+            #ifdef GROUPS
+            if(Params.Tipo_Sensor && !finding){
+                if(GetStateTime(xStart) > 60000){
+                    Serial.println("Iniciando fase busqueda ");
+                    xTaskCreate( BuscarContador_Task, "BuscarContador", 4096*4, NULL, 5, NULL); 
+                    finding = true;
+                }
+            }
+            #endif
+
+            if(!Coms.ETH.ON){
+            #ifdef GROUPS
+                if(Coms.ETH.DHCP){
+                    kill_ethernet();
+                    Coms.ETH.DHCP  = 0;
+                    SendToPSOC5(Coms.ETH.DHCP,COMS_CONFIGURATION_ETH_DHCP);
+                    Coms.ETH.State = KILLING;
+                }
+                else{
+            #endif
+                    stop_ethernet();
+                    Coms.ETH.State = DISCONNECTING;
+            #ifdef GROUPS
+                }
+            #endif
+                
+            }
+
+            //Desconexion del cable
+            if(!eth_connected && !eth_link_up){
+                Coms.ETH.State = CONNECTING;
+            }
+            #ifdef GROUPS
+            //Lectura del contador
+			if(ContadorExt.ContadorConectado){
+                Coms.ETH.Wifi_Perm = true;
+				if(!Counter.Inicializado){
+					Counter.begin(ContadorExt.ContadorIp);
+				}
+				Serial.println("Reading");
+				Counter.read();
+				Counter.parse();
+				uint8 buffer_contador[7] = {0}; 
+
+				buffer_contador[0] = ContadorExt.ContadorConectado;
+				buffer_contador[1] = (uint8)(ContadorExt.DomesticCurrentA& 0x00FF);
+				buffer_contador[2] = (uint8)((ContadorExt.DomesticCurrentA >> 8) & 0x00FF);
+
+				if(Status.Trifasico){
+					buffer_contador[3] = (uint8)(ContadorExt.DomesticCurrentB & 0x00FF);
+					buffer_contador[4] = (uint8)((ContadorExt.DomesticCurrentB >> 8) & 0x00FF);
+
+					buffer_contador[5] = (uint8)(ContadorExt.DomesticCurrentC & 0x00FF);
+					buffer_contador[6] = (uint8)((ContadorExt.DomesticCurrentC >> 8) & 0x00FF);
+				}
+
+				SendToPSOC5((char*)buffer_contador,7,MEASURES_EXTERNAL_COUNTER);
+			}
+            #endif
+        break;
+
+        case DISCONNECTING:
+            if(!eth_connected && !eth_connecting){
+            #ifdef GROUPS
+                stop_MQTT();
+            #endif
+                finding = false;
+                Coms.ETH.State = DISCONNECTED;
+                Coms.ETH.Internet = false;
+            }
+        break;
+
+        case DISCONNECTED:
+            if(Coms.ETH.ON){
+                restart_ethernet();
+                Coms.ETH.State = CONNECTING;
+                xStart = xTaskGetTickCount();
+            }
+        break;
+        case KILLING:
+        
+            if(!eth_connected && !eth_connecting){
+                Coms.ETH.Internet = false;
+                if(!Coms.ETH.ON){
+                    Coms.ETH.State = APAGADO;
+                    break;
+                }
+                Coms.ETH.Wifi_Perm = false;
+                stop_wifi();
+                Coms.ETH.DHCP  = 1;
+                Coms.ETH.State = CONNECTING;
+                initialize_ethernet();
+                
+                xStart = xTaskGetTickCount();
+                SendToPSOC5(Coms.ETH.DHCP,COMS_CONFIGURATION_ETH_DHCP);
+            }
+        break;
+
+        default:
+            Serial.println("Estado no implementado en maquina de ETH!!!");
+        break;
     }
-	eth_connecting = true;
-    eth_started = true;
+    if(LastStatus!= Coms.ETH.State){
+      Serial.printf("Maquina de estados de ETH de % i a %i \n", LastStatus, Coms.ETH.State);
+      LastStatus= Coms.ETH.State;
+    }
 }
 
 void ComsTask(void *args){
-    uint8_t ComsMachineState =DISCONNECTED;
-    uint8_t LastStatus = DISCONNECTED;
     bool ServidorArrancado = false;
-    WiFi.onEvent(WiFiEvent);
+    Coms.ETH.State=APAGADO;
+    while(!Coms.StartConnection){
+        vTaskDelay(pdMS_TO_TICKS(500));
+    }
+
+    /* Initialize NVS partition */
+    esp_err_t ret = nvs_flash_init();
+    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        ESP_ERROR_CHECK(nvs_flash_init());
+    }
+    ESP_ERROR_CHECK(esp_netif_init());  
+    ESP_ERROR_CHECK(esp_event_loop_create_default());       
+
+    ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &event_handler, NULL)); 
     while (1){
         if(Coms.StartConnection){
+            Eth_Loop();
             //Arranque del provisioning
             if(Coms.StartProvisioning || Coms.StartSmartconfig){
+                ConfigFirebase.InternetConection=0;
                 Serial.println("Starting provisioning sistem");
+                Coms.Wifi.ON = true;
                 if(ServidorArrancado){
-                    server.end();
+                    StopServer();
                     ServidorArrancado = false;
                 }
-                if(wifi_connected || Coms.Provisioning){
-                    WiFiProv.StopProvision();
+                if(eth_connected || eth_connecting){
+                    Coms.ETH.State = KILLING;
+                    Coms.ETH.ON = false;
+                    kill_ethernet();
+                }
+                delay(100);
+                if(Coms.StartSmartconfig){
+                    initialise_smartconfig();
                 }
                 else{
-                    WiFi.begin();
-                    wifi_config_t conf;
-                    memset(&conf, 0, sizeof(wifi_config_t));
-                    if(esp_wifi_set_config(WIFI_IF_STA, &conf)){
-                        log_e("clear config failed!");
-                    }
-                    WiFiProv.StopProvision();
-                }
-                if(Coms.ETH.ON){
-                    ETH_Stop();
-                    Coms.ETH.ON=false;
+                    initialise_provisioning();
                 }
 
-                if(Coms.StartSmartconfig){
-                    StartSmarConfig();
-                }
-                else{Coms.Provisioning = true;
-                    Station_Begin();}
-                while(Coms.Wifi.ON != true){
-                    SendToPSOC5(true,COMS_CONFIGURATION_WIFI_ON);
-                    delay(25);
-                }
-                SendToPSOC5(Coms.Wifi.ON,COMS_CONFIGURATION_WIFI_ON);
                 Coms.StartProvisioning = false;
-                Coms.StartSmartconfig=false;
-                
-                ComsMachineState=CONNECTING;
+                Coms.StartSmartconfig  = false;
             }
 
             //Comprobar si hemos perdido todas las conexiones
-            if(!eth_connected && !wifi_connected){
+            if(!Coms.ETH.Internet && !Coms.Wifi.Internet){
                 ConfigFirebase.InternetConection=false;
             }
+            else{
+                ConfigFirebase.InternetConection=true;
+            }
+
             //Encendido de las interfaces          
             if(Coms.Wifi.ON && !wifi_connected && !wifi_connecting){
-                if(!Coms.ETH.ON || !eth_link_up){
-                    Station_Begin();
-                }                    
-            }
-            else if(wifi_connected && !Coms.Wifi.ON){
-                Station_Stop();
-            }
-            if(Coms.ETH.ON){
-                if(!eth_started){
-                    ETH_begin();
+                if(Coms.ETH.ON){
+                    if(!Coms.ETH.Internet && Coms.ETH.Wifi_Perm){
+                        start_wifi();                     
+                    }
                 }
-                else if((!eth_connected && !eth_connecting && eth_link_up) || Coms.RestartConection){
-                    ETH_Restart();
-                    Coms.RestartConection = false;
-                }
+                else{
+                    start_wifi();
+                }                
             }
-            else if(eth_connected){
-                ETH_Stop();
+            else if(!Coms.Wifi.ON && (wifi_connected || wifi_connecting)){
+                stop_wifi();
             }
-            if(ConfigFirebase.InternetConection && !ServidorArrancado){
-                //SPIFFS.begin();
-                SPIFFS.begin(false,"/spiffs",1,"WebServer");
-                server.begin();
+            if((eth_connected || wifi_connected ) && !ServidorArrancado){
+
                 InitServer();
                 ServidorArrancado = true;
             }
         }
-        vTaskDelay(pdMS_TO_TICKS(500));
+        delay(500);
     }
 }
-

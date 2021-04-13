@@ -19,6 +19,8 @@
 #include "esp_pm.h"
 #include "soc/rtc.h"
 #include "esp_wpa.h"
+#include "esp_netif.h"
+#include "tcpip_adapter_compatible/tcpip_adapter_compat.h"
 
 #if (CONFIG_ESP32_WIFI_RX_BA_WIN > CONFIG_ESP32_WIFI_DYNAMIC_RX_BUFFER_NUM)
 #error "WiFi configuration check: WARNING, WIFI_RX_BA_WIN should not be larger than WIFI_DYNAMIC_RX_BUFFER_NUM!"
@@ -35,8 +37,10 @@ extern uint8_t esp_wifi_get_user_init_flag_internal(void);
 static esp_pm_lock_handle_t s_wifi_modem_sleep_lock;
 #endif
 
+#if CONFIG_IDF_TARGET_ESP32
 /* Callback function to update WiFi MAC time */
 wifi_mac_time_update_cb_t s_wifi_mac_time_update_cb = NULL;
+#endif
 
 /* Set additional WiFi features and capabilities */
 uint64_t g_wifi_feature_caps =
@@ -47,7 +51,7 @@ uint64_t g_wifi_feature_caps =
 
 static const char* TAG = "wifi_init";
 
-static void __attribute__((constructor)) s_set_default_wifi_log_level()
+static void __attribute__((constructor)) s_set_default_wifi_log_level(void)
 {
     /* WiFi libraries aren't compiled to know CONFIG_LOG_DEFAULT_LEVEL,
        so set it at runtime startup. Done here not in esp_wifi_init() to allow
@@ -55,9 +59,11 @@ static void __attribute__((constructor)) s_set_default_wifi_log_level()
     */
     esp_log_level_set("wifi", CONFIG_LOG_DEFAULT_LEVEL);
     esp_log_level_set("mesh", CONFIG_LOG_DEFAULT_LEVEL);
+    esp_log_level_set("smartconfig", CONFIG_LOG_DEFAULT_LEVEL);
+    esp_log_level_set("ESPNOW", CONFIG_LOG_DEFAULT_LEVEL);
 }
 
-static void esp_wifi_set_debug_log()
+static void esp_wifi_set_debug_log(void)
 {
     /* set WiFi log level and module */
 #if CONFIG_ESP32_WIFI_DEBUG_LOG_ENABLE
@@ -120,9 +126,40 @@ esp_err_t esp_wifi_deinit(void)
         return err;
     }
 
+#if CONFIG_ESP_NETIF_TCPIP_ADAPTER_COMPATIBLE_LAYER
     tcpip_adapter_clear_default_wifi_handlers();
+#endif
 
     return err;
+}
+
+static void esp_wifi_config_info(void)
+{
+#ifdef CONFIG_ESP32_WIFI_RX_BA_WIN
+    ESP_LOGI(TAG, "rx ba win: %d", CONFIG_ESP32_WIFI_RX_BA_WIN);
+#endif
+    ESP_LOGI(TAG, "tcpip mbox: %d", CONFIG_LWIP_TCPIP_RECVMBOX_SIZE);
+    ESP_LOGI(TAG, "udp mbox: %d", CONFIG_LWIP_UDP_RECVMBOX_SIZE);
+    ESP_LOGI(TAG, "tcp mbox: %d", CONFIG_LWIP_TCP_RECVMBOX_SIZE);
+    ESP_LOGI(TAG, "tcp tx win: %d", CONFIG_LWIP_TCP_SND_BUF_DEFAULT);
+    ESP_LOGI(TAG, "tcp rx win: %d", CONFIG_LWIP_TCP_WND_DEFAULT);
+    ESP_LOGI(TAG, "tcp mss: %d", CONFIG_LWIP_TCP_MSS);
+
+#ifdef CONFIG_SPIRAM_TRY_ALLOCATE_WIFI_LWIP
+    ESP_LOGI(TAG, "WiFi/LWIP prefer SPIRAM");
+#endif
+
+#ifdef CONFIG_ESP32_WIFI_IRAM_OPT
+    ESP_LOGI(TAG, "WiFi IRAM OP enabled");
+#endif
+
+#ifdef CONFIG_ESP32_WIFI_RX_IRAM_OPT
+    ESP_LOGI(TAG, "WiFi RX IRAM OP enabled");
+#endif
+
+#ifdef CONFIG_LWIP_IRAM_OPTIMIZATION
+    ESP_LOGI(TAG, "LWIP IRAM OP enabled");
+#endif
 }
 
 esp_err_t esp_wifi_init(const wifi_init_config_t *config)
@@ -136,14 +173,18 @@ esp_err_t esp_wifi_init(const wifi_init_config_t *config)
         }
     }
 #endif
+#if CONFIG_ESP_NETIF_TCPIP_ADAPTER_COMPATIBLE_LAYER
     esp_err_t err = tcpip_adapter_set_default_wifi_handlers();
     if (err != ESP_OK) {
         ESP_LOGW(TAG, "Failed to set default Wi-Fi event handlers (0x%x)", err);
     }
+#endif
     esp_err_t result = esp_wifi_init_internal(config);
     if (result == ESP_OK) {
         esp_wifi_set_debug_log();
+#if CONFIG_IDF_TARGET_ESP32
         s_wifi_mac_time_update_cb = esp_wifi_internal_update_mac_time;
+#endif
 
         result = esp_supplicant_init();
         if (result != ESP_OK) {
@@ -156,7 +197,7 @@ esp_err_t esp_wifi_init(const wifi_init_config_t *config)
             return result;
         } 
     }
-
+    esp_wifi_config_info();
     return result;
 }
 

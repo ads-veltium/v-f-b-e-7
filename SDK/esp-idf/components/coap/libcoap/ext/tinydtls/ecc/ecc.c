@@ -299,41 +299,24 @@ static void fieldModO(const uint32_t *A, uint32_t *result, uint8_t length) {
 		sub(result, ecc_order_m, result, 9);
 }
 
-/**
- * Checks if all @p count elements in the given array @p val have the
- * value 0. In this case, this function returns 1, otherwise the
- * return value is 0.
- *
- * @param val   The start of the number array to check.
- * @param count The number of elements in @p val.
- *
- * @return 1 if all elements in @val are zero, 0 otherwise.
- */
-static int is_zero(const uint32_t* val, size_t count) {
-  int result = 0;
-  int idx;
-
-  for (idx = 0; idx < count; idx++) {
-    result += val[idx] == 0;
-  }
-  return result == count;
-}
-
-/**
- * Checks if the given array @p A represents the little endian number
- * 1. The array @p A must have exactly eight elements.
- *
- * @param val   The start of the number array to check.
- *
- * @return 1 if A[0] has the value 1 and all remaining elements have
- *         the value 0, 0 otherwise.
- */
 static int isOne(const uint32_t* A){
-  return (is_zero(&A[1], 7) + (A[0] == 1)) == 2;
+	uint8_t n; 
+	for(n=1;n<8;n++) 
+		if (A[n]!=0) 
+			break;
+
+	if ((n==8)&&(A[0]==1)) 
+		return 1;
+	else 
+		return 0;
 }
 
 static int isZero(const uint32_t* A){
-  return is_zero(A, 8);
+	uint8_t n, r=0;
+	for(n=0;n<8;n++){
+		if (A[n] == 0) r++;
+	}
+	return r==8;
 }
 
 static void rshift(uint32_t* A){
@@ -619,9 +602,6 @@ int ecc_ecdsa_validate(const uint32_t *x, const uint32_t *y, const uint32_t *e, 
 	uint32_t tmp2_y[8];
 	uint32_t tmp3_x[8];
 	uint32_t tmp3_y[8];
-
-	if (isZero(r) || isZero(s))
-		return -1;
 
 	// 3. Calculate w = s^{-1} \pmod{n}
 	fieldInv(s, ecc_order_m, ecc_order_r, w);

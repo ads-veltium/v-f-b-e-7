@@ -245,7 +245,7 @@
 
 #define LWIP_DHCP_IP_ADDR_RESTORE()     dhcp_ip_addr_restore(netif)
 #define LWIP_DHCP_IP_ADDR_STORE()       dhcp_ip_addr_store(netif)
-#define LWIP_DHCP_IP_ADDR_ERASE()       dhcp_ip_addr_erase(esp_netif[tcpip_if])
+#define LWIP_DHCP_IP_ADDR_ERASE(esp_netif)       dhcp_ip_addr_erase(esp_netif)
 
 #endif
 
@@ -326,6 +326,11 @@
 #define TCP_QUEUE_OOSEQ                 CONFIG_LWIP_TCP_QUEUE_OOSEQ
 
 /**
+ * LWIP_TCP_SACK_OUT==1: TCP will support sending selective acknowledgements (SACKs).
+ */
+#define LWIP_TCP_SACK_OUT               CONFIG_LWIP_TCP_SACK_OUT
+
+/**
  * ESP_TCP_KEEP_CONNECTION_WHEN_IP_CHANGES==1: Keep TCP connection when IP changed
  * scenario happens: 192.168.0.2 -> 0.0.0.0 -> 192.168.0.2 or 192.168.0.2 -> 0.0.0.0
  */
@@ -338,6 +343,11 @@
  *         for the event. This is the default.
 */
 #define TCP_MSS                         CONFIG_LWIP_TCP_MSS
+
+/**
+ * TCP_TMR_INTERVAL: TCP timer interval
+ */
+#define TCP_TMR_INTERVAL                CONFIG_LWIP_TCP_TMR_INTERVAL
 
 /**
  * TCP_MSL: The maximum segment lifetime in milliseconds
@@ -395,6 +405,17 @@
  * Default is 3 second.
  */
 #define LWIP_TCP_RTO_TIME             CONFIG_LWIP_TCP_RTO_TIME
+
+/**
+ * Set TCP hook for Initial Sequence Number (ISN)
+ */
+#ifdef CONFIG_LWIP_TCP_ISN_HOOK
+#include <lwip/arch.h>
+struct ip_addr;
+u32_t lwip_hook_tcp_isn(const struct ip_addr *local_ip, u16_t local_port,
+                        const struct ip_addr *remote_ip, u16_t remote_port);
+#define LWIP_HOOK_TCP_ISN               lwip_hook_tcp_isn
+#endif
 
 /*
    ----------------------------------
@@ -574,12 +595,24 @@
  */
 #define SO_REUSE                        CONFIG_LWIP_SO_REUSE
 
+
+/**
+ * LWIP_DNS_SUPPORT_MDNS_QUERIES==1: Enable mDNS queries in hostname resolution.
+ * This option is set via menuconfig.
+ */
+#define LWIP_DNS_SUPPORT_MDNS_QUERIES   CONFIG_LWIP_DNS_SUPPORT_MDNS_QUERIES
 /**
  * SO_REUSE_RXTOALL==1: Pass a copy of incoming broadcast/multicast packets
  * to all local matches if SO_REUSEADDR is turned on.
  * WARNING: Adds a memcpy for every packet if passing to more than one pcb!
  */
 #define SO_REUSE_RXTOALL                CONFIG_LWIP_SO_REUSE_RXTOALL
+
+/**
+ * LWIP_NETBUF_RECVINFO==1: Enable IP_PKTINFO option.
+ * This option is set via menuconfig.
+ */
+#define LWIP_NETBUF_RECVINFO            CONFIG_LWIP_NETBUF_RECVINFO
 
 /*
    ----------------------------------------
@@ -613,6 +646,14 @@
 #define PPP_SUPPORT                     CONFIG_LWIP_PPP_SUPPORT
 
 #if PPP_SUPPORT
+
+/**
+ * PPP_IPV6_SUPPORT == 1: Enable IPV6 support for local link
+ * between modem and lwIP stack.
+ * Some modems do not support IPV6 addressing in local link and
+ * the only option available is to disable IPV6 address negotiation.
+ */
+#define PPP_IPV6_SUPPORT				CONFIG_LWIP_PPP_ENABLE_IPV6
 
 /**
  * PPP_NOTIFY_PHASE==1: Support PPP notify phase.
@@ -755,6 +796,11 @@
 #define TCPIP_DEBUG                     LWIP_DBG_OFF
 
 /**
+ * TCP_OOSEQ_DEBUG: Enable debugging in tcpin.c for OOSEQ.
+ */
+#define TCP_OOSEQ_DEBUG                 LWIP_DBG_OFF
+
+/**
  * ETHARP_TRUST_IP_MAC==1: Incoming IP packets cause the ARP table to be
  * updated with the source MAC and IP addresses supplied in the packet.
  * You may want to disable this if you do not trust LAN peers to have the
@@ -865,7 +911,10 @@
  */
 #define SNTP_SERVER_DNS            1
 
-#define SNTP_UPDATE_DELAY              CONFIG_LWIP_SNTP_UPDATE_DELAY
+// It disables a check of SNTP_UPDATE_DELAY it is done in sntp_set_sync_interval
+#define SNTP_SUPPRESS_DELAY_CHECK
+
+#define SNTP_UPDATE_DELAY              (sntp_get_sync_interval())
 
 #define SNTP_SET_SYSTEM_TIME_US(sec, us)  \
     do { \

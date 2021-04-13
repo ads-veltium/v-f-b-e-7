@@ -26,7 +26,7 @@ _addons: &addon_conf
       - gcc-7-multilib
 
 go:
-  - "1.10"
+  - "1.11"
 
 git:
   depth: false
@@ -116,10 +116,12 @@ before_script:
   - gcc --version
   - if [ "${TEST}" != "TEST_ALL" ]; then arm-none-eabi-gcc --version; fi
   - cp -R $HOME/ci/mynewt-nimble-project.yml project.yml
+  - mkdir -p targets
   - cp -R $HOME/ci/mynewt-nimble-targets targets
   - $HOME/ci/prepare_test.sh $VM_AMOUNT
   - mkdir -p repos && pushd repos/
-  - git clone https://github.com/apache/mynewt-core apache-mynewt-core
+  - git clone --depth=1 https://github.com/apache/mynewt-core apache-mynewt-core
+  - git clone --depth=1 https://github.com/JuulLabs-OSS/mcuboot mcuboot
   - popd
 
 script:

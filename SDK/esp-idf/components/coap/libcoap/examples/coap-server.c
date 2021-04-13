@@ -361,7 +361,7 @@ hnd_get(coap_context_t *ctx UNUSED_PARAM,
   coap_str_const_t *uri_path;
   int i;
   dynamic_resource_t *resource_entry = NULL;
-
+  coap_str_const_t value = { 0, NULL };
   /*
    * request will be NULL if an Observe triggered request, so the uri_path,
    * if needed, must be abstracted from the resource.
@@ -386,10 +386,14 @@ hnd_get(coap_context_t *ctx UNUSED_PARAM,
 
   resource_entry = &dynamic_entry[i];
 
+  if (resource_entry->value) {
+    value.length = resource_entry->value->length;
+    value.s = resource_entry->value->s;
+  }
   coap_add_data_blocked_response(resource, session, request, response, token,
                                  resource_entry->media_type, -1,
-                                 resource_entry->value->length,
-                                 resource_entry->value->s);
+                                 value.length,
+                                 value.s);
   return;
 }
 
@@ -474,6 +478,7 @@ hnd_put(coap_context_t *ctx UNUSED_PARAM,
     coap_delete_string(uri_path);
     response->code = COAP_RESPONSE_CODE(204);
     dynamic_entry[i].created = 0;
+    coap_resource_notify_observers(dynamic_entry[i].resource, NULL);
   }
 
   resource_entry = &dynamic_entry[i];
@@ -866,70 +871,6 @@ finish:
   return ctx;
 }
 
-static int
-join(coap_context_t *ctx, char *group_name){
-  struct ipv6_mreq mreq;
-  struct addrinfo   *reslocal = NULL, *resmulti = NULL, hints, *ainfo;
-  int result = -1;
-
-  /* we have to resolve the link-local interface to get the interface id */
-  memset(&hints, 0, sizeof(hints));
-  hints.ai_family = AF_INET6;
-  hints.ai_socktype = SOCK_DGRAM;
-
-  result = getaddrinfo("::", NULL, &hints, &reslocal);
-  if (result != 0) {
-    fprintf(stderr, "join: cannot resolve link-local interface: %s\n",
-            gai_strerror(result));
-    goto finish;
-  }
-
-  /* get the first suitable interface identifier */
-  for (ainfo = reslocal; ainfo != NULL; ainfo = ainfo->ai_next) {
-    if (ainfo->ai_family == AF_INET6) {
-      mreq.ipv6mr_interface =
-                ((struct sockaddr_in6 *)ainfo->ai_addr)->sin6_scope_id;
-      break;
-    }
-  }
-
-  memset(&hints, 0, sizeof(hints));
-  hints.ai_family = AF_INET6;
-  hints.ai_socktype = SOCK_DGRAM;
-
-  /* resolve the multicast group address */
-  result = getaddrinfo(group_name, NULL, &hints, &resmulti);
-
-  if (result != 0) {
-    fprintf(stderr, "join: cannot resolve multicast address: %s\n",
-            gai_strerror(result));
-    goto finish;
-  }
-
-  for (ainfo = resmulti; ainfo != NULL; ainfo = ainfo->ai_next) {
-    if (ainfo->ai_family == AF_INET6) {
-      mreq.ipv6mr_multiaddr =
-                ((struct sockaddr_in6 *)ainfo->ai_addr)->sin6_addr;
-      break;
-    }
-  }
-
-  if (ctx->endpoint) {
-    result = setsockopt(ctx->endpoint->sock.fd, IPPROTO_IPV6, IPV6_JOIN_GROUP, (char *)&mreq, sizeof(mreq));
-    if ( result == COAP_SOCKET_ERROR ) {
-      fprintf( stderr, "join: setsockopt: %s\n", coap_socket_strerror() );
-    }
-  } else {
-    result = -1;
-  }
-
- finish:
-  freeaddrinfo(resmulti);
-  freeaddrinfo(reslocal);
-
-  return result;
-}
-
 static ssize_t
 cmdline_read_key(char *arg, unsigned char *buf, size_t maxlen) {
   size_t len = strnlen(arg, maxlen);
@@ -951,7 +892,9 @@ main(int argc, char **argv) {
   coap_log_t log_level = LOG_WARNING;
   unsigned wait_ms;
   time_t t_last = 0;
+#ifndef _WIN32
   struct sigaction sa;
+#endif
 
   clock_offset = time(NULL);
 
@@ -1028,14 +971,18 @@ main(int argc, char **argv) {
 
   /* join multicast group if requested at command line */
   if (group)
-    join(ctx, group);
+    coap_join_mcast_group(ctx, group);
 
+#ifdef _WIN32
+  signal(SIGINT, handle_sigint);
+#else
   memset (&sa, 0, sizeof(sa));
   sigemptyset(&sa.sa_mask);
   sa.sa_handler = handle_sigint;
   sa.sa_flags = 0;
   sigaction (SIGINT, &sa, NULL);
   sigaction (SIGTERM, &sa, NULL);
+#endif
 
   wait_ms = COAP_RESOURCE_CHECK_TIME * 1000;
 
@@ -1056,13 +1003,9 @@ main(int argc, char **argv) {
       time_t t_now = time(NULL);
       if (t_last != t_now) {
         /* Happens once per second */
-        int i;
         t_last = t_now;
         if (time_resource) {
           coap_resource_notify_observers(time_resource, NULL);
-        }
-        for (i = 0; i < dynamic_count; i++) {
-          coap_resource_notify_observers(dynamic_entry[i].resource, NULL);
         }
       }
       if (result) {

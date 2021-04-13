@@ -126,10 +126,24 @@ int WiFiClientSecure::connect(const char *host, uint16_t port, const char *_CA_c
     if(_timeout > 0){
         sslclient->handshake_timeout = _timeout;
     }
-    int ret = start_ssl_client(sslclient, host, port, _timeout, _CA_cert, _cert, _private_key, NULL, NULL);
-    _lastError = ret;
+    int ret = 0;
+    do{
+        ret = start_ssl_client(sslclient, host, port, _timeout, _CA_cert, _cert, _private_key, NULL, NULL);
+
+        _lastError = ret;
+        if(ret <0){
+            stop();           
+        }
+    }while(ret==-5);
+
+    if(ret ==-3){
+
+        stop();
+        return-3;
+    }
+
     if (ret < 0) {
-        log_e("start_ssl_client: %d", ret);
+        //log_e("start_ssl_client: %d", ret);
         stop();
         return 0;
     }
@@ -274,18 +288,16 @@ bool WiFiClientSecure::verify(const char* fp, const char* domain_name)
 }
 
 char *WiFiClientSecure::_streamLoad(Stream& stream, size_t size) {
-  static char *dest = nullptr;
-  if(dest) {
-      free(dest);
-  }
-  dest = (char*)malloc(size);
+  char *dest = (char*)malloc(size+1);
   if (!dest) {
     return nullptr;
   }
   if (size != stream.readBytes(dest, size)) {
     free(dest);
     dest = nullptr;
+    return nullptr;
   }
+  dest[size] = '\0';
   return dest;
 }
 

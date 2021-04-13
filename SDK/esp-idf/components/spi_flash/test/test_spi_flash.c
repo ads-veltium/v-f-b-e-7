@@ -10,6 +10,7 @@
 #include "driver/timer.h"
 #include "esp_intr_alloc.h"
 #include "test_utils.h"
+#include "ccomp_timer.h"
 #include "esp_log.h"
 
 struct flash_test_ctx {
@@ -20,11 +21,23 @@ struct flash_test_ctx {
 
 static const char TAG[] = "test_spi_flash";
 
+/* Base offset in flash for tests. */
+static size_t start;
+
+static void setup_tests(void)
+{
+    if (start == 0) {
+        const esp_partition_t *part = get_test_data_partition();
+        start = part->address;
+        printf("Test data partition @ 0x%x\n", start);
+    }
+}
+
 static void flash_test_task(void *arg)
 {
     struct flash_test_ctx *ctx = (struct flash_test_ctx *) arg;
     vTaskDelay(100 / portTICK_PERIOD_MS);
-    const uint32_t sector = ctx->offset;
+    const uint32_t sector = start / SPI_FLASH_SEC_SIZE + ctx->offset;
     printf("t%d\n", sector);
     printf("es%d\n", sector);
     if (spi_flash_erase_sector(sector) != ESP_OK) {
@@ -69,13 +82,15 @@ static void flash_test_task(void *arg)
 
 TEST_CASE("flash write and erase work both on PRO CPU and on APP CPU", "[spi_flash][ignore]")
 {
+    setup_tests();
+
     SemaphoreHandle_t done = xSemaphoreCreateCounting(4, 0);
     struct flash_test_ctx ctx[] = {
-            { .offset = 0x100 + 6, .done = done },
-            { .offset = 0x100 + 7, .done = done },
-            { .offset = 0x100 + 8, .done = done },
+            { .offset = 0x10 + 6, .done = done },
+            { .offset = 0x10 + 7, .done = done },
+            { .offset = 0x10 + 8, .done = done },
 #ifndef CONFIG_FREERTOS_UNICORE
-            { .offset = 0x100 + 9, .done = done }
+            { .offset = 0x10 + 9, .done = done }
 #endif
     };
 
@@ -110,10 +125,14 @@ typedef struct {
     size_t repeat_count;
 } block_task_arg_t;
 
+#ifdef CONFIG_IDF_TARGET_ESP32S2BETA
+#define int_clr_timers int_clr
+#endif
+
 static void IRAM_ATTR timer_isr(void* varg) {
     block_task_arg_t* arg = (block_task_arg_t*) varg;
-    TIMERG0.int_clr_timers.t0 = 1;
-    TIMERG0.hw_timer[0].config.alarm_en = 1;
+    timer_group_clr_intr_status_in_isr(TIMER_GROUP_0, TIMER_0);
+    timer_group_enable_alarm_in_isr(TIMER_GROUP_0, TIMER_0);
     ets_delay_us(arg->delay_time_us);
     arg->repeat_count++;
 }
@@ -181,14 +200,16 @@ typedef struct {
 static void time_measure_start(time_meas_ctx_t* ctx)
 {
     ctx->us_start = esp_timer_get_time();
+    ccomp_timer_start();
 }
 
 static uint32_t time_measure_end(time_meas_ctx_t* ctx)
 {
+    uint32_t c_time_us = ccomp_timer_stop();
     uint32_t time_us = esp_timer_get_time() - ctx->us_start;
 
-    ESP_LOGI(TAG, "%s: typical: %.2lf kB/s", ctx->name, ctx->len / (time_us/1000.));
-    return ctx->len * 1000 / (time_us / 1000);
+    ESP_LOGI(TAG, "%s: compensated: %.2lf kB/s, typical: %.2lf kB/s", ctx->name, ctx->len / (c_time_us/1000.), ctx->len / (time_us/1000.));
+    return ctx->len * 1000 / (c_time_us / 1000);
 }
 
 #define TEST_TIMES      20
@@ -276,9 +297,14 @@ TEST_CASE("Test spi_flash read/write performance", "[spi_flash]")
 
     TEST_ASSERT_EQUAL_HEX8_ARRAY(data_to_write, data_read, total_len);
 
-// Not actually checking in this version
-#define CHECK_DATA(suffix) ((void)speed_##suffix)
-#define CHECK_ERASE(var) ((void)var)
+// Data checks are disabled when PSRAM is used or in Freertos compliance check test
+#if !CONFIG_SPIRAM_SUPPORT && !CONFIG_FREERTOS_CHECK_PORT_CRITICAL_COMPLIANCE
+#  define CHECK_DATA(suffix) TEST_PERFORMANCE_GREATER_THAN(FLASH_SPEED_BYTE_PER_SEC_LEGACY_##suffix, "%d", speed_##suffix)
+#  define CHECK_ERASE(var) TEST_PERFORMANCE_GREATER_THAN(FLASH_SPEED_BYTE_PER_SEC_LEGACY_ERASE, "%d", var)
+#else
+#  define CHECK_DATA(suffix) ((void)speed_##suffix)
+#  define CHECK_ERASE(var) ((void)var)
+#endif
 
     CHECK_DATA(WR_4B);
     CHECK_DATA(RD_4B);

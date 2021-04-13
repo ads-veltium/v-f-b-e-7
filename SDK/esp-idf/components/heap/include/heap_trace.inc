@@ -45,6 +45,7 @@ inline static uint32_t get_ccount(void)
         callers[N] = __builtin_return_address(N+STACK_OFFSET);          \
         if (!esp_ptr_executable(callers[N])                             \
             || callers[N] == (void*) HEAP_ARCH_INVALID_PC) {            \
+            callers[N] = 0;                                             \
             return;                                                     \
         }                                                               \
     } while(0)

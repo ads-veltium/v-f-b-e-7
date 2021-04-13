@@ -41,6 +41,7 @@ static uint8_t ble_hs_hci_version;
 
 #define BLE_HS_HCI_FRAG_DATABUF_SIZE    \
     (BLE_ACL_MAX_PKT_SIZE +             \
+     BLE_HCI_DATA_HDR_SZ +              \
      sizeof (struct os_mbuf_pkthdr) +   \
      sizeof (struct os_mbuf))
 
@@ -411,13 +412,17 @@ ble_hs_hci_rx_evt(uint8_t *hci_ev, void *arg)
 }
 
 /**
- * Calculates the largest ACL payload that the controller can accept.  This is
- * everything in an ACL data packet except for the ACL header.
+ * Calculates the largest ACL payload that the controller can accept.
  */
 static uint16_t
 ble_hs_hci_max_acl_payload_sz(void)
 {
-    return ble_hs_hci_buf_sz - BLE_HCI_DATA_HDR_SZ;
+    /* As per BLE 5.1 Standard, Vol. 2, Part E, section 7.8.2:
+     * The LE_Read_Buffer_Size command is used to read the maximum size of the
+     * data portion of HCI LE ACL Data Packets sent from the Host to the
+     * Controller.
+     */
+    return ble_hs_hci_buf_sz;
 }
 
 /**

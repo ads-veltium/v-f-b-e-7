@@ -6,6 +6,7 @@
 #define USE_DRACO_BLE
 
 //#define DEVELOPMENT
+//#define DOUBLE
 
 #ifdef DEVELOPMENT
 #warning "************************************************CUIDAOOOOO!!!!!Vas a cargar esto en Development!!!!!!!*********************************************"
@@ -28,7 +29,6 @@
 #include "cybtldr/cybtldr_parse.h"
 #include "cybtldr/cybtldr_api.h"
 
-
 #include "ble/dev_auth.h"
 #include "Update.h"
 #include <stdio.h>
@@ -36,7 +36,8 @@
 #include "HardwareSerialMOD.h"
 #include <math.h>
 #include "SPIFFS.h"
-//#include "NimBLEDevice.h"
+#include "helpers.h"
+
 
 /*********** Pruebas tar.gz **************/
 //Descomentar para probar el sistema de actualizacion con firmware comprimido
@@ -47,13 +48,15 @@
 #endif
 
 
-
+#define BLE  0
+#define COMS 1
 //Prioridades FreeRTOS
 #define PRIORIDAD_LEDS     1
 #define PRIORIDAD_CONTROL  4
 #define PRIORIDAD_BLE      2
 #define PRIORIDAD_FIREBASE 2
 #define PRIORIDAD_COMS	   1
+#define PRIORIDAD_MQTT     2
 
 // ESTADO GENERAL
 #define	ESTADO_ARRANQUE			0
@@ -105,7 +108,7 @@ void UpdateESP();
 void modifyCharacteristic(uint8* data, uint16 len, uint16 attrHandle);
 
 void SendToPSOC5(uint8 data, uint16 attrHandle);
-void SendToPSOC5(uint8 *data, uint16 len, uint16 attrHandle);
-void SendToPSOC5(uint16 attrHandle);
+void SendToPSOC5(char *data, uint16 len, uint16 attrHandle);
 
+uint32 GetStateTime(TickType_t xStart);
 #endif // __CONTROL_MAIN

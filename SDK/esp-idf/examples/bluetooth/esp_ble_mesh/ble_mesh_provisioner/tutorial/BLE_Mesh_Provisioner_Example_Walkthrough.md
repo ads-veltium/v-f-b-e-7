@@ -53,7 +53,7 @@ The following procedures are needed for the initialization with `ble_mesh_init`.
 
 ### 2.2 Set and Bind AppKey
 
-While working as a Provisioner, a BLE Mesh device also needs to configure such parameters as AppKey, TTL, and Proxy after provisioning is finished. It is not required if a BLE Mesh device works as a node. 
+While working as a Provisioner, a BLE Mesh device also needs to configure such parameters as AppKey, TTL, and Proxy after provisioning is finished. It is not required if a BLE Mesh device works as a node.
 
 Please note that successful configuring of AppKeys is of vital importance. App can only send/receive data (set a state, get a state and publish) after an AppKey has been set and bound.
 

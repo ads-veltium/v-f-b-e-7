@@ -40,8 +40,16 @@ syscfg.defs:
         value: 512
 
     BTTESTER_PRIVACY_MODE:
-        description: Use Resolvable Private Address
+        description: Enable privacy mode (RPA or NRPA)
         value: 0
+
+    BTTESTER_USE_NRPA:
+        description: Use Non Resolvable Private Address
+        value: 0
+
+    BTTESTER_LTD_ADV_TIMEOUT:
+        description: Limited advertising timeout
+        value: 30000
 
     BTTESTER_BTP_DATA_SIZE_MAX:
         description: Maximum BTP payload
@@ -75,7 +83,7 @@ syscfg.vals:
     BLE_L2CAP_COC_MAX_NUM: 2
     # Some testcases require MPS < MTU
     BLE_L2CAP_COC_MPS: 100
-    BLE_RPA_TIMEOUT: 10
+    BLE_RPA_TIMEOUT: 30
     BLE_SM_BONDING: 1
     BLE_SM_MITM: 1
     BLE_SM_SC: 1

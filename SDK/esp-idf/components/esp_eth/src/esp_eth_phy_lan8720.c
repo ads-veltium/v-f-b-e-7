@@ -180,16 +180,20 @@ static esp_err_t lan8720_update_link_duplex_speed(phy_lan8720_t *lan8720)
     eth_link_t link = ETH_LINK_DOWN;
 
     //Cambios Veltium para leer los dos puertos
+
     //Read link1
-    PHY_CHECK(eth->phy_reg_read(eth, lan8720->addr1, ETH_PHY_BMSR_REG_ADDR, &(bmsr.val)) == ESP_OK,"read BMSR failed", err);
+    PHY_CHECK(eth->phy_reg_read(eth, 1, ETH_PHY_BMSR_REG_ADDR, &(bmsr.val)) == ESP_OK,"read BMSR1 failed", err);
     eth_link_t link1 = bmsr.link_status ? ETH_LINK_UP : ETH_LINK_DOWN;
 
     //Read link2
-    PHY_CHECK(eth->phy_reg_read(eth, lan8720->addr2, ETH_PHY_BMSR_REG_ADDR, &(bmsr.val)) == ESP_OK,"read BMSR failed", err);
+    PHY_CHECK(eth->phy_reg_read(eth, 2, ETH_PHY_BMSR_REG_ADDR, &(bmsr.val)) == ESP_OK,"read BMSR2 failed", err);
     eth_link_t link2 = bmsr.link_status ? ETH_LINK_UP : ETH_LINK_DOWN;
 
     if(link1 == ETH_LINK_UP || link2 == ETH_LINK_UP){
         link = ETH_LINK_UP;
+    }
+    else{
+        link = ETH_LINK_DOWN;
     }
     /* check if link status changed */
     if (lan8720->link_status != link) {

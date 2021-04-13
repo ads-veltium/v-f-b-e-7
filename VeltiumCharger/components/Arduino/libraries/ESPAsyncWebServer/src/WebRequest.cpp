@@ -40,7 +40,7 @@ AsyncWebServerRequest::AsyncWebServerRequest(AsyncWebServer* s, AsyncClient* c)
   , _temp()
   , _parseState(0)
   , _version(0)
-  , _method(HTTP_ANY)
+  , _method(HTTP_ANY_A)
   , _url()
   , _host()
   , _contentType()
@@ -260,19 +260,19 @@ bool AsyncWebServerRequest::_parseReqHead(){
   _temp = _temp.substring(index+1);
 
   if(m == "GET"){
-    _method = HTTP_GET;
+    _method = HTTP_GET_A;
   } else if(m == "POST"){
-    _method = HTTP_POST;
+    _method = HTTP_POST_A;
   } else if(m == "DELETE"){
-    _method = HTTP_DELETE;
+    _method = HTTP_DELETE_A;
   } else if(m == "PUT"){
-    _method = HTTP_PUT;
+    _method = HTTP_PUT_A;
   } else if(m == "PATCH"){
-    _method = HTTP_PATCH;
+    _method = HTTP_PATCH_A;
   } else if(m == "HEAD"){
-    _method = HTTP_HEAD;
+    _method = HTTP_HEAD_A;
   } else if(m == "OPTIONS"){
-    _method = HTTP_OPTIONS;
+    _method = HTTP_OPTIONS_A;
   }
 
   String g = String();
@@ -977,14 +977,14 @@ String AsyncWebServerRequest::urlDecode(const String& text) const {
 
 
 const char * AsyncWebServerRequest::methodToString() const {
-  if(_method == HTTP_ANY) return "ANY";
-  else if(_method & HTTP_GET) return "GET";
-  else if(_method & HTTP_POST) return "POST";
-  else if(_method & HTTP_DELETE) return "DELETE";
-  else if(_method & HTTP_PUT) return "PUT";
-  else if(_method & HTTP_PATCH) return "PATCH";
-  else if(_method & HTTP_HEAD) return "HEAD";
-  else if(_method & HTTP_OPTIONS) return "OPTIONS";
+  if(_method == HTTP_ANY_A) return "ANY";
+  else if(_method & HTTP_GET_A) return "GET";
+  else if(_method & HTTP_POST_A)return "POST";
+  else if(_method & HTTP_DELETE_A) return "DELETE";
+  else if(_method & HTTP_PUT_A) return "PUT";
+  else if(_method & HTTP_PATCH_A) return "PATCH";
+  else if(_method & HTTP_HEAD_A) return "HEAD";
+  else if(_method & HTTP_OPTIONS_A) return "OPTIONS";
   return "UNKNOWN";
 }
 

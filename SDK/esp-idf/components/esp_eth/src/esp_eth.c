@@ -58,8 +58,9 @@ typedef struct {
     eth_duplex_t duplex;
     eth_link_t link;
     atomic_int ref_count;
+    void *priv;
     _Atomic esp_eth_fsm_t fsm;
-    esp_err_t (*stack_input)(esp_eth_handle_t eth_handle, uint8_t *buffer, uint32_t length);
+    esp_err_t (*stack_input)(esp_eth_handle_t eth_handle, uint8_t *buffer, uint32_t length, void *priv);
     esp_err_t (*on_lowlevel_init_done)(esp_eth_handle_t eth_handle);
     esp_err_t (*on_lowlevel_deinit_done)(esp_eth_handle_t eth_handle);
 } esp_eth_driver_t;
@@ -90,10 +91,11 @@ static esp_err_t eth_phy_reg_write(esp_eth_mediator_t *eth, uint32_t phy_addr, u
 static esp_err_t eth_stack_input(esp_eth_mediator_t *eth, uint8_t *buffer, uint32_t length)
 {
     esp_eth_driver_t *eth_driver = __containerof(eth, esp_eth_driver_t, mediator);
-    if (!eth_driver->stack_input) {
-        return tcpip_adapter_eth_input(buffer, length, NULL);
+    if (eth_driver->stack_input) {
+        return eth_driver->stack_input((esp_eth_handle_t)eth_driver, buffer, length, eth_driver->priv);
     } else {
-        return eth_driver->stack_input((esp_eth_handle_t)eth_driver, buffer, length);
+        free(buffer);
+        return ESP_OK;
     }
 }
 
@@ -283,6 +285,21 @@ esp_err_t esp_eth_stop(esp_eth_handle_t hdl)
               "stop eth_link_timer failed", err, ESP_FAIL);
     ETH_CHECK(esp_event_post(ETH_EVENT, ETHERNET_EVENT_STOP, &eth_driver, sizeof(eth_driver), 0) == ESP_OK,
               "send ETHERNET_EVENT_STOP event failed", err, ESP_FAIL);
+    return ESP_OK;
+err:
+    return ret;
+}
+
+esp_err_t esp_eth_update_input_path(
+    esp_eth_handle_t hdl,
+    esp_err_t (*stack_input)(esp_eth_handle_t hdl, uint8_t *buffer, uint32_t length, void *priv),
+    void *priv)
+{
+    esp_err_t ret = ESP_OK;
+    esp_eth_driver_t *eth_driver = (esp_eth_driver_t *)hdl;
+    eth_driver->priv = priv;
+    ETH_CHECK(eth_driver, "ethernet driver handle can't be null", err, ESP_ERR_INVALID_ARG);
+    eth_driver->stack_input = stack_input;
     return ESP_OK;
 err:
     return ret;

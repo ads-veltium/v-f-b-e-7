@@ -52,7 +52,7 @@ config BT_NIMBLE_MAX_CCCDS
 
 config BT_NIMBLE_L2CAP_COC_MAX_NUM
     int "Maximum number of connection oriented channels"
-    range 0 10
+    range 0 9
     depends on BT_NIMBLE_ENABLED
     default 0
     help

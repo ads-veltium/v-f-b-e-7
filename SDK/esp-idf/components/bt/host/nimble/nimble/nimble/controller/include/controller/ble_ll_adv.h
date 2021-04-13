@@ -47,6 +47,7 @@ extern "C" {
 #define BLE_LL_ADV_PDU_ITVL_LD_MS_MAX   (10)            /* msecs */
 #define BLE_LL_ADV_PDU_ITVL_HD_MS_MAX   (3750)          /* usecs */
 #define BLE_LL_ADV_STATE_HD_MAX         (1280)          /* msecs */
+#define BLE_LL_ADV_PERIODIC_ITVL        (1250)          /* usecs */
 
 /* Maximum advertisement data length */
 #define BLE_ADV_LEGACY_DATA_MAX_LEN     (31)
@@ -185,6 +186,10 @@ int ble_ll_adv_ext_set_param(uint8_t *cmdbuf, uint8_t *rspbuf, uint8_t *rsplen);
 int ble_ll_adv_ext_set_adv_data(uint8_t *cmdbuf, uint8_t cmdlen);
 int ble_ll_adv_ext_set_scan_rsp(uint8_t *cmdbuf, uint8_t cmdlen);
 int ble_ll_adv_ext_set_enable(uint8_t *cmdbuf, uint8_t len);
+
+int ble_ll_adv_periodic_set_param(uint8_t *cmdbuf);
+int ble_ll_adv_periodic_set_data(uint8_t *cmdbuf, uint8_t cmdlen);
+int ble_ll_adv_periodic_enable(uint8_t *cmdbuf);
 
 /* Called to notify adv code about RPA rotation */
 void ble_ll_adv_rpa_timeout(void);

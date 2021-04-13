@@ -53,6 +53,7 @@
 #include "pdu.h"
 #include "utlist.h"
 #include "resource.h"
+#include "coap_mutex.h"
 
 #if !defined(WITH_CONTIKI)
  /* define generic PKTINFO for IPv4 */
@@ -94,7 +95,6 @@ struct coap_endpoint_t *
 void
 coap_mfree_endpoint(struct coap_endpoint_t *ep) {
   ep_initialized = 0;
-  coap_session_mfree(&ep->hello);
 }
 
 int
@@ -184,7 +184,6 @@ struct coap_endpoint_t *
 
 void
 coap_mfree_endpoint(struct coap_endpoint_t *ep) {
-  coap_session_mfree(&ep->hello);
   coap_free_type(COAP_ENDPOINT, ep);
 }
 
@@ -770,12 +769,13 @@ coap_network_send(coap_socket_t *sock, const coap_session_t *session, const uint
 #endif
   } else {
 #ifndef WITH_CONTIKI
-    /* a buffer large enough to hold all packet info types, ipv6 is the largest */
-    char buf[CMSG_SPACE(sizeof(struct in6_pktinfo))];
 #ifdef _WIN32
     DWORD dwNumberOfBytesSent = 0;
     int r;
 #endif
+#ifdef HAVE_STRUCT_CMSGHDR
+    /* a buffer large enough to hold all packet info types, ipv6 is the largest */
+    char buf[CMSG_SPACE(sizeof(struct in6_pktinfo))];
     struct msghdr mhdr;
     struct iovec iov[1];
     const void *addr = &session->remote_addr.addr;
@@ -785,7 +785,7 @@ coap_network_send(coap_socket_t *sock, const coap_session_t *session, const uint
     memcpy (&iov[0].iov_base, &data, sizeof (iov[0].iov_base));
     iov[0].iov_len = (iov_len_t)datalen;
 
-    memset( buf, 0, sizeof(buf));
+    memset(buf, 0, sizeof (buf));
 
     memset(&mhdr, 0, sizeof(struct msghdr));
     memcpy (&mhdr.msg_name, &addr, sizeof (mhdr.msg_name));
@@ -879,6 +879,7 @@ coap_network_send(coap_socket_t *sock, const coap_session_t *session, const uint
       coap_log(LOG_WARNING, "protocol not supported\n");
       bytes_written = -1;
     }
+#endif /* HAVE_STRUCT_CMSGHDR */
 
 #ifdef _WIN32
     r = WSASendMsg(sock->fd, &mhdr, 0 /*dwFlags*/, &dwNumberOfBytesSent, NULL /*lpOverlapped*/, NULL /*lpCompletionRoutine*/);
@@ -887,7 +888,11 @@ coap_network_send(coap_socket_t *sock, const coap_session_t *session, const uint
     else
       bytes_written = -1;
 #else
+#ifdef HAVE_STRUCT_CMSGHDR
     bytes_written = sendmsg(sock->fd, &mhdr, 0);
+#else /* ! HAVE_STRUCT_CMSGHDR */
+    bytes_written = sendto(sock->fd, data, datalen, 0, &session->remote_addr.addr.sa, session->remote_addr.size);
+#endif /* ! HAVE_STRUCT_CMSGHDR */
 #endif
 #else /* WITH_CONTIKI */
     /* FIXME: untested */
@@ -912,11 +917,6 @@ void
 coap_packet_get_memmapped(coap_packet_t *packet, unsigned char **address, size_t *length) {
   *address = packet->payload;
   *length = packet->length;
-}
-
-void coap_packet_set_addr(coap_packet_t *packet, const coap_address_t *src, const coap_address_t *dst) {
-  coap_address_copy(&packet->src, src);
-  coap_address_copy(&packet->dst, dst);
 }
 
 ssize_t
@@ -962,8 +962,10 @@ coap_network_read(coap_socket_t *sock, coap_packet_t *packet) {
     int r;
 #endif
 #if !defined(WITH_CONTIKI)
+#ifdef HAVE_STRUCT_CMSGHDR
     /* a buffer large enough to hold all packet info types, ipv6 is the largest */
     char buf[CMSG_SPACE(sizeof(struct in6_pktinfo))];
+    struct cmsghdr *cmsg;
     struct msghdr mhdr;
     struct iovec iov[1];
 
@@ -980,6 +982,12 @@ coap_network_read(coap_socket_t *sock, coap_packet_t *packet) {
 
     mhdr.msg_control = buf;
     mhdr.msg_controllen = sizeof(buf);
+    /* set a big first length incase recvmsg() does not implement updating
+       msg_control as well as preset the first cmsg with bad data */
+    cmsg = (struct cmsghdr *)buf;
+    cmsg->cmsg_len = CMSG_LEN(sizeof(buf));
+    cmsg->cmsg_level = -1;
+    cmsg->cmsg_type = -1;
 
 #if defined(_WIN32)
     if (!lpWSARecvMsg) {
@@ -997,6 +1005,11 @@ coap_network_read(coap_socket_t *sock, coap_packet_t *packet) {
     len = recvmsg(sock->fd, &mhdr, 0);
 #endif
 
+#else /* ! HAVE_STRUCT_CMSGHDR */
+    packet->src.size = packet->src.size;
+    len = recvfrom(sock->fd, packet->payload, COAP_RXBUFFER_SIZE, 0, &packet->src.addr.sa, &packet->src.size);
+#endif /* ! HAVE_STRUCT_CMSGHDR */
+
     if (len < 0) {
 #ifdef _WIN32
       if (WSAGetLastError() == WSAECONNRESET) {
@@ -1009,7 +1022,8 @@ coap_network_read(coap_socket_t *sock, coap_packet_t *packet) {
       coap_log(LOG_WARNING, "coap_network_read: %s\n", coap_socket_strerror());
       goto error;
     } else {
-      struct cmsghdr *cmsg;
+#ifdef HAVE_STRUCT_CMSGHDR
+      int dst_found = 0;
 
       packet->src.size = mhdr.msg_namelen;
       packet->length = (size_t)len;
@@ -1027,6 +1041,7 @@ coap_network_read(coap_socket_t *sock, coap_packet_t *packet) {
           u.c = CMSG_DATA(cmsg);
           packet->ifindex = (int)(u.p->ipi6_ifindex);
           memcpy(&packet->dst.addr.sin6.sin6_addr, &u.p->ipi6_addr, sizeof(struct in6_addr));
+          dst_found = 1;
           break;
         }
 
@@ -1047,16 +1062,43 @@ coap_network_read(coap_socket_t *sock, coap_packet_t *packet) {
           } else {
             memcpy(&packet->dst.addr.sin.sin_addr, &u.p->ipi_addr, sizeof(struct in_addr));
           }
+          dst_found = 1;
           break;
         }
 #elif defined(IP_RECVDSTADDR)
         if (cmsg->cmsg_level == IPPROTO_IP && cmsg->cmsg_type == IP_RECVDSTADDR) {
-          packet->ifindex = 0;
+          packet->ifindex = sock->fd;
           memcpy(&packet->dst.addr.sin.sin_addr, CMSG_DATA(cmsg), sizeof(struct in_addr));
+          dst_found = 1;
           break;
         }
 #endif /* IP_PKTINFO */
+        if (!dst_found) {
+          /* cmsg_level / cmsg_type combination we do not understand
+             (ignore preset case for bad recvmsg() not updating cmsg) */
+          if (cmsg->cmsg_level != -1 && cmsg->cmsg_type != -1) {
+            coap_log(LOG_DEBUG,
+                     "cmsg_level = %d and cmsg_type = %d not supported - fix\n",
+                     cmsg->cmsg_level, cmsg->cmsg_type);
+          }
+        }
       }
+      if (!dst_found) {
+        /* Not expected, but cmsg_level and cmsg_type don't match above and
+           may need a new case */
+        packet->ifindex = sock->fd;
+        if (getsockname(sock->fd, &packet->dst.addr.sa, &packet->dst.size) < 0) {
+          coap_log(LOG_DEBUG, "Cannot determine local port\n");
+        }
+      }
+#else /* ! HAVE_STRUCT_CMSGHDR */
+      packet->length = (size_t)len;
+      packet->ifindex = 0;
+      if (getsockname(sock->fd, &packet->dst.addr.sa, &packet->dst.size) < 0) {
+         coap_log(LOG_DEBUG, "Cannot determine local port\n");
+         goto error;
+      }
+#endif /* ! HAVE_STRUCT_CMSGHDR */
     }
 #endif /* !defined(WITH_CONTIKI) */
 #ifdef WITH_CONTIKI
@@ -1240,13 +1282,13 @@ coap_write(coap_context_t *ctx,
         if (ep->proto == COAP_PROTO_DTLS) {
           LL_FOREACH(ep->sessions, s) {
             if (s->proto == COAP_PROTO_DTLS && s->tls) {
-              coap_tick_t tls_timeout = coap_dtls_get_timeout(s);
+              coap_tick_t tls_timeout = coap_dtls_get_timeout(s, now);
               while (tls_timeout > 0 && tls_timeout <= now) {
                 coap_log(LOG_DEBUG, "** %s: DTLS retransmit timeout\n",
                          coap_session_str(s));
                 coap_dtls_handle_timeout(s);
                 if (s->tls)
-                  tls_timeout = coap_dtls_get_timeout(s);
+                  tls_timeout = coap_dtls_get_timeout(s, now);
                 else {
                   tls_timeout = 0;
                   timeout = 1;
@@ -1260,12 +1302,12 @@ coap_write(coap_context_t *ctx,
       }
       LL_FOREACH(ctx->sessions, s) {
         if (s->proto == COAP_PROTO_DTLS && s->tls) {
-          coap_tick_t tls_timeout = coap_dtls_get_timeout(s);
+          coap_tick_t tls_timeout = coap_dtls_get_timeout(s, now);
           while (tls_timeout > 0 && tls_timeout <= now) {
             coap_log(LOG_DEBUG, "** %s: DTLS retransmit timeout\n", coap_session_str(s));
             coap_dtls_handle_timeout(s);
             if (s->tls)
-              tls_timeout = coap_dtls_get_timeout(s);
+              tls_timeout = coap_dtls_get_timeout(s, now);
             else {
               tls_timeout = 0;
               timeout = 1;
@@ -1283,13 +1325,23 @@ coap_write(coap_context_t *ctx,
 
 int
 coap_run_once(coap_context_t *ctx, unsigned timeout_ms) {
+#if COAP_CONSTRAINED_STACK
+  static coap_mutex_t static_mutex = COAP_MUTEX_INITIALIZER;
+  static fd_set readfds, writefds, exceptfds;
+  static coap_socket_t *sockets[64];
+#else /* ! COAP_CONSTRAINED_STACK */
   fd_set readfds, writefds, exceptfds;
+  coap_socket_t *sockets[64];
+#endif /* ! COAP_CONSTRAINED_STACK */
   coap_fd_t nfds = 0;
   struct timeval tv;
   coap_tick_t before, now;
   int result;
-  coap_socket_t *sockets[64];
   unsigned int num_sockets = 0, i, timeout;
+
+#if COAP_CONSTRAINED_STACK
+  coap_mutex_lock(&static_mutex);
+#endif /* COAP_CONSTRAINED_STACK */
 
   coap_ticks(&before);
 
@@ -1329,6 +1381,9 @@ coap_run_once(coap_context_t *ctx, unsigned timeout_ms) {
     if (errno != EINTR) {
 #endif
       coap_log(LOG_DEBUG, "%s", coap_socket_strerror());
+#if COAP_CONSTRAINED_STACK
+      coap_mutex_unlock(&static_mutex);
+#endif /* COAP_CONSTRAINED_STACK */
       return -1;
     }
   }
@@ -1348,6 +1403,10 @@ coap_run_once(coap_context_t *ctx, unsigned timeout_ms) {
 
   coap_ticks(&now);
   coap_read(ctx, now);
+
+#if COAP_CONSTRAINED_STACK
+  coap_mutex_unlock(&static_mutex);
+#endif /* COAP_CONSTRAINED_STACK */
 
   return (int)(((now - before) * 1000) / COAP_TICKS_PER_SECOND);
 }

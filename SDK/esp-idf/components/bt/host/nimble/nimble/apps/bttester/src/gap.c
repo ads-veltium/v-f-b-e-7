@@ -28,7 +28,7 @@
 #include "host/ble_gap.h"
 #include "console/console.h"
 
-#include "../../../../apache-mynewt-nimble/nimble/host/src/ble_hs_pvcy_priv.h"
+#include "../../../nimble/host/src/ble_hs_pvcy_priv.h"
 #include "../../../nimble/host/src/ble_hs_hci_priv.h"
 #include "../../../nimble/host/src/ble_sm_priv.h"
 
@@ -155,13 +155,17 @@ static void controller_info(u8_t *data, u16_t len)
 
 	memset(&rp, 0, sizeof(rp));
 
-	rc = ble_hs_id_gen_rnd(0, &addr);
+	rc = ble_hs_id_gen_rnd(MYNEWT_VAL(BTTESTER_USE_NRPA), &addr);
 	assert(rc == 0);
 	rc = ble_hs_id_set_rnd(addr.val);
 	assert(rc == 0);
 
 	if (MYNEWT_VAL(BTTESTER_PRIVACY_MODE)) {
-		own_addr_type = BLE_OWN_ADDR_RPA_RANDOM_DEFAULT;
+		if (MYNEWT_VAL(BTTESTER_USE_NRPA)) {
+			own_addr_type = BLE_OWN_ADDR_RANDOM;
+		} else {
+			own_addr_type = BLE_OWN_ADDR_RPA_RANDOM_DEFAULT;
+		}
 		atomic_set_bit(&current_settings, GAP_SETTINGS_PRIVACY);
 		supported_settings |= BIT(GAP_SETTINGS_PRIVACY);
 		memcpy(rp.address, addr.val, sizeof(rp.address));
@@ -287,6 +291,7 @@ static void start_advertising(const u8_t *data, u16_t len)
 {
 	const struct gap_start_advertising_cmd *cmd = (void *) data;
 	struct gap_start_advertising_rp rp;
+	int32_t duration_ms = BLE_HS_FOREVER;
 	uint8_t buf[BLE_HS_ADV_MAX_SZ];
 	uint8_t buf_len = 0;
 	u8_t adv_len, sd_len;
@@ -346,7 +351,11 @@ static void start_advertising(const u8_t *data, u16_t len)
 		}
 	}
 
-	err = ble_gap_adv_start(own_addr_type, NULL, BLE_HS_FOREVER,
+	if (adv_params.disc_mode == BLE_GAP_DISC_MODE_LTD) {
+		duration_ms = MYNEWT_VAL(BTTESTER_LTD_ADV_TIMEOUT);
+	}
+
+	err = ble_gap_adv_start(own_addr_type, NULL, duration_ms,
 				&adv_params, gap_event_cb, NULL);
 	if (err) {
 		SYS_LOG_ERR("Advertising failed: err %d", err);
@@ -607,6 +616,30 @@ static void conn_param_update_master(u16_t conn_handle)
 }
 #endif
 
+/* Bluetooth Core Spec v5.1 | Section 10.7.1
+ * If a privacy-enabled Peripheral, that has a stored bond,
+ * receives a resolvable private address, the Host may resolve
+ * the resolvable private address [...]
+ * If the resolution is successful, the Host may accept the connection.
+ * If the resolution procedure fails, then the Host shall disconnect
+ * with the error code "Authentication failure" [...]
+ */
+static void periph_privacy(struct ble_gap_conn_desc desc)
+{
+#if !MYNEWT_VAL(BTTESTER_PRIVACY_MODE)
+	return;
+#endif
+	int count;
+
+	SYS_LOG_DBG("");
+
+	ble_store_util_count(BLE_STORE_OBJ_TYPE_PEER_SEC, &count);
+	if (count > 0 && BLE_ADDR_IS_RPA(&desc.peer_id_addr)) {
+		SYS_LOG_DBG("Authentication failure, disconnecting");
+		ble_gap_terminate(desc.conn_handle, BLE_ERR_AUTH_FAIL);
+	}
+}
+
 static void le_connected(u16_t conn_handle, int status)
 {
 	struct ble_gap_conn_desc desc;
@@ -644,6 +677,8 @@ static void le_connected(u16_t conn_handle, int status)
 
 	tester_send(BTP_SERVICE_ID_GAP, GAP_EV_DEVICE_CONNECTED,
 		    CONTROLLER_INDEX, (u8_t *) &ev, sizeof(ev));
+
+	periph_privacy(desc);
 }
 
 static void le_disconnected(struct ble_gap_conn_desc *conn, int reason)

@@ -74,6 +74,7 @@ extern uint8_t g_ble_ll_sched_offset_ticks;
 #define BLE_LL_SCHED_TYPE_CONN      (3)
 #define BLE_LL_SCHED_TYPE_AUX_SCAN  (4)
 #define BLE_LL_SCHED_TYPE_DTM       (5)
+#define BLE_LL_SCHED_TYPE_SYNC      (6)
 
 /* Return values for schedule callback. */
 #define BLE_LL_SCHED_STATE_RUNNING  (0)
@@ -161,6 +162,18 @@ typedef void ble_ll_sched_adv_new_cb(struct ble_ll_adv_sm *advsm,
 int ble_ll_sched_adv_new(struct ble_ll_sched_item *sch,
                          ble_ll_sched_adv_new_cb cb, void *arg);
 
+/* Schedule periodic advertising event */
+int ble_ll_sched_periodic_adv(struct ble_ll_sched_item *sch, uint32_t *start,
+                              bool after_overlap);
+
+int ble_ll_sched_sync_reschedule(struct ble_ll_sched_item *sch,
+                                 uint32_t anchor_point,
+                                 uint8_t anchor_point_usecs,
+                                 uint32_t window_widening, int8_t phy_mode);
+int ble_ll_sched_sync(struct ble_ll_sched_item *sch,
+                      struct ble_mbuf_hdr *ble_hdr, uint32_t offset,
+                      int8_t phy_mode);
+
 /* Reschedule an advertising event */
 int ble_ll_sched_adv_reschedule(struct ble_ll_sched_item *sch, uint32_t *start,
                                 uint32_t max_delay_ticks);
@@ -201,7 +214,7 @@ void ble_ll_sched_stop(void);
 void ble_ll_sched_rfclk_chk_restart(void);
 #endif
 
-#if MYNEWT_VAL(BLE_LL_DIRECT_TEST_MODE) == 1
+#if MYNEWT_VAL(BLE_LL_DIRECT_TEST_MODE)
 int ble_ll_sched_dtm(struct ble_ll_sched_item *sch);
 #endif
 

@@ -28,17 +28,13 @@
 # OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 # USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-.PHONY: dist-hook  # not inside conditional to avoid automake warning
-
-if WITH_DOCBOOK
 dist_man_MANS = xmlwf.1
 
 xmlwf.1: xmlwf.xml
-	-rm -f $@
+if WITH_DOCBOOK
 	$(DOCBOOK_TO_MAN) $<
-	test -f $@ || mv XMLWF.1 $@
+	mv XMLWF.1 $@
 else
-dist-hook:
 	@echo 'ERROR: Configure with --with-docbook for "make dist".' 1>&2
 	@false
 endif

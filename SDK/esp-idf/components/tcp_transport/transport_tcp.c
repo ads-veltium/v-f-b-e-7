@@ -32,27 +32,29 @@ typedef struct {
     int sock;
 } transport_tcp_t;
 
-static int resolve_dns(const char *host, struct sockaddr_in *ip) {
+static int resolve_dns(const char *host, struct sockaddr_in *ip) 
+{
+    const struct addrinfo hints = {
+        .ai_family = AF_INET,
+        .ai_socktype = SOCK_STREAM,
+    };
+    struct addrinfo *res;
 
-    struct hostent *he;
-    struct in_addr **addr_list;
-    he = gethostbyname(host);
-    if (he == NULL) {
-        return ESP_FAIL;
-    }
-    addr_list = (struct in_addr **)he->h_addr_list;
-    if (addr_list[0] == NULL) {
+    int err = getaddrinfo(host, NULL, &hints, &res);
+    if(err != 0 || res == NULL) {
+        ESP_LOGE(TAG, "DNS lookup failed err=%d res=%p", err, res);
         return ESP_FAIL;
     }
     ip->sin_family = AF_INET;
-    memcpy(&ip->sin_addr, addr_list[0], sizeof(ip->sin_addr));
+    memcpy(&ip->sin_addr, &((struct sockaddr_in *)(res->ai_addr))->sin_addr, sizeof(ip->sin_addr));
+    freeaddrinfo(res);
     return ESP_OK;
 }
 
 static int tcp_connect(esp_transport_handle_t t, const char *host, int port, int timeout_ms)
 {
     struct sockaddr_in remote_ip;
-    struct timeval tv;
+    struct timeval tv = { 0 };
     transport_tcp_t *tcp = esp_transport_get_context_data(t);
 
     bzero(&remote_ip, sizeof(struct sockaddr_in));
@@ -74,7 +76,7 @@ static int tcp_connect(esp_transport_handle_t t, const char *host, int port, int
     remote_ip.sin_family = AF_INET;
     remote_ip.sin_port = htons(port);
 
-    esp_transport_utils_ms_to_timeval(timeout_ms, &tv);
+    esp_transport_utils_ms_to_timeval(timeout_ms, &tv); // if timeout=-1, tv is unchanged, 0, i.e. waits forever
 
     setsockopt(tcp->sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
     setsockopt(tcp->sock, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
@@ -117,15 +119,15 @@ static int tcp_poll_read(esp_transport_handle_t t, int timeout_ms)
 {
     transport_tcp_t *tcp = esp_transport_get_context_data(t);
     int ret = -1;
+    struct timeval timeout;
     fd_set readset;
     fd_set errset;
     FD_ZERO(&readset);
     FD_ZERO(&errset);
     FD_SET(tcp->sock, &readset);
     FD_SET(tcp->sock, &errset);
-    struct timeval timeout;
-    esp_transport_utils_ms_to_timeval(timeout_ms, &timeout);
-    ret = select(tcp->sock + 1, &readset, NULL, &errset, &timeout);
+
+    ret = select(tcp->sock + 1, &readset, NULL, &errset, esp_transport_utils_ms_to_timeval(timeout_ms, &timeout));
     if (ret > 0 && FD_ISSET(tcp->sock, &errset)) {
         int sock_errno = 0;
         uint32_t optlen = sizeof(sock_errno);
@@ -140,15 +142,15 @@ static int tcp_poll_write(esp_transport_handle_t t, int timeout_ms)
 {
     transport_tcp_t *tcp = esp_transport_get_context_data(t);
     int ret = -1;
+    struct timeval timeout;
     fd_set writeset;
     fd_set errset;
     FD_ZERO(&writeset);
     FD_ZERO(&errset);
     FD_SET(tcp->sock, &writeset);
     FD_SET(tcp->sock, &errset);
-    struct timeval timeout;
-    esp_transport_utils_ms_to_timeval(timeout_ms, &timeout);
-    ret = select(tcp->sock + 1, NULL, &writeset, &errset, &timeout);
+
+    ret = select(tcp->sock + 1, NULL, &writeset, &errset, esp_transport_utils_ms_to_timeval(timeout_ms, &timeout));
     if (ret > 0 && FD_ISSET(tcp->sock, &errset)) {
         int sock_errno = 0;
         uint32_t optlen = sizeof(sock_errno);
@@ -178,7 +180,7 @@ static esp_err_t tcp_destroy(esp_transport_handle_t t)
     return 0;
 }
 
-esp_transport_handle_t esp_transport_tcp_init()
+esp_transport_handle_t esp_transport_tcp_init(void)
 {
     esp_transport_handle_t t = esp_transport_init();
     transport_tcp_t *tcp = calloc(1, sizeof(transport_tcp_t));

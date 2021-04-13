@@ -33,7 +33,7 @@
 #include "host/ble_gatt.h"
 #include "console/console.h"
 #include "services/gatt/ble_svc_gatt.h"
-#include "../../../../apache-mynewt-nimble/nimble/host/src/ble_gatt_priv.h"
+#include "../../../nimble/host/src/ble_gatt_priv.h"
 
 #include "bttester.h"
 
@@ -1252,7 +1252,7 @@ fail:
 
 static int disc_all_desc_cb(uint16_t conn_handle,
 			    const struct ble_gatt_error *error,
-			    uint16_t chr_def_handle,
+			    uint16_t chr_val_handle,
 			    const struct ble_gatt_dsc *gatt_dsc,
 			    void *arg)
 {
@@ -1381,26 +1381,27 @@ static int read_long_cb(uint16_t conn_handle,
 			void *arg)
 {
 	struct gatt_read_rp *rp = (void *) gatt_buf.buf;
+	u8_t btp_opcode = (uint8_t) (int) arg;
 
 	SYS_LOG_DBG("status=%d", error->status);
 
 	if (error->status != 0 && error->status != BLE_HS_EDONE) {
 		rp->att_response = (uint8_t) BLE_HS_ATT_ERR(error->status);
-		tester_send(BTP_SERVICE_ID_GATT, GATT_READ_LONG,
+		tester_send(BTP_SERVICE_ID_GATT, btp_opcode,
 			    CONTROLLER_INDEX, gatt_buf.buf, gatt_buf.len);
 		read_destroy();
 		return 0;
 	}
 
 	if (error->status == BLE_HS_EDONE) {
-		tester_send(BTP_SERVICE_ID_GATT, GATT_READ_LONG,
+		tester_send(BTP_SERVICE_ID_GATT, btp_opcode,
 			    CONTROLLER_INDEX, gatt_buf.buf, gatt_buf.len);
 		read_destroy();
 		return 0;
 	}
 
 	if (gatt_buf_add(attr->om->om_data, attr->om->om_len) == NULL) {
-		tester_rsp(BTP_SERVICE_ID_GATT, GATT_READ_LONG,
+		tester_rsp(BTP_SERVICE_ID_GATT, btp_opcode,
 			   CONTROLLER_INDEX, BTP_STATUS_FAILED);
 		read_destroy();
 		return 0;
@@ -1441,6 +1442,44 @@ fail:
 		   BTP_STATUS_FAILED);
 }
 
+static void read_uuid(u8_t *data, u16_t len)
+{
+	const struct gatt_read_uuid_cmd *cmd = (void *) data;
+	struct ble_gap_conn_desc conn;
+	ble_uuid_any_t uuid;
+	int rc;
+
+	SYS_LOG_DBG("");
+
+	rc = ble_gap_conn_find_by_addr((ble_addr_t *)data, &conn);
+	if (rc) {
+		goto fail;
+	}
+
+	if (btp2bt_uuid(cmd->uuid, cmd->uuid_length, &uuid)) {
+		goto fail;
+	}
+
+	if (!gatt_buf_reserve(sizeof(struct gatt_read_rp))) {
+		goto fail;
+	}
+
+	if (ble_gattc_read_by_uuid(conn.conn_handle,
+				   sys_le16_to_cpu(cmd->start_handle),
+				   sys_le16_to_cpu(cmd->end_handle),
+				   &uuid.u,
+				   read_long_cb, (void *)GATT_READ_UUID)) {
+		discover_destroy();
+		goto fail;
+	}
+
+	return;
+
+fail:
+	tester_rsp(BTP_SERVICE_ID_GATT, GATT_READ, CONTROLLER_INDEX,
+		   BTP_STATUS_FAILED);
+}
+
 static void read_long(u8_t *data, u16_t len)
 {
 	const struct gatt_read_long_cmd *cmd = (void *) data;
@@ -1461,7 +1500,7 @@ static void read_long(u8_t *data, u16_t len)
 	if (ble_gattc_read_long(conn.conn_handle,
 				sys_le16_to_cpu(cmd->handle),
 				sys_le16_to_cpu(cmd->offset),
-				read_long_cb, NULL)) {
+				read_long_cb, (void *)GATT_READ_LONG)) {
 		discover_destroy();
 		goto fail;
 	}
@@ -1609,6 +1648,63 @@ static void write_long(u8_t *data, u16_t len)
 	return;
 
 fail:
+	os_mbuf_free_chain(om);
+
+	tester_rsp(BTP_SERVICE_ID_GATT, GATT_WRITE_LONG, CONTROLLER_INDEX,
+		   BTP_STATUS_FAILED);
+}
+
+static int reliable_write_rsp(uint16_t conn_handle,
+			      const struct ble_gatt_error *error,
+			      struct ble_gatt_attr *attrs,
+			      uint8_t num_attrs,
+			      void *arg)
+{
+	uint8_t err = (uint8_t) error->status;
+
+	SYS_LOG_DBG("");
+
+	tester_send(BTP_SERVICE_ID_GATT, GATT_RELIABLE_WRITE,
+		    CONTROLLER_INDEX, &err,
+		    sizeof(err));
+	return 0;
+}
+
+static void reliable_write(u8_t *data, u16_t len)
+{
+	const struct gatt_reliable_write_cmd *cmd = (void *) data;
+	struct ble_gap_conn_desc conn;
+	struct ble_gatt_attr attr;
+	struct os_mbuf *om = NULL;
+	int rc;
+
+	SYS_LOG_DBG("");
+
+	rc = ble_gap_conn_find_by_addr((ble_addr_t *)data, &conn);
+	if (rc) {
+		goto fail;
+	}
+
+	om = ble_hs_mbuf_from_flat(cmd->data, sys_le16_to_cpu(cmd->data_length));
+	/* This is required, because Nimble checks if
+	 * the data is longer than offset
+	 */
+	if (os_mbuf_extend(om, sys_le16_to_cpu(cmd->offset) + 1) == NULL) {
+		goto fail;
+	}
+
+	attr.handle = sys_le16_to_cpu(cmd->handle);
+	attr.offset = sys_le16_to_cpu(cmd->offset);
+	attr.om = om;
+
+	if (ble_gattc_write_reliable(conn.conn_handle, &attr, 1,
+				     reliable_write_rsp, NULL)) {
+		goto fail;
+	}
+
+	return;
+
+	fail:
 	os_mbuf_free_chain(om);
 
 	tester_rsp(BTP_SERVICE_ID_GATT, GATT_WRITE_LONG, CONTROLLER_INDEX,
@@ -2173,6 +2269,9 @@ void tester_handle_gatt(u8_t opcode, u8_t index, u8_t *data,
 	case GATT_READ:
 		read(data, len);
 		return;
+	case GATT_READ_UUID:
+		read_uuid(data, len);
+		return;
 	case GATT_READ_LONG:
 		read_long(data, len);
 		return;
@@ -2192,6 +2291,9 @@ void tester_handle_gatt(u8_t opcode, u8_t index, u8_t *data,
 		return;
 	case GATT_WRITE_LONG:
 		write_long(data, len);
+		return;
+	case GATT_RELIABLE_WRITE:
+		reliable_write(data, len);
 		return;
 	case GATT_CFG_NOTIFY:
 	case GATT_CFG_INDICATE:

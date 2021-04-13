@@ -32,9 +32,13 @@
 #include "controller/ble_ll_hci.h"
 #include "controller/ble_ll_whitelist.h"
 #include "controller/ble_ll_resolv.h"
+#include "controller/ble_ll_sync.h"
 #include "ble_ll_conn_priv.h"
+#if MYNEWT_VAL(BLE_LL_DBG_HCI_CMD_PIN) >= 0 || MYNEWT_VAL(BLE_LL_DBG_HCI_EV_PIN) >= 0
+#include "hal/hal_gpio.h"
+#endif
 
-#if MYNEWT_VAL(BLE_LL_DIRECT_TEST_MODE) == 1
+#if MYNEWT_VAL(BLE_LL_DIRECT_TEST_MODE)
 #include "ble_ll_dtm_priv.h"
 #endif
 
@@ -96,6 +100,10 @@ ble_ll_hci_event_send(uint8_t *evbuf)
 {
     int rc;
 
+#if MYNEWT_VAL(BLE_LL_DBG_HCI_EV_PIN) >= 0
+    hal_gpio_write(MYNEWT_VAL(BLE_LL_DBG_HCI_EV_PIN), 1);
+#endif
+
     BLE_LL_ASSERT(BLE_HCI_EVENT_HDR_LEN + evbuf[1] <= BLE_LL_MAX_EVT_LEN);
 
     /* Count number of events sent */
@@ -103,6 +111,10 @@ ble_ll_hci_event_send(uint8_t *evbuf)
 
     /* Send the event to the host */
     rc = ble_hci_trans_ll_evt_tx(evbuf);
+
+#if MYNEWT_VAL(BLE_LL_DBG_HCI_EV_PIN) >= 0
+    hal_gpio_write(MYNEWT_VAL(BLE_LL_DBG_HCI_EV_PIN), 0);
+#endif
 
     return rc;
 }
@@ -137,7 +149,7 @@ ble_ll_hci_send_noop(void)
     return rc;
 }
 
-#if (MYNEWT_VAL(BLE_LL_CFG_FEAT_LE_ENCRYPTION) == 1)
+#if MYNEWT_VAL(BLE_LL_CFG_FEAT_LE_ENCRYPTION)
 /**
  * LE encrypt command
  *
@@ -394,7 +406,7 @@ ble_ll_hci_le_set_def_phy(uint8_t *cmdbuf)
 }
 #endif
 
-#if (MYNEWT_VAL(BLE_LL_CFG_FEAT_DATA_LEN_EXT) == 1)
+#if MYNEWT_VAL(BLE_LL_CFG_FEAT_DATA_LEN_EXT)
 /**
  * HCI write suggested default data length command.
  *
@@ -611,6 +623,7 @@ ble_ll_hci_le_cmd_send_cmd_status(uint16_t ocf)
     case BLE_HCI_OCF_LE_RD_P256_PUBKEY:
     case BLE_HCI_OCF_LE_GEN_DHKEY:
     case BLE_HCI_OCF_LE_SET_PHY:
+    case BLE_HCI_OCF_LE_PERIODIC_ADV_CREATE_SYNC:
         rc = 1;
         break;
     default:
@@ -696,16 +709,16 @@ ble_ll_is_valid_adv_mode(uint8_t ocf)
     case BLE_HCI_OCF_LE_RD_NUM_OF_ADV_SETS:
     case BLE_HCI_OCF_LE_REMOVE_ADV_SET:
     case BLE_HCI_OCF_LE_CLEAR_ADV_SETS:
-    case BLE_HCI_OCF_LE_SET_PER_ADV_PARAMS:
-    case BLE_HCI_OCF_LE_SET_PER_ADV_DATA:
-    case BLE_HCI_OCF_LE_SET_PER_ADV_ENABLE:
-    case BLE_HCI_OCF_LE_PER_ADV_CREATE_SYNC:
-    case BLE_HCI_OCF_LE_PER_ADV_CREATE_SYNC_CANCEL:
-    case BLE_HCI_OCF_LE_PER_ADV_TERM_SYNC:
-    case BLE_HCI_OCF_LE_ADD_DEV_TO_PER_ADV_LIST:
-    case BLE_HCI_OCF_LE_REM_DEV_FROM_PER_ADV_LIST:
-    case BLE_HCI_OCF_LE_CLEAR_PER_ADV_LIST:
-    case BLE_HCI_OCF_LE_RD_PER_ADV_LIST_SIZE:
+    case BLE_HCI_OCF_LE_SET_PERIODIC_ADV_PARAMS:
+    case BLE_HCI_OCF_LE_SET_PERIODIC_ADV_DATA:
+    case BLE_HCI_OCF_LE_SET_PERIODIC_ADV_ENABLE:
+    case BLE_HCI_OCF_LE_PERIODIC_ADV_CREATE_SYNC:
+    case BLE_HCI_OCF_LE_PERIODIC_ADV_CREATE_SYNC_CANCEL:
+    case BLE_HCI_OCF_LE_PERIODIC_ADV_TERM_SYNC:
+    case BLE_HCI_OCF_LE_ADD_DEV_TO_PERIODIC_ADV_LIST:
+    case BLE_HCI_OCF_LE_REM_DEV_FROM_PERIODIC_ADV_LIST:
+    case BLE_HCI_OCF_LE_CLEAR_PERIODIC_ADV_LIST:
+    case BLE_HCI_OCF_LE_RD_PERIODIC_ADV_LIST_SIZE:
         if (hci_adv_mode == ADV_MODE_LEGACY) {
             return false;
         }
@@ -859,13 +872,13 @@ ble_ll_hci_le_cmd_proc(uint8_t *cmdbuf, uint16_t ocf, uint8_t *rsplen,
     case BLE_HCI_OCF_LE_SET_ADV_DATA:
         if (len == BLE_HCI_SET_ADV_DATA_LEN) {
             rc = ble_ll_adv_set_adv_data(cmdbuf, len, 0,
-                                     BLE_HCI_LE_SET_EXT_ADV_DATA_OPER_COMPLETE);
+                                     BLE_HCI_LE_SET_DATA_OPER_COMPLETE);
         }
         break;
     case BLE_HCI_OCF_LE_SET_SCAN_RSP_DATA:
         if (len == BLE_HCI_SET_SCAN_RSP_DATA_LEN) {
             rc = ble_ll_adv_set_scan_rsp_data(cmdbuf, len, 0,
-                                BLE_HCI_LE_SET_EXT_SCAN_RSP_DATA_OPER_COMPLETE);
+                                BLE_HCI_LE_SET_DATA_OPER_COMPLETE);
         }
         break;
     case BLE_HCI_OCF_LE_SET_ADV_ENABLE:
@@ -933,7 +946,7 @@ ble_ll_hci_le_cmd_proc(uint8_t *cmdbuf, uint16_t ocf, uint8_t *rsplen,
             rc = ble_ll_conn_hci_read_rem_features(cmdbuf);
         }
         break;
-#if (MYNEWT_VAL(BLE_LL_CFG_FEAT_LE_ENCRYPTION) == 1)
+#if MYNEWT_VAL(BLE_LL_CFG_FEAT_LE_ENCRYPTION)
     case BLE_HCI_OCF_LE_ENCRYPT:
         if (len == BLE_HCI_LE_ENCRYPT_LEN) {
             rc = ble_ll_hci_le_encrypt(cmdbuf, rspbuf, rsplen);
@@ -945,7 +958,7 @@ ble_ll_hci_le_cmd_proc(uint8_t *cmdbuf, uint16_t ocf, uint8_t *rsplen,
             rc = ble_ll_hci_le_rand(rspbuf, rsplen);
         }
         break;
-#if (MYNEWT_VAL(BLE_LL_CFG_FEAT_LE_ENCRYPTION) == 1)
+#if MYNEWT_VAL(BLE_LL_CFG_FEAT_LE_ENCRYPTION)
     case BLE_HCI_OCF_LE_START_ENCRYPT:
         if (len == BLE_HCI_LE_START_ENCRYPT_LEN) {
             rc = ble_ll_conn_hci_le_start_encrypt(cmdbuf);
@@ -967,7 +980,7 @@ ble_ll_hci_le_cmd_proc(uint8_t *cmdbuf, uint16_t ocf, uint8_t *rsplen,
             rc = ble_ll_hci_le_read_supp_states(rspbuf, rsplen);
         }
         break;
-#if MYNEWT_VAL(BLE_LL_DIRECT_TEST_MODE) == 1
+#if MYNEWT_VAL(BLE_LL_DIRECT_TEST_MODE)
     case BLE_HCI_OCF_LE_TX_TEST:
         if (len == BLE_HCI_TX_TEST_LEN) {
             rc = ble_ll_dtm_tx_test(cmdbuf, false);
@@ -994,7 +1007,7 @@ ble_ll_hci_le_cmd_proc(uint8_t *cmdbuf, uint16_t ocf, uint8_t *rsplen,
             rc = ble_ll_conn_hci_param_reply(cmdbuf, 0, rspbuf, rsplen);
         }
         break;
-#if (MYNEWT_VAL(BLE_LL_CFG_FEAT_DATA_LEN_EXT) == 1)
+#if MYNEWT_VAL(BLE_LL_CFG_FEAT_DATA_LEN_EXT)
     case BLE_HCI_OCF_LE_SET_DATA_LEN:
         if (len == BLE_HCI_SET_DATALEN_LEN) {
             rc = ble_ll_conn_hci_set_data_len(cmdbuf, rspbuf, rsplen);
@@ -1011,7 +1024,7 @@ ble_ll_hci_le_cmd_proc(uint8_t *cmdbuf, uint16_t ocf, uint8_t *rsplen,
         }
         break;
 #endif
-#if (MYNEWT_VAL(BLE_LL_CFG_FEAT_LL_PRIVACY) == 1)
+#if MYNEWT_VAL(BLE_LL_CFG_FEAT_LL_PRIVACY)
     case BLE_HCI_OCF_LE_ADD_RESOLV_LIST :
         if (len == BLE_HCI_ADD_TO_RESOLV_LIST_LEN) {
             rc = ble_ll_resolv_list_add(cmdbuf);
@@ -1053,7 +1066,7 @@ ble_ll_hci_le_cmd_proc(uint8_t *cmdbuf, uint16_t ocf, uint8_t *rsplen,
         }
         break;
 #endif
-#if (MYNEWT_VAL(BLE_LL_CFG_FEAT_DATA_LEN_EXT) == 1)
+#if MYNEWT_VAL(BLE_LL_CFG_FEAT_DATA_LEN_EXT)
     case BLE_HCI_OCF_LE_RD_MAX_DATA_LEN:
         if (len == 0) {
             rc = ble_ll_hci_le_rd_max_data_len(rspbuf, rsplen);
@@ -1077,7 +1090,7 @@ ble_ll_hci_le_cmd_proc(uint8_t *cmdbuf, uint16_t ocf, uint8_t *rsplen,
         }
         break;
 #endif
-#if MYNEWT_VAL(BLE_LL_DIRECT_TEST_MODE) == 1
+#if MYNEWT_VAL(BLE_LL_DIRECT_TEST_MODE)
     case BLE_HCI_OCF_LE_ENH_RX_TEST:
         if (len == BLE_HCI_LE_ENH_RX_TEST_LEN) {
             rc = ble_ll_dtm_rx_test(cmdbuf, true);
@@ -1089,7 +1102,7 @@ ble_ll_hci_le_cmd_proc(uint8_t *cmdbuf, uint16_t ocf, uint8_t *rsplen,
         }
         break;
 #endif
-#if (MYNEWT_VAL(BLE_LL_CFG_FEAT_LL_EXT_ADV) == 1)
+#if MYNEWT_VAL(BLE_LL_CFG_FEAT_LL_EXT_ADV)
     case BLE_HCI_OCF_LE_SET_ADV_SET_RND_ADDR:
         if (len == BLE_HCI_LE_SET_ADV_SET_RND_ADDR_LEN) {
             rc = ble_ll_adv_set_random_addr(cmdbuf + 1, cmdbuf[0]);
@@ -1132,6 +1145,22 @@ ble_ll_hci_le_cmd_proc(uint8_t *cmdbuf, uint16_t ocf, uint8_t *rsplen,
             rc =  ble_ll_adv_clear_all();
         }
         break;
+#if MYNEWT_VAL(BLE_LL_CFG_FEAT_LL_PERIODIC_ADV)
+    case BLE_HCI_OCF_LE_SET_PERIODIC_ADV_PARAMS:
+        if (len == BLE_HCI_LE_SET_PERIODIC_ADV_PARAMS_LEN) {
+            rc = ble_ll_adv_periodic_set_param(cmdbuf);
+        }
+        break;
+    case BLE_HCI_OCF_LE_SET_PERIODIC_ADV_DATA:
+        /* variable length */
+        rc = ble_ll_adv_periodic_set_data(cmdbuf, len);
+        break;
+    case BLE_HCI_OCF_LE_SET_PERIODIC_ADV_ENABLE:
+        if (len == BLE_HCI_LE_SET_PERIODIC_ADV_ENABLE_LEN) {
+            rc = ble_ll_adv_periodic_enable(cmdbuf);
+        }
+        break;
+#endif
 #endif
 #if MYNEWT_VAL(BLE_LL_CFG_FEAT_LL_EXT_ADV)
     case BLE_HCI_OCF_LE_SET_EXT_SCAN_PARAM:
@@ -1148,6 +1177,43 @@ ble_ll_hci_le_cmd_proc(uint8_t *cmdbuf, uint16_t ocf, uint8_t *rsplen,
         rc = ble_ll_ext_conn_create(cmdbuf, len);
         break;
 #endif
+#if MYNEWT_VAL(BLE_LL_CFG_FEAT_LL_PERIODIC_ADV)
+    case BLE_HCI_OCF_LE_PERIODIC_ADV_CREATE_SYNC:
+        if (len == BLE_HCI_LE_PERIODIC_ADV_CREATE_SYNC_LEN) {
+            rc = ble_ll_sync_create(cmdbuf);
+        }
+        break;
+    case BLE_HCI_OCF_LE_PERIODIC_ADV_CREATE_SYNC_CANCEL:
+        if (len == 0) {
+            rc = ble_ll_sync_cancel(cb);
+        }
+        break;
+    case BLE_HCI_OCF_LE_PERIODIC_ADV_TERM_SYNC:
+        if (len == BLE_HCI_LE_PERIODIC_ADV_TERM_SYNC_LEN) {
+            rc = ble_ll_sync_terminate(cmdbuf);
+        }
+        break;
+    case BLE_HCI_OCF_LE_ADD_DEV_TO_PERIODIC_ADV_LIST:
+        if (len == BLE_HCI_LE_ADD_DEV_TO_PERIODIC_ADV_LIST_LEN) {
+            rc = ble_ll_sync_list_add(cmdbuf);
+        }
+        break;
+    case BLE_HCI_OCF_LE_REM_DEV_FROM_PERIODIC_ADV_LIST:
+        if (len == BLE_HCI_LE_REM_DEV_FROM_PERIODIC_ADV_LIST_LEN) {
+            rc = ble_ll_sync_list_remove(cmdbuf);
+        }
+        break;
+    case BLE_HCI_OCF_LE_CLEAR_PERIODIC_ADV_LIST:
+        if (len == 0) {
+            rc = ble_ll_sync_list_clear();
+        }
+        break;
+    case BLE_HCI_OCF_LE_RD_PERIODIC_ADV_LIST_SIZE:
+        if (len == 0) {
+            rc = ble_ll_sync_list_size(rspbuf, rsplen);
+        }
+        break;
+#endif
     case BLE_HCI_OCF_LE_RD_TRANSMIT_POWER:
         rc = ble_ll_read_tx_power(rspbuf, rsplen);
         break;
@@ -1159,7 +1225,7 @@ ble_ll_hci_le_cmd_proc(uint8_t *cmdbuf, uint16_t ocf, uint8_t *rsplen,
             rc = ble_ll_write_rf_path_compensation(cmdbuf);
         }
         break;
-#if (MYNEWT_VAL(BLE_LL_CFG_FEAT_LL_PRIVACY) == 1)
+#if MYNEWT_VAL(BLE_LL_CFG_FEAT_LL_PRIVACY)
     case BLE_HCI_OCF_LE_SET_PRIVACY_MODE:
         if (len == BLE_HCI_LE_SET_PRIVACY_MODE_LEN) {
             rc = ble_ll_resolve_set_priv_mode(cmdbuf);
@@ -1248,7 +1314,7 @@ ble_ll_hci_ctlr_bb_cmd_proc(uint8_t *cmdbuf, uint16_t ocf, uint8_t *rsplen)
 {
     int rc;
     uint8_t len;
-#if (MYNEWT_VAL(BLE_LL_CFG_FEAT_LE_PING) == 1)
+#if MYNEWT_VAL(BLE_LL_CFG_FEAT_LE_PING)
     uint8_t *rspbuf;
 #endif
 
@@ -1260,7 +1326,7 @@ ble_ll_hci_ctlr_bb_cmd_proc(uint8_t *cmdbuf, uint16_t ocf, uint8_t *rsplen)
 
     /* Move past HCI command header */
     cmdbuf += BLE_HCI_CMD_HDR_LEN;
-#if (MYNEWT_VAL(BLE_LL_CFG_FEAT_LE_PING) == 1)
+#if MYNEWT_VAL(BLE_LL_CFG_FEAT_LE_PING)
     rspbuf = cmdbuf + BLE_HCI_EVENT_CMD_COMPLETE_MIN_LEN;
 #endif
 
@@ -1282,7 +1348,7 @@ ble_ll_hci_ctlr_bb_cmd_proc(uint8_t *cmdbuf, uint16_t ocf, uint8_t *rsplen)
             rc = BLE_ERR_SUCCESS;
         }
         break;
-#if (MYNEWT_VAL(BLE_LL_CFG_FEAT_LE_PING) == 1)
+#if MYNEWT_VAL(BLE_LL_CFG_FEAT_LE_PING)
     case BLE_HCI_OCF_CB_RD_AUTH_PYLD_TMO:
         rc = ble_ll_conn_hci_rd_auth_pyld_tmo(cmdbuf, rspbuf, rsplen);
         break;
@@ -1403,6 +1469,10 @@ ble_ll_hci_cmd_proc(struct ble_npl_event *ev)
     uint16_t ocf;
     ble_ll_hci_post_cmd_complete_cb post_cb = NULL;
 
+#if MYNEWT_VAL(BLE_LL_DBG_HCI_CMD_PIN) >= 0
+    hal_gpio_write(MYNEWT_VAL(BLE_LL_DBG_HCI_CMD_PIN), 1);
+#endif
+
     /* The command buffer is the event argument */
     cmdbuf = (uint8_t *)ble_npl_event_get_arg(ev);
     BLE_LL_ASSERT(cmdbuf != NULL);
@@ -1470,6 +1540,10 @@ ble_ll_hci_cmd_proc(struct ble_npl_event *ev)
     if (post_cb) {
         post_cb();
     }
+
+#if MYNEWT_VAL(BLE_LL_DBG_HCI_CMD_PIN) >= 0
+    hal_gpio_write(MYNEWT_VAL(BLE_LL_DBG_HCI_CMD_PIN), 0);
+#endif
 }
 
 /**
@@ -1518,6 +1592,13 @@ ble_ll_hci_acl_rx(struct os_mbuf *om, void *arg)
 void
 ble_ll_hci_init(void)
 {
+#if MYNEWT_VAL(BLE_LL_DBG_HCI_CMD_PIN) >= 0
+    hal_gpio_init_out(MYNEWT_VAL(BLE_LL_DBG_HCI_CMD_PIN), 0);
+#endif
+#if MYNEWT_VAL(BLE_LL_DBG_HCI_EV_PIN) >= 0
+    hal_gpio_init_out(MYNEWT_VAL(BLE_LL_DBG_HCI_EV_PIN), 0);
+#endif
+
     /* Set event callback for command processing */
     ble_npl_event_init(&g_ble_ll_hci_cmd_ev, ble_ll_hci_cmd_proc, NULL);
 

@@ -10,25 +10,30 @@
 
 #include "btc_ble_mesh_lighting_model.h"
 
+#include "mesh_config.h"
 #include "access.h"
 #include "transport.h"
 #include "model_opcode.h"
 #include "state_transition.h"
 #include "device_property.h"
 
+#if CONFIG_BLE_MESH_LIGHTING_SERVER
+
 static bt_mesh_mutex_t light_server_lock;
 
-static void bt_mesh_light_server_mutex_new(void)
+static inline void bt_mesh_light_server_mutex_new(void)
 {
     if (!light_server_lock.mutex) {
         bt_mesh_mutex_create(&light_server_lock);
     }
 }
 
-static void bt_mesh_light_server_mutex_free(void)
+#if CONFIG_BLE_MESH_DEINIT
+static inline void bt_mesh_light_server_mutex_free(void)
 {
     bt_mesh_mutex_free(&light_server_lock);
 }
+#endif /* CONFIG_BLE_MESH_DEINIT */
 
 void bt_mesh_light_server_lock(void)
 {
@@ -2858,7 +2863,7 @@ static void light_lc_prop_set(struct bt_mesh_model *model,
 /* message handlers (End) */
 
 /* Mapping of message handlers for Light Lightness Server (0x1300) */
-const struct bt_mesh_model_op light_lightness_srv_op[] = {
+const struct bt_mesh_model_op bt_mesh_light_lightness_srv_op[] = {
     { BLE_MESH_MODEL_OP_LIGHT_LIGHTNESS_GET,              0, light_lightness_get        },
     { BLE_MESH_MODEL_OP_LIGHT_LIGHTNESS_SET,              3, light_lightness_set        },
     { BLE_MESH_MODEL_OP_LIGHT_LIGHTNESS_SET_UNACK,        3, light_lightness_set        },
@@ -2872,7 +2877,7 @@ const struct bt_mesh_model_op light_lightness_srv_op[] = {
 };
 
 /* Mapping of message handlers for Light Lightness Setup Server (0x1301) */
-const struct bt_mesh_model_op light_lightness_setup_srv_op[] = {
+const struct bt_mesh_model_op bt_mesh_light_lightness_setup_srv_op[] = {
     { BLE_MESH_MODEL_OP_LIGHT_LIGHTNESS_DEFAULT_SET,       2, light_lightness_default_set },
     { BLE_MESH_MODEL_OP_LIGHT_LIGHTNESS_DEFAULT_SET_UNACK, 2, light_lightness_default_set },
     { BLE_MESH_MODEL_OP_LIGHT_LIGHTNESS_RANGE_SET,         4, light_lightness_range_set   },
@@ -2881,7 +2886,7 @@ const struct bt_mesh_model_op light_lightness_setup_srv_op[] = {
 };
 
 /* Mapping of message handlers for Light CTL Server (0x1303) */
-const struct bt_mesh_model_op light_ctl_srv_op[] = {
+const struct bt_mesh_model_op bt_mesh_light_ctl_srv_op[] = {
     { BLE_MESH_MODEL_OP_LIGHT_CTL_GET,                   0, light_ctl_get },
     { BLE_MESH_MODEL_OP_LIGHT_CTL_SET,                   7, light_ctl_set },
     { BLE_MESH_MODEL_OP_LIGHT_CTL_SET_UNACK,             7, light_ctl_set },
@@ -2891,7 +2896,7 @@ const struct bt_mesh_model_op light_ctl_srv_op[] = {
 };
 
 /* Mapping of message handlers for Light CTL Setup Server (0x1304) */
-const struct bt_mesh_model_op light_ctl_setup_srv_op[] = {
+const struct bt_mesh_model_op bt_mesh_light_ctl_setup_srv_op[] = {
     { BLE_MESH_MODEL_OP_LIGHT_CTL_DEFAULT_SET,                 6, light_ctl_default_set    },
     { BLE_MESH_MODEL_OP_LIGHT_CTL_DEFAULT_SET_UNACK,           6, light_ctl_default_set    },
     { BLE_MESH_MODEL_OP_LIGHT_CTL_TEMPERATURE_RANGE_SET,       4, light_ctl_temp_range_set },
@@ -2900,7 +2905,7 @@ const struct bt_mesh_model_op light_ctl_setup_srv_op[] = {
 };
 
 /* Mapping of message handlers for Light CTL Temperature Server (0x1306) */
-const struct bt_mesh_model_op light_ctl_temp_srv_op[] = {
+const struct bt_mesh_model_op bt_mesh_light_ctl_temp_srv_op[] = {
     { BLE_MESH_MODEL_OP_LIGHT_CTL_TEMPERATURE_GET,       0, light_ctl_get      },
     { BLE_MESH_MODEL_OP_LIGHT_CTL_TEMPERATURE_SET,       5, light_ctl_temp_set },
     { BLE_MESH_MODEL_OP_LIGHT_CTL_TEMPERATURE_SET_UNACK, 5, light_ctl_temp_set },
@@ -2908,7 +2913,7 @@ const struct bt_mesh_model_op light_ctl_temp_srv_op[] = {
 };
 
 /* Mapping of message handlers for Light HSL Server (0x1307) */
-const struct bt_mesh_model_op light_hsl_srv_op[] = {
+const struct bt_mesh_model_op bt_mesh_light_hsl_srv_op[] = {
     { BLE_MESH_MODEL_OP_LIGHT_HSL_GET,         0, light_hsl_get },
     { BLE_MESH_MODEL_OP_LIGHT_HSL_SET,         7, light_hsl_set },
     { BLE_MESH_MODEL_OP_LIGHT_HSL_SET_UNACK,   7, light_hsl_set },
@@ -2919,7 +2924,7 @@ const struct bt_mesh_model_op light_hsl_srv_op[] = {
 };
 
 /* Mapping of message handlers for Light HSL Setup Server (0x1308) */
-const struct bt_mesh_model_op light_hsl_setup_srv_op[] = {
+const struct bt_mesh_model_op bt_mesh_light_hsl_setup_srv_op[] = {
     { BLE_MESH_MODEL_OP_LIGHT_HSL_DEFAULT_SET,       6, light_hsl_default_set },
     { BLE_MESH_MODEL_OP_LIGHT_HSL_DEFAULT_SET_UNACK, 6, light_hsl_default_set },
     { BLE_MESH_MODEL_OP_LIGHT_HSL_RANGE_SET,         8, light_hsl_range_set   },
@@ -2928,7 +2933,7 @@ const struct bt_mesh_model_op light_hsl_setup_srv_op[] = {
 };
 
 /* Mapping of message handlers for Light HSL Hue Server (0x130A) */
-const struct bt_mesh_model_op light_hsl_hue_srv_op[] = {
+const struct bt_mesh_model_op bt_mesh_light_hsl_hue_srv_op[] = {
     { BLE_MESH_MODEL_OP_LIGHT_HSL_HUE_GET,       0, light_hsl_get     },
     { BLE_MESH_MODEL_OP_LIGHT_HSL_HUE_SET,       3, light_hsl_hue_set },
     { BLE_MESH_MODEL_OP_LIGHT_HSL_HUE_SET_UNACK, 3, light_hsl_hue_set },
@@ -2936,7 +2941,7 @@ const struct bt_mesh_model_op light_hsl_hue_srv_op[] = {
 };
 
 /* Mapping of message handlers for Light HSL Saturation Server (0x130B) */
-const struct bt_mesh_model_op light_hsl_sat_srv_op[] = {
+const struct bt_mesh_model_op bt_mesh_light_hsl_sat_srv_op[] = {
     { BLE_MESH_MODEL_OP_LIGHT_HSL_SATURATION_GET,       0, light_hsl_get     },
     { BLE_MESH_MODEL_OP_LIGHT_HSL_SATURATION_SET,       3, light_hsl_sat_set },
     { BLE_MESH_MODEL_OP_LIGHT_HSL_SATURATION_SET_UNACK, 3, light_hsl_sat_set },
@@ -2944,7 +2949,7 @@ const struct bt_mesh_model_op light_hsl_sat_srv_op[] = {
 };
 
 /* Mapping of message handlers for Light xyL Server (0x130C) */
-const struct bt_mesh_model_op light_xyl_srv_op[] = {
+const struct bt_mesh_model_op bt_mesh_light_xyl_srv_op[] = {
     { BLE_MESH_MODEL_OP_LIGHT_XYL_GET,         0, light_xyl_get },
     { BLE_MESH_MODEL_OP_LIGHT_XYL_SET,         7, light_xyl_set },
     { BLE_MESH_MODEL_OP_LIGHT_XYL_SET_UNACK,   7, light_xyl_set },
@@ -2955,7 +2960,7 @@ const struct bt_mesh_model_op light_xyl_srv_op[] = {
 };
 
 /* Mapping of message handlers for Light xyL Setup Server (0x130D) */
-const struct bt_mesh_model_op light_xyl_setup_srv_op[] = {
+const struct bt_mesh_model_op bt_mesh_light_xyl_setup_srv_op[] = {
     { BLE_MESH_MODEL_OP_LIGHT_XYL_DEFAULT_SET,       6, light_xyl_default_set },
     { BLE_MESH_MODEL_OP_LIGHT_XYL_DEFAULT_SET_UNACK, 6, light_xyl_default_set },
     { BLE_MESH_MODEL_OP_LIGHT_XYL_RANGE_SET,         8, light_xyl_range_set   },
@@ -2964,7 +2969,7 @@ const struct bt_mesh_model_op light_xyl_setup_srv_op[] = {
 };
 
 /* Mapping of message handlers for Light LC Server (0x130F) */
-const struct bt_mesh_model_op light_lc_srv_op[] = {
+const struct bt_mesh_model_op bt_mesh_light_lc_srv_op[] = {
     { BLE_MESH_MODEL_OP_LIGHT_LC_MODE_GET,              0, light_lc_get             },
     { BLE_MESH_MODEL_OP_LIGHT_LC_MODE_SET,              1, light_lc_mode_set        },
     { BLE_MESH_MODEL_OP_LIGHT_LC_MODE_SET_UNACK,        1, light_lc_mode_set        },
@@ -2979,7 +2984,7 @@ const struct bt_mesh_model_op light_lc_srv_op[] = {
 };
 
 /* Mapping of message handlers for Light LC Setup Server (0x1310) */
-const struct bt_mesh_model_op light_lc_setup_srv_op[] = {
+const struct bt_mesh_model_op bt_mesh_light_lc_setup_srv_op[] = {
     { BLE_MESH_MODEL_OP_LIGHT_LC_PROPERTY_GET,       2, light_lc_prop_get },
     { BLE_MESH_MODEL_OP_LIGHT_LC_PROPERTY_SET,       3, light_lc_prop_set },
     { BLE_MESH_MODEL_OP_LIGHT_LC_PROPERTY_SET_UNACK, 3, light_lc_prop_set },
@@ -3155,7 +3160,7 @@ static int light_server_init(struct bt_mesh_model *model)
     return 0;
 }
 
-int bt_mesh_light_lightness_srv_init(struct bt_mesh_model *model, bool primary)
+static int light_lightness_srv_init(struct bt_mesh_model *model)
 {
     if (model->pub == NULL) {
         BT_ERR("Light Lightness Server has no publication support");
@@ -3173,12 +3178,12 @@ int bt_mesh_light_lightness_srv_init(struct bt_mesh_model *model, bool primary)
     return light_server_init(model);
 }
 
-int bt_mesh_light_lightness_setup_srv_init(struct bt_mesh_model *model, bool primary)
+static int light_lightness_setup_srv_init(struct bt_mesh_model *model)
 {
     return light_server_init(model);
 }
 
-int bt_mesh_light_ctl_srv_init(struct bt_mesh_model *model, bool primary)
+static int light_ctl_srv_init(struct bt_mesh_model *model)
 {
     if (model->pub == NULL) {
         BT_ERR("Light CTL Server has no publication support");
@@ -3205,12 +3210,12 @@ int bt_mesh_light_ctl_srv_init(struct bt_mesh_model *model, bool primary)
     return light_server_init(model);
 }
 
-int bt_mesh_light_ctl_setup_srv_init(struct bt_mesh_model *model, bool primary)
+static int light_ctl_setup_srv_init(struct bt_mesh_model *model)
 {
     return light_server_init(model);
 }
 
-int bt_mesh_light_ctl_temp_srv_init(struct bt_mesh_model *model, bool primary)
+static int light_ctl_temp_srv_init(struct bt_mesh_model *model)
 {
     if (model->pub == NULL) {
         BT_ERR("Light CTL Temperature Server has no publication support");
@@ -3220,7 +3225,7 @@ int bt_mesh_light_ctl_temp_srv_init(struct bt_mesh_model *model, bool primary)
     return light_server_init(model);
 }
 
-int bt_mesh_light_hsl_srv_init(struct bt_mesh_model *model, bool primary)
+static int light_hsl_srv_init(struct bt_mesh_model *model)
 {
     if (model->pub == NULL) {
         BT_ERR("Light HSL Server has no publication support");
@@ -3248,12 +3253,12 @@ int bt_mesh_light_hsl_srv_init(struct bt_mesh_model *model, bool primary)
     return light_server_init(model);
 }
 
-int bt_mesh_light_hsl_setup_srv_init(struct bt_mesh_model *model, bool primary)
+static int light_hsl_setup_srv_init(struct bt_mesh_model *model)
 {
     return light_server_init(model);
 }
 
-int bt_mesh_light_hsl_hue_srv_init(struct bt_mesh_model *model, bool primary)
+static int light_hsl_hue_srv_init(struct bt_mesh_model *model)
 {
     if (model->pub == NULL) {
         BT_ERR("Light HSL Hue Server has no publication support");
@@ -3263,7 +3268,7 @@ int bt_mesh_light_hsl_hue_srv_init(struct bt_mesh_model *model, bool primary)
     return light_server_init(model);
 }
 
-int bt_mesh_light_hsl_sat_srv_init(struct bt_mesh_model *model, bool primary)
+static int light_hsl_sat_srv_init(struct bt_mesh_model *model)
 {
     if (model->pub == NULL) {
         BT_ERR("Light HSL Saturation Server has no publication support");
@@ -3273,7 +3278,7 @@ int bt_mesh_light_hsl_sat_srv_init(struct bt_mesh_model *model, bool primary)
     return light_server_init(model);
 }
 
-int bt_mesh_light_xyl_srv_init(struct bt_mesh_model *model, bool primary)
+static int light_xyl_srv_init(struct bt_mesh_model *model)
 {
     if (model->pub == NULL) {
         BT_ERR("Light xyL Server has no publication support");
@@ -3292,12 +3297,12 @@ int bt_mesh_light_xyl_srv_init(struct bt_mesh_model *model, bool primary)
     return light_server_init(model);
 }
 
-int bt_mesh_light_xyl_setup_srv_init(struct bt_mesh_model *model, bool primary)
+static int light_xyl_setup_srv_init(struct bt_mesh_model *model)
 {
     return light_server_init(model);
 }
 
-int bt_mesh_light_lc_srv_init(struct bt_mesh_model *model, bool primary)
+static int light_lc_srv_init(struct bt_mesh_model *model)
 {
     if (model->pub == NULL) {
         BT_ERR("Light LC Server has no publication support");
@@ -3307,7 +3312,7 @@ int bt_mesh_light_lc_srv_init(struct bt_mesh_model *model, bool primary)
     return light_server_init(model);
 }
 
-int bt_mesh_light_lc_setup_srv_init(struct bt_mesh_model *model, bool primary)
+static int light_lc_setup_srv_init(struct bt_mesh_model *model)
 {
     if (model->pub == NULL) {
         BT_ERR("Light LC Setup Server has no publication support");
@@ -3326,6 +3331,7 @@ int bt_mesh_light_lc_setup_srv_init(struct bt_mesh_model *model, bool primary)
     return light_server_init(model);
 }
 
+#if CONFIG_BLE_MESH_DEINIT
 static int light_server_deinit(struct bt_mesh_model *model)
 {
     if (model->user_data == NULL) {
@@ -3442,7 +3448,7 @@ static int light_server_deinit(struct bt_mesh_model *model)
     return 0;
 }
 
-int bt_mesh_light_lightness_srv_deinit(struct bt_mesh_model *model, bool primary)
+static int light_lightness_srv_deinit(struct bt_mesh_model *model)
 {
     if (model->pub == NULL) {
         BT_ERR("Light Lightness Server has no publication support");
@@ -3452,12 +3458,12 @@ int bt_mesh_light_lightness_srv_deinit(struct bt_mesh_model *model, bool primary
     return light_server_deinit(model);
 }
 
-int bt_mesh_light_lightness_setup_srv_deinit(struct bt_mesh_model *model, bool primary)
+static int light_lightness_setup_srv_deinit(struct bt_mesh_model *model)
 {
     return light_server_deinit(model);
 }
 
-int bt_mesh_light_ctl_srv_deinit(struct bt_mesh_model *model, bool primary)
+static int light_ctl_srv_deinit(struct bt_mesh_model *model)
 {
     if (model->pub == NULL) {
         BT_ERR("Light CTL Server has no publication support");
@@ -3467,12 +3473,12 @@ int bt_mesh_light_ctl_srv_deinit(struct bt_mesh_model *model, bool primary)
     return light_server_deinit(model);
 }
 
-int bt_mesh_light_ctl_setup_srv_deinit(struct bt_mesh_model *model, bool primary)
+static int light_ctl_setup_srv_deinit(struct bt_mesh_model *model)
 {
     return light_server_deinit(model);
 }
 
-int bt_mesh_light_ctl_temp_srv_deinit(struct bt_mesh_model *model, bool primary)
+static int light_ctl_temp_srv_deinit(struct bt_mesh_model *model)
 {
     if (model->pub == NULL) {
         BT_ERR("Light CTL Temperature Server has no publication support");
@@ -3482,7 +3488,7 @@ int bt_mesh_light_ctl_temp_srv_deinit(struct bt_mesh_model *model, bool primary)
     return light_server_deinit(model);
 }
 
-int bt_mesh_light_hsl_srv_deinit(struct bt_mesh_model *model, bool primary)
+static int light_hsl_srv_deinit(struct bt_mesh_model *model)
 {
     if (model->pub == NULL) {
         BT_ERR("Light HSL Server has no publication support");
@@ -3492,12 +3498,12 @@ int bt_mesh_light_hsl_srv_deinit(struct bt_mesh_model *model, bool primary)
     return light_server_deinit(model);
 }
 
-int bt_mesh_light_hsl_setup_srv_deinit(struct bt_mesh_model *model, bool primary)
+static int light_hsl_setup_srv_deinit(struct bt_mesh_model *model)
 {
     return light_server_deinit(model);
 }
 
-int bt_mesh_light_hsl_hue_srv_deinit(struct bt_mesh_model *model, bool primary)
+static int light_hsl_hue_srv_deinit(struct bt_mesh_model *model)
 {
     if (model->pub == NULL) {
         BT_ERR("Light HSL Hue Server has no publication support");
@@ -3507,7 +3513,7 @@ int bt_mesh_light_hsl_hue_srv_deinit(struct bt_mesh_model *model, bool primary)
     return light_server_deinit(model);
 }
 
-int bt_mesh_light_hsl_sat_srv_deinit(struct bt_mesh_model *model, bool primary)
+static int light_hsl_sat_srv_deinit(struct bt_mesh_model *model)
 {
     if (model->pub == NULL) {
         BT_ERR("Light HSL Saturation Server has no publication support");
@@ -3517,7 +3523,7 @@ int bt_mesh_light_hsl_sat_srv_deinit(struct bt_mesh_model *model, bool primary)
     return light_server_deinit(model);
 }
 
-int bt_mesh_light_xyl_srv_deinit(struct bt_mesh_model *model, bool primary)
+static int light_xyl_srv_deinit(struct bt_mesh_model *model)
 {
     if (model->pub == NULL) {
         BT_ERR("Light xyL Server has no publication support");
@@ -3527,12 +3533,12 @@ int bt_mesh_light_xyl_srv_deinit(struct bt_mesh_model *model, bool primary)
     return light_server_deinit(model);
 }
 
-int bt_mesh_light_xyl_setup_srv_deinit(struct bt_mesh_model *model, bool primary)
+static int light_xyl_setup_srv_deinit(struct bt_mesh_model *model)
 {
     return light_server_deinit(model);
 }
 
-int bt_mesh_light_lc_srv_deinit(struct bt_mesh_model *model, bool primary)
+static int light_lc_srv_deinit(struct bt_mesh_model *model)
 {
     if (model->pub == NULL) {
         BT_ERR("Light LC Server has no publication support");
@@ -3542,7 +3548,7 @@ int bt_mesh_light_lc_srv_deinit(struct bt_mesh_model *model, bool primary)
     return light_server_deinit(model);
 }
 
-int bt_mesh_light_lc_setup_srv_deinit(struct bt_mesh_model *model, bool primary)
+static int light_lc_setup_srv_deinit(struct bt_mesh_model *model)
 {
     if (model->pub == NULL) {
         BT_ERR("Light LC Setup Server has no publication support");
@@ -3551,3 +3557,97 @@ int bt_mesh_light_lc_setup_srv_deinit(struct bt_mesh_model *model, bool primary)
 
     return light_server_deinit(model);
 }
+#endif /* CONFIG_BLE_MESH_DEINIT */
+
+const struct bt_mesh_model_cb bt_mesh_light_lightness_srv_cb = {
+    .init = light_lightness_srv_init,
+#if CONFIG_BLE_MESH_DEINIT
+    .deinit = light_lightness_srv_deinit,
+#endif /* CONFIG_BLE_MESH_DEINIT */
+};
+
+const struct bt_mesh_model_cb bt_mesh_light_lightness_setup_srv_cb = {
+    .init = light_lightness_setup_srv_init,
+#if CONFIG_BLE_MESH_DEINIT
+    .deinit = light_lightness_setup_srv_deinit,
+#endif /* CONFIG_BLE_MESH_DEINIT */
+};
+
+const struct bt_mesh_model_cb bt_mesh_light_ctl_srv_cb = {
+    .init = light_ctl_srv_init,
+#if CONFIG_BLE_MESH_DEINIT
+    .deinit = light_ctl_srv_deinit,
+#endif /* CONFIG_BLE_MESH_DEINIT */
+};
+
+const struct bt_mesh_model_cb bt_mesh_light_ctl_setup_srv_cb = {
+    .init = light_ctl_setup_srv_init,
+#if CONFIG_BLE_MESH_DEINIT
+    .deinit = light_ctl_setup_srv_deinit,
+#endif /* CONFIG_BLE_MESH_DEINIT */
+};
+
+const struct bt_mesh_model_cb bt_mesh_light_ctl_temp_srv_cb = {
+    .init = light_ctl_temp_srv_init,
+#if CONFIG_BLE_MESH_DEINIT
+    .deinit = light_ctl_temp_srv_deinit,
+#endif /* CONFIG_BLE_MESH_DEINIT */
+};
+
+const struct bt_mesh_model_cb bt_mesh_light_hsl_srv_cb = {
+    .init = light_hsl_srv_init,
+#if CONFIG_BLE_MESH_DEINIT
+    .deinit = light_hsl_srv_deinit,
+#endif /* CONFIG_BLE_MESH_DEINIT */
+};
+
+const struct bt_mesh_model_cb bt_mesh_light_hsl_setup_srv_cb = {
+    .init = light_hsl_setup_srv_init,
+#if CONFIG_BLE_MESH_DEINIT
+    .deinit = light_hsl_setup_srv_deinit,
+#endif /* CONFIG_BLE_MESH_DEINIT */
+};
+
+const struct bt_mesh_model_cb bt_mesh_light_hsl_hue_srv_cb = {
+    .init = light_hsl_hue_srv_init,
+#if CONFIG_BLE_MESH_DEINIT
+    .deinit = light_hsl_hue_srv_deinit,
+#endif /* CONFIG_BLE_MESH_DEINIT */
+};
+
+const struct bt_mesh_model_cb bt_mesh_light_hsl_sat_srv_cb = {
+    .init = light_hsl_sat_srv_init,
+#if CONFIG_BLE_MESH_DEINIT
+    .deinit = light_hsl_sat_srv_deinit,
+#endif /* CONFIG_BLE_MESH_DEINIT */
+};
+
+const struct bt_mesh_model_cb bt_mesh_light_xyl_srv_cb = {
+    .init = light_xyl_srv_init,
+#if CONFIG_BLE_MESH_DEINIT
+    .deinit = light_xyl_srv_deinit,
+#endif /* CONFIG_BLE_MESH_DEINIT */
+};
+
+const struct bt_mesh_model_cb bt_mesh_light_xyl_setup_srv_cb = {
+    .init = light_xyl_setup_srv_init,
+#if CONFIG_BLE_MESH_DEINIT
+    .deinit = light_xyl_setup_srv_deinit,
+#endif /* CONFIG_BLE_MESH_DEINIT */
+};
+
+const struct bt_mesh_model_cb bt_mesh_light_lc_srv_cb = {
+    .init = light_lc_srv_init,
+#if CONFIG_BLE_MESH_DEINIT
+    .deinit = light_lc_srv_deinit,
+#endif /* CONFIG_BLE_MESH_DEINIT */
+};
+
+const struct bt_mesh_model_cb bt_mesh_light_lc_setup_srv_cb = {
+    .init = light_lc_setup_srv_init,
+#if CONFIG_BLE_MESH_DEINIT
+    .deinit = light_lc_setup_srv_deinit,
+#endif /* CONFIG_BLE_MESH_DEINIT */
+};
+
+#endif /* CONFIG_BLE_MESH_LIGHTING_SERVER */

@@ -6,6 +6,14 @@ menu "LWIP"
         help
             The name this device will report to other devices on the network
 
+    config LWIP_DNS_SUPPORT_MDNS_QUERIES
+        bool "Enable mDNS queries in resolving host name"
+        default y
+        help
+            If this feature is enabled, standard API such as gethostbyname
+            support .local addresses by sending one shot multicast mDNS
+            query
+
     config LWIP_L2_TO_L3_COPY
         bool "Enable copy between Layer2 and Layer3 packets"
         default n
@@ -103,6 +111,13 @@ menu "LWIP"
         default n
         help
             Enabling this option allows checking for available data on a netconn.
+
+    config LWIP_NETBUF_RECVINFO
+        bool "Enable IP_PKTINFO option"
+        default n
+        help
+            Enabling this option allows checking for the destination address
+            of a received IPv4 Packet.
 
     config LWIP_IP4_FRAG
         bool "Enable fragment outgoing IP4 packets"
@@ -294,6 +309,17 @@ menu "LWIP"
 
     menu "TCP"
 
+        config LWIP_TCP_ISN_HOOK
+            bool "Enable TCP ISN Hook"
+            default y
+            help
+                Enables custom TCP ISN hook to randomize initial sequence
+                number in TCP connection. This is recommended as default
+                lwIP implementation (`tcp_next_iss`) is not very strong,
+                as it does not take into consideration any platform
+                specific entropy source.
+
+
         config LWIP_MAX_ACTIVE_TCP
             int "Maximum active TCP Connections"
             range 1 1024
@@ -320,6 +346,13 @@ menu "LWIP"
                 change the memory usage of LWIP, except for preventing
                 new listening TCP connections after the limit is reached.
 
+        config LWIP_TCP_HIGH_SPEED_RETRANSMISSION
+            bool "TCP high speed retransmissions"
+            default y
+            help
+                Speed up the TCP retransmission interval. If disabled,
+                it is recommended to change the number of SYN retransmissions to 6,
+                and TCP initial rto time to 3000.
 
         config LWIP_TCP_MAXRTX
             int "Maximum number of retransmissions of data segments"
@@ -330,7 +363,8 @@ menu "LWIP"
 
         config LWIP_TCP_SYNMAXRTX
             int "Maximum number of retransmissions of SYN segments"
-            default 6
+            default 6 if !LWIP_TCP_HIGH_SPEED_RETRANSMISSION
+            default 12 if LWIP_TCP_HIGH_SPEED_RETRANSMISSION
             range 3 12
             help
                 Set maximum number of retransmissions of SYN segments.
@@ -345,6 +379,15 @@ menu "LWIP"
                 Can be set lower to save RAM, the default value 1460(ipv4)/1440(ipv6) will give best throughput.
                 IPv4 TCP_MSS Range: 576 <= TCP_MSS <= 1460
                 IPv6 TCP_MSS Range: 1220<= TCP_mSS <= 1440
+
+        config LWIP_TCP_TMR_INTERVAL
+            int "TCP timer interval(ms)"
+            default 250
+            help
+                Set TCP timer interval in milliseconds.
+
+                Can be used to speed connections on bad networks.
+                A lower value will redeliver unacked packets faster.
 
         config LWIP_TCP_MSL
             int "Maximum segment lifetime (MSL)"
@@ -413,6 +456,12 @@ menu "LWIP"
                 Disable this option to save some RAM during TCP sessions, at the expense
                 of increased retransmissions if segments arrive out of order.
 
+        config LWIP_TCP_SACK_OUT
+            bool "Support sending selective acknowledgements"
+            default n
+            help
+                TCP will support sending selective acknowledgements (SACKs).
+
         config LWIP_TCP_KEEP_CONNECTION_WHEN_IP_CHANGES
             bool "Keep TCP connections when IP changed"
             default n
@@ -464,7 +513,8 @@ menu "LWIP"
 
         config LWIP_TCP_RTO_TIME
             int "Default TCP rto time"
-            default 3000
+            default 3000 if !LWIP_TCP_HIGH_SPEED_RETRANSMISSION
+            default 1500 if LWIP_TCP_HIGH_SPEED_RETRANSMISSION
             help
                 Set default TCP rto time for a reasonable initial rto.
                 In bad network environment, recommend set value of rto time to 1500.
@@ -545,6 +595,17 @@ menu "LWIP"
             Enable PPP stack. Now only PPP over serial is possible.
 
             PPP over serial support is experimental and unsupported.
+
+    config LWIP_PPP_ENABLE_IPV6
+        bool "Enable IPV6 support for PPP connections (IPV6CP)"
+        depends on LWIP_PPP_SUPPORT
+        default y
+        help
+            Enable IPV6 support in PPP for the local link between the DTE (processor) and DCE (modem).
+            There are some modems which do not support the IPV6 addressing in the local link.
+            If they are requested for IPV6CP negotiation, they may time out.
+            This would in turn fail the configuration for the whole link.
+            If your modem is not responding correctly to PPP Phase Network, try to disable IPV6 support.
 
     config LWIP_IPV6_MEMP_NUM_ND6_QUEUE
         int "Max number of IPv6 packets to queue during MAC resolution"

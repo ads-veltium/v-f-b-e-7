@@ -74,6 +74,7 @@ global:
   coap_insert_node;
   coap_insert_optlist;
   coap_is_mcast;
+  coap_join_mcast_group;
   coap_log_impl;
   coap_malloc_endpoint;
   coap_malloc_type;
@@ -111,7 +112,6 @@ global:
   coap_package_name;
   coap_package_version;
   coap_packet_get_memmapped;
-  coap_packet_set_addr;
   coap_pdu_clear;
   coap_pdu_encode_header;
   coap_pdu_init;

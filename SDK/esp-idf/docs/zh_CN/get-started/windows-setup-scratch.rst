@@ -9,13 +9,12 @@
 使用 ESP-IDF 工具安装器对工具链及其他工具进行快速标准设置，请参照 :doc:`windows-setup`。
 
 .. note::
-	
     基于 GNU Make 的构建系统要求 Windows 兼容 MSYS2_ Unix，基于 CMake 的构建系统则无此要求。
 
 .. _get-esp-idf-windows-command-line:
 
 获取 ESP-IDF
-==============
+=================
 
 .. note::
 
@@ -23,7 +22,7 @@
 
     请注意，如果您使用基于 bash 的终端或 PowerShell 终端，一些命令语法将与下面描述有所不同。
 
-打开命令提示符，后运行以下命令：
+打开命令提示符，运行以下命令：
 
 .. include:: /_build/inc/git-clone-windows.inc
 
@@ -35,29 +34,29 @@ ESP-IDF 将下载至 ``%userprofile%\esp\esp-idf``。
 
 .. note::
 
-    在克隆远程仓库时，不要忘记加上 ``--recursive`` 选项。否则，请接着运行以下命令，获取所有子模块::
-
+    在克隆远程仓库时，不要忘记加上 ``--recursive`` 选项。否则，请接着运行以下命令，获取所有子模块 ::
+    
         cd esp-idf
         git submodule update --init
 
 
 工具
-====
+=====
 
-cmake
-^^^^^
+cmake 工具
+^^^^^^^^^^
 
 下载最新发布的 Windows 平台稳定版 `CMake`_，并运行安装器。
 
 当安装器询问“安装选项”时，选择 "Add CMake to the system PATH for all users"（为所有用户的系统路径添加 CMake）或 "Add CMake to the system PATH for the current user"（为当前用户的系统路径添加 CMake）。
 
 Ninja 编译工具
-^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. note::
     目前，Ninja 仅提供支持 64 位 Windows 版本的 bin 文件。您也可以配合其他编译工具在 32 位 Windows 版本中使用 CMake 和 ``idf.py`` ，比如 mingw-make。但是目前暂无关于此工具的说明文档。
 
-从（`下载页面 <ninja-dl>`_）下载最新发布的 Windows 平台稳定版 ninja_。 
+从（`下载页面 <ninja-dl_>`_）下载最新发布的 Windows 平台稳定版 ninja_。 
 
 适用于 Windows 平台的 Ninja 下载文件是一个 .zip 文件，包含一个 ``ninja.exe`` 文件。您需要将该文件解压到目录，并 :ref:`添加到您的路径 <add-directory-windows-path>` （或者选择您路径中的已有目录）。
 
@@ -74,11 +73,11 @@ Python 安装完成后，从 Windows 开始菜单中打开“命令提示符”�
     pip install --user pyserial
 
 适用于 IDF 的 MConf
-^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-从 `kconfig-frontends releases page <mconf-idf>`_ 下载配置工具 mconf-idf。此为 ``mconf`` 配置工具，可针对 ESP-IDF 进行少量自定义操作。
+从 `kconfig-frontends releases page`_ 下载配置工具 mconf-idf。此为 ``mconf`` 配置工具，可针对 ESP-IDF 进行少量自定义操作。
 
-请将此工具解压到目录，并 `添加到您的路径 <add-directory-windows-path>`_。
+请将此工具解压到目录，并 :ref:`添加到您的路径 <add-directory-windows-path>`。
 
 工具链设置
 ===============
@@ -91,10 +90,9 @@ Python 安装完成后，从 Windows 开始菜单中打开“命令提示符”�
 
 解压压缩包文件到 ``C:\Program Files`` （或其他位置）。压缩包文件包含一个 ``xtensa-esp32-elf`` 目录。
 
-然后，请将该目录下的 ``bin`` 子目录 `添加到您的路径 <add-directory-windows-path>`_。例如，``C:\Program Files\xtensa-esp32-elf\bin``。
+然后，请将该目录下的 ``bin`` 子目录 :ref:`添加到您的路径 <add-directory-windows-path>`。例如，``C:\Program Files\xtensa-esp32-elf\bin``。
 
 .. note::
-    
     如果您已安装 MSYS2 环境（适用 "GNU Make" 编译系统），则可以跳过下载那一步，直接添加目录 ``C:\msys32\opt\xtensa-esp32-elf\bin`` 到路径，因为 MSYS2 环境已包含工具链。
 
 
@@ -111,15 +109,17 @@ Python 安装完成后，从 Windows 开始菜单中打开“命令提示符”�
 
 
 后续步骤
-========
+==========
 
 继续设置开发环境，请前往 :ref:`get-started-set-up-tools` 章节。
 
+.. _cmake: https://cmake.org/download/
 .. _ninja: https://ninja-build.org/
+.. _ninja-dl: https://github.com/ninja-build/ninja/releases
 .. _Python: https://www.python.org/downloads/windows/
 .. _MSYS2: https://msys2.github.io/
+.. _kconfig-frontends releases page: https://github.com/espressif/kconfig-frontends/releases
 .. Note: These two targets may be used from git-clone-notes.inc depending on version, don't remove
 .. _Stable version: https://docs.espressif.com/projects/esp-idf/zh_CN/stable/
 .. _Releases page: https://github.com/espressif/esp-idf/releases
-
 

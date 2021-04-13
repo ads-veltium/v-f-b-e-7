@@ -115,6 +115,7 @@ uint8_t WiFiProvClass :: beginProvision(prov_scheme_t prov_scheme, scheme_handle
 bool WiFiProvClass::StopProvision(){
 
     wifi_prov_mgr_stop_provisioning();
+    wifi_prov_mgr_deinit();
     WiFi.disconnect(true,true);
     esp_wifi_stop();
     wifiLowLevelDeinit();

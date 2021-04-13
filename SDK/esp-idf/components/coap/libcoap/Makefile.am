@@ -105,13 +105,14 @@ libcoap_include_HEADERS = \
   $(top_srcdir)/include/coap$(LIBCOAP_API_VERSION)/bits.h \
   $(top_srcdir)/include/coap$(LIBCOAP_API_VERSION)/block.h \
   $(top_builddir)/include/coap$(LIBCOAP_API_VERSION)/coap.h \
+  $(top_srcdir)/include/coap$(LIBCOAP_API_VERSION)/coap_debug.h \
   $(top_srcdir)/include/coap$(LIBCOAP_API_VERSION)/coap_dtls.h \
   $(top_srcdir)/include/coap$(LIBCOAP_API_VERSION)/coap_event.h \
   $(top_srcdir)/include/coap$(LIBCOAP_API_VERSION)/coap_hashkey.h \
   $(top_srcdir)/include/coap$(LIBCOAP_API_VERSION)/coap_io.h \
+  $(top_srcdir)/include/coap$(LIBCOAP_API_VERSION)/coap_mutex.h \
   $(top_srcdir)/include/coap$(LIBCOAP_API_VERSION)/coap_session.h \
   $(top_srcdir)/include/coap$(LIBCOAP_API_VERSION)/coap_time.h \
-  $(top_srcdir)/include/coap$(LIBCOAP_API_VERSION)/coap_debug.h \
   $(top_srcdir)/include/coap$(LIBCOAP_API_VERSION)/encode.h \
   $(top_srcdir)/include/coap$(LIBCOAP_API_VERSION)/libcoap.h \
   $(top_srcdir)/include/coap$(LIBCOAP_API_VERSION)/mem.h \
@@ -156,11 +157,11 @@ coap_dtls_receive \
 coap_dtls_send \
 coap_dtls_session_update_mtu \
 coap_dtls_startup \
-coap_endpoint_new_dtls_session \
 coap_mfree_endpoint \
 coap_packet_extract_pbuf \
 coap_pdu_from_pbuf \
 coap_session_mfree \
+coap_session_new_dtls_session \
 coap_socket_accept_tcp \
 coap_socket_bind_tcp \
 coap_socket_bind_udp \
@@ -233,7 +234,7 @@ distclean-local:
 	@rm -f src/*.o src/*.lo
 	rm -f libcoap-$(LIBCOAP_API_VERSION).map
 	rm -f libcoap-$(LIBCOAP_API_VERSION).sym
-	rm -f libcoap-$(LIBCOAP_API_VERSION).pc
+	rm -f libcoap-$(LIBCOAP_NAME_SUFFIX).pc
 	@echo
 	@echo "     ---> Please note the following important advice! <---"
 	@echo "     The files libcoap-$(LIBCOAP_API_VERSION).{map,sym} are removed by the distclean target!"

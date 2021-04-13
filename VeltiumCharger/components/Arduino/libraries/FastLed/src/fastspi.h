@@ -129,7 +129,9 @@ class SPIOutput<SPI_UART1_DATA, SPI_UART1_CLOCK, SPI_SPEED> : public AVRUSART1SP
 
 #endif
 
-
+#else
+#  if !defined(FASTLED_INTERNAL) && !defined(FASTLED_ALL_PINS_HARDWARE_SPI)
+#  endif
 #endif
 
 // #if defined(USART_DATA) && defined(USART_CLOCK)

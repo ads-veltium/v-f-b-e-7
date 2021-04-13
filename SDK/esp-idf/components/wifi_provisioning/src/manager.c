@@ -1303,7 +1303,7 @@ void wifi_prov_mgr_wait(void)
         if (prov_ctx &&
             prov_ctx->prov_state != WIFI_PROV_STATE_IDLE) {
             RELEASE_LOCK(prov_ctx_lock);
-            vTaskDelay(pdMS_TO_TICKS(1000));
+            vTaskDelay(1000 / portTICK_PERIOD_MS);
             continue;
         }
         break;

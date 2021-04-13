@@ -14,6 +14,7 @@
 #ifndef TIPOS_H
 #define TIPOS_H
 
+#include "lwip/ip_addr.h"
 
 #define EXT_FLASH_SIZE								8*1024*1024
 #define EXT_FLASH_PAGE_SIZE							4096
@@ -144,12 +145,14 @@ typedef struct{
 } carac_Status;
 
 typedef struct{
+	bool   Tipo_Sensor;
 	bool   Ubicacion_Sensor;
 	bool   CDP_On;
 	bool   Sensor_Conectado;
 	bool   NewData;
 	char   Fw_Update_mode[2];
 	char   autentication_mode[2];
+	uint8  Fase =1;
 	uint8  CDP;
 	uint8  inst_current_limit;
 	uint16 potencia_contratada;
@@ -160,20 +163,26 @@ typedef struct{
 typedef struct{
 	bool ON;
 	bool Auto;
+	bool Internet = false;
 	uint8_t AP[34]={'\0'};
 	String Pass;
-	IPAddress IP;
+	ip4_addr_t IP;
 }carac_WIFI;
 
 typedef struct{
 	bool ON;
-	bool Auto;
+	bool Auto = 1;
+	bool DHCP = 0;
+	bool Internet = false;
+	bool Wifi_Perm = false;
 
-	IPAddress IP1;
-	IPAddress IP2;
-	IPAddress Gateway;
-	IPAddress Mask;
-	uint8_t Puerto;
+	ip4_addr_t IP;
+	ip4_addr_t Gateway;
+	ip4_addr_t Mask;
+
+	uint8_t   State;
+	uint8_t   Puerto;
+	bool conectado = false;
 }carac_ETH;
 
 typedef struct{
@@ -188,15 +197,30 @@ typedef struct{
 typedef struct{
 	bool StartConnection   = false;
 	bool StartProvisioning = false;
-	bool StartSmartconfig = false;
+	bool StartSmartconfig  = false;
 	bool RemoveCredentials = false;
 	bool RestartConection  = false;
 	bool Provisioning 	   = false;
+
 	carac_WIFI   Wifi;
 	carac_ETH     ETH;
 	carac_MODEM   GSM;
+
 	long long last_ts_app_req= 0;
 } carac_Coms;
+
+typedef struct{
+	
+	bool      ContadorConectado = false;
+
+	char      ContadorIp[15] ={"0"};
+	
+	uint16    DomesticCurrentA;
+	uint16    DomesticCurrentB;
+	uint16    DomesticCurrentC;
+
+	long long last_ts_app_req= 0;
+} carac_Contador;
 
 typedef struct{
 	//Machine state orders
@@ -229,6 +253,31 @@ typedef struct{
 
 }carac_Firebase_Configuration;
 
+
+
+typedef struct{
+	char     name[9];
+	IPAddress     IP;
+	char      HPT[2];
+	uint8_t     Fase;
+	uint16_t Voltage;
+
+}carac_charger;
+
+typedef struct{
+    carac_charger charger_table[10];
+    int size = 0;
+}carac_chargers;
+
+typedef struct{
+	bool GroupActive  = false;
+	bool GroupMaster  = false;
+	bool ServerActive = false;
+	bool SendNewData  = false;
+
+	carac_chargers group_chargers;
+}carac_group;
+
 typedef struct{
 	//configuracion
 	bool BetaPermission = false;
@@ -239,7 +288,10 @@ typedef struct{
 	bool ESP_UpdateAvailable   = false;
 	bool DescargandoArchivo    = false;
 	bool InstalandoArchivo     = false;
+	bool DobleUpdate  		   = false;
 	
+	String ESP_url;
+	String PSOC_url;
 
 } carac_Update_Status;
 #define RCD_NO_ACTIVO
@@ -551,16 +603,19 @@ typedef struct{
 #define COMS_CONFIGURATION_WIFI_SSID_2	   (0x00B5u)
 #define COMS_CONFIGURATION_WIFI_START_PROV (0x00B7u)
 #define COMS_CONFIGURATION_ETH_ON	       (0x00B9u)
-#define COMS_CONFIGURATION_LAN_IP1	       (0x00BBu)
-#define COMS_CONFIGURATION_LAN_IP2	       (0x00BDu)
-
-#define COMS_FW_UPDATEMODE_CHAR_HANDLE     (0x00BFu)
+#define COMS_CONFIGURATION_LAN_IP	       (0x00BBu)
+#define COMS_CONFIGURATION_ETH_DHCP        (0x00BFu)
 #define MEASURES_INST_CURRENTB_CHAR_HANDLE (0x00C1u)
 #define MEASURES_INST_CURRENTC_CHAR_HANDLE (0x00C3u)
-
+#define MEASURES_EXTERNAL_COUNTER		   (0x00C5u)
+#define COMS_FW_UPDATEMODE_CHAR_HANDLE     (0x00C7u)
 
 #define ENERGY_PARTIAL_RECORD_1			   (0x00D0u)
 #define ENERGY_PARTIAL_RECORD_2			   (0x00D1u)
+
+//Handlers para el medidor trifásico 
+
+
 
 
 #endif

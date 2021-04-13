@@ -1,4 +1,4 @@
-#! /usr/bin/env bash
+#! /bin/bash
 # Copyright (C) Sebastian Pipping <sebastian@pipping.org>
 # Licensed under the MIT license
 
@@ -40,9 +40,6 @@ _configure() {
 
     ${unicode_enabled} \
             && configure_args+=( CPPFLAGS='-DXML_UNICODE -DXML_UNICODE_WCHAR_T' )
-
-    ${xml_attr_info_enabled} \
-            && configure_args+=( --enable-xml-attr-info )
 
     if [[ ${xml_context} -eq 0 ]]; then
         configure_args+=( --disable-xml-context )
@@ -113,8 +110,8 @@ _run() {
         cd "${build_dir}"
 
         _configure \
-                CFLAGS="${CFLAGS}" \
-                CXXFLAGS="${CXXFLAGS}"
+                CFLAGS="${BASE_FLAGS}" \
+                CXXFLAGS="${BASE_FLAGS}"
 
         (
             set -x
@@ -214,10 +211,8 @@ _main() {
                 continue
             fi
 
-            for xml_attr_info_enabled in true false ; do
-                for xml_context in 0 1024 ; do
-                    _build_case
-                done
+            for xml_context in 0 1024 ; do
+                _build_case
             done
         done
     done

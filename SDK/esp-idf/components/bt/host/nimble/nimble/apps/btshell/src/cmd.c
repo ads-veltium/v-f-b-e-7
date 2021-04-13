@@ -92,6 +92,48 @@ static const struct kv_pair cmd_addr_type[] = {
 };
 
 
+static int
+parse_dev_addr(const char *prefix, const struct kv_pair *addr_types,
+               ble_addr_t *addr)
+{
+    char name[32];
+    int rc;
+
+    /* XXX string operations below are not quite safe, but do we care? */
+
+    if (!prefix) {
+        name[0] = '\0';
+    } else {
+        strcpy(name, prefix);
+    }
+
+    strcat(name, "addr");
+    rc = parse_arg_addr(name, addr);
+    if (rc == ENOENT) {
+        /* not found */
+        return rc;
+    } else if (rc == EAGAIN) {
+        /* address found, but no type provided */
+        strcat(name, "_type");
+        addr->type = parse_arg_kv(name, addr_types, &rc);
+        if (rc == ENOENT) {
+            addr->type = BLE_ADDR_PUBLIC;
+        } else if (rc != 0) {
+            return rc;
+        }
+    } else if (rc != 0) {
+        /* error parsing address */
+        return rc;
+    } else {
+        /* full address found, but let's just make sure there is no type arg */
+        strcat(name, "_type");
+        if (parse_arg_extract(name)) {
+            return E2BIG;
+        }
+    }
+
+    return 0;
+}
 
 /*****************************************************************************
  * $advertise                                                                *
@@ -187,19 +229,10 @@ cmd_advertise_configure(int argc, char **argv)
         return rc;
     }
 
-    rc = parse_arg_mac("peer_addr", params.peer.val);
+    rc = parse_dev_addr("peer_", cmd_peer_addr_types, &params.peer);
     if (rc == 0) {
         params.directed = 1;
-
-        params.peer.type = parse_arg_kv_dflt("peer_addr_type",
-                                             cmd_peer_addr_types,
-                                             BLE_ADDR_PUBLIC, &rc);
-        if (rc != 0) {
-            console_printf("invalid 'peer_addr_type' parameter\n");
-            return rc;
-        }
-    }
-    else if (rc == ENOENT) {
+    } else if (rc == ENOENT) {
        /* skip, no peer address provided */
     } else {
         console_printf("invalid 'peer_addr' parameter\n");
@@ -238,13 +271,13 @@ cmd_advertise_configure(int argc, char **argv)
         return rc;
     }
 
-    params.itvl_min = parse_arg_uint32_dflt("interval_min", 0, &rc);
+    params.itvl_min = parse_arg_time_dflt("interval_min", 625, 0, &rc);
     if (rc != 0) {
         console_printf("invalid 'interval_min' parameter\n");
         return rc;
     }
 
-    params.itvl_max = parse_arg_uint32_dflt("interval_max", 0, &rc);
+    params.itvl_max = parse_arg_time_dflt("interval_max", 625, 0, &rc);
     if (rc != 0) {
         console_printf("invalid 'interval_max' parameter\n");
         return rc;
@@ -583,14 +616,7 @@ cmd_advertise(int argc, char **argv)
         return rc;
     }
 
-    peer_addr.type = parse_arg_kv_dflt("peer_addr_type", cmd_peer_addr_types,
-                                       BLE_ADDR_PUBLIC, &rc);
-    if (rc != 0) {
-        console_printf("invalid 'peer_addr_type' parameter\n");
-        return rc;
-    }
-
-    rc = parse_arg_mac("peer_addr", peer_addr.val);
+    rc = parse_dev_addr("peer_", cmd_peer_addr_types, &peer_addr);
     if (rc == ENOENT) {
         peer_addr_param = NULL;
     } else if (rc != 0) {
@@ -624,13 +650,13 @@ cmd_advertise(int argc, char **argv)
         return rc;
     }
 
-    params.itvl_min = parse_arg_uint16_dflt("interval_min", 0, &rc);
+    params.itvl_min = parse_arg_time_dflt("interval_min", 625, 0, &rc);
     if (rc != 0) {
         console_printf("invalid 'interval_min' parameter\n");
         return rc;
     }
 
-    params.itvl_max = parse_arg_uint16_dflt("interval_max", 0, &rc);
+    params.itvl_max = parse_arg_time_dflt("interval_max", 625, 0, &rc);
     if (rc != 0) {
         console_printf("invalid 'interval_max' parameter\n");
         return rc;
@@ -732,19 +758,7 @@ cmd_connect(int argc, char **argv)
         return rc;
     }
 
-    peer_addr.type = parse_arg_kv_dflt("peer_addr_type", cmd_peer_addr_types,
-                                       BLE_ADDR_PUBLIC, &rc);
-    if (rc != 0) {
-        console_printf("invalid 'peer_addr_type' parameter\n");
-        return rc;
-    }
-
-    rc = parse_arg_mac("peer_addr", peer_addr.val);
-    if (rc == ENOENT) {
-        /* Allow "addr" for backwards compatibility. */
-        rc = parse_arg_mac("addr", peer_addr.val);
-    }
-
+    rc = parse_dev_addr("peer_", cmd_peer_addr_types, &peer_addr);
     if (rc == ENOENT) {
         /* With no "peer_addr" specified we'll use white list */
         peer_addr_param = NULL;
@@ -766,19 +780,19 @@ cmd_connect(int argc, char **argv)
         return rc;
     }
 
-    phy_1M_params.scan_itvl = parse_arg_uint16_dflt("scan_interval", 0x0010, &rc);
+    phy_1M_params.scan_itvl = parse_arg_time_dflt("scan_interval", 625, 0x0010, &rc);
     if (rc != 0) {
         console_printf("invalid 'scan_interval' parameter\n");
         return rc;
     }
 
-    phy_1M_params.scan_window = parse_arg_uint16_dflt("scan_window", 0x0010, &rc);
+    phy_1M_params.scan_window = parse_arg_time_dflt("scan_window", 625, 0x0010, &rc);
     if (rc != 0) {
         console_printf("invalid 'scan_window' parameter\n");
         return rc;
     }
 
-    phy_1M_params.itvl_min = parse_arg_uint16_dflt("interval_min",
+    phy_1M_params.itvl_min = parse_arg_time_dflt("interval_min", 1250,
                                                    BLE_GAP_INITIAL_CONN_ITVL_MIN,
                                                    &rc);
     if (rc != 0) {
@@ -786,7 +800,7 @@ cmd_connect(int argc, char **argv)
         return rc;
     }
 
-    phy_1M_params.itvl_max = parse_arg_uint16_dflt("interval_max",
+    phy_1M_params.itvl_max = parse_arg_time_dflt("interval_max", 1250,
                                                    BLE_GAP_INITIAL_CONN_ITVL_MAX,
                                                    &rc);
     if (rc != 0) {
@@ -800,21 +814,22 @@ cmd_connect(int argc, char **argv)
         return rc;
     }
 
-    phy_1M_params.supervision_timeout = parse_arg_uint16_dflt("timeout", 0x0100, &rc);
+    phy_1M_params.supervision_timeout = parse_arg_time_dflt("timeout", 10000,
+                                                              0x0100, &rc);
     if (rc != 0) {
         console_printf("invalid 'timeout' parameter\n");
         return rc;
     }
 
-    phy_1M_params.min_ce_len = parse_arg_uint16_dflt("min_conn_event_len",
-                                                     0x0010, &rc);
+    phy_1M_params.min_ce_len = parse_arg_time_dflt("min_conn_event_len", 625,
+                                                   0x0010, &rc);
     if (rc != 0) {
         console_printf("invalid 'min_conn_event_len' parameter\n");
         return rc;
     }
 
-    phy_1M_params.max_ce_len = parse_arg_uint16_dflt("max_conn_event_len",
-                                                     0x0300, &rc);
+    phy_1M_params.max_ce_len = parse_arg_time_dflt("max_conn_event_len", 625,
+                                                   0x0300, &rc);
     if (rc != 0) {
         console_printf("invalid 'max_conn_event_len' parameter\n");
         return rc;
@@ -823,7 +838,9 @@ cmd_connect(int argc, char **argv)
     if (ext == 0x00) {
         rc = btshell_conn_initiate(own_addr_type, peer_addr_param, duration_ms,
                                    &phy_1M_params);
-        console_printf("error connecting; rc=%d\n", rc);
+        if (rc) {
+            console_printf("error connecting; rc=%d\n", rc);
+        }
         return rc;
     }
 
@@ -831,36 +848,38 @@ cmd_connect(int argc, char **argv)
         rc = btshell_ext_conn_initiate(own_addr_type, peer_addr_param,
                                        duration_ms, &phy_1M_params,
                                        NULL, NULL);
-        console_printf("error connecting; rc=%d\n", rc);
+        if (rc) {
+            console_printf("error connecting; rc=%d\n", rc);
+        }
         return rc;
     }
 
     /* Get coded params */
-    phy_coded_params.scan_itvl = parse_arg_uint16_dflt("coded_scan_interval",
-                                                       0x0010, &rc);
+    phy_coded_params.scan_itvl = parse_arg_time_dflt("coded_scan_interval",
+                                                     625, 0x0010, &rc);
     if (rc != 0) {
         console_printf("invalid 'coded_scan_interval' parameter\n");
         return rc;
     }
 
-    phy_coded_params.scan_window = parse_arg_uint16_dflt("coded_scan_window",
-                                                         0x0010, &rc);
+    phy_coded_params.scan_window = parse_arg_time_dflt("coded_scan_window",
+                                                       625, 0x0010, &rc);
     if (rc != 0) {
         console_printf("invalid 'coded_scan_window' parameter\n");
         return rc;
     }
 
-    phy_coded_params.itvl_min = parse_arg_uint16_dflt("coded_interval_min",
-                                                      BLE_GAP_INITIAL_CONN_ITVL_MIN,
-                                                      &rc);
+    phy_coded_params.itvl_min = parse_arg_time_dflt("coded_interval_min", 1250,
+                                                    BLE_GAP_INITIAL_CONN_ITVL_MIN,
+                                                    &rc);
     if (rc != 0) {
         console_printf("invalid 'coded_interval_min' parameter\n");
         return rc;
     }
 
-    phy_coded_params.itvl_max = parse_arg_uint16_dflt("coded_interval_max",
-                                                      BLE_GAP_INITIAL_CONN_ITVL_MAX,
-                                                      &rc);
+    phy_coded_params.itvl_max = parse_arg_time_dflt("coded_interval_max", 1250,
+                                                    BLE_GAP_INITIAL_CONN_ITVL_MAX,
+                                                    &rc);
     if (rc != 0) {
         console_printf("invalid 'coded_interval_max' parameter\n");
         return rc;
@@ -874,7 +893,7 @@ cmd_connect(int argc, char **argv)
     }
 
     phy_coded_params.supervision_timeout =
-        parse_arg_uint16_dflt("coded_timeout", 0x0100, &rc);
+        parse_arg_time_dflt("coded_timeout", 10000, 0x0100, &rc);
 
     if (rc != 0) {
         console_printf("invalid 'coded_timeout' parameter\n");
@@ -882,30 +901,30 @@ cmd_connect(int argc, char **argv)
     }
 
     phy_coded_params.min_ce_len =
-        parse_arg_uint16_dflt("coded_min_conn_event", 0x0010, &rc);
+        parse_arg_time_dflt("coded_min_conn_event", 625, 0x0010, &rc);
     if (rc != 0) {
         console_printf("invalid 'coded_min_conn_event' parameter\n");
         return rc;
     }
 
-    phy_coded_params.max_ce_len = parse_arg_uint16_dflt("coded_max_conn_event",
-                                                        0x0300, &rc);
+    phy_coded_params.max_ce_len = parse_arg_time_dflt("coded_max_conn_event",
+                                                      625, 0x0300, &rc);
     if (rc != 0) {
         console_printf("invalid 'coded_max_conn_event' parameter\n");
         return rc;
     }
 
     /* Get 2M params */
-    phy_2M_params.itvl_min = parse_arg_uint16_dflt("2M_interval_min",
-                                                   BLE_GAP_INITIAL_CONN_ITVL_MIN,
-                                                   &rc);
+    phy_2M_params.itvl_min = parse_arg_time_dflt("2M_interval_min", 1250,
+                                                 BLE_GAP_INITIAL_CONN_ITVL_MIN,
+                                                 &rc);
     if (rc != 0) {
         console_printf("invalid '2M_interval_min' parameter\n");
         return rc;
     }
 
-    phy_2M_params.itvl_max = parse_arg_uint16_dflt("2M_interval_max",
-                                                   BLE_GAP_INITIAL_CONN_ITVL_MAX, &rc);
+    phy_2M_params.itvl_max = parse_arg_time_dflt("2M_interval_max", 1250,
+                                                 BLE_GAP_INITIAL_CONN_ITVL_MAX, &rc);
     if (rc != 0) {
         console_printf("invalid '2M_interval_max' parameter\n");
         return rc;
@@ -918,23 +937,23 @@ cmd_connect(int argc, char **argv)
         return rc;
     }
 
-    phy_2M_params.supervision_timeout = parse_arg_uint16_dflt("2M_timeout",
-                                                              0x0100, &rc);
+    phy_2M_params.supervision_timeout = parse_arg_time_dflt("2M_timeout", 10000,
+                                                            0x0100, &rc);
 
     if (rc != 0) {
         console_printf("invalid '2M_timeout' parameter\n");
         return rc;
     }
 
-    phy_2M_params.min_ce_len = parse_arg_uint16_dflt("2M_min_conn_event", 0x0010,
-                                                     &rc);
+    phy_2M_params.min_ce_len = parse_arg_time_dflt("2M_min_conn_event", 625,
+                                                   0x0010, &rc);
     if (rc != 0) {
         console_printf("invalid '2M_min_conn_event' parameter\n");
         return rc;
     }
 
-    phy_2M_params.max_ce_len = parse_arg_uint16_dflt("2M_max_conn_event",
-                                                     0x0300, &rc);
+    phy_2M_params.max_ce_len = parse_arg_time_dflt("2M_max_conn_event", 625,
+                                                   0x0300, &rc);
     if (rc != 0) {
         console_printf("invalid '2M_max_conn_event' parameter\n");
         return rc;
@@ -1128,6 +1147,12 @@ cmd_set_scan_opts(int argc, char **argv)
         return rc;
     }
 
+    g_scan_opts.periodic_only = parse_arg_bool_dflt("periodic_only", 0, &rc);
+    if (rc != 0) {
+        console_printf("invalid 'periodic_only' parameter\n");
+        return rc;
+    }
+
     return rc;
 }
 
@@ -1135,6 +1160,7 @@ cmd_set_scan_opts(int argc, char **argv)
 static const struct shell_param set_scan_opts_params[] = {
     {"decode_limit", "usage: =[0-UINT16_MAX], default: UINT16_MAX"},
     {"ignore_legacy", "usage: =[0-1], default: 0"},
+    {"periodic_only", "usage: =[0-1], default: 0"},
     {NULL, NULL}
 };
 
@@ -1200,8 +1226,7 @@ cmd_scan(int argc, char **argv)
         return rc;
     }
 
-    duration_ms = parse_arg_long_bounds_dflt("duration", 1, INT32_MAX,
-                                             BLE_HS_FOREVER, &rc);
+    duration_ms = parse_arg_time_dflt("duration", 10000, BLE_HS_FOREVER, &rc);
     if (rc != 0) {
         console_printf("invalid 'duration' parameter\n");
         return rc;
@@ -1219,13 +1244,13 @@ cmd_scan(int argc, char **argv)
         return rc;
     }
 
-    params.itvl = parse_arg_uint16_dflt("interval", 0, &rc);
+    params.itvl = parse_arg_time_dflt("interval", 625, 0, &rc);
     if (rc != 0) {
         console_printf("invalid 'interval' parameter\n");
         return rc;
     }
 
-    params.window = parse_arg_uint16_dflt("window", 0, &rc);
+    params.window = parse_arg_time_dflt("window", 625, 0, &rc);
     if (rc != 0) {
         console_printf("invalid 'window' parameter\n");
         return rc;
@@ -1266,25 +1291,25 @@ cmd_scan(int argc, char **argv)
     uncoded.itvl = params.itvl;
     uncoded.window = params.window;
 
-    duration = parse_arg_uint16_dflt("extended_duration", 0, &rc);
+    duration = parse_arg_time_dflt("extended_duration", 10000, 0, &rc);
     if (rc != 0) {
         console_printf("invalid 'extended_duration' parameter\n");
         return rc;
     }
 
-    period = parse_arg_uint16_dflt("extended_period", 0, &rc);
+    period = parse_arg_time_dflt("extended_period", 1280000, 0, &rc);
     if (rc != 0) {
         console_printf("invalid 'extended_period' parameter\n");
         return rc;
     }
 
-    coded.itvl = parse_arg_uint16_dflt("longrange_interval", 0, &rc);
+    coded.itvl = parse_arg_time_dflt("longrange_interval", 625, 0, &rc);
     if (rc != 0) {
         console_printf("invalid 'longrange_interval' parameter\n");
         return rc;
     }
 
-    coded.window = parse_arg_uint16_dflt("longrange_window", 0, &rc);
+    coded.window = parse_arg_time_dflt("longrange_window", 625, 0, &rc);
     if (rc != 0) {
         console_printf("invalid 'longrange_window' parameter\n");
         return rc;
@@ -1355,46 +1380,32 @@ static const struct shell_cmd_help scan_help = {
  * $set                                                                      *
  *****************************************************************************/
 
-static const struct kv_pair cmd_set_addr_types[] = {
-    { "public",         BLE_ADDR_PUBLIC },
-    { "random",         BLE_ADDR_RANDOM },
-    { NULL }
-};
-
 static int
 cmd_set_addr(void)
 {
-    uint8_t addr[6];
-    int addr_type;
+    ble_addr_t addr;
     int rc;
 
-    addr_type = parse_arg_kv_dflt("addr_type", cmd_set_addr_types,
-                                  BLE_ADDR_PUBLIC, &rc);
-    if (rc != 0) {
-        console_printf("invalid 'addr_type' parameter\n");
-        return rc;
-    }
-
-    rc = parse_arg_mac("addr", addr);
+    rc = parse_dev_addr(NULL, cmd_addr_type, &addr);
     if (rc != 0) {
         console_printf("invalid 'addr' parameter\n");
         return rc;
     }
 
-    switch (addr_type) {
+    switch (addr.type) {
 #if MYNEWT_VAL(BLE_CONTROLLER)
     case BLE_ADDR_PUBLIC:
         /* We shouldn't be writing to the controller's address (g_dev_addr).
          * There is no standard way to set the local public address, so this is
          * our only option at the moment.
          */
-        memcpy(g_dev_addr, addr, 6);
+        memcpy(g_dev_addr, addr.val, 6);
         ble_hs_id_set_pub(g_dev_addr);
         break;
 #endif
 
     case BLE_ADDR_RANDOM:
-        rc = ble_hs_id_set_rnd(addr);
+        rc = ble_hs_id_set_rnd(addr.val);
         if (rc != 0) {
             return rc;
         }
@@ -1502,7 +1513,8 @@ update_pattern(uint8_t *buf, int counter)
 #endif
 
 static int
-cmd_set_adv_data_or_scan_rsp(int argc, char **argv, bool scan_rsp)
+cmd_set_adv_data_or_scan_rsp(int argc, char **argv, bool scan_rsp,
+                             bool periodic)
 {
     static bssnz_t ble_uuid16_t uuids16[CMD_ADV_DATA_MAX_UUIDS16];
     static bssnz_t ble_uuid32_t uuids32[CMD_ADV_DATA_MAX_UUIDS32];
@@ -1544,6 +1556,11 @@ cmd_set_adv_data_or_scan_rsp(int argc, char **argv, bool scan_rsp)
     uint16_t extra_data_len;
     struct os_mbuf *adv_data;
 #endif
+
+    /* cannot set scan rsp for periodic */
+    if (scan_rsp && periodic) {
+        return -1;
+    }
 
     memset(&adv_fields, 0, sizeof adv_fields);
 
@@ -1804,6 +1821,7 @@ cmd_set_adv_data_or_scan_rsp(int argc, char **argv, bool scan_rsp)
 
         rc = ble_hs_adv_set_fields_mbuf(&adv_fields, adv_data);
         if (rc) {
+            os_mbuf_free_chain(adv_data);
             goto done;
         }
 
@@ -1815,8 +1833,12 @@ cmd_set_adv_data_or_scan_rsp(int argc, char **argv, bool scan_rsp)
             while (counter < extra_data_len) {
                 update_pattern(extra_data, counter);
 
-                os_mbuf_append(adv_data, extra_data,
-                               min(extra_data_len - counter, 10));
+                rc = os_mbuf_append(adv_data, extra_data,
+                                    min(extra_data_len - counter, 10));
+                if (rc) {
+                    os_mbuf_free_chain(adv_data);
+                    goto done;
+                }
 
                 counter += 10;
             }
@@ -1824,6 +1846,10 @@ cmd_set_adv_data_or_scan_rsp(int argc, char **argv, bool scan_rsp)
 
         if (scan_rsp) {
             rc = ble_gap_ext_adv_rsp_set_data(instance, adv_data);
+#if MYNEWT_VAL(BLE_PERIODIC_ADV)
+        } else if (periodic) {
+            rc = ble_gap_periodic_adv_set_data(instance, adv_data);
+#endif
         } else {
             rc = ble_gap_ext_adv_set_data(instance, adv_data);
         }
@@ -1847,13 +1873,13 @@ done:
 static int
 cmd_set_adv_data(int argc, char **argv)
 {
-    return cmd_set_adv_data_or_scan_rsp(argc, argv, false);
+    return cmd_set_adv_data_or_scan_rsp(argc, argv, false, false);
 }
 
 static int
 cmd_set_scan_rsp(int argc, char **argv)
 {
-    return cmd_set_adv_data_or_scan_rsp(argc, argv, true);
+    return cmd_set_adv_data_or_scan_rsp(argc, argv, true, false);
 }
 
 #if MYNEWT_VAL(SHELL_CMD_HELP)
@@ -1914,14 +1940,7 @@ cmd_set_priv_mode(int argc, char **argv)
         return rc;
     }
 
-    addr.type = parse_arg_kv_dflt("addr_type", cmd_set_addr_types,
-                                  BLE_ADDR_PUBLIC, &rc);
-    if (rc != 0) {
-        console_printf("invalid 'addr_type' parameter\n");
-        return rc;
-    }
-
-    rc = parse_arg_mac("addr", addr.val);
+    rc = parse_dev_addr(NULL, cmd_addr_type, &addr);
     if (rc != 0) {
         console_printf("invalid 'addr' parameter\n");
         return rc;
@@ -1975,17 +1994,11 @@ cmd_white_list(int argc, char **argv)
             return EINVAL;
         }
 
-        rc = parse_arg_mac("addr", addrs[addrs_cnt].val);
+        rc = parse_dev_addr(NULL, cmd_addr_type, &addrs[addrs_cnt]);
         if (rc == ENOENT) {
             break;
         } else if (rc != 0) {
-            console_printf("invalid 'addr' parameter\n");
-            return rc;
-        }
-
-        addrs[addrs_cnt].type = parse_arg_kv("addr_type", cmd_addr_type, &rc);
-        if (rc != 0) {
-            console_printf("invalid 'addr_type' parameter\n");
+            console_printf("invalid 'addr' parameter #%d\n", addrs_cnt + 1);
             return rc;
         }
 
@@ -2083,17 +2096,17 @@ cmd_conn_update_params(int argc, char **argv)
         return rc;
     }
 
-    params.itvl_min = parse_arg_uint16_dflt("interval_min",
-                                            BLE_GAP_INITIAL_CONN_ITVL_MIN,
-                                            &rc);
+    params.itvl_min = parse_arg_time_dflt("interval_min", 1250,
+                                          BLE_GAP_INITIAL_CONN_ITVL_MIN,
+                                          &rc);
     if (rc != 0) {
         console_printf("invalid 'interval_min' parameter\n");
         return rc;
     }
 
-    params.itvl_max = parse_arg_uint16_dflt("interval_max",
-                                            BLE_GAP_INITIAL_CONN_ITVL_MAX,
-                                            &rc);
+    params.itvl_max = parse_arg_time_dflt("interval_max", 1250,
+                                          BLE_GAP_INITIAL_CONN_ITVL_MAX,
+                                          &rc);
     if (rc != 0) {
         console_printf("invalid 'interval_max' parameter\n");
         return rc;
@@ -2105,21 +2118,22 @@ cmd_conn_update_params(int argc, char **argv)
         return rc;
     }
 
-    params.supervision_timeout = parse_arg_uint16_dflt("timeout", 0x0100, &rc);
+    params.supervision_timeout = parse_arg_time_dflt("timeout", 10000, 0x0100,
+                                                     &rc);
     if (rc != 0) {
         console_printf("invalid 'timeout' parameter\n");
         return rc;
     }
 
-    params.min_ce_len = parse_arg_uint16_dflt("min_conn_event_len",
-                                              0x0010, &rc);
+    params.min_ce_len = parse_arg_time_dflt("min_conn_event_len", 625,
+                                            0x0010, &rc);
     if (rc != 0) {
         console_printf("invalid 'min_conn_event_len' parameter\n");
         return rc;
     }
 
-    params.max_ce_len = parse_arg_uint16_dflt("max_conn_event_len",
-                                              0x0300, &rc);
+    params.max_ce_len = parse_arg_time_dflt("max_conn_event_len", 625,
+                                            0x0300, &rc);
     if (rc != 0) {
         console_printf("invalid 'max_conn_event_len' parameter\n");
         return rc;
@@ -2199,9 +2213,11 @@ cmd_conn_datalen(int argc, char **argv)
 
 #if MYNEWT_VAL(SHELL_CMD_HELP)
 static const struct shell_param conn_datalen_params[] = {
-    {"conn", "conn_datalen handle, usage: =<UINT16>"},
-    {"octets", "usage: =<UINT16>"},
-    {"time", "usage: =<UINT16>"},
+    {"conn", "Connection handle, usage: =<UINT16>"},
+    {"octets", "Max payload size to include in LL Data PDU, "
+               "range=<27-251>, usage: =<UINT16>"},
+    {"time", "Max number of microseconds the controller should use to tx "
+             "single LL packet, range=<328-17040>, usage: =<UINT16>"},
     {NULL, NULL}
 };
 
@@ -2239,14 +2255,7 @@ cmd_keystore_parse_keydata(int argc, char **argv, union ble_store_key *out,
     switch (*obj_type) {
     case BLE_STORE_OBJ_TYPE_PEER_SEC:
     case BLE_STORE_OBJ_TYPE_OUR_SEC:
-        out->sec.peer_addr.type = parse_arg_kv("addr_type",
-                                               cmd_addr_type, &rc);
-        if (rc != 0) {
-            console_printf("invalid 'addr_type' parameter\n");
-            return rc;
-        }
-
-        rc = parse_arg_mac("addr", out->sec.peer_addr.val);
+        rc = parse_dev_addr(NULL, cmd_addr_type, &out->sec.peer_addr);
         if (rc != 0) {
             console_printf("invalid 'addr' parameter\n");
             return rc;
@@ -2676,17 +2685,8 @@ cmd_security_unpair(int argc, char **argv)
         return rc;
     }
 
-    rc = parse_arg_mac("peer_addr", peer.val);
-    if (rc == 0) {
-
-        peer.type = parse_arg_kv_dflt("peer_addr_type",
-                                      cmd_peer_addr_types,
-                                      BLE_ADDR_PUBLIC, &rc);
-        if (rc != 0) {
-            console_printf("invalid 'peer_addr_type' parameter\n");
-            return rc;
-        }
-    } else {
+    rc = parse_dev_addr("peer_", cmd_peer_addr_types, &peer);
+    if (rc != 0) {
         console_printf("invalid 'peer_addr' parameter\n");
         return rc;
     }
@@ -3192,6 +3192,11 @@ static const struct shell_cmd_help phy_read_help = {
 static int
 cmd_host_enable(int argc, char **argv)
 {
+    int rc;
+
+    rc = gatt_svr_init();
+    assert(rc == 0);
+
     ble_hs_sched_start();
 
     return 0;
@@ -3226,7 +3231,13 @@ cmd_host_disable(int argc, char **argv)
     int rc;
 
     rc = ble_hs_stop(&listener, on_stop, NULL);
-    return rc;
+    if (rc) {
+        return rc;
+    }
+
+    ble_gatts_reset();
+
+    return 0;
 }
 
 #if MYNEWT_VAL(SHELL_CMD_HELP)
@@ -3548,6 +3559,306 @@ static const struct shell_cmd_help l2cap_show_coc_help = {
     .params = l2cap_show_coc_params,
 };
 
+#endif
+#endif
+
+#if MYNEWT_VAL(BLE_PERIODIC_ADV)
+static int
+cmd_periodic_configure(int argc, char **argv)
+{
+    struct ble_gap_periodic_adv_params params = {0};
+    uint8_t instance;
+    int rc;
+
+    rc = parse_arg_all(argc - 1, argv + 1);
+    if (rc != 0) {
+        return rc;
+    }
+
+    instance = parse_arg_uint8_dflt("instance", 0, &rc);
+    if (rc != 0 || instance >= BLE_ADV_INSTANCES) {
+        console_printf("invalid instance\n");
+        return rc;
+    }
+
+    memset(&params, 0, sizeof(params));
+
+    params.include_tx_power = parse_arg_bool_dflt("include_tx_power", 0, &rc);
+    if (rc != 0) {
+        console_printf("invalid 'include_tx_power' parameter\n");
+        return rc;
+    }
+
+    params.itvl_min = parse_arg_time_dflt("interval_min", 1250, 0, &rc);
+    if (rc != 0) {
+        console_printf("invalid 'interval_min' parameter\n");
+        return rc;
+    }
+
+    params.itvl_max = parse_arg_time_dflt("interval_max", 1250, params.itvl_min,
+                                          &rc);
+    if (rc != 0) {
+        console_printf("invalid 'interval_max' parameter\n");
+        return rc;
+    }
+
+    rc = ble_gap_periodic_adv_configure(instance, &params);
+    if (rc) {
+        console_printf("failed to configure periodic advertising\n");
+        return rc;
+    }
+
+    console_printf("Instance %u configured for periodic advertising\n",
+                   instance);
+
+    return 0;
+}
+
+static int
+cmd_periodic_set_adv_data(int argc, char **argv)
+{
+    return cmd_set_adv_data_or_scan_rsp(argc, argv, false, true);
+}
+
+static int
+cmd_periodic_start(int argc, char **argv)
+{
+    uint8_t instance;
+    int rc;
+
+    rc = parse_arg_all(argc - 1, argv + 1);
+    if (rc != 0) {
+        return rc;
+    }
+
+    instance = parse_arg_uint8_dflt("instance", 0, &rc);
+    if (rc != 0 || instance >= BLE_ADV_INSTANCES) {
+        console_printf("invalid instance\n");
+        return rc;
+    }
+
+    rc = ble_gap_periodic_adv_start(instance);
+    if (rc) {
+        console_printf("failed to start periodic advertising\n");
+        return rc;
+    }
+
+    return 0;
+}
+
+static int
+cmd_periodic_stop(int argc, char **argv)
+{
+    uint8_t instance;
+    int rc;
+
+    rc = parse_arg_all(argc - 1, argv + 1);
+    if (rc != 0) {
+        return rc;
+    }
+
+    instance = parse_arg_uint8_dflt("instance", 0, &rc);
+    if (rc != 0 || instance >= BLE_ADV_INSTANCES) {
+        console_printf("invalid instance\n");
+        return rc;
+    }
+
+    rc = ble_gap_periodic_adv_stop(instance);
+    if (rc) {
+        console_printf("failed to stop periodic advertising\n");
+        return rc;
+    }
+
+    return 0;
+}
+
+#if MYNEWT_VAL(SHELL_CMD_HELP)
+static const struct shell_param periodic_configure_params[] = {
+    {"instance", "default: 0"},
+    {"interval_min", "usage: =[0-UINT32_MAX], default: 0"},
+    {"interval_max", "usage: =[0-UINT32_MAX], default: interval_min"},
+    {"tx_power", "include TX power, usage: =[0-1], default: 0"},
+    {NULL, NULL}
+};
+
+static const struct shell_cmd_help periodic_configure_help = {
+    .summary = "configure periodic advertising for instance",
+    .usage = NULL,
+    .params = periodic_configure_params,
+};
+
+static const struct shell_param periodic_start_params[] = {
+    {"instance", "default: 0"},
+    {NULL, NULL}
+};
+
+static const struct shell_cmd_help periodic_start_help = {
+    .summary = "start periodic advertising for instance",
+    .usage = NULL,
+    .params = periodic_start_params,
+};
+
+static const struct shell_param periodic_stop_params[] = {
+    {"instance", "default: 0"},
+    {NULL, NULL}
+};
+
+static const struct shell_cmd_help periodic_stop_help = {
+    .summary = "stop periodic advertising for instance",
+    .usage = NULL,
+    .params = periodic_stop_params,
+};
+#endif
+
+static int
+cmd_sync_create(int argc, char **argv)
+{
+    struct ble_gap_periodic_sync_params params;
+    ble_addr_t addr;
+    ble_addr_t *addr_param = &addr;
+    uint8_t sid;
+    int rc;
+
+    rc = parse_arg_all(argc - 1, argv + 1);
+    if (rc != 0) {
+        return rc;
+    }
+
+    if (argc > 1 && strcmp(argv[1], "cancel") == 0) {
+        rc = ble_gap_periodic_adv_create_sync_cancel();
+        if (rc != 0) {
+            console_printf("Sync create cancel fail: %d\n", rc);
+            return rc;
+        }
+
+        return 0;
+    }
+
+    rc = parse_dev_addr("peer_", cmd_addr_type, &addr);
+    if (rc == ENOENT) {
+        /* With no "peer_addr" specified we'll use periodic list */
+        addr_param = NULL;
+    } else if (rc != 0) {
+        console_printf("invalid 'addr' parameter\n");
+        return rc;
+    }
+
+    sid = parse_arg_uint8_dflt("sid", 0, &rc);
+    if (rc != 0) {
+        console_printf("invalid 'sid' parameter\n");
+        return rc;
+    }
+
+    params.skip = parse_arg_uint16_dflt("skip", 0, &rc);
+    if (rc != 0) {
+        console_printf("invalid 'skip' parameter\n");
+        return rc;
+    }
+
+    params.sync_timeout = parse_arg_time_dflt("sync_timeout", 10000, 10, &rc);
+    if (rc != 0) {
+        console_printf("invalid 'sync_timeout' parameter\n");
+        return rc;
+    }
+
+    rc = ble_gap_periodic_adv_create_sync(addr_param, sid, &params,
+                                          btshell_gap_event, NULL);
+    if (rc) {
+        console_printf("Failed to create sync (%d)\n", rc);
+    }
+
+    return rc;
+}
+
+#if MYNEWT_VAL(SHELL_CMD_HELP)
+static const struct shell_param sync_create_params[] = {
+    {"cancel", "cancel periodic sync establishment procedure"},
+    {"peer_addr_type", "usage: =[public|random], default: public"},
+    {"peer_addr", "usage: =[XX:XX:XX:XX:XX:XX]"},
+    {"sid", "usage: =[UINT8], default: 0"},
+    {"skip", "usage: =[0-0x01F3], default: 0x0000"},
+    {"sync_timeout", "usage: =[0x000A-0x4000], default: 0x000A"},
+    {NULL, NULL}
+};
+
+static const struct shell_cmd_help sync_create_help = {
+    .summary = "start/stop periodic sync procedure with specific parameters",
+    .usage = NULL,
+    .params = sync_create_params,
+};
+#endif
+
+static int
+cmd_sync_terminate(int argc, char **argv)
+{
+    uint16_t sync_handle;
+    int rc;
+
+    rc = parse_arg_all(argc - 1, argv + 1);
+    if (rc != 0) {
+        return rc;
+    }
+
+    sync_handle = parse_arg_uint16_dflt("sync_handle", 0, &rc);
+    if (rc != 0) {
+        console_printf("invalid 'sync_handle' parameter\n");
+        return rc;
+    }
+
+    rc = ble_gap_periodic_adv_terminate_sync(sync_handle);
+    if (rc) {
+        console_printf("Failed to terminate sync (%d)\n", rc);
+    }
+
+    return rc;
+}
+
+#if MYNEWT_VAL(SHELL_CMD_HELP)
+static const struct shell_param sync_terminate_params[] = {
+    {"sync_handle", "usage: =[UINT16], default: 0"},
+    {NULL, NULL}
+};
+
+static const struct shell_cmd_help sync_terminate_help = {
+    .summary = "terminate periodic sync",
+    .usage = NULL,
+    .params = sync_terminate_params,
+};
+#endif
+
+static int
+cmd_sync_stats(int argc, char **argv)
+{
+    uint16_t sync_handle;
+    int rc;
+
+    rc = parse_arg_all(argc - 1, argv + 1);
+    if (rc != 0) {
+        return rc;
+    }
+
+    sync_handle = parse_arg_uint16_dflt("sync_handle", 0, &rc);
+    if (rc != 0) {
+        console_printf("invalid 'sync_handle' parameter\n");
+        return rc;
+    }
+
+    btshell_sync_stats(sync_handle);
+
+    return 0;
+}
+
+#if MYNEWT_VAL(SHELL_CMD_HELP)
+static const struct shell_param sync_stats_params[] = {
+    {"sync_handle", "usage: =[UINT16], default: 0"},
+    {NULL, NULL}
+};
+
+static const struct shell_cmd_help sync_stats_help = {
+    .summary = "show sync stats",
+    .usage = NULL,
+    .params = sync_stats_params,
+};
 #endif
 #endif
 
@@ -3953,7 +4264,58 @@ static const struct shell_cmd btshell_commands[] = {
         .help = &host_disable_help,
 #endif
     },
-    { NULL, NULL, NULL },
+#if MYNEWT_VAL(BLE_PERIODIC_ADV)
+    {
+        .sc_cmd = "periodic-configure",
+        .sc_cmd_func = cmd_periodic_configure,
+#if MYNEWT_VAL(SHELL_CMD_HELP)
+        .help = &periodic_configure_help,
+#endif
+    },
+    {
+        .sc_cmd = "periodic-set-adv-data",
+        .sc_cmd_func = cmd_periodic_set_adv_data,
+#if MYNEWT_VAL(SHELL_CMD_HELP)
+        .help = &set_adv_data_help,
+#endif
+    },
+    {
+        .sc_cmd = "periodic-start",
+        .sc_cmd_func = cmd_periodic_start,
+#if MYNEWT_VAL(SHELL_CMD_HELP)
+        .help = &periodic_start_help,
+#endif
+    },
+    {
+        .sc_cmd = "periodic-stop",
+        .sc_cmd_func = cmd_periodic_stop,
+#if MYNEWT_VAL(SHELL_CMD_HELP)
+        .help = &periodic_stop_help,
+#endif
+    },
+    {
+        .sc_cmd = "sync-create",
+        .sc_cmd_func = cmd_sync_create,
+#if MYNEWT_VAL(SHELL_CMD_HELP)
+        .help = &sync_create_help,
+#endif
+    },
+    {
+        .sc_cmd = "sync-terminate",
+        .sc_cmd_func = cmd_sync_terminate,
+#if MYNEWT_VAL(SHELL_CMD_HELP)
+        .help = &sync_terminate_help,
+#endif
+    },
+    {
+        .sc_cmd = "sync-stats",
+        .sc_cmd_func = cmd_sync_stats,
+#if MYNEWT_VAL(SHELL_CMD_HELP)
+        .help = &sync_stats_help,
+#endif
+    },
+#endif
+    { 0 },
 };
 
 

@@ -10,25 +10,30 @@
 
 #include "btc_ble_mesh_generic_model.h"
 
+#include "mesh_config.h"
 #include "access.h"
 #include "transport.h"
 #include "model_opcode.h"
 #include "state_transition.h"
 #include "device_property.h"
 
+#if CONFIG_BLE_MESH_GENERIC_SERVER
+
 static bt_mesh_mutex_t generic_server_lock;
 
-static void bt_mesh_generic_server_mutex_new(void)
+static inline void bt_mesh_generic_server_mutex_new(void)
 {
     if (!generic_server_lock.mutex) {
         bt_mesh_mutex_create(&generic_server_lock);
     }
 }
 
-static void bt_mesh_generic_server_mutex_free(void)
+#if CONFIG_BLE_MESH_DEINIT
+static inline void bt_mesh_generic_server_mutex_free(void)
 {
     bt_mesh_mutex_free(&generic_server_lock);
 }
+#endif /* CONFIG_BLE_MESH_DEINIT */
 
 void bt_mesh_generic_server_lock(void)
 {
@@ -2207,7 +2212,7 @@ static void gen_client_prop_get(struct bt_mesh_model *model,
 /* message handlers (End) */
 
 /* Mapping of message handlers for Generic OnOff Server (0x1000) */
-const struct bt_mesh_model_op gen_onoff_srv_op[] = {
+const struct bt_mesh_model_op bt_mesh_gen_onoff_srv_op[] = {
     { BLE_MESH_MODEL_OP_GEN_ONOFF_GET,       0, gen_onoff_get },
     { BLE_MESH_MODEL_OP_GEN_ONOFF_SET,       2, gen_onoff_set },
     { BLE_MESH_MODEL_OP_GEN_ONOFF_SET_UNACK, 2, gen_onoff_set },
@@ -2215,7 +2220,7 @@ const struct bt_mesh_model_op gen_onoff_srv_op[] = {
 };
 
 /* Mapping of message handlers for Generic Level Server (0x1002) */
-const struct bt_mesh_model_op gen_level_srv_op[] = {
+const struct bt_mesh_model_op bt_mesh_gen_level_srv_op[] = {
     { BLE_MESH_MODEL_OP_GEN_LEVEL_GET,       0, gen_level_get },
     { BLE_MESH_MODEL_OP_GEN_LEVEL_SET,       3, gen_level_set },
     { BLE_MESH_MODEL_OP_GEN_LEVEL_SET_UNACK, 3, gen_level_set },
@@ -2227,7 +2232,7 @@ const struct bt_mesh_model_op gen_level_srv_op[] = {
 };
 
 /* Mapping of message handlers for Generic Default TT Server (0x1004) */
-const struct bt_mesh_model_op gen_def_trans_time_srv_op[] = {
+const struct bt_mesh_model_op bt_mesh_gen_def_trans_time_srv_op[] = {
     { BLE_MESH_MODEL_OP_GEN_DEF_TRANS_TIME_GET,       0, gen_def_trans_time_get },
     { BLE_MESH_MODEL_OP_GEN_DEF_TRANS_TIME_SET,       1, gen_def_trans_time_set },
     { BLE_MESH_MODEL_OP_GEN_DEF_TRANS_TIME_SET_UNACK, 1, gen_def_trans_time_set },
@@ -2235,20 +2240,20 @@ const struct bt_mesh_model_op gen_def_trans_time_srv_op[] = {
 };
 
 /* Mapping of message handlers for Generic Power OnOff Server (0x1006) */
-const struct bt_mesh_model_op gen_power_onoff_srv_op[] = {
+const struct bt_mesh_model_op bt_mesh_gen_power_onoff_srv_op[] = {
     { BLE_MESH_MODEL_OP_GEN_ONPOWERUP_GET, 0, gen_onpowerup_get },
     BLE_MESH_MODEL_OP_END,
 };
 
 /* Mapping of message handlers for Generic Power OnOff Setup Server (0x1007) */
-const struct bt_mesh_model_op gen_power_onoff_setup_srv_op[] = {
+const struct bt_mesh_model_op bt_mesh_gen_power_onoff_setup_srv_op[] = {
     { BLE_MESH_MODEL_OP_GEN_ONPOWERUP_SET,       1, gen_onpowerup_set },
     { BLE_MESH_MODEL_OP_GEN_ONPOWERUP_SET_UNACK, 1, gen_onpowerup_set },
     BLE_MESH_MODEL_OP_END,
 };
 
 /* Mapping of message handlers for Generic Power Level Server (0x1009) */
-const struct bt_mesh_model_op gen_power_level_srv_op[] = {
+const struct bt_mesh_model_op bt_mesh_gen_power_level_srv_op[] = {
     { BLE_MESH_MODEL_OP_GEN_POWER_LEVEL_GET,       0, gen_power_level_get },
     { BLE_MESH_MODEL_OP_GEN_POWER_LEVEL_SET,       3, gen_power_level_set },
     { BLE_MESH_MODEL_OP_GEN_POWER_LEVEL_SET_UNACK, 3, gen_power_level_set },
@@ -2259,7 +2264,7 @@ const struct bt_mesh_model_op gen_power_level_srv_op[] = {
 };
 
 /* Mapping of message handlers for Generic Power Level Setup Server (0x100A) */
-const struct bt_mesh_model_op gen_power_level_setup_srv_op[] = {
+const struct bt_mesh_model_op bt_mesh_gen_power_level_setup_srv_op[] = {
     { BLE_MESH_MODEL_OP_GEN_POWER_DEFAULT_SET,       2, gen_power_default_set },
     { BLE_MESH_MODEL_OP_GEN_POWER_DEFAULT_SET_UNACK, 2, gen_power_default_set },
     { BLE_MESH_MODEL_OP_GEN_POWER_RANGE_SET,         4, gen_power_range_set   },
@@ -2268,20 +2273,20 @@ const struct bt_mesh_model_op gen_power_level_setup_srv_op[] = {
 };
 
 /* Mapping of message handlers for Generic Battery Server (0x100C) */
-const struct bt_mesh_model_op gen_battery_srv_op[] = {
+const struct bt_mesh_model_op bt_mesh_gen_battery_srv_op[] = {
     { BLE_MESH_MODEL_OP_GEN_BATTERY_GET, 0, gen_battery_get },
     BLE_MESH_MODEL_OP_END,
 };
 
 /* Mapping of message handlers for Generic Location Server (0x100E) */
-const struct bt_mesh_model_op gen_location_srv_op[] = {
+const struct bt_mesh_model_op bt_mesh_gen_location_srv_op[] = {
     { BLE_MESH_MODEL_OP_GEN_LOC_GLOBAL_GET, 0, gen_location_get },
     { BLE_MESH_MODEL_OP_GEN_LOC_LOCAL_GET,  0, gen_location_get },
     BLE_MESH_MODEL_OP_END,
 };
 
 /* Mapping of message handlers for Generic Location Setup Server (0x100F) */
-const struct bt_mesh_model_op gen_location_setup_srv_op[] = {
+const struct bt_mesh_model_op bt_mesh_gen_location_setup_srv_op[] = {
     { BLE_MESH_MODEL_OP_GEN_LOC_GLOBAL_SET,       10, gen_location_set },
     { BLE_MESH_MODEL_OP_GEN_LOC_GLOBAL_SET_UNACK, 10, gen_location_set },
     { BLE_MESH_MODEL_OP_GEN_LOC_LOCAL_SET,         9, gen_location_set },
@@ -2290,7 +2295,7 @@ const struct bt_mesh_model_op gen_location_setup_srv_op[] = {
 };
 
 /* Mapping of message handlers for Generic User Property Server (0x1013) */
-const struct bt_mesh_model_op gen_user_prop_srv_op[] = {
+const struct bt_mesh_model_op bt_mesh_gen_user_prop_srv_op[] = {
     { BLE_MESH_MODEL_OP_GEN_USER_PROPERTIES_GET,     0, gen_user_prop_get },
     { BLE_MESH_MODEL_OP_GEN_USER_PROPERTY_GET,       2, gen_user_prop_get },
     { BLE_MESH_MODEL_OP_GEN_USER_PROPERTY_SET,       3, gen_user_prop_set },
@@ -2299,7 +2304,7 @@ const struct bt_mesh_model_op gen_user_prop_srv_op[] = {
 };
 
 /* Mapping of message handlers for Generic Admin Property Server (0x1011) */
-const struct bt_mesh_model_op gen_admin_prop_srv_op[] = {
+const struct bt_mesh_model_op bt_mesh_gen_admin_prop_srv_op[] = {
     { BLE_MESH_MODEL_OP_GEN_ADMIN_PROPERTIES_GET,     0, gen_admin_prop_get },
     { BLE_MESH_MODEL_OP_GEN_ADMIN_PROPERTY_GET,       2, gen_admin_prop_get },
     { BLE_MESH_MODEL_OP_GEN_ADMIN_PROPERTY_SET,       4, gen_admin_prop_set },
@@ -2308,7 +2313,7 @@ const struct bt_mesh_model_op gen_admin_prop_srv_op[] = {
 };
 
 /* Mapping of message handlers for Generic Manufacturer Property Server (0x1012) */
-const struct bt_mesh_model_op gen_manu_prop_srv_op[] = {
+const struct bt_mesh_model_op bt_mesh_gen_manu_prop_srv_op[] = {
     { BLE_MESH_MODEL_OP_GEN_MANU_PROPERTIES_GET,     0, gen_manu_prop_get },
     { BLE_MESH_MODEL_OP_GEN_MANU_PROPERTY_GET,       2, gen_manu_prop_get },
     { BLE_MESH_MODEL_OP_GEN_MANU_PROPERTY_SET,       3, gen_manu_prop_set },
@@ -2317,7 +2322,7 @@ const struct bt_mesh_model_op gen_manu_prop_srv_op[] = {
 };
 
 /* Mapping of message handlers for Generic Client Property Server (0x1014) */
-const struct bt_mesh_model_op gen_client_prop_srv_op[] = {
+const struct bt_mesh_model_op bt_mesh_gen_client_prop_srv_op[] = {
     { BLE_MESH_MODEL_OP_GEN_CLIENT_PROPERTIES_GET, 2, gen_client_prop_get },
     BLE_MESH_MODEL_OP_END,
 };
@@ -2475,7 +2480,7 @@ static int generic_server_init(struct bt_mesh_model *model)
     return 0;
 }
 
-int bt_mesh_gen_onoff_srv_init(struct bt_mesh_model *model, bool primary)
+static int gen_onoff_srv_init(struct bt_mesh_model *model)
 {
     if (model->pub == NULL) {
         BT_ERR("Generic OnOff Server has no publication support");
@@ -2485,7 +2490,7 @@ int bt_mesh_gen_onoff_srv_init(struct bt_mesh_model *model, bool primary)
     return generic_server_init(model);
 }
 
-int bt_mesh_gen_level_srv_init(struct bt_mesh_model *model, bool primary)
+static int gen_level_srv_init(struct bt_mesh_model *model)
 {
     if (model->pub == NULL) {
         BT_ERR("Generic Level Server has no publication support");
@@ -2495,7 +2500,7 @@ int bt_mesh_gen_level_srv_init(struct bt_mesh_model *model, bool primary)
     return generic_server_init(model);
 }
 
-int bt_mesh_gen_def_trans_time_srv_init(struct bt_mesh_model *model, bool primary)
+static int gen_def_trans_time_srv_init(struct bt_mesh_model *model)
 {
     if (model->pub == NULL) {
         BT_ERR("Generic Default Trans Time Server has no publication support");
@@ -2505,7 +2510,7 @@ int bt_mesh_gen_def_trans_time_srv_init(struct bt_mesh_model *model, bool primar
     return generic_server_init(model);
 }
 
-int bt_mesh_gen_power_onoff_srv_init(struct bt_mesh_model *model, bool primary)
+static int gen_power_onoff_srv_init(struct bt_mesh_model *model)
 {
     if (model->pub == NULL) {
         BT_ERR("Generic Power OnOff Server has no publication support");
@@ -2523,12 +2528,12 @@ int bt_mesh_gen_power_onoff_srv_init(struct bt_mesh_model *model, bool primary)
     return generic_server_init(model);
 }
 
-int bt_mesh_gen_power_onoff_setup_srv_init(struct bt_mesh_model *model, bool primary)
+static int gen_power_onoff_setup_srv_init(struct bt_mesh_model *model)
 {
     return generic_server_init(model);
 }
 
-int bt_mesh_gen_power_level_srv_init(struct bt_mesh_model *model, bool primary)
+static int gen_power_level_srv_init(struct bt_mesh_model *model)
 {
     if (model->pub == NULL) {
         BT_ERR("Generic Power Level Server has no publication support");
@@ -2546,12 +2551,12 @@ int bt_mesh_gen_power_level_srv_init(struct bt_mesh_model *model, bool primary)
     return generic_server_init(model);
 }
 
-int bt_mesh_gen_power_level_setup_srv_init(struct bt_mesh_model *model, bool primary)
+static int gen_power_level_setup_srv_init(struct bt_mesh_model *model)
 {
     return generic_server_init(model);
 }
 
-int bt_mesh_gen_battery_srv_init(struct bt_mesh_model *model, bool primary)
+static int gen_battery_srv_init(struct bt_mesh_model *model)
 {
     if (model->pub == NULL) {
         BT_ERR("Generic Battery Server has no publication support");
@@ -2561,7 +2566,7 @@ int bt_mesh_gen_battery_srv_init(struct bt_mesh_model *model, bool primary)
     return generic_server_init(model);
 }
 
-int bt_mesh_gen_location_srv_init(struct bt_mesh_model *model, bool primary)
+static int gen_location_srv_init(struct bt_mesh_model *model)
 {
     if (model->pub == NULL) {
         BT_ERR("Generic Location Server has no publication support");
@@ -2571,7 +2576,7 @@ int bt_mesh_gen_location_srv_init(struct bt_mesh_model *model, bool primary)
     return generic_server_init(model);
 }
 
-int bt_mesh_gen_location_setup_srv_init(struct bt_mesh_model *model, bool primary)
+static int gen_location_setup_srv_init(struct bt_mesh_model *model)
 {
     /* When this model is present on an Element, the corresponding Generic
      * Location Setup Server model shall also be present.
@@ -2584,7 +2589,7 @@ int bt_mesh_gen_location_setup_srv_init(struct bt_mesh_model *model, bool primar
     return generic_server_init(model);
 }
 
-int bt_mesh_gen_user_prop_srv_init(struct bt_mesh_model *model, bool primary)
+static int gen_user_prop_srv_init(struct bt_mesh_model *model)
 {
     if (model->pub == NULL) {
         BT_ERR("Generic User Property Server has no publication support");
@@ -2594,7 +2599,7 @@ int bt_mesh_gen_user_prop_srv_init(struct bt_mesh_model *model, bool primary)
     return generic_server_init(model);
 }
 
-int bt_mesh_gen_admin_prop_srv_init(struct bt_mesh_model *model, bool primary)
+static int gen_admin_prop_srv_init(struct bt_mesh_model *model)
 {
     if (model->pub == NULL) {
         BT_ERR("Generic Admin Property Server has no publication support");
@@ -2604,7 +2609,7 @@ int bt_mesh_gen_admin_prop_srv_init(struct bt_mesh_model *model, bool primary)
     return generic_server_init(model);
 }
 
-int bt_mesh_gen_manu_prop_srv_init(struct bt_mesh_model *model, bool primary)
+static int gen_manu_prop_srv_init(struct bt_mesh_model *model)
 {
     if (model->pub == NULL) {
         BT_ERR("Generic Manufacturer Property Server has no publication support");
@@ -2614,7 +2619,7 @@ int bt_mesh_gen_manu_prop_srv_init(struct bt_mesh_model *model, bool primary)
     return generic_server_init(model);
 }
 
-int bt_mesh_gen_client_prop_srv_init(struct bt_mesh_model *model, bool primary)
+static int gen_client_prop_srv_init(struct bt_mesh_model *model)
 {
     if (model->pub == NULL) {
         BT_ERR("Generic Client Property Server has no publication support");
@@ -2624,6 +2629,7 @@ int bt_mesh_gen_client_prop_srv_init(struct bt_mesh_model *model, bool primary)
     return generic_server_init(model);
 }
 
+#if CONFIG_BLE_MESH_DEINIT
 static int generic_server_deinit(struct bt_mesh_model *model)
 {
     if (model->user_data == NULL) {
@@ -2670,7 +2676,7 @@ static int generic_server_deinit(struct bt_mesh_model *model)
     return 0;
 }
 
-int bt_mesh_gen_onoff_srv_deinit(struct bt_mesh_model *model, bool primary)
+static int gen_onoff_srv_deinit(struct bt_mesh_model *model)
 {
     if (model->pub == NULL) {
         BT_ERR("Generic OnOff Server has no publication support");
@@ -2680,7 +2686,7 @@ int bt_mesh_gen_onoff_srv_deinit(struct bt_mesh_model *model, bool primary)
     return generic_server_deinit(model);
 }
 
-int bt_mesh_gen_level_srv_deinit(struct bt_mesh_model *model, bool primary)
+static int gen_level_srv_deinit(struct bt_mesh_model *model)
 {
     if (model->pub == NULL) {
         BT_ERR("Generic Level Server has no publication support");
@@ -2690,7 +2696,7 @@ int bt_mesh_gen_level_srv_deinit(struct bt_mesh_model *model, bool primary)
     return generic_server_deinit(model);
 }
 
-int bt_mesh_gen_def_trans_time_srv_deinit(struct bt_mesh_model *model, bool primary)
+static int gen_def_trans_time_srv_deinit(struct bt_mesh_model *model)
 {
     if (model->pub == NULL) {
         BT_ERR("Generic Default Trans Time Server has no publication support");
@@ -2700,7 +2706,7 @@ int bt_mesh_gen_def_trans_time_srv_deinit(struct bt_mesh_model *model, bool prim
     return generic_server_deinit(model);
 }
 
-int bt_mesh_gen_power_onoff_srv_deinit(struct bt_mesh_model *model, bool primary)
+static int gen_power_onoff_srv_deinit(struct bt_mesh_model *model)
 {
     if (model->pub == NULL) {
         BT_ERR("Generic Power OnOff Server has no publication support");
@@ -2710,12 +2716,12 @@ int bt_mesh_gen_power_onoff_srv_deinit(struct bt_mesh_model *model, bool primary
     return generic_server_deinit(model);
 }
 
-int bt_mesh_gen_power_onoff_setup_srv_deinit(struct bt_mesh_model *model, bool primary)
+static int gen_power_onoff_setup_srv_deinit(struct bt_mesh_model *model)
 {
     return generic_server_deinit(model);
 }
 
-int bt_mesh_gen_power_level_srv_deinit(struct bt_mesh_model *model, bool primary)
+static int gen_power_level_srv_deinit(struct bt_mesh_model *model)
 {
     if (model->pub == NULL) {
         BT_ERR("Generic Power Level Server has no publication support");
@@ -2725,12 +2731,12 @@ int bt_mesh_gen_power_level_srv_deinit(struct bt_mesh_model *model, bool primary
     return generic_server_deinit(model);
 }
 
-int bt_mesh_gen_power_level_setup_srv_deinit(struct bt_mesh_model *model, bool primary)
+static int gen_power_level_setup_srv_deinit(struct bt_mesh_model *model)
 {
     return generic_server_deinit(model);
 }
 
-int bt_mesh_gen_battery_srv_deinit(struct bt_mesh_model *model, bool primary)
+static int gen_battery_srv_deinit(struct bt_mesh_model *model)
 {
     if (model->pub == NULL) {
         BT_ERR("Generic Battery Server has no publication support");
@@ -2740,7 +2746,7 @@ int bt_mesh_gen_battery_srv_deinit(struct bt_mesh_model *model, bool primary)
     return generic_server_deinit(model);
 }
 
-int bt_mesh_gen_location_srv_deinit(struct bt_mesh_model *model, bool primary)
+static int gen_location_srv_deinit(struct bt_mesh_model *model)
 {
     if (model->pub == NULL) {
         BT_ERR("Generic Location Server has no publication support");
@@ -2750,12 +2756,12 @@ int bt_mesh_gen_location_srv_deinit(struct bt_mesh_model *model, bool primary)
     return generic_server_deinit(model);
 }
 
-int bt_mesh_gen_location_setup_srv_deinit(struct bt_mesh_model *model, bool primary)
+static int gen_location_setup_srv_deinit(struct bt_mesh_model *model)
 {
     return generic_server_deinit(model);
 }
 
-int bt_mesh_gen_user_prop_srv_deinit(struct bt_mesh_model *model, bool primary)
+static int gen_user_prop_srv_deinit(struct bt_mesh_model *model)
 {
     if (model->pub == NULL) {
         BT_ERR("Generic User Property Server has no publication support");
@@ -2765,7 +2771,7 @@ int bt_mesh_gen_user_prop_srv_deinit(struct bt_mesh_model *model, bool primary)
     return generic_server_deinit(model);
 }
 
-int bt_mesh_gen_admin_prop_srv_deinit(struct bt_mesh_model *model, bool primary)
+static int gen_admin_prop_srv_deinit(struct bt_mesh_model *model)
 {
     if (model->pub == NULL) {
         BT_ERR("Generic Admin Property Server has no publication support");
@@ -2775,7 +2781,7 @@ int bt_mesh_gen_admin_prop_srv_deinit(struct bt_mesh_model *model, bool primary)
     return generic_server_deinit(model);
 }
 
-int bt_mesh_gen_manu_prop_srv_deinit(struct bt_mesh_model *model, bool primary)
+static int gen_manu_prop_srv_deinit(struct bt_mesh_model *model)
 {
     if (model->pub == NULL) {
         BT_ERR("Generic Manufacturer Property Server has no publication support");
@@ -2785,7 +2791,7 @@ int bt_mesh_gen_manu_prop_srv_deinit(struct bt_mesh_model *model, bool primary)
     return generic_server_deinit(model);
 }
 
-int bt_mesh_gen_client_prop_srv_deinit(struct bt_mesh_model *model, bool primary)
+static int gen_client_prop_srv_deinit(struct bt_mesh_model *model)
 {
     if (model->pub == NULL) {
         BT_ERR("Generic Client Property Server has no publication support");
@@ -2794,3 +2800,104 @@ int bt_mesh_gen_client_prop_srv_deinit(struct bt_mesh_model *model, bool primary
 
     return generic_server_deinit(model);
 }
+#endif /* CONFIG_BLE_MESH_DEINIT */
+
+const struct bt_mesh_model_cb bt_mesh_gen_onoff_srv_cb = {
+    .init = gen_onoff_srv_init,
+#if CONFIG_BLE_MESH_DEINIT
+    .deinit = gen_onoff_srv_deinit,
+#endif /* CONFIG_BLE_MESH_DEINIT */
+};
+
+const struct bt_mesh_model_cb bt_mesh_gen_level_srv_cb = {
+    .init = gen_level_srv_init,
+#if CONFIG_BLE_MESH_DEINIT
+    .deinit = gen_level_srv_deinit,
+#endif /* CONFIG_BLE_MESH_DEINIT */
+};
+
+const struct bt_mesh_model_cb bt_mesh_gen_def_trans_time_srv_cb = {
+    .init = gen_def_trans_time_srv_init,
+#if CONFIG_BLE_MESH_DEINIT
+    .deinit = gen_def_trans_time_srv_deinit,
+#endif /* CONFIG_BLE_MESH_DEINIT */
+};
+
+const struct bt_mesh_model_cb bt_mesh_gen_power_onoff_srv_cb = {
+    .init = gen_power_onoff_srv_init,
+#if CONFIG_BLE_MESH_DEINIT
+    .deinit = gen_power_onoff_srv_deinit,
+#endif /* CONFIG_BLE_MESH_DEINIT */
+};
+
+const struct bt_mesh_model_cb bt_mesh_gen_power_onoff_setup_srv_cb = {
+    .init = gen_power_onoff_setup_srv_init,
+#if CONFIG_BLE_MESH_DEINIT
+    .deinit = gen_power_onoff_setup_srv_deinit,
+#endif /* CONFIG_BLE_MESH_DEINIT */
+};
+
+const struct bt_mesh_model_cb bt_mesh_gen_power_level_srv_cb = {
+    .init = gen_power_level_srv_init,
+#if CONFIG_BLE_MESH_DEINIT
+    .deinit = gen_power_level_srv_deinit,
+#endif /* CONFIG_BLE_MESH_DEINIT */
+};
+
+const struct bt_mesh_model_cb bt_mesh_gen_power_level_setup_srv_cb = {
+    .init = gen_power_level_setup_srv_init,
+#if CONFIG_BLE_MESH_DEINIT
+    .deinit = gen_power_level_setup_srv_deinit,
+#endif /* CONFIG_BLE_MESH_DEINIT */
+};
+
+const struct bt_mesh_model_cb bt_mesh_gen_battery_srv_cb = {
+    .init = gen_battery_srv_init,
+#if CONFIG_BLE_MESH_DEINIT
+    .deinit = gen_battery_srv_deinit,
+#endif /* CONFIG_BLE_MESH_DEINIT */
+};
+
+const struct bt_mesh_model_cb bt_mesh_gen_location_srv_cb = {
+    .init = gen_location_srv_init,
+#if CONFIG_BLE_MESH_DEINIT
+    .deinit = gen_location_srv_deinit,
+#endif /* CONFIG_BLE_MESH_DEINIT */
+};
+
+const struct bt_mesh_model_cb bt_mesh_gen_location_setup_srv_cb = {
+    .init = gen_location_setup_srv_init,
+#if CONFIG_BLE_MESH_DEINIT
+    .deinit = gen_location_setup_srv_deinit,
+#endif /* CONFIG_BLE_MESH_DEINIT */
+};
+
+const struct bt_mesh_model_cb bt_mesh_gen_user_prop_srv_cb = {
+    .init = gen_user_prop_srv_init,
+#if CONFIG_BLE_MESH_DEINIT
+    .deinit = gen_user_prop_srv_deinit,
+#endif /* CONFIG_BLE_MESH_DEINIT */
+};
+
+const struct bt_mesh_model_cb bt_mesh_gen_admin_prop_srv_cb = {
+    .init = gen_admin_prop_srv_init,
+#if CONFIG_BLE_MESH_DEINIT
+    .deinit = gen_admin_prop_srv_deinit,
+#endif /* CONFIG_BLE_MESH_DEINIT */
+};
+
+const struct bt_mesh_model_cb bt_mesh_gen_manu_prop_srv_cb = {
+    .init = gen_manu_prop_srv_init,
+#if CONFIG_BLE_MESH_DEINIT
+    .deinit = gen_manu_prop_srv_deinit,
+#endif /* CONFIG_BLE_MESH_DEINIT */
+};
+
+const struct bt_mesh_model_cb bt_mesh_gen_client_prop_srv_cb = {
+    .init = gen_client_prop_srv_init,
+#if CONFIG_BLE_MESH_DEINIT
+    .deinit = gen_client_prop_srv_deinit,
+#endif /* CONFIG_BLE_MESH_DEINIT */
+};
+
+#endif /* CONFIG_BLE_MESH_GENERIC_SERVER */

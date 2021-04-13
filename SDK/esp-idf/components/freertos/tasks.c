@@ -70,14 +70,14 @@
 /* Standard includes. */
 #include <stdlib.h>
 #include <string.h>
+#include "sdkconfig.h"
 
 /* Defining MPU_WRAPPERS_INCLUDED_FROM_API_FILE prevents task.h from redefining
 all the API functions to use the MPU wrappers.  That should only be done when
 task.h is included from an application file. */
 #define MPU_WRAPPERS_INCLUDED_FROM_API_FILE
-
-#include "esp32/rom/ets_sys.h"
 #include "esp_newlib.h"
+#include "esp_compiler.h"
 
 /* FreeRTOS includes. */
 #include "FreeRTOS.h"
@@ -645,10 +645,11 @@ static void prvAddNewTaskToReadyList( TCB_t *pxNewTCB, TaskFunction_t pxTaskCode
 */
 void taskYIELD_OTHER_CORE( BaseType_t xCoreID, UBaseType_t uxPriority )
 {
-	TCB_t *curTCB = pxCurrentTCB[xCoreID];
+	TCB_t *curTCB;
 	BaseType_t i;
 
 	if (xCoreID != tskNO_AFFINITY) {
+		curTCB = pxCurrentTCB[xCoreID];
 		if ( curTCB->uxPriority < uxPriority ) {
 			vPortYieldOtherCore( xCoreID );
 		}
@@ -2117,7 +2118,7 @@ void vTaskEndScheduler( void )
 
 #if ( configUSE_NEWLIB_REENTRANT == 1 )
 //Return global reent struct if FreeRTOS isn't running,
-struct _reent* __getreent() {
+struct _reent* __getreent(void) {
 	//No lock needed because if this changes, we won't be running anymore.
 	TCB_t *currTask=xTaskGetCurrentTaskHandle();
 	if (currTask==NULL) {
@@ -2149,7 +2150,7 @@ void vTaskSuspendAll( void )
 
 #if ( portNUM_PROCESSORS > 1 )
 
-	static BaseType_t xHaveReadyTasks()
+	static BaseType_t xHaveReadyTasks( void )
 	{
 		for (int i = tskIDLE_PRIORITY + 1; i < configMAX_PRIORITIES; ++i)
 		{
@@ -2467,7 +2468,7 @@ BaseType_t xSwitchRequired = pdFALSE;
 	/* Only allow core 0 increase the tick count in the case of xPortSysTickHandler processing. */
 	/* And allow core 0 and core 1 to unwind uxPendedTicks during xTaskResumeAll. */
 
-	if ( xPortInIsrContext() )
+	if (xPortInIsrContext())
 	{
 		#if ( configUSE_TICK_HOOK == 1 )
 		vApplicationTickHook();
@@ -4188,7 +4189,7 @@ For ESP32 FreeRTOS, vTaskEnterCritical implements both portENTER_CRITICAL and po
 	{
 		BaseType_t oldInterruptLevel=0;
 		BaseType_t schedulerRunning = xSchedulerRunning;
-		if( schedulerRunning != pdFALSE )
+		if(schedulerRunning != pdFALSE)
 		{
 			//Interrupts may already be disabled (because we're doing this recursively) but we can't get the interrupt level after
 			//vPortCPUAquireMutex, because it also may mess with interrupts. Get it here first, then later figure out if we're nesting
@@ -4201,7 +4202,7 @@ For ESP32 FreeRTOS, vTaskEnterCritical implements both portENTER_CRITICAL and po
 		vPortCPUAcquireMutexIntsDisabled( mux, portMUX_NO_TIMEOUT );
 #endif
 
-		if( schedulerRunning != pdFALSE )
+		if(schedulerRunning != pdFALSE)
 		{
 			TCB_t *tcb = pxCurrentTCB[xPortGetCoreID()];
 			BaseType_t newNesting = tcb->uxCriticalNesting + 1;
@@ -4260,11 +4261,11 @@ For ESP32 FreeRTOS, vTaskExitCritical implements both portEXIT_CRITICAL and port
 #else
 		vPortCPUReleaseMutexIntsDisabled( mux );
 #endif
-		if( xSchedulerRunning != pdFALSE )
+		if(xSchedulerRunning != pdFALSE)
 		{
 			TCB_t *tcb = pxCurrentTCB[xPortGetCoreID()];
 			BaseType_t nesting = tcb->uxCriticalNesting;
-			if( nesting	 > 0U )
+			if(nesting > 0U)
 			{
 				nesting--;
 				tcb->uxCriticalNesting = nesting;

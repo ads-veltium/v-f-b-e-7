@@ -207,7 +207,10 @@ static int dsc_disced(uint16_t conn_handle, const struct ble_gatt_error *error,
 
     switch (error->status) {
     case 0:
-        bt_mesh_gattc_info[i].ccc_handle = dsc->handle;
+        if (bt_mesh_gattc_info[i].ccc_handle == 0 && dsc &&
+            BLE_UUID16(&dsc->uuid)->value == BLE_MESH_UUID_GATT_CCC_VAL) {
+            bt_mesh_gattc_info[i].ccc_handle = dsc->handle;
+        }
         break;
 
     case BLE_HS_EDONE:
@@ -291,7 +294,8 @@ static int chr_disced(uint16_t conn_handle, const struct ble_gatt_error *error,
                     break;
                 }
             }
-            ble_gattc_disc_all_dscs(conn_handle, bt_mesh_gattc_info[j].data_out_handle, 0xffff, dsc_disced, (void *)j);
+            ble_gattc_disc_all_dscs(conn_handle, bt_mesh_gattc_info[j].data_out_handle, bt_mesh_gattc_info[j].end_handle,
+                                    dsc_disced, (void *)j);
         } else {
             ble_gattc_disc_all_chrs(conn_handle, bt_mesh_gattc_info[j].start_handle, bt_mesh_gattc_info[j].end_handle,
                                     chr_disced, (void *)j);
@@ -1420,18 +1424,18 @@ int bt_mesh_gattc_conn_create(const bt_mesh_addr_t *addr, u16_t service_uuid)
 
     BT_DBG("Create conn with %s", bt_hex(addr->val, BLE_MESH_ADDR_LEN));
 
-    /* Min_interval: 250ms
-     * Max_interval: 250ms
+    /* Min_interval: 15ms
+     * Max_interval: 15ms
      * Slave_latency: 0x0
-     * Supervision_timeout: 32 sec
+     * Supervision_timeout: 1s
      */
     struct ble_gap_conn_params conn_params = {0};
-    conn_params.itvl_min = 0xC8; /* (250 * 1000) / 1250 = 200 = 0xC8 */
-    conn_params.itvl_max = 0xC8; /* (250 * 1000) / 1250 = 200 = 0xC8 */
+    conn_params.itvl_min = 0x18;
+    conn_params.itvl_max = 0x18;
     conn_params.latency = 0;
-    conn_params.supervision_timeout = 0xC80;
-    conn_params.scan_itvl = 0x0020; //0x0010
-    conn_params.scan_window = 0x0020; //0x0010
+    conn_params.supervision_timeout = 0x64;
+    conn_params.scan_itvl = 0x0020;
+    conn_params.scan_window = 0x0020;
     conn_params.min_ce_len = BLE_GAP_INITIAL_CONN_MIN_CE_LEN;
     conn_params.max_ce_len = BLE_GAP_INITIAL_CONN_MAX_CE_LEN;
 
@@ -1712,6 +1716,7 @@ void bt_mesh_gatt_init(void)
 #endif
 }
 
+#if CONFIG_BLE_MESH_DEINIT
 void bt_mesh_gatt_deinit(void)
 {
 #if (CONFIG_BLE_MESH_NODE && CONFIG_BLE_MESH_PB_GATT) || \
@@ -1735,6 +1740,7 @@ void bt_mesh_gatt_deinit(void)
     }
 #endif
 }
+#endif /* CONFIG_BLE_MESH_DEINIT */
 
 void ble_sm_alg_ecc_init(void);
 

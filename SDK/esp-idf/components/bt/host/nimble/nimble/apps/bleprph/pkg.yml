@@ -24,7 +24,7 @@ pkg.keywords:
 
 pkg.deps:
     - "@apache-mynewt-core/boot/split"
-    - "@apache-mynewt-core/boot/bootutil"
+    - "@mcuboot/boot/bootutil"
     - "@apache-mynewt-core/kernel/os"
     - "@apache-mynewt-core/mgmt/imgmgr"
     - "@apache-mynewt-core/mgmt/newtmgr"
@@ -37,6 +37,7 @@ pkg.deps:
     - "@apache-mynewt-core/sys/id"
     - nimble/host
     - nimble/host/services/ans
+    - nimble/host/services/dis
     - nimble/host/services/gap
     - nimble/host/services/gatt
     - nimble/host/store/config

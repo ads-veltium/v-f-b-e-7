@@ -1,6 +1,6 @@
 /*******************************************************************************
  *
- * Copyright (c) 2011-2020 Olaf Bergmann (TZI) and others.
+ * Copyright (c) 2011, 2012, 2013, 2014, 2015 Olaf Bergmann (TZI) and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * and Eclipse Distribution License v. 1.0 which accompanies this distribution.
@@ -115,6 +115,7 @@ memarray_t dtlscontext_storage;
 #define DTLS_CH_LENGTH_MAX sizeof(dtls_client_hello_t) + DTLS_COOKIE_LENGTH_MAX + 12 + 26
 #define DTLS_HV_LENGTH sizeof(dtls_hello_verify_t)
 #define DTLS_SH_LENGTH (2 + DTLS_RANDOM_LENGTH + 1 + 2 + 1)
+#define DTLS_CE_LENGTH (3 + 3 + 27 + DTLS_EC_KEY_SIZE + DTLS_EC_KEY_SIZE)
 #define DTLS_SKEXEC_LENGTH (1 + 2 + 1 + 1 + DTLS_EC_KEY_SIZE + DTLS_EC_KEY_SIZE + 1 + 1 + 2 + 70)
 #define DTLS_SKEXECPSK_LENGTH_MIN 2
 #define DTLS_SKEXECPSK_LENGTH_MAX 2 + DTLS_PSK_MAX_CLIENT_IDENTITY_LEN
@@ -342,7 +343,7 @@ dtls_create_cookie(dtls_context_t *ctx,
 		   uint8 *msg, size_t msglen,
 		   uint8 *cookie, int *clen) {
   unsigned char buf[DTLS_HMAC_MAX];
-  size_t e, fragment_length;
+  size_t e;
   int len;
 
   /* create cookie with HMAC-SHA256 over:
@@ -369,38 +370,22 @@ dtls_create_cookie(dtls_context_t *ctx,
 
   /* feed in the beginning of the Client Hello up to and including the
      session id */
-  e = DTLS_CH_LENGTH;
-  e += dtls_uint8_to_int(msg + DTLS_HS_LENGTH + e) + sizeof(uint8_t);
-
+  e = sizeof(dtls_client_hello_t);
+  e += (*(msg + DTLS_HS_LENGTH + e) & 0xff) + sizeof(uint8);
   if (e + DTLS_HS_LENGTH > msglen)
     return dtls_alert_fatal_create(DTLS_ALERT_HANDSHAKE_FAILURE);
 
   dtls_hmac_update(&hmac_context, msg + DTLS_HS_LENGTH, e);
 
   /* skip cookie bytes and length byte */
-  e += dtls_uint8_to_int(msg + DTLS_HS_LENGTH + e);
-  e += sizeof(uint8_t);
-
-  /* skip cipher suites */
-  if (e + DTLS_HS_LENGTH + 1 > msglen)
-    return dtls_alert_fatal_create(DTLS_ALERT_HANDSHAKE_FAILURE);
-  e += dtls_uint16_to_int(msg + DTLS_HS_LENGTH + e);
-  e += sizeof(uint16_t);
-
-  /* skip compression methods */
+  e += *(uint8 *)(msg + DTLS_HS_LENGTH + e) & 0xff;
+  e += sizeof(uint8);
   if (e + DTLS_HS_LENGTH > msglen)
-    return dtls_alert_fatal_create(DTLS_ALERT_HANDSHAKE_FAILURE);
-  e += dtls_uint8_to_int(msg + DTLS_HS_LENGTH + e);
-  e += sizeof(uint8_t);
-
-  /* read fragment length and check for consistency */
-  fragment_length = dtls_get_fragment_length(DTLS_HANDSHAKE_HEADER(msg));
-  if ((fragment_length < e) || (e + DTLS_HS_LENGTH) > msglen)
     return dtls_alert_fatal_create(DTLS_ALERT_HANDSHAKE_FAILURE);
 
   dtls_hmac_update(&hmac_context,
 		   msg + DTLS_HS_LENGTH + e,
-		   fragment_length - e);
+		   dtls_get_fragment_length(DTLS_HANDSHAKE_HEADER(msg)) - e);
 
   len = dtls_hmac_finalize(&hmac_context, buf);
 
@@ -1086,7 +1071,7 @@ dtls_update_parameters(dtls_context_t *ctx,
   data_length -= sizeof(uint16) + i;
 
   ok = 0;
-  while ((i >= (int)sizeof(uint16)) && !ok) {
+  while (i && !ok) {
     config->cipher = dtls_uint16_to_int(data);
     ok = known_cipher(ctx, config->cipher, 0);
     i -= sizeof(uint16);
@@ -1595,15 +1580,11 @@ dtls_send_multi(dtls_context_t *ctx, dtls_peer_t *peer,
   /* Signal DTLS version 1.0 in the record layer of ClientHello and
    * HelloVerifyRequest handshake messages according to Section 4.2.1
    * of RFC 6347.
-   *
-   * This does not apply to a renegotation Client Hello
    */
-  if (!security || security->epoch == 0) {
-    if (type == DTLS_CT_HANDSHAKE) {
-      if ((buf_array[0][0] == DTLS_HT_CLIENT_HELLO) ||
-          (buf_array[0][0] == DTLS_HT_HELLO_VERIFY_REQUEST)) {
-        dtls_int_to_uint16(sendbuf + 1, DTLS10_VERSION);
-      }
+  if (type == DTLS_CT_HANDSHAKE) {
+    if ((buf_array[0][0] == DTLS_HT_CLIENT_HELLO) ||
+        (buf_array[0][0] == DTLS_HT_HELLO_VERIFY_REQUEST)) {
+      dtls_int_to_uint16(sendbuf + 1, DTLS10_VERSION);
     }
   }
 
@@ -2019,7 +2000,7 @@ static int
 dtls_send_certificate_ecdsa(dtls_context_t *ctx, dtls_peer_t *peer,
 			    const dtls_ecdsa_key_t *key)
 {
-  uint8 buf[sizeof(uint24) + DTLS_EC_SUBJECTPUBLICKEY_SIZE];
+  uint8 buf[DTLS_CE_LENGTH];
   uint8 *p;
 
   /* Certificate
@@ -2973,15 +2954,7 @@ check_certificate_request(dtls_context_t *ctx,
 
   hash_alg = 0;
   sig_alg = 0;
-
-  /* Signal error if we do not have an even number of remaining
-   * bytes. */
-  if ((i & 1) != 0) {
-    dtls_alert("illegal certificate request\n");
-    return dtls_alert_fatal_create(DTLS_ALERT_HANDSHAKE_FAILURE);
-  }
-  
-  for (; i >= sizeof(uint16); i -= sizeof(uint16)) {
+  for (; i > 0 ; i -= sizeof(uint16)) {
     int current_hash_alg;
     int current_sig_alg;
 
@@ -2999,7 +2972,7 @@ check_certificate_request(dtls_context_t *ctx,
 
   if (hash_alg != TLS_EXT_SIG_HASH_ALGO_SHA256 ||
       sig_alg != TLS_EXT_SIG_HASH_ALGO_ECDSA) {
-    dtls_alert("no supported hash and signature algorithm\n");
+    dtls_alert("no supported hash and signature algorithem\n");
     return dtls_alert_fatal_create(DTLS_ALERT_HANDSHAKE_FAILURE);
   }
 

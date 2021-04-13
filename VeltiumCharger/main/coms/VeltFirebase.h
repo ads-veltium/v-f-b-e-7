@@ -6,6 +6,7 @@
 #include "ArduinoJson.h"
 #include "Update.h"
 #include "../control.h"
+#include "contador.h"
 #include "esp32-hal-psram.h"
 
 #define FIREBASE_API_KEY "AIzaSyBaJA88_Y3ViCzNF_J08f4LBMAM771aZLs"
@@ -39,10 +40,13 @@ uint16  ParseFirmwareVersion(String Texto);
 
 class Real_Time_Database{
     String RTDB_url, Read_url, Write_url, Base_Path;
-    HTTPClient RTDBClient, AutenticationClient; 
+    esp_http_client_handle_t RTDB_client, *Auth_client; 
+    
 
+    
     String Auth_url= "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=";
     StaticJsonDocument<256> AuthDoc;
+
   public:
     #define WRITE     0
     #define UPDATE    1
@@ -65,19 +69,40 @@ class Real_Time_Database{
     bool Send_Command(String path, JsonDocument *doc, uint8_t Command);
     long long  Get_Timestamp(String path,JsonDocument *response);
     void begin(String Host, String DatabaseID);
-    void restart();
+    void reload();
     void end();
+    Real_Time_Database(){}
+
 };
 
-class Firebase{
+class Cliente_HTTP{
+    String _url;
+    esp_http_client_handle_t _client; 
+    String _response;
+    
+    int  _timeout;
     
   public:
-    Real_Time_Database RTDB;
+    #define WRITE     0
+    #define UPDATE    1
+    #define TIMESTAMP 4
+    #define READ      5
+    #define READ_FW   6
+    
+    
+    //Functions
+    bool Send_Command(String url,  uint8_t Command);
+    void begin();
+    void end();
+    void ObtenerRespuesta(String *Respuesta);
 
+
+    //Constructor
+    Cliente_HTTP(String url, int Timeout){
+      _url=url;
+      _timeout = Timeout;
+    }
 
 };
-
-
-
 
 #endif

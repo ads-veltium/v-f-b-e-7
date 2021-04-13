@@ -12,13 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "catch.hpp"
+#include <cstring>
 #include "nvs_test_api.h"
-#include "nvs.h"
+#include "nvs_storage.hpp"
+#include "nvs_partition_manager.hpp"
 #include "spi_flash_emulation.h"
 
 #include <iostream>
 
 using namespace std;
+using namespace nvs;
 
 TEST_CASE("Storage iterator recognizes blob with VerOffset::VER_1_OFFSET", "[nvs_storage]")
 {
@@ -26,30 +29,31 @@ TEST_CASE("Storage iterator recognizes blob with VerOffset::VER_1_OFFSET", "[nvs
     const uint32_t NVS_FLASH_SECTOR_COUNT_MIN = 3;
     SpiFlashEmulator emu(10);
 
-    CHECK(nvs_flash_init_custom(NVS_DEFAULT_PART_NAME, NVS_FLASH_SECTOR, NVS_FLASH_SECTOR_COUNT_MIN) == ESP_OK);
-    nvs_handle_t handle_1;
+    REQUIRE(NVSPartitionManager::get_instance()->init_custom("test", NVS_FLASH_SECTOR, NVS_FLASH_SECTOR_COUNT_MIN)
+            == ESP_OK);
+
     uint8_t blob [] = {0x0, 0x1, 0x2, 0x3};
     uint8_t blob_new [] = {0x3, 0x2, 0x1, 0x0};
+    Storage *storage = NVSPartitionManager::get_instance()->lookup_storage_from_name("test");
+    uint8_t ns_index;
+    storage->createOrOpenNamespace("test_ns", true, ns_index);
 
-    // first, creating namespace...
-    CHECK(nvs_open("test_ns", NVS_READWRITE, &handle_1) == ESP_OK);
-    CHECK(nvs_set_blob(handle_1, "key", blob, sizeof(blob)) == ESP_OK);
+    CHECK(storage->writeItem(ns_index, ItemType::BLOB, "test_blob", blob, sizeof(blob)) == ESP_OK);
 
     // changing provokes a blob with version offset 1 (VerOffset::VER_1_OFFSET)
-    CHECK(nvs_set_blob(handle_1, "key", blob_new, sizeof(blob_new)) == ESP_OK);
+    CHECK(storage->writeItem(ns_index, ItemType::BLOB, "test_blob", blob_new, sizeof(blob_new)) == ESP_OK);
 
-    nvs_iterator_t it = nvs_entry_find(NVS_DEFAULT_PART_NAME, NULL, NVS_TYPE_ANY);
-    REQUIRE(it);
-    nvs_entry_info_t info;
-    nvs_entry_info(it, &info);
+    nvs_opaque_iterator_t it;
+    it.storage = storage;
+    it.type = NVS_TYPE_ANY;
 
-    CHECK(string(info.namespace_name) == "test_ns");
-    CHECK(string(info.key) == "key");
-    CHECK(info.type == NVS_TYPE_BLOB);
+    // Central check: does the iterator recognize the blob with version 1?
+    REQUIRE(storage->findEntry(&it, "test_ns"));
 
-    nvs_close(handle_1);
+    CHECK(string(it.entry_info.namespace_name) == string("test_ns"));
+    CHECK(string(it.entry_info.key) == string("test_blob"));
+    CHECK(it.entry_info.type == NVS_TYPE_BLOB);
 
-    // without deinit it affects "nvs api tests"
-    CHECK(nvs_flash_deinit_partition(NVS_DEFAULT_PART_NAME) == ESP_OK);
+    REQUIRE(NVSPartitionManager::get_instance()->deinit_partition("test") == ESP_OK);
 }
 

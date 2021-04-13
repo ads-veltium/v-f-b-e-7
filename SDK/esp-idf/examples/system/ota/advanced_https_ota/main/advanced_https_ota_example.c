@@ -12,7 +12,6 @@
 #include "freertos/event_groups.h"
 #include "esp_system.h"
 #include "esp_event.h"
-#include "esp_event_loop.h"
 #include "esp_log.h"
 #include "esp_ota_ops.h"
 #include "esp_http_client.h"
@@ -136,7 +135,7 @@ ota_end:
     }
 }
 
-void app_main()
+void app_main(void)
 {
     // Initialize NVS.
     esp_err_t err = nvs_flash_init();
@@ -150,7 +149,7 @@ void app_main()
     }
     ESP_ERROR_CHECK( err );
 
-    tcpip_adapter_init();
+    ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
     /* This helper function configures Wi-Fi or Ethernet, as selected in menuconfig.

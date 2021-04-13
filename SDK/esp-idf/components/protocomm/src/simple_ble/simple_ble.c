@@ -23,12 +23,12 @@
 
 #include "simple_ble.h"
 
-#define SIMPLE_BLE_MAX_GATT_TABLE_SIZE  20
+static uint16_t g_ble_max_gatt_table_size;
 
 static const char *TAG = "simple_ble";
 
 static simple_ble_cfg_t *g_ble_cfg_p;
-static uint16_t g_gatt_table_map[SIMPLE_BLE_MAX_GATT_TABLE_SIZE];
+static uint16_t *g_gatt_table_map;
 
 static uint8_t adv_config_done;
 #define adv_config_flag      (1 << 0)
@@ -38,7 +38,7 @@ const uint8_t *simple_ble_get_uuid128(uint16_t handle)
 {
     const uint8_t *uuid128_ptr;
 
-    for (int i = 0; i < SIMPLE_BLE_MAX_GATT_TABLE_SIZE; i++) {
+    for (int i = 0; i < g_ble_max_gatt_table_size; i++) {
         if (g_gatt_table_map[i] == handle) {
             uuid128_ptr = (const uint8_t *) g_ble_cfg_p->gatt_db[i].att_desc.uuid_p;
             return uuid128_ptr;
@@ -159,6 +159,13 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
             ESP_LOGE(TAG, "created attribute table abnormally ");
         } else {
             ESP_LOGD(TAG, "created attribute table successfully, the number handle = %d", param->add_attr_tab.num_handle);
+            g_gatt_table_map = (uint16_t *) calloc(param->add_attr_tab.num_handle, sizeof(uint16_t));
+            if (g_gatt_table_map == NULL) {
+                ESP_LOGE(TAG, "Memory allocation for GATT_TABLE_MAP failed ");
+                break;
+            }
+            /* Update g_ble_max_gatt_table_size with number of handles */
+            g_ble_max_gatt_table_size = param->add_attr_tab.num_handle;
             memcpy(g_gatt_table_map, param->add_attr_tab.handles, param->add_attr_tab.num_handle * sizeof(g_gatt_table_map[0]));
             /* We assume, for now, that the first entry is always the index to the 'service' definition */
             esp_ble_gatts_start_service(g_gatt_table_map[0]);
@@ -178,7 +185,7 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
     }
 }
 
-simple_ble_cfg_t *simple_ble_init()
+simple_ble_cfg_t *simple_ble_init(void)
 {
     simple_ble_cfg_t *ble_cfg_p = (simple_ble_cfg_t *) malloc(sizeof(simple_ble_cfg_t));
     if (ble_cfg_p == NULL) {
@@ -188,11 +195,17 @@ simple_ble_cfg_t *simple_ble_init()
     return ble_cfg_p;
 }
 
-esp_err_t simple_ble_deinit()
+esp_err_t simple_ble_deinit(void)
 {
     free(g_ble_cfg_p->gatt_db);
+    g_ble_cfg_p->gatt_db = NULL;
     free(g_ble_cfg_p);
     g_ble_cfg_p = NULL;
+
+    free(g_gatt_table_map);
+    g_gatt_table_map = NULL;
+    g_ble_max_gatt_table_size = 0;
+
     return ESP_OK;
 }
 
@@ -262,7 +275,7 @@ esp_err_t simple_ble_start(simple_ble_cfg_t *cfg)
     return ESP_OK;
 }
 
-esp_err_t simple_ble_stop()
+esp_err_t simple_ble_stop(void)
 {
     esp_err_t err;
     ESP_LOGD(TAG, "Free mem at start of simple_ble_stop %d", esp_get_free_heap_size());

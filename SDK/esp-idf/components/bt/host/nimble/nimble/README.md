@@ -33,10 +33,9 @@ Features highlight:
   - Support for up to 32 simultaneous connections.
   - Legacy and SC (secure connections) SMP support (pairing and bonding).
   - Advertising Extensions.
+  - Periodic Advertising.
   - Coded (aka Long Range) and 2M PHYs.
   - Bluetooth Mesh.
-  - Support for multiple OSes
-  - Fuly qualifiable controller and host
 
 ## Supported hardware
 

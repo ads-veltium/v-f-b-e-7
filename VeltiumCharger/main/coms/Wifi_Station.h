@@ -1,34 +1,30 @@
-#ifndef WIFI_STATION_H_
-#define WIFI_STATION_H_
+#ifndef WIFI_STATION_H
+#define WIFI_STATION_H
 
-#include "Arduino.h"
-#include "WiFi.h"
+#include "Eth_Station.h"
 #include "../control.h"
 #include "FirebaseClient.h"
-#include "ESPAsyncWebServer.h"
-#include <ETH.h>
-#include "WiFiProv.h"
 
-//#define ETH_CLK_MODE    ETH_CLOCK_GPIO0_IN
-#define ETH_POWER_PIN  	12 
-#define ETH_TYPE        ETH_PHY_LAN8720
-#define ETH_ADDR        0
-#define ETH_MDC_PIN    	23 
-#define ETH_MDIO_PIN    18
+#include <string.h>
+#include <stdlib.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/event_groups.h"
+#include "esp_wifi.h"
+#include "esp_wpa2.h"
+#include "esp_event.h"
+#include "esp_log.h"
+#include "esp_system.h"
+#include "nvs_flash.h"
+#include "esp_netif.h"
+#include "esp_smartconfig.h"
+#include "../control.h"
+#include "wifi_provisioning/scheme_softap.h"
 
-
-#define WIFI_SSID "VELTIUM_WF"
-#define WIFI_PASSWORD "W1f1d3V3lt1um$m4rtCh4rg3r$!"
-
-
-void InitServer(void) ;
-void ETH_begin();
-void Station_Begin();
-void Delete_Credentials();
-void ESP_Station_begin();
-void Station_Pause();
-void Station_Resume();
-void Station_Scan();
+void initialise_smartconfig(void);
+void start_wifi(void);
+void stop_wifi(void);
+void initialise_provisioning(void);
 void ComsTask(void *args);
 
 #endif

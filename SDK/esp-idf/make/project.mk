@@ -311,18 +311,29 @@ COMPONENT_INCLUDES += $(abspath $(BUILD_DIR_BASE)/include/)
 export COMPONENT_INCLUDES
 
 all:
-ifdef CONFIG_SECURE_BOOT_ENABLED
+ifdef CONFIG_SECURE_BOOT
 	@echo "(Secure boot enabled, so bootloader not flashed automatically. See 'make bootloader' output)"
 ifndef CONFIG_SECURE_BOOT_BUILD_SIGNED_BINARIES
+ifdef SECURE_SIGNED_APPS_ECDSA_SCHEME
 	@echo "App built but not signed. Sign app & partition data before flashing, via espsecure.py:"
-	@echo "espsecure.py sign_data --keyfile KEYFILE $(APP_BIN)"
-	@echo "espsecure.py sign_data --keyfile KEYFILE $(PARTITION_TABLE_BIN)"
+	@echo "espsecure.py sign_data --version 1 --keyfile KEYFILE $(APP_BIN)"
+	@echo "espsecure.py sign_data --version 1 --keyfile KEYFILE $(PARTITION_TABLE_BIN)"
+else 
+	@echo "App built but not signed. Sign app & partition data before flashing, via espsecure.py:"
+	@echo "espsecure.py sign_data --version 2 --keyfile KEYFILE $(APP_BIN)"
+endif
 endif
 	@echo "To flash app & partition table, run 'make flash' or:"
 else
+ifdef CONFIG_APP_BUILD_GENERATE_BINARIES
 	@echo "To flash all build output, run 'make flash' or:"
 endif
+endif
+ifdef CONFIG_APP_BUILD_GENERATE_BINARIES
 	@echo $(ESPTOOLPY_WRITE_FLASH) $(ESPTOOL_ALL_FLASH_ARGS)
+else
+	@echo "Binary is not available for flashing"
+endif
 
 
 # If we have `version.txt` then prefer that for extracting IDF version
@@ -414,18 +425,48 @@ endif
 ifdef CONFIG_COMPILER_STACK_CHECK_MODE_ALL
 COMMON_FLAGS += -fstack-protector-all
 endif
-endif
 
 # Optimization flags are set based on menuconfig choice
-ifdef CONFIG_COMPILER_OPTIMIZATION_LEVEL_RELEASE
+ifdef CONFIG_COMPILER_OPTIMIZATION_SIZE
 OPTIMIZATION_FLAGS = -Os -freorder-blocks
-else
+endif
+
+ifdef CONFIG_COMPILER_OPTIMIZATION_DEFAULT
 OPTIMIZATION_FLAGS = -Og
+endif
+
+ifdef CONFIG_COMPILER_OPTIMIZATION_NONE
+OPTIMIZATION_FLAGS = -O0
+endif
+
+ifdef CONFIG_COMPILER_OPTIMIZATION_PERF
+OPTIMIZATION_FLAGS = -O2
 endif
 
 ifdef CONFIG_COMPILER_OPTIMIZATION_ASSERTIONS_DISABLE
 CPPFLAGS += -DNDEBUG
 endif
+
+else # IS_BOOTLOADER_BUILD
+
+ifdef CONFIG_BOOTLOADER_COMPILER_OPTIMIZATION_SIZE
+OPTIMIZATION_FLAGS = -Os -freorder-blocks
+endif
+
+ifdef CONFIG_BOOTLOADER_COMPILER_OPTIMIZATION_DEBUG
+OPTIMIZATION_FLAGS = -Og
+endif
+
+ifdef CONFIG_BOOTLOADER_COMPILER_OPTIMIZATION_NONE
+OPTIMIZATION_FLAGS = -O0
+endif
+
+ifdef CONFIG_BOOTLOADER_COMPILER_OPTIMIZATION_PERF
+OPTIMIZATION_FLAGS = -O2
+endif
+
+endif # IS_BOOTLOADER_BUILD
+
 
 # IDF uses some GNU extension from libc
 CPPFLAGS += -D_GNU_SOURCE
@@ -488,12 +529,6 @@ export CC CXX LD AR OBJCOPY OBJDUMP SIZE
 
 COMPILER_VERSION_STR := $(shell $(CC) -dumpversion)
 COMPILER_VERSION_NUM := $(subst .,,$(COMPILER_VERSION_STR))
-GCC_NOT_5_2_0 := $(shell expr $(COMPILER_VERSION_STR) != "5.2.0")
-export COMPILER_VERSION_STR COMPILER_VERSION_NUM GCC_NOT_5_2_0
-
-CPPFLAGS += -DGCC_NOT_5_2_0=$(GCC_NOT_5_2_0)
-export CPPFLAGS
-
 
 # the app is the main executable built by the project
 APP_ELF:=$(BUILD_DIR_BASE)/$(PROJECT_NAME).elf
@@ -528,15 +563,25 @@ $(APP_ELF): $(foreach libcomp,$(COMPONENT_LIBRARIES),$(BUILD_DIR_BASE)/$(libcomp
 	$(summary) LD $(patsubst $(PWD)/%,%,$@)
 	$(CC) $(LDFLAGS) -o $@ -Wl,-Map=$(APP_MAP)
 
+ifdef CONFIG_SECURE_SIGNED_APPS_ECDSA_SCHEME
+SECURE_APPS_SIGNING_SCHEME = "1"
+else ifdef CONFIG_SECURE_SIGNED_APPS_RSA_SCHEME
+SECURE_APPS_SIGNING_SCHEME = "2"
+endif
+
 app: $(APP_BIN) partition_table_get_info
-ifeq ("$(CONFIG_SECURE_BOOT_ENABLED)$(CONFIG_SECURE_BOOT_BUILD_SIGNED_BINARIES)","y") # secure boot enabled, but remote sign app image
+ifeq ("$(CONFIG_APP_BUILD_GENERATE_BINARIES)","y")
+ifeq ("$(CONFIG_SECURE_BOOT)$(CONFIG_SECURE_BOOT_BUILD_SIGNED_BINARIES)","y") # secure boot enabled, but remote sign app image
 	@echo "App built but not signed. Signing step via espsecure.py:"
-	@echo "espsecure.py sign_data --keyfile KEYFILE $(APP_BIN)"
+	@echo "espsecure.py sign_data --version $(SECURE_APPS_SIGNING_SCHEME) --keyfile KEYFILE $(APP_BIN)"
 	@echo "Then flash app command is:"
 	@echo $(ESPTOOLPY_WRITE_FLASH) $(APP_OFFSET) $(APP_BIN)
 else
 	@echo "App built. Default flash app command is:"
 	@echo $(ESPTOOLPY_WRITE_FLASH) $(APP_OFFSET) $(APP_BIN)
+endif
+else
+	@echo "Application in not built and cannot be flashed."
 endif
 
 all_binaries: $(APP_BIN)

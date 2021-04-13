@@ -17,7 +17,10 @@
 
 #include "btc_ble_mesh_sensor_model.h"
 
+#include "mesh_config.h"
 #include "model_opcode.h"
+
+#if CONFIG_BLE_MESH_SENSOR_CLI
 #include "sensor_client.h"
 
 /* The followings are the macro definitions of Sensor client
@@ -49,24 +52,26 @@ static const bt_mesh_client_op_pair_t sensor_op_pair[] = {
 
 static bt_mesh_mutex_t sensor_client_lock;
 
-static void bt_mesh_sensor_client_mutex_new(void)
+static inline void bt_mesh_sensor_client_mutex_new(void)
 {
     if (!sensor_client_lock.mutex) {
         bt_mesh_mutex_create(&sensor_client_lock);
     }
 }
 
-static void bt_mesh_sensor_client_mutex_free(void)
+#if CONFIG_BLE_MESH_DEINIT
+static inline void bt_mesh_sensor_client_mutex_free(void)
 {
     bt_mesh_mutex_free(&sensor_client_lock);
 }
+#endif /* CONFIG_BLE_MESH_DEINIT */
 
-static void bt_mesh_sensor_client_lock(void)
+static inline void bt_mesh_sensor_client_lock(void)
 {
     bt_mesh_mutex_lock(&sensor_client_lock);
 }
 
-static void bt_mesh_sensor_client_unlock(void)
+static inline void bt_mesh_sensor_client_unlock(void)
 {
     bt_mesh_mutex_unlock(&sensor_client_lock);
 }
@@ -341,7 +346,7 @@ static void sensor_status(struct bt_mesh_model *model,
     return;
 }
 
-const struct bt_mesh_model_op sensor_cli_op[] = {
+const struct bt_mesh_model_op bt_mesh_sensor_cli_op[] = {
     { BLE_MESH_MODEL_OP_SENSOR_DESCRIPTOR_STATUS, 0, sensor_status },
     { BLE_MESH_MODEL_OP_SENSOR_CADENCE_STATUS,    2, sensor_status },
     { BLE_MESH_MODEL_OP_SENSOR_SETTINGS_STATUS,   2, sensor_status },
@@ -574,21 +579,19 @@ int bt_mesh_sensor_client_set_state(bt_mesh_client_common_param_t *common, void 
     return sensor_act_state(common, set, length, need_ack);
 }
 
-int bt_mesh_sensor_cli_init(struct bt_mesh_model *model, bool primary)
+static int sensor_client_init(struct bt_mesh_model *model)
 {
     sensor_internal_data_t *internal = NULL;
     bt_mesh_sensor_client_t *client = NULL;
 
-    BT_DBG("primary %u", primary);
-
     if (!model) {
-        BT_ERR("%s, Invalid parameter", __func__);
+        BT_ERR("Invalid Sensor client model");
         return -EINVAL;
     }
 
     client = (bt_mesh_sensor_client_t *)model->user_data;
     if (!client) {
-        BT_ERR("Invalid Sensor client user data");
+        BT_ERR("No Sensor client context provided");
         return -EINVAL;
     }
 
@@ -614,18 +617,19 @@ int bt_mesh_sensor_cli_init(struct bt_mesh_model *model, bool primary)
     return 0;
 }
 
-int bt_mesh_sensor_cli_deinit(struct bt_mesh_model *model, bool primary)
+#if CONFIG_BLE_MESH_DEINIT
+static int sensor_client_deinit(struct bt_mesh_model *model)
 {
     bt_mesh_sensor_client_t *client = NULL;
 
     if (!model) {
-        BT_ERR("%s, Invalid parameter", __func__);
+        BT_ERR("Invalid Sensor client model");
         return -EINVAL;
     }
 
     client = (bt_mesh_sensor_client_t *)model->user_data;
     if (!client) {
-        BT_ERR("Invalid Sensor client user data");
+        BT_ERR("No Sensor client context provided");
         return -EINVAL;
     }
 
@@ -642,3 +646,13 @@ int bt_mesh_sensor_cli_deinit(struct bt_mesh_model *model, bool primary)
 
     return 0;
 }
+#endif /* CONFIG_BLE_MESH_DEINIT */
+
+const struct bt_mesh_model_cb bt_mesh_sensor_client_cb = {
+    .init = sensor_client_init,
+#if CONFIG_BLE_MESH_DEINIT
+    .deinit = sensor_client_deinit,
+#endif /* CONFIG_BLE_MESH_DEINIT */
+};
+
+#endif /* CONFIG_BLE_MESH_SENSOR_CLI */

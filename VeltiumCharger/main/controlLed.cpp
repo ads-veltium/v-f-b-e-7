@@ -86,7 +86,6 @@ void LedControl_Task(void *arg){
 	uint8 subiendo=1, luminosidad_carga= 0, LedPointer =0,luminosidad_Actual=50, togle_led=0;
 	uint8 _LED_COLOR=0;
 	uint16 cnt_parpadeo=TIME_PARPADEO, Delay= 20;
-	uint8 Efectos=0;
 	bool LastBle=0;
 	initLeds();
 	vTaskDelay(pdMS_TO_TICKS(100));
@@ -198,9 +197,14 @@ void LedControl_Task(void *arg){
 				}
 			}
 			else{//Si hay algun error
+<<<<<<< HEAD
 				//Error transitorio	
 				Serial.println("Error!");			
 				if((Status.error_code <= (uint8)0x33 && Status.error_code != (uint8)0x30 ) || Status.error_code == (uint8)0x80){
+=======
+				//Error transitorio			 
+				if((Status.error_code <= (uint8)0x33 && Status.error_code != (uint8)0x30) || Status.error_code == (uint8)0x80){
+>>>>>>> origin/Test
 					Delay=40;
 					if(++cnt_parpadeo >= TIME_PARPADEO){
 						cnt_parpadeo = 0;

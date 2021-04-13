@@ -187,7 +187,6 @@ void wpa2_task(void *pvParameters )
     ETSEvent *e;
     struct eap_sm *sm = gEapSm;
     bool task_del = false;
-    uint32_t sig = 0;
 
     if (!sm) {
         return;
@@ -195,7 +194,6 @@ void wpa2_task(void *pvParameters )
 
     for (;;) {
         if ( pdPASS == xQueueReceive(s_wpa2_queue, &e, portMAX_DELAY) ) {
-            sig = e->sig;
             if (e->sig < SIG_WPA2_MAX) {
                 DATA_MUTEX_TAKE();
                 if(sm->wpa2_sig_cnt[e->sig]) {
@@ -232,7 +230,7 @@ void wpa2_task(void *pvParameters )
             break;
         } else {
             if (s_wifi_wpa2_sync_sem) {
-                wpa_printf(MSG_DEBUG, "WPA2: wifi->wpa2 api completed sig(%d)", sig);
+                wpa_printf(MSG_DEBUG, "WPA2: wifi->wpa2 api completed sig(%d)", e->sig);
                 xSemaphoreGive(s_wifi_wpa2_sync_sem);
             } else {
                 wpa_printf(MSG_ERROR, "WPA2: null wifi->wpa2 sync sem");
@@ -245,7 +243,7 @@ void wpa2_task(void *pvParameters )
     wpa_printf(MSG_DEBUG, "WPA2: task deleted");
     s_wpa2_queue = NULL;
     if (s_wifi_wpa2_sync_sem) {
-        wpa_printf(MSG_DEBUG, "WPA2: wifi->wpa2 api completed sig(%d)", sig);
+        wpa_printf(MSG_DEBUG, "WPA2: wifi->wpa2 api completed sig(%d)", e->sig);
         xSemaphoreGive(s_wifi_wpa2_sync_sem);
     } else {
         wpa_printf(MSG_ERROR, "WPA2: null wifi->wpa2 sync sem");
@@ -559,7 +557,7 @@ static int wpa2_ent_rx_eapol(u8 *src_addr, u8 *buf, u32 len, uint8_t *bssid)
 		    ret = eap_sm_rx_eapol(src_addr, buf, len, bssid);
 		    break;
 	    case IEEE802_1X_TYPE_EAPOL_KEY:
-		    ret = wpa_sm_rx_eapol(src_addr, buf, len);
+            ret = wpa_sm_rx_eapol(src_addr, buf, len);
 		    break;
 	    default:
 		wpa_printf(MSG_ERROR, "Unknown EAPOL packet type - %d\n", hdr->type);
@@ -639,9 +637,10 @@ static int eap_sm_rx_eapol_internal(u8 *src_addr, u8 *buf, u32 len, uint8_t *bss
     case EAP_CODE_REQUEST:
         /* Handle EAP-reauthentication case */
         if (sm->finish_state == WPA2_ENT_EAP_STATE_SUCCESS) {
-            wpa_printf(MSG_INFO, ">>>>>wpa2 EAP Re-authentication in progress\n");
-            wpa2_set_eap_state(WPA2_ENT_EAP_STATE_IN_PROGRESS);
-        }
+                wpa_printf(MSG_INFO, ">>>>>wpa2 EAP Re-authentication in progress\n");
+		wpa2_set_eap_state(WPA2_ENT_EAP_STATE_IN_PROGRESS);
+	}
+
         req = wpabuf_alloc_copy((u8 *)ehdr, len - sizeof(*hdr));
         ret = eap_sm_process_request(sm, req);
         break;
@@ -656,7 +655,7 @@ static int eap_sm_rx_eapol_internal(u8 *src_addr, u8 *buf, u32 len, uint8_t *bss
             wpa_printf(MSG_INFO, ">>>>>wpa2 FINISH\n");
             ret = WPA2_ENT_EAP_STATE_SUCCESS;
             wpa2_set_eap_state(WPA2_ENT_EAP_STATE_SUCCESS);
-            eap_deinit_prev_method(sm, "EAP Success");
+	    eap_deinit_prev_method(sm, "EAP Success");
         } else {
             wpa_printf(MSG_INFO, ">>>>>wpa2 FAILED, receive EAP_SUCCESS but pmk is empty, potential attack!\n");
             ret = WPA2_ENT_EAP_STATE_FAIL;

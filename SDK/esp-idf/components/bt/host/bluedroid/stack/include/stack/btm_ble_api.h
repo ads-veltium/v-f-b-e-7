@@ -1626,7 +1626,7 @@ BOOLEAN BTM_BleGetCurrentAddress(BD_ADDR addr, uint8_t *addr_type);
 **                     BTM_BLE_GENRAL_DISCOVERABLE
 **
 *******************************************************************************/
-UINT16 BTM_BleReadDiscoverability();
+UINT16 BTM_BleReadDiscoverability(void);
 
 /*******************************************************************************
 **
@@ -1639,7 +1639,7 @@ UINT16 BTM_BleReadDiscoverability();
 **
 *******************************************************************************/
 //extern
-UINT16 BTM_BleReadConnectability ();
+UINT16 BTM_BleReadConnectability (void);
 
 void BTM_Recovery_Pre_State(void);
 
@@ -1720,6 +1720,20 @@ void BTM_BleConfigLocalIcon(uint16_t icon);
 
 /*******************************************************************************
 **
+** Function         BTM_BleConfigConnParams
+**
+** Description      This function is called to set the connection parameters
+**
+** Parameters       int_min:  minimum connection interval
+**                  int_max:  maximum connection interval
+**                  latency:  slave latency
+**                  timeout:  supervision timeout
+**
+*******************************************************************************/
+void BTM_BleConfigConnParams(uint16_t int_min, uint16_t int_max, uint16_t latency, uint16_t timeout);
+
+/*******************************************************************************
+**
 ** Function         BTM_BleLocalPrivacyEnabled
 **
 ** Description        Checks if local device supports private address
@@ -1755,7 +1769,7 @@ void BTM_BleEnableMixedPrivacyMode(BOOLEAN mixed_on);
 **
 *******************************************************************************/
 //extern
-UINT8  BTM_BleMaxMultiAdvInstanceCount();
+UINT8  BTM_BleMaxMultiAdvInstanceCount(void);
 
 /*******************************************************************************
 **
@@ -2112,6 +2126,17 @@ tBTM_STATUS BTM_UpdateBleDuplicateExceptionalList(uint8_t subcode, uint32_t type
 *******************************************************************************/
 
 BOOLEAN BTM_GetCurrentConnParams(BD_ADDR bda, uint16_t *interval, uint16_t *latency, uint16_t *timeout);
+
+/*******************************************************************************
+**
+** Function         BTM_Ble_Authorization
+**
+** Description      This function is used to authorize a specified device
+**
+** Returns          TRUE or FALSE
+**
+*******************************************************************************/
+BOOLEAN BTM_Ble_Authorization(BD_ADDR bd_addr, BOOLEAN authorize);
 /*
 #ifdef __cplusplus
 }

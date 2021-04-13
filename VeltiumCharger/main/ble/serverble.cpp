@@ -411,11 +411,9 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 #ifdef CONNECTED
 			if(handle == COMS_CONFIGURATION_WIFI_START_PROV){
 				if(payload[0]==1){
-					Serial.println("Star provisioning received");
 					Coms.StartProvisioning = true;
 				}
 				else if(payload[0]==2){
-					Serial.println("Star Smartconfig received");
 					Coms.StartSmartconfig = true;
 				}
 				return;

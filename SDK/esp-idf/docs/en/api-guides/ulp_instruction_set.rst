@@ -1,5 +1,5 @@
-ULP coprocessor instruction set
-===============================
+ESP32 ULP coprocessor instruction set
+=====================================
 
 This document provides details about the instructions used by ESP32 ULP coprocessor assembler.
 

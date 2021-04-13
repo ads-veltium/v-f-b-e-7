@@ -25,7 +25,7 @@ HardwareSerialMOD* channel;
 int CyBtldr_TransferData(unsigned char* inBuf, int inSize, unsigned char* outBuf, int outSize)
 {
     int err = 1;
-    uint8 cnt_timeout_tx=0;
+    uint8 cnt_timeout_tx=1;
     int timeout=0;
 
     outBuf[0]='a';
@@ -35,13 +35,11 @@ int CyBtldr_TransferData(unsigned char* inBuf, int inSize, unsigned char* outBuf
             Serial.println(timeout);
             err=68;
         }
-        if(cnt_timeout_tx == 0){
-            cnt_timeout_tx = TIMEOUT_TX_BLOQUE*2;
+        if(--cnt_timeout_tx == 0){
+            cnt_timeout_tx = TIMEOUT_TX_BLOQUE2;
             sendBinaryBlock(inBuf, inSize);
             timeout++;
         }
-        else
-            cnt_timeout_tx--;
         if(channel->available()!=0){
 			int longitud_bloque=outSize;
 			int puntero_rx_local=0;
@@ -66,9 +64,7 @@ int CyBtldr_TransferData(unsigned char* inBuf, int inSize, unsigned char* outBuf
                 err=outBuf[1];
             }            
         }
-        vTaskDelay(pdMS_TO_TICKS(10));
-
-        
+        vTaskDelay(pdMS_TO_TICKS(5));        
     }
     channel->flush();
     if (CYRET_SUCCESS != err)

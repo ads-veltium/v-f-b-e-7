@@ -2912,17 +2912,25 @@ static void krp_set(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx,
             phase == BLE_MESH_KR_PHASE_2) {
         sub->kr_phase = BLE_MESH_KR_PHASE_2;
         sub->kr_flag = 1;
+
+        if (IS_ENABLED(CONFIG_BLE_MESH_SETTINGS)) {
+            BT_DBG("Storing kr phase persistently");
+            bt_mesh_store_subnet(sub);
+        }
+
         bt_mesh_net_beacon_update(sub);
     } else if ((sub->kr_phase == BLE_MESH_KR_PHASE_1 ||
                 sub->kr_phase == BLE_MESH_KR_PHASE_2) &&
                phase == BLE_MESH_KR_PHASE_3) {
+        sub->kr_phase = BLE_MESH_KR_NORMAL;
+        sub->kr_flag = 0;
         bt_mesh_net_revoke_keys(sub);
+
         if (IS_ENABLED(CONFIG_BLE_MESH_LOW_POWER) ||
                 IS_ENABLED(CONFIG_BLE_MESH_FRIEND)) {
             friend_cred_refresh(ctx->net_idx);
         }
-        sub->kr_phase = BLE_MESH_KR_NORMAL;
-        sub->kr_flag = 0;
+
         bt_mesh_net_beacon_update(sub);
     }
 
@@ -3344,9 +3352,14 @@ static bool conf_is_valid(struct bt_mesh_cfg_srv *cfg)
     return true;
 }
 
-int bt_mesh_cfg_srv_init(struct bt_mesh_model *model, bool primary)
+static int cfg_srv_init(struct bt_mesh_model *model)
 {
     struct bt_mesh_cfg_srv *cfg = model->user_data;
+
+    if (!bt_mesh_model_in_primary(model)) {
+        BT_ERR("Configuration Server only allowed in primary element");
+        return -EINVAL;
+    }
 
     if (!cfg) {
         BT_ERR("No Configuration Server context provided");
@@ -3384,16 +3397,25 @@ int bt_mesh_cfg_srv_init(struct bt_mesh_model *model, bool primary)
     return 0;
 }
 
-int bt_mesh_cfg_srv_deinit(struct bt_mesh_model *model, bool primary)
+#if CONFIG_BLE_MESH_DEINIT
+static int cfg_srv_deinit(struct bt_mesh_model *model)
 {
     struct bt_mesh_cfg_srv *cfg = model->user_data;
+
+    if (!bt_mesh_model_in_primary(model)) {
+        BT_ERR("Configuration Server only allowed in primary element");
+        return -EINVAL;
+    }
 
     if (!cfg) {
         BT_ERR("No Configuration Server context provided");
         return -EINVAL;
     }
 
-    bt_mesh_cfg_reset();
+    /* Use "false" here because if cfg needs to be erased,
+     * it will already be erased in the ble_mesh_deinit().
+     */
+    bt_mesh_cfg_reset(false);
 
     k_delayed_work_free(&cfg->hb_pub.timer);
     cfg->hb_pub.dst = BLE_MESH_ADDR_UNASSIGNED;
@@ -3402,10 +3424,19 @@ int bt_mesh_cfg_srv_deinit(struct bt_mesh_model *model, bool primary)
 
     return 0;
 }
+#endif /* CONFIG_BLE_MESH_DEINIT */
+
+const struct bt_mesh_model_cb bt_mesh_cfg_srv_cb = {
+    .init = cfg_srv_init,
+#if CONFIG_BLE_MESH_DEINIT
+    .deinit = cfg_srv_deinit,
+#endif /* CONFIG_BLE_MESH_DEINIT */
+};
 
 static void mod_reset(struct bt_mesh_model *mod, struct bt_mesh_elem *elem,
                       bool vnd, bool primary, void *user_data)
 {
+    bool store = *(bool *)user_data;
     size_t clear_count = 0U;
 
     /* Clear model state that isn't otherwise cleared. E.g. AppKey
@@ -3416,12 +3447,17 @@ static void mod_reset(struct bt_mesh_model *mod, struct bt_mesh_elem *elem,
 
     clear_count = mod_sub_list_clear(mod);
 
-    if (IS_ENABLED(CONFIG_BLE_MESH_SETTINGS) && clear_count) {
+    if (IS_ENABLED(CONFIG_BLE_MESH_SETTINGS) && clear_count && store) {
         bt_mesh_store_mod_sub(mod);
     }
 }
 
-void bt_mesh_cfg_reset(void)
+void bt_mesh_mod_sub_reset(bool store)
+{
+    bt_mesh_model_foreach(mod_reset, &store);
+}
+
+void bt_mesh_cfg_reset(bool store)
 {
     struct bt_mesh_cfg_srv *cfg = conf;
     int i;
@@ -3445,11 +3481,11 @@ void bt_mesh_cfg_reset(void)
         struct bt_mesh_subnet *sub = &bt_mesh.sub[i];
 
         if (sub->net_idx != BLE_MESH_KEY_UNUSED) {
-            bt_mesh_subnet_del(sub, true);
+            bt_mesh_subnet_del(sub, store);
         }
     }
 
-    bt_mesh_model_foreach(mod_reset, NULL);
+    bt_mesh_mod_sub_reset(store);
 
     (void)memset(labels, 0, sizeof(labels));
 }
