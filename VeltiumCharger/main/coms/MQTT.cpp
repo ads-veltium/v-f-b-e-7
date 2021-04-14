@@ -31,7 +31,6 @@ void mqtt_server(void *pvParameters);
 void start_MQTT_server();
 void start_MQTT_client(IPAddress remoteIP);
 
-
 void stop_MQTT(){
     ChargingGroup.GroupActive = false;
     delay(500);
@@ -39,7 +38,6 @@ void stop_MQTT(){
     delay(1000);
     SetStopMQTT(false);
 }
-
 
 //Añadir un cargador a un equipo
 bool add_to_group(const char* ID, IPAddress IP, carac_chargers* group){
@@ -65,6 +63,26 @@ bool check_in_group(const char* ID, carac_chargers* group){
     return false;
 }
 
+bool remove_from_group(const char* ID ,carac_chargers* group){
+
+    for(int j=0;j < group->size;j++){
+        if(!memcmp(ID,  group->charger_table[j].name,8)){
+            if(j!=group->size-1){ //si no es el ultimo debemos shiftear la lista
+                for(uint8_t i=j;i < group->size-1;i++){
+                    group->charger_table[i] = group->charger_table[i+1];
+                }
+            }
+            group->charger_table[group->size-1].IP = INADDR_NONE;
+            
+            memset(group->charger_table[group->size-1].name,0,9);
+            --group->size;
+            printf("Cargador %s eliminado\n", ID);
+            return true;
+        }
+    }
+    printf("El cargador no está en el grupo!\n");
+    return false;
+}
 //obtener la ip de un equipo dado su ID
 IPAddress get_IP(const char* ID){
     for(int j=0;j < net_group.size;j++){
@@ -160,15 +178,22 @@ void MasterPanicTask(void *args){
     while(!ChargingGroup.GroupActive){
         if(pdTICKS_TO_MS(xTaskGetTickCount() - xStart) > 30000){ //si pasan 30 segundos, elegir un nuevo maestro
             Serial.println("Necesitamos un nuevo maestro!");
-            if(!memcmp(net_group.charger_table[0].name,ConfigFirebase.Device_Id,8)){
+
+            carac_charger OldMaster=ChargingGroup.group_chargers.charger_table[0];
+            remove_from_group(OldMaster.name, &ChargingGroup.group_chargers);
+            add_to_group(OldMaster.name, OldMaster.IP, &ChargingGroup.group_chargers);
+
+            if(!memcmp(ChargingGroup.group_chargers.charger_table[0].name,ConfigFirebase.Device_Id,8)){
                 Serial.println("Soy el nuevo maestro!!");
                 ChargingGroup.GroupMaster = true;
             }
+            
             else{
                 Serial.println("No soy el nuevo maestro, alguien se pondrá :)");
             }
             break;
         }
+        delay(1000);
     }
     vTaskDelete(NULL);
 }
