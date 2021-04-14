@@ -10,6 +10,7 @@ extern carac_group    ChargingGroup;
 
 bool add_to_group(const char* ID, IPAddress IP, carac_chargers* group);
 bool check_in_group(const char* ID, carac_chargers* group);
+IPAddress get_IP(const char* ID);
 
 static void print_table(){
     Serial.write(27);   //Print "esc"
@@ -64,19 +65,16 @@ void New_Data(char* Data, int Data_size){
 
 void New_Params(char* Data, int Data_size){
     uint8_t numero_de_cargadores = (Data_size)/8;
+    --ChargingGroup.group_chargers.size;
 
     //Detectar si hay nuevos cargadores en el grupo
-    if(ChargingGroup.group_chargers.size != numero_de_cargadores){
-        for(uint8_t i=0;i<numero_de_cargadores;i++){
-            char ID[8];
-            memcpy(ID, &Data[i*8],8);
-            printf("Comprobando %s\n",ID);
-            if(!check_in_group(ID,ChargingGroup.group_chargers)){
-                add_to_group(ID,,ChargingGroup.group_chargers);
-            }
+    for(uint8_t i=0;i<numero_de_cargadores;i++){
+        char ID[8];
+        memcpy(ID, &Data[i*8],8);
+        printf("Comprobando %s\n",ID);
+        if(!check_in_group(ID,&ChargingGroup.group_chargers)){
+            add_to_group(ID,get_IP(ID),&ChargingGroup.group_chargers);
+            printf("Añadido %s %s\n",ID, get_IP(ID).toString().c_str());
         }
-
-        ChargingGroup.group_chargers.size = numero_de_cargadores;
-    }
-    
+    }    
 }

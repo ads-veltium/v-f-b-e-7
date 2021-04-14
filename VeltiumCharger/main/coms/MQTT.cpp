@@ -31,6 +31,7 @@ void mqtt_server(void *pvParameters);
 void start_MQTT_server();
 void start_MQTT_client(IPAddress remoteIP);
 
+
 void stop_MQTT(){
     ChargingGroup.GroupActive = false;
     delay(500);
@@ -64,6 +65,16 @@ bool check_in_group(const char* ID, carac_chargers* group){
     return false;
 }
 
+//obtener la ip de un equipo dado su ID
+IPAddress get_IP(const char* ID){
+    for(int j=0;j < net_group.size;j++){
+        if(!memcmp(ID,  net_group.charger_table[j].name,8)){
+            return net_group.charger_table->IP;
+        }
+    }
+    return INADDR_NONE;
+}
+
 //Enviar mensajes solo a los miembros del grupo
 void broadcast_a_grupo(char* Mensaje){
     AsyncUDPMessage mensaje (13);
@@ -73,11 +84,10 @@ void broadcast_a_grupo(char* Mensaje){
     memcpy(ChargingGroup.group_chargers.charger_table[0].name, "31B70630",8);
     memcpy(ChargingGroup.group_chargers.charger_table[1].name, "626965F5",8);  
     memcpy(ChargingGroup.group_chargers.charger_table[2].name, "1SDVD734",8);
-    memcpy(ChargingGroup.group_chargers.charger_table[3].name, "J4D9M1FT",8);
-    memcpy(ChargingGroup.group_chargers.charger_table[4].name, "28434012",8);
+    memcpy(ChargingGroup.group_chargers.charger_table[4].name, "FT63D732",8);
     //memcpy(ChargingGroup.group_chargers.charger_table[5].name, "J3P10DNR",8);
 
-    ChargingGroup.group_chargers.size = 5;
+    ChargingGroup.group_chargers.size = 4;
 
     for(int i =0; i < net_group.size;i++){
         for(int j=0;j < ChargingGroup.group_chargers.size;j++){
@@ -143,6 +153,18 @@ void start_udp(){
     udp.broadcast(Encipher(String(ConfigFirebase.Device_Id)).c_str());
 }
 
+/*Tarea de emergencia para cuando el maestro se queda muerto mucho tiempo*/
+void MasterPanicTask(void *args){
+    TickType_t xStart = xTaskGetTickCount();
+
+    while(!ChargingGroup.GroupActive){
+        if(pdTICKS_TO_MS(xTaskGetTickCount() - xStart) > 30000){ //si pasan 30 segundos, elegir un nuevo maestro
+            Serial.println("Necesitamos un nuevo maestro!");
+            break;
+        }
+    }
+    vTaskDelete(NULL);
+}
 /*Tarea para publicar los datos del equipo cada segundo*/
 void Publisher(void* args){
 
@@ -187,6 +209,7 @@ void Publisher(void* args){
         if(!ChargingGroup.GroupActive || GetStopMQTT()){
             printf("Maestro desconectado!!!\n");
             stop_MQTT();
+            xTaskCreate(MasterPanicTask,"MasterPanicTask",4096,NULL,2,NULL);
             break;
         }
     }
