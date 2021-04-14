@@ -197,7 +197,7 @@ bool ReadFirebaseGroups(String Path){
   long long ts_app_req=Database->Get_Timestamp(Path+"/ts_app_req",&Lectura);
   if(ts_app_req > ChargingGroup.last_ts_app_req){
     Lectura.clear();
-    if(Database->Send_Command(Path,&Lectura, READ)){
+    if(Database->Send_Command(Path,&Lectura, LEER)){
       ChargingGroup.last_ts_app_req=ts_app_req;
 
       ChargingGroup.GroupMaster =  Lectura["master"];
@@ -215,7 +215,7 @@ bool ReadFirebaseComs(String Path){
   long long ts_app_req=Database->Get_Timestamp(Path+"/ts_app_req",&Lectura);
   if(ts_app_req > Coms.last_ts_app_req){
     Lectura.clear();
-    if(Database->Send_Command(Path,&Lectura, READ)){
+    if(Database->Send_Command(Path,&Lectura, LEER)){
       Coms.last_ts_app_req=ts_app_req;
 
       Coms.Wifi.ON   = Lectura["wifi"]["on"];
@@ -244,7 +244,7 @@ bool ReadFirebaseParams(String Path){
   long long ts_app_req=Database->Get_Timestamp(Path+"/ts_app_req",&Lectura);
   if(ts_app_req > Params.last_ts_app_req){
     Lectura.clear();
-    if(Database->Send_Command(Path,&Lectura, READ)){
+    if(Database->Send_Command(Path,&Lectura, LEER)){
       
       Params.last_ts_app_req=ts_app_req;
 
@@ -275,7 +275,7 @@ bool ReadFirebaseControl(String Path){
   long long ts_app_req=Database->Get_Timestamp(Path+"/ts_app_req",&Lectura);
   if(ts_app_req> Comands.last_ts_app_req){
     Lectura.clear();
-    if(Database->Send_Command(Path,&Lectura, READ)){
+    if(Database->Send_Command(Path,&Lectura, LEER)){
     
       Comands.last_ts_app_req = ts_app_req;
       Comands.start           = Lectura["start"]     ? true : Comands.start;

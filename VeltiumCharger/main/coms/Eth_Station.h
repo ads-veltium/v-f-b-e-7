@@ -1,6 +1,7 @@
 #ifndef ETH_STATION_h
 #define ETH_STATION_h
 
+
 #include <string.h>
 #include <stdlib.h>
 #include "esp_eth.h"
@@ -13,7 +14,6 @@
 #include "esp_eth.h"
 #include "esp_log.h"
 #include "sdkconfig.h"
-#include "WiFi.h"
 #include "contador.h"
 #include "../control.h"
 #include "esp_netif.h"

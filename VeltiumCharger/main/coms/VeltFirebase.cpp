@@ -197,7 +197,7 @@ bool Real_Time_Database::Send_Command(String path, JsonDocument *doc, uint8_t Co
     esp_http_client_set_url(RTDB_client, Write_url.c_str());
 
     switch(Command){
-        case WRITE:        
+        case ESCRIBIR:        
             esp_http_client_set_method(RTDB_client, HTTP_METHOD_POST);
             esp_http_client_set_post_field(RTDB_client, SerializedData.c_str(), SerializedData.length());
             break;
@@ -209,7 +209,7 @@ bool Real_Time_Database::Send_Command(String path, JsonDocument *doc, uint8_t Co
             esp_http_client_set_method(RTDB_client, HTTP_METHOD_PUT);
             esp_http_client_set_post_field(RTDB_client, "{\".sv\": \"timestamp\"}", strlen("{\".sv\": \"timestamp\"}"));
             break;
-        case READ:
+        case LEER:
             esp_http_client_set_method(RTDB_client, HTTP_METHOD_GET);
             break;
         case READ_FW:
@@ -371,7 +371,7 @@ bool Cliente_HTTP::Send_Command(String url, uint8_t Command){
     esp_http_client_set_url(_client, url.c_str());
 
     switch(Command){
-        case WRITE:        
+        case ESCRIBIR:        
             esp_http_client_set_method(_client, HTTP_METHOD_POST);
             //esp_http_client_set_post_field(_client, SerializedData.c_str(), SerializedData.length());
             break;
@@ -383,7 +383,7 @@ bool Cliente_HTTP::Send_Command(String url, uint8_t Command){
             esp_http_client_set_method(_client, HTTP_METHOD_PUT);
             esp_http_client_set_post_field(_client, "{\".sv\": \"timestamp\"}", strlen("{\".sv\": \"timestamp\"}"));
             break;
-        case READ:
+        case LEER:
             esp_http_client_set_method(_client, HTTP_METHOD_GET);
             break;
 

@@ -188,6 +188,7 @@ void Publisher(void* args){
         delay(1000);
 
         if(!ChargingGroup.GroupActive || GetStopMQTT()){
+            printf("Maestro desconectado!!!\n");
             stop_MQTT();
             break;
         }

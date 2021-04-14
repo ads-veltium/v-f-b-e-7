@@ -2,9 +2,8 @@
 #define VeltFirebase_h
 
 #define ARDUINOJSON_USE_LONG_LONG 1
-#include "HTTPClient.h"
+
 #include "ArduinoJson.h"
-#include "Update.h"
 #include "../control.h"
 #include "contador.h"
 #include "esp32-hal-psram.h"

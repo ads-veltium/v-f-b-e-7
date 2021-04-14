@@ -1,5 +1,6 @@
 #include "ESPAsyncWebServer.h"
 #include "../control.h"
+#include "stdlib.h"
 
 /*********************** Globals ************************/
 extern carac_Comands                Comands;
@@ -19,9 +20,8 @@ const char* SALIDA = "com";
 const char* AP = "w_ap";
 const char* WIFI_PWD = "w_pass";
 const char* IP1 = "ip1";
-const char* IP2 = "ip2";
-const char* GATEWAY = "gateway";
-const char* MASK = "mask";
+const char* GATEWAY = "8.8.8.8";
+const char* MASK = "255.255.255.0";
 const char* APN = "apn";
 const char* GSM_PWD = "m_pass";
 const char* CURR_COMAND = "curr_comand";
@@ -38,7 +38,7 @@ void notFound(AsyncWebServerRequest *request) {
 
 //Función para ver estado de la variable de actualizaciones automáticas 
 String outputState(){
-  if(!memcpy(Params.autentication_mode,"AA",2)){
+  if(!memcpy(Params.Fw_Update_mode,"AA",2)){
     return "checked";
   }
   else {
@@ -100,18 +100,20 @@ String processor(const String& var){
 	{
 		return String(Status.Measures.consumo_domestico);
 	}
-    /*
-    else if (var == "CONT")
+    
+    /*else if (var == "CONT")
 	{
-		return String(Status.Time.connect_date_time);
+        Status.Time.connect_date_time
+        lltoa(Status.Time.connect_date_time)
+		return .toString();
 	}
     else if (var == "DESCONT")
 	{
-		return String(Status.Time.disconnect_date_time);
+		return Status.Time.disconnect_date_time.toString();
 	}
     else if (var == "STARTTIME")
 	{
-		return String(Status.Time.charge_start_time);
+		return lltoa Status.Time.charge_start_time.toString();
 	}
     else if (var == "STOPTIME")
 	{
@@ -185,7 +187,7 @@ String processor(const String& var){
 		checkbox += "<label class=\"switch\"><input type=\"checkbox\" onchange=\"toggleCheckbox(this)\" id=\"16\""+outputStateWifi(Params.CDP_On)+"><span class=\"slider\"></span></label>";
 		return checkbox;
     }
-    else if (var == "CDP")
+    else if (var == "CONLOCK")
 	{
 		String checkbox = "";
 
@@ -223,7 +225,8 @@ void InitServer(void) {
     server.on("/get", HTTP_GET_A, [](AsyncWebServerRequest *request){
         memcpy(Coms.Wifi.AP,request->getParam(AP)->value().c_str(),32);
         Coms.Wifi.Pass = request->getParam(WIFI_PWD)->value();
-        //Coms.ETH.IP = request->getParam(IP1)->value().toInt();       //Coms.ETH.Gateway = request->getParam(GATEWAY)->value().toInt();
+        //Coms.ETH.IP = request->getParam(IP1)->value().toInt();       
+        //Coms.ETH.Gateway = request->getParam(GATEWAY)->value().toInt();
         //Coms.ETH.Mask = request->getParam(MASK)->value().toInt();
         Coms.GSM.APN = request->getParam(APN)->value();
         Coms.GSM.Pass = request->getParam(GSM_PWD)->value();
@@ -234,7 +237,6 @@ void InitServer(void) {
         Params.potencia_contratada = request->getParam(POT_CONT)->value().toInt();
 
         Serial.println((char*)Coms.Wifi.AP);
-        Serial.println(Coms.Wifi.Pass);
         Serial.println(ip4addr_ntoa(&Coms.ETH.IP) );
         Serial.println(ip4addr_ntoa(&Coms.ETH.Gateway));
         Serial.println(ip4addr_ntoa(&Coms.ETH.Mask));
@@ -246,10 +248,8 @@ void InitServer(void) {
         Serial.println(Params.inst_current_limit);
         Serial.println(Params.potencia_contratada);
 
+        request->send(SPIFFS, "/datos.html",String(), false, processor);
 
-    //SPIFFS.begin(false,"/spiffs",1,"WebServer");
-    request->send(SPIFFS, "/datos.html",String(), false, processor);
-    //SPIFFS.end();
     });
     
 
@@ -355,11 +355,12 @@ void InitServer(void) {
         {
             case 11:
                 if (estado){
-                    memcpy(Params.autentication_mode,"AA",2);
+                    memcpy(Params.Fw_Update_mode,"AA",2);
                 }
                 else{
-                    memcpy(Params.autentication_mode,"MA",2);
+                    memcpy(Params.Fw_Update_mode,"MA",2);
                 }
+                SendToPSOC5(Params.Fw_Update_mode, 2, COMS_FW_UPDATEMODE_CHAR_HANDLE);
             break;
 
             case 12:
@@ -377,7 +378,7 @@ void InitServer(void) {
                 
                 break;
             case 14:
-                Coms.ETH.Auto = estado;
+                Coms.ETH.Auto = estado; 
                 break;
             case 15:
                 Coms.GSM.ON = estado;

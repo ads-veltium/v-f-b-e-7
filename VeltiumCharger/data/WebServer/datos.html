@@ -21,123 +21,96 @@
 
 <h2>Status</h2>
 
-<p>
-  <span class="dht-labels">Estado del hilo piloto:</span> 
-  <span id="hp">%HP%</span>
-</p>
-<p>
-  <span class="dht-labels">Estado del ICP:</span> 
-  <span id="icp">%ICP%</span>
-</p>
-<p>
-  <span class="dht-labels">Leakage current:</span> 
-  <span id="leakage">%LEAK%</span>
-</p>
-<p>
-  <span class="dht-labels">Estado de bloqueo:</span> 
-  <span id="lockstatus">%LOCKSTATUS%</span>
-</p>
-<p>
-  <span class="dht-labels">Corriente m&aacutexima cable:</span> 
-  <span id="maxcable">%MAXCABLE%</span>
-  <span class="units">A</span>
-</p>
-<p>
-  <span class="dht-labels">Corriente de carga:</span> 
-  <span id="corriente">%CORRIENTE%</span>
-  <span class="units">A</span>
-</p>
-
-<p>
-    <span class="dht-labels">Voltaje:</span> 
-    <span id="voltaje">%VOLTAJE%</span>
-    <span class="units">V</span>
-</p>
-
-<p>
-  <span class="dht-labels">Potencia activa:</span> 
-  <span id="potencia">%POTENCIA%</span>
-  <span class="units">W</span>
-</p>
-
-<p>
-  <span class="dht-labels">Potencia reactiva:</span> 
-  <span id="potenciare">%POTENCIARE%</span>
-  <span class="units">VAR</span>
-</p>
-<p>
-  <span class="dht-labels">Potencia aparente:</span> 
-  <span id="potenciap">%POTENCIAP%</span>
-  <span class="units">VA</span>
-</p>
-<p>
-  <span class="dht-labels">Energ&iacutea activa:</span> 
-  <span id="energia">%ENERGIA%</span>
-  <span class="units">J</span>
-</p>
-<p>
-  <span class="dht-labels">Energ&iacutea reactiva:</span> 
-  <span id="energiare">%ENERGIARE%</span>
-  <span class="units">J</span>
-</p>
-<p>
-  <span class="dht-labels">Factor de potencia:</span> 
-  <span id="powerfactor">%POWERFACTOR%</span>
-</p>
-<p>
-  <span class="dht-labels">Corriente dom&eacutestica:</span> 
-  <span id="corrientedom">%CORRIENTEDOM%</span>
-  <span class="units">A</span>
-</p>
-<p>
-  <span class="dht-labels">Error code:</span> 
-  <span id="error">%ERROR%</span>
-</p>
- 
-
+<table>
+  <tr>
+    <td><span class="dht-labels">Estado del hilo piloto</span> </td>
+    <td><span id="hp">%HP%</span></td>
+  </tr>
+  <tr>
+    <td><span class="dht-labels">Estado del ICP</span> </td>
+    <td><span id="icp">%ICP%</span></td>
+  </tr>
+  <tr>
+    <td><span class="dht-labels">Leakage current</span></td>
+    <td><span id="leakage">%LEAK%</span></td>
+  </tr>
+  <tr>
+    <td><span class="dht-labels">Estado de bloqueo</span> </td>
+    <td><span id="lockstatus">%LOCKSTATUS%</span></td>
+  </tr>
+  <tr>
+    <td><span class="dht-labels">Corriente m&aacutexima cable</span> </td>
+    <td><span id="maxcable">%MAXCABLE%</span><span class="units">A</span></td>
+  </tr>
+  <tr>
+    <td><span class="dht-labels">Corriente de carga</span> </td>
+    <td><span id="corriente">%CORRIENTE%</span><span class="units">A</span></td>
+  </tr>
+  <tr>
+    <td><span class="dht-labels">Potencia activa</span>  </td>
+    <td><span id="potencia">%POTENCIA%</span><span class="units">W</span></td>
+  </tr>
+  <tr>
+    <td><span class="dht-labels">Voltaje</span></td>
+    <td><span id="voltaje">%VOLTAJE%</span><span class="units">V</span></td>
+  </tr>
+  <tr>
+    <td><span class="dht-labels">Corriente dom&eacutestica</span></td>
+    <td><span id="corrientedom">%CORRIENTEDOM%</span><span class="units">A</span></td>
+  </tr>
+  <tr>
+    <td><span class="dht-labels">Error code</span></td>
+    <td><span id="error">%ERROR%</span></td>
+  </tr>
+</table>
 
 <h2>Comms</h2>
 
-<p>
-  <h4>Wifi</h4>
-    <span class="dht-labels">ON</span> 
-    <span>%WON%</span>
-</p>
+<h4>Wifi</h4>
+<table>
 
-<p>
-  <span class="dht-labels">SSID:</span> 
-  <input name="w_ap" placeholder="SSID de red" type="text"></input>
-</p>
-<p>
-  <span class="dht-labels">Contrase&ntildea:</span> 
-  <input name="w_pass" placeholder="Password" type="password"></input>
-</p>
+  <tr>
+    <td><span class="dht-labels">ON</span>  </td>
+    <td><span>%WON%</span></td>
+  </tr>
+  <tr>
+    <td><span class="dht-labels">SSID:</span>  </td>
+    <td><input style = "text-align:center;" name="w_ap" placeholder="SSID de red" type="text"></input></td>
+  </tr>
+  <tr>
+    <td><span class="dht-labels">Contrase&ntildea</span></td>
+    <td><input style = "text-align:center;" name="w_pass" placeholder="Password" type="password"></input></td>
+  </tr>
+
+  </tr>
+</table>
+
 <h4>Ethernet</h4>
-<span class="dht-labels">ON</span> 
-<span>%EON%</span>
-</p>
-<p>
-  <span class="dht-labels">AUTO</span> 
-  <span>%EAUTO%</span>
-</p>
-<p>
-<span class="dht-labels">Ip1:</span> 
-<input name="ip1" type="text" minlength="7" maxlength="15" size="15" pattern="^((\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.){3}(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])$" placeholder="Ip1">
-</p>
-<p>
-  <span class="dht-labels">Ip2:</span> 
-  <input name="ip2" type="text" minlength="7" maxlength="15" size="15" pattern="^((\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.){3}(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])$" placeholder="Ip2">
-</p>
-<p>
-  <span class="dht-labels">Gateway:</span> 
-  <input name="gateway" type="text" minlength="7" maxlength="15" size="15" pattern="^((\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.){3}(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])$" placeholder="Gateway">
-</p>
-<p>
-  <span class="dht-labels">Mask:</span> 
-  <input name="mask" type="text" minlength="7" maxlength="15" size="15" pattern="^((\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.){3}(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])$" placeholder="Mask">
-</p>
+<table>
+  <tr>
+    <td><span class="dht-labels">ON</span>  </td>
+    <td><span>%EON%</span></td>
+  </tr>
+  <tr>
+    <td><span class="dht-labels">AUTO:</span>  </td>
+    <td><span>%EAUTO%</span></td>
+  </tr>
+  <tr>
+    <td><span class="dht-labels">Ip</span> </td>
+    <td><input style = "text-align:center;" name="ip1" type="text" minlength="7" maxlength="15" size="15" pattern="^((\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.){3}(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])$" placeholder="0.0.0.0"></td>
+  </tr>
+  <tr>
+    <td><span class="dht-labels">Gateway</span> </td>
+    <td><input style = "text-align:center;" name="gateway" type="text" minlength="7" maxlength="15" size="15" pattern="^((\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.){3}(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])$" placeholder="0.0.0.0"></td>
+  </tr>
+  <tr>
+    <td><span class="dht-labels">Mask</span> </td>
+    <td><input style = "text-align:center;"name="mask" type="text" minlength="7" maxlength="15" size="15" pattern="^((\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.){3}(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])$" placeholder="0.0.0.0"></td>
+  </tr>
 
-
+  </tr>
+</table>
+<!-- Aquí puedes escribir tu comentario 
 <h4>Modem</h4>
 <span class="dht-labels">ON</span> 
 <span>%MON%</span>
@@ -150,56 +123,61 @@
 <p>
   <label for="pass" class="dht-labels">Contrase&ntildea:</label> 
   <input name="m_pass" id="pass" placeholder="Password" type="password">
-</p>
-  <input type="submit" value="Guardar" onclick = "guardacoms(this)" style='height:30px;width:100px;background:#3498db;color:#fff'>
-
-
+  -->
 <p>
-  <span class="dht-labels">Bloqueo</span> 
-  <span>%CONNLOCK%</span>
+  <input type="submit" value="Guardar" onclick = "guardacoms(this)" style='height:30px;width:100px;background:#3498db;color:#fff'>
 </p>
+
 
 <h2>Par&aacutemetros</h2>
-<p>
-  <span class="dht-labels">Modo de autenticaci&oacuten:</span> 
-  <input name="auth_mode" placeholder="Autenticacion" type="text"></input>
-</p>
-<p>
-  <span class="dht-labels">L&iacutemite de corriente de instalaci&oacuten:</span> 
-  <input name="inst_curr_lim" placeholder="Corriente limite" type="text"></input>
-</p>
-<p>
-  <span class="dht-labels">Potencia contratada:</span> 
-  <input name="potencia_cont" placeholder="Potencia" type="text"></input>
-</p>
-<p>
-  <span class="dht-labels">Ubicaci&oacuten CDP:</span> 
-  <input name="ubi_cdp" placeholder="Ubicacion CDP" type="text"></input>
-</p>
-<p>
-  <span class="dht-labels">Control din&aacutemico de potencia</span> 
-  <span>%CDP%</span>
-</p>  
-<p>
-  <span class="dht-labels">Actualizaciones autom&aacuteticas</span> 
-  <span>%AUTOUPDATE%</span>
-</p>
-<h2>Control</h2>
-<label>Orden de carga<label>
-  <p>
-    %BUTTONPLACEHOLDER%
-  </p>
-<p>
-  <span class="dht-labels">Corriente deseada:</span> 
-  <input name="curr_comand" placeholder="Comando de corriente" type="text"></input>
-</p>
-<p>
-  <span class="dht-labels">Mecanismo de bloqueo</span> 
-  <span>%CONLOCK%</span>
-</p>  
+<table>
+  <tr>
+    <td><span class="dht-labels">Modo de autenticaci&oacuten</span></td>
+    <td><input style = "text-align:center;" name="auth_mode" placeholder="Autenticacion" type="text"></input></td>
+  </tr>
+  <tr>
+    <td><span class="dht-labels">L&iacutemite de corriente de instalaci&oacuten</span></td>
+    <td><input style = "text-align:center;" name="inst_curr_lim" placeholder="Corriente limite" type="text"></input></td>
+  </tr>
+  <tr>
+    <td><span class="dht-labels">Potencia contratada</span> </td>
+    <td><input style = "text-align:center;" name="potencia_cont" placeholder="Potencia" type="text"></input></td>
+  </tr>
+  <tr>
+    <td><span class="dht-labels">Ubicaci&oacuten CDP</span> </td>
+    <td><input style = "text-align:center;" name="ubi_cdp" placeholder="Ubicacion CDP" type="text"></input></td>
+  </tr>
+  <tr>
+    <td><span class="dht-labels">Control din&aacutemico de potencia</span></td>
+    <td><span>%CDP%</span></td>
+  </tr>
+  <tr>
+    <td><span class="dht-labels">Actualizaciones autom&aacuteticas</span> </td>
+    <td><span>%AUTOUPDATE%</span></td>
+  </tr>
+</table>
 
+<h2>Control</h2>
+<table>
+  <tr>
+    <td><span class="dht-labels">Orden de carga</span></td>
+    <td>%BUTTONPLACEHOLDER%</td>
+  </tr>
+  <tr>
+    <td><span class="dht-labels">Corriente deseada</span>  </td>
+    <td><input style = "text-align:center;" name="curr_comand" placeholder="Comando de corriente" type="text"></input></td>
+  </tr>
+  <tr>
+    <td><span class="dht-labels">Mecanismo de bloqueo</span> </td>
+    <td><span>%CONLOCK%</span></td>
+  </tr>
+</table>
 </form>
 </body>
+
+
+
+
 <script>
 
 var fireBase = fireBase || firebase;
