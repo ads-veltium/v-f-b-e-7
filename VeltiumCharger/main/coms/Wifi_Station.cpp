@@ -362,6 +362,7 @@ void Eth_Loop(){
 
         case CONECTADO:
             #ifdef GROUPS
+
             if(Params.Tipo_Sensor && !finding){
                 if(GetStateTime(xStart) > 60000){
                     Serial.println("Iniciando fase busqueda ");
@@ -403,11 +404,12 @@ void Eth_Loop(){
             #ifdef GROUPS
             //Lectura del contador
 			if(ContadorExt.ContadorConectado){
-                Coms.ETH.Wifi_Perm = true;
+
 				if(!Counter.Inicializado){
+                    printf("Arrancando lectura del contador\n");
 					Counter.begin(ContadorExt.ContadorIp);
 				}
-				Serial.println("Reading");
+
 				Counter.read();
 				Counter.parse();
 				uint8 buffer_contador[7] = {0}; 

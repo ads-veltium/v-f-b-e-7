@@ -2,6 +2,11 @@
 #include "VeltFirebase.h"
 #include "lwip/sys.h"
 
+#define TRABAJANDO   0
+#define PING_END     1
+#define PING_SUCCESS 2
+#define PING_TIMEOUT 3
+
 bool eth_link_up     = false;
 bool eth_connected   = false;
 bool eth_connecting  = false;
@@ -20,7 +25,8 @@ esp_eth_phy_t *phy=NULL;
 
 esp_netif_t *eth_netif;
 
-//Variables para buscar el contador
+void initialize_ping(ip_addr_t target_addr, uint8_t *resultado);
+void end_ping();
 
 void BuscarContador_Task(void *args){
 
@@ -33,7 +39,7 @@ void BuscarContador_Task(void *args){
     i =ip4_addr4(&Coms.ETH.IP);
     bool NextOne =true;
 
-    Cliente_HTTP Cliente("http://192.168.1.1", 100);
+    Cliente_HTTP Cliente("http://192.168.1.1", 1000);
     Cliente.begin();
 
     while(!TopeSup || !TopeInf){
@@ -70,26 +76,43 @@ void BuscarContador_Task(void *args){
         }
         else{            
             sprintf(ip,"%i.%i.%i.%i", ip4_addr1(&Coms.ETH.IP),ip4_addr2(&Coms.ETH.IP),ip4_addr3(&Coms.ETH.IP),i-1); 
-            char url[100] = "http://";
-            strcat(url, ip);
-            //strcat(url, "/index.html");
-            Serial.println(url);
-            
-            if (Cliente.Send_Command(url,READ)) {
-                String respuesta;
-                Cliente.ObtenerRespuesta(&respuesta);
-                Serial.println(respuesta);
+            printf("%s\n", ip);
+            ip_addr_t target;
+            ipaddr_aton(ip,&target);
+            uint8_t resultado = 0;
+            initialize_ping(target, &resultado);
+
+            while(resultado == TRABAJANDO){
+                delay(10);
+            }
+            end_ping();
+
+            if(resultado == PING_SUCCESS){           
+                char url[100] = "http://";
+                strcat(url, ip);
+                strcat(url, "/get_command?command=get_measurements");
+
+                if(Cliente.Send_Command(url,READ)) {
+
+                    String respuesta = Cliente.ObtenerRespuesta();               
+                    if(respuesta.indexOf("IE38MD")>-1){
+                        strcpy(ContadorExt.ContadorIp,ip);
+                        ContadorExt.ContadorConectado = true;
+                        break;
+                    }
+                }
             }
             Serial.println("Nada, seguimos buscando");
             NextOne = true;
         }
         delay(20);
     }
+    Coms.ETH.Wifi_Perm = true;
+    Cliente.end();
+    
     if(!ContadorExt.ContadorConectado){
         Serial.println("No he encontrado ningun medidor");
     }
-    Coms.ETH.Wifi_Perm = true;
-    Cliente.end();
     vTaskDelete(NULL);
 }
 
@@ -151,7 +174,6 @@ static void eth_event_handler(void *arg, esp_event_base_t event_base, int32_t ev
             ip_event_got_ip_t *event = (ip_event_got_ip_t *) event_data;
             const esp_netif_ip_info_t *ip_info = &event->ip_info;
 
-            Serial.println( "Ethernet 1 Got IP Address");
             Serial.printf( "ETHIP: %d %d %d %d\n",IP2STR(&ip_info->ip));
             
             Coms.ETH.IP.addr = ip_info->ip.addr;

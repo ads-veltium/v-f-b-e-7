@@ -8,6 +8,7 @@
 #include "../control.h"
 #include "contador.h"
 #include "esp32-hal-psram.h"
+#include "esp_http_client.h"
 
 #define FIREBASE_API_KEY "AIzaSyBaJA88_Y3ViCzNF_J08f4LBMAM771aZLs"
 #define FIREBASE_PROJECT "veltiumbackend.firebaseio.com"
@@ -49,10 +50,10 @@ class Real_Time_Database{
     StaticJsonDocument<256> AuthDoc;
 
   public:
-    #define WRITE     0
+    #define ESCRIBIR  0
     #define UPDATE    1
     #define TIMESTAMP 4
-    #define READ      5
+    #define LEER      5
     #define READ_FW   6
 
     String deviceID;
@@ -84,10 +85,11 @@ class Cliente_HTTP{
     int  _timeout;
     
   public:
-    #define WRITE     0
+
+    #define ESCRIBIR  0
     #define UPDATE    1
     #define TIMESTAMP 4
-    #define READ      5
+    #define LEER      5
     #define READ_FW   6
     
     
@@ -95,7 +97,8 @@ class Cliente_HTTP{
     bool Send_Command(String url,  uint8_t Command);
     void begin();
     void end();
-    void ObtenerRespuesta(String *Respuesta);
+    String ObtenerRespuesta();
+    void set_url(String url);
 
 
     //Constructor

@@ -5,6 +5,8 @@ extern xParametrosPing ParametrosPing;
 extern carac_Coms Coms;
 extern carac_Contador   ContadorExt;
 
+Cliente_HTTP CounterClient("192.168.1.1", 1000);
+
 //Contador de Iskra
 /*********** Clase Contador ************/
 
@@ -20,11 +22,8 @@ void Contador::begin(String Host){
     CounterUrl+=Host+"/get_command?command=get_measurements";
     Serial.println(CounterUrl);
 
-    CounterClient.begin(CounterUrl);
-    CounterClient.addHeader("Content-Type", "application/json"); 
-    CounterClient.setTimeout(10000);
-    CounterClient.setConnectTimeout(1000);
-    CounterClient.setReuse(true);
+    CounterClient.set_url(CounterUrl);
+    CounterClient.begin();
     Inicializado = true;
 }
 
@@ -33,34 +32,18 @@ void Contador::end(){
 }
 
 bool Contador::read(){
-    int response;
 
-    response = CounterClient.GET();
+    CounterClient.Send_Command(CounterUrl,READ);
 
-    if (response < 0) {
-        Serial.println(response);
-        Serial.printf("Counter reading error: %s\n", 
-        CounterClient.errorToString(response).c_str());
+    if (!CounterClient.Send_Command(CounterUrl,READ)) {
+        Serial.printf("Counter reading error\n");
         return false;
     }
 
-    String payload = CounterClient.getString();
     Measurements.clear();
-    deserializeJson(Measurements,payload);
+    deserializeJson(Measurements,CounterClient.ObtenerRespuesta());
 
-    //conection refused
-    if(response == -1){
-        Serial.println("Counter conection refused");
-        return false;
-    }
     return true;
-}
-bool Contador::parseModel(){
-    if(!strcmp(Measurements["header"]["model"].as<String>().c_str(), "IE38MD")){
-        Serial.println("IE38MD Encontrado!");
-        return true;
-    }
-    return false;
 }
 /*********** Convertir los datos del json ************/
 void Contador::parse(){

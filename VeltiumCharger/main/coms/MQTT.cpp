@@ -149,11 +149,23 @@ void Publisher(void* args){
     char buffer[100];
     Params.Fase = 1;
     while(1){
-        if(ChargingGroup.SendNewData){
-            //Preparar data
-            sprintf(buffer, "%s%i%s%i", ConfigFirebase.Device_Id,Params.Fase,Status.HPT_status,Status.Measures.instant_voltage);
-            
-            mqtt_publish("Device_Status", (buffer));
+        if(ChargingGroup.SendNewData){           
+
+            //si es trifasico, enviar informacion de todas las fases
+            if(Status.Trifasico){
+                sprintf(buffer, "%s1%s%i", ConfigFirebase.Device_Id,Status.HPT_status,Status.Measures.instant_current);
+                mqtt_publish("Device_Status", (buffer));
+                delay(50);
+                sprintf(buffer, "%s2%s%i", ConfigFirebase.Device_Id,Status.HPT_status,Status.MeasuresB.instant_current);
+                mqtt_publish("Device_Status", (buffer));
+                delay(50);
+                sprintf(buffer, "%s3%s%i", ConfigFirebase.Device_Id,Status.HPT_status,Status.MeasuresC.instant_current);
+                mqtt_publish("Device_Status", (buffer));
+            }
+            else{
+                sprintf(buffer, "%s%i%s%i", ConfigFirebase.Device_Id,Params.Fase,Status.HPT_status,Status.Measures.instant_current);   
+                mqtt_publish("Device_Status", (buffer));
+            }
             ChargingGroup.SendNewData = false;
         }
         if( ChargingGroup.SendNewParams){

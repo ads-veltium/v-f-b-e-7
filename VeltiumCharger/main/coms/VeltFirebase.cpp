@@ -157,6 +157,7 @@ void Real_Time_Database::begin(String Host, String DatabaseID){
         .timeout_ms = 5000,
         .event_handler = _http_event_handle,
         .buffer_size_tx = 2048,
+        .is_async = true,
     };
 
     RTDB_client = esp_http_client_init(&config);
@@ -304,8 +305,8 @@ bool _lectura_finalizada = false;
 int  _leidos = 0;
 char *_respuesta_total = new char[1500];
 esp_err_t _generic_http_event_handle(esp_http_client_event_t *evt){
-    //char *response = new char[512];
-    char *response = (char*)heap_caps_malloc(512, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT); 
+
+    char *response = (char*)heap_caps_calloc(1,512, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT); 
     switch(evt->event_id) {
         case HTTP_EVENT_ERROR:
             break;
@@ -313,11 +314,13 @@ esp_err_t _generic_http_event_handle(esp_http_client_event_t *evt){
             _lectura_finalizada = false;
             _leidos = 0;
             free(_respuesta_total);
-            //_respuesta_total = new char[1500];
+            _respuesta_total = new char[1500];
             break;
         case HTTP_EVENT_HEADER_SENT:
             break;
         case HTTP_EVENT_ON_HEADER:
+            ESP_LOGI("HTTP_CLIENT", "HTTP_EVENT_ON_HEADER");
+            printf("%.*s", evt->data_len, (char*)evt->data);
             break;
         case HTTP_EVENT_ON_DATA:
             if(evt->data_len>0){
@@ -338,11 +341,15 @@ esp_err_t _generic_http_event_handle(esp_http_client_event_t *evt){
     free(response);
     return ESP_OK;
 }
+void Cliente_HTTP::set_url(String url){
+    _url=url;
+}
 
 void Cliente_HTTP::begin(){
+    
     esp_http_client_config_t config = {
         .url = _url.c_str(),
-        .timeout_ms = _timeout,
+        .timeout_ms = 1000,
         .event_handler = _generic_http_event_handle,
         .buffer_size_tx = 2048,
     };
@@ -351,12 +358,12 @@ void Cliente_HTTP::begin(){
 }
 
 void Cliente_HTTP::end(){
+
     esp_http_client_cleanup(_client);
 }
 
-void Cliente_HTTP::ObtenerRespuesta(String *Respuesta){
-    std::string s(_respuesta_total, _respuesta_total+_leidos);
-    *Respuesta=s.c_str();
+String Cliente_HTTP::ObtenerRespuesta(){
+    return String(_respuesta_total);
 }
 
 bool Cliente_HTTP::Send_Command(String url, uint8_t Command){   
@@ -381,7 +388,7 @@ bool Cliente_HTTP::Send_Command(String url, uint8_t Command){
             break;
 
         default:
-            Serial.print("Accion no implementada!");
+            Serial.println("Accion no implementada!");
             return false;
             break;
     }
@@ -397,11 +404,11 @@ bool Cliente_HTTP::Send_Command(String url, uint8_t Command){
         return true;
     }
 
-    while(!_lectura_finalizada && ++tiempo_lectura <30 ){
+    while(!_lectura_finalizada && ++tiempo_lectura <60 ){
         delay(50);
     }
 
-    if(tiempo_lectura >= 30){
+    if(tiempo_lectura >= 60){
         return false;
     }
 
