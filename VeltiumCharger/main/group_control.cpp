@@ -6,6 +6,10 @@ extern carac_Params Params;
 extern carac_Status Status;
 extern carac_Firebase_Configuration ConfigFirebase;
 extern carac_chargers FaseChargers;
+extern carac_group    ChargingGroup;
+
+bool add_to_group(const char* ID, IPAddress IP, carac_chargers* group);
+bool check_in_group(const char* ID, carac_chargers* group);
 
 static void print_table(){
     Serial.write(27);   //Print "esc"
@@ -59,5 +63,20 @@ void New_Data(char* Data, int Data_size){
 }
 
 void New_Params(char* Data, int Data_size){
-    printf("New params received: %s %i\n", Data, Data_size);
+    uint8_t numero_de_cargadores = (Data_size)/8;
+
+    //Detectar si hay nuevos cargadores en el grupo
+    if(ChargingGroup.group_chargers.size != numero_de_cargadores){
+        for(uint8_t i=0;i<numero_de_cargadores;i++){
+            char ID[8];
+            memcpy(ID, &Data[i*8],8);
+            printf("Comprobando %s\n",ID);
+            if(!check_in_group(ID,ChargingGroup.group_chargers)){
+                add_to_group(ID,,ChargingGroup.group_chargers);
+            }
+        }
+
+        ChargingGroup.group_chargers.size = numero_de_cargadores;
+    }
+    
 }

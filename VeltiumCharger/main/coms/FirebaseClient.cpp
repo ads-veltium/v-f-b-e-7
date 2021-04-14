@@ -179,8 +179,15 @@ bool WriteFirebaseControl(String Path){
 bool WriteFirebaseFW(String Path){
   Escritura.clear();
 
-  Escritura["VBLE2"] = "VBLE2_"+String(UpdateStatus.ESP_Act_Ver);
-  Escritura["VELT2"] = "VELT2_"+String(UpdateStatus.PSOC5_Act_Ver);
+  if(UpdateStatus.ESP_Act_Ver < 1000){
+    Escritura["VBLE2"] = "VBLE2_0"+String(UpdateStatus.ESP_Act_Ver);
+    Escritura["VELT2"] = "VELT2_0"+String(UpdateStatus.PSOC5_Act_Ver);
+  }
+  else{
+    Escritura["VBLE2"] = "VBLE2_"+String(UpdateStatus.ESP_Act_Ver);
+    Escritura["VELT2"] = "VELT2_"+String(UpdateStatus.PSOC5_Act_Ver);
+  }
+
 
   if(Database->Send_Command(Path,&Escritura,UPDATE)){
     return true;
@@ -493,12 +500,15 @@ void Firebase_Conn_Task(void *args){
     
     case CONECTADO:
       //Inicializar los timeouts
-      Status.last_ts_app_req  = Database->Get_Timestamp("/status/ts_app_req",&Lectura);
+      ChargingGroup.last_ts_app_req = Database->Get_Timestamp("/group/ts_app_req",&Lectura);
+      ChargingGroup.last_ts_app_req = Database->Get_Timestamp("/group/ts_app_req",&Lectura);
       Params.last_ts_app_req  = Database->Get_Timestamp("/params/ts_app_req",&Lectura);
       Comands.last_ts_app_req = Database->Get_Timestamp("/control/ts_app_req",&Lectura);
       Coms.last_ts_app_req    = Database->Get_Timestamp("/coms/ts_app_req",&Lectura);
+      Status.last_ts_app_req  = Database->Get_Timestamp("/status/ts_app_req",&Lectura);
+      
       Serial.println("Conectado a firebase!");
-      //Error_Count+=!WriteFirebaseFW("/fw/current");
+      Error_Count+=!WriteFirebaseFW("/fw/current");
       ConnectionState=IDLE;
       break;
 

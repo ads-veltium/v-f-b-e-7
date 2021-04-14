@@ -70,11 +70,11 @@ void broadcast_a_grupo(char* Mensaje){
     mensaje.write((uint8_t*)(Encipher(Mensaje).c_str()), 13);
 
     //QUITAR!!!!!!!!!!!!!!!!!
-    memcpy(ChargingGroup.group_chargers.charger_table[0].name, "28434012",8);
-    memcpy(ChargingGroup.group_chargers.charger_table[1].name, "31B70630",8);
+    memcpy(ChargingGroup.group_chargers.charger_table[0].name, "31B70630",8);
+    memcpy(ChargingGroup.group_chargers.charger_table[1].name, "626965F5",8);  
     memcpy(ChargingGroup.group_chargers.charger_table[2].name, "1SDVD734",8);
     memcpy(ChargingGroup.group_chargers.charger_table[3].name, "J4D9M1FT",8);
-    memcpy(ChargingGroup.group_chargers.charger_table[4].name, "626965F5",8);
+    memcpy(ChargingGroup.group_chargers.charger_table[4].name, "28434012",8);
     //memcpy(ChargingGroup.group_chargers.charger_table[5].name, "J3P10DNR",8);
 
     ChargingGroup.group_chargers.size = 5;
@@ -170,11 +170,8 @@ void Publisher(void* args){
         }
         if( ChargingGroup.SendNewParams){
             printf("Publicando nuevos parametros\n");
-            char size = ChargingGroup.group_chargers.size;
-            printf("Tamaño = %c\n", size);
-            buffer[0]=size;  
             for(int i=0;i< ChargingGroup.group_chargers.size;i++){
-                memcpy(&buffer[(i*8)+1],ChargingGroup.group_chargers.charger_table[i].name,8);   
+                memcpy(&buffer[(i*8)],ChargingGroup.group_chargers.charger_table[i].name,8);   
             }
 
             mqtt_publish("Params", buffer);
@@ -215,6 +212,7 @@ void start_MQTT_server(){
     if(mqtt_connect(&publisher)){
         mqtt_subscribe("Device_Status");
         mqtt_subscribe("Ping");
+        mqtt_subscribe("Params");
         xTaskCreate(Publisher,"Publisher",4096,NULL,2,NULL);
     }
 }
