@@ -65,7 +65,6 @@ void New_Data(char* Data, int Data_size){
 
 void New_Params(char* Data, int Data_size){
     uint8_t numero_de_cargadores = (Data_size)/8;
-    --ChargingGroup.group_chargers.size;
 
     //Detectar si hay nuevos cargadores en el grupo
     for(uint8_t i=0;i<numero_de_cargadores;i++){

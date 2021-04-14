@@ -160,11 +160,19 @@ void MasterPanicTask(void *args){
     while(!ChargingGroup.GroupActive){
         if(pdTICKS_TO_MS(xTaskGetTickCount() - xStart) > 30000){ //si pasan 30 segundos, elegir un nuevo maestro
             Serial.println("Necesitamos un nuevo maestro!");
+            if(!memcmp(net_group.charger_table[0].name,ConfigFirebase.Device_Id,8)){
+                Serial.println("Soy el nuevo maestro!!");
+                ChargingGroup.GroupMaster = true;
+            }
+            else{
+                Serial.println("No soy el nuevo maestro, alguien se pondrá :)");
+            }
             break;
         }
     }
     vTaskDelete(NULL);
 }
+
 /*Tarea para publicar los datos del equipo cada segundo*/
 void Publisher(void* args){
 
