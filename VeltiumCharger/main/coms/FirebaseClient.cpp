@@ -209,6 +209,8 @@ bool ReadFirebaseGroups(String Path){
 
       ChargingGroup.GroupMaster =  Lectura["master"];
 
+      SendToPSOC5(ChargingGroup.GroupMaster,GROUPS_GROUP_MASTER);
+      
       if(!Database->Send_Command(Path+"/ts_dev_ack",&Lectura,TIMESTAMP)){
           return false;
       } 

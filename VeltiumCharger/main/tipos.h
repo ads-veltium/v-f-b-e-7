@@ -612,6 +612,9 @@ typedef struct{
 #define MEASURES_EXTERNAL_COUNTER		   (0x00C5u)
 #define COMS_FW_UPDATEMODE_CHAR_HANDLE     (0x00C7u)
 
+#define GROUPS_ACTIVE_GROUP 		 	   (0x00C9u)
+#define GROUPS_GROUP_MASTER  		 	   (0x00CBu)
+
 #define ENERGY_PARTIAL_RECORD_1			   (0x00D0u)
 #define ENERGY_PARTIAL_RECORD_2			   (0x00D1u)
 

@@ -373,7 +373,9 @@ void Eth_Loop(){
 
             else if(!ChargingGroup.GroupActive){
                 if(ChargingGroup.GroupMaster){
-                    start_MQTT_server();
+                    if(GetStateTime(xStart) > 30000){
+                        start_MQTT_server();
+                    }
                 }
             }
             #endif

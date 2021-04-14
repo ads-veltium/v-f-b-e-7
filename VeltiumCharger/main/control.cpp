@@ -467,8 +467,8 @@ void procesar_bloque(uint16 tipo_bloque){
 					Coms.Wifi.ON = buffer_rx_local[236];
 					Coms.ETH.ON = buffer_rx_local[237];	
 				#ifdef GROUPS
-					Coms.ETH.DHCP = buffer_rx_local[240];	
-
+					//Coms.ETH.DHCP = buffer_rx_local[240];	
+					ChargingGroup.GroupMaster = buffer_rx_local[241];
 				#endif
 
 				#endif
@@ -813,6 +813,11 @@ void procesar_bloque(uint16 tipo_bloque){
 			Coms.ETH.DHCP    =  buffer_rx_local[0];
 			Serial.print("DHCP ON:");
 			Serial.println(Coms.ETH.DHCP);
+		}
+		else if(GROUPS_GROUP_MASTER== tipo_bloque){
+			ChargingGroup.GroupMaster =  buffer_rx_local[0];
+			Serial.print("ChargingGroup.GroupMaster: ");
+			Serial.println(ChargingGroup.GroupMaster);
 		}
 	#endif
 		else if(COMS_FW_UPDATEMODE_CHAR_HANDLE == tipo_bloque){

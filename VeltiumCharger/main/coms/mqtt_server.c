@@ -367,21 +367,7 @@ void mqtt_server(void *pvParameters){
 	vTaskDelete(NULL);
 }
 
-//Controlar que equipos siguen con vida y cuales no
-static void Ping_Control(char* Data){
-	/*for(int i =0; i < net_group.size;i++){
-		if(memcmp(net_group.charger_table[i].name, Desencriptado.c_str(), 9)==0){
-			//si ya lo tenemos en la lista pero nos envía una llamada, es que se ha reiniciado, le hacemos entrar en el grupo
-			if(ChargingGroup.GroupMaster){
-				AsyncUDPMessage mensaje (13);
-				mensaje.write((uint8_t*)(Encipher("Start client").c_str()), 13);
-				udp.sendTo(mensaje,packet.remoteIP(),1234);
-			}
-			return;
-		}
-	}*/
 
-}
 static StackType_t xPOLLstack [1024*6]     EXT_RAM_ATTR;
 StaticTask_t xPOLLBuffer ;
 struct mg_connection *mgc;
