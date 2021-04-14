@@ -69,19 +69,11 @@ uint8 dispositivo_inicializado = 0;
 uint8 cnt_timeout_inicio = 0;
 uint16 cnt_repeticiones_inicio = 500;	//1000;
 
-<<<<<<< HEAD
-uint8 status_hpt_anterior[2] = {'F','F'};
-uint16 inst_current_anterior = 0x0000;
-uint16 cnt_diferencia = 1;
-
-uint8 version_firmware[11] = {"VBLE2_0509"};	
-=======
 uint8 status_hpt_anterior[2] = {'F','F' };
 uint16 inst_current_anterior = 0x0000;
 uint16 cnt_diferencia = 1;
 
 uint8 version_firmware[11] = {"VBLE2_0510"};	
->>>>>>> origin/Test
 uint8 PSOC5_version_firmware[11] ;		
 
 uint8 systemStarted = 0;
@@ -511,17 +503,9 @@ void procesar_bloque(uint16 tipo_bloque){
 					modifyCharacteristic(&buffer_rx_local[1], 2, STATUS_HPT_STATUS_CHAR_HANDLE);
 					if(serverbleGetConnected()){
 						if(buffer_rx_local[1]!= 'E' && buffer_rx_local[1]!= 'F'){
-<<<<<<< HEAD
-							modifyCharacteristic(&buffer_rx_local[1], 2, STATUS_HPT_STATUS_CHAR_HANDLE);
 							serverbleNotCharacteristic(&buffer_rx_local[1], 2, STATUS_HPT_STATUS_CHAR_HANDLE); 
 						}
 						else{
-							modifyCharacteristic(&buffer_rx_local[1], 1, STATUS_HPT_STATUS_CHAR_HANDLE);
-=======
-							serverbleNotCharacteristic(&buffer_rx_local[1], 2, STATUS_HPT_STATUS_CHAR_HANDLE); 
-						}
-						else{
->>>>>>> origin/Test
 							serverbleNotCharacteristic(&buffer_rx_local[1], 1, STATUS_HPT_STATUS_CHAR_HANDLE); 
 						}
 					}
@@ -591,10 +575,6 @@ void procesar_bloque(uint16 tipo_bloque){
 						Status.MeasuresC.active_energy   = buffer_rx_local[40] + (buffer_rx_local[41] * 0x100) +(buffer_rx_local[42] * 0x1000) +(buffer_rx_local[43] * 0x10000);
 
 					}
-<<<<<<< HEAD
-=======
-
->>>>>>> origin/Test
 #endif
 			}
 		break;
