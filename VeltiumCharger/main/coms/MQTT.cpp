@@ -101,11 +101,11 @@ void broadcast_a_grupo(char* Mensaje){
     //QUITAR!!!!!!!!!!!!!!!!!
     memcpy(ChargingGroup.group_chargers.charger_table[0].name, "31B70630",8);
     memcpy(ChargingGroup.group_chargers.charger_table[1].name, "626965F5",8);  
-    memcpy(ChargingGroup.group_chargers.charger_table[2].name, "1SDVD734",8);
-    memcpy(ChargingGroup.group_chargers.charger_table[4].name, "FT63D732",8);
+    //memcpy(ChargingGroup.group_chargers.charger_table[2].name, "1SDVD734",8);
+    //memcpy(ChargingGroup.group_chargers.charger_table[4].name, "FT63D732",8);
     //memcpy(ChargingGroup.group_chargers.charger_table[5].name, "J3P10DNR",8);
 
-    ChargingGroup.group_chargers.size = 4;
+    ChargingGroup.group_chargers.size = 2;
 
     for(int i =0; i < net_group.size;i++){
         for(int j=0;j < ChargingGroup.group_chargers.size;j++){
@@ -163,6 +163,17 @@ void start_udp(){
                         start_MQTT_client(packet.remoteIP());
                     }
                 }
+                else if(!memcmp(Desencriptado.c_str(), "Hay maestro?", 13)){
+                    if(ChargingGroup.GroupActive && ChargingGroup.GroupMaster){
+                        packet.print(Encipher(String("Bay, hemen nago")).c_str());
+                    }
+                }
+                else if(!memcmp(Desencriptado.c_str(), "Bay, hemen nago", 13)){
+                    if(!ChargingGroup.GroupActive && ChargingGroup.GroupMaster){
+                        ChargingGroup.GroupMaster = false;
+                        SendToPSOC5(ChargingGroup.GroupMaster, GROUPS_GROUP_MASTER);
+                    }
+                }
             }            
         });
     }
@@ -186,6 +197,7 @@ void MasterPanicTask(void *args){
             if(!memcmp(ChargingGroup.group_chargers.charger_table[0].name,ConfigFirebase.Device_Id,8)){
                 Serial.println("Soy el nuevo maestro!!");
                 ChargingGroup.GroupMaster = true;
+                SendToPSOC5(ChargingGroup.GroupMaster,GROUPS_GROUP_MASTER);
             }
             
             else{
@@ -233,43 +245,56 @@ void Publisher(void* args){
             ChargingGroup.SendNewParams = false;
         }
 
-        if(!ChargingGroup.GroupMaster){ //Avisar al maestro de que seguimos aqui
-            mqtt_publish("Ping", ConfigFirebase.Device_Id);
-        }
+        //Avisar al maestro de que seguimos aqui
+       
+        if(!ChargingGroup.GroupMaster){ 
+             mqtt_publish("Ping", ConfigFirebase.Device_Id);
 
-        delay(1000);
-
-        if(!ChargingGroup.GroupActive || GetStopMQTT()){
-            printf("Maestro desconectado!!!\n");
-            stop_MQTT();
-            xTaskCreate(MasterPanicTask,"MasterPanicTask",4096,NULL,2,NULL);
-            break;
+            delay(1000);
+            if(!ChargingGroup.GroupActive || GetStopMQTT()){
+                printf("Maestro desconectado!!!\n");
+                stop_MQTT();
+                xTaskCreate(MasterPanicTask,"MasterPanicTask",4096,NULL,2,NULL);
+                break;
+            }
         }
+        else{
+            delay(1000);
+        }
+        
     }
     vTaskDelete(NULL);
 }
 
 void start_MQTT_server(){
     Serial.println("Arrancando servidor MQTT");
-    ChargingGroup.GroupActive = true;
+    //Preguntar si hay maestro en el grupo
+    broadcast_a_grupo("Hay maestro?");
+    delay(500);
+    if(ChargingGroup.GroupMaster){
+        ChargingGroup.GroupActive = true;
     
-	/* Start MQTT Server using tcp transport */
-    xTaskCreateStatic(mqtt_server,"BROKER",1024*6,NULL,PRIORIDAD_MQTT,xSERVERStack,&xSERVERBuffer); 
-	delay(5000);
+        /* Start MQTT Server using tcp transport */
+        xTaskCreateStatic(mqtt_server,"BROKER",1024*6,NULL,PRIORIDAD_MQTT,xSERVERStack,&xSERVERBuffer); 
+        delay(5000);
 
-    broadcast_a_grupo("Start client");
-    mqtt_sub_pub_opts publisher;
-    
-	sprintf(publisher.url, "mqtt://%s:1883", ip4addr_ntoa(&Coms.ETH.IP));
-    memcpy(publisher.Client_ID,ConfigFirebase.Device_Id, 8);
-    memcpy(publisher.Will_Message,ConfigFirebase.Device_Id, 8);
-    publisher.Will_Topic = "NODE_DEAD";
+        broadcast_a_grupo("Start client");
+        mqtt_sub_pub_opts publisher;
+        
+        sprintf(publisher.url, "mqtt://%s:1883", ip4addr_ntoa(&Coms.ETH.IP));
+        memcpy(publisher.Client_ID,ConfigFirebase.Device_Id, 8);
+        memcpy(publisher.Will_Message,ConfigFirebase.Device_Id, 8);
+        publisher.Will_Topic = "NODE_DEAD";
 
-    if(mqtt_connect(&publisher)){
-        mqtt_subscribe("Device_Status");
-        mqtt_subscribe("Ping");
-        mqtt_subscribe("Params");
-        xTaskCreate(Publisher,"Publisher",4096,NULL,2,NULL);
+        if(mqtt_connect(&publisher)){
+            mqtt_subscribe("Device_Status");
+            mqtt_subscribe("Ping");
+            mqtt_subscribe("Params");
+            xTaskCreate(Publisher,"Publisher",4096,NULL,2,NULL);
+        }
+    }
+    else{
+        Serial.println("Ya hay un maestro en el grupo!");
     }
 }
 
