@@ -43,7 +43,8 @@ void stop_MQTT(){
 bool add_to_group(const char* ID, IPAddress IP, carac_chargers* group){
     if(group->size < MAX_GROUP_SIZE){
         if(!check_in_group(ID,group)){
-            memcpy(group->charger_table[group->size].name, ID, 9);
+            memcpy(group->charger_table[group->size].name, ID, 8);
+            group->charger_table[group->size].name[8]='\0';
             group->charger_table[group->size].IP = IP;
             group->size++;
             return true;
@@ -63,6 +64,7 @@ bool check_in_group(const char* ID, carac_chargers* group){
     return false;
 }
 
+//Eliminar un cargador de un grupo
 bool remove_from_group(const char* ID ,carac_chargers* group){
 
     for(int j=0;j < group->size;j++){
@@ -83,6 +85,7 @@ bool remove_from_group(const char* ID ,carac_chargers* group){
     printf("El cargador no está en el grupo!\n");
     return false;
 }
+
 //obtener la ip de un equipo dado su ID
 IPAddress get_IP(const char* ID){
     for(int j=0;j < net_group.size;j++){
@@ -189,11 +192,7 @@ void MasterPanicTask(void *args){
         if(pdTICKS_TO_MS(xTaskGetTickCount() - xStart) > 30000){ //si pasan 30 segundos, elegir un nuevo maestro
             Serial.println("Necesitamos un nuevo maestro!");
 
-            carac_charger OldMaster=ChargingGroup.group_chargers.charger_table[0];
-            remove_from_group(OldMaster.name, &ChargingGroup.group_chargers);
-            add_to_group(OldMaster.name, OldMaster.IP, &ChargingGroup.group_chargers);
-
-            if(!memcmp(ChargingGroup.group_chargers.charger_table[0].name,ConfigFirebase.Device_Id,8)){
+            if(!memcmp(ChargingGroup.group_chargers.charger_table[1].name,ConfigFirebase.Device_Id,8)){
                 Serial.println("Soy el nuevo maestro!!");
                 ChargingGroup.GroupMaster = true;
                 SendToPSOC5(ChargingGroup.GroupMaster,GROUPS_GROUP_MASTER);
@@ -274,7 +273,7 @@ void start_MQTT_server(){
         if(!ChargingGroup.GroupMaster)break;
     }
     
-    ;
+    
     if(ChargingGroup.GroupMaster){
         ChargingGroup.GroupActive = true;
         /* Start MQTT Server using tcp transport */
@@ -283,6 +282,13 @@ void start_MQTT_server(){
 
         broadcast_a_grupo("Start client");
         mqtt_sub_pub_opts publisher;
+
+        //Ponerme el primero en el grupo para indicar que soy el maestro
+        while(memcmp(ChargingGroup.group_chargers.charger_table[0].name,ConfigFirebase.Device_Id, 8)){
+            carac_charger OldMaster=ChargingGroup.group_chargers.charger_table[0];
+            remove_from_group(OldMaster.name, &ChargingGroup.group_chargers);
+            add_to_group(OldMaster.name, OldMaster.IP, &ChargingGroup.group_chargers);
+        }
         
         sprintf(publisher.url, "mqtt://%s:1883", ip4addr_ntoa(&Coms.ETH.IP));
         memcpy(publisher.Client_ID,ConfigFirebase.Device_Id, 8);

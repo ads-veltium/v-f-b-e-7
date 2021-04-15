@@ -18,9 +18,9 @@ static void print_table(carac_chargers table){
     Serial.write(27);
     Serial.print("[H"); 
     printf("=============== Grupo de cargadores ===================\n");
-    printf("      ID     Fase   HPT   V\n");
+    printf("      ID     Fase   HPT   V     IP\n");
     for(int i=0; i< table.size;i++){     //comprobar si el cargador ya está almacenado
-        printf("   %s    %i    %s   %i  \n", table.charger_table[i].name,table.charger_table[i].Fase,table.charger_table[i].HPT,table.charger_table[i].Voltage);
+        printf("   %s    %i    %s   %i  %s\n", table.charger_table[i].name,table.charger_table[i].Fase,table.charger_table[i].HPT,table.charger_table[i].Voltage, table.charger_table[i].IP.toString().c_str());
     }
     printf("Memoria interna disponible: %i\n", esp_get_free_internal_heap_size());
     printf("Memoria total disponible: %i\n", esp_get_free_heap_size());
@@ -66,6 +66,7 @@ void New_Data(char* Data, int Data_size){
 void New_Params(char* Data, int Data_size){
     uint8_t numero_de_cargadores = (Data_size)/8;
     ChargingGroup.group_chargers.size = 0;
+
     //Copiar el nuevo grupo a nuestra tabla
     for(uint8_t i=0;i<numero_de_cargadores;i++){
         char ID[8];
