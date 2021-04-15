@@ -231,8 +231,11 @@ void Publisher(void* args){
                 mqtt_publish("Device_Status", (buffer));
             }
             else{
-                ;
-                sprintf(buffer, "%s%i%s%i%i", ConfigFirebase.Device_Id,Params.Fase,Status.HPT_status,Status.Measures.instant_voltage, Comands.desired_current -Status.Measures.instant_current);   
+                char Delta[2]={'0'};
+                uint8_t DeltaInt = Comands.desired_current -Status.Measures.instant_current;
+                itoa(DeltaInt,&Delta[0],10);
+
+                sprintf(buffer, "%s%i%s%s%i", ConfigFirebase.Device_Id,Params.Fase,Status.HPT_status,Delta,Status.Measures.instant_voltage);   
                 mqtt_publish("Device_Status", (buffer));
             }
             ChargingGroup.SendNewData = false;

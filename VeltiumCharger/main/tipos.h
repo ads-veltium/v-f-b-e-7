@@ -259,6 +259,7 @@ typedef struct{
 	char      HPT[2];
 	uint8_t     Fase;
 	uint16_t Current;
+	uint16_t Delta;
 
 }carac_charger;
 
