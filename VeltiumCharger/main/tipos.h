@@ -256,10 +256,10 @@ typedef struct{
 typedef struct{
 	char     name[9];
 	IPAddress     IP;
-	char      HPT[2];
+	char      HPT[3];
 	uint8_t     Fase;
 	uint16_t Current;
-	uint16_t Delta;
+	uint16_t   Delta;
 
 }carac_charger;
 
