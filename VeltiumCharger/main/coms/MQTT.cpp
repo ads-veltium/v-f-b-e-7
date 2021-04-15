@@ -22,6 +22,9 @@ extern carac_group  ChargingGroup;
 static StackType_t xSERVERStack [1024*6]     EXT_RAM_ATTR;
 StaticTask_t xSERVERBuffer ;
 
+static StackType_t xPUBLISHERStack [4096]     EXT_RAM_ATTR;
+StaticTask_t xPUBLISHERBuffer ;
+
 carac_chargers net_group;
 
 //Prototipos de funciones externas
@@ -149,7 +152,6 @@ void start_udp(){
                         udp.sendTo(mensaje,packet.remoteIP(),1234);
                         delay(500);
                         ChargingGroup.SendNewParams = true;
-
                     }
                 }
           
@@ -160,7 +162,7 @@ void start_udp(){
             }
             else{
                 if(!memcmp(Desencriptado.c_str(), "Start client", 13)){
-                    if(!ChargingGroup.GroupActive && !ChargingGroup.GroupMaster){
+                    if(!ChargingGroup.GroupActive){
                         printf("Soy parte de un grupo !!\n");
                         start_MQTT_client(packet.remoteIP());
                     }
@@ -189,7 +191,7 @@ void MasterPanicTask(void *args){
     TickType_t xStart = xTaskGetTickCount();
 
     while(!ChargingGroup.GroupActive){
-        if(pdTICKS_TO_MS(xTaskGetTickCount() - xStart) > 30000){ //si pasan 30 segundos, elegir un nuevo maestro
+        if(pdTICKS_TO_MS(xTaskGetTickCount() - xStart) > 60000){ //si pasa 1 minuto, elegir un nuevo maestro
             Serial.println("Necesitamos un nuevo maestro!");
 
             if(!memcmp(ChargingGroup.group_chargers.charger_table[1].name,ConfigFirebase.Device_Id,8)){
@@ -299,7 +301,7 @@ void start_MQTT_server(){
             mqtt_subscribe("Device_Status");
             mqtt_subscribe("Ping");
             mqtt_subscribe("Params");
-            xTaskCreate(Publisher,"Publisher",4096,NULL,2,NULL);
+            xTaskCreateStatic(Publisher,"Publisher",4096,NULL,PRIORIDAD_MQTT,xPUBLISHERStack,&xPUBLISHERBuffer); 
         }
     }
     else{
@@ -322,6 +324,6 @@ void start_MQTT_client(IPAddress remoteIP){
         mqtt_subscribe("Device_Status");
         mqtt_subscribe("Pong");
         mqtt_subscribe("Params");
-        xTaskCreate(Publisher,"Publisher",4096,NULL,2,NULL);
+        xTaskCreateStatic(Publisher,"Publisher",4096,NULL,PRIORIDAD_MQTT,xPUBLISHERStack,&xPUBLISHERBuffer); 
     }
 }
