@@ -42,17 +42,17 @@ void New_Data(char* Data, int Data_size){
         //si no es un equipo trifásico:
         if(!Status.Trifasico){
             if(Params.Fase == atoi(&fase)){                                    //Comprobar que está en nuestra misma fase
-                uint8_t index = check_in_group(ID,&FaseChargers);               //comprobar si el cargador ya está almacenado en nuestro grupo de fase
+                uint8_t index = check_in_group(ID,&FaseChargers);              //comprobar si el cargador ya está almacenado en nuestro grupo de fase
                 if(index < 255){                         
-                    memcpy(FaseChargers.charger_table[index].HPT,&Data[9],2);      //Si el cargador ya existe, actualizar sus datos
+                    memcpy(FaseChargers.charger_table[index].HPT,&Data[9],2);  //Si el cargador ya existe, actualizar sus datos
                         
                     char Delta[3];
                     memcpy(Delta, &Data[11], 2);
-                    FaseChargers.charger_table[FaseChargers.size-1].Delta = atoi(Delta);
+                    FaseChargers.charger_table[index].Delta = atoi(Delta);
 
                     char current[Data_size-13+1];
                     memcpy( current, &Data[13], Data_size-13 );         
-                    FaseChargers.charger_table[FaseChargers.size-1].Current = atoi(current);
+                    FaseChargers.charger_table[index].Current = atoi(current);
                     cls();
                     print_table(FaseChargers);
                 }
@@ -77,17 +77,17 @@ void New_Data(char* Data, int Data_size){
         }
 
         //Actualizacion del grupo total
-        uint8_t index = check_in_group(ID,&ChargingGroup.group_chargers);               //Buscar el equipo en el grupo total
+        uint8_t index = check_in_group(ID,&ChargingGroup.group_chargers);                  //Buscar el equipo en el grupo total
         if(index < 255){
-             memcpy(ChargingGroup.group_chargers.charger_table[index].HPT,&Data[9],2);      //Si el cargador ya existe, actualizar sus datos
+            memcpy(ChargingGroup.group_chargers.charger_table[index].HPT,&Data[9],2);      //Si el cargador ya existe, actualizar sus datos
                         
             char Delta[3];
             memcpy(Delta, &Data[11], 2);
-            ChargingGroup.group_chargers.charger_table[ChargingGroup.group_chargers.size-1].Delta = atoi(Delta);
+            ChargingGroup.group_chargers.charger_table[index].Delta = atoi(Delta);
 
             char current[Data_size-13+1];
             memcpy( current, &Data[13], Data_size-13 );         
-            ChargingGroup.group_chargers.charger_table[ChargingGroup.group_chargers.size-1].Current = atoi(current);
+            ChargingGroup.group_chargers.charger_table[index].Current = atoi(current);
 
             print_table(ChargingGroup.group_chargers);
         }
