@@ -12,15 +12,15 @@ bool add_to_group(const char* ID, IPAddress IP, carac_chargers* group);
 bool check_in_group(const char* ID, carac_chargers* group);
 IPAddress get_IP(const char* ID);
 
-static void print_table(){
+static void print_table(carac_chargers table){
     Serial.write(27);   //Print "esc"
     Serial.print("[2J");
     Serial.write(27);
     Serial.print("[H"); 
     printf("=============== Grupo de cargadores ===================\n");
     printf("      ID     Fase   HPT   V\n");
-    for(int i=0; i< FaseChargers.size;i++){     //comprobar si el cargador ya está almacenado
-        printf("   %s    %i    %s   %i  \n", FaseChargers.charger_table[i].name,FaseChargers.charger_table[i].Fase,FaseChargers.charger_table[i].HPT,FaseChargers.charger_table[i].Voltage);
+    for(int i=0; i< table.size;i++){     //comprobar si el cargador ya está almacenado
+        printf("   %s    %i    %s   %i  \n", table.charger_table[i].name,table.charger_table[i].Fase,table.charger_table[i].HPT,table.charger_table[i].Voltage);
     }
     printf("Memoria interna disponible: %i\n", esp_get_free_internal_heap_size());
     printf("Memoria total disponible: %i\n", esp_get_free_heap_size());
@@ -65,15 +65,13 @@ void New_Data(char* Data, int Data_size){
 
 void New_Params(char* Data, int Data_size){
     uint8_t numero_de_cargadores = (Data_size)/8;
-
-    //Detectar si hay nuevos cargadores en el grupo
+    ChargingGroup.group_chargers.size = 0;
+    //Copiar el nuevo grupo a nuestra tabla
     for(uint8_t i=0;i<numero_de_cargadores;i++){
         char ID[8];
         memcpy(ID, &Data[i*8],8);
-        printf("Comprobando %s\n",ID);
-        if(!check_in_group(ID,&ChargingGroup.group_chargers)){
-            add_to_group(ID,get_IP(ID),&ChargingGroup.group_chargers);
-            printf("Añadido %s %s\n",ID, get_IP(ID).toString().c_str());
-        }
+        add_to_group(ID,get_IP(ID),&ChargingGroup.group_chargers);
+        printf("Añadido %s %s\n",ID, get_IP(ID).toString().c_str());
     }    
+    print_table(ChargingGroup.group_chargers);
 }

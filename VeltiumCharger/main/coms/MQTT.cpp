@@ -136,25 +136,24 @@ void start_udp(){
                 if(packet.isBroadcast()){                   
                     packet.print(Encipher(String(ConfigFirebase.Device_Id)).c_str());
                 }
-          
-                if(check_in_group(Desencriptado.c_str(), &net_group)){
-                    //si ya lo tenemos en la lista pero nos envía una llamada, es que se ha reiniciado, comprobamos si está en el grupo
-                    if(ChargingGroup.GroupMaster){
-                        if(check_in_group(Desencriptado.c_str(), &ChargingGroup.group_chargers)){
-                            Serial.printf("El cargador VCD%s está en el grupo de carga\n", Desencriptado.c_str());  
-                            AsyncUDPMessage mensaje (13);
-                            mensaje.write((uint8_t*)(Encipher("Start client").c_str()), 13);
-                            udp.sendTo(mensaje,packet.remoteIP(),1234);
-                            delay(500);
-                            ChargingGroup.SendNewParams = true;
 
-                        }
+                //Si el cargador está en el grupo de carga, le decimos que es un esclavo
+                if(ChargingGroup.GroupMaster){
+                    if(check_in_group(Desencriptado.c_str(), &ChargingGroup.group_chargers)){
+                        Serial.printf("El cargador VCD%s está en el grupo de carga\n", Desencriptado.c_str());  
+                        AsyncUDPMessage mensaje (13);
+                        mensaje.write((uint8_t*)(Encipher("Start client").c_str()), 13);
+                        udp.sendTo(mensaje,packet.remoteIP(),1234);
+                        delay(500);
+                        ChargingGroup.SendNewParams = true;
+
                     }
-                    return;
+                }
+          
+                if(!check_in_group(Desencriptado.c_str(), &net_group)){
+                    Serial.printf("El cargador VCD%s con ip %s se ha añadido a la lista de red\n", Desencriptado.c_str(), packet.remoteIP().toString().c_str());  
+                    add_to_group(Desencriptado.c_str(), packet.remoteIP(), &net_group);
                 } 
-
-                Serial.printf("El cargador VCD%s con ip %s se ha añadido a la lista\n", Desencriptado.c_str(), packet.remoteIP().toString().c_str());  
-                add_to_group(Desencriptado.c_str(), packet.remoteIP(), &net_group);
             }
             else{
                 if(!memcmp(Desencriptado.c_str(), "Start client", 13)){
@@ -165,10 +164,10 @@ void start_udp(){
                 }
                 else if(!memcmp(Desencriptado.c_str(), "Hay maestro?", 13)){
                     if(ChargingGroup.GroupActive && ChargingGroup.GroupMaster){
-                        packet.print(Encipher(String("Bay, hemen nago")).c_str());
+                        packet.print(Encipher(String("Bai, hemen nago")).c_str());
                     }
                 }
-                else if(!memcmp(Desencriptado.c_str(), "Bay, hemen nago", 13)){
+                else if(!memcmp(Desencriptado.c_str(), "Bai, hemen nago", 13)){
                     if(!ChargingGroup.GroupActive && ChargingGroup.GroupMaster){
                         ChargingGroup.GroupMaster = false;
                         SendToPSOC5(ChargingGroup.GroupMaster, GROUPS_GROUP_MASTER);
@@ -269,11 +268,15 @@ void Publisher(void* args){
 void start_MQTT_server(){
     Serial.println("Arrancando servidor MQTT");
     //Preguntar si hay maestro en el grupo
-    broadcast_a_grupo("Hay maestro?");
-    delay(500);
+    for(uint8_t i =0; i<10;i++){
+        broadcast_a_grupo("Hay maestro?");
+        delay(5);
+        if(!ChargingGroup.GroupMaster)break;
+    }
+    
+    ;
     if(ChargingGroup.GroupMaster){
         ChargingGroup.GroupActive = true;
-    
         /* Start MQTT Server using tcp transport */
         xTaskCreateStatic(mqtt_server,"BROKER",1024*6,NULL,PRIORIDAD_MQTT,xSERVERStack,&xSERVERBuffer); 
         delay(5000);
@@ -294,11 +297,13 @@ void start_MQTT_server(){
         }
     }
     else{
-        Serial.println("Ya hay un maestro en el grupo!");
+        Serial.println("Ya hay un maestro en el grupo, me hago esclavo!");
     }
 }
 
 void start_MQTT_client(IPAddress remoteIP){
+    ChargingGroup.GroupMaster = false;
+    SendToPSOC5(ChargingGroup.GroupMaster, GROUPS_GROUP_MASTER);
     ChargingGroup.GroupActive = true;
     mqtt_sub_pub_opts publisher;
     
