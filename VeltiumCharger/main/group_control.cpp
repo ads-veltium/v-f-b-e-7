@@ -18,12 +18,12 @@ static void print_table(carac_chargers table){
     Serial.write(27);
     Serial.print("[H"); 
     printf("=============== Grupo de cargadores ===================\n");
-    printf("      ID     Fase   HPT   I        IP        D\n");
+    printf("      ID     Fase   HPT   I          IP         D\n");
     for(int i=0; i< table.size;i++){     //comprobar si el cargador ya está almacenado
         printf("   %s    %i    %s  %i   %s   %i\n", table.charger_table[i].name,table.charger_table[i].Fase,table.charger_table[i].HPT,table.charger_table[i].Current, table.charger_table[i].IP.toString().c_str(), table.charger_table[i].Delta);
     }
     printf("Memoria interna disponible: %i\n", esp_get_free_internal_heap_size());
-    printf("Memoria total disponible: %i\n", esp_get_free_heap_size());
+    printf("Memoria total disponible:   %i\n", esp_get_free_heap_size());
     printf("=======================================================\n");
 }
 
@@ -34,7 +34,7 @@ void New_Data(char* Data, int Data_size){
         char ID[9];
         ID[8]= '\0';
         memcpy(ID,Data,8); 
-        printf("%s\n", Data);
+
         if(Params.Fase == atoi(&fase)){                                    //Comprobar que está en nuestra misma fase
             uint8_t index = check_in_group(ID,&FaseChargers);               //comprobar si el cargador ya está almacenado en nuestro grupo de fase
             if(index < 255){                         
@@ -42,12 +42,10 @@ void New_Data(char* Data, int Data_size){
                     
                 char Delta[3];
                 memcpy(Delta, &Data[11], 2);
-                Delta[3] = '\0';
                 FaseChargers.charger_table[FaseChargers.size-1].Delta = atoi(Delta);
 
                 char current[Data_size-13+1];
-                memcpy( current, &Data[13], Data_size-13 );
-                current[Data_size-13] = '\0';          
+                memcpy( current, &Data[13], Data_size-13 );         
                 FaseChargers.charger_table[FaseChargers.size-1].Current = atoi(current);
 
                 print_table(FaseChargers);
@@ -62,15 +60,12 @@ void New_Data(char* Data, int Data_size){
 
             char Delta[3];
             memcpy(Delta, &Data[11], 2);
-            Delta[3] = '\0';
             FaseChargers.charger_table[FaseChargers.size-1].Delta = atoi(Delta);
             
             char current[Data_size-13+1];
-            memcpy( current, &Data[13], Data_size-13 );
-            current[Data_size-13] = '\0';          
+            memcpy( current, &Data[13], Data_size-13 );  
             FaseChargers.charger_table[FaseChargers.size-1].Current = atoi(current);
 
-            //print_table(FaseChargers);
         }
     }
 }
