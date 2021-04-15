@@ -9,7 +9,7 @@ extern carac_chargers FaseChargers;
 extern carac_group    ChargingGroup;
 
 bool add_to_group(const char* ID, IPAddress IP, carac_chargers* group);
-bool check_in_group(const char* ID, carac_chargers* group);
+uint8_t check_in_group(const char* ID, carac_chargers* group);
 IPAddress get_IP(const char* ID);
 
 static void print_table(carac_chargers table){
@@ -18,9 +18,9 @@ static void print_table(carac_chargers table){
     Serial.write(27);
     Serial.print("[H"); 
     printf("=============== Grupo de cargadores ===================\n");
-    printf("      ID     Fase   HPT   V     IP\n");
+    printf("      ID     Fase   HPT   I           IP\n");
     for(int i=0; i< table.size;i++){     //comprobar si el cargador ya está almacenado
-        printf("   %s    %i    %s   %i  %s\n", table.charger_table[i].name,table.charger_table[i].Fase,table.charger_table[i].HPT,table.charger_table[i].Voltage, table.charger_table[i].IP.toString().c_str());
+        printf("   %s    %i    %s   %i        %s\n", table.charger_table[i].name,table.charger_table[i].Fase,table.charger_table[i].HPT,table.charger_table[i].Current, table.charger_table[i].IP.toString().c_str());
     }
     printf("Memoria interna disponible: %i\n", esp_get_free_internal_heap_size());
     printf("Memoria total disponible: %i\n", esp_get_free_heap_size());
@@ -29,36 +29,37 @@ static void print_table(carac_chargers table){
 
 //Funcion para procesar los nuevos datos recibidos
 void New_Data(char* Data, int Data_size){
-    if(memcmp(Data, ConfigFirebase.Device_Id, 8)!=0){                    //comprobar que no son nuestros propios datos
+    if(memcmp(Data, ConfigFirebase.Device_Id, 8)){                         //comprobar que no son nuestros propios datos
         char fase = Data[8];
-        if(Params.Fase == atoi(&fase)){                                  //Comprobar que está en nuestra misma fase
-            for(int i=0; i< FaseChargers.size;i++){                      //comprobar si el cargador ya está almacenado en nuestro grupo de fase
-                if(!memcmp(Data, FaseChargers.charger_table[i].name,8)){ //Si el cargador ya existe, actualizar sus datos
-                    memcpy(FaseChargers.charger_table[i].HPT,&Data[9],2);
+        char ID[9];
+        ID[8]= '\0';
+        memcpy(ID,Data,8); 
+        if(Params.Fase == atoi(&fase)){                                    //Comprobar que está en nuestra misma fase
+            uint8_t index = check_in_group(ID,&FaseChargers);               //comprobar si el cargador ya está almacenado en nuestro grupo de fase
+            if(index < 255){                         
+                memcpy(FaseChargers.charger_table[index].HPT,&Data[9],2);      //Si el cargador ya existe, actualizar sus datos
                     
-                    char current[Data_size-11+1];
-                    memcpy( current, &Data[11], Data_size-11 );
-                    current[Data_size-11] = '\0';          
-                    FaseChargers.charger_table[i].Voltage = atoi(current);
+                char current[Data_size-11+1];
+                memcpy( current, &Data[11], Data_size-11 );
+                current[Data_size-11] = '\0';          
+                FaseChargers.charger_table[index].Current = atoi(current);
 
-                    //print_table();
-                    return;
-                }
+                print_table(FaseChargers);
+                return;
             }
 
-            //Si el cargador no está en la tabla, añadirlo
-            memcpy(FaseChargers.charger_table[FaseChargers.size].name, Data,8);
-            FaseChargers.charger_table[FaseChargers.size].name[8]='\0';
-            FaseChargers.charger_table[FaseChargers.size].Fase = Params.Fase;
-            memcpy(FaseChargers.charger_table[FaseChargers.size].HPT,&Data[9],2);
+            //Si el cargador no está en la tabla, añadirlo y actualizar los datos
+            add_to_group(ID, get_IP(ID),&FaseChargers);
+
+            FaseChargers.charger_table[FaseChargers.size-1].Fase = Params.Fase;
+            memcpy(FaseChargers.charger_table[FaseChargers.size-1].HPT,&Data[9],2);
            
             char current[Data_size-11+1];
             memcpy( current, &Data[11], Data_size-11 );
             current[Data_size-11] = '\0';          
-            FaseChargers.charger_table[FaseChargers.size].Voltage = atoi(current);
+            FaseChargers.charger_table[FaseChargers.size-1].Current = atoi(current);
 
-            FaseChargers.size++;
-            //print_table();
+            print_table(FaseChargers);
         }
     }
 }

@@ -258,7 +258,7 @@ typedef struct{
 	IPAddress     IP;
 	char      HPT[2];
 	uint8_t     Fase;
-	uint16_t Voltage;
+	uint16_t Current;
 
 }carac_charger;
 

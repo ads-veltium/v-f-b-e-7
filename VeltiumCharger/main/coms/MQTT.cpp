@@ -5,7 +5,7 @@ extern "C" {
 #include "mongoose.h"
 #include "mqtt_server.h"
 }
-bool check_in_group(const char* ID, carac_chargers* group);
+uint8_t check_in_group(const char* ID, carac_chargers* group);
 bool add_to_group(const char* ID, IPAddress IP, carac_chargers* group);
 
 AsyncUDP udp EXT_RAM_ATTR;
@@ -18,6 +18,7 @@ extern carac_Firebase_Configuration ConfigFirebase;
 extern carac_Status Status;
 extern carac_Params Params;
 extern carac_group  ChargingGroup;
+extern carac_Comands  Comands ;
 
 static StackType_t xSERVERStack [1024*6]     EXT_RAM_ATTR;
 StaticTask_t xSERVERBuffer ;
@@ -45,7 +46,7 @@ void stop_MQTT(){
 //Añadir un cargador a un equipo
 bool add_to_group(const char* ID, IPAddress IP, carac_chargers* group){
     if(group->size < MAX_GROUP_SIZE){
-        if(!check_in_group(ID,group)){
+        if(check_in_group(ID,group)==255){
             memcpy(group->charger_table[group->size].name, ID, 8);
             group->charger_table[group->size].name[8]='\0';
             group->charger_table[group->size].IP = IP;
@@ -58,13 +59,13 @@ bool add_to_group(const char* ID, IPAddress IP, carac_chargers* group){
 }
 
 //comprobar si un cargador está almacenado en las tablas de equipos
-bool check_in_group(const char* ID, carac_chargers* group){
+uint8_t check_in_group(const char* ID, carac_chargers* group){
     for(int j=0;j < group->size;j++){
         if(!memcmp(ID,  group->charger_table[j].name,8)){
-            return true;
+            return j;
         }
     }
-    return false;
+    return 255;
 }
 
 //Eliminar un cargador de un grupo
@@ -115,7 +116,7 @@ void broadcast_a_grupo(char* Mensaje){
 
     for(int i =0; i < net_group.size;i++){
         for(int j=0;j < ChargingGroup.group_chargers.size;j++){
-            if(check_in_group(net_group.charger_table[i].name, &ChargingGroup.group_chargers)){
+            if(check_in_group(net_group.charger_table[i].name, &ChargingGroup.group_chargers)<255){
                 udp.sendTo(mensaje, net_group.charger_table[i].IP,1234);
                 ChargingGroup.group_chargers.charger_table[j].IP = net_group.charger_table[i].IP; 
             }
@@ -145,7 +146,7 @@ void start_udp(){
 
                 //Si el cargador está en el grupo de carga, le decimos que es un esclavo
                 if(ChargingGroup.GroupMaster){
-                    if(check_in_group(Desencriptado.c_str(), &ChargingGroup.group_chargers)){
+                    if(check_in_group(Desencriptado.c_str(), &ChargingGroup.group_chargers)!=255){
                         Serial.printf("El cargador VCD%s está en el grupo de carga\n", Desencriptado.c_str());  
                         AsyncUDPMessage mensaje (13);
                         mensaje.write((uint8_t*)(Encipher("Start client").c_str()), 13);
@@ -155,7 +156,7 @@ void start_udp(){
                     }
                 }
           
-                if(!check_in_group(Desencriptado.c_str(), &net_group)){
+                if(check_in_group(Desencriptado.c_str(), &net_group)==255){
                     Serial.printf("El cargador VCD%s con ip %s se ha añadido a la lista de red\n", Desencriptado.c_str(), packet.remoteIP().toString().c_str());  
                     add_to_group(Desencriptado.c_str(), packet.remoteIP(), &net_group);
                 } 
@@ -220,17 +221,18 @@ void Publisher(void* args){
 
             //si es trifasico, enviar informacion de todas las fases
             if(Status.Trifasico){
-                sprintf(buffer, "%s1%s%i", ConfigFirebase.Device_Id,Status.HPT_status,Status.Measures.instant_current);
+                sprintf(buffer, "%s1%s%i%i", ConfigFirebase.Device_Id,Status.HPT_status,Status.Measures.instant_current,Comands.desired_current -Status.Measures.instant_current);
                 mqtt_publish("Device_Status", (buffer));
                 delay(50);
-                sprintf(buffer, "%s2%s%i", ConfigFirebase.Device_Id,Status.HPT_status,Status.MeasuresB.instant_current);
+                sprintf(buffer, "%s2%s%i%i", ConfigFirebase.Device_Id,Status.HPT_status,Status.MeasuresB.instant_current,Comands.desired_current -Status.MeasuresB.instant_current);
                 mqtt_publish("Device_Status", (buffer));
                 delay(50);
-                sprintf(buffer, "%s3%s%i", ConfigFirebase.Device_Id,Status.HPT_status,Status.MeasuresC.instant_current);
+                sprintf(buffer, "%s3%s%i%i", ConfigFirebase.Device_Id,Status.HPT_status,Status.MeasuresC.instant_current,Comands.desired_current -Status.MeasuresC.instant_current);
                 mqtt_publish("Device_Status", (buffer));
             }
             else{
-                sprintf(buffer, "%s%i%s%i", ConfigFirebase.Device_Id,Params.Fase,Status.HPT_status,Status.Measures.instant_current);   
+                ;
+                sprintf(buffer, "%s%i%s%i%i", ConfigFirebase.Device_Id,Params.Fase,Status.HPT_status,Status.Measures.instant_voltage, Comands.desired_current -Status.Measures.instant_current);   
                 mqtt_publish("Device_Status", (buffer));
             }
             ChargingGroup.SendNewData = false;
