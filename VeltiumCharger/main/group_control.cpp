@@ -114,7 +114,6 @@ void New_Params(char* Data, int Data_size){
         char ID[8];
         memcpy(ID, &Data[i*8],8);
         add_to_group(ID,get_IP(ID),&ChargingGroup.group_chargers);
-        printf("Añadido %s %s\n",ID, get_IP(ID).toString().c_str());
     }    
-    print_table(ChargingGroup.group_chargers);
+
 }

@@ -94,7 +94,7 @@ bool remove_from_group(const char* ID ,carac_chargers* group){
 IPAddress get_IP(const char* ID){
     for(int j=0;j < net_group.size;j++){
         if(!memcmp(ID,  net_group.charger_table[j].name,8)){
-            return net_group.charger_table->IP;
+            return net_group.charger_table[j].IP;
         }
     }
     return INADDR_NONE;
@@ -104,15 +104,6 @@ IPAddress get_IP(const char* ID){
 void broadcast_a_grupo(char* Mensaje){
     AsyncUDPMessage mensaje (13);
     mensaje.write((uint8_t*)(Encipher(Mensaje).c_str()), 13);
-
-    //QUITAR!!!!!!!!!!!!!!!!!
-    memcpy(ChargingGroup.group_chargers.charger_table[0].name, "31B70630",8);
-    memcpy(ChargingGroup.group_chargers.charger_table[1].name, "626965F5",8);  
-    memcpy(ChargingGroup.group_chargers.charger_table[2].name, "72BC0823",8);
-    //memcpy(ChargingGroup.group_chargers.charger_table[4].name, "FT63D732",8);
-    //memcpy(ChargingGroup.group_chargers.charger_table[5].name, "J3P10DNR",8);
-
-    ChargingGroup.group_chargers.size = 3;
 
     for(int i =0; i < net_group.size;i++){
         for(int j=0;j < ChargingGroup.group_chargers.size;j++){
