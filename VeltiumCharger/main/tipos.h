@@ -153,7 +153,7 @@ typedef struct{
 	bool   NewData;
 	char   Fw_Update_mode[2];
 	char   autentication_mode[2];
-	uint8  Fase =1;
+	uint8  Fase = 1;
 	uint8  CDP;
 	uint8  inst_current_limit;
 	uint16 potencia_contratada;

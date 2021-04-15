@@ -94,7 +94,7 @@ bool remove_from_group(const char* ID ,carac_chargers* group){
 IPAddress get_IP(const char* ID){
     for(int j=0;j < net_group.size;j++){
         if(!memcmp(ID,  net_group.charger_table[j].name,8)){
-            return net_group.charger_table->IP;
+            return net_group.charger_table[j].IP;
         }
     }
     return INADDR_NONE;
@@ -104,15 +104,6 @@ IPAddress get_IP(const char* ID){
 void broadcast_a_grupo(char* Mensaje){
     AsyncUDPMessage mensaje (13);
     mensaje.write((uint8_t*)(Encipher(Mensaje).c_str()), 13);
-
-    //QUITAR!!!!!!!!!!!!!!!!!
-    memcpy(ChargingGroup.group_chargers.charger_table[0].name, "31B70630",8);
-    memcpy(ChargingGroup.group_chargers.charger_table[1].name, "626965F5",8);  
-    //memcpy(ChargingGroup.group_chargers.charger_table[2].name, "1SDVD734",8);
-    //memcpy(ChargingGroup.group_chargers.charger_table[4].name, "FT63D732",8);
-    //memcpy(ChargingGroup.group_chargers.charger_table[5].name, "J3P10DNR",8);
-
-    ChargingGroup.group_chargers.size = 2;
 
     for(int i =0; i < net_group.size;i++){
         for(int j=0;j < ChargingGroup.group_chargers.size;j++){
@@ -190,21 +181,28 @@ void start_udp(){
 /*Tarea de emergencia para cuando el maestro se queda muerto mucho tiempo*/
 void MasterPanicTask(void *args){
     TickType_t xStart = xTaskGetTickCount();
+    uint8 reintentos = 1;
 
     while(!ChargingGroup.GroupActive){
         if(pdTICKS_TO_MS(xTaskGetTickCount() - xStart) > 60000){ //si pasa 1 minuto, elegir un nuevo maestro
             Serial.println("Necesitamos un nuevo maestro!");
 
-            if(!memcmp(ChargingGroup.group_chargers.charger_table[1].name,ConfigFirebase.Device_Id,8)){
+            if(!memcmp(ChargingGroup.group_chargers.charger_table[reintentos].name,ConfigFirebase.Device_Id,8)){
                 Serial.println("Soy el nuevo maestro!!");
                 ChargingGroup.GroupMaster = true;
                 SendToPSOC5(ChargingGroup.GroupMaster,GROUPS_GROUP_MASTER);
+                break;
             }
             
             else{
                 Serial.println("No soy el nuevo maestro, alguien se pondrá :)");
+                xStart = xTaskGetTickCount();
+                reintentos++;
+                if(reintentos==MAX_GROUP_SIZE){
+                    break;
+                }
             }
-            break;
+            
         }
         delay(1000);
     }
@@ -256,9 +254,8 @@ void Publisher(void* args){
         }
 
         //Avisar al maestro de que seguimos aqui
-       
         if(!ChargingGroup.GroupMaster){ 
-             mqtt_publish("Ping", ConfigFirebase.Device_Id);
+            mqtt_publish("Ping", ConfigFirebase.Device_Id);
 
             delay(1000);
             if(!ChargingGroup.GroupActive || GetStopMQTT()){
