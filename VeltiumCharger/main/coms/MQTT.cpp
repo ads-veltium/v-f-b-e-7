@@ -215,29 +215,29 @@ void Publisher(void* args){
     char buffer[100];
     Params.Fase = 1;
     while(1){
-        if(ChargingGroup.SendNewData){           
+        if(ChargingGroup.SendNewData){    
+            char Delta[2]={'0'};
+            uint8_t DeltaInt = Comands.desired_current -Status.Measures.instant_current;
+            if(DeltaInt >=10){
+                itoa(DeltaInt,&Delta[0],10);
+            }
+            else{
+            itoa(DeltaInt,&Delta[1],10);
+            }
+
 
             //si es trifasico, enviar informacion de todas las fases
             if(Status.Trifasico){
-                sprintf(buffer, "%s1%s%i%i", ConfigFirebase.Device_Id,Status.HPT_status,Status.Measures.instant_current,Comands.desired_current -Status.Measures.instant_current);
+                sprintf(buffer, "%s1%s%s%i", ConfigFirebase.Device_Id,Status.HPT_status,Delta,Status.Measures.instant_current);
                 mqtt_publish("Device_Status", (buffer));
                 delay(50);
-                sprintf(buffer, "%s2%s%i%i", ConfigFirebase.Device_Id,Status.HPT_status,Status.MeasuresB.instant_current,Comands.desired_current -Status.MeasuresB.instant_current);
+                sprintf(buffer, "%s2%s%s%i", ConfigFirebase.Device_Id,Status.HPT_status,Delta,Status.MeasuresB.instant_current);
                 mqtt_publish("Device_Status", (buffer));
                 delay(50);
-                sprintf(buffer, "%s3%s%i%i", ConfigFirebase.Device_Id,Status.HPT_status,Status.MeasuresC.instant_current,Comands.desired_current -Status.MeasuresC.instant_current);
+                sprintf(buffer, "%s3%s%s%i", ConfigFirebase.Device_Id,Status.HPT_status,Delta,Status.MeasuresC.instant_current);
                 mqtt_publish("Device_Status", (buffer));
             }
             else{
-                char Delta[2]={'0'};
-                uint8_t DeltaInt = Comands.desired_current -Status.Measures.instant_current;
-                if(DeltaInt >=10){
-                    itoa(DeltaInt,&Delta[0],10);
-                }
-                else{
-                    itoa(DeltaInt,&Delta[1],10);
-                }
-
                 sprintf(buffer, "%s%i%s%s%i", ConfigFirebase.Device_Id,Params.Fase,Status.HPT_status,Delta,Status.Measures.instant_voltage);  
                 mqtt_publish("Device_Status", (buffer));
             }

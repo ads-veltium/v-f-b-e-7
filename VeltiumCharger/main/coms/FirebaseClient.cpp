@@ -215,10 +215,11 @@ bool ReadFirebaseGroups(String Path){
       memcpy(ChargingGroup.group_chargers.charger_table[0].name, "31B70630",8);
       memcpy(ChargingGroup.group_chargers.charger_table[1].name, "626965F5",8);  
       memcpy(ChargingGroup.group_chargers.charger_table[2].name, "72BC0823",8);
+      memcpy(ChargingGroup.group_chargers.charger_table[3].name, "6D3475F8",8);
       //memcpy(ChargingGroup.group_chargers.charger_table[4].name, "FT63D732",8);
       //memcpy(ChargingGroup.group_chargers.charger_table[5].name, "J3P10DNR",8);
 
-      ChargingGroup.group_chargers.size = 3;
+      ChargingGroup.group_chargers.size = 4;
       
       if(!Database->Send_Command(Path+"/ts_dev_ack",&Lectura,TIMESTAMP)){
           return false;
