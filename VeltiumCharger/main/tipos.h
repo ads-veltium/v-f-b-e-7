@@ -133,6 +133,7 @@ typedef struct{
 	bool Con_Lock;
 	bool Trifasico = false;
 	uint8  error_code;
+	uint8 Delta;
 
 	char HPT_status[2];
 	
@@ -279,6 +280,9 @@ typedef struct{
 
 	char GroupId[10] = {'0'};
 	long long last_ts_app_req= 0;
+
+	uint16 potencia_max;
+	uint16 inst_max;
 }carac_group;
 
 typedef struct{
