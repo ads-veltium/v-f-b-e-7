@@ -108,11 +108,11 @@ void broadcast_a_grupo(char* Mensaje){
     //QUITAR!!!!!!!!!!!!!!!!!
     memcpy(ChargingGroup.group_chargers.charger_table[0].name, "31B70630",8);
     memcpy(ChargingGroup.group_chargers.charger_table[1].name, "626965F5",8);  
-    //memcpy(ChargingGroup.group_chargers.charger_table[2].name, "1SDVD734",8);
+    memcpy(ChargingGroup.group_chargers.charger_table[2].name, "72BC0823",8);
     //memcpy(ChargingGroup.group_chargers.charger_table[4].name, "FT63D732",8);
     //memcpy(ChargingGroup.group_chargers.charger_table[5].name, "J3P10DNR",8);
 
-    ChargingGroup.group_chargers.size = 2;
+    ChargingGroup.group_chargers.size = 3;
 
     for(int i =0; i < net_group.size;i++){
         for(int j=0;j < ChargingGroup.group_chargers.size;j++){
@@ -256,9 +256,8 @@ void Publisher(void* args){
         }
 
         //Avisar al maestro de que seguimos aqui
-       
         if(!ChargingGroup.GroupMaster){ 
-             mqtt_publish("Ping", ConfigFirebase.Device_Id);
+            mqtt_publish("Ping", ConfigFirebase.Device_Id);
 
             delay(1000);
             if(!ChargingGroup.GroupActive || GetStopMQTT()){

@@ -42,10 +42,10 @@ void New_Data(char* Data, int Data_size){
         //si no es un equipo trifásico:
         if(!Status.Trifasico){
             if(Params.Fase == atoi(&fase)){                                    //Comprobar que está en nuestra misma fase
-                uint8_t index = check_in_group(ID,&FaseChargers);              //comprobar si el cargador ya está almacenado en nuestro grupo de fase
+                uint8_t index = check_in_group(ID,&FaseChargers);               //comprobar si el cargador ya está almacenado en nuestro grupo de fase
                 if(index < 255){                         
-                    memcpy(FaseChargers.charger_table[index].HPT,&Data[9],2);  //Si el cargador ya existe, actualizar sus datos
-                        
+                    memcpy(FaseChargers.charger_table[index].HPT,&Data[9],2);   //Si el cargador ya existe, actualizar sus datos
+                    FaseChargers.charger_table[index].Fase = atoi(&fase);
                     char Delta[3];
                     memcpy(Delta, &Data[11], 2);
                     FaseChargers.charger_table[index].Delta = atoi(Delta);
@@ -60,7 +60,7 @@ void New_Data(char* Data, int Data_size){
                     //Si el cargador no está en la tabla, añadirlo y actualizar los datos
                     add_to_group(ID, get_IP(ID),&FaseChargers);
 
-                    FaseChargers.charger_table[FaseChargers.size-1].Fase = Params.Fase;
+                    FaseChargers.charger_table[FaseChargers.size-1].Fase = atoi(&fase);
                     memcpy(FaseChargers.charger_table[FaseChargers.size-1].HPT,&Data[9],2);
 
                     char Delta[3];
@@ -79,6 +79,7 @@ void New_Data(char* Data, int Data_size){
         //Actualizacion del grupo total
         uint8_t index = check_in_group(ID,&ChargingGroup.group_chargers);                  //Buscar el equipo en el grupo total
         if(index < 255){
+            ChargingGroup.group_chargers.charger_table[FaseChargers.size-1].Fase = atoi(&fase);
             memcpy(ChargingGroup.group_chargers.charger_table[index].HPT,&Data[9],2);      //Si el cargador ya existe, actualizar sus datos
                         
             char Delta[3];
@@ -90,6 +91,16 @@ void New_Data(char* Data, int Data_size){
             ChargingGroup.group_chargers.charger_table[index].Current = atoi(current);
 
             print_table(ChargingGroup.group_chargers);
+        }
+    }
+    //Actualizar nuestros propios valores
+    else{
+        uint8_t index = check_in_group(ConfigFirebase.Device_Id,&ChargingGroup.group_chargers);                  //Buscar el equipo en el grupo total
+        if(index < 255){
+            ChargingGroup.group_chargers.charger_table[FaseChargers.size-1].Fase = Params.Fase;
+            memcpy(ChargingGroup.group_chargers.charger_table[index].HPT,Status.HPT_status,2);      //Si el cargador ya existe, actualizar sus datos
+                    
+            ChargingGroup.group_chargers.charger_table[index].Current = Status.Measures.instant_voltage;
         }
     }
 }
