@@ -181,21 +181,28 @@ void start_udp(){
 /*Tarea de emergencia para cuando el maestro se queda muerto mucho tiempo*/
 void MasterPanicTask(void *args){
     TickType_t xStart = xTaskGetTickCount();
+    uint8 reintentos = 1;
 
     while(!ChargingGroup.GroupActive){
         if(pdTICKS_TO_MS(xTaskGetTickCount() - xStart) > 60000){ //si pasa 1 minuto, elegir un nuevo maestro
             Serial.println("Necesitamos un nuevo maestro!");
 
-            if(!memcmp(ChargingGroup.group_chargers.charger_table[1].name,ConfigFirebase.Device_Id,8)){
+            if(!memcmp(ChargingGroup.group_chargers.charger_table[reintentos].name,ConfigFirebase.Device_Id,8)){
                 Serial.println("Soy el nuevo maestro!!");
                 ChargingGroup.GroupMaster = true;
                 SendToPSOC5(ChargingGroup.GroupMaster,GROUPS_GROUP_MASTER);
+                break;
             }
             
             else{
                 Serial.println("No soy el nuevo maestro, alguien se pondrá :)");
+                xStart = xTaskGetTickCount();
+                reintentos++;
+                if(reintentos==MAX_GROUP_SIZE){
+                    break;
+                }
             }
-            break;
+            
         }
         delay(1000);
     }
