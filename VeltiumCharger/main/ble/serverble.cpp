@@ -627,11 +627,14 @@ void serverbleTask(void *arg)
 
 		// disconnecting
 		if (!deviceBleConnected && oldDeviceBleConnected) {
-
-			pServer->stopAdvertising();
-			pServer->startAdvertising(); // restart advertising
 			printf(" disconnecting \r\n");
+			pServer->stopAdvertising();
+			while(!pServer->getAdvertising()->isAdvertising()){
+				delay(100);
+				pServer->startAdvertising(); // restart advertising
+			}
 			printf("start advertising again\r\n");
+			
 			UpdateStatus.DescargandoArchivo=0;
 			oldDeviceBleConnected = deviceBleConnected;
 		}

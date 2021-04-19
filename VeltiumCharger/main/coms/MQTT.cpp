@@ -225,7 +225,6 @@ void Publisher(void* args){
                 itoa(Status.Delta,&Delta[1],10);
             }
 
-
             //si es trifasico, enviar informacion de todas las fases
             if(Status.Trifasico){
                 sprintf(buffer, "%s1%s%s%i", ConfigFirebase.Device_Id,Status.HPT_status,Delta,Status.Measures.instant_current);
@@ -238,8 +237,6 @@ void Publisher(void* args){
                 mqtt_publish("Device_Status", (buffer));
             }
             else{
-
-
                 sprintf(buffer, "%s%i%s%s%i", ConfigFirebase.Device_Id,Params.Fase,Status.HPT_status,Delta,Status.Measures.instant_voltage);  
                 mqtt_publish("Device_Status", (buffer));
             }
@@ -293,6 +290,18 @@ void start_MQTT_server(){
 
         broadcast_a_grupo("Start client");
         mqtt_sub_pub_opts publisher;
+
+        if(ChargingGroup.group_chargers.size==0){
+            //QUITAR!!!!!!!!!!!!!!!!!
+            memcpy(ChargingGroup.group_chargers.charger_table[0].name, "31B70630",8);
+            memcpy(ChargingGroup.group_chargers.charger_table[1].name, "626965F5",8);  
+            memcpy(ChargingGroup.group_chargers.charger_table[2].name, "72BC0823",8);
+            memcpy(ChargingGroup.group_chargers.charger_table[3].name, "6D3475F8",8);
+            //memcpy(ChargingGroup.group_chargers.charger_table[4].name, "FT63D732",8);
+            //memcpy(ChargingGroup.group_chargers.charger_table[5].name, "J3P10DNR",8);
+
+            ChargingGroup.group_chargers.size = 4;
+        }
 
         //Ponerme el primero en el grupo para indicar que soy el maestro
         while(memcmp(ChargingGroup.group_chargers.charger_table[0].name,ConfigFirebase.Device_Id, 8)){
