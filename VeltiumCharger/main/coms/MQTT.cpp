@@ -295,11 +295,21 @@ void start_MQTT_server(){
         mqtt_sub_pub_opts publisher;
 
         //Ponerme el primero en el grupo para indicar que soy el maestro
-        while(memcmp(ChargingGroup.group_chargers.charger_table[0].name,ConfigFirebase.Device_Id, 8)){
-            carac_charger OldMaster=ChargingGroup.group_chargers.charger_table[0];
-            remove_from_group(OldMaster.name, &ChargingGroup.group_chargers);
-            add_to_group(OldMaster.name, OldMaster.IP, &ChargingGroup.group_chargers);
+        if(ChargingGroup.group_chargers.size>0 && check_in_group(ConfigFirebase.Device_Id,&ChargingGroup.group_chargers ) !=-1){
+            while(memcmp(ChargingGroup.group_chargers.charger_table[0].name,ConfigFirebase.Device_Id, 8)){
+                carac_charger OldMaster=ChargingGroup.group_chargers.charger_table[0];
+                remove_from_group(OldMaster.name, &ChargingGroup.group_chargers);
+                add_to_group(OldMaster.name, OldMaster.IP, &ChargingGroup.group_chargers);
+            }
         }
+        else{
+            //Si el grupo está vacio o el cargador no está en el grupo,
+            ChargingGroup.GroupMaster = false;
+            ChargingGroup.GroupActive = false;
+            SendToPSOC5(ChargingGroup.GroupMaster, GROUPS_GROUP_MASTER);
+            return;
+        }
+
         
         sprintf(publisher.url, "mqtt://%s:1883", ip4addr_ntoa(&Coms.ETH.IP));
         memcpy(publisher.Client_ID,ConfigFirebase.Device_Id, 8);
