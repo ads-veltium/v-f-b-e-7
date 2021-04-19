@@ -215,7 +215,7 @@ bool ReadFirebaseGroups(String Path){
       memcpy(ChargingGroup.group_chargers.charger_table[0].name, "31B70630",8);
       memcpy(ChargingGroup.group_chargers.charger_table[1].name, "626965F5",8);  
       memcpy(ChargingGroup.group_chargers.charger_table[2].name, "72BC0823",8);
-      memcpy(ChargingGroup.group_chargers.charger_table[3].name, "6D3475F8",8);
+      memcpy(ChargingGroup.group_chargers.charger_table[3].name, "71962AD0",8);
       //memcpy(ChargingGroup.group_chargers.charger_table[4].name, "FT63D732",8);
       //memcpy(ChargingGroup.group_chargers.charger_table[5].name, "J3P10DNR",8);
 
@@ -738,14 +738,13 @@ void Firebase_Conn_Task(void *args){
       LastStatus= ConnectionState;
     }
     
-    vTaskDelay(pdMS_TO_TICKS(ConfigFirebase.ClientConnected ? 150:200));
+    vTaskDelay(pdMS_TO_TICKS(ConfigFirebase.ClientConnected ? 500:5000));
     //chivatos de la ram
-    if(ESP.getFreePsram() < 3800000 || ESP.getFreeHeap() < 20000){
+    //if(ESP.getFreePsram() < 3800000 || ESP.getFreeHeap() < 20000){
         Serial.println(ESP.getFreePsram());
         Serial.println(ESP.getFreeHeap());
-        ConnectionState=DISCONNECTING;
 
-    }
+    //}
   }
 }
 

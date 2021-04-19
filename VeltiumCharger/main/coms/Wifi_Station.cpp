@@ -381,8 +381,7 @@ void Eth_Loop(){
             #endif
 
             if(!Coms.ETH.ON){
-            #ifdef GROUPS
-                
+            #ifdef GROUPS               
                 if(Coms.ETH.DHCP){
                     kill_ethernet();
                     Coms.ETH.DHCP  = 0;

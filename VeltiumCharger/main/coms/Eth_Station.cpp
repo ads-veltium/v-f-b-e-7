@@ -92,7 +92,7 @@ void BuscarContador_Task(void *args){
                 strcat(url, ip);
                 strcat(url, "/get_command?command=get_measurements");
 
-                if(Cliente.Send_Command(url,READ)) {
+                if(Cliente.Send_Command(url,LEER)) {
 
                     String respuesta = Cliente.ObtenerRespuesta();               
                     if(respuesta.indexOf("IE38MD")>-1){
@@ -196,6 +196,7 @@ void initialize_ethernet(void){
     esp_netif_config_t cfg = ESP_NETIF_DEFAULT_ETH();
     Serial.println("Arrancando ethernet");
     //servidor DHCP
+    Coms.ETH.DHCP = false;
     if(Coms.ETH.DHCP){
         Serial.println("Arrancando servidor dhcp!");
         esp_netif_inherent_config_t config;

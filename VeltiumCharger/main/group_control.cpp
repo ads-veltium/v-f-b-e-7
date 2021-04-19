@@ -69,8 +69,8 @@ void New_Data(char* Data, int Data_size){
                     char current[Data_size-13+1];
                     memcpy( current, &Data[13], Data_size-13 );         
                     FaseChargers.charger_table[index].Current = atoi(current);
-                    cls();
-                    print_table(FaseChargers);
+                    //cls();
+                    //print_table(FaseChargers);
                 }
                 else{
                     //Si el cargador no está en la tabla, añadirlo y actualizar los datos
@@ -106,7 +106,7 @@ void New_Data(char* Data, int Data_size){
             memcpy( current, &Data[13], Data_size-13 );         
             ChargingGroup.group_chargers.charger_table[index].Current = atoi(current);
 
-            print_table(ChargingGroup.group_chargers);
+            //print_table(ChargingGroup.group_chargers);
         }
     }
 
@@ -135,7 +135,6 @@ void New_Params(char* Data, int Data_size){
         memcpy(ID, &Data[i*8],8);
         add_to_group(ID,get_IP(ID),&ChargingGroup.group_chargers);
     }    
-    print_table(ChargingGroup.group_chargers);
 }
 
 void Calculo_Consigna(){
