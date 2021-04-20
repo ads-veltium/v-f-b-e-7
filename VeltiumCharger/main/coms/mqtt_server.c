@@ -84,7 +84,6 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
 		  sub->c = c;
 		  sub->topic = mg_strdup(topic);
 		  sub->qos = qos;
-		  printf("Añadido a la lista de subscripcion %s\n", sub->topic.ptr);
 		  LIST_ADD_HEAD(struct sub, &s_subs, sub);
 		}
 		break;
@@ -161,11 +160,13 @@ struct mg_connection *mgc;
 struct mg_mgr mgr;
 TaskHandle_t PollerHandle = NULL;
 TickType_t xStart;
+bool conected = false;
 
 static void publisher_fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
 	switch(ev){
 		case MG_EV_ERROR:
 			ESP_LOGE(pcTaskGetTaskName(NULL), "MG_EV_ERROR %p %s", c->fd, (char *) ev_data);
+			StopMQTT=true;
 		break;
 
 		case MG_EV_CONNECT:
@@ -173,11 +174,13 @@ static void publisher_fn(struct mg_connection *c, int ev, void *ev_data, void *f
 				struct mg_tls_opts opts = {.ca = "ca.pem"};
 				mg_tls_init(c, &opts);
 			}
+			
 			break;
 
 		case MG_EV_MQTT_OPEN:
 			//ESP_LOGE(pcTaskGetTaskName(NULL), "MG_EV_OPEN");
 			// MQTT connect is successful
+			conected = true;
 			break;
 		case MG_EV_MQTT_MSG:{
 			// When we get echo response, print it
@@ -207,12 +210,14 @@ void mqtt_polling(void *params){
 	xStart = xTaskGetTickCount();
 	//struct mg_connection *mgc = (struct mg_connection*)params;
 	while (1) {
+		if(conected){
+			mg_mgr_poll(&mgr, 10);
+		}
 		
-		mg_mgr_poll(&mgr, 10);
 		vTaskDelay(5);
 		uint32_t transcurrido = pdTICKS_TO_MS(xTaskGetTickCount() - xStart);
 		
-		if(transcurrido > 2500){
+		if(transcurrido > 5000){
 			StopMQTT = true;
 			break;
 		}
@@ -234,6 +239,7 @@ bool mqtt_connect(mqtt_sub_pub_opts *pub_opts){
 	if(PollerHandle != NULL){
 		return false;
 	}
+	conected = false;
 	/* Arrancar la conexion*/	
 	mg_mgr_init(&mgr);
 	struct mg_mqtt_opts opts;  // MQTT connection options
@@ -254,10 +260,15 @@ bool mqtt_connect(mqtt_sub_pub_opts *pub_opts){
 void mqtt_publish(char* Topic, char* Data){
 	struct mg_str topic = mg_str(Topic);
 	struct mg_str data = mg_str(Data);
-	mg_mqtt_pub(mgc, &topic, &data);
+	if(conected){
+		mg_mqtt_pub(mgc, &topic, &data);
+	}
+	
 }
 
 void mqtt_subscribe(char* Topic){
 	struct mg_str topic = mg_str(Topic);
-	mg_mqtt_sub(mgc, &topic);							
+	if(conected){
+		mg_mqtt_sub(mgc, &topic);
+	}							
 }

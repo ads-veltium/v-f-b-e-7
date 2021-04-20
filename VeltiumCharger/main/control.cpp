@@ -493,7 +493,6 @@ void procesar_bloque(uint16 tipo_bloque){
 				modifyCharacteristic(buffer_rx_local, 1, LED_LUMIN_COLOR_LUMINOSITY_LEVEL_CHAR_HANDLE);
 
 				luminosidad = buffer_rx_local[0];
-				ChargingGroup.SendNewData  = true;
 				//Hilo piloto
 				if((memcmp(&buffer_rx_local[1], status_hpt_anterior, 2) != 0))
 				{
@@ -545,9 +544,9 @@ void procesar_bloque(uint16 tipo_bloque){
 				modifyCharacteristic(&buffer_rx_local[18], 2, MEASURES_ACTIVE_POWER_CHAR_HANDLE);
 				modifyCharacteristic(&buffer_rx_local[20], 4, MEASURES_ACTIVE_ENERGY_CHAR_HANDLE);
 				
-					//Pasar datos a Status
-					memcpy(Status.HPT_status, &buffer_rx_local[1], 2);
-					Status.error_code = buffer_rx_local[13];
+				//Pasar datos a Status
+				memcpy(Status.HPT_status, &buffer_rx_local[1], 2);
+				Status.error_code = buffer_rx_local[13];
 					
 #ifdef CONNECTED					
 					Status.ICP_status 		= (memcmp(&buffer_rx_local[3],  "CL" ,2) == 0 )? true : false;

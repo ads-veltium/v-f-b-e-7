@@ -182,7 +182,7 @@ void MasterPanicTask(void *args){
     uint8 reintentos = 1;
 
     while(!ChargingGroup.GroupActive){
-        if(pdTICKS_TO_MS(xTaskGetTickCount() - xStart) > 60000){ //si pasa 1 minuto, elegir un nuevo maestro
+        if(pdTICKS_TO_MS(xTaskGetTickCount() - xStart) > 10000){ //si pasan 10 segundos, elegir un nuevo maestro
             Serial.println("Necesitamos un nuevo maestro!");
 
             if(!memcmp(ChargingGroup.group_chargers.charger_table[reintentos].name,ConfigFirebase.Device_Id,8)){
@@ -213,6 +213,8 @@ void Publisher(void* args){
     char buffer[100];
     Params.Fase = 1;
     while(1){
+
+        //Enviar nuevos datos al grupo
         if(ChargingGroup.SendNewData){    
             char Delta[2]={'0'};
             
@@ -235,11 +237,13 @@ void Publisher(void* args){
                 mqtt_publish("Device_Status", (buffer));
             }
             else{
-                sprintf(buffer, "%s%i%s%s%i", ConfigFirebase.Device_Id,Params.Fase,Status.HPT_status,Delta,Status.Measures.instant_voltage);  
+                sprintf(buffer, "%s%i%s%s%i", ConfigFirebase.Device_Id,Params.Fase,Status.HPT_status,Delta,Status.Measures.instant_current);  
                 mqtt_publish("Device_Status", (buffer));
             }
             ChargingGroup.SendNewData = false;
         }
+        
+        //Enviar nuevos parametros al equipo
         if( ChargingGroup.SendNewParams){
             printf("Publicando nuevos parametros\n");
             for(int i=0;i< ChargingGroup.group_chargers.size;i++){
@@ -254,7 +258,7 @@ void Publisher(void* args){
         if(!ChargingGroup.GroupMaster){ 
             mqtt_publish("Ping", ConfigFirebase.Device_Id);
 
-            delay(1000);
+            delay(5000);
             if(!ChargingGroup.GroupActive || GetStopMQTT()){
                 printf("Maestro desconectado!!!\n");
                 stop_MQTT();
