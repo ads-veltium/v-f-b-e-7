@@ -33,9 +33,9 @@ void Contador::end(){
 
 bool Contador::read(){
 
-    CounterClient.Send_Command(CounterUrl,READ);
+    CounterClient.Send_Command(CounterUrl,LEER);
 
-    if (!CounterClient.Send_Command(CounterUrl,READ)) {
+    if (!CounterClient.Send_Command(CounterUrl,LEER)) {
         Serial.printf("Counter reading error\n");
         return false;
     }

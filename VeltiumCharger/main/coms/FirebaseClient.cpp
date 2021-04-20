@@ -740,11 +740,10 @@ void Firebase_Conn_Task(void *args){
     
     vTaskDelay(pdMS_TO_TICKS(ConfigFirebase.ClientConnected ? 500:5000));
     //chivatos de la ram
-    //if(ESP.getFreePsram() < 3800000 || ESP.getFreeHeap() < 20000){
+    if(ESP.getFreePsram() < 3800000 || ESP.getFreeHeap() < 20000){
         Serial.println(ESP.getFreePsram());
         Serial.println(ESP.getFreeHeap());
-
-    //}
+    }
   }
 }
 

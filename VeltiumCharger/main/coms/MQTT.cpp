@@ -70,7 +70,6 @@ uint8_t check_in_group(const char* ID, carac_chargers* group){
 
 //Eliminar un cargador de un grupo
 bool remove_from_group(const char* ID ,carac_chargers* group){
-
     for(int j=0;j < group->size;j++){
         if(!memcmp(ID,  group->charger_table[j].name,8)){
             if(j!=group->size-1){ //si no es el ultimo debemos shiftear la lista
@@ -78,8 +77,7 @@ bool remove_from_group(const char* ID ,carac_chargers* group){
                     group->charger_table[i] = group->charger_table[i+1];
                 }
             }
-            group->charger_table[group->size-1].IP = INADDR_NONE;
-            
+            group->charger_table[group->size-1].IP = INADDR_NONE;       
             memset(group->charger_table[group->size-1].name,0,9);
             --group->size;
             printf("Cargador %s eliminado\n", ID);
@@ -291,18 +289,6 @@ void start_MQTT_server(){
         broadcast_a_grupo("Start client");
         mqtt_sub_pub_opts publisher;
 
-        if(ChargingGroup.group_chargers.size==0){
-            //QUITAR!!!!!!!!!!!!!!!!!
-            memcpy(ChargingGroup.group_chargers.charger_table[0].name, "31B70630",8);
-            memcpy(ChargingGroup.group_chargers.charger_table[1].name, "626965F5",8);  
-            memcpy(ChargingGroup.group_chargers.charger_table[2].name, "72BC0823",8);
-            memcpy(ChargingGroup.group_chargers.charger_table[3].name, "6D3475F8",8);
-            //memcpy(ChargingGroup.group_chargers.charger_table[4].name, "FT63D732",8);
-            //memcpy(ChargingGroup.group_chargers.charger_table[5].name, "J3P10DNR",8);
-
-            ChargingGroup.group_chargers.size = 4;
-        }
-
         //Ponerme el primero en el grupo para indicar que soy el maestro
         if(ChargingGroup.group_chargers.size>0 && check_in_group(ConfigFirebase.Device_Id,&ChargingGroup.group_chargers ) !=-1){
             while(memcmp(ChargingGroup.group_chargers.charger_table[0].name,ConfigFirebase.Device_Id, 8)){
@@ -313,6 +299,7 @@ void start_MQTT_server(){
         }
         else{
             //Si el grupo está vacio o el cargador no está en el grupo,
+            printf("No tengo cargadores en el grupo!\n");
             ChargingGroup.GroupMaster = false;
             ChargingGroup.GroupActive = false;
             SendToPSOC5(ChargingGroup.GroupMaster, GROUPS_GROUP_MASTER);
