@@ -281,8 +281,8 @@ typedef struct{
 	char GroupId[10] = {'0'};
 	long long last_ts_app_req= 0;
 
-	uint16 potencia_max;
-	uint16 inst_max;
+	uint8_t potencia_max;
+	uint8_t inst_max;
 }carac_group;
 
 typedef struct{

@@ -1,7 +1,7 @@
 #include "mqtt_server.h"
 #include "../group_control.h"
 
-static const char *s_listen_on = "mqtt://192.168.20.163:1883";
+
 
 // A list of subscription, held in memory
 struct sub *s_subs EXT_RAM_ATTR;
@@ -134,6 +134,8 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
 void mqtt_server(void *pvParameters){
 
 	mg_log_set("1"); // Set to log level to LL_ERROR
+	
+	const char *s_listen_on = (char*)pvParameters;
 
 	struct mg_mgr mgr;
 	mg_mgr_init(&mgr);
@@ -241,8 +243,6 @@ bool mqtt_connect(mqtt_sub_pub_opts *pub_opts){
 	memset(&opts, 0, sizeof(opts));					// Set MQTT options
 	opts.client_id = mg_str(pub_opts->Client_ID);   // Set Client ID
 	opts.qos = 1;									// Set QoS to 1
-	opts.will_topic = mg_str(pub_opts->Will_Topic);			// Set last will topic
-	opts.will_message = mg_str(pub_opts->Will_Message);			// And last will message
 
 	mgc = mg_mqtt_connect(&mgr, pub_opts->url, &opts, publisher_fn, &pub_opts->url);	// Create client connection
 	

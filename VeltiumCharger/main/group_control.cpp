@@ -14,14 +14,13 @@ uint8_t check_in_group(const char* ID, carac_chargers* group);
 IPAddress get_IP(const char* ID);
 
 
-uint8_t  is_active_c3_Charger;
 uint8_t  is_c3_Charger;         
 uint8_t  is_LimiteConsumo; 
-uint16_t Delta_total;
+uint8_t  Delta_total;
 
 int Conex;
 int Conex_Delta;
-uint16_t Pc;
+uint8_t Pc;
 
 TickType_t xStart;
 
@@ -139,9 +138,7 @@ void New_Params(char* Data, int Data_size){
 
 void Calculo_Consigna(){
 
-  if (is_active_c3_Charger == 0) {
-      
-    is_active_c3_Charger = 0;
+  if (is_c3_Charger == 0) {
     is_c3_Charger = IN_CochesConectados;                   
     Comands.desired_current = 0;
     
@@ -259,18 +256,23 @@ void Calculo_Consigna(){
       }
     }
   }
+  printf("Comand desired current %i \n", Comands.desired_current);
+  SendToPSOC5(Comands.desired_current,MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
 }
 
 void input_values(){
     Conex=0;
     Delta_total=0;
     Pc=0;
+    uint16_t total_pc =0;
     for(int i=0; i< ChargingGroup.group_chargers.size-1;i++){
         if(!memcmp(ChargingGroup.group_chargers.charger_table[i].HPT,"C2",2)){
             Conex++;
         }
-
         Delta_total += ChargingGroup.group_chargers.charger_table[i].Delta;
-        Pc += ChargingGroup.group_chargers.charger_table[i].Current;
-    }    
+        total_pc += ChargingGroup.group_chargers.charger_table[i].Current;
+    }   
+    Pc=total_pc/100;
+    printf("Total PC and Delta %i %i \n",Pc,Delta_total); 
 }
+

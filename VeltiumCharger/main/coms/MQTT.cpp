@@ -283,7 +283,9 @@ void start_MQTT_server(){
     if(ChargingGroup.GroupMaster){
         ChargingGroup.GroupActive = true;
         /* Start MQTT Server using tcp transport */
-        xTaskCreateStatic(mqtt_server,"BROKER",1024*6,NULL,PRIORIDAD_MQTT,xSERVERStack,&xSERVERBuffer); 
+        char path[64];
+        sprintf(path, "mqtt://%s:1883", ip4addr_ntoa(&Coms.ETH.IP));
+        xTaskCreateStatic(mqtt_server,"BROKER",1024*6,&path,PRIORIDAD_MQTT,xSERVERStack,&xSERVERBuffer); 
         delay(5000);
 
         broadcast_a_grupo("Start client");
@@ -309,8 +311,6 @@ void start_MQTT_server(){
         
         sprintf(publisher.url, "mqtt://%s:1883", ip4addr_ntoa(&Coms.ETH.IP));
         memcpy(publisher.Client_ID,ConfigFirebase.Device_Id, 8);
-        memcpy(publisher.Will_Message,ConfigFirebase.Device_Id, 8);
-        publisher.Will_Topic = "NODE_DEAD";
 
         if(mqtt_connect(&publisher)){
             mqtt_subscribe("Device_Status");
@@ -332,8 +332,6 @@ void start_MQTT_client(IPAddress remoteIP){
     
 	sprintf(publisher.url, "mqtt://%s:1883", remoteIP.toString().c_str());
     strcpy(publisher.Client_ID,ConfigFirebase.Device_Id);
-    strcpy(publisher.Will_Message,ConfigFirebase.Device_Id);
-    publisher.Will_Topic = "NODE_DEAD";
 
     if(mqtt_connect(&publisher)){
         mqtt_subscribe("Device_Status");

@@ -157,6 +157,10 @@ static void eth_check_link_timer_cb(TimerHandle_t xTimer)
     esp_eth_phy_t *phy = eth_driver->phy;
     esp_eth_increase_reference(eth_driver);
     phy->get_link(phy);
+    if(phy->link1==ETH_LINK_DOWN && phy->link2 ==ETH_LINK_DOWN){
+        phy->negotiate(phy);
+    }
+    
     esp_eth_decrease_reference(eth_driver);
 }
 
@@ -197,8 +201,7 @@ esp_err_t esp_eth_driver_install(const esp_eth_config_t *config, esp_eth_handle_
     ETH_CHECK(phy->set_mediator(phy, &eth_driver->mediator) == ESP_OK, "set mediator for phy failed", err_mediator, ESP_FAIL);
     ETH_CHECK(mac->init(mac) == ESP_OK, "init mac failed", err_init_mac, ESP_FAIL);
     ETH_CHECK(phy->init(phy) == ESP_OK, "init phy failed", err_init_phy, ESP_FAIL);
-    eth_driver->check_link_timer = xTimerCreate("eth_link_timer", pdMS_TO_TICKS(config->check_link_period_ms), pdTRUE,
-                                   eth_driver, eth_check_link_timer_cb);
+    eth_driver->check_link_timer = xTimerCreate("eth_link_timer", pdMS_TO_TICKS(config->check_link_period_ms), pdTRUE,eth_driver, eth_check_link_timer_cb);
     ETH_CHECK(eth_driver->check_link_timer, "create eth_link_timer failed", err_create_timer, ESP_FAIL);
     *out_hdl = (esp_eth_handle_t)eth_driver;
     return ESP_OK;
