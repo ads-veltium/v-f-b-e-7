@@ -12,6 +12,7 @@ extern carac_group    ChargingGroup;
 bool add_to_group(const char* ID, IPAddress IP, carac_chargers* group);
 uint8_t check_in_group(const char* ID, carac_chargers* group);
 IPAddress get_IP(const char* ID);
+TickType_t xStart;
 
 static void cls(){
     Serial.write(27);   
@@ -125,70 +126,35 @@ void New_Params(char* Data, int Data_size){
 
 void Calculo_Consigna(){
 
-
-  // Chart: '<Root>/Charger 1' incorporates:
-  //   Inport: '<Root>/Conex'
-  //   Inport: '<Root>/Conex_Delta'
-  //   Inport: '<Root>/Pc1'
-  //   Inport: '<Root>/Pc2'
-  //   Inport: '<Root>/Pc3'
-  //   Inport: '<Root>/Current'
-  //   Inport: '<Root>/potencia_max'
-  //   Inport: '<Root>/Delta_total'
-  //   Inport: '<Root>/Pw'
-  //   Inport: '<Root>/contador'
-  //   Outport: '<Root>/desired_current'
-
   if (is_active_c3_Charger == 0U) {
     is_active_c3_Charger = 1U;
     is_c3_Charger = IN_CochesConectados;
 
-    // Outport: '<Root>/desired_current'                           
+                            
     Comands.desired_current = 0.0;
-    //rtDW.Pc = (rtU.Pc1 + rtU.Pc2) + rtU.Pc3;
 
-    // Outport: '<Root>/resetCont' incorporates:
-    //   Inport: '<Root>/Pc1'
-    //   Inport: '<Root>/Pc2'
-    //   Inport: '<Root>/Pc3'
-
-    rtY.resetCont = 1.0;
+    //rtY.resetCont = 1.0;
   } else if (is_c3_Charger == IN_CochesConectados) {
     if ((Pc > 0.0) && (Status.HPT_status == "C2")) {
       is_c3_Charger = IN_LimiteConsumo;
-      //rtDW.Pc = (rtU.Pc1 + rtU.Pc2) + rtU.Pc3;
+
       if (Delta_total == 0.0) {
         is_LimiteConsumo = IN_Cargando1;
-
-        // Outport: '<Root>/desired_current' incorporates:
-        //   Inport: '<Root>/Pw'
 
         Comands.desired_current = MAX_CURRENT;
       } else {
         if (Delta_total > 0.0) {
           is_LimiteConsumo = IN_Cargando3;
 
-          // Outport: '<Root>/desired_current' incorporates:
-          //   Inport: '<Root>/Conex_Delta'
-          //   Inport: '<Root>/potencia_max'
-
           Comands.desired_current = Delta_total / (Conex - Conex_Delta) + ChargingGroup.potencia_max/Conex;
 
-          // Outport: '<Root>/resetCont'
-          rtY.resetCont = 1.0;
+          //rtY.resetCont = 1.0;
         }
       }
     } else {
-      // Outport: '<Root>/desired_current'
       Comands.desired_current = 0.0;
-      //rtDW.Pc = (rtU.Pc1 + rtU.Pc2) + rtU.Pc3;
 
-      // Outport: '<Root>/resetCont' incorporates:
-      //   Inport: '<Root>/Pc1'
-      //   Inport: '<Root>/Pc2'
-      //   Inport: '<Root>/Pc3'
-
-      rtY.resetCont = 1.0;
+      //rtY.resetCont = 1.0;
     }
   } else {
     // case IN_LimiteConsumo:
@@ -196,18 +162,11 @@ void Calculo_Consigna(){
       is_LimiteConsumo = IN_NO_ACTIVE_CHILD;
       is_c3_Charger = IN_CochesConectados;
 
-      // Outport: '<Root>/desired_current'
       Comands.desired_current = 0.0;
-      //rtDW.Pc = (rtU.Pc1 + rtU.Pc2) + rtU.Pc3;
-    
-      // Outport: '<Root>/resetCont' incorporates:
-      //   Inport: '<Root>/Pc1'
-      //   Inport: '<Root>/Pc2'
-      //   Inport: '<Root>/Pc3'
 
-      rtY.resetCont = 1.0;
+      //rtY.resetCont = 1.0;
     } else {
-      //rtDW.Pc = (rtU.Pc1 + rtU.Pc2) + rtU.Pc3;
+
       switch (is_LimiteConsumo) {
        case IN_Cargando1:
         if (Comands.desired_current * Conex > ChargingGroup.potencia_max) {
@@ -225,18 +184,13 @@ void Calculo_Consigna(){
         if (Pc >= ChargingGroup.potencia_max) {
           is_LimiteConsumo = IN_ReduccionPc;
 
-          // Outport: '<Root>/desired_current'
           Comands.desired_current = ChargingGroup.potencia_max / Conex;
         } else if (Comands.desired_current * Conex < ChargingGroup.potencia_max) {
           is_LimiteConsumo = IN_Cargando1;
 
-          // Outport: '<Root>/desired_current' incorporates:
-          //   Inport: '<Root>/Pw'
 
           Comands.desired_current = MAX_CURRENT;
         } else {
-          // Outport: '<Root>/desired_current' incorporates:
-          //   Inport: '<Root>/Pw'
 
           Comands.desired_current = MAX_CURRENT;
         }
@@ -246,17 +200,13 @@ void Calculo_Consigna(){
         if (ChargingGroup.potencia_max > Conex * MAX_CURRENT) {
           is_LimiteConsumo = IN_Cargando1;
 
-          // Outport: '<Root>/desired_current'
           Comands.desired_current = MAX_CURRENT;
         } else if (Comands.desired_current - Status.Measures.instant_current > 6.0) {
           is_LimiteConsumo = IN_Contador;
 
-          // Outport: '<Root>/resetCont'
-          rtY.resetCont = 0.0;
+          
+          xStart = xTaskGetTickCount();
         } else {
-          // Outport: '<Root>/desired_current' incorporates:
-          //   Inport: '<Root>/Conex_Delta'
-          //   Inport: '<Root>/Delta_total'
 
           Comands.desired_current = Delta_total / (Conex - Conex_Delta) + ChargingGroup.potencia_max / Conex;
           
@@ -264,47 +214,32 @@ void Calculo_Consigna(){
               Comands.desired_current = MAX_CURRENT;
           }
 
-          // Outport: '<Root>/resetCont'
-          rtY.resetCont = 1.0;
+          
+          //rtY.resetCont = 1.0;
         }
         break;
 
        case IN_Contador:
         if (Comands.desired_current - Status.Measures.instant_current <= 6.0) {
           is_LimiteConsumo = IN_Cargando3;
-          Comands.desired_current = Delta_total / (Conex - Conex_Delta) + ChargingGroup.potencia_max /
-            Conex;
+          Comands.desired_current = Delta_total / (Conex - Conex_Delta) + ChargingGroup.potencia_max /Conex;
 
-          // Outport: '<Root>/resetCont' incorporates:
-          //   Inport: '<Root>/Conex_Delta'
-          //   Inport: '<Root>/potencia_max'
-          //   Inport: '<Root>/Delta_total'
-
-          rtY.resetCont = 1.0;
-        } else if (rtU.contador >= 20.0) {
+          //rtY.resetCont = 1.0;
+        } else if (pdTICKS_TO_MS(xTaskGetTickCount()-xStart)>= DELTA_TIMEOUT) {
           is_LimiteConsumo = IN_Repartir;
           Comands.desired_current = ChargingGroup.potencia_max / Conex;
 
-          // Outport: '<Root>/Delta' incorporates:
-          // Inport: '<Root>/potencia_max'
           Status.Delta = Comands.desired_current - Status.Measures.instant_current;
-        } else {
-          // Outport: '<Root>/resetCont'
-          rtY.resetCont = 0.0;
         }
         break;
-
+        
        case IN_ReduccionPc:
         if ((ChargingGroup.potencia_max > Pc) && (Comands.desired_current * Conex <= ChargingGroup.potencia_max)) {
           is_LimiteConsumo = IN_Cargando3;
           Comands.desired_current = Delta_total / (Conex - Conex_Delta) + ChargingGroup.potencia_max /
             Conex;
 
-          // Outport: '<Root>/resetCont' incorporates:
-          //   Inport: '<Root>/Conex_Delta'
-          //   Inport: '<Root>/Delta_total'
-
-          rtY.resetCont = 1.0;
+          //rtY.resetCont = 1.0;
         } else {
           Comands.desired_current = ChargingGroup.potencia_max / Conex;
         }
@@ -313,23 +248,15 @@ void Calculo_Consigna(){
        default:
         // case IN_Repartir:
         if (Comands.desired_current - Status.Measures.instant_current <= 6.0) {
-          // Outport: '<Root>/Delta'
+        
           Status.Delta = 0.0;
           is_LimiteConsumo = IN_Cargando3;
           Comands.desired_current = Delta_total / (Conex - Conex_Delta) + ChargingGroup.potencia_max /
             Conex;
 
-          // Outport: '<Root>/resetCont' incorporates:
-          //   Inport: '<Root>/Conex_Delta'
-          //   Inport: '<Root>/potencia_max'
-          //   Inport: '<Root>/Delta_total'
-
-          rtY.resetCont = 1.0;
+          //rtY.resetCont = 1.0;
         } else {
           Comands.desired_current = ChargingGroup.potencia_max / Conex;
-
-          // Outport: '<Root>/Delta' incorporates:
-          //   Inport: '<Root>/potencia_max'
 
           Status.Delta = Comands.desired_current - Status.Measures.instant_current;
         }

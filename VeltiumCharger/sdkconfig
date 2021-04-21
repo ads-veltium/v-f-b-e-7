@@ -115,14 +115,6 @@ CONFIG_BOOTLOADER_RESERVE_RTC_SIZE=0
 # end of Security features
 
 #
-# ESP-NimBLE-CPP configuration
-#
-# CONFIG_NIMBLE_CPP_ENABLE_RETURN_CODE_TEXT is not set
-# CONFIG_NIMBLE_CPP_ENABLE_GAP_EVENT_CODE_TEXT is not set
-# CONFIG_NIMBLE_CPP_ENABLE_ADVERTISMENT_TYPE_TEXT is not set
-# end of ESP-NimBLE-CPP configuration
-
-#
 # Serial flasher config
 #
 CONFIG_ESPTOOLPY_PORT="/dev/ttyUSB0"
@@ -357,11 +349,6 @@ CONFIG_EFUSE_CODE_SCHEME_COMPAT_3_4=y
 # CONFIG_EFUSE_CODE_SCHEME_COMPAT_REPEAT is not set
 CONFIG_EFUSE_MAX_BLK_LEN=192
 # end of eFuse Bit Manager
-
-#
-# ESP-NimBLE-CPP configuration
-#
-# end of ESP-NimBLE-CPP configuration
 
 #
 # ESP-TLS

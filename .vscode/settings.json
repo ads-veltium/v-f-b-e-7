@@ -8,31 +8,31 @@
                  "name": "BUILD",
                  "color": "white",
                  "singleInstance": true,
-                 "command": ". /home/joel/Documents/fw-bird-esp32/SDK/esp-idf/./export.sh && cd /home/joel/Documents/fw-bird-esp32/VeltiumCharger/ && make",
+                 "command": ". /home/jon/Documents/repositorio/fw-bird-esp32/SDK/esp-idf/./export.sh && cd /home/jon/Documents/repositorio/fw-bird-esp32/VeltiumCharger/ && make",
              },
              {
                  "name": "MFM",
                  "color": "white",
                  "singleInstance": true,
-                 "command": ". /home/joel/Documents/fw-bird-esp32/SDK/esp-idf/./export.sh && cd /home/joel/Documents/fw-bird-esp32/VeltiumCharger/ && make flash monitor",
+                 "command": ". /home/jon/Documents/repositorio/fw-bird-esp32/SDK/esp-idf/./export.sh && cd /home/jon/Documents/repositorio/fw-bird-esp32/VeltiumCharger/ && make flash monitor",
              },
              {
                  "name": "MONITOR",
                  "color": "white",
                  "singleInstance": true,
-                 "command": ". /home/joel/Documents/fw-bird-esp32/SDK/esp-idf/./export.sh && cd /home/joel/Documents/fw-bird-esp32/VeltiumCharger/ && make monitor",
+                 "command": ". /home/jon/Documents/repositorio/fw-bird-esp32/SDK/esp-idf/./export.sh && cd /home/jon/Documents/repositorio/fw-bird-esp32/VeltiumCharger/ && make monitor",
              },
              {
                  "name": "MENUCONFIG",
                  "color": "white",
                  "singleInstance": true,
-                 "command": ". /home/joel/Documents/fw-bird-esp32/SDK/esp-idf/./export.sh && cd /home/joel/Documents/fw-bird-esp32/VeltiumCharger && make menuconfig",
+                 "command": ". /home/jon/Documents/repositorio/fw-bird-esp32/SDK/esp-idf/./export.sh && cd /home/jon/Documents/repositorio/fw-bird-esp32/VeltiumCharger && make menuconfig",
              },
              {
                  "name": "FLASH",
                  "color": "white",
                  "singleInstance": true,
-                 "command": ". /home/joel/Documents/fw-bird-esp32/SDK/esp-idf/./export.sh && cd /home/joel/Documents/fw-bird-esp32/VeltiumCharger/ && make flash",
+                 "command": ". /home/jon/Documents/repositorio/fw-bird-esp32/SDK/esp-idf/./export.sh && cd /home/jon/Documents/repositorio/fw-bird-esp32/VeltiumCharger/ && make flash",
              },
  
          ]

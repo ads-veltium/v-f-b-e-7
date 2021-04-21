@@ -5,6 +5,7 @@
 extern "C" {
 #endif
 
+#define DELTA_TIMEOUT 20000
 #define MAX_CURRENT 32 
 // Named constants for Chart: '<Root>/Charger 1'
 const uint8 IN_Cargando1 = 1U;
