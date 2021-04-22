@@ -265,24 +265,31 @@ typedef struct{
 }carac_charger;
 
 typedef struct{
-    carac_charger charger_table[10];
+    carac_charger charger_table[50];
     uint8_t size = 0;
 }carac_chargers;
 
 typedef struct{
-	bool GroupActive  = false;
-	bool GroupMaster  = false;
-	bool ServerActive = false;
-	bool SendNewData  = false;
+	uint8_t GroupMaster = 0;
+    uint8_t GroupActive = 0;
+	uint8_t inst_max    = 0;
+	uint8_t CDP         = 0;
+	uint8_t ContractPower = 0;
+	uint8_t UserID      = 0;
+	uint8_t potencia_max = 0;	
+}carac_group_params;
+
+typedef struct{
+	bool SendNewData   = false;
 	bool SendNewParams = false;
+	bool Conected	   = false;
 
 	carac_chargers group_chargers;
+	carac_group_params Params;
 
 	char GroupId[10] = {'0'};
 	long long last_ts_app_req= 0;
 
-	uint8_t potencia_max;
-	uint8_t inst_max;
 }carac_group;
 
 typedef struct{
@@ -617,14 +624,11 @@ typedef struct{
 #define MEASURES_EXTERNAL_COUNTER		   (0x00C5u)
 #define COMS_FW_UPDATEMODE_CHAR_HANDLE     (0x00C7u)
 
-#define GROUPS_ACTIVE_GROUP 		 	   (0x00C9u)
-#define GROUPS_GROUP_MASTER  		 	   (0x00CBu)
-
-#define ENERGY_PARTIAL_RECORD_1			   (0x00D0u)
-#define ENERGY_PARTIAL_RECORD_2			   (0x00D1u)
+#define GROUPS_DEVICES		 	  		   (0x00C9u)
+#define GROUPS_PARAMS		 		 	   (0x00CBu)
+#define SEND_GROUP_DATA		 		 	   (0x00CDu)
 
 //Handlers para el medidor trifásico 
-
 
 
 

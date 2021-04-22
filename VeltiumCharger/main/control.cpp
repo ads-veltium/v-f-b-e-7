@@ -10,6 +10,7 @@
  * ========================================
  */
 #include "control.h"
+#include "helpers.h"
 
 StaticTask_t xControlBuffer ;
 StaticTask_t xLEDBuffer ;
@@ -87,6 +88,7 @@ void modifyCharacteristic(uint8* data, uint16 len, uint16 attrHandle);
 void proceso_recepcion(void);
 int Convert_To_Epoch(uint8_t DateTime[6]);
 void Disable_VELT1_CHARGER_services(void);
+
 
 /*******************************************************************************
  * Rutina de atencion a inerrupcion de timer (10mS)
@@ -252,6 +254,7 @@ void controlTask(void *arg)
 							}
 
 							else if (Comands.Newdata){
+								printf("Enviando corriente %i\n", Comands.desired_current);
 								SendToPSOC5(Comands.desired_current, MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
 							}
 							else if (Comands.reset){
@@ -466,10 +469,6 @@ void procesar_bloque(uint16 tipo_bloque){
 					Comands.desired_current = buffer_rx_local[233];
 					Coms.Wifi.ON = buffer_rx_local[236];
 					Coms.ETH.ON = buffer_rx_local[237];	
-				#ifdef GROUPS
-					//Coms.ETH.DHCP = buffer_rx_local[240];	
-					ChargingGroup.GroupMaster = buffer_rx_local[241];
-				#endif
 
 				#endif
 
@@ -846,11 +845,6 @@ void procesar_bloque(uint16 tipo_bloque){
 		} 
 		break;
 		
-		case GROUPS_GROUP_MASTER:{
-			ChargingGroup.GroupMaster =  buffer_rx_local[0];
-			Serial.print("ChargingGroup.GroupMaster: ");
-			Serial.println(ChargingGroup.GroupMaster);
-		} 
 		break;
 #endif
 		case COMS_FW_UPDATEMODE_CHAR_HANDLE:{
@@ -864,7 +858,28 @@ void procesar_bloque(uint16 tipo_bloque){
 			modifyCharacteristic(buffer_rx_local, 4, COMS_CONFIGURATION_LAN_IP);
 		} 
 		break;
+
+		case GROUPS_DEVICES:{
+			Serial.printf("Nuevo grupo recibido\n");
+			ChargingGroup.group_chargers.size = buffer_rx_local[0];
+			for(uint8_t i=0; i<ChargingGroup.group_chargers.size;i++){
+				for(uint8_t j =0; j< 8; j++){
+					ChargingGroup.group_chargers.charger_table[i].name[j] = (char)buffer_rx_local[1+i*9+j];
+				}
+				ChargingGroup.group_chargers.charger_table[i].Fase = buffer_rx_local[10+i*9];
+			}
+			print_table(ChargingGroup.group_chargers);
+		}
+		break;
+
+		case GROUPS_PARAMS:{
+			memcpy(&ChargingGroup.Params,buffer_rx_local, 7);
+			Serial.printf("Nuevos parametros recibidos:%i %i %i \n", ChargingGroup.Params.inst_max, ChargingGroup.Params.potencia_max, ChargingGroup.Params.ContractPower);
+		
+		}
+		break;
 #endif
+
 		default:
 		break;
 	}

@@ -321,16 +321,19 @@ static esp_err_t lan8720_negotiate(esp_eth_phy_t *phy)
         PHY_CHECK(eth->phy_reg_read(eth, 0, ETH_PHY_BMSR_REG_ADDR, &(bmsr.val)) == ESP_OK,"read BMSR failed", err);
         PHY_CHECK(eth->phy_reg_read(eth, 0, ETH_PHY_PSCSR_REG_ADDR, &(pscsr.val)) == ESP_OK,"read PSCSR failed", err);
         if (bmsr.auto_nego_complete && pscsr.auto_nego_done) {
+            printf("PHY0 negociado %i %i \n",bmsr.val, pscsr.val);
             break;
         }
         PHY_CHECK(eth->phy_reg_read(eth, 1, ETH_PHY_BMSR_REG_ADDR, &(bmsr.val)) == ESP_OK,"read BMSR failed", err);
         PHY_CHECK(eth->phy_reg_read(eth, 1, ETH_PHY_PSCSR_REG_ADDR, &(pscsr.val)) == ESP_OK,"read PSCSR failed", err);
         if (bmsr.auto_nego_complete && pscsr.auto_nego_done) {
+            printf("PHY1 negociado %i %i \n",bmsr.val, pscsr.val);
             break;
         }
         PHY_CHECK(eth->phy_reg_read(eth, 2, ETH_PHY_BMSR_REG_ADDR, &(bmsr.val)) == ESP_OK,"read BMSR failed", err);
         PHY_CHECK(eth->phy_reg_read(eth, 2, ETH_PHY_PSCSR_REG_ADDR, &(pscsr.val)) == ESP_OK,"read PSCSR failed", err);
         if (bmsr.auto_nego_complete && pscsr.auto_nego_done) {
+            printf("PHY2 negociado %i %i \n",bmsr.val, pscsr.val);
             break;
         }
     }

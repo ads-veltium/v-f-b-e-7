@@ -36,7 +36,7 @@ void start_MQTT_server();
 void start_MQTT_client(IPAddress remoteIP);
 
 void stop_MQTT(){
-    ChargingGroup.GroupActive = false;
+    ChargingGroup.Conected= false;
     delay(500);
     SetStopMQTT(true);
     delay(1000);
@@ -88,6 +88,13 @@ bool remove_from_group(const char* ID ,carac_chargers* group){
     return false;
 }
 
+//Eliminar grupo
+void remove_group(carac_chargers* group){
+    for(int j=0;j < group->size;j++){
+        remove_from_group(group->charger_table[j].name, group);
+    }
+}
+
 //obtener la ip de un equipo dado su ID
 IPAddress get_IP(const char* ID){
     for(int j=0;j < net_group.size;j++){
@@ -111,8 +118,6 @@ void broadcast_a_grupo(char* Mensaje){
             }
         }
     }
-    delay(500);
-    ChargingGroup.SendNewParams = true;
 }
 
 void start_udp(){
@@ -134,7 +139,7 @@ void start_udp(){
                 }
 
                 //Si el cargador está en el grupo de carga, le decimos que es un esclavo
-                if(ChargingGroup.GroupMaster){
+                if(ChargingGroup.Params.GroupMaster && ChargingGroup.Conected){
                     if(check_in_group(Desencriptado.c_str(), &ChargingGroup.group_chargers)!=255){
                         Serial.printf("El cargador VCD%s está en el grupo de carga\n", Desencriptado.c_str());  
                         AsyncUDPMessage mensaje (13);
@@ -152,20 +157,19 @@ void start_udp(){
             }
             else{
                 if(!memcmp(Desencriptado.c_str(), "Start client", 13)){
-                    if(!ChargingGroup.GroupActive){
+                    if(!ChargingGroup.Conected){
                         printf("Soy parte de un grupo !!\n");
                         start_MQTT_client(packet.remoteIP());
                     }
                 }
                 else if(!memcmp(Desencriptado.c_str(), "Hay maestro?", 13)){
-                    if(ChargingGroup.GroupActive && ChargingGroup.GroupMaster){
+                    if(ChargingGroup.Conected && ChargingGroup.Params.GroupMaster){
                         packet.print(Encipher(String("Bai, hemen nago")).c_str());
                     }
                 }
                 else if(!memcmp(Desencriptado.c_str(), "Bai, hemen nago", 13)){
-                    if(!ChargingGroup.GroupActive && ChargingGroup.GroupMaster){
-                        ChargingGroup.GroupMaster = false;
-                        SendToPSOC5(ChargingGroup.GroupMaster, GROUPS_GROUP_MASTER);
+                    if(!ChargingGroup.Conected && ChargingGroup.Params.GroupMaster){
+                        ChargingGroup.Params.GroupMaster = false;
                     }
                 }
             }            
@@ -181,17 +185,15 @@ void MasterPanicTask(void *args){
     TickType_t xStart = xTaskGetTickCount();
     uint8 reintentos = 1;
 
-    while(!ChargingGroup.GroupActive){
+    while(!ChargingGroup.Conected){
         if(pdTICKS_TO_MS(xTaskGetTickCount() - xStart) > 60000){ //si pasa 1 minuto, elegir un nuevo maestro
             Serial.println("Necesitamos un nuevo maestro!");
 
             if(!memcmp(ChargingGroup.group_chargers.charger_table[reintentos].name,ConfigFirebase.Device_Id,8)){
                 Serial.println("Soy el nuevo maestro!!");
-                ChargingGroup.GroupMaster = true;
-                SendToPSOC5(ChargingGroup.GroupMaster,GROUPS_GROUP_MASTER);
+                ChargingGroup.Params.GroupMaster = true;
                 break;
             }
-            
             else{
                 Serial.println("No soy el nuevo maestro, alguien se pondrá :)");
                 xStart = xTaskGetTickCount();
@@ -200,7 +202,6 @@ void MasterPanicTask(void *args){
                     break;
                 }
             }
-            
         }
         delay(1000);
     }
@@ -240,10 +241,19 @@ void Publisher(void* args){
             }
             ChargingGroup.SendNewData = false;
         }
+        
         if( ChargingGroup.SendNewParams){
             printf("Publicando nuevos parametros\n");
+            if(ChargingGroup.group_chargers.size< 10){
+                sprintf(buffer,"0%i",(char)ChargingGroup.group_chargers.size);
+            }
+            else{
+                sprintf(buffer,"%i",(char)ChargingGroup.group_chargers.size);
+            }
+            
             for(int i=0;i< ChargingGroup.group_chargers.size;i++){
-                memcpy(&buffer[(i*8)],ChargingGroup.group_chargers.charger_table[i].name,8);   
+                memcpy(&buffer[2+(i*9)],ChargingGroup.group_chargers.charger_table[i].name,8);   
+                itoa(ChargingGroup.group_chargers.charger_table[i].Fase,&buffer[10+(i*9)],10);
             }
 
             mqtt_publish("Params", buffer);
@@ -251,11 +261,11 @@ void Publisher(void* args){
         }
 
         //Avisar al maestro de que seguimos aqui
-        if(!ChargingGroup.GroupMaster){ 
+        if(!ChargingGroup.Params.GroupMaster){ 
             mqtt_publish("Ping", ConfigFirebase.Device_Id);
 
             delay(1000);
-            if(!ChargingGroup.GroupActive || GetStopMQTT()){
+            if(!ChargingGroup.Conected || GetStopMQTT()){
                 printf("Maestro desconectado!!!\n");
                 stop_MQTT();
                 xTaskCreate(MasterPanicTask,"MasterPanicTask",4096,NULL,2,NULL);
@@ -276,12 +286,12 @@ void start_MQTT_server(){
     for(uint8_t i =0; i<10;i++){
         broadcast_a_grupo("Hay maestro?");
         delay(5);
-        if(!ChargingGroup.GroupMaster)break;
+        if(!ChargingGroup.Params.GroupMaster)break;
     }
     
     
-    if(ChargingGroup.GroupMaster){
-        ChargingGroup.GroupActive = true;
+    if(ChargingGroup.Params.GroupMaster){
+        ChargingGroup.Conected = true;
         /* Start MQTT Server using tcp transport */
         char path[64];
         sprintf(path, "mqtt://%s:1883", ip4addr_ntoa(&Coms.ETH.IP));
@@ -302,9 +312,9 @@ void start_MQTT_server(){
         else{
             //Si el grupo está vacio o el cargador no está en el grupo,
             printf("No tengo cargadores en el grupo!\n");
-            ChargingGroup.GroupMaster = false;
-            ChargingGroup.GroupActive = false;
-            SendToPSOC5(ChargingGroup.GroupMaster, GROUPS_GROUP_MASTER);
+            ChargingGroup.Params.GroupMaster = false;
+            ChargingGroup.Params.GroupActive = false;
+            ChargingGroup.Conected = false;
             return;
         }
 
@@ -325,15 +335,15 @@ void start_MQTT_server(){
 }
 
 void start_MQTT_client(IPAddress remoteIP){
-    ChargingGroup.GroupMaster = false;
-    SendToPSOC5(ChargingGroup.GroupMaster, GROUPS_GROUP_MASTER);
-    ChargingGroup.GroupActive = true;
+    ChargingGroup.Params.GroupMaster = false;
+    
     mqtt_sub_pub_opts publisher;
     
 	sprintf(publisher.url, "mqtt://%s:1883", remoteIP.toString().c_str());
     strcpy(publisher.Client_ID,ConfigFirebase.Device_Id);
 
     if(mqtt_connect(&publisher)){
+        ChargingGroup.Conected = true;
         mqtt_subscribe("Device_Status");
         mqtt_subscribe("Pong");
         mqtt_subscribe("Params");

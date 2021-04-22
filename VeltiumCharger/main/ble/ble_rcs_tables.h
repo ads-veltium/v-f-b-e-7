@@ -82,8 +82,9 @@
 //  66 SSID_2                      16 R    uint8_array CD40 XXXX 00B5  
 //  67 Start_Prov                   1 W    uint8       CD40 XXXX 00B7  
 //  68 Eth_ON                       1 RW   uint8       CD40 XXXX 00B9  
-//  69 LAN_IP1                      4 R    uint8_array CD40 XXXX 00BB  
-//  70 LAN_IP2                      4 R    uint8_array CD40 XXXX 00BD  
+//  69 LAN_IP                       4 R    uint8_array CD40 XXXX 00BB  
+//  70 Group_operations             1 R    uint8       CD40 XXXX 00BD 
+//  71 Group_params                 1 R    uint8       CD40 XXXX 00BF  
 
 // table with 71 bytes
 static uint8_t table_handle_for_idx[1+RCS_MAX_IDX] = {

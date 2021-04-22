@@ -9,3 +9,22 @@ bool str_to_uint16(const char *str, uint16_t *res){
   *res = (uint16_t) val;
   return true;
 }
+
+void cls(){
+    Serial.write(27);   
+    Serial.print("[2J");
+    Serial.write(27);
+    Serial.print("[H"); 
+}
+
+void print_table(carac_chargers table){
+
+    printf("=============== Grupo de cargadores ===================\n");
+    printf("      ID     Fase   HPT   I          IP         D\n");
+    for(int i=0; i< table.size;i++){     //comprobar si el cargador ya está almacenado
+        printf("   %s    %i    %s  %i   %s   %i\n", table.charger_table[i].name,table.charger_table[i].Fase,table.charger_table[i].HPT,table.charger_table[i].Current, table.charger_table[i].IP.toString().c_str(), table.charger_table[i].Delta);
+    }
+    printf("Memoria interna disponible: %i\n", esp_get_free_internal_heap_size());
+    printf("Memoria total disponible:   %i\n", esp_get_free_heap_size());
+    printf("=======================================================\n");
+}

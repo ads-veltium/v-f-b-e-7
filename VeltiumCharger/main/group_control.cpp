@@ -1,6 +1,7 @@
 #include "group_control.h"
 #include "control.h"
 #include <string.h>
+#include "helpers.h"
 
 extern carac_Params Params;
 extern carac_Status Status;
@@ -27,24 +28,6 @@ TickType_t xStart;
 void Calculo_Consigna();
 void input_values();
 
-static void cls(){
-    Serial.write(27);   
-    Serial.print("[2J");
-    Serial.write(27);
-    Serial.print("[H"); 
-}
-
-static void print_table(carac_chargers table){
-
-    printf("=============== Grupo de cargadores ===================\n");
-    printf("      ID     Fase   HPT   I          IP         D\n");
-    for(int i=0; i< table.size;i++){     //comprobar si el cargador ya está almacenado
-        printf("   %s    %i    %s  %i   %s   %i\n", table.charger_table[i].name,table.charger_table[i].Fase,table.charger_table[i].HPT,table.charger_table[i].Current, table.charger_table[i].IP.toString().c_str(), table.charger_table[i].Delta);
-    }
-    printf("Memoria interna disponible: %i\n", esp_get_free_internal_heap_size());
-    printf("Memoria total disponible:   %i\n", esp_get_free_heap_size());
-    printf("=======================================================\n");
-}
 
 //Funcion para procesar los nuevos datos recibidos
 void New_Data(char* Data, int Data_size){
@@ -125,15 +108,54 @@ void New_Data(char* Data, int Data_size){
 }
 
 void New_Params(char* Data, int Data_size){
-    uint8_t numero_de_cargadores = (Data_size)/8;
-    ChargingGroup.group_chargers.size = 0;
+    char n[2];
+    memcpy(n,Data,2);
+    uint8_t numero_de_cargadores = atoi(n);
+    bool newchargers=false;
+    
+    //comprobar si el grupo es distinto
+    if(numero_de_cargadores == ChargingGroup.group_chargers.size){
+      for(uint8_t i=0;i<numero_de_cargadores;i++){
+        if(memcmp(ChargingGroup.group_chargers.charger_table[i].name, &Data[i*9+2],8)){
+          newchargers=true;
+          break;
+        }
+      }
+    }
+    else{
+      newchargers=true;
+    }
+    
+    if(newchargers){
+      printf("Nuevos cargadores recibidos!\n");
+      //Copiar el nuevo grupo a nuestra tabla
+      ChargingGroup.group_chargers.size = 0;
+      for(uint8_t i=0;i<numero_de_cargadores;i++){
+          char ID[8];
+          memcpy(ID, &Data[i*9+2],8);
+          add_to_group(ID,get_IP(ID),&ChargingGroup.group_chargers);
+      }   
 
-    //Copiar el nuevo grupo a nuestra tabla
-    for(uint8_t i=0;i<numero_de_cargadores;i++){
-        char ID[8];
-        memcpy(ID, &Data[i*8],8);
-        add_to_group(ID,get_IP(ID),&ChargingGroup.group_chargers);
-    }    
+      //Almacenarlo en el PSOC5
+      uint8_t sendBuffer[252];
+      sendBuffer[0]=numero_de_cargadores;
+      if(numero_de_cargadores<25){
+        memcpy(&sendBuffer[1],&Data[2],numero_de_cargadores*9+1);
+        SendToPSOC5((char*)sendBuffer,numero_de_cargadores*9+1,GROUPS_DEVICES); 
+      }
+    }
+
+    uint8 buffer[7];
+    ChargingGroup.Params.potencia_max = 16;
+    ChargingGroup.Params.inst_max = 13;
+    buffer[0] = ChargingGroup.Params.GroupMaster;
+    buffer[1] = ChargingGroup.Params.GroupActive;
+    buffer[2] = ChargingGroup.Params.inst_max;
+    buffer[3] = ChargingGroup.Params.CDP;
+    buffer[4] = ChargingGroup.Params.ContractPower;
+    buffer[5] = ChargingGroup.Params.UserID;
+    buffer[6] = ChargingGroup.Params.potencia_max;
+    SendToPSOC5((char*)buffer,7,GROUPS_PARAMS); 
 }
 
 void Calculo_Consigna(){
@@ -155,7 +177,7 @@ void Calculo_Consigna(){
         if (Delta_total > 0) {
           is_LimiteConsumo = IN_Cargando3;
 
-          Comands.desired_current = Delta_total / (Conex - Conex_Delta) + ChargingGroup.potencia_max/Conex;
+          Comands.desired_current = Delta_total / (Conex - Conex_Delta) + ChargingGroup.Params.potencia_max/Conex;
         }
       }
     } 
@@ -172,23 +194,23 @@ void Calculo_Consigna(){
     } else {
       switch (is_LimiteConsumo) {
        case IN_Cargando1:
-        if (Comands.desired_current * Conex > ChargingGroup.potencia_max) {
+        if (Comands.desired_current * Conex > ChargingGroup.Params.potencia_max) {
           is_LimiteConsumo = IN_Cargando2;
           Comands.desired_current = MAX_CURRENT;
-        } else if ((Pc >= ChargingGroup.potencia_max) && (Comands.desired_current * Conex < ChargingGroup.potencia_max)) {
+        } else if ((Pc >= ChargingGroup.Params.potencia_max) && (Comands.desired_current * Conex < ChargingGroup.Params.potencia_max)) {
           is_LimiteConsumo = IN_ReduccionPc;
-          Comands.desired_current = ChargingGroup.potencia_max / Conex;
+          Comands.desired_current = ChargingGroup.Params.potencia_max / Conex;
         } else {
           Comands.desired_current = MAX_CURRENT;
         }
         break;
 
        case IN_Cargando2:
-        if (Pc >= ChargingGroup.potencia_max) {
+        if (Pc >= ChargingGroup.Params.potencia_max) {
           is_LimiteConsumo = IN_ReduccionPc;
 
-          Comands.desired_current = ChargingGroup.potencia_max / Conex;
-        } else if (Comands.desired_current * Conex < ChargingGroup.potencia_max) {
+          Comands.desired_current = ChargingGroup.Params.potencia_max / Conex;
+        } else if (Comands.desired_current * Conex < ChargingGroup.Params.potencia_max) {
           is_LimiteConsumo = IN_Cargando1;
           Comands.desired_current = MAX_CURRENT;
         } else {
@@ -198,16 +220,16 @@ void Calculo_Consigna(){
         break;
 
        case IN_Cargando3:
-        if (ChargingGroup.potencia_max > Conex * MAX_CURRENT) {
+        if (ChargingGroup.Params.potencia_max > Conex * MAX_CURRENT) {
           is_LimiteConsumo = IN_Cargando1;
 
           Comands.desired_current = MAX_CURRENT;
         } else if (Comands.desired_current - Status.Measures.instant_current > 6) {
           is_LimiteConsumo = IN_Contador;
-
+          xStart = xTaskGetTickCount();
         } else {
 
-          Comands.desired_current = Delta_total / (Conex - Conex_Delta) + ChargingGroup.potencia_max / Conex;
+          Comands.desired_current = Delta_total / (Conex - Conex_Delta) + ChargingGroup.Params.potencia_max / Conex;
           
           if (Comands.desired_current >= MAX_CURRENT){
               Comands.desired_current = MAX_CURRENT;
@@ -219,24 +241,24 @@ void Calculo_Consigna(){
        case IN_Contador:
         if (Comands.desired_current - Status.Measures.instant_current <= 6) {
           is_LimiteConsumo = IN_Cargando3;
-          Comands.desired_current = Delta_total / (Conex - Conex_Delta) + ChargingGroup.potencia_max /Conex;
+          Comands.desired_current = Delta_total / (Conex - Conex_Delta) + ChargingGroup.Params.potencia_max /Conex;
           
         } else if (pdTICKS_TO_MS(xTaskGetTickCount()-xStart) >= 20000) {
           is_LimiteConsumo = IN_Repartir;
-          Comands.desired_current = ChargingGroup.potencia_max / Conex;
+          Comands.desired_current = ChargingGroup.Params.potencia_max / Conex;
 
           Status.Delta = Comands.desired_current - Status.Measures.instant_current;
         } 
         break;
 
        case IN_ReduccionPc:
-        if ((ChargingGroup.potencia_max > Pc) && (Comands.desired_current * Conex <= ChargingGroup.potencia_max)) {
+        if ((ChargingGroup.Params.potencia_max > Pc) && (Comands.desired_current * Conex <= ChargingGroup.Params.potencia_max)) {
           is_LimiteConsumo = IN_Cargando3;
-          Comands.desired_current = Delta_total / (Conex - Conex_Delta) + ChargingGroup.potencia_max /
+          Comands.desired_current = Delta_total / (Conex - Conex_Delta) + ChargingGroup.Params.potencia_max /
             Conex;
           
         } else {
-          Comands.desired_current = ChargingGroup.potencia_max / Conex;
+          Comands.desired_current = ChargingGroup.Params.potencia_max / Conex;
         }
         break;
 
@@ -246,18 +268,18 @@ void Calculo_Consigna(){
 
           Status.Delta = 0;
           is_LimiteConsumo = IN_Cargando3;
-          Comands.desired_current = Delta_total / (Conex - Conex_Delta) + ChargingGroup.potencia_max /Conex;
+          Comands.desired_current = Delta_total / (Conex - Conex_Delta) + ChargingGroup.Params.potencia_max /Conex;
         
         } else {
-          Comands.desired_current = ChargingGroup.potencia_max / Conex;
+          Comands.desired_current = ChargingGroup.Params.potencia_max / Conex;
           Status.Delta = Comands.desired_current - Status.Measures.instant_current;
         }
         break;
       }
     }
   }
-  printf("Comand desired current %i \n", Comands.desired_current);
-  SendToPSOC5(Comands.desired_current,MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
+  //printf("Comand desired current %i \n", Comands.desired_current);
+  //SendToPSOC5(Comands.desired_current,MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
 }
 
 void input_values(){
@@ -273,6 +295,6 @@ void input_values(){
         total_pc += ChargingGroup.group_chargers.charger_table[i].Current;
     }   
     Pc=total_pc/100;
-    printf("Total PC and Delta %i %i \n",Pc,Delta_total); 
+    //printf("Total PC and Delta %i %i \n",Pc,Delta_total); 
 }
 

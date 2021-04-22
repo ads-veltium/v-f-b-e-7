@@ -336,9 +336,10 @@ void Eth_Loop(){
                 Coms.ETH.State = CONECTADO;
             #ifdef GROUPS
                 start_udp();
+                SendToPSOC5(0,SEND_GROUP_DATA);
             #endif
                 xStart = xTaskGetTickCount();
-                if(!Coms.ETH.DHCP && !Coms.ETH.Auto){
+                if(!Coms.ETH.DHCP && Coms.ETH.Auto){
                     if(ComprobarConexion()){
                         Coms.ETH.Internet = true;
                         Coms.Wifi.ON = false;
@@ -364,8 +365,8 @@ void Eth_Loop(){
                 }
             }
 
-            else if(!ChargingGroup.GroupActive){
-                if(ChargingGroup.GroupMaster){
+            else if(!ChargingGroup.Conected){
+                if(ChargingGroup.Params.GroupMaster){
                     if(GetStateTime(xStart) > 30000){
                         start_MQTT_server();
                     }
@@ -543,7 +544,7 @@ void ComsTask(void *args){
             }
             if((eth_connected || wifi_connected ) && !ServidorArrancado){
 
-                InitServer();
+                //InitServer();
                 ServidorArrancado = true;
             }
         }

@@ -27,7 +27,6 @@ uint16 ParseFirmwareVersion(String Texto){
 *************************/
 bool initFirebaseClient(){
 
-    Serial.println("INIT Firebase Client");
     Database->deviceID = ConfigFirebase.Device_Id;
     if(!Database->LogIn()){
       return false;
@@ -207,19 +206,37 @@ bool ReadFirebaseGroups(String Path){
     if(Database->Send_Command(Path,&Lectura, LEER)){
       ChargingGroup.last_ts_app_req=ts_app_req;
 
-      ChargingGroup.GroupMaster =  Lectura["master"];
-
-      SendToPSOC5(ChargingGroup.GroupMaster,GROUPS_GROUP_MASTER);
+      ChargingGroup.Params.GroupMaster =  Lectura["master"] == true;
+      ChargingGroup.Params.GroupActive =  Lectura["active"] == true;
 
       //QUITAR!!!!!!!!!!!!!!!!!
       memcpy(ChargingGroup.group_chargers.charger_table[0].name, "31B70630",8);
       memcpy(ChargingGroup.group_chargers.charger_table[1].name, "626965F5",8);  
       memcpy(ChargingGroup.group_chargers.charger_table[2].name, "72BC0823",8);
       memcpy(ChargingGroup.group_chargers.charger_table[3].name, "71962AD0",8);
-      //memcpy(ChargingGroup.group_chargers.charger_table[4].name, "FT63D732",8);
-      //memcpy(ChargingGroup.group_chargers.charger_table[5].name, "J3P10DNR",8);
+      memcpy(ChargingGroup.group_chargers.charger_table[4].name, "FT63D732",8);
 
-      ChargingGroup.group_chargers.size = 4;
+      ChargingGroup.group_chargers.charger_table[0].Fase = 0;
+      ChargingGroup.group_chargers.charger_table[1].Fase = 1;
+      ChargingGroup.group_chargers.charger_table[2].Fase = 2;
+      ChargingGroup.group_chargers.charger_table[3].Fase = 3;
+      ChargingGroup.group_chargers.charger_table[4].Fase = 4;
+
+      ChargingGroup.group_chargers.size = 5;
+
+      uint8 buffer[7];
+      ChargingGroup.Params.potencia_max = 16;
+      ChargingGroup.Params.inst_max     = 13;
+
+      buffer[0] = ChargingGroup.Params.GroupMaster;
+      buffer[1] = ChargingGroup.Params.GroupActive;
+      buffer[2] = ChargingGroup.Params.inst_max;
+      buffer[3] = ChargingGroup.Params.CDP;
+      buffer[4] = ChargingGroup.Params.ContractPower;
+      buffer[5] = ChargingGroup.Params.UserID;
+      buffer[6] = ChargingGroup.Params.potencia_max;
+
+      SendToPSOC5((char*)buffer,7,GROUPS_PARAMS);
       
       if(!Database->Send_Command(Path+"/ts_dev_ack",&Lectura,TIMESTAMP)){
           return false;
@@ -519,7 +536,6 @@ void Firebase_Conn_Task(void *args){
       Coms.last_ts_app_req    = Database->Get_Timestamp("/coms/ts_app_req",&Lectura);
       Status.last_ts_app_req  = Database->Get_Timestamp("/status/ts_app_req",&Lectura);
       
-      Serial.println("Conectado a firebase!");
       Error_Count+=!WriteFirebaseFW("/fw/current");
       ConnectionState=IDLE;
       break;
@@ -728,13 +744,13 @@ void Firebase_Conn_Task(void *args){
       break;
     default:
       while(1){
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        delay(1000);
         Serial.printf("Error en la maquina d estados de firebase: %i \n", ConnectionState);
       }
       break;
     }
     if(LastStatus!= ConnectionState){
-      Serial.printf("Maquina de estados de Firebase de % i a %i \n", LastStatus, ConnectionState);
+      //Serial.printf("Maquina de estados de Firebase de % i a %i \n", LastStatus, ConnectionState);
       LastStatus= ConnectionState;
     }
     

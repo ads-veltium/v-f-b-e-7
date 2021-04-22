@@ -1,8 +1,6 @@
 #include "mqtt_server.h"
 #include "../group_control.h"
 
-
-
 // A list of subscription, held in memory
 struct sub *s_subs EXT_RAM_ATTR;
 
@@ -84,7 +82,6 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
 		  sub->c = c;
 		  sub->topic = mg_strdup(topic);
 		  sub->qos = qos;
-		  printf("Añadido a la lista de subscripcion %s\n", sub->topic.ptr);
 		  LIST_ADD_HEAD(struct sub, &s_subs, sub);
 		}
 		break;
@@ -136,7 +133,7 @@ void mqtt_server(void *pvParameters){
 	mg_log_set("1"); // Set to log level to LL_ERROR
 	
 	const char *s_listen_on = (char*)pvParameters;
-
+	printf("Escuchando en %s\n", s_listen_on);
 	struct mg_mgr mgr;
 	mg_mgr_init(&mgr);
 	mg_mqtt_listen(&mgr, s_listen_on, fn, NULL);  // Create MQTT listener

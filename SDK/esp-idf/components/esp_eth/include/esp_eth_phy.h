@@ -197,7 +197,7 @@ typedef struct {
         .phy_addr1 = 1,               \
         .phy_addr2 = 2,              \
         .reset_timeout_ms = 100,     \
-        .autonego_timeout_ms = 4000, \
+        .autonego_timeout_ms = 10000, \
         .reset_gpio_num = 12,         \
     }
 

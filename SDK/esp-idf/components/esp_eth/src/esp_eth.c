@@ -157,9 +157,6 @@ static void eth_check_link_timer_cb(TimerHandle_t xTimer)
     esp_eth_phy_t *phy = eth_driver->phy;
     esp_eth_increase_reference(eth_driver);
     phy->get_link(phy);
-    //if(phy->link1==ETH_LINK_DOWN && phy->link2 ==ETH_LINK_DOWN){
-        phy->negotiate(phy);
-    //}
     
     esp_eth_decrease_reference(eth_driver);
 }
