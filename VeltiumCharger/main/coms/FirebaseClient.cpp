@@ -208,7 +208,7 @@ bool ReadFirebaseGroups(String Path){
 
       ChargingGroup.Params.GroupMaster =  Lectura["master"] == true;
       ChargingGroup.Params.GroupActive =  Lectura["active"] == true;
-      ChargingGroup. =  Lectura["delete"] == true;
+      ChargingGroup.DeleteOrder =  Lectura["delete"] == true;
 
       if(ChargingGroup.Params.GroupActive){
          //QUITAR!!!!!!!!!!!!!!!!!

@@ -388,7 +388,7 @@ void input_values(){
         total_pc += ChargingGroup.group_chargers.charger_table[i].Current;
     }   
     Pc=total_pc/100;
-    printf("Total PC and Delta %i %i \n",Pc,Delta_total); 
+    //printf("Total PC and Delta %i %i \n",Pc,Delta_total); 
 
     for(int i=0; i< FaseChargers.size-1;i++){
         if(!memcmp(FaseChargers.charger_table[i].HPT,"C2",2)){
@@ -398,6 +398,6 @@ void input_values(){
         total_pc_fase += ChargingGroup.group_chargers.charger_table[i].Current;
     }
     Pc_Fase=total_pc_fase/100;
-    printf("Total PC of phase %i\n",Pc);    
+    //printf("Total PC of phase %i\n",Pc);    
 }
 

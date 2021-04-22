@@ -240,7 +240,7 @@ void Publisher(void* args){
             ChargingGroup.SendNewData = false;
         }
         
-        if( ChargingGroup.SendNewParams){
+        if( ChargingGroup.SendNewParams || new_charger){
             printf("Publicando nuevos parametros\n");
             if(ChargingGroup.group_chargers.size< 10){
                 sprintf(buffer,"0%i",(char)ChargingGroup.group_chargers.size);
@@ -253,7 +253,7 @@ void Publisher(void* args){
                 memcpy(&buffer[2+(i*9)],ChargingGroup.group_chargers.charger_table[i].name,8);   
                 itoa(ChargingGroup.group_chargers.charger_table[i].Fase,&buffer[10+(i*9)],10);
             }
-
+            new_charger = 0;
             mqtt_publish("Params", buffer);
             ChargingGroup.SendNewParams = false;
         }
