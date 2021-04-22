@@ -338,24 +338,17 @@ void Eth_Loop(){
                 start_udp();
             #endif
                 xStart = xTaskGetTickCount();
-                if(!Coms.ETH.DHCP){
+                if(!Coms.ETH.DHCP && !Coms.ETH.Auto){
                     if(ComprobarConexion()){
                         Coms.ETH.Internet = true;
                         Coms.Wifi.ON = false;
                     }
                 }
             }
-            #ifdef GROUPS
-                else if(GetStateTime(xStart) > 60000){
-                    Coms.ETH.State = KILLING;
-                    kill_ethernet();
-                }
-            #endif
 
             else if(!Coms.ETH.ON){
                 stop_ethernet();
-                Coms.ETH.State = DISCONNECTING;  
-                              
+                Coms.ETH.State = DISCONNECTING;                
             }
             
         break;
@@ -381,8 +374,7 @@ void Eth_Loop(){
             #endif
 
             if(!Coms.ETH.ON){
-            #ifdef GROUPS
-                
+            #ifdef GROUPS               
                 if(Coms.ETH.DHCP){
                     kill_ethernet();
                     Coms.ETH.DHCP  = 0;

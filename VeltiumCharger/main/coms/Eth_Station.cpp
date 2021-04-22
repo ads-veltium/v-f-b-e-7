@@ -17,6 +17,7 @@ extern bool wifi_connected;
 extern carac_Coms  Coms;
 extern carac_Firebase_Configuration ConfigFirebase;
 extern carac_Contador   ContadorExt;
+extern carac_Params Params;
 
 static esp_eth_handle_t s_eth_handle = NULL;
 
@@ -92,7 +93,7 @@ void BuscarContador_Task(void *args){
                 strcat(url, ip);
                 strcat(url, "/get_command?command=get_measurements");
 
-                if(Cliente.Send_Command(url,READ)) {
+                if(Cliente.Send_Command(url,LEER)) {
 
                     String respuesta = Cliente.ObtenerRespuesta();               
                     if(respuesta.indexOf("IE38MD")>-1){
@@ -196,6 +197,11 @@ void initialize_ethernet(void){
     esp_netif_config_t cfg = ESP_NETIF_DEFAULT_ETH();
     Serial.println("Arrancando ethernet");
     //servidor DHCP
+    if(!Coms.ETH.Auto && Params.Tipo_Sensor){
+        //si tenemos IP estatoca y un medidor conectado, activamos el dhcp
+        Coms.ETH.DHCP = true;
+    }
+
     if(Coms.ETH.DHCP){
         Serial.println("Arrancando servidor dhcp!");
         esp_netif_inherent_config_t config;
@@ -218,11 +224,6 @@ void initialize_ethernet(void){
         esp_event_handler_register(ETH_EVENT, ETHERNET_EVENT_START, esp_netif_action_start, eth_netif);
         esp_event_handler_register(ETH_EVENT, ETHERNET_EVENT_STOP, esp_netif_action_stop, eth_netif);
         eth_connected = true;
-
-        /*Coms.ETH.IP[0] =ip4_addr1(&DHCP_Server_IP.ip);
-        Coms.ETH.IP[1] =ip4_addr2(&DHCP_Server_IP.ip);
-        Coms.ETH.IP[2] =ip4_addr3(&DHCP_Server_IP.ip);
-        Coms.ETH.IP[3] =ip4_addr4(&DHCP_Server_IP.ip);*/
         
         uint8_t ip_Array[4] = { ip4_addr1(&Coms.ETH.IP),ip4_addr2(&Coms.ETH.IP),ip4_addr3(&Coms.ETH.IP),ip4_addr4(&Coms.ETH.IP)};
         modifyCharacteristic(&ip_Array[0], 4, COMS_CONFIGURATION_LAN_IP);
@@ -234,6 +235,7 @@ void initialize_ethernet(void){
         ESP_ERROR_CHECK(esp_netif_dhcpc_stop(eth_netif));
         esp_netif_ip_info_t  info;
         memset(&info, 0, sizeof(info));
+        //info.ip=Coms.ETH.IP;
         IP4_ADDR(&info.ip, 192, 168, 1, 5);
 	    IP4_ADDR(&info.gw, 192, 168, 1, 1);
 	    IP4_ADDR(&info.netmask, 255, 255, 255, 0);

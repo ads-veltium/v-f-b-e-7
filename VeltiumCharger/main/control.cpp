@@ -578,6 +578,7 @@ void procesar_bloque(uint16 tipo_bloque){
 #endif
 			}
 		break;
+		
 		case BLOQUE_DATE_TIME:{
 			modifyCharacteristic(buffer_rx_local, 6, TIME_DATE_DATE_TIME_CHAR_HANDLE);
 			aut_semilla = (((int)buffer_rx_local[4]) * 0x100) + (int)buffer_rx_local[5];
@@ -609,226 +610,264 @@ void procesar_bloque(uint16 tipo_bloque){
 				}
 				
 			#endif
-		
-		break;
 		}
-		default:
-
 		break;
-	}
-	if(MEASURES_INSTALATION_CURRENT_LIMIT_CHAR_HANDLE == tipo_bloque)
-	{
+
+		case MEASURES_INSTALATION_CURRENT_LIMIT_CHAR_HANDLE:{
+			modifyCharacteristic(buffer_rx_local, 1, MEASURES_INSTALATION_CURRENT_LIMIT_CHAR_HANDLE);
+			Serial.println("Instalation current limit Changed to" );
+			Serial.print(buffer_rx_local[0]);
+			#ifdef CONNECTED
+				Params.inst_current_limit = buffer_rx_local[0];
+			#endif
+		}	
+		break;
+	
+		case MEASURES_CURRENT_COMMAND_CHAR_HANDLE:{
+			Comands.desired_current = buffer_rx_local[0];
+			Comands.Newdata = false;
+			Serial.println("Current command received");
+			Serial.println(Comands.desired_current);
+			modifyCharacteristic(buffer_rx_local, 1, MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
+		}
+		break;
 		
-		modifyCharacteristic(buffer_rx_local, 1, MEASURES_INSTALATION_CURRENT_LIMIT_CHAR_HANDLE);
-		Serial.println("Instalation current limit Changed to" );
-		Serial.print(buffer_rx_local[0]);
-		#ifdef CONNECTED
-			Params.inst_current_limit = buffer_rx_local[0];
-		#endif
-	}
-	else if(MEASURES_CURRENT_COMMAND_CHAR_HANDLE == tipo_bloque)
-	{
-		Comands.desired_current = buffer_rx_local[0];
-		Comands.Newdata = false;
-		Serial.println("Current command received");
-		Serial.println(Comands.desired_current);
-		modifyCharacteristic(buffer_rx_local, 1, MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
-	}
-	else if(TIME_DATE_CHARGING_START_TIME_CHAR_HANDLE == tipo_bloque)
-	{
-		modifyCharacteristic(buffer_rx_local, 6, TIME_DATE_CHARGING_START_TIME_CHAR_HANDLE);
-	}
-	else if(TIME_DATE_CHARGING_STOP_TIME_CHAR_HANDLE == tipo_bloque)
-	{
-		modifyCharacteristic(buffer_rx_local, 6, TIME_DATE_CHARGING_STOP_TIME_CHAR_HANDLE);
-	}
-	else if(CHARGING_INSTANT_DELAYED_CHAR_HANDLE == tipo_bloque)
-	{
-		modifyCharacteristic(buffer_rx_local, 1, CHARGING_INSTANT_DELAYED_CHAR_HANDLE);
-	}
-	else if(CHARGING_START_STOP_START_MODE_CHAR_HANDLE == tipo_bloque)
-	{
-		modifyCharacteristic(buffer_rx_local, 1, CHARGING_START_STOP_START_MODE_CHAR_HANDLE);
-	}
-	else if(CHARGING_BLE_MANUAL_START_CHAR_HANDLE == tipo_bloque)
-	{
-		Comands.start=0;
-		Serial.println("Start recibido");
-		modifyCharacteristic(buffer_rx_local, 1, CHARGING_BLE_MANUAL_START_CHAR_HANDLE);
-	}
-	else if(CHARGING_BLE_MANUAL_STOP_CHAR_HANDLE == tipo_bloque)
-	{
-		Comands.stop=0;
-		Serial.println("Stop recibido");
-		modifyCharacteristic(buffer_rx_local, 1, CHARGING_BLE_MANUAL_STOP_CHAR_HANDLE);
-	}
-	else if(SCHED_CHARGING_SCHEDULE_MATRIX_CHAR_HANDLE == tipo_bloque)
-	{
-		modifyCharacteristic(buffer_rx_local, 168, SCHED_CHARGING_SCHEDULE_MATRIX_CHAR_HANDLE);
-	}
-	else if(VCD_NAME_USERS_CHARGER_DEVICE_ID_CHAR_HANDLE == tipo_bloque)
-	{
-		memcpy(device_ID, buffer_rx_local, 11);
-		changeAdvName(device_ID);
+		case TIME_DATE_CHARGING_START_TIME_CHAR_HANDLE:{
+			modifyCharacteristic(buffer_rx_local, 6, TIME_DATE_CHARGING_START_TIME_CHAR_HANDLE);
+		}
+		break;
 
-		updateCharacteristic(device_ID, 11, VCD_NAME_USERS_CHARGER_DEVICE_ID_CHAR_HANDLE);
-	}
-	else if(VCD_NAME_USERS_USERS_NUMBER_CHAR_HANDLE == tipo_bloque)
-	{
-		modifyCharacteristic(buffer_rx_local, 1, VCD_NAME_USERS_USERS_NUMBER_CHAR_HANDLE);
-	}
-	else if(VCD_NAME_USERS_UI_X_USER_ID_CHAR_HANDLE == tipo_bloque)
-	{
-		modifyCharacteristic(buffer_rx_local, 1, VCD_NAME_USERS_UI_X_USER_ID_CHAR_HANDLE);
-	}
-	else if(VCD_NAME_USERS_USER_INDEX_CHAR_HANDLE == tipo_bloque)
-	{
-		modifyCharacteristic(buffer_rx_local, 1, VCD_NAME_USERS_USER_INDEX_CHAR_HANDLE);
-	}
-	else if(TEST_LAUNCH_RCD_PE_TEST_CHAR_HANDLE == tipo_bloque)
-	{
-		modifyCharacteristic(buffer_rx_local, 1, TEST_LAUNCH_RCD_PE_TEST_CHAR_HANDLE);
-	}
-	else if(TEST_RCD_PE_TEST_RESULT_CHAR_HANDLE == tipo_bloque)
-	{
-		modifyCharacteristic(buffer_rx_local, 1, TEST_RCD_PE_TEST_RESULT_CHAR_HANDLE);
-	}
-	else if(MAN_LOCK_UNLOCK_LOCKING_MECHANISM_ON_OFF_CHAR_HANDLE == tipo_bloque)
-	{
-		modifyCharacteristic(buffer_rx_local, 1, MAN_LOCK_UNLOCK_LOCKING_MECHANISM_ON_OFF_CHAR_HANDLE);
-	}
-	else if(LED_LUMIN_COLOR_LUMINOSITY_LEVEL_CHAR_HANDLE == tipo_bloque)
-	{
-		luminosidad = buffer_rx_local[0];
-		modifyCharacteristic(&buffer_rx_local[0], 1, LED_LUMIN_COLOR_LUMINOSITY_LEVEL_CHAR_HANDLE);
-	}
-	else if(RESET_RESET_CHAR_HANDLE == tipo_bloque)
-	{	
-		ESP.restart();
-		//modifyCharacteristic(&buffer_rx_local[0], 1, RESET_RESET_CHAR_HANDLE);
-	}
-	else if(ENERGY_RECORD_RECORD_CHAR_HANDLE == tipo_bloque)
-	{
-		Serial.println("Total record received");
-		memcpy(record_buffer,buffer_rx_local,20);
+		case TIME_DATE_CHARGING_STOP_TIME_CHAR_HANDLE:{
+			modifyCharacteristic(buffer_rx_local, 6, TIME_DATE_CHARGING_STOP_TIME_CHAR_HANDLE);
+		}
+		break;
 
-		int j = 20;
-		bool end = false;
-		for(int i =20;i<512;i+=4){		
-			if(j<252){
-				if(buffer_rx_local[j]==255 && buffer_rx_local[j+1]==255){
-					end = true;
-				}
-				int PotLeida=buffer_rx_local[j]*0x100+buffer_rx_local[j+1];
-				if(PotLeida >0 && PotLeida < 5500 && !end){
-					record_buffer[i]   = buffer_rx_local[j];
-					record_buffer[i+1] = buffer_rx_local[j+1];
-					record_buffer[i+2] = 0;
-					record_buffer[i+3] = 0;
+		case CHARGING_INSTANT_DELAYED_CHAR_HANDLE:{
+			modifyCharacteristic(buffer_rx_local, 1, CHARGING_INSTANT_DELAYED_CHAR_HANDLE);
+		}
+		break;
+
+		case CHARGING_START_STOP_START_MODE_CHAR_HANDLE:{
+			modifyCharacteristic(buffer_rx_local, 1, CHARGING_START_STOP_START_MODE_CHAR_HANDLE);
+		}
+		break;
+
+		case CHARGING_BLE_MANUAL_START_CHAR_HANDLE:{
+			Comands.start=0;
+			Serial.println("Start recibido");
+			modifyCharacteristic(buffer_rx_local, 1, CHARGING_BLE_MANUAL_START_CHAR_HANDLE);
+		}
+		break;
+
+		case CHARGING_BLE_MANUAL_STOP_CHAR_HANDLE:{
+			Comands.stop=0;
+			Serial.println("Stop recibido");
+			modifyCharacteristic(buffer_rx_local, 1, CHARGING_BLE_MANUAL_STOP_CHAR_HANDLE);
+		}
+		break;
+
+		case SCHED_CHARGING_SCHEDULE_MATRIX_CHAR_HANDLE:{
+			modifyCharacteristic(buffer_rx_local, 168, SCHED_CHARGING_SCHEDULE_MATRIX_CHAR_HANDLE);
+		}
+		break;
+
+		case VCD_NAME_USERS_CHARGER_DEVICE_ID_CHAR_HANDLE:{
+			memcpy(device_ID, buffer_rx_local, 11);
+			changeAdvName(device_ID);
+
+			updateCharacteristic(device_ID, 11, VCD_NAME_USERS_CHARGER_DEVICE_ID_CHAR_HANDLE);
+		}
+		break;
+		
+		case VCD_NAME_USERS_USERS_NUMBER_CHAR_HANDLE:{
+		
+			modifyCharacteristic(buffer_rx_local, 1, VCD_NAME_USERS_USERS_NUMBER_CHAR_HANDLE);
+		}
+		break;
+		
+		case VCD_NAME_USERS_UI_X_USER_ID_CHAR_HANDLE:{
+		
+			modifyCharacteristic(buffer_rx_local, 1, VCD_NAME_USERS_UI_X_USER_ID_CHAR_HANDLE);
+		} 
+		break;
+		
+		case VCD_NAME_USERS_USER_INDEX_CHAR_HANDLE:{
+		
+			modifyCharacteristic(buffer_rx_local, 1, VCD_NAME_USERS_USER_INDEX_CHAR_HANDLE);
+		} 
+		break;
+		
+		case TEST_LAUNCH_RCD_PE_TEST_CHAR_HANDLE:{
+			modifyCharacteristic(buffer_rx_local, 1, TEST_LAUNCH_RCD_PE_TEST_CHAR_HANDLE);
+		} 
+		break;
+		
+		case TEST_RCD_PE_TEST_RESULT_CHAR_HANDLE:{
+			modifyCharacteristic(buffer_rx_local, 1, TEST_RCD_PE_TEST_RESULT_CHAR_HANDLE);
+		} 
+		break;
+		
+		case MAN_LOCK_UNLOCK_LOCKING_MECHANISM_ON_OFF_CHAR_HANDLE:{
+			modifyCharacteristic(buffer_rx_local, 1, MAN_LOCK_UNLOCK_LOCKING_MECHANISM_ON_OFF_CHAR_HANDLE);
+		} 
+		break;
+		
+		case LED_LUMIN_COLOR_LUMINOSITY_LEVEL_CHAR_HANDLE:{
+			luminosidad = buffer_rx_local[0];
+			modifyCharacteristic(&buffer_rx_local[0], 1, LED_LUMIN_COLOR_LUMINOSITY_LEVEL_CHAR_HANDLE);
+		} 
+		break;
+		
+		case RESET_RESET_CHAR_HANDLE:{
+			ESP.restart();
+			//modifyCharacteristic(&buffer_rx_local[0], 1, RESET_RESET_CHAR_HANDLE);
+		} 
+		break;
+		
+		case ENERGY_RECORD_RECORD_CHAR_HANDLE:{
+			Serial.println("Total record received");
+			memcpy(record_buffer,buffer_rx_local,20);
+
+			int j = 20;
+			bool end = false;
+			for(int i =20;i<512;i+=4){		
+				if(j<252){
+					if(buffer_rx_local[j]==255 && buffer_rx_local[j+1]==255){
+						end = true;
+					}
+					int PotLeida=buffer_rx_local[j]*0x100+buffer_rx_local[j+1];
+					if(PotLeida >0 && PotLeida < 5500 && !end){
+						record_buffer[i]   = buffer_rx_local[j];
+						record_buffer[i+1] = buffer_rx_local[j+1];
+						record_buffer[i+2] = 0;
+						record_buffer[i+3] = 0;
+					}
+					else{
+						record_buffer[i]   = 0;
+						record_buffer[i+1] = 0;
+						record_buffer[i+2] = 0;
+						record_buffer[i+3] = 0;
+					}
+
+					j+=2;
 				}
 				else{
 					record_buffer[i]   = 0;
 					record_buffer[i+1] = 0;
 					record_buffer[i+2] = 0;
 					record_buffer[i+3] = 0;
-				}
-
-				j+=2;
+				}				
 			}
-			else{
-				record_buffer[i]   = 0;
-				record_buffer[i+1] = 0;
-				record_buffer[i+2] = 0;
-				record_buffer[i+3] = 0;
-			}				
-		}
-		modifyCharacteristic(record_buffer, 512, ENERGY_RECORD_RECORD_CHAR_HANDLE);
-	}
-	
-	else if(RECORDING_REC_LAST_CHAR_HANDLE == tipo_bloque)
-	{
-		modifyCharacteristic(buffer_rx_local, 2, RECORDING_REC_LAST_CHAR_HANDLE);
-	}
-	else if(RECORDING_REC_INDEX_CHAR_HANDLE == tipo_bloque)
-	{
-		modifyCharacteristic(buffer_rx_local, 2, RECORDING_REC_INDEX_CHAR_HANDLE);
-	}
-	else if(RECORDING_REC_LAPS_CHAR_HANDLE == tipo_bloque)
-	{
-		modifyCharacteristic(buffer_rx_local, 2, RECORDING_REC_LAPS_CHAR_HANDLE);
-	}
-	else if(CONFIGURACION_AUTENTICATION_MODES_CHAR_HANDLE == tipo_bloque)
-	{
-		modifyCharacteristic(buffer_rx_local, 2, CONFIGURACION_AUTENTICATION_MODES_CHAR_HANDLE);
-		Serial.printf("Nueva autenticacion recibida! %c %c \n", buffer_rx_local[0],buffer_rx_local[1]);
-		#ifdef CONNECTED
-			memcpy(Params.autentication_mode,buffer_rx_local,2);
-		#endif
-	}
-	else if(DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_CHAR_HANDLE == tipo_bloque)
-	{
-		modifyCharacteristic(buffer_rx_local, 2, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_CHAR_HANDLE);
-		Serial.println("Potencia contratada cambiada a: ");
-		Serial.print(buffer_rx_local[0]+buffer_rx_local[1]*100);
+			modifyCharacteristic(record_buffer, 512, ENERGY_RECORD_RECORD_CHAR_HANDLE);
+		} 
+		break;
+		
+		case RECORDING_REC_LAST_CHAR_HANDLE:{
+			modifyCharacteristic(buffer_rx_local, 2, RECORDING_REC_LAST_CHAR_HANDLE);
+		} 
+		break;
+		
+		case RECORDING_REC_INDEX_CHAR_HANDLE:{
+			modifyCharacteristic(buffer_rx_local, 2, RECORDING_REC_INDEX_CHAR_HANDLE);
+		} 
+		break;
+		
+		case RECORDING_REC_LAPS_CHAR_HANDLE:{
+			modifyCharacteristic(buffer_rx_local, 2, RECORDING_REC_LAPS_CHAR_HANDLE);
+		} 
+		break;
+		
+		case CONFIGURACION_AUTENTICATION_MODES_CHAR_HANDLE:{
+			modifyCharacteristic(buffer_rx_local, 2, CONFIGURACION_AUTENTICATION_MODES_CHAR_HANDLE);
+			Serial.printf("Nueva autenticacion recibida! %c %c \n", buffer_rx_local[0],buffer_rx_local[1]);
+			#ifdef CONNECTED
+				memcpy(Params.autentication_mode,buffer_rx_local,2);
+			#endif
+		} 
+		break;
+		
+		case DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_CHAR_HANDLE:{
+			modifyCharacteristic(buffer_rx_local, 2, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_CHAR_HANDLE);
+			Serial.println("Potencia contratada cambiada a: ");
+			Serial.print(buffer_rx_local[0]+buffer_rx_local[1]*100);
 
-		#ifdef CONNECTED
-			Params.potencia_contratada=buffer_rx_local[0]+buffer_rx_local[1]*100;
-		#endif
-	}
-	else if(ERROR_STATUS_ERROR_CODE_CHAR_HANDLE == tipo_bloque)
-	{
-		modifyCharacteristic(buffer_rx_local, 1, ERROR_STATUS_ERROR_CODE_CHAR_HANDLE);
+			#ifdef CONNECTED
+				Params.potencia_contratada=buffer_rx_local[0]+buffer_rx_local[1]*100;
+			#endif
+		} 
+		break;
+		
+		case ERROR_STATUS_ERROR_CODE_CHAR_HANDLE:{
+			modifyCharacteristic(buffer_rx_local, 1, ERROR_STATUS_ERROR_CODE_CHAR_HANDLE);
 
-		#ifdef CONNECTED
-			Status.error_code=buffer_rx_local[0];
-		#endif
-	}
-	else if(BOOT_LOADER_LOAD_SW_APP_CHAR_HANDLE== tipo_bloque){
-		xTaskCreate(UpdateTask,"TASK UPDATE",4096,NULL,1,NULL);
-		updateTaskrunning=1;
-	}
-	else if (DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE== tipo_bloque){
-		modifyCharacteristic(buffer_rx_local, 1, DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE);
-		#ifdef CONNECTED
-			Params.Tipo_Sensor        = (buffer_rx_local[0]  >> 3) & 0x01;
-			Params.CDP				  = buffer_rx_local[0];
-		#endif
-	}
-	#ifdef CONNECTED
+			#ifdef CONNECTED
+				Status.error_code=buffer_rx_local[0];
+			#endif
+		} 
+		break;
+		
+		case BOOT_LOADER_LOAD_SW_APP_CHAR_HANDLE:{
+			xTaskCreate(UpdateTask,"TASK UPDATE",4096,NULL,1,NULL);
+			updateTaskrunning=1;
+		} 
+		break;
+		
+		case DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE:{
+			modifyCharacteristic(buffer_rx_local, 1, DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE);
+			#ifdef CONNECTED
+				Params.Tipo_Sensor        = (buffer_rx_local[0]  >> 3);
+				Params.CDP				  = buffer_rx_local[0];
+				Serial.printf("New CDP %i %i \n", Params.CDP, Params.Tipo_Sensor);
+			#endif
+		} 
+		break;
 
-		else if(COMS_CONFIGURATION_WIFI_ON== tipo_bloque){
+#ifdef CONNECTED
+		case COMS_CONFIGURATION_WIFI_ON:{
 			Coms.Wifi.ON    =  buffer_rx_local[0];
 			Serial.print("WIFI ON:");
 			Serial.println(Coms.Wifi.ON);
 			modifyCharacteristic(buffer_rx_local , 1, COMS_CONFIGURATION_WIFI_ON);
-		}
-		else if(COMS_CONFIGURATION_ETH_ON== tipo_bloque){
+		} 
+		break;
+		
+		case COMS_CONFIGURATION_ETH_ON:{
 			Coms.ETH.ON     =  buffer_rx_local[0];
 			Serial.print("ETH ON:");
 			Serial.println(Coms.ETH.ON);
 			modifyCharacteristic(buffer_rx_local,  1, COMS_CONFIGURATION_ETH_ON);
-		}
-	#ifdef GROUPS
-		else if(COMS_CONFIGURATION_ETH_DHCP== tipo_bloque){
+		} 
+		break;
+#ifdef GROUPS
+		case COMS_CONFIGURATION_ETH_DHCP:{
 			Coms.ETH.DHCP    =  buffer_rx_local[0];
 			Serial.print("DHCP ON:");
 			Serial.println(Coms.ETH.DHCP);
-		}
-		else if(GROUPS_GROUP_MASTER== tipo_bloque){
+		} 
+		break;
+		
+		case GROUPS_GROUP_MASTER:{
 			ChargingGroup.GroupMaster =  buffer_rx_local[0];
 			Serial.print("ChargingGroup.GroupMaster: ");
 			Serial.println(ChargingGroup.GroupMaster);
-		}
-	#endif
-		else if(COMS_FW_UPDATEMODE_CHAR_HANDLE == tipo_bloque){
+		} 
+		break;
+#endif
+		case COMS_FW_UPDATEMODE_CHAR_HANDLE:{
 			memcpy(Params.Fw_Update_mode,buffer_rx_local,2);
 			Serial.printf("Nuevo fw_update:%c %c \n", buffer_rx_local[0],buffer_rx_local[1]);
-		}
-		else if(COMS_CONFIGURATION_LAN_IP == tipo_bloque ){
+		} 
+		break;
+		
+		case COMS_CONFIGURATION_LAN_IP:{
 			Serial.print("Direccion IP Eth Recibida: ");
 			modifyCharacteristic(buffer_rx_local, 4, COMS_CONFIGURATION_LAN_IP);
-		}
-	#endif
+		} 
+		break;
+#endif
+		default:
+		break;
+	}
 }
  
 uint8_t sendBinaryBlock ( uint8_t *data, int len )
@@ -906,10 +945,8 @@ uint8_t setMainFwUpdateActive (uint8_t val )
 	return mainFwUpdateActive;
 }
 
-uint8_t setAuthToken ( uint8_t *data, int len )
-{
-	if(!authSuccess)
-	{
+uint8_t setAuthToken ( uint8_t *data, int len ){
+	if(!authSuccess){
 		printf("%s %s \r\n",deviceSerNum, initialSerNum);
 		if(!memcmp(authChallengeReply, data, 8) || !memcmp(deviceSerNum, initialSerNum, 10))
 		{
@@ -921,26 +958,18 @@ uint8_t setAuthToken ( uint8_t *data, int len )
 	return 1;
 }
 
-uint8_t authorizedOK ( void )
-{
+uint8_t authorizedOK ( void ){
 	return (authSuccess || mainFwUpdateActive == 1 );
 }
 
-void updateCharacteristic(uint8_t* data, uint16_t len, uint16_t attrHandle) 
-{
+void updateCharacteristic(uint8_t* data, uint16_t len, uint16_t attrHandle){
 	serverbleSetCharacteristic ( data,len,attrHandle);
 	return;
 }
 
-void modifyCharacteristic(uint8* data, uint16 len, uint16 attrHandle)
-{
+void modifyCharacteristic(uint8* data, uint16 len, uint16 attrHandle){
 	serverbleSetCharacteristic ( data,len,attrHandle);
 	return;
-}
-
-void Disable_VELT1_CHARGER_services(void)
-{
-
 }
 
 /************************************************

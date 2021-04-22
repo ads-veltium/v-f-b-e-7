@@ -132,8 +132,9 @@ typedef struct{
 	bool DC_Leack_status;
 	bool Con_Lock;
 	bool Trifasico = false;
-	uint8  error_code;
+	uint8 error_code;
 	uint8 Delta;
+	uint8 limite_Fase;
 
 	char HPT_status[2];
 	
@@ -261,6 +262,7 @@ typedef struct{
 	uint8_t     Fase;
 	uint16_t Current;
 	uint16_t   Delta;
+	uint8_t Num_limitado;
 
 }carac_charger;
 
@@ -281,8 +283,8 @@ typedef struct{
 	char GroupId[10] = {'0'};
 	long long last_ts_app_req= 0;
 
-	uint16 potencia_max;
-	uint16 inst_max;
+	uint8_t potencia_max;
+	uint8_t inst_max;
 }carac_group;
 
 typedef struct{

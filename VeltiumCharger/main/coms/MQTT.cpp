@@ -70,7 +70,6 @@ uint8_t check_in_group(const char* ID, carac_chargers* group){
 
 //Eliminar un cargador de un grupo
 bool remove_from_group(const char* ID ,carac_chargers* group){
-
     for(int j=0;j < group->size;j++){
         if(!memcmp(ID,  group->charger_table[j].name,8)){
             if(j!=group->size-1){ //si no es el ultimo debemos shiftear la lista
@@ -78,8 +77,7 @@ bool remove_from_group(const char* ID ,carac_chargers* group){
                     group->charger_table[i] = group->charger_table[i+1];
                 }
             }
-            group->charger_table[group->size-1].IP = INADDR_NONE;
-            
+            group->charger_table[group->size-1].IP = INADDR_NONE;       
             memset(group->charger_table[group->size-1].name,0,9);
             --group->size;
             printf("Cargador %s eliminado\n", ID);
@@ -215,30 +213,29 @@ void Publisher(void* args){
     char buffer[100];
     Params.Fase = 1;
     while(1){
-        if(ChargingGroup.SendNewData){           
+        if(ChargingGroup.SendNewData){    
+            char Delta[2]={'0'};
+            
+            if(Status.Delta >=10){
+                itoa(Status.Delta,&Delta[0],10);
+            }
+            else{
+                itoa(Status.Delta,&Delta[1],10);
+            }
 
             //si es trifasico, enviar informacion de todas las fases
             if(Status.Trifasico){
-                sprintf(buffer, "%s1%s%i%i", ConfigFirebase.Device_Id,Status.HPT_status,Status.Measures.instant_current,Comands.desired_current -Status.Measures.instant_current);
+                sprintf(buffer, "%s1%s%s%i%i", ConfigFirebase.Device_Id,Status.HPT_status,Delta,Status.Measures.instant_current,Status.limite_Fase);
                 mqtt_publish("Device_Status", (buffer));
                 delay(50);
-                sprintf(buffer, "%s2%s%i%i", ConfigFirebase.Device_Id,Status.HPT_status,Status.MeasuresB.instant_current,Comands.desired_current -Status.MeasuresB.instant_current);
+                sprintf(buffer, "%s2%s%s%i%i", ConfigFirebase.Device_Id,Status.HPT_status,Delta,Status.MeasuresB.instant_current,Status.limite_Fase);
                 mqtt_publish("Device_Status", (buffer));
                 delay(50);
-                sprintf(buffer, "%s3%s%i%i", ConfigFirebase.Device_Id,Status.HPT_status,Status.MeasuresC.instant_current,Comands.desired_current -Status.MeasuresC.instant_current);
+                sprintf(buffer, "%s3%s%s%i%i", ConfigFirebase.Device_Id,Status.HPT_status,Delta,Status.MeasuresC.instant_current,Status.limite_Fase);
                 mqtt_publish("Device_Status", (buffer));
             }
             else{
-                char Delta[2]={'0'};
-                
-                if(Status.Delta >=10){
-                    itoa(Status.Delta,&Delta[0],10);
-                }
-                else{
-                    itoa(Status.Delta,&Delta[1],10);
-                }
-
-                sprintf(buffer, "%s%i%s%s%i", ConfigFirebase.Device_Id,Params.Fase,Status.HPT_status,Delta,Status.Measures.instant_voltage);  
+                sprintf(buffer, "%s%i%s%s%i%i", ConfigFirebase.Device_Id,Params.Fase,Status.HPT_status,Delta,Status.Measures.instant_current,Status.limite_Fase);  
                 mqtt_publish("Device_Status", (buffer));
             }
             ChargingGroup.SendNewData = false;
@@ -286,23 +283,34 @@ void start_MQTT_server(){
     if(ChargingGroup.GroupMaster){
         ChargingGroup.GroupActive = true;
         /* Start MQTT Server using tcp transport */
-        xTaskCreateStatic(mqtt_server,"BROKER",1024*6,NULL,PRIORIDAD_MQTT,xSERVERStack,&xSERVERBuffer); 
+        char path[64];
+        sprintf(path, "mqtt://%s:1883", ip4addr_ntoa(&Coms.ETH.IP));
+        xTaskCreateStatic(mqtt_server,"BROKER",1024*6,&path,PRIORIDAD_MQTT,xSERVERStack,&xSERVERBuffer); 
         delay(5000);
 
         broadcast_a_grupo("Start client");
         mqtt_sub_pub_opts publisher;
 
         //Ponerme el primero en el grupo para indicar que soy el maestro
-        while(memcmp(ChargingGroup.group_chargers.charger_table[0].name,ConfigFirebase.Device_Id, 8)){
-            carac_charger OldMaster=ChargingGroup.group_chargers.charger_table[0];
-            remove_from_group(OldMaster.name, &ChargingGroup.group_chargers);
-            add_to_group(OldMaster.name, OldMaster.IP, &ChargingGroup.group_chargers);
+        if(ChargingGroup.group_chargers.size>0 && check_in_group(ConfigFirebase.Device_Id,&ChargingGroup.group_chargers ) !=-1){
+            while(memcmp(ChargingGroup.group_chargers.charger_table[0].name,ConfigFirebase.Device_Id, 8)){
+                carac_charger OldMaster=ChargingGroup.group_chargers.charger_table[0];
+                remove_from_group(OldMaster.name, &ChargingGroup.group_chargers);
+                add_to_group(OldMaster.name, OldMaster.IP, &ChargingGroup.group_chargers);
+            }
         }
+        else{
+            //Si el grupo está vacio o el cargador no está en el grupo,
+            printf("No tengo cargadores en el grupo!\n");
+            ChargingGroup.GroupMaster = false;
+            ChargingGroup.GroupActive = false;
+            SendToPSOC5(ChargingGroup.GroupMaster, GROUPS_GROUP_MASTER);
+            return;
+        }
+
         
         sprintf(publisher.url, "mqtt://%s:1883", ip4addr_ntoa(&Coms.ETH.IP));
         memcpy(publisher.Client_ID,ConfigFirebase.Device_Id, 8);
-        memcpy(publisher.Will_Message,ConfigFirebase.Device_Id, 8);
-        publisher.Will_Topic = "NODE_DEAD";
 
         if(mqtt_connect(&publisher)){
             mqtt_subscribe("Device_Status");
@@ -324,8 +332,6 @@ void start_MQTT_client(IPAddress remoteIP){
     
 	sprintf(publisher.url, "mqtt://%s:1883", remoteIP.toString().c_str());
     strcpy(publisher.Client_ID,ConfigFirebase.Device_Id);
-    strcpy(publisher.Will_Message,ConfigFirebase.Device_Id);
-    publisher.Will_Topic = "NODE_DEAD";
 
     if(mqtt_connect(&publisher)){
         mqtt_subscribe("Device_Status");
