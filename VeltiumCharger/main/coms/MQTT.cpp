@@ -25,7 +25,7 @@ StaticTask_t xSERVERBuffer ;
 
 static StackType_t xPUBLISHERStack [4096]     EXT_RAM_ATTR;
 StaticTask_t xPUBLISHERBuffer ;
-
+uint8_t new_charger;
 carac_chargers net_group;
 
 //Prototipos de funciones externas
@@ -145,8 +145,6 @@ void start_udp(){
                         AsyncUDPMessage mensaje (13);
                         mensaje.write((uint8_t*)(Encipher("Start client").c_str()), 13);
                         udp.sendTo(mensaje,packet.remoteIP(),1234);
-                        delay(500);
-                        ChargingGroup.SendNewParams = true;
                     }
                 }
           
