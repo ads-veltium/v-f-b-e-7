@@ -28,6 +28,7 @@ void start_udp();
 void InitServer(void);
 void StopServer(void);
 void start_MQTT_server();
+void start_MQTT_client(IPAddress remoteIP);
 
 static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data){
     Serial.printf("Evento de wifi %s %i\n", event_base, event_id );
@@ -366,9 +367,14 @@ void Eth_Loop(){
             }
 
             else if(!ChargingGroup.Conected){
-                if(ChargingGroup.Params.GroupMaster){
+                if(ChargingGroup.Params.GroupActive){
                     if(GetStateTime(xStart) > 30000){
-                        start_MQTT_server();
+                        if(ChargingGroup.StartClient){
+                            start_MQTT_client(ChargingGroup.MasterIP);
+                        }
+                        else{
+                            start_MQTT_server();
+                        }
                     }
                 }
             }
@@ -399,7 +405,6 @@ void Eth_Loop(){
             #ifdef GROUPS
             //Lectura del contador
 			if(ContadorExt.ContadorConectado){
-
 				if(!Counter.Inicializado){
                     printf("Arrancando lectura del contador\n");
 					Counter.begin(ContadorExt.ContadorIp);

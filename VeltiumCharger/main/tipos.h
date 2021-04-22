@@ -285,6 +285,10 @@ typedef struct{
 	bool SendNewData   = false;
 	bool SendNewParams = false;
 	bool Conected	   = false;
+	bool StopOrder     = false;
+	bool StartClient   = false;
+
+	IPAddress MasterIP;
 
 	carac_chargers group_chargers;
 	carac_group_params Params;

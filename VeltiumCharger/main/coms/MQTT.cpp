@@ -159,7 +159,8 @@ void start_udp(){
                 if(!memcmp(Desencriptado.c_str(), "Start client", 13)){
                     if(!ChargingGroup.Conected){
                         printf("Soy parte de un grupo !!\n");
-                        start_MQTT_client(packet.remoteIP());
+                        ChargingGroup.StartClient = true;
+                        ChargingGroup.MasterIP =packet.remoteIP();
                     }
                 }
                 else if(!memcmp(Desencriptado.c_str(), "Hay maestro?", 13)){
