@@ -1,6 +1,7 @@
 #include "mqtt_server.h"
 #include "../group_control.h"
 
+extern uint8_t new_charger;
 // A list of subscription, held in memory
 struct sub *s_subs EXT_RAM_ATTR;
 
@@ -48,10 +49,6 @@ int _mg_strcmp(const struct mg_str str1, const struct mg_str str2) {
 	return 0;
 }
 
-#define	WILL_FLAG	0x04
-#define WILL_QOS	0x18
-#define WILL_RETAIN	0x20
-
 bool GetStopMQTT(){
 	return StopMQTT;
 }
@@ -84,6 +81,7 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
 		  sub->qos = qos;
 		  LIST_ADD_HEAD(struct sub, &s_subs, sub);
 		}
+		new_charger = 1;
 		break;
 	  }
 	  case MQTT_CMD_UNSUBSCRIBE: {

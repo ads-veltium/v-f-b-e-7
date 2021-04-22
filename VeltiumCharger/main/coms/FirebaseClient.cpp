@@ -208,35 +208,40 @@ bool ReadFirebaseGroups(String Path){
 
       ChargingGroup.Params.GroupMaster =  Lectura["master"] == true;
       ChargingGroup.Params.GroupActive =  Lectura["active"] == true;
+      ChargingGroup. =  Lectura["delete"] == true;
 
-      //QUITAR!!!!!!!!!!!!!!!!!
-      memcpy(ChargingGroup.group_chargers.charger_table[0].name, "31B70630",8);
-      memcpy(ChargingGroup.group_chargers.charger_table[1].name, "626965F5",8);  
-      memcpy(ChargingGroup.group_chargers.charger_table[2].name, "72BC0823",8);
-      memcpy(ChargingGroup.group_chargers.charger_table[3].name, "71962AD0",8);
-      memcpy(ChargingGroup.group_chargers.charger_table[4].name, "FT63D732",8);
+      if(ChargingGroup.Params.GroupActive){
+         //QUITAR!!!!!!!!!!!!!!!!!
+        memcpy(ChargingGroup.group_chargers.charger_table[0].name, "31B70630",8);
+        memcpy(ChargingGroup.group_chargers.charger_table[1].name, "626965F5",8);  
+        memcpy(ChargingGroup.group_chargers.charger_table[2].name, "72BC0823",8);
+        memcpy(ChargingGroup.group_chargers.charger_table[3].name, "71962AD0",8);
+        memcpy(ChargingGroup.group_chargers.charger_table[4].name, "FT63D732",8);
 
-      ChargingGroup.group_chargers.charger_table[0].Fase = 0;
-      ChargingGroup.group_chargers.charger_table[1].Fase = 1;
-      ChargingGroup.group_chargers.charger_table[2].Fase = 2;
-      ChargingGroup.group_chargers.charger_table[3].Fase = 3;
-      ChargingGroup.group_chargers.charger_table[4].Fase = 4;
+        ChargingGroup.group_chargers.charger_table[0].Fase = 0;
+        ChargingGroup.group_chargers.charger_table[1].Fase = 1;
+        ChargingGroup.group_chargers.charger_table[2].Fase = 2;
+        ChargingGroup.group_chargers.charger_table[3].Fase = 3;
+        ChargingGroup.group_chargers.charger_table[4].Fase = 4;
 
-      ChargingGroup.group_chargers.size = 5;
+        ChargingGroup.group_chargers.size = 5;
 
-      uint8 buffer[7];
-      ChargingGroup.Params.potencia_max = 16;
-      ChargingGroup.Params.inst_max     = 13;
+        uint8 buffer[7];
+        ChargingGroup.Params.potencia_max = 16;
+        ChargingGroup.Params.inst_max     = 13;
 
-      buffer[0] = ChargingGroup.Params.GroupMaster;
-      buffer[1] = ChargingGroup.Params.GroupActive;
-      buffer[2] = ChargingGroup.Params.inst_max;
-      buffer[3] = ChargingGroup.Params.CDP;
-      buffer[4] = ChargingGroup.Params.ContractPower;
-      buffer[5] = ChargingGroup.Params.UserID;
-      buffer[6] = ChargingGroup.Params.potencia_max;
+        buffer[0] = ChargingGroup.Params.GroupMaster;
+        buffer[1] = ChargingGroup.Params.GroupActive;
+        buffer[2] = ChargingGroup.Params.inst_max;
+        buffer[3] = ChargingGroup.Params.CDP;
+        buffer[4] = ChargingGroup.Params.ContractPower;
+        buffer[5] = ChargingGroup.Params.UserID;
+        buffer[6] = ChargingGroup.Params.potencia_max;
 
-      SendToPSOC5((char*)buffer,7,GROUPS_PARAMS);
+        SendToPSOC5((char*)buffer,7,GROUPS_PARAMS);
+      }
+
+      
       
       if(!Database->Send_Command(Path+"/ts_dev_ack",&Lectura,TIMESTAMP)){
           return false;
