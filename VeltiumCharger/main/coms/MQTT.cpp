@@ -226,17 +226,17 @@ void Publisher(void* args){
 
             //si es trifasico, enviar informacion de todas las fases
             if(Status.Trifasico){
-                sprintf(buffer, "%s1%s%s%i", ConfigFirebase.Device_Id,Status.HPT_status,Delta,Status.Measures.instant_current);
+                sprintf(buffer, "%s1%s%s%i%i", ConfigFirebase.Device_Id,Status.HPT_status,Delta,Status.Measures.instant_current,Status.limite_Fase);
                 mqtt_publish("Device_Status", (buffer));
                 delay(50);
-                sprintf(buffer, "%s2%s%s%i", ConfigFirebase.Device_Id,Status.HPT_status,Delta,Status.MeasuresB.instant_current);
+                sprintf(buffer, "%s2%s%s%i%i", ConfigFirebase.Device_Id,Status.HPT_status,Delta,Status.MeasuresB.instant_current,Status.limite_Fase);
                 mqtt_publish("Device_Status", (buffer));
                 delay(50);
-                sprintf(buffer, "%s3%s%s%i", ConfigFirebase.Device_Id,Status.HPT_status,Delta,Status.MeasuresC.instant_current);
+                sprintf(buffer, "%s3%s%s%i%i", ConfigFirebase.Device_Id,Status.HPT_status,Delta,Status.MeasuresC.instant_current,Status.limite_Fase);
                 mqtt_publish("Device_Status", (buffer));
             }
             else{
-                sprintf(buffer, "%s%i%s%s%i", ConfigFirebase.Device_Id,Params.Fase,Status.HPT_status,Delta,Status.Measures.instant_voltage);  
+                sprintf(buffer, "%s%i%s%s%i%i", ConfigFirebase.Device_Id,Params.Fase,Status.HPT_status,Delta,Status.Measures.instant_current,Status.limite_Fase);  
                 mqtt_publish("Device_Status", (buffer));
             }
             ChargingGroup.SendNewData = false;
