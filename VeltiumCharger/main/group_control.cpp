@@ -186,7 +186,7 @@ void Calculo_Consigna(){
           if (Delta_total > 0) {
             is_LimiteConsumo = IN_Cargando3;
 
-            Comands.desired_current = Delta_total / (Conex - Conex_Delta) + ChargingGroup.potencia_max /Conex;
+            Comands.desired_current = Delta_total / (Conex - Conex_Delta) + ChargingGroup.Params.potencia_max /Conex;
           }
         }
       } else {
@@ -195,7 +195,7 @@ void Calculo_Consigna(){
       break;
 
      case IN_LimiteConsumo:
-      if (ChargingGroup.inst_max < Pc_Fase) {
+      if (ChargingGroup.Params.inst_max < Pc_Fase) {
         Status.Delta = 0;
         is_LimiteConsumo = IN_NO_ACTIVE_CHILD;
         is_c3_charger = IN_LimiteInstalacion;
@@ -204,7 +204,7 @@ void Calculo_Consigna(){
         Status.limite_Fase = 1;
         is_LimiteInstalacion = IN_Limitacion;
 
-        Comands.desired_current = ChargingGroup.inst_max / Conex_Fase;
+        Comands.desired_current = ChargingGroup.Params.inst_max / Conex_Fase;
       } else if ((Pc == 0) || memcmp(Status.HPT_status,"C2",2)) {
         is_LimiteConsumo = IN_NO_ACTIVE_CHILD;
         is_c3_charger = IN_CochesConectados;
@@ -217,23 +217,23 @@ void Calculo_Consigna(){
         Status.limite_Fase = 0;
         switch (is_LimiteConsumo) {
          case IN_Cargando1:
-          if (Comands.desired_current * Conex > ChargingGroup.potencia_max) {
+          if (Comands.desired_current * Conex > ChargingGroup.Params.potencia_max) {
             is_LimiteConsumo = IN_Cargando2;
             Comands.desired_current = MAX_CURRENT;
-          } else if ((Pc >= ChargingGroup.potencia_max) && (Comands.desired_current * Conex < ChargingGroup.potencia_max)) {
+          } else if ((Pc >= ChargingGroup.Params.potencia_max) && (Comands.desired_current * Conex < ChargingGroup.Params.potencia_max)) {
             is_LimiteConsumo = IN_ReduccionPc;
-            Comands.desired_current = ChargingGroup.potencia_max / Conex;
+            Comands.desired_current = ChargingGroup.Params.potencia_max / Conex;
           } else {
             Comands.desired_current = MAX_CURRENT;
           }
           break;
 
          case IN_Cargando2:
-          if (Pc >= ChargingGroup.potencia_max) {
+          if (Pc >= ChargingGroup.Params.potencia_max) {
             is_LimiteConsumo = IN_ReduccionPc;
 
-            Comands.desired_current = ChargingGroup.potencia_max / Conex;
-          } else if (Comands.desired_current * Conex < ChargingGroup.potencia_max) {
+            Comands.desired_current = ChargingGroup.Params.potencia_max / Conex;
+          } else if (Comands.desired_current * Conex < ChargingGroup.Params.potencia_max) {
             is_LimiteConsumo = IN_Cargando1;
 
             Comands.desired_current = MAX_CURRENT;
@@ -244,7 +244,7 @@ void Calculo_Consigna(){
           break;
 
          case IN_Cargando3:
-          if (ChargingGroup.potencia_max > Conex * MAX_CURRENT) {
+          if (ChargingGroup.Params.potencia_max > Conex * MAX_CURRENT) {
             is_LimiteConsumo = IN_Cargando1;
 
             Comands.desired_current = MAX_CURRENT;
@@ -252,13 +252,13 @@ void Calculo_Consigna(){
             is_LimiteConsumo = IN_Contador;
 
             xStart = xTaskGetTickCount();
-          } else if ((Fases_limitadas > 0) && (ChargingGroup.potencia_max > (MAX_CURRENT - Comands.desired_current) + Pc)) {
+          } else if ((Fases_limitadas > 0) && (ChargingGroup.Params.potencia_max > (MAX_CURRENT - Comands.desired_current) + Pc)) {
             is_LimiteConsumo = IN_Cargando4;
 
             Comands.desired_current = MAX_CURRENT;
           } else {
 
-            Comands.desired_current = Delta_total / (Conex - Conex_Delta) + ChargingGroup.potencia_max / Conex;
+            Comands.desired_current = Delta_total / (Conex - Conex_Delta) + ChargingGroup.Params.potencia_max / Conex;
 
             if (Comands.desired_current >= MAX_CURRENT){
               Comands.desired_current = MAX_CURRENT;
@@ -268,9 +268,9 @@ void Calculo_Consigna(){
           break;
 
          case IN_Cargando4:
-          if (ChargingGroup.potencia_max <= (MAX_CURRENT - Comands.desired_current) + Pc) {
+          if (ChargingGroup.Params.potencia_max <= (MAX_CURRENT - Comands.desired_current) + Pc) {
             is_LimiteConsumo = IN_Cargando3;
-            Comands.desired_current = Delta_total / (Conex - Conex_Delta) + ChargingGroup.potencia_max / Conex;
+            Comands.desired_current = Delta_total / (Conex - Conex_Delta) + ChargingGroup.Params.potencia_max / Conex;
 
           } else if (Fases_limitadas == 0) {
             is_LimiteConsumo = IN_Cargando1;
@@ -283,23 +283,23 @@ void Calculo_Consigna(){
          case IN_Contador:
           if (Comands.desired_current - Status.Measures.instant_current <= 6.0) {
             is_LimiteConsumo = IN_Cargando3;
-            Comands.desired_current = Delta_total / (Conex - Conex_Delta) + ChargingGroup.potencia_max / Conex;
+            Comands.desired_current = Delta_total / (Conex - Conex_Delta) + ChargingGroup.Params.potencia_max / Conex;
 
           } else if (pdTICKS_TO_MS(xTaskGetTickCount()-xStart) >= 20000) {
             is_LimiteConsumo = IN_Repartir;
-            Comands.desired_current = ChargingGroup.potencia_max / Conex;
+            Comands.desired_current = ChargingGroup.Params.potencia_max / Conex;
 
             Status.Delta = Comands.desired_current - Status.Measures.instant_current;
           }
           break;
 
          case IN_ReduccionPc:
-          if ((ChargingGroup.potencia_max > Pc) && (Comands.desired_current * Conex <= ChargingGroup.potencia_max)) {
+          if ((ChargingGroup.Params.potencia_max > Pc) && (Comands.desired_current * Conex <= ChargingGroup.Params.potencia_max)) {
             is_LimiteConsumo = IN_Cargando3;
-            Comands.desired_current = Delta_total / (Conex - Conex_Delta) + ChargingGroup.potencia_max / Conex;
+            Comands.desired_current = Delta_total / (Conex - Conex_Delta) + ChargingGroup.Params.potencia_max / Conex;
 
           } else {
-            Comands.desired_current = ChargingGroup.potencia_max / Conex;
+            Comands.desired_current = ChargingGroup.Params.potencia_max / Conex;
           }
           break;
 
@@ -309,10 +309,10 @@ void Calculo_Consigna(){
  
             Status.Delta = 0;
             is_LimiteConsumo = IN_Cargando3;
-            Comands.desired_current = Delta_total / (Conex - Conex_Delta) + ChargingGroup.potencia_max / Conex;
+            Comands.desired_current = Delta_total / (Conex - Conex_Delta) + ChargingGroup.Params.potencia_max / Conex;
 
           } else {
-            Comands.desired_current = ChargingGroup.potencia_max / Conex;
+            Comands.desired_current = ChargingGroup.Params.potencia_max / Conex;
 
             Status.Delta = Comands.desired_current - Status.Measures.instant_current;
           }
@@ -323,7 +323,7 @@ void Calculo_Consigna(){
 
      default:
       // case IN_LimiteInstalacion:
-      if (ChargingGroup.inst_max >= Conex_Fase * Comand_no_lim) {
+      if (ChargingGroup.Params.inst_max >= Conex_Fase * Comand_no_lim) {
         is_LimiteInstalacion = IN_NO_ACTIVE_CHILD;
         is_c3_charger = IN_LimiteConsumo;
         Comand_no_lim = Comands.desired_current;
@@ -337,7 +337,7 @@ void Calculo_Consigna(){
           if (Delta_total > 0) {
             is_LimiteConsumo = IN_Cargando3;
 
-            Comands.desired_current = Delta_total / (Conex - Conex_Delta) + ChargingGroup.potencia_max / Conex;
+            Comands.desired_current = Delta_total / (Conex - Conex_Delta) + ChargingGroup.Params.potencia_max / Conex;
           }
         }
       } else if ((Pc == 0) || memcmp(Status.HPT_status,"C2",2)) {
@@ -350,14 +350,14 @@ void Calculo_Consigna(){
 
         Status.limite_Fase = 1;
         if (is_LimiteInstalacion == IN_Limitacion) {
-          if ((ChargingGroup.inst_max > Pc_Fase) && (Comands.desired_current * Conex_Fase <= ChargingGroup.inst_max)) {
+          if ((ChargingGroup.Params.inst_max > Pc_Fase) && (Comands.desired_current * Conex_Fase <= ChargingGroup.Params.inst_max)) {
             is_LimiteInstalacion = IN_Limitacion1;
-            Comands.desired_current = ChargingGroup.inst_max / Conex_Fase;
+            Comands.desired_current = ChargingGroup.Params.inst_max / Conex_Fase;
           } else {
-            Comands.desired_current = ChargingGroup.inst_max / Conex_Fase;
+            Comands.desired_current = ChargingGroup.Params.inst_max / Conex_Fase;
           }
         } else {
-          Comands.desired_current = ChargingGroup.inst_max / Conex_Fase;
+          Comands.desired_current = ChargingGroup.Params.inst_max / Conex_Fase;
         }
       }
       break;
