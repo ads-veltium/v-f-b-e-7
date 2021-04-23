@@ -162,7 +162,8 @@ static void eth_check_link_timer_cb(TimerHandle_t xTimer)
     esp_eth_driver_t *eth_driver = (esp_eth_driver_t *)pvTimerGetTimerID(xTimer);
     esp_eth_phy_t *phy = eth_driver->phy;
     esp_eth_increase_reference(eth_driver);
-    phy->get_link(phy);
+    phy->negotiate(phy);
+    //phy->get_link(phy);
     
     esp_eth_decrease_reference(eth_driver);
 }
@@ -207,7 +208,7 @@ esp_err_t esp_eth_driver_install(const esp_eth_config_t *config, esp_eth_handle_
     ETH_CHECK(phy->init(phy) == ESP_OK, "init phy failed", err_init_phy, ESP_FAIL);
         mac->set_duplex(mac,ETH_DUPLEX_FULL);
     mac->set_speed(mac,ETH_SPEED_100M);
-    
+
     eth_driver->check_link_timer = xTimerCreate("eth_link_timer", pdMS_TO_TICKS(config->check_link_period_ms), pdTRUE,eth_driver, eth_check_link_timer_cb);
     ETH_CHECK(eth_driver->check_link_timer, "create eth_link_timer failed", err_create_timer, ESP_FAIL);
     *out_hdl = (esp_eth_handle_t)eth_driver;
