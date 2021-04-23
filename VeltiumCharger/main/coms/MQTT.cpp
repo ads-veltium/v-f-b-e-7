@@ -88,13 +88,9 @@ bool remove_from_group(const char* ID ,carac_chargers* group){
     return false;
 }
 
-//Eliminar grupo
-void remove_group(carac_chargers* group){
-    for(int j=0;j < group->size;j++){
-        remove_from_group(group->charger_table[j].name, group);
-    }
-}
 
+
+//Almacenar grupo en la flash
 void store_group_in_mem(carac_chargers* group){
     char sendBuffer[252];
     sendBuffer[0]=group->size;
@@ -102,12 +98,20 @@ void store_group_in_mem(carac_chargers* group){
     if(group->size<25){
         for(uint8_t i=0;i<group->size;i++){
             memcpy(&sendBuffer[1+(i*9)],group->charger_table[i].name,8);
-            itoa(group->charger_table[i].Fase,&sendBuffer[10+(i*9)],10);
+            itoa(group->charger_table[i].Fase,&sendBuffer[9+(i*9)],10);
         }
         
         SendToPSOC5(sendBuffer,ChargingGroup.group_chargers.size*9+1,GROUPS_DEVICES); 
         delay(100);
     }
+}
+
+//Eliminar grupo
+void remove_group(carac_chargers* group){
+    for(int j=0;j < group->size;j++){
+        remove_from_group(group->charger_table[j].name, group);
+    }
+    store_group_in_mem(group);
 }
 //obtener la ip de un equipo dado su ID
 IPAddress get_IP(const char* ID){

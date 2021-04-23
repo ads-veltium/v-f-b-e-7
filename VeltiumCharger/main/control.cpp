@@ -866,7 +866,7 @@ void procesar_bloque(uint16 tipo_bloque){
 				for(uint8_t j =0; j< 8; j++){
 					ChargingGroup.group_chargers.charger_table[i].name[j] = (char)buffer_rx_local[1+i*9+j];
 				}
-				ChargingGroup.group_chargers.charger_table[i].Fase = buffer_rx_local[10+i*9]-'0';
+				ChargingGroup.group_chargers.charger_table[i].Fase = buffer_rx_local[9+i*9]-'0';
 			}
 			print_table(ChargingGroup.group_chargers);
 		}
