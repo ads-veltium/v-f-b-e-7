@@ -313,6 +313,9 @@ static esp_err_t lan8720_negotiate(esp_eth_phy_t *phy)
         .restart_auto_nego = 1 /* Restart Auto Negotiation */
     };
     
+    if (lan8720->link_status == ETH_LINK_UP){
+        return;
+    }
     if(lan8720->parent.link1 == ETH_LINK_DOWN){
         PHY_CHECK(eth->phy_reg_write(eth, 1, ETH_PHY_BMCR_REG_ADDR, bmcr.val) == ESP_OK, "write BMCR failed", err);
     }
@@ -321,11 +324,8 @@ static esp_err_t lan8720_negotiate(esp_eth_phy_t *phy)
         PHY_CHECK(eth->phy_reg_write(eth, 2, ETH_PHY_BMCR_REG_ADDR, bmcr.val) == ESP_OK, "write BMCR failed", err);
     }
     
-    
     /* Wait for auto negotiation complete */
-
     int32_t to = 0;
-    printf("Empezando a autonegociar\n");
     for (to = 0; to < lan8720->autonego_timeout_ms / 10; to++) {
         vTaskDelay(pdMS_TO_TICKS(10));
 
