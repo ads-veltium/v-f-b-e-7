@@ -178,8 +178,11 @@ static esp_err_t lan8720_update_link_duplex_speed(phy_lan8720_t *lan8720)
     bmsr_reg_t bmsr;
     pscsr_reg_t pscsr;
     eth_link_t link = ETH_LINK_DOWN;
+    anlpar_reg_t anlpar;
+    uint32_t peer_pause_ability = false;
 
     //Cambios Veltium para leer los dos puertos
+    PHY_CHECK(eth->phy_reg_read(eth, 1, ETH_PHY_ANLPAR_REG_ADDR, &(anlpar.val)) == ESP_OK,"read BMSR1 failed", err);
 
     //Read link1
     PHY_CHECK(eth->phy_reg_read(eth, 1, ETH_PHY_BMSR_REG_ADDR, &(bmsr.val)) == ESP_OK,"read BMSR1 failed", err);
@@ -220,13 +223,16 @@ static esp_err_t lan8720_update_link_duplex_speed(phy_lan8720_t *lan8720)
             default:
                 break;
             }
-            PHY_CHECK(eth->on_state_changed(eth, ETH_STATE_SPEED, (void *)speed) == ESP_OK,
-                      "change speed failed", err);
-            PHY_CHECK(eth->on_state_changed(eth, ETH_STATE_DUPLEX, (void *)duplex) == ESP_OK,
-                      "change duplex failed", err);
+            PHY_CHECK(eth->on_state_changed(eth, ETH_STATE_SPEED, (void *)speed) == ESP_OK,"change speed failed", err);
+            PHY_CHECK(eth->on_state_changed(eth, ETH_STATE_DUPLEX, (void *)duplex) == ESP_OK,"change duplex failed", err);
+            if (duplex == ETH_DUPLEX_FULL && anlpar.symmetric_pause) {
+                peer_pause_ability = 1;
+            } else {
+                peer_pause_ability = 0;
+            }
+            PHY_CHECK(eth->on_state_changed(eth, ETH_STATE_PAUSE, (void *)peer_pause_ability) == ESP_OK,"change pause ability failed", err);
         }
-        PHY_CHECK(eth->on_state_changed(eth, ETH_STATE_LINK, (void *)link) == ESP_OK,
-                  "change link failed", err);
+        PHY_CHECK(eth->on_state_changed(eth, ETH_STATE_LINK, (void *)link) == ESP_OK,"change link failed", err);
         lan8720->link_status = link;
         lan8720->parent.link1  = link1;
         lan8720->parent.link2  = link2;
@@ -443,6 +449,27 @@ err:
     return ESP_FAIL;
 }
 
+static esp_err_t lan8720_advertise_pause_ability(esp_eth_phy_t *phy, uint32_t ability)
+{
+
+    phy_lan8720_t *lan8720 = __containerof(phy, phy_lan8720_t, parent);
+    esp_eth_mediator_t *eth = lan8720->eth;
+    /* Set PAUSE function ability */
+    anar_reg_t anar;
+    eth->phy_reg_read(eth, lan8720->addr, ETH_PHY_ANAR_REG_ADDR, &(anar.val));
+    if (ability) {
+        anar.asymmetric_pause = 1;
+        anar.symmetric_pause = 1;
+    } else {
+        anar.asymmetric_pause = 0;
+        anar.symmetric_pause = 0;
+    }
+    eth->phy_reg_write(eth, lan8720->addr, ETH_PHY_ANAR_REG_ADDR, anar.val);
+    return ESP_OK;
+
+}
+
+
 esp_eth_phy_t *esp_eth_phy_new_lan8720(const eth_phy_config_t *config)
 {
     PHY_CHECK(config, "can't set phy config to null", err);
@@ -467,6 +494,7 @@ esp_eth_phy_t *esp_eth_phy_new_lan8720(const eth_phy_config_t *config)
     lan8720->parent.pwrctl = lan8720_pwrctl;
     lan8720->parent.get_addr = lan8720_get_addr;
     lan8720->parent.set_addr = lan8720_set_addr;
+    lan8720->parent.advertise_pause_ability = lan8720_advertise_pause_ability;
     lan8720->parent.del = lan8720_del;
 
     return &(lan8720->parent);

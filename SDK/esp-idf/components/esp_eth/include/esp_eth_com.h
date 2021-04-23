@@ -78,6 +78,7 @@ typedef enum {
     ETH_STATE_LINK,   /*!< Link status changed */
     ETH_STATE_SPEED,  /*!< Speed updated */
     ETH_STATE_DUPLEX, /*!< Duplex updated */
+    ETH_STATE_PAUSE,  /*!< Pause ability updated */
 } esp_eth_state_t;
 
 /**
@@ -91,6 +92,8 @@ typedef enum {
     ETH_CMD_S_PHY_ADDR,    /*!< Set PHY address */
     ETH_CMD_G_SPEED,       /*!< Get Speed */
     ETH_CMD_S_PROMISCUOUS, /*!< Set promiscuous mode */
+    ETH_CMD_S_FLOW_CTRL,   /*!< Set flow control */
+    ETH_CMD_G_DUPLEX_MODE, /*!< Get Duplex mode */
 } esp_eth_io_cmd_t;
 
 /**
@@ -198,10 +201,6 @@ typedef enum {
     ETHERNET_EVENT_STOP,         /*!< Ethernet driver stop */
     ETHERNET_EVENT_CONNECTED,    /*!< Ethernet got a valid link */
     ETHERNET_EVENT_DISCONNECTED, /*!< Ethernet lost a valid link */
-    ETHERNET_EVENT_START2,        /*!< Ethernet driver start */
-    ETHERNET_EVENT_STOP2,         /*!< Ethernet driver stop */
-    ETHERNET_EVENT_CONNECTED2,    /*!< Ethernet got a valid link */
-    ETHERNET_EVENT_DISCONNECTED2, /*!< Ethernet lost a valid link */
 } eth_event_t;
 
 /**
