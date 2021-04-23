@@ -117,6 +117,8 @@ void New_Params(char* Data, int Data_size){
     memcpy(n,Data,2);
     uint8_t numero_de_cargadores = atoi(n);
     bool newchargers=false;
+
+    print_table(ChargingGroup.group_chargers);
     
     //comprobar si el grupo es distinto
     if(numero_de_cargadores == ChargingGroup.group_chargers.size){
@@ -146,10 +148,13 @@ void New_Params(char* Data, int Data_size){
       sendBuffer[0]=numero_de_cargadores;
       if(numero_de_cargadores<25){
         memcpy(&sendBuffer[1],&Data[2],numero_de_cargadores*9+1);
+        printf("Sending to group!\n");
         SendToPSOC5((char*)sendBuffer,numero_de_cargadores*9+1,GROUPS_DEVICES); 
+        delay(100);
       }
     }
 
+    print_table(ChargingGroup.group_chargers);
     uint8 buffer[7];
     ChargingGroup.Params.potencia_max = 16;
     ChargingGroup.Params.inst_max = 13;
@@ -161,6 +166,7 @@ void New_Params(char* Data, int Data_size){
     buffer[5] = ChargingGroup.Params.UserID;
     buffer[6] = ChargingGroup.Params.potencia_max;
     SendToPSOC5((char*)buffer,7,GROUPS_PARAMS); 
+    delay(50);
 }
 
 void Calculo_Consigna(){
