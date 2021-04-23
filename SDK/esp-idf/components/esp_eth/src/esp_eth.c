@@ -186,6 +186,7 @@ esp_err_t esp_eth_driver_install(const esp_eth_config_t *config, esp_eth_handle_
     ETH_CHECK(eth_driver, "request memory for eth_driver failed", err, ESP_ERR_NO_MEM);
     atomic_init(&eth_driver->ref_count, 1);
     atomic_init(&eth_driver->fsm, ESP_ETH_FSM_STOP);
+
     eth_driver->mac = mac;
     eth_driver->phy = phy;
     eth_driver->link = ETH_LINK_DOWN;
@@ -204,6 +205,9 @@ esp_err_t esp_eth_driver_install(const esp_eth_config_t *config, esp_eth_handle_
     ETH_CHECK(phy->set_mediator(phy, &eth_driver->mediator) == ESP_OK, "set mediator for phy failed", err_mediator, ESP_FAIL);
     ETH_CHECK(mac->init(mac) == ESP_OK, "init mac failed", err_init_mac, ESP_FAIL);
     ETH_CHECK(phy->init(phy) == ESP_OK, "init phy failed", err_init_phy, ESP_FAIL);
+        mac->set_duplex(mac,ETH_DUPLEX_FULL);
+    mac->set_speed(mac,ETH_SPEED_100M);
+    
     eth_driver->check_link_timer = xTimerCreate("eth_link_timer", pdMS_TO_TICKS(config->check_link_period_ms), pdTRUE,eth_driver, eth_check_link_timer_cb);
     ETH_CHECK(eth_driver->check_link_timer, "create eth_link_timer failed", err_create_timer, ESP_FAIL);
     *out_hdl = (esp_eth_handle_t)eth_driver;

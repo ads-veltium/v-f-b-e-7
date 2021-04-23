@@ -173,16 +173,21 @@ typedef struct {
 static esp_err_t lan8720_update_link_duplex_speed(phy_lan8720_t *lan8720)
 {
     esp_eth_mediator_t *eth = lan8720->eth;
-    eth_speed_t speed = ETH_SPEED_10M;
-    eth_duplex_t duplex = ETH_DUPLEX_HALF;
+    eth_speed_t speed = ETH_SPEED_100M;
+    eth_duplex_t duplex = ETH_DUPLEX_FULL;
     bmsr_reg_t bmsr;
     pscsr_reg_t pscsr;
     eth_link_t link = ETH_LINK_DOWN;
-    anlpar_reg_t anlpar;
+    anar_reg_t anar;
     uint32_t peer_pause_ability = false;
 
     //Cambios Veltium para leer los dos puertos
-    PHY_CHECK(eth->phy_reg_read(eth, 1, ETH_PHY_ANLPAR_REG_ADDR, &(anlpar.val)) == ESP_OK,"read BMSR1 failed", err);
+    PHY_CHECK(eth->phy_reg_read(eth, 0, ETH_PHY_ANAR_REG_ADDR, &(anar.val)) == ESP_OK,"read BMSR1 failed", err);
+    printf("%i %i  \n",anar.val, anar.base100_tx_fd);
+    PHY_CHECK(eth->phy_reg_read(eth, 1, ETH_PHY_ANAR_REG_ADDR, &(anar.val)) == ESP_OK,"read BMSR1 failed", err);
+    printf("%i %i  \n",anar.val, anar.base100_tx_fd);
+    PHY_CHECK(eth->phy_reg_read(eth, 2, ETH_PHY_ANAR_REG_ADDR, &(anar.val)) == ESP_OK,"read BMSR1 failed", err);
+    printf("%i %i  \n",anar.val, anar.base100_tx_fd);
 
     //Read link1
     PHY_CHECK(eth->phy_reg_read(eth, 1, ETH_PHY_BMSR_REG_ADDR, &(bmsr.val)) == ESP_OK,"read BMSR1 failed", err);
@@ -225,13 +230,7 @@ static esp_err_t lan8720_update_link_duplex_speed(phy_lan8720_t *lan8720)
             }
             PHY_CHECK(eth->on_state_changed(eth, ETH_STATE_SPEED, (void *)speed) == ESP_OK,"change speed failed", err);
             PHY_CHECK(eth->on_state_changed(eth, ETH_STATE_DUPLEX, (void *)duplex) == ESP_OK,"change duplex failed", err);
-            if (duplex == ETH_DUPLEX_FULL && anlpar.symmetric_pause) {
-                peer_pause_ability = 1;
-            } else {
-                peer_pause_ability = 0;
-            }
-            PHY_CHECK(eth->on_state_changed(eth, ETH_STATE_PAUSE, (void *)peer_pause_ability) == ESP_OK,"change pause ability failed", err);
-        }
+     }
         PHY_CHECK(eth->on_state_changed(eth, ETH_STATE_LINK, (void *)link) == ESP_OK,"change link failed", err);
         lan8720->link_status = link;
         lan8720->parent.link1  = link1;
