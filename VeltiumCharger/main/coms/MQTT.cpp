@@ -286,7 +286,7 @@ void Publisher(void* args){
                 printf("Maestro desconectado!!!\n");
                 stop_MQTT();
                 xTaskCreate(MasterPanicTask,"MasterPanicTask",4096,NULL,2,NULL);
-                break;
+                vTaskDelete(NULL);
             }
         }
         else{
@@ -356,6 +356,7 @@ void start_MQTT_server(){
 
 void start_MQTT_client(IPAddress remoteIP){
     ChargingGroup.Params.GroupMaster = false;
+    ChargingGroup.Conected = true;
     
     mqtt_sub_pub_opts publisher;
     

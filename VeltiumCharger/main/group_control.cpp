@@ -141,6 +141,7 @@ void New_Params(char* Data, int Data_size){
           char ID[8];
           memcpy(ID, &Data[i*9+2],8);
           add_to_group(ID,get_IP(ID),&ChargingGroup.group_chargers);
+          ChargingGroup.group_chargers.charger_table[ChargingGroup.group_chargers.size-1].Fase = Data[i*9+10] - '0';
       }   
 
       //Almacenarlo en el PSOC5
