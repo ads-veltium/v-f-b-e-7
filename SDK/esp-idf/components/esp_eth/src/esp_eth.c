@@ -162,8 +162,8 @@ static void eth_check_link_timer_cb(TimerHandle_t xTimer)
     esp_eth_driver_t *eth_driver = (esp_eth_driver_t *)pvTimerGetTimerID(xTimer);
     esp_eth_phy_t *phy = eth_driver->phy;
     esp_eth_increase_reference(eth_driver);
-    phy->negotiate(phy);
-    //phy->get_link(phy);
+    //phy->negotiate(phy);
+    phy->get_link(phy);
     
     esp_eth_decrease_reference(eth_driver);
 }

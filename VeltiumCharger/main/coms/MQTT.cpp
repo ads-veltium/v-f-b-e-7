@@ -176,6 +176,7 @@ void start_udp(){
                     if(!ChargingGroup.Conected){
                         printf("Soy parte de un grupo !!\n");
                         ChargingGroup.StartClient = true;
+                        ChargingGroup.Params.GroupActive = true;
                         ChargingGroup.MasterIP =packet.remoteIP();
                     }
                 }

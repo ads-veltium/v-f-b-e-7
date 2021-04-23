@@ -336,8 +336,9 @@ void Eth_Loop(){
             if(eth_connected){
                 Coms.ETH.State = CONECTADO;
             #ifdef GROUPS
-                start_udp();
                 SendToPSOC5(0,SEND_GROUP_DATA);
+                delay(100);
+                start_udp();
             #endif
                 xStart = xTaskGetTickCount();
                 if(!Coms.ETH.DHCP && Coms.ETH.Auto){
