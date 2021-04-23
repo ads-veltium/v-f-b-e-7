@@ -16,6 +16,7 @@ extern carac_group                  ChargingGroup;
 
 
 void DownloadTask(void *arg);
+void store_group_in_mem(carac_chargers* group);
 
 uint16 ParseFirmwareVersion(String Texto){
   String sub = Texto.substring(6, 10); 
@@ -206,9 +207,8 @@ bool ReadFirebaseGroups(String Path){
     if(Database->Send_Command(Path,&Lectura, LEER)){
       ChargingGroup.last_ts_app_req=ts_app_req;
 
-      ChargingGroup.Params.GroupMaster =  Lectura["master"] == true;
       ChargingGroup.Params.GroupActive =  Lectura["active"] == true;
-      ChargingGroup.DeleteOrder =  Lectura["delete"] == true;
+      ChargingGroup.DeleteOrder        =  Lectura["delete"] == true;
 
       if(ChargingGroup.Params.GroupActive){
          //QUITAR!!!!!!!!!!!!!!!!!
@@ -238,7 +238,9 @@ bool ReadFirebaseGroups(String Path){
         buffer[5] = ChargingGroup.Params.UserID;
         buffer[6] = ChargingGroup.Params.potencia_max;
 
+        store_group_in_mem(&ChargingGroup.group_chargers);
         SendToPSOC5((char*)buffer,7,GROUPS_PARAMS);
+        ChargingGroup.SendNewParams = true;
       }
 
       

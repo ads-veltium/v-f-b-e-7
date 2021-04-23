@@ -12,6 +12,7 @@ extern carac_group    ChargingGroup;
 
 bool add_to_group(const char* ID, IPAddress IP, carac_chargers* group);
 uint8_t check_in_group(const char* ID, carac_chargers* group);
+void store_group_in_mem(carac_chargers* group);
 IPAddress get_IP(const char* ID);
 TickType_t xStart;
 
@@ -32,6 +33,7 @@ uint8_t Pc_Fase;
 
 void Calculo_Consigna();
 void input_values();
+
 
 
 //Funcion para procesar los nuevos datos recibidos
@@ -117,9 +119,7 @@ void New_Params(char* Data, int Data_size){
     memcpy(n,Data,2);
     uint8_t numero_de_cargadores = atoi(n);
     bool newchargers=false;
-
-    print_table(ChargingGroup.group_chargers);
-    
+   
     //comprobar si el grupo es distinto
     if(numero_de_cargadores == ChargingGroup.group_chargers.size){
       for(uint8_t i=0;i<numero_de_cargadores;i++){
@@ -144,17 +144,9 @@ void New_Params(char* Data, int Data_size){
       }   
 
       //Almacenarlo en el PSOC5
-      uint8_t sendBuffer[252];
-      sendBuffer[0]=numero_de_cargadores;
-      if(numero_de_cargadores<25){
-        memcpy(&sendBuffer[1],&Data[2],numero_de_cargadores*9+1);
-        printf("Sending to group!\n");
-        SendToPSOC5((char*)sendBuffer,numero_de_cargadores*9+1,GROUPS_DEVICES); 
-        delay(100);
-      }
+      store_group_in_mem(&ChargingGroup.group_chargers);
     }
 
-    print_table(ChargingGroup.group_chargers);
     uint8 buffer[7];
     ChargingGroup.Params.potencia_max = 16;
     ChargingGroup.Params.inst_max = 13;

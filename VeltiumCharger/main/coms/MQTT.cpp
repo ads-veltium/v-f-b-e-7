@@ -95,6 +95,20 @@ void remove_group(carac_chargers* group){
     }
 }
 
+void store_group_in_mem(carac_chargers* group){
+    char sendBuffer[252];
+    sendBuffer[0]=group->size;
+
+    if(group->size<25){
+        for(uint8_t i=0;i<group->size;i++){
+            memcpy(&sendBuffer[1+(i*9)],group->charger_table[i].name,8);
+            itoa(group->charger_table[i].Fase,&sendBuffer[10+(i*9)],10);
+        }
+        
+        SendToPSOC5(sendBuffer,ChargingGroup.group_chargers.size*9+1,GROUPS_DEVICES); 
+        delay(100);
+    }
+}
 //obtener la ip de un equipo dado su ID
 IPAddress get_IP(const char* ID){
     for(int j=0;j < net_group.size;j++){
@@ -280,6 +294,7 @@ void Publisher(void* args){
 }
 
 void start_MQTT_server(){
+    ChargingGroup.Params.GroupMaster = true;
     Serial.println("Arrancando servidor MQTT");
     //Preguntar si hay maestro en el grupo
     for(uint8_t i =0; i<10;i++){
@@ -314,6 +329,7 @@ void start_MQTT_server(){
             ChargingGroup.Params.GroupMaster = false;
             ChargingGroup.Params.GroupActive = false;
             ChargingGroup.Conected = false;
+            stop_MQTT();
             return;
         }
 
@@ -329,7 +345,8 @@ void start_MQTT_server(){
         }
     }
     else{
-        Serial.println("Ya hay un maestro en el grupo, me hago esclavo!");
+        Serial.println("Ya hay un maestro en el grupo, espero a que me ordene conectarme!");
+        ChargingGroup.Params.GroupActive = false;
     }
 }
 
