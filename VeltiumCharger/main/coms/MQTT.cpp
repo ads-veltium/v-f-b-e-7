@@ -328,15 +328,34 @@ void Publisher(void* args){
                     AsyncUDPMessage mensaje (13);
                     mensaje.write((uint8_t*)(Encipher("Start client").c_str()), 13);
                     udp.sendTo(mensaje,ChargingGroup.group_chargers.charger_table[i].IP,1234);
+                    printf("%s lleva mucho sin conestar\n", ChargingGroup.group_chargers.charger_table[i].name);
                 }
                 //si un equipo lleva mucho sin contestar, lo damos por muerto
                 if(ChargingGroup.group_chargers.charger_table[i].Period >=60000){
                     sprintf(buffer, "%s00V0000", ChargingGroup.group_chargers.charger_table[i].name);  
                     mqtt_publish("Device_Status", (buffer));
+                    printf("%s lleva muchiisimo sin conestar\n", ChargingGroup.group_chargers.charger_table[i].name);
                 }
             }
         }
 
+        //Si se pausa el grupo, avisar al resto y pausar todo
+        if(!ChargingGroup.Params.GroupActive){
+            buffer[0] = '1';
+            memcpy(&buffer[1], &ChargingGroup.Params,sizeof(ChargingGroup.Params));
+            mqtt_publish("RTS", buffer);
+            ChargingGroup.SendNewParams = false;
+            delay(500);
+            stop_MQTT();
+            vTaskDelete(NULL);
+        }
+
+        //Si llega la orden de borrar, debemos eliminar el grupo de la memoria
+        if(ChargingGroup.DeleteOrder){
+            remove_group(&ChargingGroup.group_chargers);
+            store_group_in_mem(&ChargingGroup.group_chargers);
+        }
+        
         delay(1000);        
     }
     vTaskDelete(NULL);

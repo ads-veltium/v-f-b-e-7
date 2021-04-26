@@ -241,9 +241,8 @@ bool ReadFirebaseGroups(String Path){
         store_group_in_mem(&ChargingGroup.group_chargers);
         SendToPSOC5((char*)buffer,7,GROUPS_PARAMS);
         ChargingGroup.SendNewParams = true;
-      }
-
-      
+        ChargingGroup.SendNewGroup = true;
+      }     
       
       if(!Database->Send_Command(Path+"/ts_dev_ack",&Lectura,TIMESTAMP)){
           return false;
