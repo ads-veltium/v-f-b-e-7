@@ -36,8 +36,6 @@ uint8_t Pc_Fase;
 
 void Calculo_Consigna();
 void input_values();
-
-
 void Ping_Req(char* Data){
   int n=check_in_group(Data,&ChargingGroup.group_chargers);
   if(n!=255){
@@ -116,7 +114,7 @@ void New_Data(char* Data, int Data_size){
             ChargingGroup.group_chargers.charger_table[index].Fase = Params.Fase;
             memcpy(ChargingGroup.group_chargers.charger_table[index].HPT,Status.HPT_status,2);      //Si el cargador ya existe, actualizar sus datos
                     
-            ChargingGroup.group_chargers.charger_table[index].Current = Status.Measures.instant_voltage;
+            ChargingGroup.group_chargers.charger_table[index].Current = Status.Measures.instant_current;
         }
     }
     input_values();
@@ -173,7 +171,7 @@ void New_Group(char* Data, int Data_size){
     //Si es distinto del que ya tenemos almacenado, lo guardamos en la flash
     if(numero_de_cargadores == ChargingGroup.group_chargers.size){
       for(uint8_t i=0;i<numero_de_cargadores;i++){
-        if(memcmp(ChargingGroup.group_chargers.charger_table[i].name, &Data[i*9+2],8) || ChargingGroup.group_chargers.charger_table[i].Fase != Data[i*9+10]){
+        if(memcmp(ChargingGroup.group_chargers.charger_table[i].name, &Data[i*9+2],8) || ChargingGroup.group_chargers.charger_table[i].Fase != Data[i*9+10]-'0'){
           SendToPSOC5((char*)Data,Data_size,GROUPS_DEVICES); 
           delay(50);
           return;

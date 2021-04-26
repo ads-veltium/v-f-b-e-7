@@ -37,7 +37,8 @@ void start_MQTT_client(IPAddress remoteIP);
 
 void stop_MQTT(){
     printf("Stopping MQTT\n");
-    ChargingGroup.Conected= false;
+    ChargingGroup.Conected   = false;
+    ChargingGroup.StartClient = false;
     delay(500);
     SetStopMQTT(true);
     delay(1000);
@@ -192,6 +193,7 @@ void start_udp(){
                 if(!memcmp(Desencriptado.c_str(), "Start client", 13)){
                     if(!ChargingGroup.Conected && !ChargingGroup.StartClient){
                         printf("Soy parte de un grupo !!\n");
+                        SetStopMQTT(false);
                         ChargingGroup.StartClient = true;
                         ChargingGroup.Params.GroupMaster = false;
                         ChargingGroup.Params.GroupActive = true;
@@ -225,7 +227,6 @@ void MasterPanicTask(void *args){
     TickType_t xStart = xTaskGetTickCount();
     uint8 reintentos = 1;
     ChargingGroup.StartClient = false;
-    ChargingGroup.Params.GroupActive = false;
     int delai = 30000;
     while(!ChargingGroup.Conected){
         if(pdTICKS_TO_MS(xTaskGetTickCount() - xStart) > delai){ //si pasan 30 segundos, elegir un nuevo maestro
@@ -323,6 +324,7 @@ void Publisher(void* args){
             if(ChargingGroup.Params.GroupActive){
                 if(!ChargingGroup.Conected || GetStopMQTT()){
                     printf("Maestro desconectado!!!\n");
+                    ChargingGroup.Params.GroupActive = false;
                     stop_MQTT();
                     xTaskCreate(MasterPanicTask,"MasterPanicTask",4096,NULL,2,NULL);
                     vTaskDelete(NULL);
@@ -382,6 +384,7 @@ void Publisher(void* args){
 void start_MQTT_server(){
     ChargingGroup.Params.GroupMaster = true;
     printf("Arrancando servidor MQTT\n");
+    SetStopMQTT(false);
     //Preguntar si hay maestro en el grupo
     for(uint8_t i =0; i<10;i++){
         broadcast_a_grupo("Hay maestro?");
