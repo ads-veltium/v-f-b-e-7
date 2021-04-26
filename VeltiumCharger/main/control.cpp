@@ -814,8 +814,12 @@ void procesar_bloque(uint16 tipo_bloque){
 		case DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE:{
 			modifyCharacteristic(buffer_rx_local, 1, DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE);
 			#ifdef CONNECTED
-				Params.Tipo_Sensor        = (buffer_rx_local[0]  >> 3);
 				Params.CDP				  = buffer_rx_local[0];
+				Params.Tipo_Sensor        = (buffer_rx_local[0]  >> 3);
+				if(buffer_rx_local[0] >> 1){
+					Params.Tipo_Sensor    = (buffer_rx_local[0]  >> 3);
+				}
+				
 				Serial.printf("New CDP %i %i \n", Params.CDP, Params.Tipo_Sensor);
 			#endif
 		} 

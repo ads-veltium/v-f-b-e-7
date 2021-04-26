@@ -6,6 +6,7 @@ extern uint8_t new_charger;
 struct sub *s_subs EXT_RAM_ATTR;
 
 bool StopMQTT = false;
+void Ping_Req(char* data);
 
 // Wildcard(#/+) support version
 int _mg_strcmp(const struct mg_str str1, const struct mg_str str2) {
@@ -184,6 +185,7 @@ static void publisher_fn(struct mg_connection *c, int ev, void *ev_data, void *f
 			}
 			else if(!memcmp(mm->topic.ptr, "Ping", mm->topic.len)){
 				mqtt_publish("Pong", "ABCD");
+				Ping_Req(mm->data.ptr);
 			}
 			else if(!memcmp(mm->topic.ptr, "Pong", mm->topic.len)){
 				xStart = xTaskGetTickCount();
@@ -239,7 +241,7 @@ void mqtt_polling(void *params){
 //conectar al broker
 bool mqtt_connect(mqtt_sub_pub_opts *pub_opts){
 
-	if(PollerHandle != NULL){
+	if(PollerHandle != NULL || StopMQTT){
 		return false;
 	}
 	/* Arrancar la conexion*/	
@@ -260,10 +262,10 @@ bool mqtt_connect(mqtt_sub_pub_opts *pub_opts){
 void mqtt_publish(char* Topic, char* Data){
 	struct mg_str topic = mg_str(Topic);
 	struct mg_str data = mg_str(Data);
-	mg_mqtt_pub(mgc, &topic, &data);
+	if(!StopMQTT)mg_mqtt_pub(mgc, &topic, &data);
 }
 
 void mqtt_subscribe(char* Topic){
 	struct mg_str topic = mg_str(Topic);
-	mg_mqtt_sub(mgc, &topic);							
+	if(!StopMQTT)mg_mqtt_sub(mgc, &topic);							
 }

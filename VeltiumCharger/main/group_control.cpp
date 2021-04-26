@@ -35,8 +35,6 @@ uint8_t Pc_Fase;
 void Calculo_Consigna();
 void input_values();
 
-
-
 //Funcion para procesar los nuevos datos recibidos
 void New_Data(char* Data, int Data_size){
     if(memcmp(Data, ConfigFirebase.Device_Id, 8)){                         //comprobar que no son nuestros propios datos
@@ -117,8 +115,12 @@ void New_Data(char* Data, int Data_size){
 
 //Funcion para recibir nuevos parametros de carga para el grupo
 void New_Params(char* Data, int Data_size){
-    printf("New params : %s\n",Data);
-    SendToPSOC5((char*)Data,Data_size,GROUPS_PARAMS); 
+
+    char buffer[7];
+    
+    buffer[0] = ChargingGroup.Params.GroupMaster;
+    memcpy(&buffer[1],&Data[1],6);
+    SendToPSOC5((char*)buffer,7,GROUPS_PARAMS); 
     delay(50);
 }
 
@@ -133,7 +135,6 @@ void New_Group(char* Data, int Data_size){
     if(numero_de_cargadores == ChargingGroup.group_chargers.size){
       for(uint8_t i=0;i<numero_de_cargadores;i++){
         if(memcmp(ChargingGroup.group_chargers.charger_table[i].name, &Data[i*9+2],8)){
-          printf("Almacenando grupo en flash\n");
           SendToPSOC5((char*)Data,Data_size,GROUPS_DEVICES); 
           delay(50);
           return;

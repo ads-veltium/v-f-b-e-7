@@ -286,6 +286,7 @@ typedef struct{
 	bool SendNewParams = false;
 	bool SendNewGroup  = false;
 	bool Conected	   = false;
+	bool MasterDead    = false;
 	bool StopOrder     = false;
 	bool DeleteOrder   = false;
 	bool StartClient   = false;

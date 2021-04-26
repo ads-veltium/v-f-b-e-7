@@ -30,6 +30,7 @@ carac_chargers net_group EXT_RAM_ATTR;
 
 //Prototipos de funciones externas
 void mqtt_server(void *pvParameters);
+void Ping_Req(char* data);
 
 //Prototipos de funciones internas
 void start_MQTT_server();
@@ -176,11 +177,13 @@ void start_udp(){
             }
             else{
                 if(!memcmp(Desencriptado.c_str(), "Start client", 13)){
-                    if(!ChargingGroup.Conected){
+                    if(!ChargingGroup.Conected && !ChargingGroup.StartClient){
                         printf("Soy parte de un grupo !!\n");
                         ChargingGroup.StartClient = true;
+                        ChargingGroup.Params.GroupMaster = false;
                         ChargingGroup.Params.GroupActive = true;
                         ChargingGroup.MasterIP =packet.remoteIP();
+                        
                     }
                 }
                 else if(!memcmp(Desencriptado.c_str(), "Hay maestro?", 13)){
@@ -205,33 +208,35 @@ void start_udp(){
 void MasterPanicTask(void *args){
     TickType_t xStart = xTaskGetTickCount();
     uint8 reintentos = 1;
-
+    ChargingGroup.MasterDead = true;
     while(!ChargingGroup.Conected){
-        if(pdTICKS_TO_MS(xTaskGetTickCount() - xStart) > 60000){ //si pasa 1 minuto, elegir un nuevo maestro
+        if(pdTICKS_TO_MS(xTaskGetTickCount() - xStart) > 30000){ //si pasa 1 minuto, elegir un nuevo maestro
             Serial.println("Necesitamos un nuevo maestro!");
 
             if(!memcmp(ChargingGroup.group_chargers.charger_table[reintentos].name,ConfigFirebase.Device_Id,8)){
                 Serial.println("Soy el nuevo maestro!!");
-                ChargingGroup.Params.GroupMaster = true;
+                start_MQTT_server();
                 break;
             }
             else{
                 Serial.println("No soy el nuevo maestro, alguien se pondrá :)");
                 xStart = xTaskGetTickCount();
                 reintentos++;
-                if(reintentos==MAX_GROUP_SIZE){
+                if(reintentos == ChargingGroup.group_chargers.size){
+                    printf("Ya he mirado todos los equipos y no estoy!\n");
                     break;
                 }
             }
         }
         delay(1000);
     }
+    ChargingGroup.MasterDead = false;
     vTaskDelete(NULL);
 }
 
 /*Tarea para publicar los datos del equipo cada segundo*/
 void Publisher(void* args){
-
+    printf("Arrancando publicador\n");
     char buffer[500];
     Params.Fase = 1;
     while(1){
@@ -275,7 +280,7 @@ void Publisher(void* args){
         //Enviar los cargadores de nuestro grupo
         if(ChargingGroup.SendNewGroup || new_charger){
             printf("Enviando nuevo grupo\n");
-             buffer[0] = '3';
+            buffer[0] = '3';
             if(ChargingGroup.group_chargers.size< 10){
                 sprintf(&buffer[1],"0%i",(char)ChargingGroup.group_chargers.size);
             }
@@ -295,8 +300,7 @@ void Publisher(void* args){
         //Avisar al maestro de que seguimos aqui
         if(!ChargingGroup.Params.GroupMaster){ 
             mqtt_publish("Ping", ConfigFirebase.Device_Id);
-
-            delay(1000);
+            delay(500);
             if(!ChargingGroup.Conected || GetStopMQTT()){
                 printf("Maestro desconectado!!!\n");
                 stop_MQTT();
@@ -312,7 +316,7 @@ void Publisher(void* args){
 
 void start_MQTT_server(){
     ChargingGroup.Params.GroupMaster = true;
-    Serial.println("Arrancando servidor MQTT");
+    printf("Arrancando servidor MQTT");
     //Preguntar si hay maestro en el grupo
     for(uint8_t i =0; i<10;i++){
         broadcast_a_grupo("Hay maestro?");
@@ -362,19 +366,18 @@ void start_MQTT_server(){
     else{
         Serial.println("Ya hay un maestro en el grupo, espero a que me ordene conectarme!");
         ChargingGroup.Params.GroupActive = false;
+        ChargingGroup.MasterDead = false;
     }
 }
 
-void start_MQTT_client(IPAddress remoteIP){
-    ChargingGroup.Params.GroupMaster = false;
-    ChargingGroup.Conected = true;
-    
+void start_MQTT_client(IPAddress remoteIP){    
     mqtt_sub_pub_opts publisher;
     
 	sprintf(publisher.url, "mqtt://%s:1883", remoteIP.toString().c_str());
     strcpy(publisher.Client_ID,ConfigFirebase.Device_Id);
 
     if(mqtt_connect(&publisher)){
+        ChargingGroup.Params.GroupMaster = false;
         ChargingGroup.Conected = true;
         mqtt_subscribe("Device_Status");
         mqtt_subscribe("Pong");
