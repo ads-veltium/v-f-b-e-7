@@ -226,13 +226,15 @@ void MasterPanicTask(void *args){
     uint8 reintentos = 1;
     ChargingGroup.StartClient = false;
     ChargingGroup.Params.GroupActive = false;
+    int delai = 30000;
     while(!ChargingGroup.Conected){
-        if(pdTICKS_TO_MS(xTaskGetTickCount() - xStart) > 30000){ //si pasa 1 minuto, elegir un nuevo maestro
+        if(pdTICKS_TO_MS(xTaskGetTickCount() - xStart) > delai){ //si pasan 30 segundos, elegir un nuevo maestro
+            delai=15000;
             Serial.println("Necesitamos un nuevo maestro!");
 
             if(!memcmp(ChargingGroup.group_chargers.charger_table[reintentos].name,ConfigFirebase.Device_Id,8)){
                 Serial.println("Soy el nuevo maestro!!");
-                start_MQTT_server();
+                ChargingGroup.Params.GroupActive = true;
                 break;
             }
             else{
@@ -318,7 +320,7 @@ void Publisher(void* args){
         if(!ChargingGroup.Params.GroupMaster){ 
             mqtt_publish("Ping", ConfigFirebase.Device_Id);
             delay(500);
-            if(!ChargingGroup.Params.GroupActive){
+            if(ChargingGroup.Params.GroupActive){
                 if(!ChargingGroup.Conected || GetStopMQTT()){
                     printf("Maestro desconectado!!!\n");
                     stop_MQTT();
@@ -326,6 +328,7 @@ void Publisher(void* args){
                     vTaskDelete(NULL);
                 }
             }
+
         }
 
         //Si soy el maestro, debo comprobar si los esclavos siguen conectados

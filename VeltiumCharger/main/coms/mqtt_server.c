@@ -162,6 +162,7 @@ static void publisher_fn(struct mg_connection *c, int ev, void *ev_data, void *f
 	switch(ev){
 		case MG_EV_ERROR:
 			ESP_LOGE(pcTaskGetTaskName(NULL), "MG_EV_ERROR %p %s", c->fd, (char *) ev_data);
+			StopMQTT = true;
 		break;
 
 		case MG_EV_CONNECT:
@@ -230,7 +231,6 @@ void mqtt_polling(void *params){
 			break;
 		}
 	}
-	StopMQTT = false;
 	mg_mqtt_disconnect(mgc);
 	mg_mgr_free(&mgr);
 	mgc = NULL;
