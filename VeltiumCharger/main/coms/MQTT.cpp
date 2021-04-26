@@ -318,11 +318,13 @@ void Publisher(void* args){
         if(!ChargingGroup.Params.GroupMaster){ 
             mqtt_publish("Ping", ConfigFirebase.Device_Id);
             delay(500);
-            if(!ChargingGroup.Conected || GetStopMQTT()){
-                printf("Maestro desconectado!!!\n");
-                stop_MQTT();
-                xTaskCreate(MasterPanicTask,"MasterPanicTask",4096,NULL,2,NULL);
-                vTaskDelete(NULL);
+            if(!ChargingGroup.Params.GroupActive){
+                if(!ChargingGroup.Conected || GetStopMQTT()){
+                    printf("Maestro desconectado!!!\n");
+                    stop_MQTT();
+                    xTaskCreate(MasterPanicTask,"MasterPanicTask",4096,NULL,2,NULL);
+                    vTaskDelete(NULL);
+                }
             }
         }
 
