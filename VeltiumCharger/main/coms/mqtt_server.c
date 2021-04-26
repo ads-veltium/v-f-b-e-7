@@ -195,7 +195,7 @@ static void publisher_fn(struct mg_connection *c, int ev, void *ev_data, void *f
 						New_Params(&mm->data.ptr[1], mm->data.len);
 						break;
 					case 2: //Group Control
-						New_Params(&mm->data.ptr[1], mm->data.len);
+						New_Control(&mm->data.ptr[1], mm->data.len);
 						break;
 					case 3: //Group Chargers
 						New_Group(&mm->data.ptr[1], mm->data.len);

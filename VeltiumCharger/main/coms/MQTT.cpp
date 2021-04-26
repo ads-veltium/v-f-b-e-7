@@ -324,14 +324,13 @@ void Publisher(void* args){
             for(uint8_t i=0 ;i<ChargingGroup.group_chargers.size;i++){
                 ChargingGroup.group_chargers.charger_table[i].Period += Transcurrido;
                 //si un equipo lleva mucho sin contestar, lo intentamos despertar
-                if(ChargingGroup.group_chargers.charger_table[i].Period >=30000){ 
+                if(ChargingGroup.group_chargers.charger_table[i].Period >=30000 && ChargingGroup.group_chargers.charger_table[i].Period <=60000){ 
                     AsyncUDPMessage mensaje (13);
                     mensaje.write((uint8_t*)(Encipher("Start client").c_str()), 13);
                     udp.sendTo(mensaje,ChargingGroup.group_chargers.charger_table[i].IP,1234);
-                    printf("%s lleva mucho sin conestar\n", ChargingGroup.group_chargers.charger_table[i].name);
                 }
                 //si un equipo lleva mucho sin contestar, lo damos por muerto
-                if(ChargingGroup.group_chargers.charger_table[i].Period >=60000){
+                if(ChargingGroup.group_chargers.charger_table[i].Period >=60000 && ChargingGroup.group_chargers.charger_table[i].Period <=65000){
                     sprintf(buffer, "%s00V0000", ChargingGroup.group_chargers.charger_table[i].name);  
                     mqtt_publish("Device_Status", (buffer));
                     printf("%s lleva muchiisimo sin conestar\n", ChargingGroup.group_chargers.charger_table[i].name);
@@ -341,10 +340,10 @@ void Publisher(void* args){
 
         //Si se pausa el grupo, avisar al resto y pausar todo
         if(!ChargingGroup.Params.GroupActive){
-            buffer[0] = '1';
-            memcpy(&buffer[1], &ChargingGroup.Params,sizeof(ChargingGroup.Params));
+            buffer[0] = '2';
+            memcpy(&buffer[1],"Pause",6);
             mqtt_publish("RTS", buffer);
-            ChargingGroup.SendNewParams = false;
+
             delay(500);
             stop_MQTT();
             vTaskDelete(NULL);
@@ -352,8 +351,14 @@ void Publisher(void* args){
 
         //Si llega la orden de borrar, debemos eliminar el grupo de la memoria
         if(ChargingGroup.DeleteOrder){
+            buffer[0] = '2';
+            memcpy(&buffer[1],"Delete",6);
+            mqtt_publish("RTS", buffer);
+
             remove_group(&ChargingGroup.group_chargers);
             store_group_in_mem(&ChargingGroup.group_chargers);
+            stop_MQTT();
+            vTaskDelete(NULL);
         }
         
         delay(1000);        

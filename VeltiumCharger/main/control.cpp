@@ -880,7 +880,9 @@ void procesar_bloque(uint16 tipo_bloque){
 
 		case GROUPS_PARAMS:{
 			memcpy(&ChargingGroup.Params,buffer_rx_local, 7);
-			Serial.printf("Nuevos parametros recibidos:%i %i %i \n", ChargingGroup.Params.inst_max, ChargingGroup.Params.potencia_max, ChargingGroup.Params.ContractPower);
+			Serial.printf("Group active %i \n", ChargingGroup.Params.GroupActive);
+			Serial.printf("Group master %i \n", ChargingGroup.Params.GroupMaster);
+			Serial.printf("Group pot_max %i \n", ChargingGroup.Params.potencia_max);
 		
 		}
 		break;

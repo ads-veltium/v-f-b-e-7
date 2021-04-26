@@ -122,13 +122,24 @@ void New_Data(char* Data, int Data_size){
 
 //Funcion para recibir nuevos parametros de carga para el grupo
 void New_Params(char* Data, int Data_size){
+  printf("New params received %s\n", Data);
+  char buffer[7];
+  
+  buffer[0] = ChargingGroup.Params.GroupMaster;
+  memcpy(&buffer[1],&Data[1],6);
+  SendToPSOC5((char*)buffer,7,GROUPS_PARAMS); 
+  delay(50);
+}
 
-    char buffer[7];
-    
-    buffer[0] = ChargingGroup.Params.GroupMaster;
-    memcpy(&buffer[1],&Data[1],6);
-    SendToPSOC5((char*)buffer,7,GROUPS_PARAMS); 
-    delay(50);
+void New_Control(char* Data, int Data_size){
+  printf("New control received %s\n", Data);
+
+  if(!memcmp(Data,"Pause",6)){
+    printf("Tengo que pausar el grupo\n");
+  }
+  else if(!memcmp(Data,"Delete",6)){
+    printf("Tengo que borrar el grupo\n");
+  }
 }
 
 //Funcion para recibir un nuevo grupo de cargadores
