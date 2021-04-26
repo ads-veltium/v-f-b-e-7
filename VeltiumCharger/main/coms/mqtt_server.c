@@ -56,6 +56,7 @@ bool GetStopMQTT(){
 void SetStopMQTT(bool value){
 	StopMQTT = value;
 }
+
 // Event handler function
 static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) { 
   if (ev == MG_EV_MQTT_CMD) {
@@ -131,7 +132,6 @@ void mqtt_server(void *pvParameters){
 	mg_log_set("1"); // Set to log level to LL_ERROR
 	
 	const char *s_listen_on = (char*)pvParameters;
-	printf("Escuchando en %s\n", s_listen_on);
 	struct mg_mgr mgr;
 	mg_mgr_init(&mgr);
 	mg_mqtt_listen(&mgr, s_listen_on, fn, NULL);  // Create MQTT listener
@@ -146,7 +146,7 @@ void mqtt_server(void *pvParameters){
 	}
 
 	// Never reach here
-	ESP_LOGI(pcTaskGetTaskName(NULL), "Server Stopped");
+	printf("Server Stopped\n");
 	mg_mgr_free(&mgr);
 	vTaskDelete(NULL);
 }
@@ -230,6 +230,7 @@ void mqtt_polling(void *params){
 			break;
 		}
 	}
+	StopMQTT = false;
 	mg_mqtt_disconnect(mgc);
 	mg_mgr_free(&mgr);
 	mgc = NULL;

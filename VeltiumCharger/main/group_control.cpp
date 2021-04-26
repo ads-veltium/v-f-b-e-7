@@ -15,6 +15,8 @@ void remove_group(carac_chargers* group);
 uint8_t check_in_group(const char* ID, carac_chargers* group);
 void store_group_in_mem(carac_chargers* group);
 IPAddress get_IP(const char* ID);
+void stop_MQTT();
+
 TickType_t xStart;
 
 uint8_t  is_active_c3_Charger;
@@ -34,6 +36,7 @@ uint8_t Pc_Fase;
 
 void Calculo_Consigna();
 void input_values();
+
 
 void Ping_Req(char* Data){
   int n=check_in_group(Data,&ChargingGroup.group_chargers);
@@ -126,19 +129,37 @@ void New_Params(char* Data, int Data_size){
   char buffer[7];
   
   buffer[0] = ChargingGroup.Params.GroupMaster;
-  memcpy(&buffer[1],&Data[1],6);
+  buffer[1] = ChargingGroup.Params.GroupActive;
+  memcpy(&buffer[2],&Data[2],5);
   SendToPSOC5((char*)buffer,7,GROUPS_PARAMS); 
   delay(50);
 }
 
 void New_Control(char* Data, int Data_size){
-  printf("New control received %s\n", Data);
 
-  if(!memcmp(Data,"Pause",6)){
+  if(!memcmp(Data,"Pause",5)){
     printf("Tengo que pausar el grupo\n");
+    ChargingGroup.Params.GroupActive = 0;
+    stop_MQTT();
+
+    char buffer[7];
+    memcpy(&buffer,&ChargingGroup.Params,7);
+    SendToPSOC5((char*)buffer,7,GROUPS_PARAMS); 
+
+        
   }
   else if(!memcmp(Data,"Delete",6)){
     printf("Tengo que borrar el grupo\n");
+    ChargingGroup.Params.GroupActive = 0;
+    ChargingGroup.Params.GroupMaster = 0;
+    ChargingGroup.DeleteOrder = false;
+    stop_MQTT();
+    remove_group(&ChargingGroup.group_chargers);
+    store_group_in_mem(&ChargingGroup.group_chargers);
+
+    char buffer[7];
+    memcpy(&buffer,&ChargingGroup.Params,7);
+    SendToPSOC5((char*)buffer,7,GROUPS_PARAMS); 
   }
 }
 

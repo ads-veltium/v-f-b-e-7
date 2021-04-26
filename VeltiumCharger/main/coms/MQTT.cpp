@@ -36,6 +36,7 @@ void start_MQTT_server();
 void start_MQTT_client(IPAddress remoteIP);
 
 void stop_MQTT(){
+    printf("Stopping MQTT\n");
     ChargingGroup.Conected= false;
     delay(500);
     SetStopMQTT(true);
@@ -99,12 +100,20 @@ void store_group_in_mem(carac_chargers* group){
     }
 
     if(group->size < 25){
-        for(uint8_t i=0;i<group->size;i++){
-            memcpy(&sendBuffer[2+(i*9)],group->charger_table[i].name,8);
-            itoa(group->charger_table[i].Fase,&sendBuffer[10+(i*9)],10);
+        if(group->size>0){
+            for(uint8_t i=0;i<group->size;i++){
+                memcpy(&sendBuffer[2+(i*9)],group->charger_table[i].name,8);
+                itoa(group->charger_table[i].Fase,&sendBuffer[10+(i*9)],10);
+            }
+            SendToPSOC5(sendBuffer,ChargingGroup.group_chargers.size*9+2,GROUPS_DEVICES); 
+        }
+        else{
+            for(int i=0;i<=250;i++){
+                sendBuffer[i]=(char)0;
+            }
+            SendToPSOC5(sendBuffer,250,GROUPS_DEVICES); 
         }
         
-        SendToPSOC5(sendBuffer,ChargingGroup.group_chargers.size*9+2,GROUPS_DEVICES); 
         delay(100);
         return;
     }
@@ -280,7 +289,7 @@ void Publisher(void* args){
         //Enviar nuevos parametros para el grupo
         if( ChargingGroup.SendNewParams || new_charger){
             buffer[0] = '1';
-            memcpy(&buffer[1], &ChargingGroup.Params,sizeof(ChargingGroup.Params));
+            memcpy(&buffer[1], &ChargingGroup.Params,7);
             mqtt_publish("RTS", buffer);
             ChargingGroup.SendNewParams = false;
         }
@@ -340,25 +349,24 @@ void Publisher(void* args){
 
         //Si se pausa el grupo, avisar al resto y pausar todo
         if(!ChargingGroup.Params.GroupActive){
+            if(!ChargingGroup.Conected || GetStopMQTT()){
+                vTaskDelete(NULL);
+            }
+
             buffer[0] = '2';
             memcpy(&buffer[1],"Pause",6);
             mqtt_publish("RTS", buffer);
-
-            delay(500);
-            stop_MQTT();
-            vTaskDelete(NULL);
         }
 
         //Si llega la orden de borrar, debemos eliminar el grupo de la memoria
         if(ChargingGroup.DeleteOrder){
+            if(!ChargingGroup.Conected || GetStopMQTT()){
+                vTaskDelete(NULL);
+            }
+
             buffer[0] = '2';
             memcpy(&buffer[1],"Delete",6);
             mqtt_publish("RTS", buffer);
-
-            remove_group(&ChargingGroup.group_chargers);
-            store_group_in_mem(&ChargingGroup.group_chargers);
-            stop_MQTT();
-            vTaskDelete(NULL);
         }
         
         delay(1000);        
@@ -368,7 +376,7 @@ void Publisher(void* args){
 
 void start_MQTT_server(){
     ChargingGroup.Params.GroupMaster = true;
-    printf("Arrancando servidor MQTT");
+    printf("Arrancando servidor MQTT\n");
     //Preguntar si hay maestro en el grupo
     for(uint8_t i =0; i<10;i++){
         broadcast_a_grupo("Hay maestro?");
