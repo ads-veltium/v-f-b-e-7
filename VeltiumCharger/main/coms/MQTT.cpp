@@ -26,7 +26,7 @@ StaticTask_t xSERVERBuffer ;
 static StackType_t xPUBLISHERStack [4096]     EXT_RAM_ATTR;
 StaticTask_t xPUBLISHERBuffer ;
 uint8_t new_charger;
-carac_chargers net_group;
+carac_chargers net_group EXT_RAM_ATTR;
 
 //Prototipos de funciones externas
 void mqtt_server(void *pvParameters);
@@ -58,7 +58,7 @@ bool add_to_group(const char* ID, IPAddress IP, carac_chargers* group){
     return false;
 }
 
-//comprobar si un cargador está almacenado en las tablas de equipos
+//Comprobar si un cargador está almacenado en las tablas de equipos
 uint8_t check_in_group(const char* ID, carac_chargers* group){
     for(int j=0;j < group->size;j++){
         if(!memcmp(ID,  group->charger_table[j].name,8)){
@@ -88,14 +88,12 @@ bool remove_from_group(const char* ID ,carac_chargers* group){
     return false;
 }
 
-
-
 //Almacenar grupo en la flash
 void store_group_in_mem(carac_chargers* group){
     char sendBuffer[252];
     sendBuffer[0]=group->size;
 
-    if(group->size<25){
+    if(group->size < 25){
         for(uint8_t i=0;i<group->size;i++){
             memcpy(&sendBuffer[1+(i*9)],group->charger_table[i].name,8);
             itoa(group->charger_table[i].Fase,&sendBuffer[9+(i*9)],10);
@@ -103,17 +101,23 @@ void store_group_in_mem(carac_chargers* group){
         
         SendToPSOC5(sendBuffer,ChargingGroup.group_chargers.size*9+1,GROUPS_DEVICES); 
         delay(100);
+        return;
     }
+    printf("Error al almacenar el grupo en la memoria\n");
 }
 
 //Eliminar grupo
 void remove_group(carac_chargers* group){
-    for(int j=0;j < group->size;j++){
-        remove_from_group(group->charger_table[j].name, group);
+    if(group->size >0){
+        for(int j=0;j < group->size;j++){
+            remove_from_group(group->charger_table[j].name, group);
+        }
+        return;
     }
-    store_group_in_mem(group);
+    printf("Error al eliminar el grupo\n");  
 }
-//obtener la ip de un equipo dado su ID
+
+//Obtener la ip de un equipo dado su ID
 IPAddress get_IP(const char* ID){
     for(int j=0;j < net_group.size;j++){
         if(!memcmp(ID,  net_group.charger_table[j].name,8)){
@@ -138,9 +142,8 @@ void broadcast_a_grupo(char* Mensaje){
     }
 }
 
+//Arrancar la comunicacion udp para escuchar cuando el maestro nos lo ordene
 void start_udp(){
-
-    //Arrancar el servidor udp para escuchar cuando el maestro nos lo ordene
     if(udp.listen(1234)) {
         udp.onPacket([](AsyncUDPPacket packet) {         
             int size = packet.length();
@@ -229,9 +232,10 @@ void MasterPanicTask(void *args){
 /*Tarea para publicar los datos del equipo cada segundo*/
 void Publisher(void* args){
 
-    char buffer[100];
+    char buffer[500];
     Params.Fase = 1;
     while(1){
+        //Enviar nuestros datos de carga al grupo
         if(ChargingGroup.SendNewData){    
             char Delta[2]={'0'};
             
@@ -260,22 +264,32 @@ void Publisher(void* args){
             ChargingGroup.SendNewData = false;
         }
         
+        //Enviar nuevos parametros para el grupo
         if( ChargingGroup.SendNewParams || new_charger){
-            printf("Publicando nuevos parametros\n");
+            buffer[0] = '1';
+            memcpy(&buffer[1], &ChargingGroup.Params,sizeof(ChargingGroup.Params));
+            mqtt_publish("RTS", buffer);
+            ChargingGroup.SendNewParams = false;
+        }
+
+        //Enviar los cargadores de nuestro grupo
+        if(ChargingGroup.SendNewGroup || new_charger){
+            printf("Enviando nuevo grupo\n");
+             buffer[0] = '3';
             if(ChargingGroup.group_chargers.size< 10){
-                sprintf(buffer,"0%i",(char)ChargingGroup.group_chargers.size);
+                sprintf(&buffer[1],"0%i",(char)ChargingGroup.group_chargers.size);
             }
             else{
-                sprintf(buffer,"%i",(char)ChargingGroup.group_chargers.size);
+                sprintf(&buffer[1],"%i",(char)ChargingGroup.group_chargers.size);
             }
             
-            for(int i=0;i< ChargingGroup.group_chargers.size;i++){
-                memcpy(&buffer[2+(i*9)],ChargingGroup.group_chargers.charger_table[i].name,8);   
-                itoa(ChargingGroup.group_chargers.charger_table[i].Fase,&buffer[10+(i*9)],10);
+            for(uint8_t i=0;i< ChargingGroup.group_chargers.size;i++){
+                memcpy(&buffer[3+(i*9)],ChargingGroup.group_chargers.charger_table[i].name,8);   
+                itoa(ChargingGroup.group_chargers.charger_table[i].Fase,&buffer[11+(i*9)],10);
             }
             new_charger = 0;
-            mqtt_publish("Params", buffer);
-            ChargingGroup.SendNewParams = false;
+            mqtt_publish("RTS", buffer);
+            ChargingGroup.SendNewGroup = false;
         }
 
         //Avisar al maestro de que seguimos aqui
@@ -290,10 +304,8 @@ void Publisher(void* args){
                 vTaskDelete(NULL);
             }
         }
-        else{
-            delay(1000);
-        }
-        
+
+        delay(1000);        
     }
     vTaskDelete(NULL);
 }
@@ -308,7 +320,6 @@ void start_MQTT_server(){
         if(!ChargingGroup.Params.GroupMaster)break;
     }
     
-    
     if(ChargingGroup.Params.GroupMaster){
         ChargingGroup.Conected = true;
         /* Start MQTT Server using tcp transport */
@@ -321,7 +332,7 @@ void start_MQTT_server(){
         mqtt_sub_pub_opts publisher;
 
         //Ponerme el primero en el grupo para indicar que soy el maestro
-        if(ChargingGroup.group_chargers.size>0 && check_in_group(ConfigFirebase.Device_Id,&ChargingGroup.group_chargers ) !=-1){
+        if(ChargingGroup.group_chargers.size>0 && check_in_group(ConfigFirebase.Device_Id,&ChargingGroup.group_chargers ) != 255){
             while(memcmp(ChargingGroup.group_chargers.charger_table[0].name,ConfigFirebase.Device_Id, 8)){
                 carac_charger OldMaster=ChargingGroup.group_chargers.charger_table[0];
                 remove_from_group(OldMaster.name, &ChargingGroup.group_chargers);
@@ -337,7 +348,6 @@ void start_MQTT_server(){
             stop_MQTT();
             return;
         }
-
         
         sprintf(publisher.url, "mqtt://%s:1883", ip4addr_ntoa(&Coms.ETH.IP));
         memcpy(publisher.Client_ID,ConfigFirebase.Device_Id, 8);
@@ -345,7 +355,7 @@ void start_MQTT_server(){
         if(mqtt_connect(&publisher)){
             mqtt_subscribe("Device_Status");
             mqtt_subscribe("Ping");
-            mqtt_subscribe("Params");
+            mqtt_subscribe("RTS");
             xTaskCreateStatic(Publisher,"Publisher",4096,NULL,PRIORIDAD_MQTT,xPUBLISHERStack,&xPUBLISHERBuffer); 
         }
     }
@@ -368,7 +378,7 @@ void start_MQTT_client(IPAddress remoteIP){
         ChargingGroup.Conected = true;
         mqtt_subscribe("Device_Status");
         mqtt_subscribe("Pong");
-        mqtt_subscribe("Params");
+        mqtt_subscribe("RTS");
         xTaskCreateStatic(Publisher,"Publisher",4096,NULL,PRIORIDAD_MQTT,xPUBLISHERStack,&xPUBLISHERBuffer); 
     }
 }

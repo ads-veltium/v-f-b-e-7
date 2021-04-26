@@ -151,7 +151,6 @@ void mqtt_server(void *pvParameters){
 	vTaskDelete(NULL);
 }
 
-
 static StackType_t xPOLLstack [1024*6]     EXT_RAM_ATTR;
 StaticTask_t xPOLLBuffer ;
 struct mg_connection *mgc;
@@ -189,9 +188,22 @@ static void publisher_fn(struct mg_connection *c, int ev, void *ev_data, void *f
 			else if(!memcmp(mm->topic.ptr, "Pong", mm->topic.len)){
 				xStart = xTaskGetTickCount();
 			}
-			else if(!memcmp(mm->topic.ptr, "Params", mm->topic.len)){
-				New_Params(mm->data.ptr, mm->data.len);
-				xStart = xTaskGetTickCount();
+			else if(!memcmp(mm->topic.ptr, "RTS", mm->topic.len)){
+				switch(mm->data.ptr[0]-'0'){
+					case 1: //Group_Params
+						New_Params(&mm->data.ptr[1], mm->data.len);
+						break;
+					case 2: //Group Control
+						New_Params(&mm->data.ptr[1], mm->data.len);
+						break;
+					case 3: //Group Chargers
+						New_Group(&mm->data.ptr[1], mm->data.len);
+						break;
+					default:
+						printf("Me ha llegado algo indefinido\n");
+						break;
+				}
+				xStart = xTaskGetTickCount();	
 			}
 			//printf("Recibido %.*s <- %.*s \n", (int) mm->data.len, mm->data.ptr, (int) mm->topic.len, mm->topic.ptr);
 			break;
@@ -202,7 +214,6 @@ static void publisher_fn(struct mg_connection *c, int ev, void *ev_data, void *f
 //Bucle principal del cliente mqtt
 void mqtt_polling(void *params){
 	xStart = xTaskGetTickCount();
-	//struct mg_connection *mgc = (struct mg_connection*)params;
 	while (1) {
 		
 		mg_mgr_poll(&mgr, 10);

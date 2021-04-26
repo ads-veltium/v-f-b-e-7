@@ -200,7 +200,7 @@ void initialize_ethernet(void){
     Serial.println("Arrancando ethernet");
     //servidor DHCP
     if(!Coms.ETH.Auto && Params.Tipo_Sensor){
-        //si tenemos IP estatoca y un medidor conectado, activamos el dhcp
+        //si tenemos IP estatica y un medidor conectado, activamos el dhcp
         Coms.ETH.DHCP = true;
     }
 
@@ -243,6 +243,7 @@ void initialize_ethernet(void){
 	    IP4_ADDR(&info.netmask, 255, 255, 255, 0);
 	    ESP_ERROR_CHECK(esp_netif_set_ip_info(eth_netif, &info));  
         esp_eth_set_default_handlers(eth_netif);
+        eth_connected = true;
     }
     //Configuracion automatica
     else{

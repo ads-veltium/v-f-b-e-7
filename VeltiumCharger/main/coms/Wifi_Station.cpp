@@ -335,11 +335,9 @@ void Eth_Loop(){
         case CONNECTING:
             if(eth_connected){
                 Coms.ETH.State = CONECTADO;
-            #ifdef GROUPS
                 SendToPSOC5(0,SEND_GROUP_DATA);
                 delay(100);
                 start_udp();
-            #endif
                 xStart = xTaskGetTickCount();
                 if(!Coms.ETH.DHCP && Coms.ETH.Auto){
                     if(ComprobarConexion()){
@@ -357,8 +355,7 @@ void Eth_Loop(){
         break;
 
         case CONECTADO:
-            #ifdef GROUPS
-
+            //Buscar el contador
             if(Params.Tipo_Sensor && !finding){
                 if(GetStateTime(xStart) > 60000){
                     Serial.println("Iniciando fase busqueda ");
@@ -367,6 +364,7 @@ void Eth_Loop(){
                 }
             }
 
+            //Arrancar los grupos
             else if(!ChargingGroup.Conected){
                 if(ChargingGroup.Params.GroupActive){
                     if(GetStateTime(xStart) > 30000){
@@ -379,10 +377,9 @@ void Eth_Loop(){
                     }
                 }
             }
-            #endif
 
-            if(!Coms.ETH.ON){
-            #ifdef GROUPS               
+            //Apagar el eth
+            if(!Coms.ETH.ON){  
                 if(Coms.ETH.DHCP){
                     kill_ethernet();
                     Coms.ETH.DHCP  = 0;
@@ -390,20 +387,15 @@ void Eth_Loop(){
                     Coms.ETH.State = KILLING;
                 }
                 else{
-            #endif
                     stop_ethernet();
                     Coms.ETH.State = DISCONNECTING;
-            #ifdef GROUPS
-                }
-            #endif
-                
+                }                
             }
 
             //Desconexion del cable
             if(!eth_connected && !eth_link_up){
                 Coms.ETH.State = DISCONNECTING;
             }
-            #ifdef GROUPS
             //Lectura del contador
 			if(ContadorExt.ContadorConectado){
 				if(!Counter.Inicializado){
@@ -429,14 +421,13 @@ void Eth_Loop(){
 
 				SendToPSOC5((char*)buffer_contador,7,MEASURES_EXTERNAL_COUNTER);
 			}
-            #endif
         break;
 
         case DISCONNECTING:
             if(!eth_connected && !eth_connecting){
-            #ifdef GROUPS
-                stop_MQTT();
-            #endif
+                if(ChargingGroup.Conected){
+                    stop_MQTT();
+                }
                 finding = false;
                 Coms.ETH.State = DISCONNECTED;
                 Coms.ETH.Internet = false;

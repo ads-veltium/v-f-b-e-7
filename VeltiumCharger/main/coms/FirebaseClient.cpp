@@ -253,6 +253,7 @@ bool ReadFirebaseGroups(String Path){
   return true;
 
 }
+
 bool ReadFirebaseComs(String Path){
 
   long long ts_app_req=Database->Get_Timestamp(Path+"/ts_app_req",&Lectura);

@@ -9,6 +9,7 @@ extern "C" {
       
 void New_Data(char* Data, int Data_size);
 void New_Params(char* Data, int Data_size);
+void New_Group(char* Data, int Data_size);
 void Calculo_Consigna();
 void input_values();
 

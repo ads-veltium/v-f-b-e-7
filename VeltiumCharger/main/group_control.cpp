@@ -11,6 +11,7 @@ extern carac_chargers FaseChargers;
 extern carac_group    ChargingGroup;
 
 bool add_to_group(const char* ID, IPAddress IP, carac_chargers* group);
+void remove_group(carac_chargers* group);
 uint8_t check_in_group(const char* ID, carac_chargers* group);
 void store_group_in_mem(carac_chargers* group);
 IPAddress get_IP(const char* ID);
@@ -114,52 +115,35 @@ void New_Data(char* Data, int Data_size){
     Calculo_Consigna();
 }
 
+//Funcion para recibir nuevos parametros de carga para el grupo
 void New_Params(char* Data, int Data_size){
+    printf("New params : %s\n",Data);
+    SendToPSOC5((char*)Data,Data_size,GROUPS_PARAMS); 
+    delay(50);
+}
+
+//Funcion para recibir un nuevo grupo de cargadores
+void New_Group(char* Data, int Data_size){
     char n[2];
     memcpy(n,Data,2);
     uint8_t numero_de_cargadores = atoi(n);
-    bool newchargers=false;
    
     //comprobar si el grupo es distinto
+    //Si es distinto del que ya tenemos almacenado, lo guardamos en la flash
     if(numero_de_cargadores == ChargingGroup.group_chargers.size){
       for(uint8_t i=0;i<numero_de_cargadores;i++){
         if(memcmp(ChargingGroup.group_chargers.charger_table[i].name, &Data[i*9+2],8)){
-          newchargers=true;
-          break;
+          printf("Almacenando grupo en flash\n");
+          SendToPSOC5((char*)Data,Data_size,GROUPS_DEVICES); 
+          delay(50);
+          return;
         }
       }
     }
     else{
-      newchargers=true;
+      SendToPSOC5((char*)Data,Data_size,GROUPS_DEVICES); 
+      delay(50);
     }
-    
-    if(newchargers){
-      printf("Nuevos cargadores recibidos!\n");
-      //Copiar el nuevo grupo a nuestra tabla
-      ChargingGroup.group_chargers.size = 0;
-      for(uint8_t i=0;i<numero_de_cargadores;i++){
-          char ID[8];
-          memcpy(ID, &Data[i*9+2],8);
-          add_to_group(ID,get_IP(ID),&ChargingGroup.group_chargers);
-          ChargingGroup.group_chargers.charger_table[ChargingGroup.group_chargers.size-1].Fase = Data[i*9+10] - '0';
-      }   
-
-      //Almacenarlo en el PSOC5
-      store_group_in_mem(&ChargingGroup.group_chargers);
-    }
-
-    uint8 buffer[7];
-    ChargingGroup.Params.potencia_max = 16;
-    ChargingGroup.Params.inst_max = 13;
-    buffer[0] = ChargingGroup.Params.GroupMaster;
-    buffer[1] = ChargingGroup.Params.GroupActive;
-    buffer[2] = ChargingGroup.Params.inst_max;
-    buffer[3] = ChargingGroup.Params.CDP;
-    buffer[4] = ChargingGroup.Params.ContractPower;
-    buffer[5] = ChargingGroup.Params.UserID;
-    buffer[6] = ChargingGroup.Params.potencia_max;
-    SendToPSOC5((char*)buffer,7,GROUPS_PARAMS); 
-    delay(50);
 }
 
 void Calculo_Consigna(){

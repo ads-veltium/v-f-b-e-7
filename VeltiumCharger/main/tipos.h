@@ -284,6 +284,7 @@ typedef struct{
 typedef struct{
 	bool SendNewData   = false;
 	bool SendNewParams = false;
+	bool SendNewGroup  = false;
 	bool Conected	   = false;
 	bool StopOrder     = false;
 	bool DeleteOrder   = false;
