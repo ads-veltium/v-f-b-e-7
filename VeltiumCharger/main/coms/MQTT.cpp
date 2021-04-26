@@ -30,7 +30,6 @@ carac_chargers net_group EXT_RAM_ATTR;
 
 //Prototipos de funciones externas
 void mqtt_server(void *pvParameters);
-void Ping_Req(char* data);
 
 //Prototipos de funciones internas
 void start_MQTT_server();
@@ -208,7 +207,8 @@ void start_udp(){
 void MasterPanicTask(void *args){
     TickType_t xStart = xTaskGetTickCount();
     uint8 reintentos = 1;
-    ChargingGroup.MasterDead = true;
+    ChargingGroup.StartClient = false;
+    ChargingGroup.Params.GroupActive = false;
     while(!ChargingGroup.Conected){
         if(pdTICKS_TO_MS(xTaskGetTickCount() - xStart) > 30000){ //si pasa 1 minuto, elegir un nuevo maestro
             Serial.println("Necesitamos un nuevo maestro!");
@@ -230,7 +230,6 @@ void MasterPanicTask(void *args){
         }
         delay(1000);
     }
-    ChargingGroup.MasterDead = false;
     vTaskDelete(NULL);
 }
 
@@ -239,6 +238,7 @@ void Publisher(void* args){
     printf("Arrancando publicador\n");
     char buffer[500];
     Params.Fase = 1;
+    TickType_t xStart = xTaskGetTickCount();
     while(1){
         //Enviar nuestros datos de carga al grupo
         if(ChargingGroup.SendNewData){    
@@ -309,6 +309,26 @@ void Publisher(void* args){
             }
         }
 
+        //Si soy el maestro, debo comprobar si los esclavos siguen conectados
+        else{
+            TickType_t Transcurrido = xTaskGetTickCount() - xStart;
+            xStart = xTaskGetTickCount();
+            for(uint8_t i=0 ;i<ChargingGroup.group_chargers.size;i++){
+                ChargingGroup.group_chargers.charger_table[i].Period += Transcurrido;
+                //si un equipo lleva mucho sin contestar, lo intentamos despertar
+                if(ChargingGroup.group_chargers.charger_table[i].Period >=30000){ 
+                    AsyncUDPMessage mensaje (13);
+                    mensaje.write((uint8_t*)(Encipher("Start client").c_str()), 13);
+                    udp.sendTo(mensaje,ChargingGroup.group_chargers.charger_table[i].IP,1234);
+                }
+                //si un equipo lleva mucho sin contestar, lo damos por muerto
+                if(ChargingGroup.group_chargers.charger_table[i].Period >=60000){
+                    sprintf(buffer, "%s00V0000", ChargingGroup.group_chargers.charger_table[i].name);  
+                    mqtt_publish("Device_Status", (buffer));
+                }
+            }
+        }
+
         delay(1000);        
     }
     vTaskDelete(NULL);
@@ -342,6 +362,7 @@ void start_MQTT_server(){
                 remove_from_group(OldMaster.name, &ChargingGroup.group_chargers);
                 add_to_group(OldMaster.name, OldMaster.IP, &ChargingGroup.group_chargers);
             }
+            store_group_in_mem(&ChargingGroup.group_chargers);
         }
         else{
             //Si el grupo está vacio o el cargador no está en el grupo,
@@ -366,7 +387,6 @@ void start_MQTT_server(){
     else{
         Serial.println("Ya hay un maestro en el grupo, espero a que me ordene conectarme!");
         ChargingGroup.Params.GroupActive = false;
-        ChargingGroup.MasterDead = false;
     }
 }
 

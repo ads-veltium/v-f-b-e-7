@@ -263,6 +263,7 @@ typedef struct{
 	uint16_t Current;
 	uint16_t   Delta;
 	uint8_t Num_limitado;
+	TickType_t Period;
 
 }carac_charger;
 
@@ -286,7 +287,6 @@ typedef struct{
 	bool SendNewParams = false;
 	bool SendNewGroup  = false;
 	bool Conected	   = false;
-	bool MasterDead    = false;
 	bool StopOrder     = false;
 	bool DeleteOrder   = false;
 	bool StartClient   = false;

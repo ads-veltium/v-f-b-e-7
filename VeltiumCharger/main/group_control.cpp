@@ -35,6 +35,13 @@ uint8_t Pc_Fase;
 void Calculo_Consigna();
 void input_values();
 
+void Ping_Req(char* Data){
+  int n=check_in_group(Data,&ChargingGroup.group_chargers);
+  if(n!=255){
+    ChargingGroup.group_chargers.charger_table[n].Period =0;
+  }
+}
+
 //Funcion para procesar los nuevos datos recibidos
 void New_Data(char* Data, int Data_size){
     if(memcmp(Data, ConfigFirebase.Device_Id, 8)){                         //comprobar que no son nuestros propios datos

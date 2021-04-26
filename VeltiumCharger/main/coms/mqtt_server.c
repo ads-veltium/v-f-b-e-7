@@ -6,7 +6,6 @@ extern uint8_t new_charger;
 struct sub *s_subs EXT_RAM_ATTR;
 
 bool StopMQTT = false;
-void Ping_Req(char* data);
 
 // Wildcard(#/+) support version
 int _mg_strcmp(const struct mg_str str1, const struct mg_str str2) {
