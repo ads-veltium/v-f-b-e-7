@@ -141,7 +141,7 @@ void New_Group(char* Data, int Data_size){
     //Si es distinto del que ya tenemos almacenado, lo guardamos en la flash
     if(numero_de_cargadores == ChargingGroup.group_chargers.size){
       for(uint8_t i=0;i<numero_de_cargadores;i++){
-        if(memcmp(ChargingGroup.group_chargers.charger_table[i].name, &Data[i*9+2],8)){
+        if(memcmp(ChargingGroup.group_chargers.charger_table[i].name, &Data[i*9+2],8) || ChargingGroup.group_chargers.charger_table[i].Fase != Data[i*9+10]){
           SendToPSOC5((char*)Data,Data_size,GROUPS_DEVICES); 
           delay(50);
           return;

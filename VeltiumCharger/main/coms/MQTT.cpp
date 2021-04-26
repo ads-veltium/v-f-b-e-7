@@ -91,15 +91,20 @@ bool remove_from_group(const char* ID ,carac_chargers* group){
 //Almacenar grupo en la flash
 void store_group_in_mem(carac_chargers* group){
     char sendBuffer[252];
-    sendBuffer[0]=group->size;
+    if(group->size< 10){
+        sprintf(&sendBuffer[0],"0%i",(char)group->size);
+    }
+    else{
+        sprintf(&sendBuffer[0],"%i",(char)group->size);
+    }
 
     if(group->size < 25){
         for(uint8_t i=0;i<group->size;i++){
-            memcpy(&sendBuffer[1+(i*9)],group->charger_table[i].name,8);
-            itoa(group->charger_table[i].Fase,&sendBuffer[9+(i*9)],10);
+            memcpy(&sendBuffer[2+(i*9)],group->charger_table[i].name,8);
+            itoa(group->charger_table[i].Fase,&sendBuffer[10+(i*9)],10);
         }
         
-        SendToPSOC5(sendBuffer,ChargingGroup.group_chargers.size*9+1,GROUPS_DEVICES); 
+        SendToPSOC5(sendBuffer,ChargingGroup.group_chargers.size*9+2,GROUPS_DEVICES); 
         delay(100);
         return;
     }
@@ -192,7 +197,10 @@ void start_udp(){
                 }
                 else if(!memcmp(Desencriptado.c_str(), "Bai, hemen nago", 13)){
                     if(!ChargingGroup.Conected && ChargingGroup.Params.GroupMaster){
+                        ChargingGroup.StartClient = true;
                         ChargingGroup.Params.GroupMaster = false;
+                        ChargingGroup.Params.GroupActive = true;
+                        ChargingGroup.MasterIP =packet.remoteIP();
                     }
                 }
             }            
@@ -386,7 +394,6 @@ void start_MQTT_server(){
     }
     else{
         Serial.println("Ya hay un maestro en el grupo, espero a que me ordene conectarme!");
-        ChargingGroup.Params.GroupActive = false;
     }
 }
 
