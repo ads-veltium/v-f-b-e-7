@@ -65,8 +65,8 @@ void New_Data(char* Data, int Data_size){
                     char current[Data_size-13+1];
                     memcpy( current, &Data[13], Data_size-13 );         
                     FaseChargers.charger_table[index].Current = atoi(current);
-                    //cls();
-                    //print_table(FaseChargers);
+                    cls();
+                    print_table(FaseChargers);
                 }
                 else{
                     //Si el cargador no está en la tabla, añadirlo y actualizar los datos
@@ -102,19 +102,51 @@ void New_Data(char* Data, int Data_size){
             memcpy( current, &Data[13], Data_size-13 );         
             ChargingGroup.group_chargers.charger_table[index].Current = atoi(current);
 
-            //print_table(ChargingGroup.group_chargers);
+            print_table(ChargingGroup.group_chargers);
         }
     }
 
  
     //Actualizar nuestros propios valores
     else{
+
+        //Grupo total
         uint8_t index = check_in_group(ConfigFirebase.Device_Id,&ChargingGroup.group_chargers);     //Buscar el equipo en el grupo total
         if(index < 255){
             ChargingGroup.group_chargers.charger_table[index].Fase = Params.Fase;
             memcpy(ChargingGroup.group_chargers.charger_table[index].HPT,Status.HPT_status,2);      //Si el cargador ya existe, actualizar sus datos
                     
             ChargingGroup.group_chargers.charger_table[index].Current = Status.Measures.instant_current;
+        }
+
+        //Grupo de fase
+        index = check_in_group(ConfigFirebase.Device_Id,&FaseChargers);               //comprobar si el cargador ya está almacenado en nuestro grupo de fase
+        if(index < 255){                         
+            memcpy(FaseChargers.charger_table[index].HPT,&Data[9],2);   //Si el cargador ya existe, actualizar sus datos
+            FaseChargers.charger_table[index].Fase =Params.Fase;
+            char Delta[3];
+            memcpy(Delta, &Data[11], 2);
+            FaseChargers.charger_table[index].Delta = atoi(Delta);
+
+            char current[Data_size-13+1];
+            memcpy( current, &Data[13], Data_size-13 );         
+            FaseChargers.charger_table[index].Current = atoi(current);
+
+        }
+        else{
+            //Si el cargador no está en la tabla, añadirlo y actualizar los datos
+            add_to_group(ConfigFirebase.Device_Id, get_IP(ConfigFirebase.Device_Id),&FaseChargers);
+
+            FaseChargers.charger_table[FaseChargers.size-1].Fase = Params.Fase;
+            memcpy(FaseChargers.charger_table[FaseChargers.size-1].HPT,&Data[9],2);
+
+            char Delta[3];
+            memcpy(Delta, &Data[11], 2);
+            FaseChargers.charger_table[FaseChargers.size-1].Delta = atoi(Delta);
+            
+            char current[Data_size-13+1];
+            memcpy( current, &Data[13], Data_size-13 );  
+            FaseChargers.charger_table[FaseChargers.size-1].Current = atoi(current);
         }
     }
     input_values();
@@ -195,14 +227,14 @@ void Calculo_Consigna(){
   } else {
     switch (is_c3_charger) {
      case IN_CochesConectados:
-      if ((Pc > 0) && !memcmp(Status.HPT_status,"C2",2)) {
+      if (Conex > 0 && !memcmp(Status.HPT_status,"C2",2)) {
         is_c3_charger = IN_LimiteConsumo;
         Comand_no_lim = Comands.desired_current;
 
         Status.limite_Fase = 0;
         if (Delta_total == 0) {
           is_LimiteConsumo = IN_Cargando1;
-          Comands.desired_current = MAX_CURRENT;
+          Comands.desired_current = ChargingGroup.Params.potencia_max ;
         } else {
           if (Delta_total > 0) {
             is_LimiteConsumo = IN_Cargando3;
@@ -226,7 +258,7 @@ void Calculo_Consigna(){
         is_LimiteInstalacion = IN_Limitacion;
 
         Comands.desired_current = ChargingGroup.Params.inst_max / Conex_Fase;
-      } else if ((Pc == 0) || memcmp(Status.HPT_status,"C2",2)) {
+      } else if ((Conex == 0) || memcmp(Status.HPT_status,"C2",2)) {
         is_LimiteConsumo = IN_NO_ACTIVE_CHILD;
         is_c3_charger = IN_CochesConectados;
 
@@ -240,12 +272,12 @@ void Calculo_Consigna(){
          case IN_Cargando1:
           if (Comands.desired_current * Conex > ChargingGroup.Params.potencia_max) {
             is_LimiteConsumo = IN_Cargando2;
-            Comands.desired_current = MAX_CURRENT;
+            Comands.desired_current = ChargingGroup.Params.potencia_max ;
           } else if ((Pc >= ChargingGroup.Params.potencia_max) && (Comands.desired_current * Conex < ChargingGroup.Params.potencia_max)) {
             is_LimiteConsumo = IN_ReduccionPc;
             Comands.desired_current = ChargingGroup.Params.potencia_max / Conex;
           } else {
-            Comands.desired_current = MAX_CURRENT;
+            Comands.desired_current = ChargingGroup.Params.potencia_max ;
           }
           break;
 
@@ -257,47 +289,47 @@ void Calculo_Consigna(){
           } else if (Comands.desired_current * Conex < ChargingGroup.Params.potencia_max) {
             is_LimiteConsumo = IN_Cargando1;
 
-            Comands.desired_current = MAX_CURRENT;
+            Comands.desired_current = ChargingGroup.Params.potencia_max ;
           } else {
 
-            Comands.desired_current = MAX_CURRENT;
+            Comands.desired_current = ChargingGroup.Params.potencia_max ;
           }
           break;
 
          case IN_Cargando3:
-          if (ChargingGroup.Params.potencia_max > Conex * MAX_CURRENT) {
+          if (ChargingGroup.Params.potencia_max > Conex * ChargingGroup.Params.potencia_max ) {
             is_LimiteConsumo = IN_Cargando1;
 
-            Comands.desired_current = MAX_CURRENT;
+            Comands.desired_current = ChargingGroup.Params.potencia_max ;
           } else if (Comands.desired_current - Status.Measures.instant_current > 6.0) {
             is_LimiteConsumo = IN_Contador;
 
             xStart = xTaskGetTickCount();
-          } else if ((Fases_limitadas > 0) && (ChargingGroup.Params.potencia_max > (MAX_CURRENT - Comands.desired_current) + Pc)) {
+          } else if ((Fases_limitadas > 0) && (ChargingGroup.Params.potencia_max > (ChargingGroup.Params.potencia_max  - Comands.desired_current) + Pc)) {
             is_LimiteConsumo = IN_Cargando4;
 
-            Comands.desired_current = MAX_CURRENT;
+            Comands.desired_current = ChargingGroup.Params.potencia_max ;
           } else {
 
             Comands.desired_current = Delta_total / (Conex - Conex_Delta) + ChargingGroup.Params.potencia_max / Conex;
 
-            if (Comands.desired_current >= MAX_CURRENT){
-              Comands.desired_current = MAX_CURRENT;
+            if (Comands.desired_current >= ChargingGroup.Params.potencia_max ){
+              Comands.desired_current = ChargingGroup.Params.potencia_max ;
             }
 
           }
           break;
 
          case IN_Cargando4:
-          if (ChargingGroup.Params.potencia_max <= (MAX_CURRENT - Comands.desired_current) + Pc) {
+          if (ChargingGroup.Params.potencia_max <= (ChargingGroup.Params.potencia_max  - Comands.desired_current) + Pc) {
             is_LimiteConsumo = IN_Cargando3;
             Comands.desired_current = Delta_total / (Conex - Conex_Delta) + ChargingGroup.Params.potencia_max / Conex;
 
           } else if (Fases_limitadas == 0) {
             is_LimiteConsumo = IN_Cargando1;
-            Comands.desired_current = MAX_CURRENT;
+            Comands.desired_current = ChargingGroup.Params.potencia_max ;
           } else {
-            Comands.desired_current = MAX_CURRENT;
+            Comands.desired_current = ChargingGroup.Params.potencia_max ;
           }
           break;
 
@@ -353,7 +385,7 @@ void Calculo_Consigna(){
         if (Delta_total == 0) {
           is_LimiteConsumo = IN_Cargando1;
 
-          Comands.desired_current = MAX_CURRENT;
+          Comands.desired_current = ChargingGroup.Params.potencia_max ;
         } else {
           if (Delta_total > 0) {
             is_LimiteConsumo = IN_Cargando3;
@@ -384,8 +416,12 @@ void Calculo_Consigna(){
       break;
     }
   }
-  //printf("Comand desired current %i \n", Comands.desired_current);
-  //SendToPSOC5(Comands.desired_current,MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
+  printf("is_c3_charger= %i\n",is_c3_charger);
+  printf("Conex = %i\n", Conex);
+  printf("Comand desired current %i \n", Comands.desired_current);
+  printf("Max p = %i \n", ChargingGroup.Params.potencia_max);
+  printf("Inst max = %i \n", ChargingGroup.Params.potencia_max);
+  SendToPSOC5(Comands.desired_current,MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
 }
 
 void input_values(){
@@ -397,7 +433,7 @@ void input_values(){
     Pc_Fase=0;
     uint16_t total_pc =0;
     uint16_t total_pc_fase =0;
-    for(int i=0; i< ChargingGroup.group_chargers.size-1;i++){
+    for(int i=0; i< ChargingGroup.group_chargers.size;i++){
         if(!memcmp(ChargingGroup.group_chargers.charger_table[i].HPT,"C2",2)){
             Conex++;
         }
@@ -408,17 +444,17 @@ void input_values(){
         Delta_total += ChargingGroup.group_chargers.charger_table[i].Delta;
         total_pc += ChargingGroup.group_chargers.charger_table[i].Current;
     }   
-    Pc=total_pc/100;
-    //printf("Total PC and Delta %i %i \n",Pc,Delta_total); 
+    Pc=total_pc/1000;
+    printf("Total PC and Delta %i %i \n",Pc,Delta_total); 
 
-    for(int i=0; i< FaseChargers.size-1;i++){
+    for(int i=0; i< FaseChargers.size;i++){
         if(!memcmp(FaseChargers.charger_table[i].HPT,"C2",2)){
             Conex_Fase++;
         }
         //Delta_total += ChargingGroup.group_chargers.charger_table[i].Delta;
         total_pc_fase += ChargingGroup.group_chargers.charger_table[i].Current;
     }
-    Pc_Fase=total_pc_fase/100;
-    //printf("Total PC of phase %i\n",Pc);    
+    Pc_Fase=total_pc_fase/1000;
+    printf("Total PC of phase %i\n",Pc);    
 }
 

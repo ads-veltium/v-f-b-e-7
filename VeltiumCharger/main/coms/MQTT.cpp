@@ -125,8 +125,11 @@ void store_group_in_mem(carac_chargers* group){
 void remove_group(carac_chargers* group){
     if(group->size >0){
         for(int j=0;j < group->size;j++){
-            remove_from_group(group->charger_table[j].name, group);
+            group->charger_table[j].IP = INADDR_NONE;       
+            group->charger_table[j].Fase = 0;       
+            memset(group->charger_table[j].name,0,9);
         }
+        group->size = 0;
         return;
     }
     printf("Error al eliminar el grupo\n");  
@@ -347,9 +350,11 @@ void Publisher(void* args){
                 }
                 //si un equipo lleva mucho sin contestar, lo damos por muerto
                 if(ChargingGroup.group_chargers.charger_table[i].Period >=60000 && ChargingGroup.group_chargers.charger_table[i].Period <=65000){
-                    sprintf(buffer, "%s00V0000", ChargingGroup.group_chargers.charger_table[i].name);  
-                    mqtt_publish("Device_Status", (buffer));
-                    printf("%s lleva muchiisimo sin conestar\n", ChargingGroup.group_chargers.charger_table[i].name);
+                    if(memcmp(ChargingGroup.group_chargers.charger_table[i].name, ConfigFirebase.Device_Id,8)){
+                        sprintf(buffer, "%s00V0000", ChargingGroup.group_chargers.charger_table[i].name);  
+                        mqtt_publish("Device_Status", (buffer));
+                        printf("%s lleva muchiisimo sin conestar\n", ChargingGroup.group_chargers.charger_table[i].name);
+                    }
                 }
             }
         }
@@ -414,7 +419,7 @@ void start_MQTT_server(){
         }
         else{
             //Si el grupo está vacio o el cargador no está en el grupo,
-            printf("No tengo cargadores en el grupo!\n");
+            printf("No tengo cargadores en el grupo o no estoy en mi propio grupo!\n");
             ChargingGroup.Params.GroupMaster = false;
             ChargingGroup.Params.GroupActive = false;
             ChargingGroup.Conected = false;

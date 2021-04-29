@@ -89,6 +89,11 @@ void proceso_recepcion(void);
 int Convert_To_Epoch(uint8_t DateTime[6]);
 void Disable_VELT1_CHARGER_services(void);
 
+#ifdef CONNECTED
+bool add_to_group(const char* ID, IPAddress IP, carac_chargers* group);
+IPAddress get_IP(const char* ID);
+#endif
+
 
 /*******************************************************************************
  * Rutina de atencion a inerrupcion de timer (10mS)
@@ -865,12 +870,15 @@ void procesar_bloque(uint16 tipo_bloque){
 		case GROUPS_DEVICES:{
 			Serial.printf("Nuevo grupo recibido\n");
 			char n[2];
+			char ID[8];
    			memcpy(n,buffer_rx_local,2);
-    		ChargingGroup.group_chargers.size  = atoi(n);
-			for(uint8_t i=0; i<ChargingGroup.group_chargers.size;i++){
+
+			for(uint8_t i=0; i<atoi(n);i++){
+				//memcpy(ID,(char*)buffer_rx_local[2+i*9],8);
 				for(uint8_t j =0; j< 8; j++){
-					ChargingGroup.group_chargers.charger_table[i].name[j] = (char)buffer_rx_local[2+i*9+j];
+					ID[j]=(char)buffer_rx_local[2+i*9+j];
 				}
+				add_to_group(ID, get_IP(ID), &ChargingGroup.group_chargers);
 				ChargingGroup.group_chargers.charger_table[i].Fase = buffer_rx_local[10+i*9]-'0';
 			}
 			print_table(ChargingGroup.group_chargers);
