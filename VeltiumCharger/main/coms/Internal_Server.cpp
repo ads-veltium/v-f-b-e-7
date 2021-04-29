@@ -30,6 +30,10 @@ const char* INST_CURR_LIM = "inst_curr_lim";
 const char* POT_CONT = "potencia_cont";
 const char* UBI_CDP = "ubi_cdp";
 
+bool Gsm_On;
+bool Eth_On;
+bool Eth_Auto;
+bool Wifi_On;
 
 /************* Internal server configuration ****************/
 void notFound(AsyncWebServerRequest *request) {
@@ -99,8 +103,7 @@ String processor(const String& var){
     else if (var == "CORRIENTEDOM")
 	{
 		return String(Status.Measures.consumo_domestico);
-	}
-    
+	}   
     /*else if (var == "CONT")
 	{
         Status.Time.connect_date_time
@@ -135,14 +138,50 @@ String processor(const String& var){
 	{
 		return String(Status.error_code);
 	}
+    else if (var == "COMAND")
+	{
+		return String(Comands.desired_current);
+	}
+    else if (var == "AUTH")
+	{
+		return String(Params.autentication_mode);
+	}
+    else if (var == "CURLIM")
+	{
+		return String(Params.inst_current_limit);
+	}
+    else if (var == "POWER")
+	{
+		return String(Params.potencia_contratada);
+	}
+    else if (var == "UCDP")
+	{
+		return String(Params.CDP);
+	}
+    else if (var == "SSID")
+	{
+		return String((char*)Coms.Wifi.AP);
+	}
+    else if (var == "IP")
+	{
+		return String(ip4addr_ntoa(&Coms.ETH.IP));
+	}
+    else if (var == "GATEWAY")
+	{
+		return String(ip4addr_ntoa(&Coms.ETH.Gateway));
+	}
+    else if (var == "MASK")
+	{
+		return String(ip4addr_ntoa(&Coms.ETH.Mask));
+	}             
 	else if (var == "BUTTONPLACEHOLDER")
 	{
 		String buttons = "";
 		
-		buttons += "<p><label class=\"button\"><input type=\"button\" value=\"Cargar ahora\" style='height:30px;width:100px;background:#3498db;color:#fff' onclick=\"Startbutton(this)\" id=\"1\"></label></p>";
-		buttons += "<p><label class=\"button\"><input type=\"button\" value=\"Parar\" style='height:30px;width:100px;background:#3498db;color:#fff' onclick=\"Startbutton(this)\" id=\"2\"></label></p>";	
-		buttons += "<p><label class=\"button\"><input type=\"button\" value=\"Reset\" style='height:30px;width:100px;background:#3498db;color:#fff' onclick=\"Startbutton(this)\" id=\"4\"></label></p>";
-		buttons += "<p><label class=\"button\"><input type=\"button\" value=\"Actualizar\" style='height:30px;width:100px;background:#3498db;color:#fff' onclick=\"Startbutton(this)\" id=\"3\"></label></p>";
+		buttons += "<p><label class=\"button\"><input class=\"boton\" type=\"button\" value=\"Cargar ahora\" onclick=\"Startbutton(this)\" id=\"1\"></label></p>";
+		buttons += "<p><label class=\"button\"><input class=\"boton\" type=\"button\" value=\"Parar\" onclick=\"Startbutton(this)\" id=\"2\"></label></p>";	
+		buttons += "<p><label class=\"button\"><input class=\"boton\" type=\"button\" value=\"Reset\" onclick=\"Startbutton(this)\" id=\"4\"></label></p>";
+		buttons += "<p><label class=\"button\"><input class=\"boton\" type=\"button\" value=\"Actualizar\" onclick=\"Startbutton(this)\" id=\"3\"></label></p>";
         return buttons;
 	}
 	else if (var == "AUTOUPDATE")
@@ -201,7 +240,7 @@ void StopServer(void){
 }
 
 void InitServer(void) {
-    SPIFFS.begin(false,"/spiffs",1,"WebServer");
+    SPIFFS.begin(false,"/spiffs",10,"WebServer");
 	server.begin();
 	//Cargar los archivos del servidor
 	Serial.println(ESP.getFreeHeap());
@@ -214,8 +253,20 @@ void InitServer(void) {
      request->send(SPIFFS, "/login.html");
     });
 
-     server.on("/datos", HTTP_GET_A, [](AsyncWebServerRequest *request){
-     request->send(SPIFFS, "/datos.html",String(), false, processor);
+    server.on("/comands", HTTP_GET_A, [](AsyncWebServerRequest *request){
+     request->send(SPIFFS, "/comands.html",String(), false, processor);
+    });
+
+    server.on("/comms", HTTP_GET_A, [](AsyncWebServerRequest *request){
+     request->send(SPIFFS, "/comms.html",String(), false, processor);
+    });
+
+    server.on("/parameters", HTTP_GET_A, [](AsyncWebServerRequest *request){
+     request->send(SPIFFS, "/parameters.html",String(), false, processor);
+    });
+    
+    server.on("/status", HTTP_GET_A, [](AsyncWebServerRequest *request){
+     request->send(SPIFFS, "/status.html",String(), false, processor);
     });
 
     server.on("/style.css", HTTP_GET_A, [](AsyncWebServerRequest *request){
@@ -223,6 +274,20 @@ void InitServer(void) {
     });
 
     server.on("/get", HTTP_GET_A, [](AsyncWebServerRequest *request){
+        
+        
+        while(Coms.ETH.ON != Eth_On){
+            SendToPSOC5(Eth_On,COMS_CONFIGURATION_ETH_ON);
+            delay(50);
+        }
+
+        while(Coms.Wifi.ON != Wifi_On){
+            SendToPSOC5(Wifi_On,COMS_CONFIGURATION_WIFI_ON);
+            delay(50);
+        }
+        
+        Coms.GSM.ON = Gsm_On;
+        Coms.ETH.Auto = Eth_Auto;
         memcpy(Coms.Wifi.AP,request->getParam(AP)->value().c_str(),32);
         Coms.Wifi.Pass = request->getParam(WIFI_PWD)->value();
         //Coms.ETH.IP = request->getParam(IP1)->value().toInt();       
@@ -230,26 +295,63 @@ void InitServer(void) {
         //Coms.ETH.Mask = request->getParam(MASK)->value().toInt();
         Coms.GSM.APN = request->getParam(APN)->value();
         Coms.GSM.Pass = request->getParam(GSM_PWD)->value();
-        Comands.desired_current = request->getParam(CURR_COMAND)->value().toInt();
-        //Params.autentication_mode = request->getParam(AUTH_MODE)->value();
-        Params.CDP = request->getParam(UBI_CDP)->value().toInt();
-        Params.inst_current_limit = request->getParam(INST_CURR_LIM)->value().toInt();
-        Params.potencia_contratada = request->getParam(POT_CONT)->value().toInt();
 
         Serial.println((char*)Coms.Wifi.AP);
-        Serial.println(ip4addr_ntoa(&Coms.ETH.IP) );
+        Serial.println(ip4addr_ntoa(&Coms.ETH.IP));
         Serial.println(ip4addr_ntoa(&Coms.ETH.Gateway));
         Serial.println(ip4addr_ntoa(&Coms.ETH.Mask));
+        Serial.println(Coms.ETH.Auto);
+        Serial.println(Coms.GSM.ON);
         Serial.println(Coms.GSM.APN);
         Serial.println(Coms.GSM.Pass);
+
+        request->send(SPIFFS, "/comms.html",String(), false, processor);
+
+    });
+
+    server.on("/currcomand", HTTP_GET_A, [](AsyncWebServerRequest *request){
+        
+        Comands.desired_current = request->getParam(CURR_COMAND)->value().toInt();
+
         Serial.println(Comands.desired_current);
-        Serial.println(Params.autentication_mode );
+        
+        request->send(SPIFFS, "/comands.html",String(), false, processor);
+    });
+
+    server.on("/authentication", HTTP_GET_A, [](AsyncWebServerRequest *request){
+        
+        //Params.autentication_mode = request->getParam(AUTH_MODE)->value();
+
+        Serial.println(Params.autentication_mode);
+        
+        request->send(SPIFFS, "/parameters.html",String(), false, processor);
+    });
+
+    server.on("/ubcdp", HTTP_GET_A, [](AsyncWebServerRequest *request){
+        
+        Params.CDP = request->getParam(UBI_CDP)->value().toInt();
+
         Serial.println(Params.CDP);
+        
+        request->send(SPIFFS, "/parameters.html",String(), false, processor);
+    });
+
+    server.on("/instcurlim", HTTP_GET_A, [](AsyncWebServerRequest *request){
+        
+        Params.inst_current_limit = request->getParam(INST_CURR_LIM)->value().toInt();
+
         Serial.println(Params.inst_current_limit);
+        
+        request->send(SPIFFS, "/parameters.html",String(), false, processor);
+    });
+
+    server.on("/powercont", HTTP_GET_A, [](AsyncWebServerRequest *request){
+        
+        Params.potencia_contratada = request->getParam(POT_CONT)->value().toInt();
+
         Serial.println(Params.potencia_contratada);
-
-        request->send(SPIFFS, "/datos.html",String(), false, processor);
-
+        
+        request->send(SPIFFS, "/parameters.html",String(), false, processor);
     });
     
 
@@ -299,21 +401,55 @@ void InitServer(void) {
 
    server.on("/corriente", HTTP_GET_A, [](AsyncWebServerRequest *request){
         request->send_P(200, "text/plain", String(Status.Measures.instant_current).c_str());
-  });
+    });
 
-  server.on("/voltaje", HTTP_GET_A, [](AsyncWebServerRequest *request){
+    server.on("/voltaje", HTTP_GET_A, [](AsyncWebServerRequest *request){
         request->send_P(200, "text/plain", String(Status.Measures.instant_voltage).c_str());
-  });
+    });
 
-   server.on("/potencia", HTTP_GET_A, [](AsyncWebServerRequest *request){
+    server.on("/potencia", HTTP_GET_A, [](AsyncWebServerRequest *request){
         request->send_P(200, "text/plain", String(Status.Measures.active_power).c_str());
-  });
+    });
 
-   server.on("/error", HTTP_GET_A, [](AsyncWebServerRequest *request){
+    server.on("/error", HTTP_GET_A, [](AsyncWebServerRequest *request){
         request->send_P(200, "text/plain", String(Status.error_code).c_str());
-  });
+    });
 
+    server.on("/comand", HTTP_GET_A, [](AsyncWebServerRequest *request){
+        request->send_P(200, "text/plain", String(Comands.desired_current).c_str());
+    });
+
+    server.on("/auth", HTTP_GET_A, [](AsyncWebServerRequest *request){
+        request->send_P(200, "text/plain", String(Params.autentication_mode).c_str());
+    });
+    
+    server.on("/curlim", HTTP_GET_A, [](AsyncWebServerRequest *request){
+        request->send_P(200, "text/plain", String(Params.inst_current_limit).c_str());
+    });
+    
+    server.on("/power", HTTP_GET_A, [](AsyncWebServerRequest *request){
+        request->send_P(200, "text/plain", String(Params.potencia_contratada).c_str());
+    });
+
+    server.on("/ucdp", HTTP_GET_A, [](AsyncWebServerRequest *request){
+        request->send_P(200, "text/plain", String(Params.CDP).c_str());
+    });
+
+    server.on("/ssid", HTTP_GET_A, [](AsyncWebServerRequest *request){
+        request->send_P(200, "text/plain", String((char*)Coms.Wifi.AP).c_str());
+    });
+
+    server.on("/ip", HTTP_GET_A, [](AsyncWebServerRequest *request){
+        request->send_P(200, "text/plain", String(ip4addr_ntoa(&Coms.ETH.IP)).c_str());
+    });
   
+    server.on("/gateway", HTTP_GET_A, [](AsyncWebServerRequest *request){
+        request->send_P(200, "text/plain", String(ip4addr_ntoa(&Coms.ETH.Gateway)).c_str());
+    });
+
+    server.on("/mask", HTTP_GET_A, [](AsyncWebServerRequest *request){
+        request->send_P(200, "text/plain", String(ip4addr_ntoa(&Coms.ETH.Mask)).c_str());
+    });
   
    server.on("/update", HTTP_GET_A, [] (AsyncWebServerRequest *request) {
 
@@ -364,24 +500,18 @@ void InitServer(void) {
             break;
 
             case 12:
-                while(Coms.Wifi.ON != estado){
-                    SendToPSOC5(estado,COMS_CONFIGURATION_WIFI_ON);
-                    delay(50);
-                }
-                
+                Wifi_On = estado;
                 break;
             case 13:
-                while(Coms.ETH.ON != estado){
-                    SendToPSOC5(estado,COMS_CONFIGURATION_ETH_ON);
-                    delay(50);
-                }
-                
+
+                Eth_On = estado;
+
                 break;
             case 14:
-                Coms.ETH.Auto = estado; 
+                Eth_Auto = estado; 
                 break;
             case 15:
-                Coms.GSM.ON = estado;
+                Gsm_On = estado;
                 break;
             case 16:
                 Params.CDP_On = estado;
@@ -395,6 +525,8 @@ void InitServer(void) {
         default:
             break;
         }
+        Serial.println(Gsm_On);
+        Serial.println(Wifi_On);
    });
   
    Serial.println(ESP.getFreeHeap());

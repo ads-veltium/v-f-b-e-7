@@ -541,7 +541,7 @@ void ComsTask(void *args){
             }
             if((eth_connected || wifi_connected ) && !ServidorArrancado){
 
-                //InitServer();
+                InitServer();
                 ServidorArrancado = true;
             }
         }

@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <title>Veltium Smart Chargers</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" type="text/css" href="style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+<div class="header">
+    <h1>Veltium Smart Chargers</h1>
+</div>
+<div class="topnav" id="myTopnav">
+    <a href="parameters">Par&aacutemetros</a>
+    <a href="comands" >Comandos</a>
+    <a href="comms">Comunicaciones</a>
+    <a href="status" class="active">Status</a>
+    <div class="topnav-right">
+        <a href="javascript:void(0);" onclick="mainApp.logout();">Cerrar sesion</a>
+    </div>
+    <a href="javascript:void(0);" class="icon" onclick="myFunction()">
+      <i class="fa fa-bars"></i>
+    </a>
+  </div>
+    <script src="https://www.gstatic.com/firebasejs/4.8.2/firebase.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/4.8.2/firebase-auth.js"></script>
+</head>
+<body>
+    <table class="center">
+      <tr>
+        <td><span class="dht-labels">Estado del hilo piloto</span> </td>
+        <td><span id="hp">%HP%</span></td>
+      </tr>
+      <tr>
+        <td><span class="dht-labels">Estado del ICP</span> </td>
+        <td><span id="icp">%ICP%</span></td>
+      </tr>
+      <tr>
+        <td><span class="dht-labels">Leakage current</span></td>
+        <td><span id="leakage">%LEAK%</span></td>
+      </tr>
+      <tr>
+        <td><span class="dht-labels">Estado de bloqueo</span> </td>
+        <td><span id="lockstatus">%LOCKSTATUS%</span></td>
+      </tr>
+      <tr>
+        <td><span class="dht-labels">Corriente m&aacutexima cable</span> </td>
+        <td><span id="maxcable">%MAXCABLE%</span><span class="units">A</span></td>
+      </tr>
+      <tr>
+        <td><span class="dht-labels">Corriente de carga</span> </td>
+        <td><span id="corriente">%CORRIENTE%</span><span class="units">A</span></td>
+      </tr>
+      <tr>
+        <td><span class="dht-labels">Potencia activa</span>  </td>
+        <td><span id="potencia">%POTENCIA%</span><span class="units">W</span></td>
+      </tr>
+      <tr>
+        <td><span class="dht-labels">Voltaje</span></td>
+        <td><span id="voltaje">%VOLTAJE%</span><span class="units">V</span></td>
+      </tr>
+      <tr>
+        <td><span class="dht-labels">Corriente dom&eacutestica</span></td>
+        <td><span id="corrientedom">%CORRIENTEDOM%</span><span class="units">A</span></td>
+      </tr>
+      <tr>
+        <td><span class="dht-labels">Error code</span></td>
+        <td><span id="error">%ERROR%</span></td>
+      </tr>
+    </table>
+    
+    <script src="main.js"></script>
+    <script src="fireBase.js"></script>
+    <script>
+      setInterval(function ( ) {
+
+var xhttp = new XMLHttpRequest();
+
+xhttp.onreadystatechange = function() {
+
+  if (this.readyState == 4 && this.status == 200) {
+
+    document.getElementById("hp").innerHTML = this.responseText;
+
+  }
+
+};
+
+xhttp.open("GET", "/hp", true);
+
+xhttp.send();
+
+}, 5000 ) ;
+
+setInterval(function ( ) {
+
+var xhttp = new XMLHttpRequest();
+
+xhttp.onreadystatechange = function() {
+
+  if (this.readyState == 4 && this.status == 200) {
+
+    document.getElementById("icp").innerHTML = this.responseText;
+
+  }
+
+};
+
+xhttp.open("GET", "/icp", true);
+
+xhttp.send();
+
+}, 5000 ) ;
+
+
+
+setInterval(function ( ) {
+
+var xhttp = new XMLHttpRequest();
+
+xhttp.onreadystatechange = function() {
+
+  if (this.readyState == 4 && this.status == 200) {
+
+    document.getElementById("leakage").innerHTML = this.responseText;
+
+  }
+
+};
+
+xhttp.open("GET", "/dcleak", true);
+
+xhttp.send();
+
+}, 5000 ) ;
+
+
+
+setInterval(function ( ) {
+
+var xhttp = new XMLHttpRequest();
+
+xhttp.onreadystatechange = function() {
+
+  if (this.readyState == 4 && this.status == 200) {
+
+    document.getElementById("lockstatus").innerHTML = this.responseText;
+
+  }
+
+};
+
+xhttp.open("GET", "/conlock", true);
+
+xhttp.send();
+
+}, 5000 ) ;
+
+
+
+setInterval(function ( ) {
+
+var xhttp = new XMLHttpRequest();
+
+xhttp.onreadystatechange = function() {
+
+  if (this.readyState == 4 && this.status == 200) {
+
+    document.getElementById("maxcable").innerHTML = this.responseText;
+
+  }
+
+};
+
+xhttp.open("GET", "/maxcable", true);
+
+xhttp.send();
+
+}, 5000 ) ;
+
+
+
+setInterval(function ( ) {
+
+var xhttp = new XMLHttpRequest();
+
+xhttp.onreadystatechange = function() {
+
+  if (this.readyState == 4 && this.status == 200) {
+
+    document.getElementById("potenciare").innerHTML = this.responseText;
+
+  }
+
+};
+
+xhttp.open("GET", "/potenciare", true);
+
+xhttp.send();
+
+}, 5000 ) ;
+
+
+
+setInterval(function ( ) {
+
+var xhttp = new XMLHttpRequest();
+
+xhttp.onreadystatechange = function() {
+
+  if (this.readyState == 4 && this.status == 200) {
+
+    document.getElementById("potenciap").innerHTML = this.responseText;
+
+  }
+
+};
+
+xhttp.open("GET", "/potenciap", true);
+
+xhttp.send();
+
+}, 5000 ) ;
+
+
+
+setInterval(function ( ) {
+
+var xhttp = new XMLHttpRequest();
+
+xhttp.onreadystatechange = function() {
+
+  if (this.readyState == 4 && this.status == 200) {
+
+    document.getElementById("energia").innerHTML = this.responseText;
+
+  }
+
+};
+
+xhttp.open("GET", "/energia", true);
+
+xhttp.send();
+
+}, 5000 ) ;
+
+
+
+setInterval(function ( ) {
+
+var xhttp = new XMLHttpRequest();
+
+xhttp.onreadystatechange = function() {
+
+  if (this.readyState == 4 && this.status == 200) {
+
+    document.getElementById("energiare").innerHTML = this.responseText;
+
+  }
+
+};
+
+xhttp.open("GET", "/energiare", true);
+
+xhttp.send();
+
+}, 5000 ) ;
+
+
+
+setInterval(function ( ) {
+
+var xhttp = new XMLHttpRequest();
+
+xhttp.onreadystatechange = function() {
+
+  if (this.readyState == 4 && this.status == 200) {
+
+    document.getElementById("powerfactor").innerHTML = this.responseText;
+
+  }
+
+};
+
+xhttp.open("GET", "/powerfactor", true);
+
+xhttp.send();
+
+}, 5000 ) ;
+
+
+
+setInterval(function ( ) {
+
+var xhttp = new XMLHttpRequest();
+
+xhttp.onreadystatechange = function() {
+
+  if (this.readyState == 4 && this.status == 200) {
+
+    document.getElementById("corrientedom").innerHTML = this.responseText;
+
+  }
+
+};
+
+xhttp.open("GET", "/corrientedom", true);
+
+xhttp.send();
+
+}, 5000 ) ;
+
+
+
+setInterval(function ( ) {
+
+var xhttp = new XMLHttpRequest();
+
+xhttp.onreadystatechange = function() {
+
+  if (this.readyState == 4 && this.status == 200) {
+
+    document.getElementById("corriente").innerHTML = this.responseText;
+
+  }
+
+};
+
+xhttp.open("GET", "/corriente", true);
+
+xhttp.send();
+
+}, 5000 ) ;
+
+
+
+
+
+setInterval(function ( ) {
+
+var xhttp = new XMLHttpRequest();
+
+xhttp.onreadystatechange = function() {
+
+  if (this.readyState == 4 && this.status == 200) {
+
+    document.getElementById("voltaje").innerHTML = this.responseText;
+
+  }
+
+};
+
+xhttp.open("GET", "/voltaje", true);
+
+xhttp.send();
+
+}, 5000 ) ;
+
+
+
+setInterval(function ( ) {
+
+var xhttp = new XMLHttpRequest();
+
+xhttp.onreadystatechange = function() {
+
+  if (this.readyState == 4 && this.status == 200) {
+
+    document.getElementById("potencia").innerHTML = this.responseText;
+
+  }
+
+};
+
+xhttp.open("GET", "/potencia", true);
+
+xhttp.send();
+
+}, 5000 ) ;
+
+
+
+setInterval(function ( ) {
+
+var xhttp = new XMLHttpRequest();
+
+xhttp.onreadystatechange = function() {
+
+  if (this.readyState == 4 && this.status == 200) {
+
+    document.getElementById("error").innerHTML = this.responseText;
+
+  }
+
+};
+
+xhttp.open("GET", "/error", true);
+
+xhttp.send();
+
+}, 5000 ) ;
+</script>
+</body>
+</html>
