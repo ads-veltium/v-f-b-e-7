@@ -196,6 +196,18 @@ bool WriteFirebaseFW(String Path){
   return false;
 }
 
+bool WriteFirebasegroups(String Path){
+    Escritura.clear();
+
+    Escritura["delete"] = false;
+
+    if(Database->Send_Command(Path,&Escritura,UPDATE)){
+      return true;
+    }
+
+    return false;
+}
+
 /***************************************************
   Funciones de lectura
 ***************************************************/
@@ -209,9 +221,8 @@ bool ReadFirebaseGroups(String Path){
       
       uint8 buffer[7];
       buffer[1] =  Lectura["active"] == true;
-      ChargingGroup.DeleteOrder        =  Lectura["delete"] == true;
+      ChargingGroup.DeleteOrder =  Lectura["delete"] == true;
 
-      
       ChargingGroup.Params.potencia_max = 16;
       ChargingGroup.Params.inst_max     = 13;
 
@@ -224,7 +235,9 @@ bool ReadFirebaseGroups(String Path){
 
       SendToPSOC5((char*)buffer,7,GROUPS_PARAMS);
 
-      /*if(ChargingGroup.Params.GroupActive){
+      delay(250);
+
+      if(ChargingGroup.Params.GroupActive){
          //QUITAR!!!!!!!!!!!!!!!!!
         memcpy(ChargingGroup.group_chargers.charger_table[0].name, "31B70630",8);
         memcpy(ChargingGroup.group_chargers.charger_table[1].name, "626965F5",8);  
@@ -240,24 +253,10 @@ bool ReadFirebaseGroups(String Path){
 
         ChargingGroup.group_chargers.size = 5;
 
-        uint8 buffer[7];
-        ChargingGroup.Params.potencia_max = 16;
-        ChargingGroup.Params.inst_max     = 13;
-
-        buffer[0] = ChargingGroup.Params.GroupMaster;
-        buffer[1] = ChargingGroup.Params.GroupActive;
-        buffer[2] = ChargingGroup.Params.inst_max;
-        buffer[3] = ChargingGroup.Params.CDP;
-        buffer[4] = ChargingGroup.Params.ContractPower;
-        buffer[5] = ChargingGroup.Params.UserID;
-        buffer[6] = ChargingGroup.Params.potencia_max;
-
         store_group_in_mem(&ChargingGroup.group_chargers);
-        SendToPSOC5((char*)buffer,7,GROUPS_PARAMS);
-        ChargingGroup.SendNewParams = true;
         ChargingGroup.SendNewGroup = true;
-      }    */ 
-      
+      }    
+      WriteFirebasegroups("/group");
       if(!Database->Send_Command(Path+"/ts_dev_ack",&Lectura,TIMESTAMP)){
           return false;
       } 
