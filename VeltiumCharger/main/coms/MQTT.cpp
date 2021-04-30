@@ -302,6 +302,7 @@ void Publisher(void* args){
         if( ChargingGroup.SendNewParams || new_charger){
             buffer[0] = '1';
             memcpy(&buffer[1], &ChargingGroup.Params,7);
+            printf("Enviando %s\n", buffer);
             mqtt_publish("RTS", buffer);
             ChargingGroup.SendNewParams = false;
         }

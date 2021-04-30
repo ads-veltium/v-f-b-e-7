@@ -224,7 +224,7 @@ bool ReadFirebaseGroups(String Path){
       ChargingGroup.DeleteOrder =  Lectura["delete"] == true;
 
       ChargingGroup.Params.potencia_max = 16;
-      ChargingGroup.Params.inst_max     = 13;
+      ChargingGroup.Params.inst_max     = 32;
 
       buffer[0] = ChargingGroup.Params.GroupMaster;
       buffer[2] = ChargingGroup.Params.inst_max;
@@ -232,7 +232,8 @@ bool ReadFirebaseGroups(String Path){
       buffer[4] = ChargingGroup.Params.ContractPower;
       buffer[5] = ChargingGroup.Params.UserID;
       buffer[6] = ChargingGroup.Params.potencia_max;
-
+      
+      ChargingGroup.SendNewParams = true;
       SendToPSOC5((char*)buffer,7,GROUPS_PARAMS);
 
       delay(250);

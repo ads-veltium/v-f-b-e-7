@@ -821,7 +821,7 @@ void procesar_bloque(uint16 tipo_bloque){
 			#ifdef CONNECTED
 				Params.CDP				  = buffer_rx_local[0];
 				if((buffer_rx_local[0] >> 1) && 0x01){
-					Params.Tipo_Sensor    = (buffer_rx_local[0]  >> 3);
+					Params.Tipo_Sensor    = (buffer_rx_local[0]  >> 4);
 				}
 				
 				Serial.printf("New CDP %i %i \n", Params.CDP, Params.Tipo_Sensor);

@@ -66,8 +66,8 @@ void New_Data(char* Data, int Data_size){
                     char current[Data_size-13+1];
                     memcpy( current, &Data[13], Data_size-13 );         
                     FaseChargers.charger_table[index].Current = atoi(current);
-                    cls();
-                    print_table(FaseChargers);
+                    //cls();
+                    //print_table(FaseChargers);
                 }
                 else{
                     //Si el cargador no está en la tabla, añadirlo y actualizar los datos
@@ -103,7 +103,7 @@ void New_Data(char* Data, int Data_size){
             memcpy( current, &Data[13], Data_size-13 );         
             ChargingGroup.group_chargers.charger_table[index].Current = atoi(current);
 
-            print_table(ChargingGroup.group_chargers);
+            //print_table(ChargingGroup.group_chargers);
         }
     }
 
@@ -113,24 +113,25 @@ void New_Data(char* Data, int Data_size){
 
         //Grupo total
         uint8_t index = check_in_group(ConfigFirebase.Device_Id,&ChargingGroup.group_chargers);     //Buscar el equipo en el grupo total
-        if(index < 255){
+        char current[Data_size-13+1];
+        memcpy( current, &Data[13], Data_size-13 );         
+        if(index != 255){
             ChargingGroup.group_chargers.charger_table[index].Fase = Params.Fase;
             memcpy(ChargingGroup.group_chargers.charger_table[index].HPT,Status.HPT_status,2);      //Si el cargador ya existe, actualizar sus datos
                     
-            ChargingGroup.group_chargers.charger_table[index].Current = Status.Measures.instant_current;
+            ChargingGroup.group_chargers.charger_table[index].Current = atoi(current);
         }
 
         //Grupo de fase
         index = check_in_group(ConfigFirebase.Device_Id,&FaseChargers);               //comprobar si el cargador ya está almacenado en nuestro grupo de fase
-        if(index < 255){                         
+        if(index != 255){                         
             memcpy(FaseChargers.charger_table[index].HPT,&Data[9],2);   //Si el cargador ya existe, actualizar sus datos
             FaseChargers.charger_table[index].Fase =Params.Fase;
             char Delta[3];
             memcpy(Delta, &Data[11], 2);
             FaseChargers.charger_table[index].Delta = atoi(Delta);
 
-            char current[Data_size-13+1];
-            memcpy( current, &Data[13], Data_size-13 );         
+            
             FaseChargers.charger_table[index].Current = atoi(current);
 
         }
@@ -157,7 +158,7 @@ void New_Data(char* Data, int Data_size){
 //Funcion para recibir nuevos parametros de carga para el grupo
 void New_Params(char* Data, int Data_size){
   printf("New params received %s\n", Data);
-  char buffer[7];
+  uint8_t buffer[7];
   
   buffer[0] = ChargingGroup.Params.GroupMaster;
   buffer[1] = ChargingGroup.Params.GroupActive;
@@ -417,11 +418,11 @@ void Calculo_Consigna(){
       break;
     }
   }
-  printf("is_c3_charger= %i\n",is_c3_charger);
+  /*printf("is_c3_charger= %i\n",is_c3_charger);
   printf("Conex = %i\n", Conex);
   printf("Comand desired current %i \n", desired_current);
   printf("Max p = %i \n", ChargingGroup.Params.potencia_max);
-  printf("Inst max = %i \n", ChargingGroup.Params.potencia_max);
+  printf("Inst max = %i \n", ChargingGroup.Params.potencia_max);*/
   if(desired_current!=Comands.desired_current &&  !memcmp(Status.HPT_status,"C2",2)){
       SendToPSOC5(desired_current,MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
   }
@@ -449,7 +450,7 @@ void input_values(){
         total_pc += ChargingGroup.group_chargers.charger_table[i].Current;
     }   
     Pc=total_pc/1000;
-    printf("Total PC and Delta %i %i \n",Pc,Delta_total); 
+    //printf("Total PC and Delta %i %i \n",Pc,Delta_total); 
 
     for(int i=0; i< FaseChargers.size;i++){
         if(!memcmp(FaseChargers.charger_table[i].HPT,"C2",2)){
@@ -459,6 +460,6 @@ void input_values(){
         total_pc_fase += ChargingGroup.group_chargers.charger_table[i].Current;
     }
     Pc_Fase=total_pc_fase/1000;
-    printf("Total PC of phase %i\n",Pc);    
+    //printf("Total PC of phase %i\n",Pc);    
 }
 
