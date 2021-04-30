@@ -242,6 +242,12 @@ void MasterPanicTask(void *args){
                 break;
             }
             else{
+                //Ultima opcion, mirar si yo era el maestro
+                if(!memcmp(ChargingGroup.group_chargers.charger_table[0].name,ConfigFirebase.Device_Id,8)){
+                    Serial.println("Soy el nuevo maestro!!");
+                    ChargingGroup.Params.GroupActive = true;
+                    break;
+                }
                 Serial.println("No soy el nuevo maestro, alguien se pondrá :)");
                 xStart = xTaskGetTickCount();
                 reintentos++;
@@ -348,10 +354,11 @@ void Publisher(void* args){
                     mensaje.write((uint8_t*)(Encipher("Start client").c_str()), 13);
                     udp.sendTo(mensaje,ChargingGroup.group_chargers.charger_table[i].IP,1234);
                 }
-                //si un equipo lleva mucho sin contestar, lo damos por muerto
+                
+                //si un equipo lleva muchisimo sin contestar, lo damos por muerto
                 if(ChargingGroup.group_chargers.charger_table[i].Period >=60000 && ChargingGroup.group_chargers.charger_table[i].Period <=65000){
                     if(memcmp(ChargingGroup.group_chargers.charger_table[i].name, ConfigFirebase.Device_Id,8)){
-                        sprintf(buffer, "%s00V0000", ChargingGroup.group_chargers.charger_table[i].name);  
+                        sprintf(buffer, "%s%i0V0000", ChargingGroup.group_chargers.charger_table[i].name, ChargingGroup.group_chargers.charger_table[i].Fase);  
                         mqtt_publish("Device_Status", (buffer));
                         printf("%s lleva muchiisimo sin conestar\n", ChargingGroup.group_chargers.charger_table[i].name);
                     }

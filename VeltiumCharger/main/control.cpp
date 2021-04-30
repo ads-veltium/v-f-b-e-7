@@ -872,9 +872,10 @@ void procesar_bloque(uint16 tipo_bloque){
 			char n[2];
 			char ID[8];
    			memcpy(n,buffer_rx_local,2);
-
+			ChargingGroup.group_chargers.size=0;
+			
 			for(uint8_t i=0; i<atoi(n);i++){
-				ChargingGroup.group_chargers.size=0;
+				
 				for(uint8_t j =0; j< 8; j++){
 					ID[j]=(char)buffer_rx_local[2+i*9+j];
 				}
