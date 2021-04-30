@@ -66,8 +66,8 @@ void New_Data(char* Data, int Data_size){
                     char current[Data_size-13+1];
                     memcpy( current, &Data[13], Data_size-13 );         
                     FaseChargers.charger_table[index].Current = atoi(current);
-                    //cls();
-                    //print_table(FaseChargers);
+                    cls();
+                    print_table(FaseChargers);
                 }
                 else{
                     //Si el cargador no está en la tabla, añadirlo y actualizar los datos
@@ -103,7 +103,7 @@ void New_Data(char* Data, int Data_size){
             memcpy( current, &Data[13], Data_size-13 );         
             ChargingGroup.group_chargers.charger_table[index].Current = atoi(current);
 
-            //print_table(ChargingGroup.group_chargers);
+            print_table(ChargingGroup.group_chargers);
         }
     }
 
@@ -418,11 +418,11 @@ void Calculo_Consigna(){
       break;
     }
   }
-  /*printf("is_c3_charger= %i\n",is_c3_charger);
+  printf("is_c3_charger= %i\n",is_c3_charger);
   printf("Conex = %i\n", Conex);
   printf("Comand desired current %i \n", desired_current);
   printf("Max p = %i \n", ChargingGroup.Params.potencia_max);
-  printf("Inst max = %i \n", ChargingGroup.Params.potencia_max);*/
+  printf("Inst max = %i \n", ChargingGroup.Params.potencia_max);
   if(desired_current!=Comands.desired_current &&  !memcmp(Status.HPT_status,"C2",2)){
       SendToPSOC5(desired_current,MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
   }
@@ -450,7 +450,7 @@ void input_values(){
         total_pc += ChargingGroup.group_chargers.charger_table[i].Current;
     }   
     Pc=total_pc/1000;
-    //printf("Total PC and Delta %i %i \n",Pc,Delta_total); 
+    printf("Total PC and Delta %i %i \n",Pc,Delta_total); 
 
     for(int i=0; i< FaseChargers.size;i++){
         if(!memcmp(FaseChargers.charger_table[i].HPT,"C2",2)){
@@ -460,6 +460,6 @@ void input_values(){
         total_pc_fase += ChargingGroup.group_chargers.charger_table[i].Current;
     }
     Pc_Fase=total_pc_fase/1000;
-    //printf("Total PC of phase %i\n",Pc);    
+    printf("Total PC of phase %i\n",Pc);    
 }
 

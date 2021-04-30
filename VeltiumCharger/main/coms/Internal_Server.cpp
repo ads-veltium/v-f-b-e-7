@@ -311,18 +311,20 @@ void InitServer(void) {
 
     server.on("/currcomand", HTTP_GET_A, [](AsyncWebServerRequest *request){
         
-        Comands.desired_current = request->getParam(CURR_COMAND)->value().toInt();
+        uint8_t data = request->getParam(CURR_COMAND)->value().toInt();
 
-        Serial.println(Comands.desired_current);
+        SendToPSOC5(data, MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
         
         request->send(SPIFFS, "/comands.html",String(), false, processor);
     });
 
     server.on("/authentication", HTTP_GET_A, [](AsyncWebServerRequest *request){
         
-        //Params.autentication_mode = request->getParam(AUTH_MODE)->value();
+        uint8_t buffer[2];
+        memcpy(buffer,request->getParam(AUTH_MODE)->value().c_str(),2);
 
         Serial.println(Params.autentication_mode);
+        SendToPSOC5((char*)buffer,2,CONFIGURACION_AUTENTICATION_MODES_CHAR_HANDLE);
         
         request->send(SPIFFS, "/parameters.html",String(), false, processor);
     });
@@ -338,18 +340,18 @@ void InitServer(void) {
 
     server.on("/instcurlim", HTTP_GET_A, [](AsyncWebServerRequest *request){
         
-        Params.inst_current_limit = request->getParam(INST_CURR_LIM)->value().toInt();
+        uint8_t data = request->getParam(INST_CURR_LIM)->value().toInt();
 
-        Serial.println(Params.inst_current_limit);
+        SendToPSOC5(data, MEASURES_INSTALATION_CURRENT_LIMIT_CHAR_HANDLE);
         
         request->send(SPIFFS, "/parameters.html",String(), false, processor);
     });
 
     server.on("/powercont", HTTP_GET_A, [](AsyncWebServerRequest *request){
         
-        Params.potencia_contratada = request->getParam(POT_CONT)->value().toInt();
+        uint8_t data = request->getParam(POT_CONT)->value().toInt();
 
-        Serial.println(Params.potencia_contratada);
+        SendToPSOC5(data, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_CHAR_HANDLE);
         
         request->send(SPIFFS, "/parameters.html",String(), false, processor);
     });
@@ -517,7 +519,6 @@ void InitServer(void) {
                 Params.CDP_On = estado;
                 break;
             case 17:
-                
                 while(Comands.conn_lock != estado){
                     SendToPSOC5(estado,STATUS_CONN_LOCK_STATUS_CHAR_INDEX);
                 }               
