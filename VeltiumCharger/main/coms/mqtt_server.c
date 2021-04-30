@@ -219,7 +219,7 @@ void mqtt_polling(void *params){
 	while (1) {
 		
 		if(!StopMQTT)mg_mgr_poll(&mgr, 10);
-		vTaskDelay(5);
+		vTaskDelay(pdMS_TO_TICKS(50));
 		uint32_t transcurrido = pdTICKS_TO_MS(xTaskGetTickCount() - xStart);
 		
 		if(transcurrido > 2500){

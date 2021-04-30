@@ -339,7 +339,8 @@ void Eth_Loop(){
                 delay(100);
                 start_udp();
                 xStart = xTaskGetTickCount();
-                if(!Coms.ETH.DHCP && Coms.ETH.Auto){
+                //Solo comprobamos la conexion a internet si no hemos activado el servidro dhcp
+                if(!Coms.ETH.DHCP){
                     if(ComprobarConexion()){
                         Coms.ETH.Internet = true;
                         Coms.Wifi.ON = false;
@@ -380,15 +381,15 @@ void Eth_Loop(){
 
             //Apagar el eth
             if(!Coms.ETH.ON){  
-                if(Coms.ETH.DHCP){
+                //Si lo queremos reinicializar para ponerle una ip estatica o quitarsela
+                if(Coms.ETH.restart){
                     if(ChargingGroup.Conected){
                         ChargingGroup.Params.GroupActive = false;
                         stop_MQTT();
                     }
                     kill_ethernet();
-                    Coms.ETH.DHCP  = 0;
-                    SendToPSOC5(Coms.ETH.DHCP,COMS_CONFIGURATION_ETH_DHCP);
                     Coms.ETH.State = KILLING;
+                    Coms.ETH.restart = false;
                 }
                 else{
                     if(ChargingGroup.Conected){
@@ -438,6 +439,11 @@ void Eth_Loop(){
         case DISCONNECTING:
             if(!eth_connected && !eth_connecting){        
                 finding = false;
+                if(ContadorExt.ContadorConectado){
+                    ContadorExt.ContadorConectado = false;
+                    Counter.end();
+                }
+                
                 Coms.ETH.State = DISCONNECTED;
                 Coms.ETH.Internet = false;
             }
@@ -450,22 +456,24 @@ void Eth_Loop(){
                 xStart = xTaskGetTickCount();
             }
         break;
-        case KILLING:
-        
+        case KILLING:        
             if(!eth_connected && !eth_connecting){
                 Coms.ETH.Internet = false;
                 if(!Coms.ETH.ON){
                     Coms.ETH.State = APAGADO;
                     break;
                 }
+
+                if(ContadorExt.ContadorConectado){
+                    ContadorExt.ContadorConectado = false;
+                    Counter.end();
+                }
+
                 Coms.ETH.Wifi_Perm = false;
                 stop_wifi();
-                Coms.ETH.DHCP  = 1;
                 Coms.ETH.State = CONNECTING;
-                initialize_ethernet();
-                
+                initialize_ethernet();         
                 xStart = xTaskGetTickCount();
-                SendToPSOC5(Coms.ETH.DHCP,COMS_CONFIGURATION_ETH_DHCP);
             }
         break;
 

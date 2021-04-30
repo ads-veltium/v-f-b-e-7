@@ -283,11 +283,10 @@ void InitServer(void) {
         Coms.GSM.ON = Gsm_On;
         memcpy(Coms.Wifi.AP,request->getParam(AP)->value().c_str(),32);
         Coms.Wifi.Pass = request->getParam(WIFI_PWD)->value();
-        
-        Coms.ETH.Auto = Eth_Auto;
-        
-        //Hay que reiniciar
+                
+        //Hay que reiniciar ethernet si activampos una ip estatica
         bool reiniciar_eth = Coms.ETH.Auto != Eth_Auto;
+        Coms.ETH.Auto = Eth_Auto;
 
         if(!Coms.ETH.Auto && Eth_On){
             const char *IP=request->getParam(IP1)->value().c_str();
@@ -299,9 +298,11 @@ void InitServer(void) {
         }
 
         if(reiniciar_eth){
+            Coms.ETH.restart = true;
+            request->send(SPIFFS, "/comms.html",String(), false, processor);
             Coms.ETH.ON = false;
             SendToPSOC5(Coms.ETH.ON,COMS_CONFIGURATION_ETH_ON);
-            delay(5000);
+            delay(1000);
         }
 
         while(Coms.ETH.ON != Eth_On){
@@ -323,7 +324,7 @@ void InitServer(void) {
             delay(50);
         }
 
-        request->send(SPIFFS, "/comms.html",String(), false, processor);
+        if(!reiniciar_eth)request->send(SPIFFS, "/comms.html",String(), false, processor);
 
     });
 

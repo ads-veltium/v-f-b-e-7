@@ -46,111 +46,53 @@ void Ping_Req(char* Data){
 
 //Funcion para procesar los nuevos datos recibidos
 void New_Data(char* Data, int Data_size){
-    if(memcmp(Data, ConfigFirebase.Device_Id, 8)){                         //comprobar que no son nuestros propios datos
-        char fase = Data[8];
-        char ID[9];
-        ID[8]= '\0';
-        memcpy(ID,Data,8); 
 
-        //si no es un equipo trifásico:
-        if(!Status.Trifasico){
-            if(Params.Fase == atoi(&fase)){                                    //Comprobar que está en nuestra misma fase
-                uint8_t index = check_in_group(ID,&FaseChargers);               //comprobar si el cargador ya está almacenado en nuestro grupo de fase
-                if(index < 255){                         
-                    memcpy(FaseChargers.charger_table[index].HPT,&Data[9],2);   //Si el cargador ya existe, actualizar sus datos
-                    FaseChargers.charger_table[index].Fase = atoi(&fase);
-                    char Delta[3];
-                    memcpy(Delta, &Data[11], 2);
-                    FaseChargers.charger_table[index].Delta = atoi(Delta);
+    //Recibir nuevo cargador
+    char fase = Data[8];
+    char ID[9];
+    ID[8]= '\0';
+    memcpy(ID,Data,8); 
+    carac_charger Cargador;
+    memcpy(Cargador.HPT,&Data[9],2);   
+    Cargador.Fase = atoi(&fase);
+    char Delta[3];
+    
+    memcpy(Delta, &Data[11], 2);
+    Cargador.Delta = atoi(Delta);
+    Cargador.limite_fase = (uint8_t)Data[13];
 
-                    char current[Data_size-13+1];
-                    memcpy( current, &Data[13], Data_size-13 );         
-                    FaseChargers.charger_table[index].Current = atoi(current);
-                    cls();
-                    print_table(FaseChargers);
-                }
-                else{
-                    //Si el cargador no está en la tabla, añadirlo y actualizar los datos
-                    add_to_group(ID, get_IP(ID),&FaseChargers);
+    memcpy(Delta, &Data[14], 2);
+    Cargador.Delta_fase = atoi(Delta);
 
-                    FaseChargers.charger_table[FaseChargers.size-1].Fase = atoi(&fase);
-                    memcpy(FaseChargers.charger_table[FaseChargers.size-1].HPT,&Data[9],2);
+    char current[Data_size-16+1];
+    memcpy( current, &Data[16], Data_size-16 );         
+    Cargador.Current = atoi(current);
 
-                    char Delta[3];
-                    memcpy(Delta, &Data[11], 2);
-                    FaseChargers.charger_table[FaseChargers.size-1].Delta = atoi(Delta);
-                    
-                    char current[Data_size-13+1];
-                    memcpy( current, &Data[13], Data_size-13 );  
-                    FaseChargers.charger_table[FaseChargers.size-1].Current = atoi(current);
-                }
-
-
-            }
-        }
-
-        //Actualizacion del grupo total
-        uint8_t index = check_in_group(ID,&ChargingGroup.group_chargers);                  //Buscar el equipo en el grupo total
-        if(index < 255){
-            ChargingGroup.group_chargers.charger_table[index].Fase = atoi(&fase);
-            memcpy(ChargingGroup.group_chargers.charger_table[index].HPT,&Data[9],2);      //Si el cargador ya existe, actualizar sus datos
-                        
-            char Delta[3];
-            memcpy(Delta, &Data[11], 2);
-            ChargingGroup.group_chargers.charger_table[index].Delta = atoi(Delta);
-
-            char current[Data_size-13+1];
-            memcpy( current, &Data[13], Data_size-13 );         
-            ChargingGroup.group_chargers.charger_table[index].Current = atoi(current);
-
-            print_table(ChargingGroup.group_chargers);
-        }
-    }
-
- 
-    //Actualizar nuestros propios valores
-    else{
-
-        //Grupo total
-        uint8_t index = check_in_group(ConfigFirebase.Device_Id,&ChargingGroup.group_chargers);     //Buscar el equipo en el grupo total
-        char current[Data_size-13+1];
-        memcpy( current, &Data[13], Data_size-13 );         
-        if(index != 255){
-            ChargingGroup.group_chargers.charger_table[index].Fase = Params.Fase;
-            memcpy(ChargingGroup.group_chargers.charger_table[index].HPT,Status.HPT_status,2);      //Si el cargador ya existe, actualizar sus datos
-                    
-            ChargingGroup.group_chargers.charger_table[index].Current = atoi(current);
-        }
-
-        //Grupo de fase
-        index = check_in_group(ConfigFirebase.Device_Id,&FaseChargers);               //comprobar si el cargador ya está almacenado en nuestro grupo de fase
-        if(index != 255){                         
-            memcpy(FaseChargers.charger_table[index].HPT,&Data[9],2);   //Si el cargador ya existe, actualizar sus datos
-            FaseChargers.charger_table[index].Fase =Params.Fase;
-            char Delta[3];
-            memcpy(Delta, &Data[11], 2);
-            FaseChargers.charger_table[index].Delta = atoi(Delta);
-
-            
-            FaseChargers.charger_table[index].Current = atoi(current);
-
+    //si no es un equipo trifásico:
+    if(!Status.Trifasico){
+      //Comprobar que está en nuestra misma fase
+      if(Params.Fase == atoi(&fase)){             
+        //comprobar si el cargador ya está almacenado en nuestro grupo de fase                       
+        uint8_t index = check_in_group(ID,&FaseChargers);               
+        if(index < 255){                         
+            FaseChargers.charger_table[index] =Cargador;
+            cls();
+            print_table(FaseChargers);
         }
         else{
             //Si el cargador no está en la tabla, añadirlo y actualizar los datos
-            add_to_group(ConfigFirebase.Device_Id, get_IP(ConfigFirebase.Device_Id),&FaseChargers);
-
-            FaseChargers.charger_table[FaseChargers.size-1].Fase = Params.Fase;
-            memcpy(FaseChargers.charger_table[FaseChargers.size-1].HPT,&Data[9],2);
-
-            char Delta[3];
-            memcpy(Delta, &Data[11], 2);
-            FaseChargers.charger_table[FaseChargers.size-1].Delta = atoi(Delta);
-            
-            char current[Data_size-13+1];
-            memcpy( current, &Data[13], Data_size-13 );  
-            FaseChargers.charger_table[FaseChargers.size-1].Current = atoi(current);
+            add_to_group(ID, get_IP(ID),&FaseChargers);
+            FaseChargers.charger_table[FaseChargers.size-1] = Cargador;
         }
+      }
     }
+    //Actualizacion del grupo total
+    //Buscar el equipo en el grupo total
+    uint8_t index = check_in_group(ID,&ChargingGroup.group_chargers);                  
+    if(index < 255){
+        ChargingGroup.group_chargers.charger_table[index]=Cargador;
+    }
+    
     input_values();
     Calculo_Consigna();
 }
@@ -448,7 +390,7 @@ void input_values(){
         if(ChargingGroup.group_chargers.charger_table[i].Delta > 0){
             Conex_Delta++;
         }
-        Fases_limitadas+= ChargingGroup.group_chargers.charger_table[i].Num_limitado;
+        Fases_limitadas+= ChargingGroup.group_chargers.charger_table[i].limite_fase;
         Delta_total += ChargingGroup.group_chargers.charger_table[i].Delta;
         total_pc += ChargingGroup.group_chargers.charger_table[i].Current;
     }   

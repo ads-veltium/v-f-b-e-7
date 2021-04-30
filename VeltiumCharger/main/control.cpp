@@ -479,7 +479,7 @@ void procesar_bloque(uint16 tipo_bloque){
 					Params.inst_current_limit = buffer_rx_local[11];
 					Params.potencia_contratada=buffer_rx_local[229]+buffer_rx_local[230]*0x100;
 					Params.CDP 	  =  buffer_rx_local[232];
-
+					Params.Tipo_Sensor    = (buffer_rx_local[232]  >> 4);
 					memcpy(Params.Fw_Update_mode, &buffer_rx_local[234],2);
 					Comands.desired_current = buffer_rx_local[233];
 					Coms.Wifi.ON = buffer_rx_local[236];

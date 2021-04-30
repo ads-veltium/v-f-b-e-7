@@ -132,9 +132,9 @@ typedef struct{
 	bool DC_Leack_status;
 	bool Con_Lock;
 	bool Trifasico = false;
-	uint8 error_code;
-	uint8 Delta;
-	uint8 limite_Fase;
+	uint8 error_code  =0;
+	uint8 Delta       =0;
+	uint8 limite_Fase =0;
 
 	char HPT_status[2];
 	
@@ -177,6 +177,7 @@ typedef struct{
 	bool DHCP = 0;
 	bool Internet = false;
 	bool Wifi_Perm = false;
+	bool restart = false;
 
 	ip4_addr_t IP;
 	ip4_addr_t Gateway;
@@ -184,7 +185,7 @@ typedef struct{
 
 	uint8_t   State;
 	uint8_t   Puerto;
-	bool conectado = false;
+	bool 	conectado = false;
 }carac_ETH;
 
 typedef struct{
@@ -261,7 +262,8 @@ typedef struct{
 	uint8_t     Fase;
 	uint16_t Current;
 	uint16_t   Delta;
-	uint8_t Num_limitado;
+	uint16_t Delta_fase;
+	uint8_t limite_fase;
 	TickType_t Period;
 
 }carac_charger;
