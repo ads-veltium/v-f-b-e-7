@@ -243,7 +243,7 @@ bool ReadFirebaseGroups(String Path){
         memcpy(ChargingGroup.group_chargers.charger_table[1].name, "626965F5",8);  
         memcpy(ChargingGroup.group_chargers.charger_table[2].name, "72BC0823",8);
         memcpy(ChargingGroup.group_chargers.charger_table[3].name, "71962AD0",8);
-        memcpy(ChargingGroup.group_chargers.charger_table[4].name, "FT63D732",8);
+        memcpy(ChargingGroup.group_chargers.charger_table[4].name, "28434012",8);
 
         ChargingGroup.group_chargers.charger_table[0].Fase = 0;
         ChargingGroup.group_chargers.charger_table[1].Fase = 1;

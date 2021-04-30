@@ -845,7 +845,7 @@ void procesar_bloque(uint16 tipo_bloque){
 			modifyCharacteristic(buffer_rx_local,  1, COMS_CONFIGURATION_ETH_ON);
 		} 
 		break;
-#ifdef GROUPS
+
 		case COMS_CONFIGURATION_ETH_DHCP:{
 			Coms.ETH.DHCP    =  buffer_rx_local[0];
 			Serial.print("DHCP ON:");
@@ -854,7 +854,7 @@ void procesar_bloque(uint16 tipo_bloque){
 		break;
 		
 		break;
-#endif
+
 		case COMS_FW_UPDATEMODE_CHAR_HANDLE:{
 			memcpy(Params.Fw_Update_mode,buffer_rx_local,2);
 			Serial.printf("Nuevo fw_update:%c %c \n", buffer_rx_local[0],buffer_rx_local[1]);
@@ -872,14 +872,18 @@ void procesar_bloque(uint16 tipo_bloque){
 			char n[2];
 			char ID[8];
    			memcpy(n,buffer_rx_local,2);
-
+			ChargingGroup.group_chargers.size=0;
+			
 			for(uint8_t i=0; i<atoi(n);i++){
-				//memcpy(ID,(char*)buffer_rx_local[2+i*9],8);
+				
 				for(uint8_t j =0; j< 8; j++){
 					ID[j]=(char)buffer_rx_local[2+i*9+j];
 				}
 				add_to_group(ID, get_IP(ID), &ChargingGroup.group_chargers);
 				ChargingGroup.group_chargers.charger_table[i].Fase = buffer_rx_local[10+i*9]-'0';
+				if(!memcmp(ID,ConfigFirebase.Device_Id,8)){
+					Params.Fase =buffer_rx_local[10+i*9]-'0';
+				}
 			}
 			print_table(ChargingGroup.group_chargers);
 		}
