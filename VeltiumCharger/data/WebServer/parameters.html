@@ -7,7 +7,13 @@
     <link rel="stylesheet" type="text/css" href="style.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 <div class="header">
-    <h1>Veltium Smart Chargers</h1>
+  <table>
+    <tr>
+      <td><img src="veltium-logo-big.png" width="60px" height="60px"> </td>
+      <td><h1>Veltium Smart Chargers</h1>
+      </td>
+    </tr>
+  </table>
 </div>
 <div class="topnav" id="myTopnav">
     <a href="parameters" class="active">Par&aacutemetros</a>
@@ -68,7 +74,18 @@
     <script src="fireBase.js"></script>
     <script src="main.js"></script>
     <script>
-      function Startbutton(element) {
+
+function myFunction() {
+  var x = document.getElementById("myTopnav");
+  if (x.className === "topnav") {
+    x.className += " responsive";
+  } else {
+    x.className = "topnav";
+  }
+}
+
+
+function Startbutton(element) {
 
 var xhr = new XMLHttpRequest();
 

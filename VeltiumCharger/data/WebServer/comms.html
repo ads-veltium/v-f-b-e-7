@@ -7,7 +7,13 @@
     <link rel="stylesheet" type="text/css" href="style.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 <div class="header">
-    <h1>Veltium Smart Chargers</h1>
+  <table>
+    <tr>
+      <td><img src="veltium-logo-big.png" width="60px" height="60px"> </td>
+      <td><h1>Veltium Smart Chargers</h1>
+      </td>
+    </tr>
+  </table>
 </div>
 <div class="topnav" id="myTopnav">
     <a href="parameters">Par&aacutemetros</a>
@@ -35,7 +41,7 @@
             <table>
             
               <tr>
-                <td><span class="dht-labels">ON</span>  </td>
+                <td><span class="dht-labels">On:</span>  </td>
                 <td><span>%WON%</span></td>
               </tr>
               <tr>
@@ -43,11 +49,11 @@
                 <td><input style = "text-align:center;" name="w_ap" placeholder="%SSID%" type="text"></input></td>
               </tr>
               <tr>
-                <td><span class="dht-labels">Contrase&ntildea</span></td>
+                <td><span class="dht-labels">Contrase&ntildea:</span></td>
                 <td><input style = "text-align:center;" name="w_pass" placeholder="Password" type="password"></input></td>
               </tr>
-            
               </tr>
+              
             </table>
         </div>
       </div>
@@ -59,23 +65,23 @@
             
             <table>
               <tr>
-                <td><span class="dht-labels">ON</span>  </td>
+                <td><span class="dht-labels">On:</span>  </td>
                 <td><span>%EON%</span></td>
               </tr>
               <tr>
-                <td><span class="dht-labels">AUTO:</span>  </td>
+                <td><span class="dht-labels">Auto:</span>  </td>
                 <td><span>%EAUTO%</span></td>
               </tr>
               <tr>
-                <td><span class="dht-labels">Ip</span> </td>
+                <td><span class="dht-labels">IP:</span> </td>
                 <td><input style = "text-align:center;" name="ip1" type="text" minlength="7" maxlength="15" size="15" pattern="^((\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.){3}(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])$" placeholder="%IP%"></td>
               </tr>
               <tr>
-                <td><span class="dht-labels">Gateway</span> </td>
+                <td><span class="dht-labels">Gateway:</span> </td>
                 <td><input style = "text-align:center;" name="gateway" type="text" minlength="7" maxlength="15" size="15" pattern="^((\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.){3}(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])$" placeholder="%GATEWAY%"></td>
               </tr>
               <tr>
-                <td><span class="dht-labels">Mask</span> </td>
+                <td><span class="dht-labels">Mask:</span> </td>
                 <td><input style = "text-align:center;"name="mask" type="text" minlength="7" maxlength="15" size="15" pattern="^((\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.){3}(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])$" placeholder="%MASK%"></td>
               </tr>
               </tr>
@@ -87,25 +93,21 @@
       <div class="container">
         <h4>GSM</h4>
         <div class="centro">
-          
             <table>
-            
               <tr>
-                <td><span class="dht-labels">ON</span>  </td>
-                <td><span>%MON%</span></td>
+                <td><span class="dht-labels">On:</span>  </td>
+                <td><span >%MON%</span></td>
               </tr>
               <tr>
                 <td><span class="dht-labels">APN:</span>  </td>
                 <td><input style = "text-align:center;" name="apn" placeholder="%APN%" type="text"></input></td>
               </tr>
               <tr>
-                <td><span class="dht-labels">Contrase&ntildea</span></td>
+                <td><span class="dht-labels">Contrase&ntildea:</span></td>
                 <td><input style = "text-align:center;" name="m_pass" placeholder="Password" type="password"></input></td>
               </tr>
-            
               </tr>
             </table>
-
         </div>
       </div>
     </div>
@@ -119,6 +121,14 @@
     <script src="main.js"></script>
     <script>
 
+function myFunction() {
+  var x = document.getElementById("myTopnav");
+  if (x.className === "topnav") {
+    x.className += " responsive";
+  } else {
+    x.className = "topnav";
+  }
+}
 
 function toggleCheckbox(element) {
 

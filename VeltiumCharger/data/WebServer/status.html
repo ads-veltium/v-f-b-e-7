@@ -7,7 +7,13 @@
     <link rel="stylesheet" type="text/css" href="style.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 <div class="header">
-    <h1>Veltium Smart Chargers</h1>
+  <table>
+    <tr>
+      <td><img src="veltium-logo-big.png" width="60px" height="60px"> </td>
+      <td><h1>Veltium Smart Chargers</h1>
+      </td>
+    </tr>
+  </table>
 </div>
 <div class="topnav" id="myTopnav">
     <a href="parameters">Par&aacutemetros</a>
@@ -67,336 +73,224 @@
         <td><span id="error">%ERROR%</span></td>
       </tr>
     </table>
-    
+   
     <script src="main.js"></script>
     <script src="fireBase.js"></script>
     <script>
-      setInterval(function ( ) {
 
-var xhttp = new XMLHttpRequest();
-
-xhttp.onreadystatechange = function() {
-
-  if (this.readyState == 4 && this.status == 200) {
-
-    document.getElementById("hp").innerHTML = this.responseText;
-
+function myFunction() {
+  var x = document.getElementById("myTopnav");
+  if (x.className === "topnav") {
+    x.className += " responsive";
+  } else {
+    x.className = "topnav";
   }
+}
 
+setInterval(function ( ) {
+var xhttp = new XMLHttpRequest();
+xhttp.onreadystatechange = function() {
+  if (this.readyState == 4 && this.status == 200) {
+    document.getElementById("hp").innerHTML = this.responseText;
+  }
 };
 
 xhttp.open("GET", "/hp", true);
-
 xhttp.send();
-
 }, 5000 ) ;
 
+
 setInterval(function ( ) {
-
 var xhttp = new XMLHttpRequest();
-
 xhttp.onreadystatechange = function() {
-
   if (this.readyState == 4 && this.status == 200) {
-
     document.getElementById("icp").innerHTML = this.responseText;
-
   }
-
 };
 
 xhttp.open("GET", "/icp", true);
-
 xhttp.send();
-
 }, 5000 ) ;
 
 
 
 setInterval(function ( ) {
-
 var xhttp = new XMLHttpRequest();
-
 xhttp.onreadystatechange = function() {
-
   if (this.readyState == 4 && this.status == 200) {
-
     document.getElementById("leakage").innerHTML = this.responseText;
-
   }
-
 };
 
 xhttp.open("GET", "/dcleak", true);
-
 xhttp.send();
-
 }, 5000 ) ;
 
 
 
 setInterval(function ( ) {
-
 var xhttp = new XMLHttpRequest();
-
 xhttp.onreadystatechange = function() {
-
   if (this.readyState == 4 && this.status == 200) {
-
     document.getElementById("lockstatus").innerHTML = this.responseText;
-
   }
-
 };
 
 xhttp.open("GET", "/conlock", true);
-
 xhttp.send();
-
 }, 5000 ) ;
 
 
 
 setInterval(function ( ) {
-
 var xhttp = new XMLHttpRequest();
-
 xhttp.onreadystatechange = function() {
-
   if (this.readyState == 4 && this.status == 200) {
-
     document.getElementById("maxcable").innerHTML = this.responseText;
-
   }
-
 };
 
 xhttp.open("GET", "/maxcable", true);
-
 xhttp.send();
-
 }, 5000 ) ;
 
 
 
 setInterval(function ( ) {
-
 var xhttp = new XMLHttpRequest();
-
 xhttp.onreadystatechange = function() {
-
   if (this.readyState == 4 && this.status == 200) {
-
     document.getElementById("potenciare").innerHTML = this.responseText;
-
   }
-
 };
 
 xhttp.open("GET", "/potenciare", true);
-
 xhttp.send();
-
 }, 5000 ) ;
 
 
 
 setInterval(function ( ) {
-
 var xhttp = new XMLHttpRequest();
-
 xhttp.onreadystatechange = function() {
-
   if (this.readyState == 4 && this.status == 200) {
-
     document.getElementById("potenciap").innerHTML = this.responseText;
-
   }
-
 };
 
 xhttp.open("GET", "/potenciap", true);
-
 xhttp.send();
-
 }, 5000 ) ;
 
 
 
 setInterval(function ( ) {
-
 var xhttp = new XMLHttpRequest();
-
 xhttp.onreadystatechange = function() {
-
   if (this.readyState == 4 && this.status == 200) {
-
     document.getElementById("energia").innerHTML = this.responseText;
-
   }
-
 };
 
 xhttp.open("GET", "/energia", true);
-
 xhttp.send();
-
 }, 5000 ) ;
 
 
 
 setInterval(function ( ) {
-
 var xhttp = new XMLHttpRequest();
-
 xhttp.onreadystatechange = function() {
-
   if (this.readyState == 4 && this.status == 200) {
-
     document.getElementById("energiare").innerHTML = this.responseText;
-
   }
-
 };
 
 xhttp.open("GET", "/energiare", true);
-
 xhttp.send();
-
 }, 5000 ) ;
 
 
 
 setInterval(function ( ) {
-
 var xhttp = new XMLHttpRequest();
-
 xhttp.onreadystatechange = function() {
-
   if (this.readyState == 4 && this.status == 200) {
-
     document.getElementById("powerfactor").innerHTML = this.responseText;
-
   }
-
 };
 
 xhttp.open("GET", "/powerfactor", true);
-
 xhttp.send();
-
 }, 5000 ) ;
 
 
 
 setInterval(function ( ) {
-
 var xhttp = new XMLHttpRequest();
-
 xhttp.onreadystatechange = function() {
-
   if (this.readyState == 4 && this.status == 200) {
-
     document.getElementById("corrientedom").innerHTML = this.responseText;
-
   }
-
 };
 
 xhttp.open("GET", "/corrientedom", true);
-
 xhttp.send();
-
 }, 5000 ) ;
 
 
 
 setInterval(function ( ) {
-
 var xhttp = new XMLHttpRequest();
-
 xhttp.onreadystatechange = function() {
-
   if (this.readyState == 4 && this.status == 200) {
-
     document.getElementById("corriente").innerHTML = this.responseText;
-
   }
-
 };
 
 xhttp.open("GET", "/corriente", true);
-
 xhttp.send();
-
 }, 5000 ) ;
 
 
-
-
-
 setInterval(function ( ) {
-
 var xhttp = new XMLHttpRequest();
-
 xhttp.onreadystatechange = function() {
-
   if (this.readyState == 4 && this.status == 200) {
-
     document.getElementById("voltaje").innerHTML = this.responseText;
-
   }
-
 };
 
 xhttp.open("GET", "/voltaje", true);
-
 xhttp.send();
-
 }, 5000 ) ;
 
 
 
 setInterval(function ( ) {
-
 var xhttp = new XMLHttpRequest();
-
 xhttp.onreadystatechange = function() {
-
   if (this.readyState == 4 && this.status == 200) {
-
     document.getElementById("potencia").innerHTML = this.responseText;
-
   }
-
 };
 
 xhttp.open("GET", "/potencia", true);
-
 xhttp.send();
-
 }, 5000 ) ;
 
 
 
 setInterval(function ( ) {
-
 var xhttp = new XMLHttpRequest();
-
 xhttp.onreadystatechange = function() {
-
   if (this.readyState == 4 && this.status == 200) {
-
     document.getElementById("error").innerHTML = this.responseText;
-
   }
-
 };
 
 xhttp.open("GET", "/error", true);
-
 xhttp.send();
-
 }, 5000 ) ;
 </script>
 </body>
