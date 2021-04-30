@@ -33,13 +33,15 @@ void Ping_Req(char* Data);
 #define IN_Cargando4 4
 #define IN_CochesConectados 1
 #define IN_Contador 5
-#define IN_Limitacion 1
-#define IN_Limitacion1 2
+#define IN_ContadorFase 1
+#define IN_Limitacion 2
+#define IN_Limitacion1 3
 #define IN_LimiteConsumo 2
 #define IN_LimiteInstalacion 3
 #define IN_NO_ACTIVE_CHILD 0
 #define IN_ReduccionPc 6
 #define IN_Repartir 7
+#define IN_RepartirFase 4
 
 #ifdef __cplusplus
 }

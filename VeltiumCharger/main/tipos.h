@@ -134,6 +134,7 @@ typedef struct{
 	bool Trifasico = false;
 	uint8 error_code;
 	uint8 Delta;
+	uint8 Delta_Fase;
 	uint8 limite_Fase;
 
 	char HPT_status[2];
@@ -262,6 +263,7 @@ typedef struct{
 	uint8_t     Fase;
 	uint16_t Current;
 	uint16_t   Delta;
+	uint16_t   Delta_Fase;
 	uint8_t Num_limitado;
 	TickType_t Period;
 
