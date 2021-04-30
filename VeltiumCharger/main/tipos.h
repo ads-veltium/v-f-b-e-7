@@ -230,7 +230,6 @@ typedef struct{
 	bool WriteStatus  = false;
 	bool WriteComs    = false;
 	bool WriteControl = false;
-	bool StopSistem   = false;
 	bool WriteTime    = false;
 
 	bool ReadControl  = false;

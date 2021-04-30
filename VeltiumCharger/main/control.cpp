@@ -42,6 +42,7 @@ uint8 authChallengeReply[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 //uint8 authChallengeQuery[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};      //{0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF};
 uint8 authChallengeQuery[10] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};      //{0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF};
 
+TickType_t AuthTimer=0;
 uint8 contador_cent_segundos = 0, contador_cent_segundos_ant = 0;
 uint32 cont_seg = 0, cont_seg_ant = 0, cont_min_ant = 0, cont_min=0, cont_hour=0, cont_hour_ant=0;
 uint8 luminosidad = 60, rojo, verde, azul, togle_led = 0 ;
@@ -216,6 +217,15 @@ void controlTask(void *arg)
 						proceso_recepcion();	
 					    if(serverbleGetConnected()){
 							Iface_Con = BLE;
+
+							if(AuthTimer!=0){
+								TickType_t Transcurrido = AuthTimer -xTaskGetTickCount();
+								if(Transcurrido >5000){
+									printf("Auth request fallada, me desconecto!!\n");
+									AuthTimer=0;
+								}
+							}
+
 						}
 						else if(ConfigFirebase.ClientConnected){
 							Iface_Con = COMS;
@@ -956,7 +966,7 @@ void deviceConnectInd ( void ){
 	modifyCharacteristic(authChallengeQuery, 8, AUTENTICACION_MATRIX_CHAR_HANDLE);
 	Serial.println("Sending authentication");
 	vTaskDelay(pdMS_TO_TICKS(250));
-
+	AuthTimer = xTaskGetTickCount();
 }
 
 void deviceDisconnectInd ( void )
@@ -984,6 +994,7 @@ uint8_t setAuthToken ( uint8_t *data, int len ){
 		printf("%s %s \r\n",deviceSerNum, initialSerNum);
 		if(!memcmp(authChallengeReply, data, 8) || !memcmp(deviceSerNum, initialSerNum, 10))
 		{
+			AuthTimer=0;
 			printf("authSuccess\r\n");
 			authSuccess = 1;
 		}

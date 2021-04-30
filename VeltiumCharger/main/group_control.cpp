@@ -418,11 +418,14 @@ void Calculo_Consigna(){
       break;
     }
   }
+
+#ifdef DEBUG_GROUPS
   printf("is_c3_charger= %i\n",is_c3_charger);
   printf("Conex = %i\n", Conex);
   printf("Comand desired current %i \n", desired_current);
   printf("Max p = %i \n", ChargingGroup.Params.potencia_max);
-  printf("Inst max = %i \n", ChargingGroup.Params.potencia_max);
+  printf("Inst max = %i \n", ChargingGroup.Params.inst_max);
+#endif
   if(desired_current!=Comands.desired_current &&  !memcmp(Status.HPT_status,"C2",2)){
       SendToPSOC5(desired_current,MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
   }
@@ -450,7 +453,6 @@ void input_values(){
         total_pc += ChargingGroup.group_chargers.charger_table[i].Current;
     }   
     Pc=total_pc/1000;
-    printf("Total PC and Delta %i %i \n",Pc,Delta_total); 
 
     for(int i=0; i< FaseChargers.size;i++){
         if(!memcmp(FaseChargers.charger_table[i].HPT,"C2",2)){
@@ -460,6 +462,9 @@ void input_values(){
         total_pc_fase += ChargingGroup.group_chargers.charger_table[i].Current;
     }
     Pc_Fase=total_pc_fase/1000;
-    printf("Total PC of phase %i\n",Pc);    
+#ifdef DEBUG_GROUPS
+    printf("Total PC of phase %i\n",Pc); 
+    printf("Total PC and Delta %i %i \n",Pc,Delta_total);    
+#endif
 }
 

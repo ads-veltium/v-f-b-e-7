@@ -402,7 +402,7 @@ class AsyncWebServer {
     AsyncCallbackWebHandler* _catchAllHandler;
 
   public:
-    AsyncWebServer(uint16_t port);
+    AsyncWebServer();
     ~AsyncWebServer();
 
     void begin();

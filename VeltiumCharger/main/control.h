@@ -8,6 +8,9 @@
 #define DEVELOPMENT
 #define GROUPS
 
+//#define DEBUG
+//#define DEBUG_GROUPS
+
 #define MAX_GROUP_SIZE 50
 
 #include "Arduino.h"

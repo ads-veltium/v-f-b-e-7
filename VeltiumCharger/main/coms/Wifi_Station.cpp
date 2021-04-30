@@ -381,12 +381,20 @@ void Eth_Loop(){
             //Apagar el eth
             if(!Coms.ETH.ON){  
                 if(Coms.ETH.DHCP){
+                    if(ChargingGroup.Conected){
+                        ChargingGroup.Params.GroupActive = false;
+                        stop_MQTT();
+                    }
                     kill_ethernet();
                     Coms.ETH.DHCP  = 0;
                     SendToPSOC5(Coms.ETH.DHCP,COMS_CONFIGURATION_ETH_DHCP);
                     Coms.ETH.State = KILLING;
                 }
                 else{
+                    if(ChargingGroup.Conected){
+                        ChargingGroup.Params.GroupActive = false;
+                        stop_MQTT();
+                    }
                     stop_ethernet();
                     Coms.ETH.State = DISCONNECTING;
                 }                
@@ -395,6 +403,10 @@ void Eth_Loop(){
             //Desconexion del cable
             if(!eth_connected && !eth_link_up){
                 Coms.ETH.State = DISCONNECTING;
+                if(ChargingGroup.Conected){
+                    ChargingGroup.Params.GroupActive = false;
+                    stop_MQTT();
+                }
             }
             //Lectura del contador
 			if(ContadorExt.ContadorConectado){
@@ -424,10 +436,7 @@ void Eth_Loop(){
         break;
 
         case DISCONNECTING:
-            if(!eth_connected && !eth_connecting){
-                if(ChargingGroup.Conected){
-                    stop_MQTT();
-                }
+            if(!eth_connected && !eth_connecting){        
                 finding = false;
                 Coms.ETH.State = DISCONNECTED;
                 Coms.ETH.Internet = false;

@@ -36,11 +36,11 @@ void start_MQTT_server();
 void start_MQTT_client(IPAddress remoteIP);
 
 void stop_MQTT(){
-    printf("Stopping MQTT\n");
     ChargingGroup.Conected   = false;
     ChargingGroup.StartClient = false;
-    delay(500);
     SetStopMQTT(true);
+    printf("Stopping MQTT\n");
+
     delay(1000);
     SetStopMQTT(false);
 }
