@@ -50,7 +50,7 @@ void start_MQTT_server();
 void start_MQTT_client(IPAddress remoteIP);
 
 
-// Event handler function
+//Event handler del servidor
 static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) { 
     uint32_t inicial = esp_get_free_internal_heap_size();
   
@@ -140,7 +140,6 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
             }	
         }
   }
-  printf("Paso 100 :%i\n", esp_get_free_internal_heap_size());
 }
 
 void mqtt_server(void *pvParameters){
@@ -165,6 +164,7 @@ void mqtt_server(void *pvParameters){
 	vTaskDelete(NULL);
 }
 
+//Event handler del cliente
 static void publisher_fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
 	switch(ev){
 		case MG_EV_ERROR:
@@ -260,7 +260,18 @@ bool mqtt_connect(mqtt_sub_pub_opts *pub_opts){
 void mqtt_publish(char* Topic, char* Data){
 	struct mg_str topic = mg_str(Topic);
 	struct mg_str data = mg_str(Data);
-	if(!StopMQTT)mg_mqtt_pub(mgc, &topic, &data);
+
+    if(!StopMQTT){
+        if(ChargingGroup.Params.GroupMaster){
+            for (struct sub *sub = s_subs; sub != NULL; sub = sub->next) {
+            if (strcmp(topic.ptr, sub->topic.ptr) != 0) continue;
+            mg_mqtt_pub(sub->c, &topic, &data);
+            }
+        }
+        else{
+            mg_mqtt_pub(mgc, &topic, &data);
+        }
+    }
 }
 
 void mqtt_subscribe(char* Topic){
