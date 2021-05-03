@@ -179,7 +179,7 @@ static void publisher_fn(struct mg_connection *c, int ev, void *ev_data, void *f
 		case MG_EV_MQTT_MSG:{
 			// When we get echo response, print it
 			struct mg_mqtt_message *mm = (struct mg_mqtt_message *) ev_data;
-			if(!memcmp(mm->topic.ptr, "Device_Status", mm->topic.len)){
+			if(!memcmp(mm->topic.ptr, "Data", mm->topic.len)){
 				New_Data(mm->data.ptr, mm->data.len);
 				xStart = xTaskGetTickCount();
 			}
@@ -250,7 +250,7 @@ bool mqtt_connect(mqtt_sub_pub_opts *pub_opts){
 
 	memset(&opts, 0, sizeof(opts));					// Set MQTT options
 	opts.client_id = mg_str(pub_opts->Client_ID);   // Set Client ID
-	opts.qos = 1;									// Set QoS to 1
+	opts.qos = 0;									// Set QoS to 1
 
 	mgc = mg_mqtt_connect(&mgr, pub_opts->url, &opts, publisher_fn, &pub_opts->url);	// Create client connection
 	

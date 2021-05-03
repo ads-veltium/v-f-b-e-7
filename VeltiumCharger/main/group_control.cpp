@@ -2,6 +2,7 @@
 #include "control.h"
 #include <string.h>
 #include "helpers.h"
+#include "cJSON.h"
 
 extern carac_Params Params;
 extern carac_Status Status;
@@ -51,33 +52,25 @@ void Ping_Req(char* Data){
 //Funcion para procesar los nuevos datos recibidos
 void New_Data(char* Data, int Data_size){
 
-    //Recibir nuevo cargador
-    char fase = Data[8];
-    char ID[9];
-    ID[8]= '\0';
-    memcpy(ID,Data,8); 
+    cJSON *mensaje_Json = cJSON_Parse(Data);
     carac_charger Cargador;
-    memcpy(Cargador.HPT,&Data[9],2);   
-    Cargador.Fase = atoi(&fase);
-    char Delta[3];
-    
-    memcpy(Delta, &Data[11], 2);
-    Cargador.Delta = atoi(Delta);
-    Cargador.limite_fase = (uint8_t)Data[13];
 
-    memcpy(Delta, &Data[14], 2);
-    Cargador.Delta_fase = atoi(Delta);
+    //Extraer los datos
+    memcpy(Cargador.HPT,cJSON_GetObjectItem(mensaje_Json,"HPT")->valuestring,2);
+    memcpy(Cargador.name,cJSON_GetObjectItem(mensaje_Json,"device_id")->valuestring,2);
+    Cargador.limite_fase = cJSON_GetObjectItem(mensaje_Json,"limite_fase")->valueint;
+    Cargador.Fase = cJSON_GetObjectItem(mensaje_Json,"fase")->valueint;
+    Cargador.Current = cJSON_GetObjectItem(mensaje_Json,"current")->valueint;
+    Cargador.Delta = cJSON_GetObjectItem(mensaje_Json,"Delta")->valueint;
 
-    char current[Data_size-16+1];
-    memcpy( current, &Data[16], Data_size-16 );         
-    Cargador.Current = atoi(current);
+    cJSON_Delete(mensaje_Json);
 
     //si no es un equipo trifásico:
     if(!Status.Trifasico){
       //Comprobar que está en nuestra misma fase
-      if(Params.Fase == atoi(&fase)){             
+      if(Params.Fase == Cargador.Fase){             
         //comprobar si el cargador ya está almacenado en nuestro grupo de fase                       
-        uint8_t index = check_in_group(ID,&FaseChargers);               
+        uint8_t index = check_in_group(Cargador.name,&FaseChargers);               
         if(index < 255){                         
             FaseChargers.charger_table[index] =Cargador;
             cls();
@@ -85,14 +78,14 @@ void New_Data(char* Data, int Data_size){
         }
         else{
             //Si el cargador no está en la tabla, añadirlo y actualizar los datos
-            add_to_group(ID, get_IP(ID),&FaseChargers);
+            add_to_group(Cargador.name, get_IP(Cargador.name),&FaseChargers);
             FaseChargers.charger_table[FaseChargers.size-1] = Cargador;
         }
       }
     }
     //Actualizacion del grupo total
     //Buscar el equipo en el grupo total
-    uint8_t index = check_in_group(ID,&ChargingGroup.group_chargers);                  
+    uint8_t index = check_in_group(Cargador.name,&ChargingGroup.group_chargers);                  
     if(index < 255){
         ChargingGroup.group_chargers.charger_table[index]=Cargador;
     }

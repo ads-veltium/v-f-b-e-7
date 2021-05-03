@@ -1,5 +1,6 @@
 #include "../control.h"
 #include "AsyncUDP.h"
+#include "cJSON.h"
 
 extern "C" {
 #include "mongoose.h"
@@ -268,35 +269,31 @@ void Publisher(void* args){
     char buffer[500];
     Params.Fase = 1;
     TickType_t xStart = xTaskGetTickCount();
+
     while(1){
         //Enviar nuestros datos de carga al grupo
-        /*if(ChargingGroup.SendNewData){    
-            char Delta[2]={'0'};
-            
-            if(Status.Delta >=10){
-                itoa(Status.Delta,&Delta[0],10);
-            }
-            else{
-                itoa(Status.Delta,&Delta[1],10);
-            }
+        if(ChargingGroup.SendNewData){   
+            cJSON *Datos_Json;
+	        Datos_Json = cJSON_CreateObject();
 
+            cJSON_AddStringToObject(Datos_Json, "device_id", ConfigFirebase.Device_Id);
+            cJSON_AddNumberToObject(Datos_Json, "fase", Params.Fase);
+            cJSON_AddNumberToObject(Datos_Json, "current", Status.Measures.instant_current);
             //si es trifasico, enviar informacion de todas las fases
             if(Status.Trifasico){
-                sprintf(buffer, "%s1%s%s%i%i", ConfigFirebase.Device_Id,Status.HPT_status,Delta,Status.limite_Fase,Status.Measures.instant_current);
-                mqtt_publish("Device_Status", (buffer));
-                delay(50);
-                sprintf(buffer, "%s2%s%s%i%i", ConfigFirebase.Device_Id,Status.HPT_status,Delta,Status.limite_Fase,Status.MeasuresB.instant_current);
-                mqtt_publish("Device_Status", (buffer));
-                delay(50);
-                sprintf(buffer, "%s3%s%s%i%i", ConfigFirebase.Device_Id,Status.HPT_status,Delta,Status.limite_Fase,Status.MeasuresC.instant_current);
-                mqtt_publish("Device_Status", (buffer));
+                cJSON_AddNumberToObject(Datos_Json, "currentB", Status.MeasuresB.instant_current);
+                cJSON_AddNumberToObject(Datos_Json, "currentC", Status.MeasuresC.instant_current);
             }
-            else{
-                sprintf(buffer, "%s%i%s%s%i%i", ConfigFirebase.Device_Id,Params.Fase,Status.HPT_status,Delta,Status.limite_Fase,Status.Measures.instant_current);  
-                mqtt_publish("Device_Status", (buffer));
-            }
+            cJSON_AddNumberToObject(Datos_Json, "Delta", Status.Delta);
+            cJSON_AddStringToObject(Datos_Json, "HPT", Status.HPT_status);
+            cJSON_AddNumberToObject(Datos_Json, "limite_fase",Status.limite_Fase);
+
+            char *my_json_string = cJSON_Print(Datos_Json);                
+            cJSON_Delete(Datos_Json);
+            
+            mqtt_publish("Data", my_json_string);
             ChargingGroup.SendNewData = false;
-        }*/
+        }
         
         //Enviar nuevos parametros para el grupo
         if( ChargingGroup.SendNewParams || new_charger){
@@ -343,7 +340,7 @@ void Publisher(void* args){
 
         }
 
-        //Si soy el maestro, debo comprobar si los esclavos siguen conectados
+        //Si soy el maestro, debo comprobar que los esclavos siguen conectados
         else{
             TickType_t Transcurrido = xTaskGetTickCount() - xStart;
             xStart = xTaskGetTickCount();
@@ -356,12 +353,23 @@ void Publisher(void* args){
                     udp.sendTo(mensaje,ChargingGroup.group_chargers.charger_table[i].IP,1234);
                 }
                 
-                //si un equipo lleva muchisimo sin contestar, lo damos por muerto
+                //si un equipo lleva muchisimo sin contestar, lo damos por muerto y reseteamos sus valores
                 if(ChargingGroup.group_chargers.charger_table[i].Period >=60000 && ChargingGroup.group_chargers.charger_table[i].Period <=65000){
                     if(memcmp(ChargingGroup.group_chargers.charger_table[i].name, ConfigFirebase.Device_Id,8)){
-                        sprintf(buffer, "%s%i0V0000", ChargingGroup.group_chargers.charger_table[i].name, ChargingGroup.group_chargers.charger_table[i].Fase);  
-                        mqtt_publish("Device_Status", (buffer));
-                        printf("%s lleva muchiisimo sin conestar\n", ChargingGroup.group_chargers.charger_table[i].name);
+                        cJSON *Datos_Json;
+	                    Datos_Json = cJSON_CreateObject();
+
+                        cJSON_AddStringToObject(Datos_Json, "device_id", ChargingGroup.group_chargers.charger_table[i].name);
+                        cJSON_AddNumberToObject(Datos_Json, "fase", ChargingGroup.group_chargers.charger_table[i].Fase);
+                        cJSON_AddNumberToObject(Datos_Json, "Delta", 0);
+                        cJSON_AddStringToObject(Datos_Json, "HPT", "0V");
+                        cJSON_AddNumberToObject(Datos_Json, "limite_fase",0);
+                        cJSON_AddNumberToObject(Datos_Json, "current", 0);
+                        
+                        char *my_json_string = cJSON_Print(Datos_Json);                
+                        cJSON_Delete(Datos_Json);
+            
+                        mqtt_publish("Data", my_json_string);
                     }
                 }
             }
@@ -439,7 +447,7 @@ void start_MQTT_server(){
         memcpy(publisher.Client_ID,ConfigFirebase.Device_Id, 8);
 
         if(mqtt_connect(&publisher)){
-            mqtt_subscribe("Device_Status");
+            mqtt_subscribe("Data");
             mqtt_subscribe("Ping");
             mqtt_subscribe("RTS");
             xTaskCreateStatic(Publisher,"Publisher",4096,NULL,PRIORIDAD_MQTT,xPUBLISHERStack,&xPUBLISHERBuffer); 
@@ -459,7 +467,7 @@ void start_MQTT_client(IPAddress remoteIP){
     if(mqtt_connect(&publisher)){
         ChargingGroup.Params.GroupMaster = false;
         ChargingGroup.Conected = true;
-        mqtt_subscribe("Device_Status");
+        mqtt_subscribe("Data");
         mqtt_subscribe("Pong");
         mqtt_subscribe("RTS");
         xTaskCreateStatic(Publisher,"Publisher",4096,NULL,PRIORIDAD_MQTT,xPUBLISHERStack,&xPUBLISHERBuffer); 
