@@ -298,15 +298,14 @@ void Publisher(void* args){
         //Enviar nuevos parametros para el grupo
         if( ChargingGroup.SendNewParams || new_charger){
             buffer[0] = '1';
+            
             memcpy(&buffer[1], &ChargingGroup.Params,7);
-            printf("Enviando %s\n", buffer);
             mqtt_publish("RTS", buffer);
             ChargingGroup.SendNewParams = false;
         }
 
         //Enviar los cargadores de nuestro grupo
         if(ChargingGroup.SendNewGroup || new_charger){
-            printf("Enviando nuevo grupo\n");
             buffer[0] = '3';
             if(ChargingGroup.group_chargers.size< 10){
                 sprintf(&buffer[1],"0%i",(char)ChargingGroup.group_chargers.size);

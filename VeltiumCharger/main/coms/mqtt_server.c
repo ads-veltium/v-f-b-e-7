@@ -63,13 +63,15 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
 	struct mg_mqtt_message *mm = (struct mg_mqtt_message *) ev_data;
 	switch (mm->cmd) {
 	  case MQTT_CMD_CONNECT: {
+		printf("almacenando cargador, \n\tram total = %i\n\tram interna = %i\n", esp_get_free_heap_size(), esp_get_free_internal_heap_size());
 		uint8_t response[] = {0, 0};
 		mg_mqtt_send_header(c, MQTT_CMD_CONNACK, 0, sizeof(response));
 		mg_send(c, response, sizeof(response));
-		//printf("Nuevo cargador almacenado, \n\tram total = %i\n\tram interna = %i\n", esp_get_free_heap_size(), esp_get_free_internal_heap_size());
+		printf("Nuevo cargador almacenado, \n\tram total = %i\n\tram interna = %i\n", esp_get_free_heap_size(), esp_get_free_internal_heap_size());
 		break;
 	  }
 	  case MQTT_CMD_SUBSCRIBE: {
+		printf("Subscribiendo cargador, \n\tram total = %i\n\tram interna = %i\n", esp_get_free_heap_size(), esp_get_free_internal_heap_size());
 		// Client subscribe. Add to the subscription list
 		//_mg_mqtt_dump("SUBSCRIBE", mm);
 		int pos = 4;  // Initial topic offset, where ID ends
@@ -83,9 +85,11 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
 		  LIST_ADD_HEAD(struct sub, &s_subs, sub);
 		}
 		new_charger = 1;
+		printf("Subscrito cargador, \n\tram total = %i\n\tram interna = %i\n", esp_get_free_heap_size(), esp_get_free_internal_heap_size());
 		break;
 	  }
 	  case MQTT_CMD_UNSUBSCRIBE: {
+		printf("Dessuscribiendo cargador, \n\tram total = %i\n\tram interna = %i\n", esp_get_free_heap_size(), esp_get_free_internal_heap_size());
 		int pos = 4;  // Initial topic offset, where ID ends
 		struct mg_str topic;
 		while ((pos = mg_mqtt_next_unsub(mm, &topic, pos)) > 0) {
@@ -99,6 +103,7 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
 				free(sub);
 			}
 		}
+		printf("Desuscrito cargador, \n\tram total = %i\n\tram interna = %i\n", esp_get_free_heap_size(), esp_get_free_internal_heap_size());
 		break;
 	  }
 	  case MQTT_CMD_PUBLISH: {
@@ -114,7 +119,7 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
 	  }
 	}
   } else if (ev == MG_EV_CLOSE) {
-	printf("Desconectando cargador, \n\tram total = %i\n\tram interna = %i\n", esp_get_free_heap_size(), esp_get_free_internal_heap_size());
+	printf("Desconectando cargador %li, \n\tram total = %i\n\tram interna = %i\n", c->id,esp_get_free_heap_size(), esp_get_free_internal_heap_size());
 	// Client disconnects. Remove from the subscription list
 	for (struct sub *next, *sub = s_subs; sub != NULL; sub = next) {
 		next = sub->next;
@@ -219,7 +224,7 @@ void mqtt_polling(void *params){
 	while (1) {
 		
 		if(!StopMQTT)mg_mgr_poll(&mgr, 10);
-		vTaskDelay(pdMS_TO_TICKS(50));
+		vTaskDelay(pdMS_TO_TICKS(5));
 		uint32_t transcurrido = pdTICKS_TO_MS(xTaskGetTickCount() - xStart);
 		
 		if(transcurrido > 2500){
