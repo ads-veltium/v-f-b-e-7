@@ -114,6 +114,32 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
         printf("Free mem %i\n", esp_get_free_internal_heap_size() );
 	}		
   }
+  else if(ev== MG_EV_MQTT_MSG){
+        struct mg_mqtt_message *mm = (struct mg_mqtt_message *) ev_data;
+        if(!memcmp(mm->topic.ptr, "Data", mm->topic.len)){
+            New_Data(mm->data.ptr, mm->data.len);
+        }
+        else if(!memcmp(mm->topic.ptr, "Ping", mm->topic.len)){
+            mqtt_publish("Pong", "ABCD");
+            Ping_Req(mm->data.ptr);
+        }
+        else if(!memcmp(mm->topic.ptr, "RTS", mm->topic.len)){
+            switch(mm->data.ptr[0]-'0'){
+                case 1: //Group_Params
+                    New_Params(&mm->data.ptr[1], mm->data.len);
+                    break;
+                case 2: //Group Control
+                    New_Control(&mm->data.ptr[1], mm->data.len);
+                    break;
+                case 3: //Group Chargers
+                    New_Group(&mm->data.ptr[1], mm->data.len);
+                    break;
+                default:
+                    printf("Me ha llegado algo indefinido\n");
+                    break;
+            }	
+        }
+  }
   printf("Paso 100 :%i\n", esp_get_free_internal_heap_size());
 }
 
@@ -159,10 +185,6 @@ static void publisher_fn(struct mg_connection *c, int ev, void *ev_data, void *f
 			if(!memcmp(mm->topic.ptr, "Data", mm->topic.len)){
 				New_Data(mm->data.ptr, mm->data.len);
 				xStart_Server = xTaskGetTickCount();
-			}
-			else if(!memcmp(mm->topic.ptr, "Ping", mm->topic.len)){
-				mqtt_publish("Pong", "ABCD");
-				Ping_Req(mm->data.ptr);
 			}
 			else if(!memcmp(mm->topic.ptr, "Pong", mm->topic.len)){
 				xStart_Server = xTaskGetTickCount();
@@ -671,16 +693,9 @@ void start_MQTT_server(){
             stop_MQTT();
             return;
         }
-        
-        sprintf(publisher.url, "mqtt://%s:1883", ip4addr_ntoa(&Coms.ETH.IP));
-        memcpy(publisher.Client_ID,ConfigFirebase.Device_Id, 8);
 
-        if(mqtt_connect(&publisher) && !StopMQTT){
-            mqtt_subscribe("Data");
-            mqtt_subscribe("Ping");
-            mqtt_subscribe("RTS");
-            xTaskCreateStatic(Publisher,"Publisher",4096,NULL,PRIORIDAD_MQTT,xPUBLISHERStack,&xPUBLISHERBuffer); 
-        }
+        //Arrancar publisher
+        xTaskCreateStatic(Publisher,"Publisher",4096,NULL,PRIORIDAD_MQTT,xPUBLISHERStack,&xPUBLISHERBuffer); 
     }
     else{
         Serial.println("Ya hay un maestro en el grupo, espero a que me ordene conectarme!");
