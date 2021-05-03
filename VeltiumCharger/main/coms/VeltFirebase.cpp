@@ -349,12 +349,12 @@ void Cliente_HTTP::begin(){
     
     esp_http_client_config_t config = {
         .url = _url.c_str(),
-        .timeout_ms = 1000,
+        .timeout_ms = 5000,
         .event_handler = _generic_http_event_handle,
         .buffer_size_tx = 2048,
     };
     _client = esp_http_client_init(&config);
-    esp_http_client_set_header(_client,"Content-Type", "application/json");
+    //esp_http_client_set_header(_client,"Content-Type", "application/json");
 }
 
 void Cliente_HTTP::end(){

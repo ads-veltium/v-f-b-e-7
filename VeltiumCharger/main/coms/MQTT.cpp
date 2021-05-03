@@ -36,11 +36,11 @@ void start_MQTT_server();
 void start_MQTT_client(IPAddress remoteIP);
 
 void stop_MQTT(){
-    printf("Stopping MQTT\n");
     ChargingGroup.Conected   = false;
     ChargingGroup.StartClient = false;
-    delay(500);
     SetStopMQTT(true);
+    printf("Stopping MQTT\n");
+
     delay(1000);
     SetStopMQTT(false);
 }
@@ -270,7 +270,7 @@ void Publisher(void* args){
     TickType_t xStart = xTaskGetTickCount();
     while(1){
         //Enviar nuestros datos de carga al grupo
-        if(ChargingGroup.SendNewData){    
+        /*if(ChargingGroup.SendNewData){    
             char Delta[2]={'0'};
             
             if(Status.Delta >=10){
@@ -282,26 +282,27 @@ void Publisher(void* args){
 
             //si es trifasico, enviar informacion de todas las fases
             if(Status.Trifasico){
-                sprintf(buffer, "%s1%s%s%i%i", ConfigFirebase.Device_Id,Status.HPT_status,Delta,Status.Measures.instant_current,Status.limite_Fase);
+                sprintf(buffer, "%s1%s%s%i%i", ConfigFirebase.Device_Id,Status.HPT_status,Delta,Status.limite_Fase,Status.Measures.instant_current);
                 mqtt_publish("Device_Status", (buffer));
                 delay(50);
-                sprintf(buffer, "%s2%s%s%i%i", ConfigFirebase.Device_Id,Status.HPT_status,Delta,Status.MeasuresB.instant_current,Status.limite_Fase);
+                sprintf(buffer, "%s2%s%s%i%i", ConfigFirebase.Device_Id,Status.HPT_status,Delta,Status.limite_Fase,Status.MeasuresB.instant_current);
                 mqtt_publish("Device_Status", (buffer));
                 delay(50);
-                sprintf(buffer, "%s3%s%s%i%i", ConfigFirebase.Device_Id,Status.HPT_status,Delta,Status.MeasuresC.instant_current,Status.limite_Fase);
+                sprintf(buffer, "%s3%s%s%i%i", ConfigFirebase.Device_Id,Status.HPT_status,Delta,Status.limite_Fase,Status.MeasuresC.instant_current);
                 mqtt_publish("Device_Status", (buffer));
             }
             else{
-                sprintf(buffer, "%s%i%s%s%i%i", ConfigFirebase.Device_Id,Params.Fase,Status.HPT_status,Delta,Status.Measures.instant_current,Status.limite_Fase);  
+                sprintf(buffer, "%s%i%s%s%i%i", ConfigFirebase.Device_Id,Params.Fase,Status.HPT_status,Delta,Status.limite_Fase,Status.Measures.instant_current);  
                 mqtt_publish("Device_Status", (buffer));
             }
             ChargingGroup.SendNewData = false;
-        }
+        }*/
         
         //Enviar nuevos parametros para el grupo
         if( ChargingGroup.SendNewParams || new_charger){
             buffer[0] = '1';
             memcpy(&buffer[1], &ChargingGroup.Params,7);
+            printf("Enviando %s\n", buffer);
             mqtt_publish("RTS", buffer);
             ChargingGroup.SendNewParams = false;
         }

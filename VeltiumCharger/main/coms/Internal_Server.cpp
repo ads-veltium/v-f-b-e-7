@@ -8,7 +8,7 @@ extern carac_Status                 Status;
 extern carac_Params                 Params;
 extern carac_Coms                   Coms;
 
-AsyncWebServer server(80);
+AsyncWebServer server EXT_RAM_ATTR;
 /*************** Wifi and ETH event handlers *****************/
 
 const char* NUM_BOTON = "output";
@@ -20,8 +20,8 @@ const char* SALIDA = "com";
 const char* AP = "w_ap";
 const char* WIFI_PWD = "w_pass";
 const char* IP1 = "ip1";
-const char* GATEWAY = "8.8.8.8";
-const char* MASK = "255.255.255.0";
+const char* GATEWAY = "Gateway";
+const char* MASK = "MASK";
 const char* APN = "apn";
 const char* GSM_PWD = "m_pass";
 const char* CURR_COMAND = "curr_comand";
@@ -196,6 +196,7 @@ String processor(const String& var){
 		String checkbox = "";
 
 		checkbox += "<label class=\"switch\"><input type=\"checkbox\" onchange=\"toggleCheckbox(this)\" id=\"12\" "+outputStateWifi(Coms.Wifi.ON )+"><span class=\"slider round\"></span></label>";
+        Wifi_On = Coms.Wifi.ON;
 		return checkbox;
 	}
     else if (var == "EON")
@@ -203,21 +204,24 @@ String processor(const String& var){
 		String checkbox = "";
 
 		checkbox += "<label class=\"switch\"><input type=\"checkbox\" onchange=\"toggleCheckbox(this)\" id=\"13\""+outputStateWifi(Coms.ETH.ON )+"><span class=\"slider round\"></span></label>";
-		return checkbox;
+		Eth_On=Coms.ETH.ON;
+        return checkbox;
 	}
     else if (var == "EAUTO")
 	{
 		String checkbox = "";
 
 		checkbox += "<label class=\"switch\"><input type=\"checkbox\" onchange=\"toggleCheckbox(this)\" id=\"14\""+outputStateWifi(Coms.ETH.Auto)+"><span class=\"slider round\"></span></label>";
-		return checkbox;
+		Eth_Auto=Coms.ETH.Auto;
+        return checkbox;
 	}
     else if (var == "MON")
 	{
 		String checkbox = "";
 
 		checkbox += "<label class=\"switch\"><input type=\"checkbox\" onchange=\"toggleCheckbox(this)\" id=\"15\""+outputStateWifi(Coms.GSM.ON)+"><span class=\"slider round\"></span></label>";
-		return checkbox;
+		Gsm_On=Coms.GSM.ON;
+        return checkbox;
     }
     else if (var == "CDP")
 	{
@@ -276,23 +280,36 @@ void InitServer(void) {
     server.on("/get", HTTP_GET_A, [](AsyncWebServerRequest *request){
         
         
+        Coms.GSM.ON = Gsm_On;
+        memcpy(Coms.Wifi.AP,request->getParam(AP)->value().c_str(),32);
+        Coms.Wifi.Pass = request->getParam(WIFI_PWD)->value();
+                
+        //Hay que reiniciar ethernet si activampos una ip estatica
+        bool reiniciar_eth = Coms.ETH.Auto != Eth_Auto;
+        Coms.ETH.Auto = Eth_Auto;
+
+        if(!Coms.ETH.Auto && Eth_On){
+            const char *IP=request->getParam(IP1)->value().c_str();
+            const char *MASKARA=request->getParam("mask")->value().c_str();
+            const char *GATE=request->getParam("gateway")->value().c_str();
+            ip4addr_aton(IP,&Coms.ETH.IP ); 
+            ip4addr_aton(GATE,&Coms.ETH.Gateway ); 
+            ip4addr_aton(MASKARA,&Coms.ETH.Mask ); 
+        }
+
+        if(reiniciar_eth){
+            Coms.ETH.restart = true;
+            request->send(SPIFFS, "/comms.html",String(), false, processor);
+            Coms.ETH.ON = false;
+            SendToPSOC5(Coms.ETH.ON,COMS_CONFIGURATION_ETH_ON);
+            delay(1000);
+        }
+
         while(Coms.ETH.ON != Eth_On){
             SendToPSOC5(Eth_On,COMS_CONFIGURATION_ETH_ON);
             delay(50);
         }
 
-        while(Coms.Wifi.ON != Wifi_On){
-            SendToPSOC5(Wifi_On,COMS_CONFIGURATION_WIFI_ON);
-            delay(50);
-        }
-        
-        Coms.GSM.ON = Gsm_On;
-        Coms.ETH.Auto = Eth_Auto;
-        memcpy(Coms.Wifi.AP,request->getParam(AP)->value().c_str(),32);
-        Coms.Wifi.Pass = request->getParam(WIFI_PWD)->value();
-        //Coms.ETH.IP = request->getParam(IP1)->value().toInt();       
-        //Coms.ETH.Gateway = request->getParam(GATEWAY)->value().toInt();
-        //Coms.ETH.Mask = request->getParam(MASK)->value().toInt();
         Coms.GSM.APN = request->getParam(APN)->value();
         Coms.GSM.Pass = request->getParam(GSM_PWD)->value();
 
@@ -300,29 +317,33 @@ void InitServer(void) {
         Serial.println(ip4addr_ntoa(&Coms.ETH.IP));
         Serial.println(ip4addr_ntoa(&Coms.ETH.Gateway));
         Serial.println(ip4addr_ntoa(&Coms.ETH.Mask));
-        Serial.println(Coms.ETH.Auto);
-        Serial.println(Coms.GSM.ON);
-        Serial.println(Coms.GSM.APN);
-        Serial.println(Coms.GSM.Pass);
+        Serial.println(Coms.ETH.Auto);       
 
-        request->send(SPIFFS, "/comms.html",String(), false, processor);
+        while(Coms.Wifi.ON != Wifi_On){
+            SendToPSOC5(Wifi_On,COMS_CONFIGURATION_WIFI_ON);
+            delay(50);
+        }
+
+        if(!reiniciar_eth)request->send(SPIFFS, "/comms.html",String(), false, processor);
 
     });
 
     server.on("/currcomand", HTTP_GET_A, [](AsyncWebServerRequest *request){
         
-        Comands.desired_current = request->getParam(CURR_COMAND)->value().toInt();
+        uint8_t data = request->getParam(CURR_COMAND)->value().toInt();
 
-        Serial.println(Comands.desired_current);
+        SendToPSOC5(data, MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
         
         request->send(SPIFFS, "/comands.html",String(), false, processor);
     });
 
     server.on("/authentication", HTTP_GET_A, [](AsyncWebServerRequest *request){
         
-        //Params.autentication_mode = request->getParam(AUTH_MODE)->value();
+        uint8_t buffer[2];
+        memcpy(buffer,request->getParam(AUTH_MODE)->value().c_str(),2);
 
         Serial.println(Params.autentication_mode);
+        SendToPSOC5((char*)buffer,2,CONFIGURACION_AUTENTICATION_MODES_CHAR_HANDLE);
         
         request->send(SPIFFS, "/parameters.html",String(), false, processor);
     });
@@ -338,18 +359,18 @@ void InitServer(void) {
 
     server.on("/instcurlim", HTTP_GET_A, [](AsyncWebServerRequest *request){
         
-        Params.inst_current_limit = request->getParam(INST_CURR_LIM)->value().toInt();
+        uint8_t data = request->getParam(INST_CURR_LIM)->value().toInt();
 
-        Serial.println(Params.inst_current_limit);
+        SendToPSOC5(data, MEASURES_INSTALATION_CURRENT_LIMIT_CHAR_HANDLE);
         
         request->send(SPIFFS, "/parameters.html",String(), false, processor);
     });
 
     server.on("/powercont", HTTP_GET_A, [](AsyncWebServerRequest *request){
         
-        Params.potencia_contratada = request->getParam(POT_CONT)->value().toInt();
+        uint8_t data = request->getParam(POT_CONT)->value().toInt();
 
-        Serial.println(Params.potencia_contratada);
+        SendToPSOC5(data, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_CHAR_HANDLE);
         
         request->send(SPIFFS, "/parameters.html",String(), false, processor);
     });
@@ -503,9 +524,7 @@ void InitServer(void) {
                 Wifi_On = estado;
                 break;
             case 13:
-
                 Eth_On = estado;
-
                 break;
             case 14:
                 Eth_Auto = estado; 
@@ -517,7 +536,6 @@ void InitServer(void) {
                 Params.CDP_On = estado;
                 break;
             case 17:
-                
                 while(Comands.conn_lock != estado){
                     SendToPSOC5(estado,STATUS_CONN_LOCK_STATUS_CHAR_INDEX);
                 }               
@@ -525,10 +543,6 @@ void InitServer(void) {
         default:
             break;
         }
-        Serial.println(Gsm_On);
-        Serial.println(Wifi_On);
    });
-  
    Serial.println(ESP.getFreeHeap());
-
 }

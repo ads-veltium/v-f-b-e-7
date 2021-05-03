@@ -178,6 +178,7 @@ typedef struct{
 	bool DHCP = 0;
 	bool Internet = false;
 	bool Wifi_Perm = false;
+	bool restart = false;
 
 	ip4_addr_t IP;
 	ip4_addr_t Gateway;
@@ -185,7 +186,7 @@ typedef struct{
 
 	uint8_t   State;
 	uint8_t   Puerto;
-	bool conectado = false;
+	bool 	conectado = false;
 }carac_ETH;
 
 typedef struct{
@@ -231,7 +232,6 @@ typedef struct{
 	bool WriteStatus  = false;
 	bool WriteComs    = false;
 	bool WriteControl = false;
-	bool StopSistem   = false;
 	bool WriteTime    = false;
 
 	bool ReadControl  = false;
@@ -263,8 +263,8 @@ typedef struct{
 	uint8_t     Fase;
 	uint16_t Current;
 	uint16_t   Delta;
-	uint16_t   Delta_Fase;
-	uint8_t Num_limitado;
+	uint16_t Delta_fase;
+	uint8_t limite_fase;
 	TickType_t Period;
 
 }carac_charger;

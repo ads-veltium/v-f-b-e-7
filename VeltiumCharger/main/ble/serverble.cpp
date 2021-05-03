@@ -319,9 +319,6 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 
 				uint32_t successCode = 0x00000000;
 				//Empezar el sistema de actualizacion
-				#ifdef USE_
-					if(getfirebaseClientStatus())ConfigFirebase.StopSistem=true;
-				#endif
 				UpdateStatus.DescargandoArchivo=1;
 				if(strstr (signature,"VBLE")){
 					UpdateType= VBLE_UPDATE;

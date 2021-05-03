@@ -107,7 +107,7 @@ void BuscarContador_Task(void *args){
             Serial.println("Nada, seguimos buscando");
             NextOne = true;
         }
-        delay(20);
+        delay(250);
     }
     Coms.ETH.Wifi_Perm = true;
     Cliente.end();
@@ -201,7 +201,8 @@ void initialize_ethernet(void){
     //servidor DHCP
     if(!Coms.ETH.Auto && Params.Tipo_Sensor){
         //si tenemos IP estatica y un medidor conectado, activamos el dhcp
-        Coms.ETH.DHCP = true;
+        //Coms.ETH.DHCP = true;
+        SendToPSOC5(Coms.ETH.DHCP,COMS_CONFIGURATION_ETH_DHCP);
     }
 
     if(Coms.ETH.DHCP){
@@ -216,9 +217,9 @@ void initialize_ethernet(void){
         ESP_ERROR_CHECK(esp_netif_dhcps_stop(eth_netif));
 
         esp_netif_ip_info_t DHCP_Server_IP;
-        IP4_ADDR(&DHCP_Server_IP.ip, 192, 168, 1, 1);
-        IP4_ADDR(&DHCP_Server_IP.gw, 192, 168, 1, 1);
-        IP4_ADDR(&DHCP_Server_IP.netmask, 255, 255, 255, 0);
+        DHCP_Server_IP.ip.addr=Coms.ETH.IP.addr;
+        DHCP_Server_IP.gw.addr=Coms.ETH.Gateway.addr;
+        DHCP_Server_IP.netmask.addr=Coms.ETH.Mask.addr;
         ESP_ERROR_CHECK(esp_netif_set_ip_info(eth_netif, &DHCP_Server_IP)); 
 
         ESP_ERROR_CHECK(esp_netif_dhcps_start(eth_netif));
@@ -230,6 +231,7 @@ void initialize_ethernet(void){
         uint8_t ip_Array[4] = { ip4_addr1(&Coms.ETH.IP),ip4_addr2(&Coms.ETH.IP),ip4_addr3(&Coms.ETH.IP),ip4_addr4(&Coms.ETH.IP)};
         modifyCharacteristic(&ip_Array[0], 4, COMS_CONFIGURATION_LAN_IP);
     }   
+    
     //Si fijamos una IP estatica:
     else if(!Coms.ETH.Auto){
         Serial.println("Arrancando con IP estatica!");
@@ -237,10 +239,9 @@ void initialize_ethernet(void){
         ESP_ERROR_CHECK(esp_netif_dhcpc_stop(eth_netif));
         esp_netif_ip_info_t  info;
         memset(&info, 0, sizeof(info));
-        //info.ip=Coms.ETH.IP;
-        IP4_ADDR(&info.ip, 192, 168, 1, 5);
-	    IP4_ADDR(&info.gw, 192, 168, 1, 1);
-	    IP4_ADDR(&info.netmask, 255, 255, 255, 0);
+        info.ip.addr=Coms.ETH.IP.addr;
+        info.gw.addr=Coms.ETH.Gateway.addr;
+        info.netmask.addr=Coms.ETH.Mask.addr;
 	    ESP_ERROR_CHECK(esp_netif_set_ip_info(eth_netif, &info));  
         esp_eth_set_default_handlers(eth_netif);
         eth_connected = true;

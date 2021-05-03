@@ -29,6 +29,7 @@ void Contador::begin(String Host){
 
 void Contador::end(){
     CounterClient.end();
+    Inicializado = false;
 }
 
 bool Contador::read(){
@@ -57,12 +58,12 @@ void Contador::parse(){
     medida = Measurements["measurements"]["I3"].as<String>();
     ContadorExt.DomesticCurrentC = medida.toFloat() *100;
 
+
     
-    
-    /*medida = Measurements["measurements"]["U1"].as<String>();
+    medida = Measurements["measurements"]["U1"].as<String>();
     Status.Measures.instant_voltage = medida.toFloat() *100;
     Serial.println(Status.Measures.instant_voltage);
-    medida = Measurements["measurements"]["P1"].as<String>();
+    /*medida = Measurements["measurements"]["P1"].as<String>();
     Status.Measures.active_power = medida.toFloat() *100;
 
     medida = Measurements["measurements"]["U2"].as<String>();

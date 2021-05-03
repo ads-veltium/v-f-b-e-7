@@ -224,7 +224,7 @@ bool ReadFirebaseGroups(String Path){
       ChargingGroup.DeleteOrder =  Lectura["delete"] == true;
 
       ChargingGroup.Params.potencia_max = 16;
-      ChargingGroup.Params.inst_max     = 13;
+      ChargingGroup.Params.inst_max     = 32;
 
       buffer[0] = ChargingGroup.Params.GroupMaster;
       buffer[2] = ChargingGroup.Params.inst_max;
@@ -232,7 +232,8 @@ bool ReadFirebaseGroups(String Path){
       buffer[4] = ChargingGroup.Params.ContractPower;
       buffer[5] = ChargingGroup.Params.UserID;
       buffer[6] = ChargingGroup.Params.potencia_max;
-
+      
+      ChargingGroup.SendNewParams = true;
       SendToPSOC5((char*)buffer,7,GROUPS_PARAMS);
 
       delay(250);
@@ -531,7 +532,7 @@ void Firebase_Conn_Task(void *args){
       delete Database;
       Database = new Real_Time_Database();
 
-      if(ConfigFirebase.InternetConection && !ConfigFirebase.StopSistem){
+      if(ConfigFirebase.InternetConection){
         Error_Count=0;
         Base_Path="prod/devices/";
         ConnectionState=CONNECTING;
@@ -564,7 +565,7 @@ void Firebase_Conn_Task(void *args){
     
       //No connection == Disconnect
       //Error_count > 10 == Disconnect
-      if(!ConfigFirebase.InternetConection || Error_Count>10 || ConfigFirebase.StopSistem){
+      if(!ConfigFirebase.InternetConection || Error_Count>10){
         ConnectionState=DISCONNECTING;
         break;
       }
@@ -605,7 +606,7 @@ void Firebase_Conn_Task(void *args){
 
       //Comprobar actualizaciones automaticas
       if(++UpdateCheckTimeout>8575){ // Unas 12 horas
-        if(!memcmp(Status.HPT_status, "A1",2) || !memcmp(Status.HPT_status, "0V",2) ){
+        if(!memcmp(Status.HPT_status, "A1",2) || !memcmp(Status.HPT_status, "0V",2)){
           UpdateCheckTimeout=0;
           if(!memcmp(Params.Fw_Update_mode, "AA",2)){
             Serial.println("Comprobando firmware nuevo");
@@ -774,7 +775,10 @@ void Firebase_Conn_Task(void *args){
       LastStatus= ConnectionState;
     }
     
-    vTaskDelay(pdMS_TO_TICKS(ConfigFirebase.ClientConnected ? 500:5000));
+    if(ConnectionState!=DISCONNECTING){
+      delay(ConfigFirebase.ClientConnected ? 500:5000);
+    }
+
     //chivatos de la ram
     if(ESP.getFreePsram() < 3800000 || ESP.getFreeHeap() < 20000){
         Serial.println(ESP.getFreePsram());
