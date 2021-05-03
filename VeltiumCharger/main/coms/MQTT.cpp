@@ -50,48 +50,6 @@ void start_MQTT_server();
 void start_MQTT_client(IPAddress remoteIP);
 
 
-// Wildcard(#/+) support version
-int _mg_strcmp(const struct mg_str str1, const struct mg_str str2) {
-	size_t i1 = 0;
-	size_t i2 = 0;
-	while (i1 < str1.len && i2 < str2.len) {
-		int c1 = str1.ptr[i1];
-		int c2 = str2.ptr[i2];
-		////ESP_LOGE(pcTaskGetTaskName(NULL), "c1=%c c2=%c\n",c1, c2);
-
-		// str2=[/hoge/#]
-		if (c2 == '#') return 0;
-
-		// str2=[/hoge/+/123]
-		// Search next slash
-		if (c2 == '+') {
-			// str1=[/hoge//123]
-			// str2=[/hoge/+/123]
-			if (c1 == '/') {
-				i2++;
-			// str1=[/hoge/123/123]
-			// str2=[/hoge/+/123]
-			} else {
-				for (i1=i1;i1+1<str1.len;i1++) {
-					int c3 = str1.ptr[i1+1];
-					////ESP_LOGE(pcTaskGetTaskName(NULL), "i1=%ld c3=%c\n", i1, c3);
-					if (c3 == '/') break;
-				}
-				i1++;
-				i2++;
-			}
-		} else {
-			if (c1 < c2) return -1;
-			if (c1 > c2) return 1;
-			i1++;
-			i2++;
-		}
-	}
-	if (i1 < str1.len) return 1;
-	if (i2 < str2.len) return -1;
-	return 0;
-}
-
 // Event handler function
 static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) { 
 
@@ -136,7 +94,7 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
 	  }
 	  case MQTT_CMD_PUBLISH: {
 		for (struct sub *sub = s_subs; sub != NULL; sub = sub->next) {
-		  if (_mg_strcmp(mm->topic, sub->topic) != 0) continue;
+		  if (strcmp(mm->topic.ptr, sub->topic.ptr) != 0) continue;
 		  mg_mqtt_pub(sub->c, &mm->topic, &mm->data);
 		}
 	  }
@@ -526,7 +484,6 @@ void Publisher(void* args){
             paso=1;
             printf("Paso %i :%i\n", paso, esp_get_free_internal_heap_size());
 
-
             cJSON *Datos_Json;
 	        Datos_Json = cJSON_CreateObject();
 
@@ -543,25 +500,25 @@ void Publisher(void* args){
             cJSON_AddNumberToObject(Datos_Json, "limite_fase",Status.limite_Fase);
 
             paso=2;
-            printf("Paso %i :%i\n", paso, esp_get_free_internal_heap_size());
-
+            printf("Paso %i :%i\n", paso, esp_get_free_internal_heap_size()); //-640
             char *my_json_string = cJSON_Print(Datos_Json);   
 
             paso=3;
-            printf("Paso %i :%i\n", paso, esp_get_free_internal_heap_size());     
+            printf("Paso %i :%i\n", paso, esp_get_free_internal_heap_size());  //   -124
             
             cJSON_Delete(Datos_Json);
 
 
             paso=4;
-            printf("Paso %i :%i\n", paso, esp_get_free_internal_heap_size());
+            printf("Paso %i :%i\n", paso, esp_get_free_internal_heap_size()); //+644
 
             mqtt_publish("Data", my_json_string);
+            free(my_json_string);
             ChargingGroup.SendNewData = false;
 
 
             paso=5;
-            printf("Paso %i :%i\n", paso, esp_get_free_internal_heap_size());
+            printf("Paso %i :%i\n", paso, esp_get_free_internal_heap_size()); //-532
         }
         
         //Enviar nuevos parametros para el grupo
@@ -639,6 +596,7 @@ void Publisher(void* args){
                         cJSON_Delete(Datos_Json);
             
                         mqtt_publish("Data", my_json_string);
+                        free(my_json_string);
                         paso=4;
                         printf("Paso %i :%i\n", paso, esp_get_free_internal_heap_size());
                     }
