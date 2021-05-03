@@ -131,21 +131,17 @@ bool WriteFirebaseParams(String Path){
 
 bool WriteFirebaseComs(String Path){
 
-  Serial.println("Write Coms CALLED");
   Escritura.clear();
-
-
-      Escritura["wifi/on"]    = Coms.Wifi.ON;
-      Escritura["wifi/ssid"]    = Coms.Wifi.AP;
-      Escritura["eth/on"]    = Coms.ETH.ON;
+      Escritura["wifi/on"]     = Coms.Wifi.ON;
+      Escritura["wifi/ssid"]   = Coms.Wifi.AP;
+      Escritura["eth/on"]      = Coms.ETH.ON;
       Escritura["eth/auto"]    = Coms.ETH.Auto;
 
     if(Coms.ETH.Auto){
-      Escritura["eth/ip1"]      = ip4addr_ntoa(&Coms.ETH.IP);
+      Escritura["eth/ip"]      = ip4addr_ntoa(&Coms.ETH.IP);
       Escritura["eth/gateway"]  = ip4addr_ntoa(&Coms.ETH.Gateway);
       Escritura["eth/mask"]     = ip4addr_ntoa(&Coms.ETH.Mask);
     }
-
 
   #ifdef USE_GSM
     Comms_Json.set("modem/apn",Coms.GSM.APN);
@@ -153,7 +149,6 @@ bool WriteFirebaseComs(String Path){
   #endif
   
   if(Database->Send_Command(Path,&Escritura,UPDATE)){     
-    //Write readed Timestamp
     if(Database->Send_Command(Path+"/ts_dev_ack",&Escritura,TIMESTAMP)){
       return true;
     }
@@ -622,6 +617,7 @@ void Firebase_Conn_Task(void *args){
         xStarted = xTaskGetTickCount();
         Serial.println("User connected!");
         ConnectionState = WRITTING_STATUS;
+        NextState = WRITTING_COMS;
         break;
       }
  

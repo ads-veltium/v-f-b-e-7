@@ -218,12 +218,10 @@ void controlTask(void *arg)
 					    if(serverbleGetConnected()){
 							Iface_Con = BLE;
 
-							if(AuthTimer!=0){
-								TickType_t Transcurrido = AuthTimer -xTaskGetTickCount();
-								if(Transcurrido >5000){
-									printf("Auth request fallada, me desconecto!!\n");
-									AuthTimer=0;
-								}
+							TickType_t Transcurrido = pdTICKS_TO_MS(xTaskGetTickCount()-AuthTimer);
+							if(Transcurrido > 5000 && !authSuccess && AuthTimer !=0){
+								printf("Auth request fallada, me desconecto!!\n");
+								AuthTimer=0;
 							}
 
 						}

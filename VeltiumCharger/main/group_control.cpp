@@ -65,7 +65,7 @@ void New_Data(const char* Data, int Data_size){
 
     cJSON_Delete(mensaje_Json);
 
-    //si no es un equipo trifásico:
+    //si no somos un equipo trifásico:
     if(!Status.Trifasico){
       //Comprobar que está en nuestra misma fase
       if(Params.Fase == Cargador.Fase){             
@@ -83,6 +83,7 @@ void New_Data(const char* Data, int Data_size){
         }
       }
     }
+    
     //Actualizacion del grupo total
     //Buscar el equipo en el grupo total
     uint8_t index = check_in_group(Cargador.name,&ChargingGroup.group_chargers);                  
