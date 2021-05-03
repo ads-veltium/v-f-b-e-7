@@ -10,6 +10,7 @@ static StackType_t xBLEStack[4096*2] EXT_RAM_ATTR;
 //Update sistem files
 File UpdateFile;
 uint8_t UpdateType=0;
+uint16_t Conn_Handle =0;
 
 extern carac_Update_Status 			UpdateStatus;
 extern carac_Firebase_Configuration ConfigFirebase;
@@ -33,6 +34,7 @@ void milestone(const char* mname)
 BLEServer *pServer = (BLEServer*) ps_malloc(sizeof(BLEServer));
 bool deviceBleConnected = false;
 bool oldDeviceBleConnected = false;
+bool deviceBleDisconnect = false;
 
 uint8_t txValue = 0;
 
@@ -154,7 +156,7 @@ bool serverbleGetConnected(void)
 
 class serverCallbacks: public BLEServerCallbacks 
 {
-	void onConnect(BLEServer* pServer) 
+	void onConnect(BLEServer* pServer, ble_gap_conn_desc *desc) 
 	{
 		deviceBleConnected = true;
 		deviceConnectInd();
@@ -167,7 +169,8 @@ class serverCallbacks: public BLEServerCallbacks
 		buffer_tx[5] = ESTADO_NORMAL;
 		controlSendToSerialLocal(buffer_tx, 6);
 
-		pserver->
+		
+		Conn_Handle = desc->conn_handle;
 
 	};
 
@@ -182,6 +185,9 @@ class serverCallbacks: public BLEServerCallbacks
 		buffer_tx[4] = deviceBleConnected;
 		buffer_tx[5] = ESTADO_NORMAL;
 		controlSendToSerialLocal(buffer_tx, 6);
+
+		Conn_Handle=0;
+		deviceBleDisconnect = false;
 	}
 };
 
@@ -643,6 +649,10 @@ void serverbleTask(void *arg)
 			printf(" connecting \r\n");
 			// do stuff here on connecting
 			oldDeviceBleConnected = deviceBleConnected;
+		}
+
+		if(deviceBleConnected && deviceBleDisconnect){
+			pServer->disconnect(Conn_Handle);
 		}
 		vTaskDelay(pdMS_TO_TICKS(250));	
 	}

@@ -81,7 +81,7 @@ uint8 PSOC5_version_firmware[11] ;
 uint8 systemStarted = 0;
 uint8 Record_Num =4;
 int TimeoutMainDisconnect = 0;
-
+extern bool deviceBleDisconnect;
 void startSystem(void);
 
 void StackEventHandler( uint32 eventCode, void *eventParam );
@@ -222,6 +222,7 @@ void controlTask(void *arg)
 							if(Transcurrido > 5000 && !authSuccess && AuthTimer !=0){
 								printf("Auth request fallada, me desconecto!!\n");
 								AuthTimer=0;
+								deviceBleDisconnect = true;
 							}
 
 						}
