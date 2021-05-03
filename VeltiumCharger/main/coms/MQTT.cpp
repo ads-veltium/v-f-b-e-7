@@ -94,6 +94,8 @@ int _mg_strcmp(const struct mg_str str1, const struct mg_str str2) {
 
 // Event handler function
 static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) { 
+
+  printf("Paso 0 :%i\n", esp_get_free_internal_heap_size());
   if (ev == MG_EV_MQTT_CMD) {
 	struct mg_mqtt_message *mm = (struct mg_mqtt_message *) ev_data;
 	switch (mm->cmd) {
@@ -151,8 +153,10 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
 		printf("Borrando de la lista de subscripcion %s\n", sub->topic.ptr);
 		LIST_DELETE(struct sub, &s_subs, sub);
 		free(sub);
+        printf("Free mem %i\n", esp_get_free_internal_heap_size() );
 	}		
   }
+  printf("Paso 100 :%i\n", esp_get_free_internal_heap_size());
 }
 
 void mqtt_server(void *pvParameters){
@@ -516,8 +520,13 @@ void Publisher(void* args){
     TickType_t xStart = xTaskGetTickCount();
 
     while(1){
+        uint8_t paso=0;
         //Enviar nuestros datos de carga al grupo
         if(ChargingGroup.SendNewData){   
+            paso=1;
+            printf("Paso %i :%i\n", paso, esp_get_free_internal_heap_size());
+
+
             cJSON *Datos_Json;
 	        Datos_Json = cJSON_CreateObject();
 
@@ -533,11 +542,26 @@ void Publisher(void* args){
             cJSON_AddStringToObject(Datos_Json, "HPT", Status.HPT_status);
             cJSON_AddNumberToObject(Datos_Json, "limite_fase",Status.limite_Fase);
 
-            char *my_json_string = cJSON_Print(Datos_Json);                
-            cJSON_Delete(Datos_Json);
+            paso=2;
+            printf("Paso %i :%i\n", paso, esp_get_free_internal_heap_size());
+
+            char *my_json_string = cJSON_Print(Datos_Json);   
+
+            paso=3;
+            printf("Paso %i :%i\n", paso, esp_get_free_internal_heap_size());     
             
+            cJSON_Delete(Datos_Json);
+
+
+            paso=4;
+            printf("Paso %i :%i\n", paso, esp_get_free_internal_heap_size());
+
             mqtt_publish("Data", my_json_string);
             ChargingGroup.SendNewData = false;
+
+
+            paso=5;
+            printf("Paso %i :%i\n", paso, esp_get_free_internal_heap_size());
         }
         
         //Enviar nuevos parametros para el grupo
@@ -599,6 +623,8 @@ void Publisher(void* args){
                 //si un equipo lleva muchisimo sin contestar, lo damos por muerto y reseteamos sus valores
                 if(ChargingGroup.group_chargers.charger_table[i].Period >=60000 && ChargingGroup.group_chargers.charger_table[i].Period <=65000){
                     if(memcmp(ChargingGroup.group_chargers.charger_table[i].name, ConfigFirebase.Device_Id,8)){
+                        paso=3;
+                        printf("Paso %i :%i\n", paso, esp_get_free_internal_heap_size());
                         cJSON *Datos_Json;
 	                    Datos_Json = cJSON_CreateObject();
 
@@ -613,6 +639,8 @@ void Publisher(void* args){
                         cJSON_Delete(Datos_Json);
             
                         mqtt_publish("Data", my_json_string);
+                        paso=4;
+                        printf("Paso %i :%i\n", paso, esp_get_free_internal_heap_size());
                     }
                 }
             }
