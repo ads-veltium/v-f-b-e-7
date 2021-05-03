@@ -42,7 +42,7 @@ uint8_t Pc_Fase;
 
 void Calculo_Consigna();
 void input_values();
-void Ping_Req(char* Data){
+void Ping_Req(const char* Data){
   int n=check_in_group(Data,&ChargingGroup.group_chargers);
   if(n!=255){
     ChargingGroup.group_chargers.charger_table[n].Period =0;
@@ -50,7 +50,7 @@ void Ping_Req(char* Data){
 }
 
 //Funcion para procesar los nuevos datos recibidos
-void New_Data(char* Data, int Data_size){
+void New_Data(const char* Data, int Data_size){
 
     cJSON *mensaje_Json = cJSON_Parse(Data);
     carac_charger Cargador;
@@ -95,8 +95,7 @@ void New_Data(char* Data, int Data_size){
 }
 
 //Funcion para recibir nuevos parametros de carga para el grupo
-void New_Params(char* Data, int Data_size){
-  printf("New params received %s\n", Data);
+void New_Params(const char* Data, int Data_size){
   uint8_t buffer[7];
   
   buffer[0] = ChargingGroup.Params.GroupMaster;
@@ -106,7 +105,7 @@ void New_Params(char* Data, int Data_size){
   delay(50);
 }
 
-void New_Control(char* Data, int Data_size){
+void New_Control(const char* Data, int Data_size){
 
   if(!memcmp(Data,"Pause",5)){
     printf("Tengo que pausar el grupo\n");
@@ -135,7 +134,7 @@ void New_Control(char* Data, int Data_size){
 }
 
 //Funcion para recibir un nuevo grupo de cargadores
-void New_Group(char* Data, int Data_size){
+void New_Group(const char* Data, int Data_size){
     char n[2];
     memcpy(n,Data,2);
     uint8_t numero_de_cargadores = atoi(n);

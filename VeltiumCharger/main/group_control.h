@@ -7,13 +7,13 @@ extern "C" {
 #define DELTA_TIMEOUT 20000
 #define MAX_CURRENT 32 
       
-void New_Data(char* Data, int Data_size);
-void New_Params(char* Data, int Data_size);
-void New_Control(char* Data, int Data_size);
-void New_Group(char* Data, int Data_size);
+void New_Data(const char* Data, int Data_size);
+void New_Params(const char* Data, int Data_size);
+void New_Control(const char* Data, int Data_size);
+void New_Group(const char* Data, int Data_size);
 void Calculo_Consigna();
 void input_values();
-void Ping_Req(char* Data);
+void Ping_Req(const char* Data);
 
 /*
 #define IN_Cargando1        1

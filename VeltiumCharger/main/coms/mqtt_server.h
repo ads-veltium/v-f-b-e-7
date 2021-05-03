@@ -8,8 +8,6 @@
 #include "esp_event.h"
 #include "esp_log.h"
 
-#include "mongoose.h"
-
 // A list of client, held in memory
 struct client {
   struct client *next;
