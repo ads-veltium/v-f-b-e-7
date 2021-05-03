@@ -52,8 +52,8 @@ void start_MQTT_client(IPAddress remoteIP);
 
 // Event handler function
 static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) { 
-
-  printf("Paso 0 :%i\n", esp_get_free_internal_heap_size());
+    uint32_t inicial = esp_get_free_internal_heap_size();
+  
   if (ev == MG_EV_MQTT_CMD) {
 	struct mg_mqtt_message *mm = (struct mg_mqtt_message *) ev_data;
 	switch (mm->cmd) {
