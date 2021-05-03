@@ -167,6 +167,8 @@ class serverCallbacks: public BLEServerCallbacks
 		buffer_tx[5] = ESTADO_NORMAL;
 		controlSendToSerialLocal(buffer_tx, 6);
 
+		pserver->
+
 	};
 
 	void onDisconnect(BLEServer* pServer) 
@@ -626,6 +628,7 @@ void serverbleTask(void *arg)
 		if (!deviceBleConnected && oldDeviceBleConnected) {
 			printf(" disconnecting \r\n");
 			pServer->stopAdvertising();
+			
 			while(!pServer->getAdvertising()->isAdvertising()){
 				delay(100);
 				pServer->startAdvertising(); // restart advertising
