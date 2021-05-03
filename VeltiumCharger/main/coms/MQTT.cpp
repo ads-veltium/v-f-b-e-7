@@ -94,8 +94,8 @@ int _mg_strcmp(const struct mg_str str1, const struct mg_str str2) {
 
 // Event handler function
 static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) { 
-
-  printf("Paso 0 :%i\n", esp_get_free_internal_heap_size());
+    uint32_t inicial = esp_get_free_internal_heap_size();
+  
   if (ev == MG_EV_MQTT_CMD) {
 	struct mg_mqtt_message *mm = (struct mg_mqtt_message *) ev_data;
 	switch (mm->cmd) {
@@ -156,7 +156,11 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
         printf("Free mem %i\n", esp_get_free_internal_heap_size() );
 	}		
   }
-  printf("Paso 100 :%i\n", esp_get_free_internal_heap_size());
+  uint32_t final = esp_get_free_internal_heap_size();
+  if(final!= inicial){
+      printf("Paso 100 :%i %i \n", inicial, final);
+  }
+  
 }
 
 void mqtt_server(void *pvParameters){
