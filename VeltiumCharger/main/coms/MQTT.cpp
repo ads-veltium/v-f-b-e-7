@@ -110,10 +110,12 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
 	for (struct sub *next, *sub = s_subs; sub != NULL; sub = next) {
 		next = sub->next;
 		if (c != sub->c) continue;
-		printf("Borrando de la lista de subscripcion %s\n", sub->topic.ptr);
 		LIST_DELETE(struct sub, &s_subs, sub);
 		free(sub);
+        #ifdef DEBUG_GROUPS
+        printf("Borrando de la lista de subscripcion %s\n", sub->topic.ptr);
         printf("Free mem %i\n", esp_get_free_internal_heap_size() );
+        #endif
 	}		
   }
   else if(ev== MG_EV_MQTT_MSG){
@@ -326,7 +328,6 @@ bool remove_from_group(const char* ID ,carac_chargers* group){
             group->charger_table[group->size-1].IP = INADDR_NONE;       
             memset(group->charger_table[group->size-1].name,0,9);
             --group->size;
-            printf("Cargador %s eliminado\n", ID);
             return true;
         }
     }
@@ -424,7 +425,9 @@ void start_udp(){
                 //Si el cargador está en el grupo de carga, le decimos que es un esclavo
                 if(ChargingGroup.Params.GroupMaster && ChargingGroup.Conected){
                     if(check_in_group(Desencriptado.c_str(), &ChargingGroup.group_chargers)!=255){
+                        #ifdef DEBUG_GROUPS
                         Serial.printf("El cargador VCD%s está en el grupo de carga\n", Desencriptado.c_str());  
+                        #endif
                         AsyncUDPMessage mensaje (13);
                         mensaje.write((uint8_t*)(Encipher("Start client").c_str()), 13);
                         udp.sendTo(mensaje,packet.remoteIP(),1234);
@@ -432,14 +435,18 @@ void start_udp(){
                 }
           
                 if(check_in_group(Desencriptado.c_str(), &net_group)==255){
+                    #ifdef DEBUG_GROUPS
                     Serial.printf("El cargador VCD%s con ip %s se ha añadido a la lista de red\n", Desencriptado.c_str(), packet.remoteIP().toString().c_str());  
+                    #endif
                     add_to_group(Desencriptado.c_str(), packet.remoteIP(), &net_group);
                 } 
             }
             else{
                 if(!memcmp(Desencriptado.c_str(), "Start client", 13)){
                     if(!ChargingGroup.Conected && !ChargingGroup.StartClient){
+                        #ifdef DEBUG_GROUPS
                         printf("Soy parte de un grupo !!\n");
+                        #endif
                         StopMQTT = false;
                         ChargingGroup.StartClient = true;
                         ChargingGroup.Params.GroupMaster = false;
@@ -475,24 +482,20 @@ void MasterPanicTask(void *args){
     uint8 reintentos = 1;
     ChargingGroup.StartClient = false;
     int delai = 30000;
+    Serial.println("Necesitamos un nuevo maestro!");
     while(!ChargingGroup.Conected){
         if(pdTICKS_TO_MS(xTaskGetTickCount() - xStart) > delai){ //si pasan 30 segundos, elegir un nuevo maestro
-            delai=15000;
-            Serial.println("Necesitamos un nuevo maestro!");
+            delai=15000;           
 
             if(!memcmp(ChargingGroup.group_chargers.charger_table[reintentos].name,ConfigFirebase.Device_Id,8)){
-                Serial.println("Soy el nuevo maestro!!");
                 ChargingGroup.Params.GroupActive = true;
                 break;
             }
             else{
                 //Ultima opcion, mirar si yo era el maestro
                 if(!memcmp(ChargingGroup.group_chargers.charger_table[0].name,ConfigFirebase.Device_Id,8)){
-                    Serial.println("Soy el nuevo maestro!!");
                     ChargingGroup.Params.GroupActive = true;
-                    break;
                 }
-                Serial.println("No soy el nuevo maestro, alguien se pondrá :)");
                 xStart = xTaskGetTickCount();
                 reintentos++;
                 if(reintentos == ChargingGroup.group_chargers.size){
@@ -552,7 +555,6 @@ void Publisher(void* args){
         //Enviar nuevos parametros para el grupo
         if( ChargingGroup.SendNewParams){
             buffer[0] = '1';
-            
             memcpy(&buffer[1], &ChargingGroup.Params,7);
             mqtt_publish("RTS", buffer,8,3);
             ChargingGroup.SendNewParams = false;
@@ -644,28 +646,29 @@ void Publisher(void* args){
 
         //Si se pausa el grupo, avisar al resto y pausar todo
         if(!ChargingGroup.Params.GroupActive){
-            if(!ChargingGroup.Conected || StopMQTT){
-                vTaskDelete(NULL);
+            if(!ChargingGroup.Conected){
+                break;
             }
-
             buffer[0] = '2';
             memcpy(&buffer[1],"Pause",6);
             mqtt_publish("RTS", buffer,7,3);
+            stop_MQTT();
         }
 
         //Si llega la orden de borrar, debemos eliminar el grupo de la memoria
         if(ChargingGroup.DeleteOrder){
-            if(!ChargingGroup.Conected || StopMQTT){
-                vTaskDelete(NULL);
+            if(!ChargingGroup.Conected){
+                break;
             }
-
             buffer[0] = '2';
             memcpy(&buffer[1],"Delete",6);
             mqtt_publish("RTS", buffer,7,3);
+            stop_MQTT();
         }
         
         delay(2000);        
     }
+    StopMQTT = false;
     vTaskDelete(NULL);
 }
 

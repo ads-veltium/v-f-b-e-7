@@ -101,8 +101,8 @@ void New_Params(const char* Data, int Data_size){
   uint8_t buffer[7];
   
   buffer[0] = ChargingGroup.Params.GroupMaster;
-  buffer[1] = ChargingGroup.Params.GroupActive;
-  memcpy(&buffer[2],&Data[2],5);
+  //buffer[1] = ChargingGroup.Params.GroupActive;
+  memcpy(&buffer[1],&Data[1],6);
   SendToPSOC5((char*)buffer,7,GROUPS_PARAMS); 
   delay(50);
 }
