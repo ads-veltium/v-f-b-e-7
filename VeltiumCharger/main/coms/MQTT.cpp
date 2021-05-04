@@ -485,7 +485,7 @@ void MasterPanicTask(void *args){
     Serial.println("Necesitamos un nuevo maestro!");
     while(!ChargingGroup.Conected){
         if(pdTICKS_TO_MS(xTaskGetTickCount() - xStart) > delai){ //si pasan 30 segundos, elegir un nuevo maestro
-            delai=15000;           
+            delai=10000;           
 
             if(!memcmp(ChargingGroup.group_chargers.charger_table[reintentos].name,ConfigFirebase.Device_Id,8)){
                 ChargingGroup.Params.GroupActive = true;
@@ -652,7 +652,14 @@ void Publisher(void* args){
             buffer[0] = '2';
             memcpy(&buffer[1],"Pause",6);
             mqtt_publish("RTS", buffer,7,3);
+
+            delay(250);
+            printf("Tengo que pausar el grupo\n");
             stop_MQTT();
+
+            char buffer[7];
+            memcpy(&buffer,&ChargingGroup.Params,7);
+            SendToPSOC5((char*)buffer,7,GROUPS_PARAMS); 
         }
 
         //Si llega la orden de borrar, debemos eliminar el grupo de la memoria
@@ -663,7 +670,6 @@ void Publisher(void* args){
             buffer[0] = '2';
             memcpy(&buffer[1],"Delete",6);
             mqtt_publish("RTS", buffer,7,3);
-            stop_MQTT();
         }
         
         delay(2000);        

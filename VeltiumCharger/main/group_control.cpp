@@ -119,7 +119,6 @@ void New_Control(const char* Data, int Data_size){
     memcpy(&buffer,&ChargingGroup.Params,7);
     SendToPSOC5((char*)buffer,7,GROUPS_PARAMS); 
 
-        
   }
   else if(!memcmp(Data,"Delete",6)){
     printf("Tengo que borrar el grupo\n");
