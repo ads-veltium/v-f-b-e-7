@@ -40,7 +40,7 @@ uint16  ParseFirmwareVersion(String Texto);
 
 
 class Real_Time_Database{
-    String RTDB_url, Read_url, Write_url, Base_Path;
+    String RTDB_url, Read_url, GROUPS_url,Write_url, Base_Path;
     esp_http_client_handle_t RTDB_client, *Auth_client; 
     
 
@@ -67,8 +67,8 @@ class Real_Time_Database{
     bool checkPermisions(void);
 
     //Database functions
-    bool Send_Command(String path, JsonDocument *doc, uint8_t Command);
-    long long  Get_Timestamp(String path,JsonDocument *response);
+    bool Send_Command(String path, JsonDocument *doc, uint8_t Command, bool groups=false);
+    long long  Get_Timestamp(String path,JsonDocument *response,bool groups = false);
     void begin(String Host, String DatabaseID);
     void reload();
     void end();

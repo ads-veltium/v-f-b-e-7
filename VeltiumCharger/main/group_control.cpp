@@ -83,7 +83,7 @@ void New_Data(const char* Data, int Data_size){
         }
       }
     }
-    
+
     //Actualizacion del grupo total
     //Buscar el equipo en el grupo total
     uint8_t index = check_in_group(Cargador.name,&ChargingGroup.group_chargers);                  
@@ -465,7 +465,7 @@ if (is_active_c3_Charger == 0) {
   printf("Inst max = %i \n", ChargingGroup.Params.inst_max);
 #endif
   if(desired_current!=Comands.desired_current &&  !memcmp(Status.HPT_status,"C2",2)){
-      SendToPSOC5(desired_current,MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
+      //SendToPSOC5(desired_current,MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
   }
 }
 

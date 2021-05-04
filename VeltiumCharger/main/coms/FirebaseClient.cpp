@@ -208,32 +208,36 @@ bool WriteFirebasegroups(String Path){
 ***************************************************/
 bool ReadFirebaseGroups(String Path){
 
-  long long ts_app_req=Database->Get_Timestamp(Path+"/ts_app_req",&Lectura);
+  long long ts_app_req=Database->Get_Timestamp(Path+"/ts_app_req",&Lectura, true);
   if(ts_app_req > ChargingGroup.last_ts_app_req){
     Lectura.clear();
-    if(Database->Send_Command(Path,&Lectura, LEER)){
+    //Leer los parametros del grupo
+    if(Database->Send_Command(Path+"/params",&Lectura, LEER, true)){
       ChargingGroup.last_ts_app_req=ts_app_req;
       
       uint8 buffer[7];
-      buffer[1] =  Lectura["active"] == true;
-      ChargingGroup.DeleteOrder =  Lectura["delete"] == true;
-
-      ChargingGroup.Params.potencia_max = 16;
-      ChargingGroup.Params.inst_max     = 32;
-
       buffer[0] = ChargingGroup.Params.GroupMaster;
-      buffer[2] = ChargingGroup.Params.inst_max;
-      buffer[3] = ChargingGroup.Params.CDP;
-      buffer[4] = ChargingGroup.Params.ContractPower;
+      buffer[1] = Lectura["active"] == true;
+      buffer[2] = Lectura["install_limit"];
+      buffer[3] = Lectura["cdp"];
+      buffer[4] = Lectura["p_con"];
       buffer[5] = ChargingGroup.Params.UserID;
-      buffer[6] = ChargingGroup.Params.potencia_max;
+      buffer[6] = Lectura["p_max"];
       
-      ChargingGroup.SendNewParams = true;
       SendToPSOC5((char*)buffer,7,GROUPS_PARAMS);
-
       delay(250);
+      ChargingGroup.SendNewParams = true;
 
       if(ChargingGroup.Params.GroupActive){
+
+        uint8_t size = Lectura["num_equip"];
+        //Leer los equipos del grupo
+        Lectura.clear();
+        if(Database->Send_Command(Path+"/devices",&Lectura, LEER, true)){ 
+          Lectura.getElement(0);
+          serializeJson(Lectura,Serial);
+        }
+
          //QUITAR!!!!!!!!!!!!!!!!!
         memcpy(ChargingGroup.group_chargers.charger_table[0].name, "31B70630",8);
         memcpy(ChargingGroup.group_chargers.charger_table[1].name, "626965F5",8);  
@@ -722,7 +726,7 @@ void Firebase_Conn_Task(void *args){
       break;
 
     case READING_GROUP:
-      Error_Count+=!ReadFirebaseGroups("/group");
+      Error_Count+=!ReadFirebaseGroups("/groups/123456789");
       ConnectionState=IDLE;
       NextState=WRITTING_STATUS;
       break;
@@ -767,7 +771,7 @@ void Firebase_Conn_Task(void *args){
       break;
     }
     if(LastStatus!= ConnectionState){
-      //Serial.printf("Maquina de estados de Firebase de % i a %i \n", LastStatus, ConnectionState);
+      Serial.printf("Maquina de estados de Firebase de % i a %i \n", LastStatus, ConnectionState);
       LastStatus= ConnectionState;
     }
     

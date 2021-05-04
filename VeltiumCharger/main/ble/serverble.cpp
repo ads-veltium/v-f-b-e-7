@@ -221,8 +221,9 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 			// size of payload to be written to omnibus characteristic
 			uint8_t  pldsize = rcs_get_size(selector);
 
+			#ifdef DEBUG_BLE
 			Serial.printf("Received write request for selector %u\n", selector);
-
+			#endif
 			// prepare packet to be written to characteristic:
 			// header with 2 bytes selector little endian, 2 bytes payload size little endian
 			// afterwards, the payload with the actual data
@@ -281,9 +282,10 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 
 			uint8_t* payload = data + 4;
 
+			#ifdef DEBUG_BLE
 			Serial.printf("Received omnibus write request for selector %u\n", selector);
 			Serial.printf("Received omnibus write request for handle   %u\n", handle);
-			
+			#endif
 
 			// special cases
 			if (handle == AUTENTICACION_TOKEN_CHAR_HANDLE) {
@@ -319,11 +321,10 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 				uint32_t fileSize;
 				memcpy(&fileSize, &payload[10], sizeof(fileSize));
 
-				/*uint16_t partCount;
-				memcpy(&partCount, &payload[14], sizeof(partCount));*/
-
+				#ifdef DEBUG_BLE
 				Serial.printf("Received FwUpdate Prolog\n");
 				Serial.printf("Firmware file with signature %s has %u bytes\n", signature, fileSize);
+				#endif
 
 				uint32_t successCode = 0x00000000;
 				//Empezar el sistema de actualizacion
@@ -374,15 +375,15 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 			}
 			if (handle == FWUPDATE_BIRD_EPILOG_PSEUDO_CHAR_HANDLE) {
 				// epilog
-				Serial.printf("Received FwUpdate Epilog\n");
-				//for (int i = 0; i < size; i++) Serial.printf("%02X ", payload[i]);
-				//Serial.printf("\n");
+				
 
 				uint32_t fullCRC32;
 				memcpy(&fullCRC32, &payload[0], 4);
 
+				#ifdef DEBUG_BLE
 				Serial.printf("Firmware file has global crc32 %08X\n", fullCRC32);
-
+				Serial.printf("Received FwUpdate Epilog\n");
+				#endif
 				// notify success (0x00000000)
 				uint32_t successCode = 0x00000000;
 				serverbleNotCharacteristic((uint8_t*)&successCode, sizeof(successCode), FWUPDATE_BIRD_DATA_PSEUDO_CHAR_HANDLE);
@@ -551,24 +552,32 @@ void changeAdvName( uint8_t * name ){
 
 void serverbleInit() {
 
+	#ifdef DEBUG_BLE
 	Serial.printf("sizeof(BLEService): %d, NUM: %d, total:%d\n", sizeof(BLEService), NUMBER_OF_SERVICES, sizeof(BLEService) * NUMBER_OF_SERVICES);
 	Serial.printf("sizeof(BLECharacteristic): %d, NUM: %d, total:%d\n", sizeof(BLECharacteristic), NUMBER_OF_CHARACTERISTICS, sizeof(BLECharacteristic) * NUMBER_OF_CHARACTERISTICS);
 	Serial.printf("sizeof(BLE_FIELD): %d, NUM: %d, total:%d\n", sizeof(BLEService), MAX_BLE_FIELDS, sizeof(BLEService) * MAX_BLE_FIELDS);
 
 	milestone("at the beginning of serverbleInit");
 
+	#endif
 	// Create the BLE Device
 	BLEDevice::init("VCD1701XXXX");
 
+	#ifdef DEBUG_BLE
 	milestone("after creating BLEDevice");
-
+	#endif
 	// Create the BLE Server
 	pServer = BLEDevice::createServer();
+
+	#ifdef DEBUG_BLE
 	milestone("after BLEDevice::createServer");
+	#endif
 
 	pServer->setCallbacks(new serverCallbacks());
-	milestone("after creating and setting serverCallbacks");
 
+	#ifdef DEBUG_BLE
+	milestone("after creating and setting serverCallbacks");
+	#endif
 
 	int indexService = 0;
 	int indexCharacteristic = 0;
@@ -593,7 +602,9 @@ void serverbleInit() {
 		}
 	}
 
+	#ifdef DEBUG_BLE
 	milestone("after creating services and characteristics");
+	#endif 
 
 	// Start the service
 	for ( i = 0; i < NUMBER_OF_SERVICES; i++ )
@@ -601,19 +612,23 @@ void serverbleInit() {
 		pbleServices[i]->start();
 	}
 
+	#ifdef DEBUG_BLE
 	milestone("after starting services");
+	#endif
 
 	// Setup advertising
 	pServer->getAdvertising()->addServiceUUID(BLEUUID((uint16_t)0xCD01));
 
+	#ifdef DEBUG_BLE
 	milestone("after starting advertising");
-
 	printf("Waiting a client connection to notify...\r\n");
+	#endif
 
 	xTaskCreateStatic(serverbleTask,"TASK BLE",4096*2,NULL,PRIORIDAD_BLE,xBLEStack,&xBLEBuffer); 
 
+	#ifdef DEBUG_BLE
 	milestone("after creating serverbleTask");
-
+	#endif
 }
 
 void serverbleStartAdvertising(void)

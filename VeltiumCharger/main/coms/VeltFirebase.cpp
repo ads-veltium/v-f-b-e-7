@@ -7,6 +7,7 @@ int  Readed = 0;
 char *TotalResponse = new char[1500];
 
 esp_err_t _http_event_handle(esp_http_client_event_t *evt){
+
     char *Respuesta = new char[512];
     switch(evt->event_id) {
         case HTTP_EVENT_ERROR:
@@ -114,7 +115,7 @@ void Real_Time_Database::endAuth(void){
 }
 
 bool Real_Time_Database::checkPermisions(void){
-    char Respuesta[1024]= {"0"};
+    
     uint8 Timeout = 0;
     DynamicJsonDocument Response(1024);
 
@@ -147,6 +148,10 @@ bool Real_Time_Database::checkPermisions(void){
 void Real_Time_Database::begin(String Host, String DatabaseID){
     RTDB_url="https://";
     RTDB_url+=Host+("prod/devices/"+DatabaseID);
+
+    GROUPS_url = "https://";
+    GROUPS_url+=Host+("groups/");
+
     Base_Path="https://";
     Base_Path+=Host;
 
@@ -184,10 +189,15 @@ void Real_Time_Database::reload (){
     esp_http_client_set_header(RTDB_client,"Content-Type", "application/json");
 }
 
-bool Real_Time_Database::Send_Command(String path, JsonDocument *doc, uint8_t Command){   
+bool Real_Time_Database::Send_Command(String path, JsonDocument *doc, uint8_t Command, bool groups){   
     String SerializedData;
     uint8 Timeout = 0;
     Write_url = RTDB_url+path+".json?auth="+idToken;
+
+    if(groups){
+        Write_url = GROUPS_url+path+".json?auth="+idToken;
+    }
+
 
     if(Command < 3){      
         Write_url += +"&timeout=2500ms";           
@@ -255,11 +265,19 @@ bool Real_Time_Database::Send_Command(String path, JsonDocument *doc, uint8_t Co
     return true;
 }
 
-long long  Real_Time_Database::Get_Timestamp(String path, JsonDocument *respuesta){
+long long  Real_Time_Database::Get_Timestamp(String path, JsonDocument *respuesta, bool groups){
     String SerializedData;
     respuesta->clear();
     uint8 Timeout = 0;
-    Write_url = RTDB_url+path+".json?auth="+idToken+"&timeout=2000ms";
+    if(groups){
+        Write_url = GROUPS_url+path+".json?auth="+idToken+"&timeout=2000ms";
+        Serial.println(Write_url);
+    }
+    else{
+        Write_url = RTDB_url+path+".json?auth="+idToken+"&timeout=2000ms";
+    }
+    
+
 
     esp_http_client_set_url(RTDB_client, Write_url.c_str());
     esp_http_client_set_method(RTDB_client, HTTP_METHOD_GET);
@@ -352,6 +370,7 @@ void Cliente_HTTP::begin(){
         .timeout_ms = 5000,
         .event_handler = _generic_http_event_handle,
         .buffer_size_tx = 2048,
+        .is_async = false,
     };
     _client = esp_http_client_init(&config);
     //esp_http_client_set_header(_client,"Content-Type", "application/json");

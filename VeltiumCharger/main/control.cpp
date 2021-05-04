@@ -218,8 +218,8 @@ void controlTask(void *arg)
 					    if(serverbleGetConnected()){
 							Iface_Con = BLE;
 
-							TickType_t Transcurrido = pdTICKS_TO_MS(xTaskGetTickCount()-AuthTimer);
-							if(Transcurrido > 5000 && !authSuccess && AuthTimer !=0){
+							uint32_t Transcurrido = pdTICKS_TO_MS(xTaskGetTickCount()-AuthTimer);
+							if(Transcurrido > 30000 && !authSuccess && AuthTimer !=0){
 								printf("Auth request fallada, me desconecto!!\n");
 								AuthTimer=0;
 								deviceBleDisconnect = true;
@@ -902,8 +902,10 @@ void procesar_bloque(uint16 tipo_bloque){
 			memcpy(&ChargingGroup.Params,buffer_rx_local, 7);
 			Serial.printf("Group active %i \n", ChargingGroup.Params.GroupActive);
 			Serial.printf("Group master %i \n", ChargingGroup.Params.GroupMaster);
-			Serial.printf("Group pot_max %i \n", ChargingGroup.Params.potencia_max);
-		
+			Serial.printf("Group potencia_max %i \n", ChargingGroup.Params.potencia_max);
+			Serial.printf("Group contract power %i \n", ChargingGroup.Params.ContractPower);
+			Serial.printf("Group inst_max %i \n", ChargingGroup.Params.inst_max);
+			Serial.printf("Group CDP %i \n", ChargingGroup.Params.CDP);		
 		}
 		break;
 #endif

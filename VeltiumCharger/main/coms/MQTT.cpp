@@ -22,6 +22,7 @@ TickType_t xStart_Server;
 bool StopMQTT = false;
 uint8_t check_in_group(const char* ID, carac_chargers* group);
 bool add_to_group(const char* ID, IPAddress IP, carac_chargers* group);
+void mqtt_publish(char* Topic, char* Data, size_t data_size, size_t topic_size);
 
 AsyncUDP udp EXT_RAM_ATTR;
 
@@ -52,7 +53,7 @@ void start_MQTT_client(IPAddress remoteIP);
 
 //Event handler del servidor
 static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) { 
-    uint32_t inicial = esp_get_free_internal_heap_size();
+  uint32_t inicial = esp_get_free_internal_heap_size();
   
   if (ev == MG_EV_MQTT_CMD) {
 	struct mg_mqtt_message *mm = (struct mg_mqtt_message *) ev_data;
@@ -97,6 +98,7 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
 		  if (strcmp(mm->topic.ptr, sub->topic.ptr) != 0) continue;
 		  mg_mqtt_pub(sub->c, &mm->topic, &mm->data);
 		}
+        break;
 	  }
 	  case MQTT_CMD_PINGREQ: {
 		mg_mqtt_pong(c); // Send PINGRESP
@@ -120,7 +122,7 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
             New_Data(mm->data.ptr, mm->data.len);
         }
         else if(!memcmp(mm->topic.ptr, "Ping", mm->topic.len)){
-            mqtt_publish("Pong", "ABCD");
+            mqtt_publish("Pong", "ABCD",4,4);
             Ping_Req(mm->data.ptr);
         }
         else if(!memcmp(mm->topic.ptr, "RTS", mm->topic.len)){
@@ -257,10 +259,11 @@ bool mqtt_connect(mqtt_sub_pub_opts *pub_opts){
 	return true;
 }
 
-void mqtt_publish(char* Topic, char* Data){
+void mqtt_publish(char* Topic, char* Data, size_t data_size, size_t topic_size){
 	struct mg_str topic = mg_str(Topic);
 	struct mg_str data = mg_str(Data);
-
+    data.len = data_size;
+    topic.len = topic_size;
     if(!StopMQTT){
         if(ChargingGroup.Params.GroupMaster){
             for (struct sub *sub = s_subs; sub != NULL; sub = sub->next) {
@@ -509,13 +512,10 @@ void Publisher(void* args){
     char buffer[500];
     Params.Fase = 1;
     TickType_t xStart = xTaskGetTickCount();
-
+    uint32_t min = esp_get_free_internal_heap_size();
     while(1){
-        uint8_t paso=0;
         //Enviar nuestros datos de carga al grupo
         if(ChargingGroup.SendNewData){   
-            paso=1;
-            printf("Paso %i :%i\n", paso, esp_get_free_internal_heap_size());
 
             cJSON *Datos_Json;
 	        Datos_Json = cJSON_CreateObject();
@@ -532,26 +532,21 @@ void Publisher(void* args){
             cJSON_AddStringToObject(Datos_Json, "HPT", Status.HPT_status);
             cJSON_AddNumberToObject(Datos_Json, "limite_fase",Status.limite_Fase);
 
-            paso=2;
-            printf("Paso %i :%i\n", paso, esp_get_free_internal_heap_size()); //-640
-            char *my_json_string = cJSON_Print(Datos_Json);   
 
-            paso=3;
-            printf("Paso %i :%i\n", paso, esp_get_free_internal_heap_size());  //   -124
+            char *my_json_string = cJSON_Print(Datos_Json);   
             
             cJSON_Delete(Datos_Json);
 
-
-            paso=4;
-            printf("Paso %i :%i\n", paso, esp_get_free_internal_heap_size()); //+644
-
-            mqtt_publish("Data", my_json_string);
+            mqtt_publish("Data", my_json_string, strlen(my_json_string),5);
             free(my_json_string);
             ChargingGroup.SendNewData = false;
 
+            if(esp_get_free_internal_heap_size() < min){
+                min = esp_get_free_internal_heap_size();
+                printf("Nuevo min! %i\n", min);
+            }
 
-            paso=5;
-            printf("Paso %i :%i\n", paso, esp_get_free_internal_heap_size()); //-532
+            
         }
         
         //Enviar nuevos parametros para el grupo
@@ -559,7 +554,7 @@ void Publisher(void* args){
             buffer[0] = '1';
             
             memcpy(&buffer[1], &ChargingGroup.Params,7);
-            mqtt_publish("RTS", buffer);
+            mqtt_publish("RTS", buffer,8,3);
             ChargingGroup.SendNewParams = false;
         }
 
@@ -577,13 +572,13 @@ void Publisher(void* args){
                 memcpy(&buffer[3+(i*9)],ChargingGroup.group_chargers.charger_table[i].name,8);   
                 itoa(ChargingGroup.group_chargers.charger_table[i].Fase,&buffer[11+(i*9)],10);
             }
-            mqtt_publish("RTS", buffer);
+            mqtt_publish("RTS", buffer, ChargingGroup.group_chargers.size*8+1,3);
             ChargingGroup.SendNewGroup = false;
         }
 
         //Avisar al maestro de que seguimos aqui
         if(!ChargingGroup.Params.GroupMaster){ 
-            mqtt_publish("Ping", ConfigFirebase.Device_Id);
+            mqtt_publish("Ping", ConfigFirebase.Device_Id,12,4);
             delay(500);
             if(ChargingGroup.Params.GroupActive){
                 if(!ChargingGroup.Conected || StopMQTT){
@@ -613,8 +608,7 @@ void Publisher(void* args){
                 //si un equipo lleva muchisimo sin contestar, lo damos por muerto y reseteamos sus valores
                 if(ChargingGroup.group_chargers.charger_table[i].Period >=60000 && ChargingGroup.group_chargers.charger_table[i].Period <=65000){
                     if(memcmp(ChargingGroup.group_chargers.charger_table[i].name, ConfigFirebase.Device_Id,8)){
-                        paso=3;
-                        printf("Paso %i :%i\n", paso, esp_get_free_internal_heap_size());
+
                         cJSON *Datos_Json;
 	                    Datos_Json = cJSON_CreateObject();
 
@@ -628,10 +622,8 @@ void Publisher(void* args){
                         char *my_json_string = cJSON_Print(Datos_Json);                
                         cJSON_Delete(Datos_Json);
             
-                        mqtt_publish("Data", my_json_string);
+                        mqtt_publish("Data", my_json_string,strlen(my_json_string),4);
                         free(my_json_string);
-                        paso=4;
-                        printf("Paso %i :%i\n", paso, esp_get_free_internal_heap_size());
                     }
                 }
             }
@@ -645,7 +637,7 @@ void Publisher(void* args){
 
             buffer[0] = '2';
             memcpy(&buffer[1],"Pause",6);
-            mqtt_publish("RTS", buffer);
+            mqtt_publish("RTS", buffer,7,3);
         }
 
         //Si llega la orden de borrar, debemos eliminar el grupo de la memoria
@@ -656,10 +648,10 @@ void Publisher(void* args){
 
             buffer[0] = '2';
             memcpy(&buffer[1],"Delete",6);
-            mqtt_publish("RTS", buffer);
+            mqtt_publish("RTS", buffer,7,3);
         }
         
-        delay(1000);        
+        delay(2000);        
     }
     vTaskDelete(NULL);
 }

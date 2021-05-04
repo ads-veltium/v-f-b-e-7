@@ -1,6 +1,9 @@
 #ifndef __CONTROL_MAIN
 #define __CONTROL_MAIN
 
+#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+#pragma GCC diagnostic ignored "-Wwrite-strings"
+
 //configuration
 #define USE_COMS
 #define USE_DRACO_BLE
@@ -8,8 +11,14 @@
 #define DEVELOPMENT
 #define GROUPS
 
-//#define DEBUG
-//#define DEBUG_GROUPS
+#ifdef DEVELOPMENT
+	//#define DEBUG
+	#ifdef DEBUG 
+		//#define DEBUG_GROUPS
+		//#define DEBUG_BLE
+	#endif
+#endif
+
 
 #define MAX_GROUP_SIZE 50
 
