@@ -229,35 +229,24 @@ bool ReadFirebaseGroups(String Path){
       ChargingGroup.SendNewParams = true;
 
       if(ChargingGroup.Params.GroupActive){
-
-        uint8_t size = Lectura["num_equip"];
         //Leer los equipos del grupo
         Lectura.clear();
         if(Database->Send_Command(Path+"/devices",&Lectura, LEER, true)){ 
-          Lectura.getElement(0);
-          serializeJson(Lectura,Serial);
+          JsonObject root = Lectura.as<JsonObject>();
+          int index =0;
+          for (JsonPair kv : root) {
+            memcpy(ChargingGroup.group_chargers.charger_table[index].name, kv.key().c_str(),8);
+            ChargingGroup.group_chargers.charger_table[0].Fase = Lectura[kv.key().c_str()]["phase"].as<uint8_t>();
+            index ++;
+          }
+          ChargingGroup.group_chargers.size = index;
+
+          store_group_in_mem(&ChargingGroup.group_chargers);
+          ChargingGroup.SendNewGroup = true;
         }
-
-         //QUITAR!!!!!!!!!!!!!!!!!
-        memcpy(ChargingGroup.group_chargers.charger_table[0].name, "31B70630",8);
-        memcpy(ChargingGroup.group_chargers.charger_table[1].name, "626965F5",8);  
-        memcpy(ChargingGroup.group_chargers.charger_table[2].name, "72BC0823",8);
-        memcpy(ChargingGroup.group_chargers.charger_table[3].name, "71962AD0",8);
-        memcpy(ChargingGroup.group_chargers.charger_table[4].name, "28434012",8);
-
-        ChargingGroup.group_chargers.charger_table[0].Fase = 0;
-        ChargingGroup.group_chargers.charger_table[1].Fase = 1;
-        ChargingGroup.group_chargers.charger_table[2].Fase = 2;
-        ChargingGroup.group_chargers.charger_table[3].Fase = 3;
-        ChargingGroup.group_chargers.charger_table[4].Fase = 4;
-
-        ChargingGroup.group_chargers.size = 5;
-
-        store_group_in_mem(&ChargingGroup.group_chargers);
-        ChargingGroup.SendNewGroup = true;
       }    
       WriteFirebasegroups("/group");
-      if(!Database->Send_Command(Path+"/ts_dev_ack",&Lectura,TIMESTAMP)){
+      if(!Database->Send_Command(Path+"/ts_dev_ack",&Lectura,TIMESTAMP, true)){
           return false;
       } 
     }
@@ -549,8 +538,8 @@ void Firebase_Conn_Task(void *args){
     
     case CONECTADO:
       //Inicializar los timeouts
-      ChargingGroup.last_ts_app_req = Database->Get_Timestamp("/group/ts_app_req",&Lectura);
-      ChargingGroup.last_ts_app_req = Database->Get_Timestamp("/group/ts_app_req",&Lectura);
+      ChargingGroup.last_ts_app_req = Database->Get_Timestamp("123456789/ts_app_req",&Lectura, true);
+      ChargingGroup.last_ts_app_req = Database->Get_Timestamp("123456789/ts_app_req",&Lectura, true);
       Params.last_ts_app_req  = Database->Get_Timestamp("/params/ts_app_req",&Lectura);
       Comands.last_ts_app_req = Database->Get_Timestamp("/control/ts_app_req",&Lectura);
       Coms.last_ts_app_req    = Database->Get_Timestamp("/coms/ts_app_req",&Lectura);
@@ -726,7 +715,7 @@ void Firebase_Conn_Task(void *args){
       break;
 
     case READING_GROUP:
-      Error_Count+=!ReadFirebaseGroups("/groups/123456789");
+      Error_Count+=!ReadFirebaseGroups("123456789");
       ConnectionState=IDLE;
       NextState=WRITTING_STATUS;
       break;
@@ -771,7 +760,7 @@ void Firebase_Conn_Task(void *args){
       break;
     }
     if(LastStatus!= ConnectionState){
-      Serial.printf("Maquina de estados de Firebase de % i a %i \n", LastStatus, ConnectionState);
+      //Serial.printf("Maquina de estados de Firebase de % i a %i \n", LastStatus, ConnectionState);
       LastStatus= ConnectionState;
     }
     

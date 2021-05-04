@@ -115,7 +115,7 @@ void Real_Time_Database::endAuth(void){
 }
 
 bool Real_Time_Database::checkPermisions(void){
-    
+
     uint8 Timeout = 0;
     DynamicJsonDocument Response(1024);
 
@@ -271,13 +271,10 @@ long long  Real_Time_Database::Get_Timestamp(String path, JsonDocument *respuest
     uint8 Timeout = 0;
     if(groups){
         Write_url = GROUPS_url+path+".json?auth="+idToken+"&timeout=2000ms";
-        Serial.println(Write_url);
     }
     else{
         Write_url = RTDB_url+path+".json?auth="+idToken+"&timeout=2000ms";
     }
-    
-
 
     esp_http_client_set_url(RTDB_client, Write_url.c_str());
     esp_http_client_set_method(RTDB_client, HTTP_METHOD_GET);

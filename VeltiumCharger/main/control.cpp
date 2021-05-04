@@ -188,7 +188,6 @@ void controlTask(void *arg)
 								serialLocal.write(buffer_tx_local, 5);
 								if(--cnt_repeticiones_inicio == 0){
 									cnt_repeticiones_inicio = 750;		//1000;								
-									//startSystem();
 									mainFwUpdateActive = 1;
 									updateTaskrunning=1;
 									Serial.println("Enviando firmware al PSOC5 por falta de comunicacion!");
@@ -202,7 +201,6 @@ void controlTask(void *arg)
 						}
 						break;
 					case ESTADO_INICIALIZACION:
-						//startSystem();
 						cnt_timeout_tx = TIMEOUT_TX_BLOQUE;
 						estado_actual = ESTADO_NORMAL;
 						buffer_tx_local[0] = HEADER_TX;
@@ -332,9 +330,11 @@ void controlTask(void *arg)
 
 void startSystem(void){
 	
+	#ifdef DEBUG
 	Serial.printf("startSystem(): device SN = %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X \n",
 		deviceSerNum[0], deviceSerNum[1], deviceSerNum[2], deviceSerNum[3], deviceSerNum[4],
 		deviceSerNum[5], deviceSerNum[6], deviceSerNum[7], deviceSerNum[8], deviceSerNum[9]);
+	#endif
 	dev_auth_init((void const*)&deviceSerNum);
 
 	#ifdef CONNECTED
@@ -442,7 +442,6 @@ void procesar_bloque(uint16 tipo_bloque){
 			if (!systemStarted && buffer_rx_local[239]==0x36) {
 				memcpy(device_ID, buffer_rx_local, 11);
 				changeAdvName(device_ID);
-				printf("Change name set device name to %s\r\n",device_ID);
 				modifyCharacteristic(device_ID, 11, VCD_NAME_USERS_CHARGER_DEVICE_ID_CHAR_HANDLE);
 				modifyCharacteristic(&buffer_rx_local[11], 1, MEASURES_INSTALATION_CURRENT_LIMIT_CHAR_HANDLE);
 				modifyCharacteristic(&buffer_rx_local[12], 6, TIME_DATE_CHARGING_START_TIME_CHAR_HANDLE);
@@ -900,12 +899,14 @@ void procesar_bloque(uint16 tipo_bloque){
 
 		case GROUPS_PARAMS:{
 			memcpy(&ChargingGroup.Params,buffer_rx_local, 7);
+			#ifdef DEBUG_GROUPS
 			Serial.printf("Group active %i \n", ChargingGroup.Params.GroupActive);
 			Serial.printf("Group master %i \n", ChargingGroup.Params.GroupMaster);
 			Serial.printf("Group potencia_max %i \n", ChargingGroup.Params.potencia_max);
 			Serial.printf("Group contract power %i \n", ChargingGroup.Params.ContractPower);
 			Serial.printf("Group inst_max %i \n", ChargingGroup.Params.inst_max);
-			Serial.printf("Group CDP %i \n", ChargingGroup.Params.CDP);		
+			Serial.printf("Group CDP %i \n", ChargingGroup.Params.CDP);	
+			#endif	
 		}
 		break;
 #endif

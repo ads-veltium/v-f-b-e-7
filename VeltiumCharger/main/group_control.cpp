@@ -54,10 +54,11 @@ void New_Data(const char* Data, int Data_size){
 
     cJSON *mensaje_Json = cJSON_Parse(Data);
     carac_charger Cargador;
-
+    //Cargador.name[8]='\0';
+    //Cargador.HPT[2]='\0';
     //Extraer los datos
-    memcpy(Cargador.HPT,cJSON_GetObjectItem(mensaje_Json,"HPT")->valuestring,2);
-    memcpy(Cargador.name,cJSON_GetObjectItem(mensaje_Json,"device_id")->valuestring,2);
+    memcpy(Cargador.HPT,cJSON_GetObjectItem(mensaje_Json,"HPT")->valuestring,3);
+    memcpy(Cargador.name,cJSON_GetObjectItem(mensaje_Json,"device_id")->valuestring,9);
     Cargador.limite_fase = cJSON_GetObjectItem(mensaje_Json,"limite_fase")->valueint;
     Cargador.Fase = cJSON_GetObjectItem(mensaje_Json,"fase")->valueint;
     Cargador.Current = cJSON_GetObjectItem(mensaje_Json,"current")->valueint;
@@ -73,8 +74,8 @@ void New_Data(const char* Data, int Data_size){
         uint8_t index = check_in_group(Cargador.name,&FaseChargers);               
         if(index < 255){                         
             FaseChargers.charger_table[index] =Cargador;
-            cls();
-            print_table(FaseChargers);
+            //cls();
+            //print_table(FaseChargers);
         }
         else{
             //Si el cargador no está en la tabla, añadirlo y actualizar los datos
@@ -90,7 +91,7 @@ void New_Data(const char* Data, int Data_size){
     if(index < 255){
         ChargingGroup.group_chargers.charger_table[index]=Cargador;
     }
-    
+    //print_table(ChargingGroup.group_chargers);
     input_values();
     Calculo_Consigna();
 }
@@ -106,6 +107,7 @@ void New_Params(const char* Data, int Data_size){
   delay(50);
 }
 
+//Funcion para recibir ordenes de grupo que s ehayan enviado a otro cargador
 void New_Control(const char* Data, int Data_size){
 
   if(!memcmp(Data,"Pause",5)){
@@ -458,11 +460,11 @@ if (is_active_c3_Charger == 0) {
   }
 
 #ifdef DEBUG_GROUPS
-  printf("is_c3_charger= %i\n",is_c3_charger);
-  printf("Conex = %i\n", Conex);
-  printf("Comand desired current %i \n", desired_current);
-  printf("Max p = %i \n", ChargingGroup.Params.potencia_max);
-  printf("Inst max = %i \n", ChargingGroup.Params.inst_max);
+  //printf("is_c3_charger= %i\n",is_c3_charger);
+  //printf("Conex = %i\n", Conex);
+  //printf("Comand desired current %i \n", desired_current);
+  //printf("Max p = %i \n", ChargingGroup.Params.potencia_max);
+  //printf("Inst max = %i \n", ChargingGroup.Params.inst_max);
 #endif
   if(desired_current!=Comands.desired_current &&  !memcmp(Status.HPT_status,"C2",2)){
       //SendToPSOC5(desired_current,MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
@@ -507,8 +509,8 @@ void input_values(){
     }
     Pc_Fase=total_pc_fase/1000;
 #ifdef DEBUG_GROUPS
-    printf("Total PC of phase %i\n",Pc); 
-    printf("Total PC and Delta %i %i \n",Pc,Delta_total);    
+    //printf("Total PC of phase %i\n",Pc); 
+    //printf("Total PC and Delta %i %i \n",Pc,Delta_total);    
 #endif
 }
 

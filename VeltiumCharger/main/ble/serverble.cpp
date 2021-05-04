@@ -535,8 +535,11 @@ void changeAdvName( uint8_t * name ){
 	advert.setName(std::string((char*)name));
 	advert.setCompleteServices((BLEUUID((uint16_t)0xCD01)));
 	advert.setPreferredParams(6,128);
+	
+	#ifdef DEBUG_BLE
 	Serial.println(advert.getPayload().c_str());
-
+	#endif
+	
 	pAdvertising->setAdvertisementData(advert);
 	pAdvertising->setName(std::string((char*)name));
 	pAdvertising->setMaxInterval(1600);
