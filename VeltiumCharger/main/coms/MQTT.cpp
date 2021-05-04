@@ -572,7 +572,7 @@ void Publisher(void* args){
                 memcpy(&buffer[3+(i*9)],ChargingGroup.group_chargers.charger_table[i].name,8);   
                 itoa(ChargingGroup.group_chargers.charger_table[i].Fase,&buffer[11+(i*9)],10);
             }
-            mqtt_publish("RTS", buffer, ChargingGroup.group_chargers.size*8+1,3);
+            mqtt_publish("RTS", buffer, ChargingGroup.group_chargers.size*9+2,3);
             ChargingGroup.SendNewGroup = false;
         }
 
@@ -592,8 +592,9 @@ void Publisher(void* args){
 
         }
 
-        //Si soy el maestro, debo comprobar que los esclavos siguen conectados
+        //Si soy el maestro, debo realizar algunas tareas extra
         else{
+            //Comprobar si los esclavos se desconectan
             TickType_t Transcurrido = xTaskGetTickCount() - xStart;
             xStart = xTaskGetTickCount();
             for(uint8_t i=0 ;i<ChargingGroup.group_chargers.size;i++){
@@ -625,6 +626,18 @@ void Publisher(void* args){
                         mqtt_publish("Data", my_json_string,strlen(my_json_string),4);
                         free(my_json_string);
                     }
+                }
+            }
+
+            //Ponerme el primero en el grupo para indicar que soy el maestro
+            if(memcmp(ChargingGroup.group_chargers.charger_table[0].name,ConfigFirebase.Device_Id, 8)){
+                if(ChargingGroup.group_chargers.size > 0 && check_in_group(ConfigFirebase.Device_Id,&ChargingGroup.group_chargers ) != 255){
+                    while(memcmp(ChargingGroup.group_chargers.charger_table[0].name,ConfigFirebase.Device_Id, 8)){
+                        carac_charger OldMaster=ChargingGroup.group_chargers.charger_table[0];
+                        remove_from_group(OldMaster.name, &ChargingGroup.group_chargers);
+                        add_to_group(OldMaster.name, OldMaster.IP, &ChargingGroup.group_chargers);
+                    }
+                    ChargingGroup.SendNewGroup = true;
                 }
             }
         }

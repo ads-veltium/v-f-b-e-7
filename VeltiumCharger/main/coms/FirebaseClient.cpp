@@ -196,7 +196,7 @@ bool WriteFirebasegroups(String Path){
 
     Escritura["delete"] = false;
 
-    if(Database->Send_Command(Path,&Escritura,UPDATE)){
+    if(Database->Send_Command(Path+"/params",&Escritura,UPDATE)){
       return true;
     }
 
@@ -224,10 +224,14 @@ bool ReadFirebaseGroups(String Path){
       buffer[5] = ChargingGroup.Params.UserID;
       buffer[6] = Lectura["p_max"];
       
-      SendToPSOC5((char*)buffer,7,GROUPS_PARAMS);
-      delay(250);
-      ChargingGroup.SendNewParams = true;
+      ChargingGroup.DeleteOrder  = Lectura["delete"].as<bool>();
 
+      if(!ChargingGroup.Params.GroupActive){
+        ChargingGroup.Params.GroupActive = buffer[1];
+      }
+      ChargingGroup.SendNewParams = true;
+      delay(250);
+      
       if(ChargingGroup.Params.GroupActive){
         //Leer los equipos del grupo
         Lectura.clear();
@@ -236,16 +240,18 @@ bool ReadFirebaseGroups(String Path){
           int index =0;
           for (JsonPair kv : root) {
             memcpy(ChargingGroup.group_chargers.charger_table[index].name, kv.key().c_str(),8);
-            ChargingGroup.group_chargers.charger_table[0].Fase = Lectura[kv.key().c_str()]["phase"].as<uint8_t>();
+            ChargingGroup.group_chargers.charger_table[index].Fase = Lectura[kv.key().c_str()]["phase"].as<uint8_t>();
             index ++;
           }
           ChargingGroup.group_chargers.size = index;
-
-          store_group_in_mem(&ChargingGroup.group_chargers);
           ChargingGroup.SendNewGroup = true;
         }
       }    
-      WriteFirebasegroups("/group");
+
+      if(ChargingGroup.DeleteOrder){
+        WriteFirebasegroups(Path);
+      }
+      
       if(!Database->Send_Command(Path+"/ts_dev_ack",&Lectura,TIMESTAMP, true)){
           return false;
       } 

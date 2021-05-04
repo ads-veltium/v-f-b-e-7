@@ -882,8 +882,7 @@ void procesar_bloque(uint16 tipo_bloque){
    			memcpy(n,buffer_rx_local,2);
 			ChargingGroup.group_chargers.size=0;
 			
-			for(uint8_t i=0; i<atoi(n);i++){
-				
+			for(uint8_t i=0; i<atoi(n);i++){	
 				for(uint8_t j =0; j< 8; j++){
 					ID[j]=(char)buffer_rx_local[2+i*9+j];
 				}
@@ -993,7 +992,6 @@ uint8_t setMainFwUpdateActive (uint8_t val )
 
 uint8_t setAuthToken ( uint8_t *data, int len ){
 	if(!authSuccess){
-		printf("%s %s \r\n",deviceSerNum, initialSerNum);
 		if(!memcmp(authChallengeReply, data, 8) || !memcmp(deviceSerNum, initialSerNum, 10))
 		{
 			AuthTimer=0;
