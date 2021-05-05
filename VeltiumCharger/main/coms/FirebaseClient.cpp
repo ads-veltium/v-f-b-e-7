@@ -753,8 +753,8 @@ void Firebase_Conn_Task(void *args){
 
     /*********************** DISCONNECT states **********************/
     case DISCONNECTING:
-      ConnectionState=DISCONNECTED;
       Database->end();
+      ConnectionState=DISCONNECTED;
       break;
     default:
       while(1){

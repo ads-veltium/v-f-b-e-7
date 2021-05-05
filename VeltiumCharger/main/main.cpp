@@ -18,7 +18,7 @@ void setup()
 	Serial.println("FREE HEAP MEMORY [after DRACO_GPIO_Init] **************************");
 	Serial.println(ESP.getFreeHeap());
 	#endif
-
+	
 	serverbleInit();
 
 	#ifdef DEBUG

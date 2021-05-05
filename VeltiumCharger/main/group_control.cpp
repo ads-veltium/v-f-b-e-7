@@ -54,8 +54,8 @@ void New_Data(const char* Data, int Data_size){
 
     cJSON *mensaje_Json = cJSON_Parse(Data);
     carac_charger Cargador;
-    //Cargador.name[8]='\0';
-    //Cargador.HPT[2]='\0';
+
+
     //Extraer los datos
     memcpy(Cargador.HPT,cJSON_GetObjectItem(mensaje_Json,"HPT")->valuestring,3);
     memcpy(Cargador.name,cJSON_GetObjectItem(mensaje_Json,"device_id")->valuestring,9);
@@ -75,7 +75,7 @@ void New_Data(const char* Data, int Data_size){
         if(index < 255){                         
             FaseChargers.charger_table[index] =Cargador;
             //cls();
-            //print_table(FaseChargers);
+            //print_table(FaseChargers, "Grupo de Fase");
         }
         else{
             //Si el cargador no está en la tabla, añadirlo y actualizar los datos
@@ -91,7 +91,7 @@ void New_Data(const char* Data, int Data_size){
     if(index < 255){
         ChargingGroup.group_chargers.charger_table[index]=Cargador;
     }
-    //print_table(ChargingGroup.group_chargers);
+    //print_table(ChargingGroup.group_chargers, "Grupo total");
     input_values();
     Calculo_Consigna();
 }
@@ -147,6 +147,7 @@ void New_Group(const char* Data, int Data_size){
       for(uint8_t i=0;i<numero_de_cargadores;i++){
         if(memcmp(ChargingGroup.group_chargers.charger_table[i].name, &Data[i*9+2],8) || ChargingGroup.group_chargers.charger_table[i].Fase != Data[i*9+10]-'0'){
           SendToPSOC5((char*)Data,Data_size,GROUPS_DEVICES); 
+          remove_group(&FaseChargers);
           delay(50);
           return;
         }
@@ -154,6 +155,7 @@ void New_Group(const char* Data, int Data_size){
     }
     else{
       SendToPSOC5((char*)Data,Data_size,GROUPS_DEVICES); 
+      remove_group(&FaseChargers);
       delay(50);
     }
 }

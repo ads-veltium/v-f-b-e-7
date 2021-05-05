@@ -75,7 +75,7 @@ struct CHSV {
 
 /// Pre-defined hue values for HSV objects
 typedef enum {
-    HUE_RED = 0,
+    HUE_WHITE= 0,
     HUE_ORANGE = 32,
     HUE_YELLOW = 64,
     HUE_GREEN = 96,

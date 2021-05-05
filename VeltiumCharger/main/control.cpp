@@ -67,13 +67,15 @@ uint8 initialSerNum[10] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
 
 uint8 mainFwUpdateActive = 0;
 
-uint8 dispositivo_inicializado = 0;
+uint8 dispositivo_inicializado = 1;
+uint8 PSOC_inicializado =0;
 uint8 cnt_timeout_inicio = 0;
 uint16 cnt_repeticiones_inicio = 500;	//1000;
 
 uint8 status_hpt_anterior[2] = {'F','F' };
 uint16 inst_current_anterior = 0x0000;
 uint16 cnt_diferencia = 1;
+uint8 HPT_estados[9][3] = {"0V", "A1", "A2", "B1", "B2", "C1", "C2", "E1", "F1"};
 
 uint8 version_firmware[11] = {"VBLE2_0507"};	
 uint8 PSOC5_version_firmware[11] ;		
@@ -157,6 +159,7 @@ void controlTask(void *arg)
 	configTimers();
 	bool LastUserCon = false;
 	bool Iface_Con = BLE;
+	uint8 old_inicializado = 0;
 	serialLocal.begin(115200, SERIAL_8N1, 34, 4); // pins: rx, tx
 
 	// INICIALIZO ELEMENTOS PARA AUTENTICACION
@@ -176,7 +179,7 @@ void controlTask(void *arg)
 			if(mainFwUpdateActive == 0){
 				switch (estado_actual){
 					case ESTADO_ARRANQUE:
-						if(!dispositivo_inicializado){
+						if(!PSOC_inicializado){
 							proceso_recepcion();
 							if(--cnt_timeout_inicio == 0){
 								cnt_timeout_inicio = TIMEOUT_INICIO;
@@ -202,14 +205,15 @@ void controlTask(void *arg)
 						break;
 					case ESTADO_INICIALIZACION:
 						cnt_timeout_tx = TIMEOUT_TX_BLOQUE;
-						estado_actual = ESTADO_NORMAL;
+						
 						buffer_tx_local[0] = HEADER_TX;
 						buffer_tx_local[1] = (uint8)(BLOQUE_STATUS >> 8);
 						buffer_tx_local[2] = (uint8)BLOQUE_STATUS;
 						buffer_tx_local[3] = 2;
 						buffer_tx_local[4] = serverbleGetConnected() || ConfigFirebase.ClientConnected;
-						buffer_tx_local[5] = ESTADO_NORMAL;
+						buffer_tx_local[5] = dispositivo_inicializado;
 						serialLocal.write(buffer_tx_local, 6);
+						estado_actual = ESTADO_NORMAL;
 						break;
 					case ESTADO_NORMAL:
 						proceso_recepcion();	
@@ -217,15 +221,28 @@ void controlTask(void *arg)
 							Iface_Con = BLE;
 
 							uint32_t Transcurrido = pdTICKS_TO_MS(xTaskGetTickCount()-AuthTimer);
-							if(Transcurrido > 30000 && !authSuccess && AuthTimer !=0){
+							if(Transcurrido > 15000 && !authSuccess && AuthTimer !=0){
 								printf("Auth request fallada, me desconecto!!\n");
 								AuthTimer=0;
-								deviceBleDisconnect = true;
+								//deviceBleDisconnect = true;
 							}
 
 						}
 						else if(ConfigFirebase.ClientConnected){
 							Iface_Con = COMS;
+						}
+
+						if(old_inicializado != dispositivo_inicializado){
+							cnt_timeout_tx = TIMEOUT_TX_BLOQUE2 ;
+							buffer_tx_local[0] = HEADER_TX;
+							buffer_tx_local[1] = (uint8)(BLOQUE_STATUS >> 8);
+							buffer_tx_local[2] = (uint8)BLOQUE_STATUS;
+							buffer_tx_local[3] = 2;
+							buffer_tx_local[4] = serverbleGetConnected(); 
+							buffer_tx_local[5] = dispositivo_inicializado;
+							serialLocal.write(buffer_tx_local, 6);
+							LastUserCon = serverbleGetConnected();
+							old_inicializado = dispositivo_inicializado;
 						}
 
 						if(Iface_Con == BLE && LastUserCon != serverbleGetConnected()){
@@ -235,7 +252,7 @@ void controlTask(void *arg)
 							buffer_tx_local[2] = (uint8)BLOQUE_STATUS;
 							buffer_tx_local[3] = 2;
 							buffer_tx_local[4] = serverbleGetConnected(); 
-							buffer_tx_local[5] = ESTADO_NORMAL;
+							buffer_tx_local[5] = dispositivo_inicializado;
 							serialLocal.write(buffer_tx_local, 6);
 							LastUserCon = serverbleGetConnected() ;
 						}
@@ -247,7 +264,7 @@ void controlTask(void *arg)
 							buffer_tx_local[2] = (uint8)BLOQUE_STATUS;
 							buffer_tx_local[3] = 2;
 							buffer_tx_local[4] = ConfigFirebase.ClientConnected;
-							buffer_tx_local[5] = ESTADO_NORMAL;
+							buffer_tx_local[5] = dispositivo_inicializado;
 							serialLocal.write(buffer_tx_local, 6);
 							LastUserCon = ConfigFirebase.ClientConnected;
 						}
@@ -489,7 +506,7 @@ void procesar_bloque(uint16 tipo_bloque){
 				systemStarted = 1;
 
 				cnt_timeout_inicio = TIMEOUT_INICIO;
-				dispositivo_inicializado = 1;
+				PSOC_inicializado = 1;
 			}
 
 		break;
@@ -500,6 +517,18 @@ void procesar_bloque(uint16 tipo_bloque){
 #else
 			if(buffer_rx_local[25]==0x36){
 #endif
+				//Comprobar HPT
+				bool valido = false;
+				for(int i=0;i<9;i++){
+					if(!memcmp(&buffer_rx_local[1], HPT_estados[i], 2)){
+						valido=true;
+						break;
+					}
+				}
+				if(!valido){
+					break;
+				}
+				
 				TimeoutMainDisconnect = 0;	
 				//Leds
 				modifyCharacteristic(buffer_rx_local, 1, LED_LUMIN_COLOR_LUMINOSITY_LEVEL_CHAR_HANDLE);
@@ -507,8 +536,8 @@ void procesar_bloque(uint16 tipo_bloque){
 				luminosidad = buffer_rx_local[0];
 				ChargingGroup.SendNewData  = true;
 				//Hilo piloto
-				if((memcmp(&buffer_rx_local[1], status_hpt_anterior, 2) != 0))
-				{
+				if((memcmp(&buffer_rx_local[1], status_hpt_anterior, 2) != 0)){
+					dispositivo_inicializado = 2;
 					Serial.printf("%c %c \n",buffer_rx_local[1],buffer_rx_local[2]);
 					memcpy(status_hpt_anterior, &buffer_rx_local[1], 2);
 					modifyCharacteristic(&buffer_rx_local[1], 2, STATUS_HPT_STATUS_CHAR_HANDLE);
@@ -680,14 +709,6 @@ void procesar_bloque(uint16 tipo_bloque){
 
 		case SCHED_CHARGING_SCHEDULE_MATRIX_CHAR_HANDLE:{
 			modifyCharacteristic(buffer_rx_local, 168, SCHED_CHARGING_SCHEDULE_MATRIX_CHAR_HANDLE);
-		}
-		break;
-
-		case VCD_NAME_USERS_CHARGER_DEVICE_ID_CHAR_HANDLE:{
-			memcpy(device_ID, buffer_rx_local, 11);
-			changeAdvName(device_ID);
-
-			updateCharacteristic(device_ID, 11, VCD_NAME_USERS_CHARGER_DEVICE_ID_CHAR_HANDLE);
 		}
 		break;
 		
@@ -892,7 +913,7 @@ void procesar_bloque(uint16 tipo_bloque){
 					Params.Fase =buffer_rx_local[10+i*9]-'0';
 				}
 			}
-			print_table(ChargingGroup.group_chargers);
+			print_table(ChargingGroup.group_chargers, "Grupo desde PSOC");
 		}
 		break;
 
@@ -963,10 +984,10 @@ void deviceConnectInd ( void ){
 	memcpy(authChallengeReply, outputvec1, 8);
 
 	//Delay para dar tiempo a conectar
-	vTaskDelay(pdMS_TO_TICKS(250));
+	//vTaskDelay(pdMS_TO_TICKS(250));
 	modifyCharacteristic(authChallengeQuery, 8, AUTENTICACION_MATRIX_CHAR_HANDLE);
 	Serial.println("Sending authentication");
-	vTaskDelay(pdMS_TO_TICKS(250));
+	vTaskDelay(pdMS_TO_TICKS(500));
 	AuthTimer = xTaskGetTickCount();
 }
 
