@@ -14,24 +14,6 @@
 #define FIREBASE_DEV_API_KEY "AIzaSyCYZpVNUOQvrXvc3qETxCqX4DPfp3Fwe3w"
 #define FIREBASE_DEV_PROJECT "veltiumdev-default-rtdb.firebaseio.com"
 
-#define DISCONNECTED      0
-#define CONNECTING        5
-#define CONECTADO        10
-#define IDLE             20
-#define READING_CONTROL  25
-#define READING_PARAMS   26
-#define READING_COMS     27
-#define READING_GROUP    28
-#define WRITTING_CONTROL 35
-#define WRITTING_STATUS  36
-#define WRITTING_PARAMS  37
-#define WRITTING_COMS    38
-#define WRITTING_TIMES   39
-#define DISCONNECTING    45
-#define DOWNLOADING      55
-#define UPDATING         65
-#define INSTALLING       70
-
 bool initFirebaseClient();
 void GetUpdateFile(String URL);
 void Firebase_Conn_Task(void *args);

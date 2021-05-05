@@ -51,6 +51,7 @@ uint8 estado_actual = ESTADO_ARRANQUE;
 uint8 authSuccess = 0;
 int aut_semilla = 0x0000;
 uint8 NextLine=0;
+uint8_t ConnectionState;
 
 uint8 cnt_fin_bloque = 0;
 int estado_recepcion = 0;
@@ -1017,6 +1018,15 @@ uint8_t setAuthToken ( uint8_t *data, int len ){
 		{
 			AuthTimer=0;
 			printf("authSuccess\r\n");
+			
+			serverbleSetConnected(true);
+			buffer_tx_local[0] = HEADER_TX;
+			buffer_tx_local[1] = (uint8)(BLOQUE_STATUS >> 8);
+			buffer_tx_local[2] = (uint8)(BLOQUE_STATUS);
+			buffer_tx_local[3] = 2;
+			buffer_tx_local[4] = serverbleGetConnected();
+			buffer_tx_local[5] = ESTADO_NORMAL;
+			controlSendToSerialLocal(buffer_tx_local, 6);
 			authSuccess = 1;
 		}
 	}

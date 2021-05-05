@@ -17,6 +17,7 @@ extern bool eth_connected;
 extern bool eth_connecting;
 extern bool eth_link_up;
 extern bool eth_started;
+extern uint8_t ConnectionState;
 
 bool wifi_connected  = false;
 bool wifi_connecting = false;
@@ -380,7 +381,7 @@ void Eth_Loop(){
             }
 
             //Apagar el eth
-            if(!Coms.ETH.ON){  
+            if(!Coms.ETH.ON && (ConnectionState ==IDLE || ConnectionState==DISCONNECTED)){  
                 //Si lo queremos reinicializar para ponerle una ip estatica o quitarsela
                 if(Coms.ETH.restart){
                     if(ChargingGroup.Conected){
@@ -402,7 +403,7 @@ void Eth_Loop(){
             }
 
             //Desconexion del cable
-            if(!eth_connected && !eth_link_up){
+            if(!eth_connected && !eth_link_up && (ConnectionState ==IDLE || ConnectionState==DISCONNECTED)){
                 Coms.ETH.State = DISCONNECTING;
                 if(ChargingGroup.Conected){
                     ChargingGroup.Params.GroupActive = false;
@@ -554,7 +555,10 @@ void ComsTask(void *args){
                 }                
             }
             else if(!Coms.Wifi.ON && (wifi_connected || wifi_connecting)){
-                stop_wifi();
+                if(ConnectionState ==IDLE ||ConnectionState==DISCONNECTED){
+                    stop_wifi();
+                }
+
             }
             if((eth_connected || wifi_connected ) && !ServidorArrancado){
 
