@@ -1400,7 +1400,6 @@ int mg_iobuf_resize(struct mg_iobuf *io, size_t new_size) {
       } 
       io->buf = (unsigned char *) p;
       io->size = new_size;
-      
     } else {
       ok = 0;
       LOG(LL_ERROR,
@@ -1414,9 +1413,8 @@ int mg_iobuf_init(struct mg_iobuf *io, size_t size) {
   return mg_iobuf_resize(io, size);
 }
 
-size_t mg_iobuf_append(struct mg_iobuf *io, const void *buf, size_t len,size_t chunk_size) {
-
-  
+size_t mg_iobuf_append(struct mg_iobuf *io, const void *buf, size_t len,
+                       size_t chunk_size) {
   size_t new_size = io->len + len + chunk_size;
   new_size -= new_size % chunk_size;
   if (new_size != io->size) mg_iobuf_resize(io, new_size);
@@ -1936,8 +1934,8 @@ void mg_md5_final(mg_md5_ctx *ctx, unsigned char digest[16]) {
 
 enum { MQTT_OK, MQTT_INCOMPLETE, MQTT_MALFORMED };
 
-void mg_mqtt_send_header(struct mg_connection *c, uint8_t cmd, uint8_t flags,uint32_t len) {
-
+void mg_mqtt_send_header(struct mg_connection *c, uint8_t cmd, uint8_t flags,
+                         uint32_t len) {
   uint8_t buf[1 + sizeof(len)], *vlen = &buf[1];
   buf[0] = (cmd << 4) | flags;
   do {
@@ -1947,7 +1945,6 @@ void mg_mqtt_send_header(struct mg_connection *c, uint8_t cmd, uint8_t flags,uin
     vlen++;
   } while (len > 0 && vlen < &buf[sizeof(buf)]);
   mg_send(c, buf, vlen - buf);
- 
 }
 
 static void mg_send_u16(struct mg_connection *c, uint16_t value) {
@@ -2001,11 +1998,12 @@ static void mqtt_login(struct mg_connection *c, const char *url,
   }
 }
 
-void mg_mqtt_pub(struct mg_connection *c, struct mg_str *topic,struct mg_str *data) {
-
+void mg_mqtt_pub(struct mg_connection *c, struct mg_str *topic,
+                 struct mg_str *data) {
   uint8_t flags = MQTT_QOS(1);
   uint32_t total_len = 2 + (uint32_t) topic->len + (uint32_t) data->len;
-  LOG(LL_DEBUG, ("%lu [%.*s] -> [%.*s]", c->id, (int) topic->len,(char *) topic->ptr, (int) data->len, (char *) data->ptr));
+  LOG(LL_DEBUG, ("%lu [%.*s] -> [%.*s]", c->id, (int) topic->len,
+                 (char *) topic->ptr, (int) data->len, (char *) data->ptr));
   if (MQTT_GET_QOS(flags) > 0) total_len += 2;
   mg_mqtt_send_header(c, MQTT_CMD_PUBLISH, flags, total_len);
   mg_send_u16(c, mg_htons((uint16_t) topic->len));
@@ -2853,7 +2851,9 @@ static int ll_write(struct mg_connection *c, const void *buf, int len,
 }
 
 int mg_send(struct mg_connection *c, const void *buf, size_t len) {
-  int fail, n = c->is_udp ? ll_write(c, buf, (SOCKET) len, &fail): (int) mg_iobuf_append(&c->send, buf, len, MG_IO_SIZE);
+  int fail, n = c->is_udp
+                    ? ll_write(c, buf, (SOCKET) len, &fail)
+                    : (int) mg_iobuf_append(&c->send, buf, len, MG_IO_SIZE);
   if (len > 0 && n == 0) fail = 1;
   return n;
 }

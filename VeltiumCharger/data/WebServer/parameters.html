@@ -9,7 +9,7 @@
 <div class="header">
   <table>
     <tr>
-      <td><img src="veltium-logo-big.png" width="60px" height="60px"> </td>
+      <td><img src="veltium-logo-big" width="60px" height="60px"> </td>
       <td><h1>Veltium Smart Chargers</h1>
       </td>
     </tr>
@@ -34,11 +34,12 @@
   
     <table class="center">
       <tr>
-        <form action="/authentication" accept-charset="UTF-8">
         <td><span class="dht-labels">Modo de autenticaci&oacuten</span></td>
-        <td><input style = "text-align:center;" name="auth_mode" placeholder="%AUTH%" type="text"></input></td>
-        <input type="submit" id="guardaauth" value="Guardar" onclick = "guardaauth(this)" hidden="hidden">
-        </form>
+        <td>
+          <div  id="myDIV">
+            <span>%AUTH%</span>
+          </div>
+        </td>
       </tr>
       <tr>
         <form action="/instcurlim" accept-charset="UTF-8">
@@ -55,15 +56,20 @@
         </form>
       </tr>
       <tr>
-        <form action="/ubcdp" accept-charset="UTF-8">
-        <td><span class="dht-labels">Ubicaci&oacuten CDP</span> </td>
-        <td><input style = "text-align:center;" name="ubi_cdp" placeholder="%UCDP%" type="text"></input></td>
-        <input type="submit" id="guardaubcdp" value="Guardar" onclick = "guardaubcdp(this)" hidden="hidden">
-        </form>
+        <td><span class="dht-labels">Control din&aacutemico de potencia</span></td>
+        <td>
+          <div  id="myDIV1">
+            <span>%CDP%</span>
+          </div>
+        </td>
       </tr>
       <tr>
-        <td><span class="dht-labels">Control din&aacutemico de potencia</span></td>
-        <td class="centrado"><span>%CDP%</span></td>
+        <td><span class="dht-labels">Ubicaci&oacuten del sensor</span></td>
+        <td>
+          <div  id="myDIV2">
+            <span>%UBCDP%</span>
+          </div>
+        </td>
       </tr>
       <tr>
         <td><span class="dht-labels">Actualizaciones autom&aacuteticas</span> </td>
@@ -74,6 +80,40 @@
     <script src="fireBase.js"></script>
     <script src="main.js"></script>
     <script>
+
+  // Add active class to the current button (highlight it)
+  var header = document.getElementById("myDIV");
+  var btns = header.getElementsByClassName("btn");
+  for (var i = 0; i < btns.length; i++) {
+    btns[i].addEventListener("click", function() {
+    var current = document.getElementsByClassName("active");
+    current[0].className = current[0].className.replace("active", "");
+    this.className += " active";
+    console. log(current);
+    });
+  }
+
+  var header = document.getElementById("myDIV1");
+  var btns = header.getElementsByClassName("btn1");
+  for (var i = 0; i < btns.length; i++) {
+    btns[i].addEventListener("click", function() {
+    var current = document.getElementsByClassName("active1");
+    current[0].className = current[0].className.replace("active1", "");
+    this.className += " active1";
+    console. log(current);
+    });
+  }
+
+  var header = document.getElementById("myDIV2");
+  var btns = header.getElementsByClassName("btn2");
+  for (var i = 0; i < btns.length; i++) {
+    btns[i].addEventListener("click", function() {
+    var current = document.getElementsByClassName("active2");
+    current[0].className = current[0].className.replace("active2", "");
+    this.className += " active2";
+    console. log(current);
+    });
+  }
 
 function myFunction() {
   var x = document.getElementById("myTopnav");
@@ -119,26 +159,6 @@ xhttp.onreadystatechange = function() {
 
   if (this.readyState == 4 && this.status == 200) {
 
-    document.getElementById("auth").innerHTML = this.responseText;
-
-  }
-
-};
-
-xhttp.open("GET", "/auth", true);
-
-xhttp.send();
-
-}, 5000 ) ;
-
-setInterval(function ( ) {
-
-var xhttp = new XMLHttpRequest();
-
-xhttp.onreadystatechange = function() {
-
-  if (this.readyState == 4 && this.status == 200) {
-
     document.getElementById("curlim").innerHTML = this.responseText;
 
   }
@@ -171,32 +191,6 @@ xhttp.send();
 
 }, 5000 ) ;
 
-setInterval(function ( ) {
-
-var xhttp = new XMLHttpRequest();
-
-xhttp.onreadystatechange = function() {
-
-  if (this.readyState == 4 && this.status == 200) {
-
-    document.getElementById("ucdp").innerHTML = this.responseText;
-
-  }
-
-};
-
-xhttp.open("GET", "/ucdp", true);
-
-xhttp.send();
-
-}, 5000 ) ;
-
-document.getElementsByName("auth_mode").addEventListener("keyup", function(event) {
-  if (event.keyCode === 13) {
-   event.preventDefault();
-   document.getElementById("guardaauth").click();
-  }
-});
 
 document.getElementsByName("inst_curr_lim").addEventListener("keyup", function(event) {
   if (event.keyCode === 13) {
@@ -209,13 +203,6 @@ document.getElementsByName("potencia_cont").addEventListener("keyup", function(e
   if (event.keyCode === 13) {
    event.preventDefault();
    document.getElementById("guardapower").click();
-  }
-});
-
-document.getElementsByName("ubi_cdp").addEventListener("keyup", function(event) {
-  if (event.keyCode === 13) {
-   event.preventDefault();
-   document.getElementById("guardaubcdp").click();
   }
 });
 

@@ -15,7 +15,7 @@
 	#define DEBUG
 	#ifdef DEBUG 
 		#define DEBUG_GROUPS
-		//#define DEBUG_BLE
+		#define DEBUG_BLE
 	#endif
 #endif
 

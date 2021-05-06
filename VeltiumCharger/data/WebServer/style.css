@@ -280,4 +280,26 @@ input:checked + .slider:before {
 
 .status_content label{
   display: inline-block;
-} 
+}
+
+.btn,.btn1,.btn2{
+  background-color: #ddd;
+  color: black;
+  border:  #008CBA;
+  outline: none;
+  width: 120px;
+  height: 40px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 14px;
+  margin: 4px 2px;
+  cursor: pointer;
+  border-radius: 8px;
+}
+
+/* Style the active class, and buttons on mouse-over */
+.active,.active1,.active2, .btn:hover, .btn1:hover, .btn2:hover {
+  background-color: #008CBA;
+  color: white;
+}

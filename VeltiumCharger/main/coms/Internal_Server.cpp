@@ -34,6 +34,15 @@ bool Gsm_On;
 bool Eth_On;
 bool Eth_Auto;
 bool Wifi_On;
+const char* Man="MA";
+const char* Aut="AA";
+const char* None="WA";
+int Curve1=7;
+int Curve2=11;
+int Desact1=5;
+int Desact2=9;
+int Medidor1=23;
+int Medidor2=27;
 
 /************* Internal server configuration ****************/
 void notFound(AsyncWebServerRequest *request) {
@@ -42,14 +51,45 @@ void notFound(AsyncWebServerRequest *request) {
 
 //Función para ver estado de la variable de actualizaciones automáticas 
 String outputState(){
-  if(!memcpy(Params.Fw_Update_mode,"AA",2)){
+  if(!memcmp(Params.Fw_Update_mode,"AA",2)){
     return "checked";
   }
   else {
     return "";
   }
 }
-//Función para ver estado de la variable de encender Wifi 
+
+//Función para ver estado de la autenticacion 
+String outputStateAuth(const char* modo){
+  if(!memcmp(Params.autentication_mode,modo,2)){
+    return " active";
+  }
+  else {
+    return "";
+  }
+}
+
+//Función para ver estado del control dinamico de potencia
+String outputStateCurve(int param1,int param2){
+  if(Params.CDP  ==  param1 || Params.CDP  ==  param2){
+    return " active1";
+  }
+  else {
+    return "";
+  }
+}
+
+//Función para ver estado del control dinamico de potencia
+String outputStateCDPUb(int param1,int param2,int param3){
+  if(Params.CDP  ==  param1 || Params.CDP  ==  param2 || Params.CDP  ==  param3 ){
+    return " active2";
+  }
+  else {
+    return "";
+  }
+}
+
+//Función para ver estado de las variables de las comunicaciones
 String outputStateWifi(bool com){
   if(com == true){
       return "checked";
@@ -142,10 +182,6 @@ String processor(const String& var){
 	{
 		return String(Comands.desired_current);
 	}
-    else if (var == "AUTH")
-	{
-		return String(Params.autentication_mode);
-	}
     else if (var == "CURLIM")
 	{
 		return String(Params.inst_current_limit);
@@ -153,10 +189,6 @@ String processor(const String& var){
     else if (var == "POWER")
 	{
 		return String(Params.potencia_contratada);
-	}
-    else if (var == "UCDP")
-	{
-		return String(Params.CDP);
 	}
     else if (var == "SSID")
 	{
@@ -173,7 +205,16 @@ String processor(const String& var){
     else if (var == "MASK")
 	{
 		return String(ip4addr_ntoa(&Coms.ETH.Mask));
-	}             
+	}
+    else if (var == "AUTH")
+	{
+		String buttons = "";
+		
+		buttons += "<label class=\"button\"><input class=\"btn"+outputStateAuth(None)+"\" type=\"button\" value=\"Ninguna\" onclick=\"Startbutton(this)\" id=\"5\"></label>";
+		buttons += "<label class=\"button\"><input class=\"btn"+outputStateAuth(Aut)+"\" type=\"button\" value=\"Proximidad\" onclick=\"Startbutton(this)\" id=\"6\"></label>";
+        buttons += "<label class=\"button\"><input class=\"btn"+outputStateAuth(Man)+"\" type=\"button\" value=\"Manual\" onclick=\"Startbutton(this)\" id=\"7\"></label>";
+        return buttons;
+	}     
 	else if (var == "BUTTONPLACEHOLDER")
 	{
 		String buttons = "";
@@ -225,11 +266,21 @@ String processor(const String& var){
     }
     else if (var == "CDP")
 	{
-		String checkbox = "";
-
-		checkbox += "<label class=\"switch\"><input type=\"checkbox\" onchange=\"toggleCheckbox(this)\" id=\"16\""+outputStateWifi(Params.CDP_On)+"><span class=\"slider round\"></span></label>";
-		return checkbox;
+		String buttons = "";
+		
+		buttons += "<label class=\"button\"><input class=\"btn1"+outputStateCurve(Desact1,Desact2)+"\" type=\"button\" value=\"Desactivado\" onclick=\"Startbutton(this)\" id=\"8\"></label>";
+		buttons += "<label class=\"button\"><input class=\"btn1"+outputStateCurve(Curve1,Curve2)+"\"type=\"button\" value=\"Curve\" onclick=\"Startbutton(this)\" id=\"9\"></label>";
+        buttons += "<label class=\"button\"><input class=\"btn1"+outputStateCurve(Medidor1,Medidor2)+"\" type=\"button\" value=\"Medidor trifasico\" onclick=\"Startbutton(this)\" id=\"10\"></label>";
+        return buttons;
     }
+    else if (var == "UBCDP")
+	{
+		String buttons = "";
+		
+		buttons += "<label class=\"button\"><input class=\"btn2"+outputStateCDPUb(Desact2,Curve2,Medidor2)+"\" type=\"button\" value=\"Total\" onclick=\"Startbutton(this)\" id=\"16\"></label>";
+		buttons += "<label class=\"button\"><input class=\"btn2"+outputStateCDPUb(Desact1,Curve1,Medidor1)+"\" type=\"button\" value=\"Vivienda\" onclick=\"Startbutton(this)\" id=\"18\"></label>";
+        return buttons;
+	}    
     else if (var == "CONLOCK")
 	{
 		String checkbox = "";
@@ -253,6 +304,10 @@ void InitServer(void) {
      request->send(SPIFFS, "/login.html");
     });
 
+    server.on("/veltium-logo-big", HTTP_GET_A, [](AsyncWebServerRequest *request){
+     request->send(SPIFFS, "/veltium-logo-big.png","image/png");
+    });
+
     server.on("/login", HTTP_GET_A, [](AsyncWebServerRequest *request){
      request->send(SPIFFS, "/login.html");
     });
@@ -263,14 +318,17 @@ void InitServer(void) {
 
     server.on("/comms", HTTP_GET_A, [](AsyncWebServerRequest *request){
      request->send(SPIFFS, "/comms.html",String(), false, processor);
+     //request->send(SPIFFS, "/veltium-logo-big.png");
     });
 
     server.on("/parameters", HTTP_GET_A, [](AsyncWebServerRequest *request){
      request->send(SPIFFS, "/parameters.html",String(), false, processor);
+     //request->send(SPIFFS, "/veltium-logo-big.png");
     });
     
     server.on("/status", HTTP_GET_A, [](AsyncWebServerRequest *request){
      request->send(SPIFFS, "/status.html",String(), false, processor);
+     //request->send(SPIFFS, "/veltium-logo-big.png");
     });
 
     server.on("/style.css", HTTP_GET_A, [](AsyncWebServerRequest *request){
@@ -335,26 +393,6 @@ void InitServer(void) {
         SendToPSOC5(data, MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
         
         request->send(SPIFFS, "/comands.html",String(), false, processor);
-    });
-
-    server.on("/authentication", HTTP_GET_A, [](AsyncWebServerRequest *request){
-        
-        uint8_t buffer[2];
-        memcpy(buffer,request->getParam(AUTH_MODE)->value().c_str(),2);
-
-        Serial.println(Params.autentication_mode);
-        SendToPSOC5((char*)buffer,2,CONFIGURACION_AUTENTICATION_MODES_CHAR_HANDLE);
-        
-        request->send(SPIFFS, "/parameters.html",String(), false, processor);
-    });
-
-    server.on("/ubcdp", HTTP_GET_A, [](AsyncWebServerRequest *request){
-        
-        Params.CDP = request->getParam(UBI_CDP)->value().toInt();
-
-        Serial.println(Params.CDP);
-        
-        request->send(SPIFFS, "/parameters.html",String(), false, processor);
     });
 
     server.on("/instcurlim", HTTP_GET_A, [](AsyncWebServerRequest *request){
@@ -440,20 +478,12 @@ void InitServer(void) {
         request->send_P(200, "text/plain", String(Comands.desired_current).c_str());
     });
 
-    server.on("/auth", HTTP_GET_A, [](AsyncWebServerRequest *request){
-        request->send_P(200, "text/plain", String(Params.autentication_mode).c_str());
-    });
-    
     server.on("/curlim", HTTP_GET_A, [](AsyncWebServerRequest *request){
         request->send_P(200, "text/plain", String(Params.inst_current_limit).c_str());
     });
     
     server.on("/power", HTTP_GET_A, [](AsyncWebServerRequest *request){
         request->send_P(200, "text/plain", String(Params.potencia_contratada).c_str());
-    });
-
-    server.on("/ucdp", HTTP_GET_A, [](AsyncWebServerRequest *request){
-        request->send_P(200, "text/plain", String(Params.CDP).c_str());
     });
 
     server.on("/ssid", HTTP_GET_A, [](AsyncWebServerRequest *request){
@@ -494,6 +524,39 @@ void InitServer(void) {
             Comands.reset = true;
         break;
 
+        case 5:
+            memcpy(Params.autentication_mode,"WA",2);
+            SendToPSOC5((char*)Params.autentication_mode,2,CONFIGURACION_AUTENTICATION_MODES_CHAR_HANDLE);
+        break;
+        case 6:
+            memcpy(Params.autentication_mode,"AA",2);
+            SendToPSOC5((char*)Params.autentication_mode,2,CONFIGURACION_AUTENTICATION_MODES_CHAR_HANDLE);
+        break;
+        case 7:
+            memcpy(Params.autentication_mode,"MA",2);
+            SendToPSOC5((char*)Params.autentication_mode,2,CONFIGURACION_AUTENTICATION_MODES_CHAR_HANDLE);
+        break;
+        case 8:
+            Params.CDP = Params.CDP & 13;
+            SendToPSOC5(Params.CDP,DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE);
+        break;
+        case 9:
+            Params.CDP = (Params.CDP | 2) & 15;
+            SendToPSOC5(Params.CDP,DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE);
+        break;
+        case 10:
+            Params.CDP = (Params.CDP | 2) | 16;
+            SendToPSOC5(Params.CDP,DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE);
+        break;
+        case 16:
+            Params.CDP = (Params.CDP | 8) & 27;
+            SendToPSOC5(Params.CDP,DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE);
+        break;
+        case 18:
+            Params.CDP = (Params.CDP | 4) & 23;
+            SendToPSOC5(Params.CDP,DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE);
+        break;
+
         default:
 
             break;
@@ -504,7 +567,7 @@ void InitServer(void) {
    server.on("/autoupdate", HTTP_GET_A, [] (AsyncWebServerRequest *request) {
     	bool estado;
         int numero;
-	
+        Serial.println(Params.autentication_mode);  
 		estado = request->getParam(ESTADO)->value().toInt();
         numero = request->getParam(SALIDA)->value().toInt();
         
@@ -518,7 +581,7 @@ void InitServer(void) {
                     memcpy(Params.Fw_Update_mode,"MA",2);
                 }
                 SendToPSOC5(Params.Fw_Update_mode, 2, COMS_FW_UPDATEMODE_CHAR_HANDLE);
-            break;
+                break;
 
             case 12:
                 Wifi_On = estado;
@@ -532,14 +595,13 @@ void InitServer(void) {
             case 15:
                 Gsm_On = estado;
                 break;
-            case 16:
-                Params.CDP_On = estado;
-                break;
             case 17:
                 while(Comands.conn_lock != estado){
                     SendToPSOC5(estado,STATUS_CONN_LOCK_STATUS_CHAR_INDEX);
                 }               
                 break;
+
+                
         default:
             break;
         }
