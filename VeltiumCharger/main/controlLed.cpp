@@ -8,6 +8,8 @@
 extern uint8 luminosidad;
 extern carac_Update_Status UpdateStatus;
 extern carac_Status  Status;
+extern uint8 dispositivo_inicializado;
+extern carac_group    ChargingGroup;
 
 //Adafruit_NeoPixel strip EXT_RAM_ATTR;
 CRGB leds[NUM_PIXELS] EXT_RAM_ATTR;
@@ -71,11 +73,11 @@ void initLeds ( void )
 void Kit (void){
 	
 	for (int j = 0; j < 7; j++){
-		displayOne(100,HUE_RED,j);
+		displayOne(100,ROJO,j);
 		vTaskDelay(pdMS_TO_TICKS(50));
 	}
 	for (int j = 7; j >= 0; j--){
-		displayOne(100,HUE_RED,j);
+		displayOne(100,ROJO,j);
 		vTaskDelay(pdMS_TO_TICKS(50));
 	
 	}
@@ -88,18 +90,58 @@ void LedControl_Task(void *arg){
 	uint16 cnt_parpadeo=TIME_PARPADEO, Delay= 20;
 	bool LastBle=0;
 	initLeds();
-	vTaskDelay(pdMS_TO_TICKS(100));
+	/*vTaskDelay(pdMS_TO_TICKS(100));
 	displayAll(50,VERDE);	
 	vTaskDelay(pdMS_TO_TICKS(350));
 	displayAll(50,ROJO);
 	vTaskDelay(pdMS_TO_TICKS(350));
 	displayAll(50,AZUL_OSCURO);
 	vTaskDelay(pdMS_TO_TICKS(350));
-	displayAll(50,VERDE);
+	displayAll(50,VERDE);*/
+
+	uint8_t count =0;
+	uint8_t colors[4] ={ 
+		VERDE_CLARITO , 
+		HUE_PURPLE,
+		AZUL_CLARITO,
+		HUE_WHITE 
+		};
+	//Arrancando
+	while(dispositivo_inicializado != 2){
+		if(subiendo){
+			luminosidad_carga++;
+			if(luminosidad_carga>=90){
+				subiendo=0;
+			}
+		}
+		else{
+			luminosidad_carga--;
+			if(luminosidad_carga<=5){
+				subiendo=1;
+				count++;
+			}
+		}
+		if(count == 4){
+			count=0;
+		}
+		displayAll(luminosidad_carga,colors[count]);
+
+		delay(5);
+	}
+
+	subiendo=0;
+	luminosidad_carga=0;
 
 	while(1){
-		//conexion/Desconexion ble
-		if(LastBle!=serverbleGetConnected()){		
+
+		//TODO: Borrar
+		if(ChargingGroup.Params.GroupMaster){
+			displayAll(100,ROJO);	
+			delay(500);
+		}
+
+		//Efectos puntuales
+		else if(LastBle!=serverbleGetConnected()){		
 			displayAll(50,BLANCO);	
 			vTaskDelay(pdMS_TO_TICKS(500));
 			LastBle=serverbleGetConnected();
@@ -136,7 +178,6 @@ void LedControl_Task(void *arg){
 			}
 			displayAll(luminosidad_carga,HUE_PURPLE);
 		}
-
 		else{
 			
 			//Funcionamiento normal

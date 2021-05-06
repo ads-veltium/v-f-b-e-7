@@ -45,7 +45,7 @@ TaskHandle_t hdServerble = NULL;
 // plus 4 header bytes, so 300 bytes should be enough.
 // actually
 //uint8 *buffer_tx=(uint8 *)ps_calloc(300,sizeof(uint8)); EXT_RAM_ATTR
-uint8 buffer_tx[300];// EXT_RAM_ATTR;
+uint8 buffer_tx[500] EXT_RAM_ATTR;
 
 
 BLEService *pbleServices[NUMBER_OF_SERVICES];
@@ -149,6 +149,10 @@ void serverbleSetCharacteristic ( uint8_t *data, int len, uint16_t handle )
 	rcs_server_set_chr_value(handle, data, len);
 }
 
+void serverbleSetConnected(bool value){
+	deviceBleConnected = value;
+}
+
 bool serverbleGetConnected(void)
 {
 	return deviceBleConnected;
@@ -158,18 +162,7 @@ class serverCallbacks: public BLEServerCallbacks
 {
 	void onConnect(BLEServer* pServer, ble_gap_conn_desc *desc) 
 	{
-		deviceBleConnected = true;
-		deviceConnectInd();
-
-		buffer_tx[0] = HEADER_TX;
-		buffer_tx[1] = (uint8)(BLOQUE_STATUS >> 8);
-		buffer_tx[2] = (uint8)(BLOQUE_STATUS);
-		buffer_tx[3] = 2;
-		buffer_tx[4] = deviceBleConnected;
-		buffer_tx[5] = ESTADO_NORMAL;
-		controlSendToSerialLocal(buffer_tx, 6);
-
-		
+		deviceConnectInd();		
 		Conn_Handle = desc->conn_handle;
 
 	};
@@ -425,16 +418,10 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 				return;
 			}
 			else if(handle == COMS_CONFIGURATION_ETH_ON){
-				while(Coms.ETH.ON != payload[0]){
-					SendToPSOC5(payload[0],COMS_CONFIGURATION_ETH_ON);
-					delay(50);
-				}
+				SendToPSOC5(payload[0],COMS_CONFIGURATION_ETH_ON);
 			}
 			else if(handle == COMS_CONFIGURATION_WIFI_ON){
-				while(Coms.Wifi.ON != payload[0]){
-					SendToPSOC5(payload[0],COMS_CONFIGURATION_WIFI_ON);
-					delay(50);
-				}
+				SendToPSOC5(payload[0],COMS_CONFIGURATION_WIFI_ON);
 			}
 #endif			
 			// if we are here, we are authenticated.

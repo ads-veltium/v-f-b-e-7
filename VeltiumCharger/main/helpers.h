@@ -2,7 +2,7 @@
 #define HELPERS_H
 
 bool str_to_uint16(const char *str, uint16_t *res);
-void print_table(carac_chargers table);
+void print_table(carac_chargers table, char* table_name);
 void cls();
 
 #endif

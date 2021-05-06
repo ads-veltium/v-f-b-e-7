@@ -14,6 +14,8 @@ extern carac_Params                 Params;
 extern carac_Coms                   Coms;
 extern carac_group                  ChargingGroup;
 
+extern uint8_t ConnectionState;
+
 
 void DownloadTask(void *arg);
 void store_group_in_mem(carac_chargers* group);
@@ -505,7 +507,8 @@ void DownloadFileTask(void *args){
 ***************************************************/
 
 void Firebase_Conn_Task(void *args){
-  uint8_t ConnectionState =  DISCONNECTED,  LastStatus = DISCONNECTED, NextState = 0;
+  ConnectionState =  DISCONNECTED;
+  uint8_t  LastStatus = DISCONNECTED, NextState = 0;
   uint8_t Error_Count = 0, null_count=0;
   //timeouts para leer parametros y coms (Para leer menos a menudo)
   uint8 Params_Coms_Timeout =0;
@@ -753,8 +756,8 @@ void Firebase_Conn_Task(void *args){
 
     /*********************** DISCONNECT states **********************/
     case DISCONNECTING:
-      ConnectionState=DISCONNECTED;
       Database->end();
+      ConnectionState=DISCONNECTED;
       break;
     default:
       while(1){
@@ -764,7 +767,7 @@ void Firebase_Conn_Task(void *args){
       break;
     }
     if(LastStatus!= ConnectionState){
-      //Serial.printf("Maquina de estados de Firebase de % i a %i \n", LastStatus, ConnectionState);
+      Serial.printf("Maquina de estados de Firebase de % i a %i \n", LastStatus, ConnectionState);
       LastStatus= ConnectionState;
     }
     

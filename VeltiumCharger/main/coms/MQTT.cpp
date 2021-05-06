@@ -53,7 +53,6 @@ void start_MQTT_client(IPAddress remoteIP);
 
 //Event handler del servidor
 static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) { 
-  uint32_t inicial = esp_get_free_internal_heap_size();
   
   if (ev == MG_EV_MQTT_CMD) {
 	struct mg_mqtt_message *mm = (struct mg_mqtt_message *) ev_data;
@@ -574,7 +573,7 @@ void Publisher(void* args){
                 memcpy(&buffer[3+(i*9)],ChargingGroup.group_chargers.charger_table[i].name,8);   
                 itoa(ChargingGroup.group_chargers.charger_table[i].Fase,&buffer[11+(i*9)],10);
             }
-            mqtt_publish("RTS", buffer, ChargingGroup.group_chargers.size*9+2,3);
+            mqtt_publish("RTS", buffer, ChargingGroup.group_chargers.size*9+3,3);
             ChargingGroup.SendNewGroup = false;
         }
 
@@ -698,7 +697,6 @@ void start_MQTT_server(){
         delay(5000);
 
         broadcast_a_grupo("Start client");
-        mqtt_sub_pub_opts publisher;
 
         //Ponerme el primero en el grupo para indicar que soy el maestro
         if(ChargingGroup.group_chargers.size>0 && check_in_group(ConfigFirebase.Device_Id,&ChargingGroup.group_chargers ) != 255){
