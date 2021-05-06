@@ -1394,10 +1394,19 @@ int mg_iobuf_resize(struct mg_iobuf *io, size_t new_size) {
         return 0;
       }
 
-      if (len > 0 && io->buf!=NULL){
-        memcpy(p, io->buf, len);
+      if(len < new_size && len < strlen((char*)io->buf)){
+        if (len > 0 && io->buf!=NULL){
+          memcpy(p, io->buf, len);
+        } 
+      }
+      else{
+        //Lo consideramos un fallo
+        printf("Error de iobuf!!! limpiando\n");
         free(io->buf);
-      } 
+        io->buf = NULL;
+        io->len = io->size = 0;
+      }
+
       io->buf = (unsigned char *) p;
       io->size = new_size;
     } else {

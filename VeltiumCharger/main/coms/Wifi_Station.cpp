@@ -367,7 +367,7 @@ void Eth_Loop(){
             }
 
             //Arrancar los grupos
-            else if(!ChargingGroup.Conected){
+            else if(!ChargingGroup.Conected && Coms.ETH.conectado){
                 if(ChargingGroup.Params.GroupActive){
                     if(GetStateTime(xStart) > 30000){
                         if(ChargingGroup.StartClient){

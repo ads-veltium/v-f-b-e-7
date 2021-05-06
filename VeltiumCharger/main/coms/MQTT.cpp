@@ -509,6 +509,9 @@ void MasterPanicTask(void *args){
                 }
             }
         }
+        if(!Coms.ETH.conectado){
+            break;
+        }
         delay(1000);
     }
     vTaskDelete(NULL);
