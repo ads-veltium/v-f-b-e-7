@@ -304,13 +304,16 @@ void InitServer(void) {
      request->send(SPIFFS, "/login.html");
     });
 
+    server.on("/veltium-logo-big", HTTP_GET_A, [](AsyncWebServerRequest *request){
+     request->send(SPIFFS, "/veltium-logo-big.png","image/png");
+    });
+
     server.on("/login", HTTP_GET_A, [](AsyncWebServerRequest *request){
      request->send(SPIFFS, "/login.html");
     });
 
     server.on("/comands", HTTP_GET_A, [](AsyncWebServerRequest *request){
      request->send(SPIFFS, "/comands.html",String(), false, processor);
-     //request->send(SPIFFS, "/veltium-logo-big.png");
     });
 
     server.on("/comms", HTTP_GET_A, [](AsyncWebServerRequest *request){
