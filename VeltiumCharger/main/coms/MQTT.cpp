@@ -155,7 +155,9 @@ void mqtt_server(void *pvParameters){
 
 	/* Processing events */
 	while (1) {
-		mg_mgr_poll(&server_mgr, 10);
+        if(!StopMQTT && Coms.ETH.conectado){
+		    mg_mgr_poll(&server_mgr, 10);
+        }
 		vTaskDelay(5);
 		if(StopMQTT){
 			break;
@@ -219,7 +221,7 @@ void mqtt_polling(void *params){
 	xStart_Server = xTaskGetTickCount();
 	while (1) {	
         
-		if(!StopMQTT){
+		if(!StopMQTT && Coms.ETH.conectado){
             mg_mgr_poll(&client_mgr, 10);
         }
 		vTaskDelay(pdMS_TO_TICKS(5));
@@ -272,14 +274,14 @@ void mqtt_publish(char* Topic, char* Data, size_t data_size, size_t topic_size){
         if(ChargingGroup.Params.GroupMaster){
             for (struct sub *sub = s_subs; sub != NULL; sub = sub->next) {
             if (strcmp(topic.ptr, sub->topic.ptr) != 0) continue;
-            if(!sub->c->is_closing){
+            if(!sub->c->is_closing && Coms.ETH.conectado){
                 mg_mqtt_pub(sub->c, &topic, &data);
             }
             
             }
         }
         else{
-            if(!mgc->is_closing){
+            if(!mgc->is_closing && Coms.ETH.conectado){
                 mg_mqtt_pub(mgc, &topic, &data);
             }
         }
