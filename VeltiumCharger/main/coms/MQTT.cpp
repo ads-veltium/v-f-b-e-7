@@ -219,7 +219,9 @@ void mqtt_polling(void *params){
 	xStart_Server = xTaskGetTickCount();
 	while (1) {	
         
-		if(!StopMQTT && !client_mgr.conns->is_closing)mg_mgr_poll(&client_mgr, 10);
+		if(!StopMQTT){
+            mg_mgr_poll(&client_mgr, 10);
+        }
 		vTaskDelay(pdMS_TO_TICKS(5));
 		uint32_t transcurrido = pdTICKS_TO_MS(xTaskGetTickCount() - xStart_Server);
 		
