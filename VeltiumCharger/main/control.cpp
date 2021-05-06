@@ -217,17 +217,20 @@ void controlTask(void *arg)
 						estado_actual = ESTADO_NORMAL;
 						break;
 					case ESTADO_NORMAL:
-						proceso_recepcion();	
-					    if(serverbleGetConnected()){
-							Iface_Con = BLE;
+						proceso_recepcion();
 
+						//Alguien se está intentando conectar	
+						if(AuthTimer !=0){
 							uint32_t Transcurrido = pdTICKS_TO_MS(xTaskGetTickCount()-AuthTimer);
-							if(Transcurrido > 15000 && !authSuccess && AuthTimer !=0){
+							if(Transcurrido > 10000 && !authSuccess){
 								printf("Auth request fallada, me desconecto!!\n");
 								AuthTimer=0;
-								//deviceBleDisconnect = true;
+								deviceBleDisconnect = true;
 							}
+						}
 
+					    if(serverbleGetConnected()){
+							Iface_Con = BLE;
 						}
 						else if(ConfigFirebase.ClientConnected){
 							Iface_Con = COMS;
@@ -987,6 +990,8 @@ void deviceConnectInd ( void ){
 	//Delay para dar tiempo a conectar
 	//vTaskDelay(pdMS_TO_TICKS(250));
 	modifyCharacteristic(authChallengeQuery, 8, AUTENTICACION_MATRIX_CHAR_HANDLE);
+	
+
 	Serial.println("Sending authentication");
 	vTaskDelay(pdMS_TO_TICKS(500));
 	AuthTimer = xTaskGetTickCount();

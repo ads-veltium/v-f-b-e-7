@@ -20,7 +20,7 @@ extern "C" {
 
 #define RCS_MAX_HANDLE 0x00BD
 
-#define RCS_CHR_OMNIBUS_SIZE 16
+#define RCS_CHR_OMNIBUS_SIZE 32
 
 // get characteristic index for given handle
 uint8_t rcs_idx_for_handle(uint16_t handle);

@@ -14,8 +14,9 @@ struct sub *s_subs EXT_RAM_ATTR;
 
 static StackType_t xPOLLstack [1024*6]     EXT_RAM_ATTR;
 StaticTask_t xPOLLBuffer ;
-struct mg_connection *mgc;
-struct mg_mgr client_mgr;
+struct mg_connection *mgc    EXT_RAM_ATTR;
+struct mg_mgr client_mgr     EXT_RAM_ATTR;
+struct mg_mgr server_mgr EXT_RAM_ATTR;
 TaskHandle_t PollerHandle = NULL;
 TickType_t xStart_Server;
 
@@ -149,13 +150,12 @@ void mqtt_server(void *pvParameters){
 
 	mg_log_set("1"); // Set to log level to LL_ERROR
 	const char *s_listen_on = (char*)pvParameters;
-	struct mg_mgr mgr;
-	mg_mgr_init(&mgr);
-	mg_mqtt_listen(&mgr, s_listen_on, fn, NULL);  // Create MQTT listener
+	mg_mgr_init(&server_mgr);
+	mg_mqtt_listen(&server_mgr, s_listen_on, fn, NULL);  // Create MQTT listener
 
 	/* Processing events */
 	while (1) {
-		mg_mgr_poll(&mgr, 10);
+		mg_mgr_poll(&server_mgr, 10);
 		vTaskDelay(5);
 		if(StopMQTT){
 			break;
@@ -163,7 +163,7 @@ void mqtt_server(void *pvParameters){
 	}
 	// Never reach here
 	printf("Server Stopped\n");
-	mg_mgr_free(&mgr);
+	mg_mgr_free(&server_mgr);
 	vTaskDelete(NULL);
 }
 
@@ -218,7 +218,8 @@ static void publisher_fn(struct mg_connection *c, int ev, void *ev_data, void *f
 void mqtt_polling(void *params){
 	xStart_Server = xTaskGetTickCount();
 	while (1) {	
-		if(!StopMQTT)mg_mgr_poll(&client_mgr, 10);
+        
+		if(!StopMQTT && !client_mgr.conns->is_closing)mg_mgr_poll(&client_mgr, 10);
 		vTaskDelay(pdMS_TO_TICKS(5));
 		uint32_t transcurrido = pdTICKS_TO_MS(xTaskGetTickCount() - xStart_Server);
 		
@@ -269,11 +270,16 @@ void mqtt_publish(char* Topic, char* Data, size_t data_size, size_t topic_size){
         if(ChargingGroup.Params.GroupMaster){
             for (struct sub *sub = s_subs; sub != NULL; sub = sub->next) {
             if (strcmp(topic.ptr, sub->topic.ptr) != 0) continue;
-            mg_mqtt_pub(sub->c, &topic, &data);
+            if(!sub->c->is_closing){
+                mg_mqtt_pub(sub->c, &topic, &data);
+            }
+            
             }
         }
         else{
-            mg_mqtt_pub(mgc, &topic, &data);
+            if(!mgc->is_closing){
+                mg_mqtt_pub(mgc, &topic, &data);
+            }
         }
     }
 }

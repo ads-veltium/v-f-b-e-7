@@ -206,8 +206,7 @@ int mg_mqtt_next_unsub(struct mg_mqtt_message *msg, struct mg_str *topic,
   return mg_mqtt_next_topic(msg, topic, NULL, pos);
 }
 
-static void mqtt_cb(struct mg_connection *c, int ev, void *ev_data,
-                    void *fn_data) {
+static void mqtt_cb(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
   if (ev == MG_EV_READ) {
     for (;;) {
       struct mg_mqtt_message mm;

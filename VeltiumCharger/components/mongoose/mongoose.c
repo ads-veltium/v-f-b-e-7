@@ -1377,18 +1377,27 @@ int mg_iobuf_resize(struct mg_iobuf *io, size_t new_size) {
     // NOTE(lsm): do not use realloc here. Use malloc/free only, to ease the
     // porting to some obscure platforms like FreeRTOS
 
-    void *p = malloc(new_size);
+    void *p = heap_caps_malloc(new_size,MALLOC_CAP_SPIRAM);
     if (p != NULL) {
-      size_t len = new_size < io->len ? new_size : io->len;
 
-      if(len<0 || len > io->len || io->len == 4 || io->len == 8){
-        printf("Realocados tamaño, nuevo tamaño: %i %i %i\n", io->len, io->size, new_size);
+      if(io->size ==0){
+        io->buf = (unsigned char *) p;
+        io->size = new_size;
+        return ok;
+      }
+
+      size_t len = new_size < io->len ? new_size : io->len;
+      if(len > io->len || io->len == 4 || io->len == 8){  
         printf("Error en el tamaño!!!!\n");
         printf("%i \n", len);
+        free(p);
         return 0;
       }
-      if (len > 0) memcpy(p, io->buf, len);
-      free(io->buf);
+
+      if (len > 0 && io->buf!=NULL){
+        memcpy(p, io->buf, len);
+        free(io->buf);
+      } 
       io->buf = (unsigned char *) p;
       io->size = new_size;
       
@@ -1411,6 +1420,7 @@ size_t mg_iobuf_append(struct mg_iobuf *io, const void *buf, size_t len,size_t c
   size_t new_size = io->len + len + chunk_size;
   new_size -= new_size % chunk_size;
   if (new_size != io->size) mg_iobuf_resize(io, new_size);
+  
   if (new_size != io->size) len = 0;  // Realloc failure, append nothing
   if (buf != NULL) memmove(io->buf + io->len, buf, len);
   io->len += len;
@@ -2110,14 +2120,14 @@ int mg_mqtt_next_unsub(struct mg_mqtt_message *msg, struct mg_str *topic,
   return mg_mqtt_next_topic(msg, topic, NULL, pos);
 }
 
-static void mqtt_cb(struct mg_connection *c, int ev, void *ev_data,
-                    void *fn_data) {
+static void mqtt_cb(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
   if (ev == MG_EV_READ) {
     for (;;) {
       struct mg_mqtt_message mm;
       int rc = mg_mqtt_parse(c->recv.buf, c->recv.len, &mm);
       if (rc == MQTT_MALFORMED) {
         LOG(LL_ERROR, ("%lu MQTT malformed message", c->id));
+        printf("%s\n",c->recv.buf);
         c->is_closing = 1;
         break;
       } else if (rc == MQTT_OK) {
@@ -2131,12 +2141,15 @@ static void mqtt_cb(struct mg_connection *c, int ev, void *ev_data,
               LOG(LL_INFO, ("%lu Connected", c->id));
             } else {
               LOG(LL_ERROR, ("%lu MQTT auth failed, code %d", c->id, mm.ack));
+              if(c->id ==1){
+                printf("Obviando connack!!!!!!\n");
+                break;
+              }
               c->is_closing = 1;
             }
             break;
           case MQTT_CMD_PUBLISH: {
-            LOG(LL_DEBUG, ("%lu [%.*s] -> [%.*s]", c->id, (int) mm.topic.len,
-                           mm.topic.ptr, (int) mm.data.len, mm.data.ptr));
+            LOG(LL_DEBUG, ("%lu [%.*s] -> [%.*s]", c->id, (int) mm.topic.len,mm.topic.ptr, (int) mm.data.len, mm.data.ptr));
             mg_call(c, MG_EV_MQTT_MSG, &mm);
             break;
           }

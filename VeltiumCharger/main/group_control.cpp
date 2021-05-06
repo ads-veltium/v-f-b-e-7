@@ -55,6 +55,14 @@ void New_Data(const char* Data, int Data_size){
     cJSON *mensaje_Json = cJSON_Parse(Data);
     carac_charger Cargador;
 
+    //compribar que el Json está bien
+    if(!cJSON_HasObjectItem(mensaje_Json,"HPT")){
+      return;
+    }
+    
+    /*char *Jsonstring =cJSON_Print(mensaje_Json);
+    printf("%s\n",Jsonstring);
+    free(Jsonstring);*/
 
     //Extraer los datos
     memcpy(Cargador.HPT,cJSON_GetObjectItem(mensaje_Json,"HPT")->valuestring,3);

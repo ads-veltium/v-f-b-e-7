@@ -9,12 +9,13 @@
 
 #include "ble_rcs.h"
 #include "ble_rcs_server.h"
+#include "esp_attr.h"
 
 #include <string.h>
 
 
 // buffer for receiving values from downstream value
-static uint8_t chr_selectable_buffer[RCS_NUM_IDX * RCS_CHR_OMNIBUS_SIZE];
+static uint8_t chr_selectable_buffer[RCS_NUM_IDX * RCS_CHR_OMNIBUS_SIZE] EXT_RAM_ATTR;
 
 uint8_t* rcs_server_get_data_for_selector(uint8_t selector)
 {

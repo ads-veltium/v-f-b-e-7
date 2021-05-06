@@ -60,12 +60,14 @@ BLECharacteristic *pbleCharacteristics[NUMBER_OF_CHARACTERISTICS];
 #define PROP_WN NIMBLE_PROPERTY::WRITE |NIMBLE_PROPERTY::NOTIFY
 
 
-// VSC_SELECTOR     RW 16
-// VSC_OMNIBUS      RW 16
-// VSC_OMNINOT      RN 16
-// VSC_RECORD       R  512
-// VSC_SCHED_MATRIX RW 168
-// VSC_FW_COMMAND   WN 288
+// VSC_SELECTOR       RW 16
+// VSC_OMNIBUS        RW 16
+// VSC_OMNINOT        RN 16
+// VSC_RECORD         R  512
+// VSC_SCHED_MATRIX   RW 168
+// VSC_FW_COMMAND     WN 288
+// VSC_NET_GROUP
+// VSC_CHARGING_GROUP
 
 BLE_FIELD blefields[MAX_BLE_FIELDS] =
 {
@@ -180,7 +182,6 @@ class serverCallbacks: public BLEServerCallbacks
 		controlSendToSerialLocal(buffer_tx, 6);
 
 		Conn_Handle=0;
-		deviceBleDisconnect = false;
 	}
 };
 
@@ -656,8 +657,10 @@ void serverbleTask(void *arg)
 			oldDeviceBleConnected = deviceBleConnected;
 		}
 
-		if(deviceBleConnected && deviceBleDisconnect){
+		if(deviceBleDisconnect){
+			printf("desconectandome del intruso!!!\n");
 			pServer->disconnect(Conn_Handle);
+			deviceBleDisconnect= false;
 		}
 		vTaskDelay(pdMS_TO_TICKS(250));	
 	}
