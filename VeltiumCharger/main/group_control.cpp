@@ -186,7 +186,7 @@ void LimiteConsumo(){
       desired_current = Delta_total_fase / (Conex_Fase - Conex_Delta_Fase) + ChargingGroup.Params.inst_max / Conex_Fase;
     }
   } 
-  else if (memcmp(Status.HPT_status,"C2",2)) {
+  else if (memcmp(Status.HPT_status,"C2",2) || Status.Measures.instant_current < 500) {
     is_LimiteConsumo = IN_NO_ACTIVE_CHILD;
     is_c3_charger = IN_CochesConectados;
     desired_current = 0;    
@@ -317,7 +317,7 @@ void Calculo_Consigna()
 {
   switch (is_c3_charger) {
      case IN_CochesConectados:
-      if (!memcmp(Status.HPT_status,"C2",2)) {
+      if (!memcmp(Status.HPT_status,"C2",2) && Status.Measures.instant_current > 500) {
         is_c3_charger = IN_LimiteConsumo;
         
         Comand_no_lim = desired_current;
@@ -372,7 +372,7 @@ void Calculo_Consigna()
             
           }
         }
-      } else if (memcmp(Status.HPT_status,"C2",2)) {
+      } else if (memcmp(Status.HPT_status,"C2",2) || Status.Measures.instant_current < 500) {
         is_LimiteInstalacion = IN_NO_ACTIVE_CHILD;
         is_c3_charger = IN_CochesConectados;
 
@@ -465,12 +465,13 @@ void input_values(){
     uint16_t total_pc =0;
     uint16_t total_pc_fase =0;
     for(int i=0; i< ChargingGroup.group_chargers.size;i++){
-        if(!memcmp(ChargingGroup.group_chargers.charger_table[i].HPT,"C2",2)){
+        if(!memcmp(ChargingGroup.group_chargers.charger_table[i].HPT,"C2",2) && ChargingGroup.group_chargers.charger_table[i].Current >500){
             Conex++;
+            if(ChargingGroup.group_chargers.charger_table[i].Delta > 0){
+                Conex_Delta++;
+            }
         }
-        if(ChargingGroup.group_chargers.charger_table[i].Delta > 0){
-            Conex_Delta++;
-        }
+
         Fases_limitadas+= ChargingGroup.group_chargers.charger_table[i].limite_fase;
         Delta_total += ChargingGroup.group_chargers.charger_table[i].Delta;
         total_pc += ChargingGroup.group_chargers.charger_table[i].Current;
@@ -478,12 +479,13 @@ void input_values(){
     Pc=total_pc/100;
 
     for(int i=0; i< FaseChargers.size;i++){
-        if(!memcmp(FaseChargers.charger_table[i].HPT,"C2",2)){
+        if(!memcmp(FaseChargers.charger_table[i].HPT,"C2",2) && ChargingGroup.group_chargers.charger_table[i].Current >500){
             Conex_Fase++;
+            if(FaseChargers.charger_table[i].Delta > 0){
+                Conex_Delta_Fase++;
+            }
         }
-        if(FaseChargers.charger_table[i].Delta > 0){
-            Conex_Delta_Fase++;
-        }
+
         //Delta_total += ChargingGroup.group_chargers.charger_table[i].Delta;
         total_pc_fase += FaseChargers.charger_table[i].Current;
         Delta_total_fase += FaseChargers.charger_table[i].Delta_fase;
