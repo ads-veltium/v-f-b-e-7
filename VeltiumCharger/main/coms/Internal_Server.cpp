@@ -535,23 +535,23 @@ void InitServer(void) {
         break;
         case 8:
             Params.CDP = Params.CDP & 13;
-            SendToPSOC5();
+            SendToPSOC5(Params.CDP,DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE);
         break;
         case 9:
             Params.CDP = (Params.CDP | 2) & 15;
-            SendToPSOC5();
+            SendToPSOC5(Params.CDP,DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE);
         break;
         case 10:
             Params.CDP = (Params.CDP | 2) | 16;
-            SendToPSOC5();
+            SendToPSOC5(Params.CDP,DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE);
         break;
         case 16:
             Params.CDP = (Params.CDP | 8) & 27;
-            SendToPSOC5();
+            SendToPSOC5(Params.CDP,DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE);
         break;
         case 18:
             Params.CDP = (Params.CDP | 4) & 23;
-            SendToPSOC5();
+            SendToPSOC5(Params.CDP,DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE);
         break;
 
         default:
