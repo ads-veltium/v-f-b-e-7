@@ -2138,7 +2138,6 @@ static void mqtt_cb(struct mg_connection *c, int ev, void *ev_data, void *fn_dat
       if (rc == MQTT_MALFORMED) {
         LOG(LL_ERROR, ("%lu MQTT malformed message", c->id));
         mg_iobuf_free(&c->recv);
-        printf("%s\n",c->recv.buf);
         //c->is_closing = 1;
         break;
       } else if (rc == MQTT_OK) {
