@@ -1,3 +1,16 @@
+.login{
+  width: 100%;
+  padding: 8px 20px;
+  margin: 8px 0;
+  display: block;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-sizing: border-box;
+  text-align: center;
+  margin-left: auto;
+  margin-right: auto;
+  }
+
 h1 {
     
     background-size: 40px;
@@ -103,7 +116,7 @@ body {
     box-sizing: border-box;
   }
 
-  input[type=password], select {
+  .contrasena, select {
     width: 100%;
     padding: 8px 20px;
     margin: 8px 0;

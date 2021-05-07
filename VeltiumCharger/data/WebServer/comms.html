@@ -21,14 +21,12 @@
     <a href="comms" class="active">Comunicaciones</a>
     <a href="status">Status</a>
     <div class="topnav-right">
-        <a href="javascript:void(0);" onclick="mainApp.logout();">Cerrar sesion</a>
+      <a href="javascript:void(0);" onclick="cerrar(this);" id="19">Cerrar sesion</a>
     </div>
     <a href="javascript:void(0);" class="icon" onclick="myFunction()">
       <i class="fa fa-bars"></i>
     </a>
   </div>
-    <script src="https://www.gstatic.com/firebasejs/4.8.2/firebase.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/4.8.2/firebase-auth.js"></script>
 </head>
 <body>
   <form action="/get" accept-charset="UTF-8">
@@ -50,7 +48,7 @@
               </tr>
               <tr>
                 <td><span class="dht-labels">Contrase&ntildea:</span></td>
-                <td><input style = "text-align:center;" name="w_pass" placeholder="Password" type="password"></input></td>
+                <td><input class="contrasena" style = "text-align:center;" name="w_pass" placeholder="Password" type="password"></input></td>
               </tr>
               </tr>
               
@@ -104,7 +102,7 @@
               </tr>
               <tr>
                 <td><span class="dht-labels">Contrase&ntildea:</span></td>
-                <td><input style = "text-align:center;" name="m_pass" placeholder="Password" type="password"></input></td>
+                <td><input class="contrasena" style = "text-align:center;" name="m_pass" placeholder="Password" type="password"></input></td>
               </tr>
               </tr>
             </table>
@@ -117,9 +115,17 @@
     <input class="boton" type="submit" value="Guardar" onclick = "guardacomms(this)">
     </div>
   </form>
-    <script src="fireBase.js"></script>
-    <script src="main.js"></script>
     <script>
+function cerrar(element){
+  var xhr = new XMLHttpRequest();
+
+  if(element.clicked){ xhr.open("GET", "/update?output="+element.id+"", true); }
+
+  else { xhr.open("GET", "/update?output="+element.id+"", true); }
+
+  xhr.send();
+  self.location.href = "/login";
+}
 
 function myFunction() {
   var x = document.getElementById("myTopnav");
