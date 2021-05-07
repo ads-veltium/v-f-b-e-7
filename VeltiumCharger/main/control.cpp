@@ -93,7 +93,10 @@ void proceso_recepcion(void);
 int Convert_To_Epoch(uint8_t DateTime[6]);
 void Disable_VELT1_CHARGER_services(void);
 
+
 #ifdef CONNECTED
+uint8_t check_in_group(const char* ID, carac_chargers* group);
+bool remove_from_group(const char* ID ,carac_chargers* group);
 bool add_to_group(const char* ID, IPAddress IP, carac_chargers* group);
 IPAddress get_IP(const char* ID);
 #endif
@@ -917,6 +920,23 @@ void procesar_bloque(uint16 tipo_bloque){
 					Params.Fase =buffer_rx_local[10+i*9]-'0';
 				}
 			}
+
+			//Ponerme el primero en el grupo para indicar que soy el maestro
+			if(ChargingGroup.Params.GroupMaster){
+				if(memcmp(ChargingGroup.group_chargers.charger_table[0].name,ConfigFirebase.Device_Id, 8)){
+					if(ChargingGroup.group_chargers.size > 0 && check_in_group(ConfigFirebase.Device_Id,&ChargingGroup.group_chargers ) != 255){
+						while(memcmp(ChargingGroup.group_chargers.charger_table[0].name,ConfigFirebase.Device_Id, 8)){
+							carac_charger OldMaster=ChargingGroup.group_chargers.charger_table[0];
+							remove_from_group(OldMaster.name, &ChargingGroup.group_chargers);
+							add_to_group(OldMaster.name, OldMaster.IP, &ChargingGroup.group_chargers);
+							ChargingGroup.group_chargers.charger_table[ChargingGroup.group_chargers.size-1].Fase=OldMaster.Fase;
+						}
+						ChargingGroup.SendNewGroup = true;
+					}
+				}
+			}
+
+
 			print_table(ChargingGroup.group_chargers, "Grupo desde PSOC");
 		}
 		break;
@@ -990,7 +1010,7 @@ void deviceConnectInd ( void ){
 	//Delay para dar tiempo a conectar
 	//vTaskDelay(pdMS_TO_TICKS(250));
 	modifyCharacteristic(authChallengeQuery, 8, AUTENTICACION_MATRIX_CHAR_HANDLE);
-	
+
 
 	Serial.println("Sending authentication");
 	vTaskDelay(pdMS_TO_TICKS(500));

@@ -10,6 +10,11 @@ extern "C" {
 #include "mqtt_server.h"
 #include "../group_control.h"
 
+#define GROUP_PARAMS   1
+#define GROUP_CONTROL  2
+#define GROUP_CHARGERS 3
+#define SEND_DATA      4
+
 struct sub *s_subs EXT_RAM_ATTR;
 
 static StackType_t xPOLLstack [1024*6]     EXT_RAM_ATTR;
@@ -129,14 +134,17 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
         }
         else if(!memcmp(mm->topic.ptr, "RTS", mm->topic.len)){
             switch(mm->data.ptr[0]-'0'){
-                case 1: //Group_Params
+                case GROUP_PARAMS: //Group_Params
                     New_Params(&mm->data.ptr[1], mm->data.len);
                     break;
-                case 2: //Group Control
+                case GROUP_CONTROL: //Group Control
                     New_Control(&mm->data.ptr[1], mm->data.len);
                     break;
-                case 3: //Group Chargers
+                case GROUP_CHARGERS: //Group Chargers
                     New_Group(&mm->data.ptr[1], mm->data.len);
+                    break;
+                case SEND_DATA: //Send Data
+                    Send_Data(&mm->data.ptr[1], mm->data.len);
                     break;
                 default:
                     printf("Me ha llegado algo indefinido\n");
@@ -196,15 +204,18 @@ static void publisher_fn(struct mg_connection *c, int ev, void *ev_data, void *f
 			}
 			else if(!memcmp(mm->topic.ptr, "RTS", mm->topic.len)){
 				switch(mm->data.ptr[0]-'0'){
-					case 1: //Group_Params
+					case GROUP_PARAMS: //Group_Params
 						New_Params(&mm->data.ptr[1], mm->data.len);
 						break;
-					case 2: //Group Control
+					case GROUP_CONTROL: //Group Control
 						New_Control(&mm->data.ptr[1], mm->data.len);
 						break;
-					case 3: //Group Chargers
+					case GROUP_CHARGERS: //Group Chargers
 						New_Group(&mm->data.ptr[1], mm->data.len);
 						break;
+                    case SEND_DATA: //Send Data
+                        Send_Data(&mm->data.ptr[1], mm->data.len);
+                        break;
 					default:
 						printf("Me ha llegado algo indefinido\n");
 						break;
@@ -527,42 +538,8 @@ void Publisher(void* args){
     char buffer[500];
     Params.Fase = 1;
     TickType_t xStart = xTaskGetTickCount();
-    uint32_t min = esp_get_free_internal_heap_size();
+    uint8_t  turno =0;
     while(1){
-        //Enviar nuestros datos de carga al grupo
-        if(ChargingGroup.SendNewData){   
-
-            cJSON *Datos_Json;
-	        Datos_Json = cJSON_CreateObject();
-
-            cJSON_AddStringToObject(Datos_Json, "device_id", ConfigFirebase.Device_Id);
-            cJSON_AddNumberToObject(Datos_Json, "fase", Params.Fase);
-            cJSON_AddNumberToObject(Datos_Json, "current", Status.Measures.instant_current);
-            //si es trifasico, enviar informacion de todas las fases
-            if(Status.Trifasico){
-                cJSON_AddNumberToObject(Datos_Json, "currentB", Status.MeasuresB.instant_current);
-                cJSON_AddNumberToObject(Datos_Json, "currentC", Status.MeasuresC.instant_current);
-            }
-            cJSON_AddNumberToObject(Datos_Json, "Delta", Status.Delta);
-            cJSON_AddStringToObject(Datos_Json, "HPT", Status.HPT_status);
-            cJSON_AddNumberToObject(Datos_Json, "limite_fase",Status.limite_Fase);
-
-
-            char *my_json_string = cJSON_Print(Datos_Json);   
-            
-            cJSON_Delete(Datos_Json);
-
-            mqtt_publish("Data", my_json_string, strlen(my_json_string),5);
-            free(my_json_string);
-            ChargingGroup.SendNewData = false;
-
-            if(esp_get_free_internal_heap_size() < min){
-                min = esp_get_free_internal_heap_size();
-                printf("Nuevo min! %i\n", min);
-            }
-
-            
-        }
         
         //Enviar nuevos parametros para el grupo
         if( ChargingGroup.SendNewParams){
@@ -608,52 +585,53 @@ void Publisher(void* args){
 
         //Si soy el maestro, debo realizar algunas tareas extra
         else{
-            //Comprobar si los esclavos se desconectan
+            //Comprobar si los esclavos se desconectan cada 15 segundos
             TickType_t Transcurrido = xTaskGetTickCount() - xStart;
-            xStart = xTaskGetTickCount();
-            for(uint8_t i=0 ;i<ChargingGroup.group_chargers.size;i++){
-                ChargingGroup.group_chargers.charger_table[i].Period += Transcurrido;
-                //si un equipo lleva mucho sin contestar, lo intentamos despertar
-                if(ChargingGroup.group_chargers.charger_table[i].Period >=30000 && ChargingGroup.group_chargers.charger_table[i].Period <=60000){ 
-                    AsyncUDPMessage mensaje (13);
-                    mensaje.write((uint8_t*)(Encipher("Start client").c_str()), 13);
-                    udp.sendTo(mensaje,ChargingGroup.group_chargers.charger_table[i].IP,1234);
-                }
+            if(Transcurrido > 15000){
+                xStart = xTaskGetTickCount();
+                for(uint8_t i=0 ;i<ChargingGroup.group_chargers.size;i++){
+                    ChargingGroup.group_chargers.charger_table[i].Period += Transcurrido;
+                    //si un equipo lleva mucho sin contestar, lo intentamos despertar
+                    if(ChargingGroup.group_chargers.charger_table[i].Period >=30000 && ChargingGroup.group_chargers.charger_table[i].Period <=60000){ 
+                        AsyncUDPMessage mensaje (13);
+                        mensaje.write((uint8_t*)(Encipher("Start client").c_str()), 13);
+                        udp.sendTo(mensaje,ChargingGroup.group_chargers.charger_table[i].IP,1234);
+                    }
+                    
+                    //si un equipo lleva muchisimo sin contestar, lo damos por muerto y reseteamos sus valores
+                    if(ChargingGroup.group_chargers.charger_table[i].Period >=60000 && ChargingGroup.group_chargers.charger_table[i].Period <=65000){
+                        if(memcmp(ChargingGroup.group_chargers.charger_table[i].name, ConfigFirebase.Device_Id,8)){
+
+                            cJSON *Datos_Json;
+                            Datos_Json = cJSON_CreateObject();
+
+                            cJSON_AddStringToObject(Datos_Json, "device_id", ChargingGroup.group_chargers.charger_table[i].name);
+                            cJSON_AddNumberToObject(Datos_Json, "fase", ChargingGroup.group_chargers.charger_table[i].Fase);
+                            cJSON_AddNumberToObject(Datos_Json, "Delta", 0);
+                            cJSON_AddStringToObject(Datos_Json, "HPT", "0V");
+                            cJSON_AddNumberToObject(Datos_Json, "limite_fase",0);
+                            cJSON_AddNumberToObject(Datos_Json, "current", 0);
+                            
+                            char *my_json_string = cJSON_Print(Datos_Json);                
+                            cJSON_Delete(Datos_Json);
                 
-                //si un equipo lleva muchisimo sin contestar, lo damos por muerto y reseteamos sus valores
-                if(ChargingGroup.group_chargers.charger_table[i].Period >=60000 && ChargingGroup.group_chargers.charger_table[i].Period <=65000){
-                    if(memcmp(ChargingGroup.group_chargers.charger_table[i].name, ConfigFirebase.Device_Id,8)){
-
-                        cJSON *Datos_Json;
-	                    Datos_Json = cJSON_CreateObject();
-
-                        cJSON_AddStringToObject(Datos_Json, "device_id", ChargingGroup.group_chargers.charger_table[i].name);
-                        cJSON_AddNumberToObject(Datos_Json, "fase", ChargingGroup.group_chargers.charger_table[i].Fase);
-                        cJSON_AddNumberToObject(Datos_Json, "Delta", 0);
-                        cJSON_AddStringToObject(Datos_Json, "HPT", "0V");
-                        cJSON_AddNumberToObject(Datos_Json, "limite_fase",0);
-                        cJSON_AddNumberToObject(Datos_Json, "current", 0);
-                        
-                        char *my_json_string = cJSON_Print(Datos_Json);                
-                        cJSON_Delete(Datos_Json);
-            
-                        mqtt_publish("Data", my_json_string,strlen(my_json_string),4);
-                        free(my_json_string);
+                            mqtt_publish("Data", my_json_string,strlen(my_json_string),4);
+                            free(my_json_string);
+                        }
                     }
                 }
             }
+                    
+            //Pedir datos a los esclavos para que no envíen todos a la vez
+            buffer[0] = '4';
+            memcpy(&buffer[1],ChargingGroup.group_chargers.charger_table[turno].name,8);
+            mqtt_publish("RTS", buffer, 9,3);
 
-            //Ponerme el primero en el grupo para indicar que soy el maestro
-            if(memcmp(ChargingGroup.group_chargers.charger_table[0].name,ConfigFirebase.Device_Id, 8)){
-                if(ChargingGroup.group_chargers.size > 0 && check_in_group(ConfigFirebase.Device_Id,&ChargingGroup.group_chargers ) != 255){
-                    while(memcmp(ChargingGroup.group_chargers.charger_table[0].name,ConfigFirebase.Device_Id, 8)){
-                        carac_charger OldMaster=ChargingGroup.group_chargers.charger_table[0];
-                        remove_from_group(OldMaster.name, &ChargingGroup.group_chargers);
-                        add_to_group(OldMaster.name, OldMaster.IP, &ChargingGroup.group_chargers);
-                    }
-                    ChargingGroup.SendNewGroup = true;
-                }
+            turno++;
+            if(turno==ChargingGroup.group_chargers.size){
+                turno=0;
             }
+
         }
 
         //Si se pausa el grupo, avisar al resto y pausar todo
@@ -717,6 +695,7 @@ void start_MQTT_server(){
                 carac_charger OldMaster=ChargingGroup.group_chargers.charger_table[0];
                 remove_from_group(OldMaster.name, &ChargingGroup.group_chargers);
                 add_to_group(OldMaster.name, OldMaster.IP, &ChargingGroup.group_chargers);
+                ChargingGroup.group_chargers.charger_table[ChargingGroup.group_chargers.size-1].Fase=OldMaster.Fase;
             }
             store_group_in_mem(&ChargingGroup.group_chargers);
         }

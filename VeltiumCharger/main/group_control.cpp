@@ -14,6 +14,7 @@ extern carac_group    ChargingGroup;
 bool add_to_group(const char* ID, IPAddress IP, carac_chargers* group);
 void remove_group(carac_chargers* group);
 uint8_t check_in_group(const char* ID, carac_chargers* group);
+void mqtt_publish(char* Topic, char* Data, size_t data_size, size_t topic_size);
 void store_group_in_mem(carac_chargers* group);
 IPAddress get_IP(const char* ID);
 void stop_MQTT();
@@ -166,6 +167,38 @@ void New_Group(const char* Data, int Data_size){
       remove_group(&FaseChargers);
       delay(50);
     }
+}
+
+//si han solicitado mis datos, mandarlos
+void Send_Data(const char*Data, int Data_size){
+  
+  if(!memcmp(Data,ConfigFirebase.Device_Id,8)){   
+    printf("Han pedido mis datos!");
+    cJSON *Datos_Json;
+    Datos_Json = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(Datos_Json, "device_id", ConfigFirebase.Device_Id);
+    cJSON_AddNumberToObject(Datos_Json, "fase", Params.Fase);
+    cJSON_AddNumberToObject(Datos_Json, "current", Status.Measures.instant_current);
+
+    //si es trifasico, enviar informacion de todas las fases
+    if(Status.Trifasico){
+        cJSON_AddNumberToObject(Datos_Json, "currentB", Status.MeasuresB.instant_current);
+        cJSON_AddNumberToObject(Datos_Json, "currentC", Status.MeasuresC.instant_current);
+    }
+    cJSON_AddNumberToObject(Datos_Json, "Delta", Status.Delta);
+    cJSON_AddStringToObject(Datos_Json, "HPT", Status.HPT_status);
+    cJSON_AddNumberToObject(Datos_Json, "limite_fase",Status.limite_Fase);
+
+
+    char *my_json_string = cJSON_Print(Datos_Json);   
+    
+    cJSON_Delete(Datos_Json);
+
+    mqtt_publish("Data", my_json_string, strlen(my_json_string),5);
+    free(my_json_string);
+    ChargingGroup.SendNewData = false;     
+  }
 }
 
 // Function for Chart: '<Root>/Charger 1'
@@ -442,11 +475,11 @@ void Calculo_Consigna()
 
 #ifdef DEBUG_GROUPS
   //cls();
-  printf("is_c3_charger= %i\n",is_c3_charger);
-  printf("Conex = %i\n", Conex);
-  printf("Comand desired current %i \n", desired_current);
-  printf("Max p = %i \n", ChargingGroup.Params.potencia_max);
-  printf("Inst max = %i \n", ChargingGroup.Params.inst_max);
+  //printf("is_c3_charger= %i\n",is_c3_charger);
+  //printf("Conex = %i\n", Conex);
+  //printf("Comand desired current %i \n", desired_current);
+  //printf("Max p = %i \n", ChargingGroup.Params.potencia_max);
+  //printf("Inst max = %i \n", ChargingGroup.Params.inst_max);
 #endif
   if(desired_current!=Comands.desired_current &&  !memcmp(Status.HPT_status,"C2",2)){
       //SendToPSOC5(desired_current,MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
@@ -493,8 +526,8 @@ void input_values(){
     }
     Pc_Fase=total_pc_fase/100;
 #ifdef DEBUG_GROUPS
-    printf("Total PC of phase %i\n",Pc); 
-    printf("Total PC and Delta %i %i \n",Pc,Delta_total);    
+    //f("Total PC of phase %i\n",Pc); 
+    //printf("Total PC and Delta %i %i \n",Pc,Delta_total);    
 #endif
 }
 
