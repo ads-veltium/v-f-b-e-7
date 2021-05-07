@@ -626,10 +626,10 @@ void Publisher(void* args){
             buffer[0] = '4';
             memcpy(&buffer[1],ChargingGroup.group_chargers.charger_table[turno].name,8);
             mqtt_publish("RTS", buffer, 9,3);
-
             turno++;
-            if(turno==ChargingGroup.group_chargers.size){
-                turno=0;
+            if(turno == ChargingGroup.group_chargers.size){
+                turno=1;
+                Send_Data(ConfigFirebase.Device_Id, 8); //Mandar mis datos
             }
 
         }
@@ -662,7 +662,7 @@ void Publisher(void* args){
             mqtt_publish("RTS", buffer,7,3);
         }
         
-        delay(2000);        
+        delay( ChargingGroup.Params.GroupMaster? 100:2000);        
     }
     StopMQTT = false;
     vTaskDelete(NULL);

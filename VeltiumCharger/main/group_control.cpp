@@ -173,7 +173,7 @@ void New_Group(const char* Data, int Data_size){
 void Send_Data(const char*Data, int Data_size){
   
   if(!memcmp(Data,ConfigFirebase.Device_Id,8)){   
-    printf("Han pedido mis datos!");
+    printf("Han pedido mis datos!\n");
     cJSON *Datos_Json;
     Datos_Json = cJSON_CreateObject();
 
@@ -198,6 +198,10 @@ void Send_Data(const char*Data, int Data_size){
     mqtt_publish("Data", my_json_string, strlen(my_json_string),5);
     free(my_json_string);
     ChargingGroup.SendNewData = false;     
+  }
+
+  else{
+    printf("No son mis datos!\n");
   }
 }
 
