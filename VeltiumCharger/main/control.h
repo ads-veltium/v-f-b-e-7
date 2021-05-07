@@ -61,12 +61,12 @@
 #define BLE  0
 #define COMS 1
 //Prioridades FreeRTOS
-#define PRIORIDAD_LEDS     1
+#define PRIORIDAD_LEDS     2
 #define PRIORIDAD_CONTROL  4
-#define PRIORIDAD_BLE      2
-#define PRIORIDAD_FIREBASE 2
-#define PRIORIDAD_COMS	   1
-#define PRIORIDAD_MQTT     2
+#define PRIORIDAD_BLE      3
+#define PRIORIDAD_FIREBASE 3
+#define PRIORIDAD_COMS	   2
+#define PRIORIDAD_MQTT     1
 
 // ESTADO GENERAL
 #define	ESTADO_ARRANQUE			0

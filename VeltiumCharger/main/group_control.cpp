@@ -173,7 +173,6 @@ void New_Group(const char* Data, int Data_size){
 void Send_Data(const char*Data, int Data_size){
   
   if(!memcmp(Data,ConfigFirebase.Device_Id,8)){   
-    printf("Me han pedido datos!\n");
     cJSON *Datos_Json;
     Datos_Json = cJSON_CreateObject();
 

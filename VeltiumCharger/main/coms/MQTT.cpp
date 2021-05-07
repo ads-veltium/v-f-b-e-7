@@ -271,7 +271,7 @@ bool mqtt_connect(mqtt_sub_pub_opts *pub_opts){
 
     mgc = mg_mqtt_connect(&client_mgr, pub_opts->url, &opts, publisher_fn, &pub_opts->url);	// Create client connection
 	
-	PollerHandle = xTaskCreateStatic(mqtt_polling,"POLLER",1024*6,NULL,2,xPOLLstack,&xPOLLBuffer); 
+	PollerHandle = xTaskCreateStatic(mqtt_polling,"POLLER",1024*6,NULL,PRIORIDAD_MQTT,xPOLLstack,&xPOLLBuffer); 
 
 	return true;
 }
