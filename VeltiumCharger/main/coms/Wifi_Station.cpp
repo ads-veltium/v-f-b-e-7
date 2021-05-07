@@ -411,7 +411,7 @@ void Eth_Loop(){
                 }
             }
             //Lectura del contador
-			if(ContadorExt.ContadorConectado){
+			if(ContadorExt.ContadorConectado && Params.Ubicacion_Sensor){
 				if(!Counter.Inicializado){
                     printf("Arrancando lectura del contador\n");
 					Counter.begin(ContadorExt.ContadorIp);
@@ -435,6 +435,11 @@ void Eth_Loop(){
 
 				SendToPSOC5((char*)buffer_contador,7,MEASURES_EXTERNAL_COUNTER);
 			}
+            else if(ContadorExt.ContadorConectado && !Params.Ubicacion_Sensor){
+                ContadorExt.ContadorConectado = false;
+                Counter.end();
+            }
+
         break;
 
         case DISCONNECTING:

@@ -78,7 +78,7 @@ uint16 inst_current_anterior = 0x0000;
 uint16 cnt_diferencia = 1;
 uint8 HPT_estados[9][3] = {"0V", "A1", "A2", "B1", "B2", "C1", "C2", "E1", "F1"};
 
-uint8 version_firmware[11] = {"VBLE2_0510"};	
+uint8 version_firmware[11] = {"VBLE2_0509"};	
 uint8 PSOC5_version_firmware[11] ;		
 
 uint8 systemStarted = 0;
@@ -798,6 +798,7 @@ void procesar_bloque(uint16 tipo_bloque){
 					record_buffer[i+3] = 0;
 				}				
 			}
+			WriteFirebaseHistoric((char*)buffer_rx_local);
 			modifyCharacteristic(record_buffer, 512, ENERGY_RECORD_RECORD_CHAR_HANDLE);
 		} 
 		break;

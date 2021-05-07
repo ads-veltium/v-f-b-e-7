@@ -20,6 +20,7 @@ extern uint8_t ConnectionState;
 void DownloadTask(void *arg);
 void store_group_in_mem(carac_chargers* group);
 
+
 uint16 ParseFirmwareVersion(String Texto){
   String sub = Texto.substring(6, 10); 
   return(sub.toInt());
@@ -205,6 +206,29 @@ bool WriteFirebasegroups(String Path){
     return false;
 }
 
+bool WriteFirebaseHistoric(char* buffer){
+  if(ConnectionState == IDLE){
+    String Path = "/records/";
+    Escritura.clear();
+    long conTime=123456789; 
+
+    Escritura["act"] = "123";
+    Escritura["con"] = "123";
+    Escritura["dis"] = "123";
+    Escritura["rea"] = "123";
+    Escritura["sta"] = "123";
+    Escritura["usr"] = "123";
+
+    char buf[10];
+    ltoa(conTime, buf, 10); 
+    printf("Escribiendo historico\n");
+    if(Database->Send_Command(Path+buf,&Escritura,UPDATE)){
+      return true;
+    }
+  }
+  
+  return false;
+}
 /***************************************************
   Funciones de lectura
 ***************************************************/
@@ -575,16 +599,10 @@ void Firebase_Conn_Task(void *args){
       ts_app_req=Database->Get_Timestamp("/status/ts_app_req",&Lectura);
       if(ts_app_req < 1){//connection refused o autenticacion terminada, comprobar respuesta
         String ResponseString = Lectura["error"];
-        Serial.println(ResponseString);
-        serializeJson(Lectura,Serial);
         if(strcmp(ResponseString.c_str(),"Auth token is expired") == 0){
             Serial.println("Autorizacion expirada, solicitando una nueva");
             if(Database->LogIn()){
-              Serial.println("Autorizacion obtenida, continuando");
               break;
-            }
-            else{
-              Serial.println("No se ha podido obtener una autorizacion, reiniciando...");
             }
             ConnectionState=DISCONNECTING;
         }

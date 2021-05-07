@@ -1432,7 +1432,11 @@ size_t mg_iobuf_append(struct mg_iobuf *io, const void *buf, size_t len,
   if (new_size != io->size) mg_iobuf_resize(io, new_size);
   
   if (new_size != io->size) len = 0;  // Realloc failure, append nothing
-  if (buf != NULL) memmove(io->buf + io->len, buf, len);
+  if (buf != NULL ){
+    if(io->len + len < strlen(&io->buf)){
+      memmove(io->buf + io->len, buf, len);
+    }
+  }
   io->len += len;
   return len;
 }
