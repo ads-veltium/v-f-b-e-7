@@ -1387,25 +1387,28 @@ int mg_iobuf_resize(struct mg_iobuf *io, size_t new_size) {
       }
 
       size_t len = new_size < io->len ? new_size : io->len;
-      if(len > io->len || io->len == 4 || io->len == 8){  
+      /*if(len > io->len || io->len == 4 || io->len == 8){  
         printf("Error en el tamaño!!!!\n");
         printf("%i \n", len);
         free(p);
         return 0;
+      }*/
+
+      if(io->buf!=NULL){
+        if(len < new_size && len < strlen((char*)io->buf)){
+          if (len > 0){
+            memcpy(p, io->buf, len);
+          } 
+        }
+        else{
+          //Lo consideramos un fallo
+          printf("Error de iobuf!!! limpiando\n");
+          free(io->buf);
+          io->buf = NULL;
+          io->len = io->size = 0;
+        }
       }
 
-      if(len < new_size && len < strlen((char*)io->buf)){
-        if (len > 0 && io->buf!=NULL){
-          memcpy(p, io->buf, len);
-        } 
-      }
-      else{
-        //Lo consideramos un fallo
-        printf("Error de iobuf!!! limpiando\n");
-        free(io->buf);
-        io->buf = NULL;
-        io->len = io->size = 0;
-      }
 
       io->buf = (unsigned char *) p;
       io->size = new_size;
@@ -2134,8 +2137,9 @@ static void mqtt_cb(struct mg_connection *c, int ev, void *ev_data, void *fn_dat
       int rc = mg_mqtt_parse(c->recv.buf, c->recv.len, &mm);
       if (rc == MQTT_MALFORMED) {
         LOG(LL_ERROR, ("%lu MQTT malformed message", c->id));
+        mg_iobuf_free(&c->recv);
         printf("%s\n",c->recv.buf);
-        c->is_closing = 1;
+        //c->is_closing = 1;
         break;
       } else if (rc == MQTT_OK) {
         LOG(LL_VERBOSE_DEBUG,
@@ -2150,6 +2154,7 @@ static void mqtt_cb(struct mg_connection *c, int ev, void *ev_data, void *fn_dat
               LOG(LL_ERROR, ("%lu MQTT auth failed, code %d", c->id, mm.ack));
               if(c->id ==1){
                 printf("Obviando connack!!!!!!\n");
+                mg_iobuf_free(&c->recv);
                 break;
               }
               c->is_closing = 1;
@@ -2162,6 +2167,7 @@ static void mqtt_cb(struct mg_connection *c, int ev, void *ev_data, void *fn_dat
           }
         }
         mg_call(c, MG_EV_MQTT_CMD, &mm);
+        //mg_iobuf_free(&c->recv);
         mg_iobuf_delete(&c->recv, mm.dgram.len);
       } else {
         break;
