@@ -1,23 +1,29 @@
 <!DOCTYPE html>
-<html lang="es">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>Veltium Smart Chargers</title>
-    <script src="https://www.gstatic.com/firebasejs/4.8.2/firebase.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/4.8.2/firebase-auth.js"></script>
-    <script src="https://cdn.firebase.com/libs/firebaseui/2.5.1/firebaseui.js"></script>
-    <link type="text/css" rel="stylesheet" href="https://cdn.firebase.com/libs/firebaseui/2.5.1/firebaseui.css" />
-    
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" type="text/css" href="style.css">
 </head>
 <body>
-    <!-- The surrounding HTML is left untouched by FirebaseUI.
-         Your app may use that space for branding, controls and other customizations.-->
-         <h1 style="text-align: center;">Veltium Smart Chargers</h1>
-         <div id="firebaseui-auth-container"></div>
-
-<script src="fireBase.js"></script>
-<script src="login.js"></script>
+    <div class="container">
+            <form name="loginForm" action="/loginForm">
+            <h1>VELTIUM Login</h1>
+            <input class="login" name="userid" placeholder="User ID" type="text"> 
+            <input class="login" name="pwd" placeholder="Password" type="password"> 
+            <input type="submit" onclick=errormesage(this) class="btn" value="Login">
+            </br></br>
+            </form>
+    </div>
 </body>
-</html>
+<script>
+
+function errormesage(element) {
+    var xhr = new XMLHttpRequest();
+    if(element.clicked){ xhr.open("GET", "/loginForm", true); }
+      else { xhr.open("GET", "/", true); }
+      xhr.send();
+}
+
+</script>
+

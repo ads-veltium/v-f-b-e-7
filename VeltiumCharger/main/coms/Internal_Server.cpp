@@ -30,6 +30,7 @@ const char* INST_CURR_LIM = "inst_curr_lim";
 const char* POT_CONT = "potencia_cont";
 const char* UBI_CDP = "ubi_cdp";
 
+bool Autenticado=false;
 bool Gsm_On;
 bool Eth_On;
 bool Eth_Auto;
@@ -43,6 +44,10 @@ int Desact1=5;
 int Desact2=9;
 int Medidor1=23;
 int Medidor2=27;
+
+String usuario;
+String contrasena;
+
 
 /************* Internal server configuration ****************/
 void notFound(AsyncWebServerRequest *request) {
@@ -312,24 +317,54 @@ void InitServer(void) {
      request->send(SPIFFS, "/login.html");
     });
 
+    server.on("/loginForm", HTTP_GET, [] (AsyncWebServerRequest *request) {
+
+	usuario = request->getParam(USER)->value();
+	contrasena = request->getParam(PASSWORD)->value();
+
+	if(usuario!="admin" || contrasena!="admin" ){
+		
+		request->send(SPIFFS, "/login.html",String(), false, processor);
+	}
+	else
+	{
+        Autenticado=true;
+		request->send(SPIFFS, "/parameters.html",String(), false, processor);
+	}
+   });
+
     server.on("/comands", HTTP_GET_A, [](AsyncWebServerRequest *request){
-     request->send(SPIFFS, "/comands.html",String(), false, processor);
+        if(Autenticado==true){
+            request->send(SPIFFS, "/comands.html",String(), false, processor);
+        }else{
+            request->send(SPIFFS, "/login.html");
+        }
     });
 
     server.on("/comms", HTTP_GET_A, [](AsyncWebServerRequest *request){
-     request->send(SPIFFS, "/comms.html",String(), false, processor);
-     //request->send(SPIFFS, "/veltium-logo-big.png");
+        if(Autenticado==true){
+            request->send(SPIFFS, "/comms.html",String(), false, processor);
+        }else{
+            request->send(SPIFFS, "/login.html");
+        }
     });
 
     server.on("/parameters", HTTP_GET_A, [](AsyncWebServerRequest *request){
-     request->send(SPIFFS, "/parameters.html",String(), false, processor);
-     //request->send(SPIFFS, "/veltium-logo-big.png");
+        if(Autenticado==true){
+            request->send(SPIFFS, "/parameters.html",String(), false, processor);
+        }else{
+            request->send(SPIFFS, "/login.html");
+        }
     });
     
     server.on("/status", HTTP_GET_A, [](AsyncWebServerRequest *request){
-     request->send(SPIFFS, "/status.html",String(), false, processor);
-     //request->send(SPIFFS, "/veltium-logo-big.png");
+        if(Autenticado==true){
+            request->send(SPIFFS, "/status.html",String(), false, processor);
+        }else{
+            request->send(SPIFFS, "/login.html");
+        }
     });
+
 
     server.on("/style.css", HTTP_GET_A, [](AsyncWebServerRequest *request){
     request->send(SPIFFS, "/style.css", "text/css");
@@ -555,6 +590,9 @@ void InitServer(void) {
         case 18:
             Params.CDP = (Params.CDP | 4) & 23;
             SendToPSOC5(Params.CDP,DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE);
+        break;
+        case 19:
+            Autenticado=false;
         break;
 
         default:
