@@ -284,9 +284,17 @@ void coap_loop(void *args) {
             }
         }
 
-        //Pedir datos a los esclavos para que no envíen todos a la vez
-        coap.sendResponse(get_IP(ChargingGroup.group_chargers.charger_table[turno].name), 5683, SEND_DATA, "X");
-        turno++;
+        //Pedir datos a los esclavos para que no envíen todos a la vez, obviando a los que no tenemos en la lista
+        IPAddress TurnoIP;
+        do{
+          TurnoIP = get_IP(ChargingGroup.group_chargers.charger_table[turno].name);
+          turno++;
+        }while((TurnoIP!= INADDR_NONE || TurnoIP != INADDR_ANY) && turno != ChargingGroup.group_chargers.size);
+
+        if(TurnoIP!= INADDR_NONE && TurnoIP != INADDR_ANY){ 
+          coap.sendResponse(TurnoIP, 5683, SEND_DATA, "X");
+        }
+        
         if(turno == ChargingGroup.group_chargers.size){
             turno=1;
             Send_Data(); //Mandar mis datos
