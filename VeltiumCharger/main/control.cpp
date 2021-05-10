@@ -918,12 +918,13 @@ void procesar_bloque(uint16 tipo_bloque){
 				add_to_group(ID, get_IP(ID), &ChargingGroup.group_chargers);
 				ChargingGroup.group_chargers.charger_table[i].Fase = buffer_rx_local[10+i*9]-'0';
 				if(!memcmp(ID,ConfigFirebase.Device_Id,8)){
+					ChargingGroup.group_chargers.charger_table[i].Conected = true;
 					Params.Fase =buffer_rx_local[10+i*9]-'0';
 				}
 			}
 
 			//Ponerme el primero en el grupo para indicar que soy el maestro
-			if(ChargingGroup.Params.GroupMaster){
+			/*if(ChargingGroup.Params.GroupMaster){
 				if(memcmp(ChargingGroup.group_chargers.charger_table[0].name,ConfigFirebase.Device_Id, 8)){
 					if(ChargingGroup.group_chargers.size > 0 && check_in_group(ConfigFirebase.Device_Id,&ChargingGroup.group_chargers ) != 255){
 						while(memcmp(ChargingGroup.group_chargers.charger_table[0].name,ConfigFirebase.Device_Id, 8)){
@@ -935,7 +936,7 @@ void procesar_bloque(uint16 tipo_bloque){
 						ChargingGroup.SendNewGroup = true;
 					}
 				}
-			}
+			}*/
 
 
 			print_table(ChargingGroup.group_chargers, "Grupo desde PSOC");

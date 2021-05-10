@@ -48,6 +48,8 @@ StaticTask_t xSERVERBuffer ;
 static StackType_t xPUBLISHERStack [4096]     EXT_RAM_ATTR;
 StaticTask_t xPUBLISHERBuffer ;
 carac_chargers net_group EXT_RAM_ATTR;
+carac_chargers net_active_group EXT_RAM_ATTR;
+extern carac_chargers FaseChargers;
 
 //Prototipos de funciones externas
 void mqtt_server(void *pvParameters);
@@ -336,6 +338,7 @@ uint8_t check_in_group(const char* ID, carac_chargers* group){
     return 255;
 }
 
+
 //Eliminar un cargador de un grupo
 bool remove_from_group(const char* ID ,carac_chargers* group){
     for(int j=0;j < group->size;j++){
@@ -586,7 +589,7 @@ void Publisher(void* args){
         //Si soy el maestro, debo realizar algunas tareas extra
         else{
             //Comprobar si los esclavos se desconectan cada 15 segundos
-            TickType_t Transcurrido = xTaskGetTickCount() - xStart;
+            TickType_t Transcurrido = xTaskGetTickCount() - timer;
             if(Transcurrido > 15000){
                 xStart = xTaskGetTickCount();
                 for(uint8_t i=0 ;i<ChargingGroup.group_chargers.size;i++){
@@ -598,25 +601,12 @@ void Publisher(void* args){
                         udp.sendTo(mensaje,ChargingGroup.group_chargers.charger_table[i].IP,1234);
                     }
                     
-                    //si un equipo lleva muchisimo sin contestar, lo damos por muerto y reseteamos sus valores
+                    //si un equipo lleva muchisimo sin contestar, lo damos por muerto y lo eliminamos de la tabla
                     if(ChargingGroup.group_chargers.charger_table[i].Period >=60000 && ChargingGroup.group_chargers.charger_table[i].Period <=65000){
                         if(memcmp(ChargingGroup.group_chargers.charger_table[i].name, ConfigFirebase.Device_Id,8)){
-
-                            cJSON *Datos_Json;
-                            Datos_Json = cJSON_CreateObject();
-
-                            cJSON_AddStringToObject(Datos_Json, "device_id", ChargingGroup.group_chargers.charger_table[i].name);
-                            cJSON_AddNumberToObject(Datos_Json, "fase", ChargingGroup.group_chargers.charger_table[i].Fase);
-                            cJSON_AddNumberToObject(Datos_Json, "Delta", 0);
-                            cJSON_AddStringToObject(Datos_Json, "HPT", "0V");
-                            cJSON_AddNumberToObject(Datos_Json, "limite_fase",0);
-                            cJSON_AddNumberToObject(Datos_Json, "current", 0);
-                            
-                            char *my_json_string = cJSON_Print(Datos_Json);                
-                            cJSON_Delete(Datos_Json);
-                
-                            mqtt_publish("Data", my_json_string,strlen(my_json_string),4);
-                            free(my_json_string);
+                            remove_from_group(ChargingGroup.group_chargers.charger_table[i].name,&net_group);
+                            remove_from_group(ChargingGroup.group_chargers.charger_table[i].name,&net_active_group);
+                            remove_from_group(ChargingGroup.group_chargers.charger_table[i].name,&FaseChargers);
                         }
                     }
                 }

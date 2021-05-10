@@ -9,6 +9,7 @@ extern carac_Status Status;
 extern carac_Comands Comands;
 extern carac_Firebase_Configuration ConfigFirebase;
 extern carac_chargers FaseChargers;
+extern carac_chargers net_active_group;
 extern carac_group    ChargingGroup;
 
 bool add_to_group(const char* ID, IPAddress IP, carac_chargers* group);
