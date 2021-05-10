@@ -46,7 +46,6 @@ bool add_to_group(const char* ID, IPAddress IP, carac_chargers* group){
             group->charger_table[group->size].name[8]='\0';
             group->charger_table[group->size].IP = IP;
             group->size++;
-            print_table(*group, "Añadido a !");
             return true;
         }
     }
@@ -77,7 +76,6 @@ bool remove_from_group(const char* ID ,carac_chargers* group){
             group->charger_table[group->size-1].IP = INADDR_NONE;       
             memset(group->charger_table[group->size-1].name,0,9);
             --group->size;
-            print_table(*group, "Borrado de !");
             return true;
         }
     }
@@ -411,6 +409,7 @@ void udp_group(){
 }
 
 void start_VGP(){
+    ChargingGroup.Conected = true;
     printf("Arranco el VGP!!\n");
     if(Publisher_Handle==NULL){
         Publisher_Handle = xTaskCreateStatic(Publisher,"Publisher",4096,NULL,PRIORIDAD_MQTT,xPUBLISHERStack,&xPUBLISHERBuffer); 

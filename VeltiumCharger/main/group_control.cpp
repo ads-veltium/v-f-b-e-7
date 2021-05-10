@@ -102,18 +102,20 @@ void New_Data(const char* Data, int Data_size){
         index++;
         //comprobar si soy el siguiente saltandome los inactivos
         while(index < ChargingGroup.group_chargers.size){
-          if(!ChargingGroup.group_chargers.charger_table[index].Conected){
-            index++;
-          }
-          if(!memcmp(ChargingGroup.group_chargers.charger_table[index].name, ConfigFirebase.Device_Id,8)){
-            ChargingGroup.SendNewData = true;
-            printf("Soy el siguiente!\n");
-            break;
-            
+          if(ChargingGroup.group_chargers.charger_table[index].Conected){
+            if(!memcmp(ChargingGroup.group_chargers.charger_table[index].name, ConfigFirebase.Device_Id,8)){
+              ChargingGroup.SendNewData = true;
+              printf("Soy el siguiente!\n");
+              break;
+              
+            }
+            else{
+              printf("No soy el siguiente %i !\n", index);
+              break;
+            }
           }
           else{
-            printf("No soy el siguiente %i !\n", index);
-            break;
+            index++;
           }
         }
 
@@ -121,12 +123,6 @@ void New_Data(const char* Data, int Data_size){
           ChargingGroup.SendNewData = true;
           printf("Soy el siguiente!\n");
         }
-        else{
-          printf("No soy el siguiente!2\n");
-        }
-        
-        print_table(ChargingGroup.group_chargers, "Net active");
-
     }
     //print_table(ChargingGroup.group_chargers, "Grupo total");
     input_values();
