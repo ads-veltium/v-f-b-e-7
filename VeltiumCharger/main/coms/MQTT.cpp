@@ -367,6 +367,9 @@ void udp_group(){
             Decipher((char*)buffer, (char*)Desencriptado);
 
             printf("%s\n",Desencriptado);
+            printf("%s\n",buffer);
+            Serial.write(packet.data(), packet.length());
+            Serial.println();
 
             if(!memcmp(Desencriptado, "Net_Group", 9)){
                 //Respopnder al equipo para que sepa que estamos en su red
@@ -407,8 +410,9 @@ void udp_group(){
     //Avisar al resto de equipos de que estamos aqui!
     mensaje.flush();
     mensaje.write((uint8*)Encipher("Net_Group"), 9);
-    mensaje.write((uint8*)Encipher(ConfigFirebase.Device_Id),8);
-    udp.broadcast(mensaje);
+    mensaje.write((uint8*)Encipher((char*)ConfigFirebase.Device_Id),8);
+
+    udp.broadcastTo(mensaje, 2702);
 }
 
 void start_VGP(){
