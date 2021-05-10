@@ -18,24 +18,17 @@ static String Cipher(String input, String oldAlphabet, String newAlphabet)
 	return output;
 }
 
-char* Encipher(char* input)
+String Encipher(String input)
 {
 	String plainAlphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890abcdefghijklmnopqrstuvwxyz";
     String cipherAlphabet= "y5aPZAjw067QklpgMLW4qOf3SbXm9IErcvK1DhNCxsFJdunViR2eotTUYGH8zB";
-	String out = Cipher(String(input), plainAlphabet, cipherAlphabet);
-	printf("%s\n", input);
-	printf("%s\n", (char*)out.c_str());
-	return (char*)out.c_str();
+	return Cipher(input, plainAlphabet, cipherAlphabet);
 }
 
-void Decipher(char* input, char* output){
-	String out = String(output);
+String Decipher(String input)
+{
 	String plainAlphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890abcdefghijklmnopqrstuvwxyz";
     String cipherAlphabet= "y5aPZAjw067QklpgMLW4qOf3SbXm9IErcvK1DhNCxsFJdunViR2eotTUYGH8zB";
-	out = Cipher(String(input), cipherAlphabet, plainAlphabet);
-	output = (char*)out.c_str();
-	printf("%s\n", input);
-	printf("%s\n", output);
-	return;
+	return Cipher(input, cipherAlphabet, plainAlphabet);
 }
 

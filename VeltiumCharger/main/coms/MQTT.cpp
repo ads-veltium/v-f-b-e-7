@@ -21,8 +21,8 @@ bool add_to_group(const char* ID, IPAddress IP, carac_chargers* group);
 AsyncUDP udp EXT_RAM_ATTR;
 AsyncUDPMessage mensaje EXT_RAM_ATTR;
 
-void Decipher(char* input, char* output);
-char* Encipher(char* input);
+String Encipher(String input);
+String Decipher(String input);
 
 extern carac_Coms  Coms;
 extern carac_Firebase_Configuration ConfigFirebase;
@@ -178,11 +178,11 @@ void broadcast_a_grupo(AsyncUDPMessage* _mensaje, carac_chargers* group){
 void VGP_Send(uint8 topic, char* _mensaje, uint8 size, carac_chargers* group){
     char _topic;
     mensaje.flush();
-    mensaje.write((uint8*)Encipher("RTS"), 3);
+    mensaje.write((uint8*)Encipher("RTS").c_str(), 3);
     itoa(topic,&_topic ,10);
-    mensaje.write((uint8*)Encipher(&_topic), 1);
+    mensaje.write((uint8*)Encipher(&_topic).c_str(), 1);
     if(size>0){
-        mensaje.write((uint8*)Encipher(_mensaje),size);
+        mensaje.write((uint8*)Encipher(_mensaje).c_str(),size);
     }
     broadcast_a_grupo(&mensaje, group);
 }
@@ -362,12 +362,10 @@ void udp_group(){
             memcpy(buffer, packet.data(), size);
             buffer[size] = '\0';
 
-            char Desencriptado[size];
+            char* Desencriptado = (char*)malloc(size);
             
-            Decipher((char*)buffer, (char*)Desencriptado);
-
-            printf("%s\n",Desencriptado);
-            printf("%s\n",buffer);
+            //Desencriptado = Decipher((char*)buffer).c_str();
+            memcpy(Desencriptado, Decipher((char*)buffer).c_str(), size);
             Serial.write(packet.data(), packet.length());
             Serial.println();
 
@@ -384,14 +382,14 @@ void udp_group(){
                         Serial.printf("El cargador VCD%s está en el grupo de carga\n", Desencriptado);  
                         #endif
                         mensaje.flush();
-                        mensaje.write((uint8*)Encipher("RCS"), 3);
-                        mensaje.write((uint8*)Encipher((char*)START_GROUP),1);
+                        mensaje.write((uint8*)Encipher("RCS").c_str(), 3);
+                        mensaje.write((uint8*)Encipher((char*)START_GROUP).c_str(),1);
                         udp.sendTo(mensaje,packet.remoteIP(),2702);
                     }
                 }
 
                 //Si el cargador no está en el grupo, lo añadimos
-                if(check_in_group(&Desencriptado[9], &net_group) == NO_ENCONTRADO){
+                if(check_in_group(&Desencriptado[8], &net_group) == NO_ENCONTRADO){
                     #ifdef DEBUG_GROUPS
                     Serial.printf("El cargador VCD%s con ip %s se ha añadido a la lista de red\n", Desencriptado, packet.remoteIP().toString().c_str());  
                     #endif
@@ -404,14 +402,18 @@ void udp_group(){
             else{
                 printf("Me han llegado datos raros %s\n", Desencriptado);
             }
+            free(Desencriptado);
         });
     }
 
     //Avisar al resto de equipos de que estamos aqui!
     mensaje.flush();
-    mensaje.write((uint8*)Encipher("Net_Group"), 9);
-    mensaje.write((uint8*)Encipher((char*)ConfigFirebase.Device_Id),8);
+    char SendBuffer[17];
 
+    memcpy(SendBuffer,Encipher("Net_Group").c_str(),9 );
+    memcpy(&SendBuffer[9],Encipher(String(ConfigFirebase.Device_Id)).c_str(),8 );
+
+    mensaje.write((uint8_t*)SendBuffer, 17);
     udp.broadcastTo(mensaje, 2702);
 }
 

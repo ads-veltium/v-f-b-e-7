@@ -651,6 +651,7 @@ size_t AsyncUDP::writeTo(const uint8_t * data, size_t len, const ip_addr_t * add
     if(pbt != NULL) {
         uint8_t* dst = reinterpret_cast<uint8_t*>(pbt->payload);
         memcpy(dst, data, len);
+        Serial.write(data,len);
         UDP_MUTEX_LOCK();
         if(tcpip_if < TCPIP_ADAPTER_IF_MAX){
             void * nif = NULL;
