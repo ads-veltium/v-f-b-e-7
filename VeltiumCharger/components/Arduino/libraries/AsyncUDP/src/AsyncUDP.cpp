@@ -137,6 +137,7 @@ static void _udp_task(void *pvParameters){
             AsyncUDP::_s_recv(e->arg, e->pcb, e->pb, e->addr, e->port, e->netif);
             free((void*)(e));
         }
+        delay(200);
     }
     _udp_task_handle = NULL;
     vTaskDelete(NULL);

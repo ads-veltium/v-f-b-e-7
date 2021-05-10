@@ -249,7 +249,7 @@ void Publisher(void* args){
             ChargingGroup.SendNewData = false; 
         }
 
-        else{
+       /*else{
             //Comprobar si los esclavos se desconectan cada 15 segundos
             TickType_t Transcurrido = xTaskGetTickCount() - timer;
             if(Transcurrido > 15000){
@@ -274,7 +274,7 @@ void Publisher(void* args){
                     }
                 }
             }
-        }
+        }*/
        
         //Ordenes de pausa / borrado
         if(ChargingGroup.StopOrder || ChargingGroup.DeleteOrder){
@@ -349,7 +349,6 @@ void udp_group(){
             
             //Desencriptado = Decipher((char*)buffer).c_str();
             memcpy(Desencriptado, Decipher(String(buffer)).c_str(), size+1);
-            printf("Desencriptado %s\n", Desencriptado);
 
             if(!memcmp(Desencriptado, "Net_Group", 9)){
                 //Respopnder al equipo para que sepa que estamos en su red
