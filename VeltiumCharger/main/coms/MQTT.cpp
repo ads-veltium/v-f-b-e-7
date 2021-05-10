@@ -259,7 +259,7 @@ void Publisher(void* args){
                     //si un equipo lleva mucho sin contestar, lo intentamos despertar
                     if(ChargingGroup.group_chargers.charger_table[i].Period >=30000 && ChargingGroup.group_chargers.charger_table[i].Period <=60000){ 
                         mensaje.flush();
-                        mensaje.write((uint8*)Encipher("RCS").c_str(), 3);
+                        mensaje.write((uint8*)Encipher("RTS").c_str(), 3);
                         mensaje.write((uint8*)Encipher(String(START_GROUP)).c_str(),1);
                         udp.sendTo(mensaje,ChargingGroup.group_chargers.charger_table[i].IP,2702);
                     }
@@ -307,7 +307,10 @@ void Callback(char* data, int size){
         case START_GROUP:
             printf("Soy parte de un grupo !!\n");
             ChargingGroup.Params.GroupActive = true;
-            xTaskCreateStatic(Publisher,"Publisher",4096,NULL,PRIORIDAD_MQTT,xPUBLISHERStack,&xPUBLISHERBuffer); 
+            ChargingGroup.SendNewData = true;
+            if(Publisher_Handle==NULL){
+                xTaskCreateStatic(Publisher,"Publisher",4096,NULL,PRIORIDAD_MQTT,xPUBLISHERStack,&xPUBLISHERBuffer);
+            } 
         break;
         case STOP_GROUP:
             ChargingGroup.StopOrder = true;
@@ -362,7 +365,7 @@ void udp_group(){
                         Serial.printf("El cargador VCD%s está en el grupo de carga\n", &Desencriptado[9]);  
                         #endif
                         mensaje.flush();
-                        mensaje.write((uint8*)Encipher("RCS").c_str(), 3);
+                        mensaje.write((uint8*)Encipher("RTS").c_str(), 3);
                         mensaje.write((uint8*)Encipher(String(START_GROUP)).c_str(),1);
                         udp.sendTo(mensaje,packet.remoteIP(),2702);
                     }
@@ -388,6 +391,7 @@ void udp_group(){
                 printf("Me han llegado datos raros %s\n", Desencriptado);
             }
             free(Desencriptado);
+            delay(200);
         });
     }
 
