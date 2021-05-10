@@ -259,7 +259,7 @@ void Publisher(void* args){
                     //si un equipo lleva mucho sin contestar, lo intentamos despertar
                     if(ChargingGroup.group_chargers.charger_table[i].Period >=30000 && ChargingGroup.group_chargers.charger_table[i].Period <=60000){ 
                         mensaje.flush();
-                        mensaje.write((uint8*)Encipher("RCS").c_str(), 3);
+                        mensaje.write((uint8*)Encipher("RTS").c_str(), 3);
                         mensaje.write((uint8*)Encipher(String(START_GROUP)).c_str(),1);
                         udp.sendTo(mensaje,ChargingGroup.group_chargers.charger_table[i].IP,2702);
                     }
@@ -297,6 +297,7 @@ void Publisher(void* args){
         }
         delay(2000);        
     }
+    printf("VGP Stopped!\n");
     ChargingGroup.Conected = false;
     vTaskDelete(Publisher_Handle);
 }
@@ -332,7 +333,8 @@ void Callback(char* data, int size){
 
 //Arrancar la comunicacion udp para escuchar cuando el maestro nos lo ordene
 void udp_group(){
-    
+    add_to_group(ConfigFirebase.Device_Id, Coms.ETH.IP, net_active_group);
+    add_to_group(ConfigFirebase.Device_Id, Coms.ETH.IP, net_group);
     if(udp.listen(2702)) {
         udp.onPacket([](AsyncUDPPacket packet) {         
             int size = packet.length();
@@ -362,7 +364,7 @@ void udp_group(){
                         Serial.printf("El cargador VCD%s está en el grupo de carga\n", &Desencriptado[9]);  
                         #endif
                         mensaje.flush();
-                        mensaje.write((uint8*)Encipher("RCS").c_str(), 3);
+                        mensaje.write((uint8*)Encipher("RTS").c_str(), 3);
                         mensaje.write((uint8*)Encipher(String(START_GROUP)).c_str(),1);
                         udp.sendTo(mensaje,packet.remoteIP(),2702);
                     }
