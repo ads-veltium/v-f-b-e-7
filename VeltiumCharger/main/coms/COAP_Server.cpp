@@ -23,6 +23,7 @@ extern carac_Comands  Comands ;
 static StackType_t xCoapStack [4096*4]     EXT_RAM_ATTR;
 StaticTask_t xCoapBuffer ;
 TaskHandle_t xCoapHandle = NULL;
+TickType_t   xMasterTimer = 0;
 
 // UDP and CoAP class
 WiFiUDP  Udp   EXT_RAM_ATTR;
@@ -46,7 +47,8 @@ void coap_broadcast_to_group(char* Mensaje, uint8_t messageID){
             }
         }
     }
-    coap.sendResponse(IPAddress(192,168,20,163), 5683, messageID, Mensaje);
+
+    coap.sendResponse(IPAddress().fromString(ip4addr_ntoa(&Coms.ETH.IP)), 5683, messageID, Mensaje);
 }
 
 //Enviar mis datos de carga
@@ -74,6 +76,7 @@ void Send_Data(){
   cJSON_Delete(Datos_Json);
 
   coap.put(ChargingGroup.MasterIP, 5683, "Data", my_json_string);
+
   printf("Enviando mis datos!\n");
   free(my_json_string);
   ChargingGroup.SendNewData = false;     
@@ -148,6 +151,7 @@ void callback_CHARGERS(CoapPacket &packet, IPAddress ip, int port) {
 
 // CoAP client response callback
 void callback_response(CoapPacket &packet, IPAddress ip, int port) {
+  xMasterTimer = xTaskGetTickCount();
   Serial.println("[Coap Response got]");
   
   char p[packet.payloadlen + 1];
@@ -241,6 +245,14 @@ void coap_loop(void *args) {
           coap.put(ChargingGroup.MasterIP, 5683, "Chargers", buffer);
           ChargingGroup.SendNewGroup = false;
       }
+
+      //Controlar si el maestro sigue con vida
+      if(!ChargingGroup.Params.GroupMaster){
+        if(pdTICKS_TO_MS(xTaskGetTickCount()-xMasterTimer)> 5000){
+          printf("Maestro desconectado!!!!\n");
+        }
+      }
+
       if(ChargingGroup.Params.GroupMaster){
         //El maestro debe hacer mas cosas
         //Comprobar si los esclavos se desconectan cada 15 segundos
@@ -293,6 +305,7 @@ void coap_loop(void *args) {
       delay(ChargingGroup.Params.GroupMaster? 500:2000);   
       coap.loop();
     }
+    printf("Coap detenido\n");
     ChargingGroup.Conected = false;
     xCoapHandle = NULL;
     vTaskDelete(NULL);
@@ -311,7 +324,6 @@ void coap_start() {
         delay(5);
         if(!ChargingGroup.Params.GroupMaster)break;
     }
-    
     if(ChargingGroup.Params.GroupMaster){
         broadcast_a_grupo("Start client");
 
