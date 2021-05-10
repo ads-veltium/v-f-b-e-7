@@ -28,6 +28,7 @@ void stop_MQTT();
 void start_udp();
 void InitServer(void);
 void StopServer(void);
+void coap_start();
 void start_MQTT_server();
 void start_MQTT_client(IPAddress remoteIP);
 
@@ -371,11 +372,14 @@ void Eth_Loop(){
                 if(ChargingGroup.Params.GroupActive){
                     if(GetStateTime(xStart) > 30000){
                         if(ChargingGroup.StartClient){
-                            start_MQTT_client(ChargingGroup.MasterIP);
+                            //start_MQTT_client(ChargingGroup.MasterIP);
+                            coap_start();
                         }
                         else{
-                            start_MQTT_server();
+                            //start_MQTT_server();
+                            coap_start();
                         }
+                        ChargingGroup.Conected = true;
                     }
                 }
             }
@@ -386,7 +390,8 @@ void Eth_Loop(){
                 if(Coms.ETH.restart){
                     if(ChargingGroup.Conected){
                         ChargingGroup.Params.GroupActive = false;
-                        stop_MQTT();
+                        //stop_MQTT();
+                        
                     }
                     kill_ethernet();
                     Coms.ETH.State = KILLING;
