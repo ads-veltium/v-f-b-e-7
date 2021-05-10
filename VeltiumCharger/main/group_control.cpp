@@ -9,6 +9,7 @@ extern carac_Status Status;
 extern carac_Comands Comands;
 extern carac_Firebase_Configuration ConfigFirebase;
 extern carac_chargers FaseChargers;
+extern carac_chargers net_active_group;
 extern carac_group    ChargingGroup;
 
 bool add_to_group(const char* ID, IPAddress IP, carac_chargers* group);
@@ -98,14 +99,15 @@ void New_Data(const char* Data, int Data_size){
     uint8_t index = check_in_group(Cargador.name,&ChargingGroup.group_chargers);                  
     if(index < 255){
         ChargingGroup.group_chargers.charger_table[index]=Cargador;
+
         //comprobar si soy el siguiente
         if(index+1 < ChargingGroup.group_chargers.size){
-          if(!memcmp(ChargingGroup.group_chargers.charger_table[index+1].name, ConfigFirebase.Device_Id,8)){
+          if(!memcmp(net_active_group.charger_table[index+1].name, ConfigFirebase.Device_Id,8)){
             ChargingGroup.SendNewData = true;
           }
         }
         else{
-          if(!memcmp(ChargingGroup.group_chargers.charger_table[0].name, ConfigFirebase.Device_Id,8)){
+          if(!memcmp(net_active_group.charger_table[0].name, ConfigFirebase.Device_Id,8)){
             ChargingGroup.SendNewData = true;
           }
         }

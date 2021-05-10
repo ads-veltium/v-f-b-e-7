@@ -35,6 +35,8 @@ static StackType_t xPUBLISHERStack [4096]     EXT_RAM_ATTR;
 StaticTask_t xPUBLISHERBuffer ;
 TaskHandle_t Publisher_Handle = NULL;
 carac_chargers net_group EXT_RAM_ATTR;
+carac_chargers net_active_group EXT_RAM_ATTR;
+extern carac_chargers FaseChargers;
 
 //Añadir un cargador a un equipo
 bool add_to_group(const char* ID, IPAddress IP, carac_chargers* group){
@@ -192,6 +194,7 @@ void Publisher(void* args){
     printf("Arrancando publicador\n");
     ChargingGroup.Conected = true;
     char buffer[500];
+    TickType_t timer = xTaskGetTickCount();
     while(1){
         
         //Enviar nuevos parametros para el grupo
@@ -241,62 +244,35 @@ void Publisher(void* args){
             
             VGP_Send(NEW_DATA, my_json_string, strlen(my_json_string), &ChargingGroup.group_chargers);
             free(my_json_string);
-            //ChargingGroup.SendNewData = false; 
+            ChargingGroup.SendNewData = false; 
         }
 
-        #ifdef OLD
-        //Si soy el maestro, debo realizar algunas tareas extra
         else{
             //Comprobar si los esclavos se desconectan cada 15 segundos
-            TickType_t Transcurrido = xTaskGetTickCount() - xStart;
+            TickType_t Transcurrido = xTaskGetTickCount() - timer;
             if(Transcurrido > 15000){
-                xStart = xTaskGetTickCount();
+                timer = xTaskGetTickCount();
                 for(uint8 i=0 ;i<ChargingGroup.group_chargers.size;i++){
                     ChargingGroup.group_chargers.charger_table[i].Period += Transcurrido;
                     //si un equipo lleva mucho sin contestar, lo intentamos despertar
                     if(ChargingGroup.group_chargers.charger_table[i].Period >=30000 && ChargingGroup.group_chargers.charger_table[i].Period <=60000){ 
                         mensaje.flush();
-                        mensaje.write((uint8*)(Encipher("Start client").c_str()), 13);
-                        udp.sendTo(mensaje,ChargingGroup.group_chargers.charger_table[i].IP,1234);
+                        mensaje.write((uint8*)Encipher("RCS").c_str(), 3);
+                        mensaje.write((uint8*)Encipher(String(START_GROUP)).c_str(),1);
+                        udp.sendTo(mensaje,ChargingGroup.group_chargers.charger_table[i].IP,2702);
                     }
                     
-                    //si un equipo lleva muchisimo sin contestar, lo damos por muerto y reseteamos sus valores
+                    //si un equipo lleva muchisimo sin contestar, lo damos por muerto y lo eliminamos de la tabla
                     if(ChargingGroup.group_chargers.charger_table[i].Period >=60000 && ChargingGroup.group_chargers.charger_table[i].Period <=65000){
                         if(memcmp(ChargingGroup.group_chargers.charger_table[i].name, ConfigFirebase.Device_Id,8)){
-
-                            cJSON *Datos_Json;
-                            Datos_Json = cJSON_CreateObject();
-
-                            cJSON_AddStringToObject(Datos_Json, "device_id", ChargingGroup.group_chargers.charger_table[i].name);
-                            cJSON_AddNumberToObject(Datos_Json, "fase", ChargingGroup.group_chargers.charger_table[i].Fase);
-                            cJSON_AddNumberToObject(Datos_Json, "Delta", 0);
-                            cJSON_AddStringToObject(Datos_Json, "HPT", "0V");
-                            cJSON_AddNumberToObject(Datos_Json, "limite_fase",0);
-                            cJSON_AddNumberToObject(Datos_Json, "current", 0);
-                            
-                            char *my_json_string = cJSON_Print(Datos_Json);                
-                            cJSON_Delete(Datos_Json);
-                
-                            mqtt_publish("Data", my_json_string,strlen(my_json_string),4);
-                            free(my_json_string);
+                            remove_from_group(ChargingGroup.group_chargers.charger_table[i].name,&net_group);
+                            remove_from_group(ChargingGroup.group_chargers.charger_table[i].name,&net_active_group);
+                            remove_from_group(ChargingGroup.group_chargers.charger_table[i].name,&FaseChargers);
                         }
                     }
                 }
             }
-                    
-            //Pedir datos a los esclavos para que no envíen todos a la vez
-            buffer[0] = '4';
-            memcpy(&buffer[1],ChargingGroup.group_chargers.charger_table[turno].name,8);
-            mqtt_publish("RTS", buffer, 9,3);
-            turno++;
-            if(turno == ChargingGroup.group_chargers.size){
-                turno=1;
-                Send_Data(ConfigFirebase.Device_Id, 8); //Mandar mis datos
-            }
-
         }
-
-        #endif
        
         //Ordenes de pausa / borrado
         if(ChargingGroup.StopOrder || ChargingGroup.DeleteOrder){
@@ -396,9 +372,14 @@ void udp_group(){
                     Serial.printf("El cargador VCD%s con ip %s se ha añadido a la lista de red\n", &Desencriptado[9], packet.remoteIP().toString().c_str());  
                     #endif
                     add_to_group(&Desencriptado[9], packet.remoteIP(), &net_group);
+
+                    //si el cargador esta tambien en el grupo de carga
+                    if(check_in_group(&Desencriptado[9], &net_active_group) == NO_ENCONTRADO){
+                        add_to_group(&Desencriptado[9], packet.remoteIP(), &net_active_group);
+                    }
                 } 
             }
-            else if(!memcmp(Desencriptado, "RCS", 3)){
+            else if(!memcmp(Desencriptado, "RTS", 3)){
                 Callback(&Desencriptado[3], size);
             }
             else{
