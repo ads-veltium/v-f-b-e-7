@@ -28,7 +28,10 @@ void stop_MQTT();
 void start_udp();
 void InitServer(void);
 void StopServer(void);
+<<<<<<< HEAD
 void coap_start();
+=======
+>>>>>>> parent of ef6caf07... UDP
 void start_MQTT_server();
 void start_MQTT_client(IPAddress remoteIP);
 
