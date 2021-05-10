@@ -5,12 +5,12 @@
 //Funciones del MQTT
 #include "../group_control.h"
 
-#define START_GROUP    0
-#define STOP_GROUP     1
-#define DELETE_GROUP   2
-#define GROUP_PARAMS   3
-#define GROUP_CHARGERS 4
-#define NEW_DATA       5
+#define START_GROUP    1
+#define STOP_GROUP     2
+#define DELETE_GROUP   3
+#define GROUP_PARAMS   4
+#define GROUP_CHARGERS 5
+#define NEW_DATA       6
 
 #define NO_ENCONTRADO  255
 struct sub *s_subs EXT_RAM_ATTR;
@@ -362,23 +362,26 @@ void udp_group(){
             memcpy(buffer, packet.data(), size);
             buffer[size] = '\0';
 
-            char* Desencriptado = (char*)malloc(size);
+            char* Desencriptado = (char*)malloc(size+1);
             
             //Desencriptado = Decipher((char*)buffer).c_str();
-            memcpy(Desencriptado, Decipher(String(buffer)).c_str(), size);
+            memcpy(Desencriptado, Decipher(String(buffer)).c_str(), size+1);
             printf("Desencriptado %s\n", Desencriptado);
 
             if(!memcmp(Desencriptado, "Net_Group", 9)){
                 //Respopnder al equipo para que sepa que estamos en su red
                 if(packet.isBroadcast()){                 
-                    packet.print(Encipher((char*)ConfigFirebase.Device_Id));
+                    mensaje.flush();
+                    mensaje.write((uint8*)Encipher("Net_Group").c_str(), 9);
+                    mensaje.write((uint8*)Encipher(String(ConfigFirebase.Device_Id)).c_str(),8 );
+                    udp.sendTo(mensaje,packet.remoteIP(),2702);
                 }
 
                 //Si tenemos un grupo activo y el cargador está en el, se lo decimos
                 if(ChargingGroup.Params.GroupActive){
                     if(check_in_group(&Desencriptado[9], &ChargingGroup.group_chargers) != NO_ENCONTRADO){
                         #ifdef DEBUG_GROUPS
-                        Serial.printf("El cargador VCD%s está en el grupo de carga\n", Desencriptado);  
+                        Serial.printf("El cargador VCD%s está en el grupo de carga\n", &Desencriptado[9]);  
                         #endif
                         mensaje.flush();
                         mensaje.write((uint8*)Encipher("RCS").c_str(), 3);
