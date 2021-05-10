@@ -167,7 +167,7 @@ void broadcast_a_grupo(AsyncUDPMessage* _mensaje, carac_chargers* group){
     for(int i =0; i < net_group.size;i++){
         for(int j=0;j < group->size;j++){
             if(check_in_group(net_group.charger_table[i].name, group)!=255){
-                udp.sendTo(*_mensaje, net_group.charger_table[i].IP,1234);
+                udp.sendTo(*_mensaje, net_group.charger_table[i].IP,2702);
                 group->charger_table[j].IP = net_group.charger_table[i].IP; 
             }
         }
@@ -241,7 +241,7 @@ void Publisher(void* args){
             
             VGP_Send(NEW_DATA, my_json_string, strlen(my_json_string), &ChargingGroup.group_chargers);
             free(my_json_string);
-            ChargingGroup.SendNewData = false; 
+            //ChargingGroup.SendNewData = false; 
         }
 
         #ifdef OLD
