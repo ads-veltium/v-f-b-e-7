@@ -297,6 +297,7 @@ void Publisher(void* args){
         }
         delay(2000);        
     }
+    printf("VGP Stopped!\n");
     ChargingGroup.Conected = false;
     vTaskDelete(Publisher_Handle);
 }
@@ -335,7 +336,8 @@ void Callback(char* data, int size){
 
 //Arrancar la comunicacion udp para escuchar cuando el maestro nos lo ordene
 void udp_group(){
-    
+    add_to_group(ConfigFirebase.Device_Id, Coms.ETH.IP, net_active_group);
+    add_to_group(ConfigFirebase.Device_Id, Coms.ETH.IP, net_group);
     if(udp.listen(2702)) {
         udp.onPacket([](AsyncUDPPacket packet) {         
             int size = packet.length();

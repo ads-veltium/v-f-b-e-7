@@ -923,7 +923,7 @@ void procesar_bloque(uint16 tipo_bloque){
 			}
 
 			//Ponerme el primero en el grupo para indicar que soy el maestro
-			if(ChargingGroup.Params.GroupMaster){
+			/*if(ChargingGroup.Params.GroupMaster){
 				if(memcmp(ChargingGroup.group_chargers.charger_table[0].name,ConfigFirebase.Device_Id, 8)){
 					if(ChargingGroup.group_chargers.size > 0 && check_in_group(ConfigFirebase.Device_Id,&ChargingGroup.group_chargers ) != 255){
 						while(memcmp(ChargingGroup.group_chargers.charger_table[0].name,ConfigFirebase.Device_Id, 8)){
@@ -935,7 +935,7 @@ void procesar_bloque(uint16 tipo_bloque){
 						ChargingGroup.SendNewGroup = true;
 					}
 				}
-			}
+			}*/
 
 
 			print_table(ChargingGroup.group_chargers, "Grupo desde PSOC");
