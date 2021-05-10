@@ -83,7 +83,6 @@ bool remove_from_group(const char* ID ,carac_chargers* group){
             return true;
         }
     }
-    printf("El cargador no está en el grupo!\n");
     return false;
 }
 

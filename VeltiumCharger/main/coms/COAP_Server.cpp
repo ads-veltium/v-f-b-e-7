@@ -96,8 +96,7 @@ void callback_PARAMS(CoapPacket &packet, IPAddress ip, int port) {
 }
 
 void callback_DATA(CoapPacket &packet, IPAddress ip, int port) {
-  Serial.println("DATA");
-  
+ 
   // send response
   char p[packet.payloadlen + 1];
   memcpy(p, packet.payload, packet.payloadlen);
@@ -105,11 +104,9 @@ void callback_DATA(CoapPacket &packet, IPAddress ip, int port) {
   
   String message(p);
 
-  Serial.println(message);
-
-  //if(packet.payloadlen >0){
-    coap_broadcast_to_group("Pruebas", SEND_DATA);
-  //} 
+  if(packet.payloadlen >0){
+    coap_broadcast_to_group(p, NEW_DATA);
+  } 
 }
 
 void callback_CONTROL(CoapPacket &packet, IPAddress ip, int port) {
