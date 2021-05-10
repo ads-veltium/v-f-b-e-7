@@ -64,6 +64,7 @@ uint8 check_in_group(const char* ID, carac_chargers* group){
     return 255;
 }
 
+
 //Eliminar un cargador de un grupo
 bool remove_from_group(const char* ID ,carac_chargers* group){
     for(int j=0;j < group->size;j++){
@@ -338,6 +339,7 @@ void Callback(char* data, int size){
 void udp_group(){
     add_to_group(ConfigFirebase.Device_Id, INADDR_NONE, &net_active_group);
     add_to_group(ConfigFirebase.Device_Id, INADDR_NONE, &net_group);
+    
     if(udp.listen(2702)) {
         udp.onPacket([](AsyncUDPPacket packet) {         
             int size = packet.length();
@@ -380,8 +382,9 @@ void udp_group(){
                     add_to_group(&Desencriptado[9], packet.remoteIP(), &net_group);
 
                     //si el cargador esta tambien en el grupo de carga
-                    if(check_in_group(&Desencriptado[9], &net_active_group) == NO_ENCONTRADO){
-                        add_to_group(&Desencriptado[9], packet.remoteIP(), &net_active_group);
+                    uint8_t index1 = check_in_group(&Desencriptado[9], &ChargingGroup.group_chargers);
+                    if(index1!= NO_ENCONTRADO){
+                        ChargingGroup.group_chargers.charger_table[index1].Conected = true;
                     }
                 } 
             }

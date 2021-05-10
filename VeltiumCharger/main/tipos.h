@@ -266,6 +266,7 @@ typedef struct{
 	uint16_t Delta_fase;
 	uint8_t limite_fase;
 	TickType_t Period;
+	bool Conected = false;
 
 }carac_charger;
 

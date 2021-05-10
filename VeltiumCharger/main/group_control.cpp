@@ -96,30 +96,36 @@ void New_Data(const char* Data, int Data_size){
 
     //Actualizacion del grupo total
     //Buscar el equipo en el grupo total
-    uint8_t index = check_in_group(Cargador.name,&net_active_group);                  
+    uint8_t index = check_in_group(Cargador.name,&ChargingGroup.group_chargers);                  
     if(index < 255){
         ChargingGroup.group_chargers.charger_table[index]=Cargador;
-
-        //comprobar si soy el siguiente
-        if(index+1 < net_active_group.size){
-          if(!memcmp(net_active_group.charger_table[index+1].name, ConfigFirebase.Device_Id,8)){
+        index++;
+        //comprobar si soy el siguiente saltandome los inactivos
+        while(index < ChargingGroup.group_chargers.size){
+          if(!ChargingGroup.group_chargers.charger_table[index].Conected){
+            index++;
+          }
+          if(!memcmp(ChargingGroup.group_chargers.charger_table[index].name, ConfigFirebase.Device_Id,8)){
             ChargingGroup.SendNewData = true;
             printf("Soy el siguiente!\n");
+            break;
             
           }
           else{
             printf("No soy el siguiente %i !\n", index);
+            break;
           }
+        }
+
+        if(!memcmp(ChargingGroup.group_chargers.charger_table[0].name, ConfigFirebase.Device_Id,8)){
+          ChargingGroup.SendNewData = true;
+          printf("Soy el siguiente!\n");
         }
         else{
-          if(!memcmp(net_active_group.charger_table[0].name, ConfigFirebase.Device_Id,8)){
-            ChargingGroup.SendNewData = true;
-          }
-          else{
-            printf("No soy el siguiente!2\n");
-          }
+          printf("No soy el siguiente!2\n");
         }
-        print_table(net_active_group, "Net active");
+        
+        print_table(ChargingGroup.group_chargers, "Net active");
 
     }
     //print_table(ChargingGroup.group_chargers, "Grupo total");
