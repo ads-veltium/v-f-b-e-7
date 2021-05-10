@@ -365,9 +365,8 @@ void udp_group(){
             char* Desencriptado = (char*)malloc(size);
             
             //Desencriptado = Decipher((char*)buffer).c_str();
-            memcpy(Desencriptado, Decipher((char*)buffer).c_str(), size);
-            Serial.write(packet.data(), packet.length());
-            Serial.println();
+            memcpy(Desencriptado, Decipher(String(buffer)).c_str(), size);
+            printf("Desencriptado %s\n", Desencriptado);
 
             if(!memcmp(Desencriptado, "Net_Group", 9)){
                 //Respopnder al equipo para que sepa que estamos en su red
@@ -383,17 +382,17 @@ void udp_group(){
                         #endif
                         mensaje.flush();
                         mensaje.write((uint8*)Encipher("RCS").c_str(), 3);
-                        mensaje.write((uint8*)Encipher((char*)START_GROUP).c_str(),1);
+                        mensaje.write((uint8*)Encipher(String(START_GROUP)).c_str(),1);
                         udp.sendTo(mensaje,packet.remoteIP(),2702);
                     }
                 }
 
                 //Si el cargador no está en el grupo, lo añadimos
-                if(check_in_group(&Desencriptado[8], &net_group) == NO_ENCONTRADO){
+                if(check_in_group(&Desencriptado[9], &net_group) == NO_ENCONTRADO){
                     #ifdef DEBUG_GROUPS
-                    Serial.printf("El cargador VCD%s con ip %s se ha añadido a la lista de red\n", Desencriptado, packet.remoteIP().toString().c_str());  
+                    Serial.printf("El cargador VCD%s con ip %s se ha añadido a la lista de red\n", &Desencriptado[9], packet.remoteIP().toString().c_str());  
                     #endif
-                    add_to_group(Desencriptado, packet.remoteIP(), &net_group);
+                    add_to_group(&Desencriptado[9], packet.remoteIP(), &net_group);
                 } 
             }
             else if(!memcmp(Desencriptado, "RCS", 3)){
