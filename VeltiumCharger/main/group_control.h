@@ -11,7 +11,6 @@ void New_Data(const char* Data, int Data_size);
 void New_Params(const char* Data, int Data_size);
 void New_Control(const char* Data, int Data_size);
 void New_Group(const char* Data, int Data_size);
-void Send_Data(const char* Data, int Data_size);
 void Calculo_Consigna();
 void input_values();
 void Ping_Req(const char* Data);

@@ -371,15 +371,7 @@ void Eth_Loop(){
             else if(!ChargingGroup.Conected && Coms.ETH.conectado){
                 if(ChargingGroup.Params.GroupActive){
                     if(GetStateTime(xStart) > 30000){
-                        if(ChargingGroup.StartClient){
-                            //start_MQTT_client(ChargingGroup.MasterIP);
-                            coap_start();
-                        }
-                        else{
-                            //start_MQTT_server();
-                            coap_start();
-                        }
-                        ChargingGroup.Conected = true;
+                        coap_start();
                     }
                 }
             }

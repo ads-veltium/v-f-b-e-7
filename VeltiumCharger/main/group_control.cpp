@@ -84,8 +84,8 @@ void New_Data(const char* Data, int Data_size){
         uint8_t index = check_in_group(Cargador.name,&FaseChargers);               
         if(index < 255){                         
             FaseChargers.charger_table[index] =Cargador;
-            //cls();
-            //print_table(FaseChargers, "Grupo de Fase");
+            cls();
+            print_table(FaseChargers, "Grupo de Fase");
         }
         else{
             //Si el cargador no está en la tabla, añadirlo y actualizar los datos
@@ -101,7 +101,7 @@ void New_Data(const char* Data, int Data_size){
     if(index < 255){
         ChargingGroup.group_chargers.charger_table[index]=Cargador;
     }
-    //print_table(ChargingGroup.group_chargers, "Grupo total");
+    print_table(ChargingGroup.group_chargers, "Grupo total");
     input_values();
     Calculo_Consigna();
 }
@@ -168,37 +168,6 @@ void New_Group(const char* Data, int Data_size){
       remove_group(&FaseChargers);
       delay(50);
     }
-}
-
-//si han solicitado mis datos, mandarlos
-void Send_Data(const char*Data, int Data_size){
-  
-  if(!memcmp(Data,ConfigFirebase.Device_Id,8)){   
-    cJSON *Datos_Json;
-    Datos_Json = cJSON_CreateObject();
-
-    cJSON_AddStringToObject(Datos_Json, "device_id", ConfigFirebase.Device_Id);
-    cJSON_AddNumberToObject(Datos_Json, "fase", Params.Fase);
-    cJSON_AddNumberToObject(Datos_Json, "current", Status.Measures.instant_current);
-
-    //si es trifasico, enviar informacion de todas las fases
-    if(Status.Trifasico){
-        cJSON_AddNumberToObject(Datos_Json, "currentB", Status.MeasuresB.instant_current);
-        cJSON_AddNumberToObject(Datos_Json, "currentC", Status.MeasuresC.instant_current);
-    }
-    cJSON_AddNumberToObject(Datos_Json, "Delta", Status.Delta);
-    cJSON_AddStringToObject(Datos_Json, "HPT", Status.HPT_status);
-    cJSON_AddNumberToObject(Datos_Json, "limite_fase",Status.limite_Fase);
-
-
-    char *my_json_string = cJSON_Print(Datos_Json);   
-    
-    cJSON_Delete(Datos_Json);
-
-    mqtt_publish("Data", my_json_string, strlen(my_json_string),5);
-    free(my_json_string);
-    ChargingGroup.SendNewData = false;     
-  }
 }
 
 // Function for Chart: '<Root>/Charger 1'
