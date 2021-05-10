@@ -589,7 +589,7 @@ void Publisher(void* args){
         //Si soy el maestro, debo realizar algunas tareas extra
         else{
             //Comprobar si los esclavos se desconectan cada 15 segundos
-            TickType_t Transcurrido = xTaskGetTickCount() - timer;
+            TickType_t Transcurrido = xTaskGetTickCount() - xStart;
             if(Transcurrido > 15000){
                 xStart = xTaskGetTickCount();
                 for(uint8_t i=0 ;i<ChargingGroup.group_chargers.size;i++){
