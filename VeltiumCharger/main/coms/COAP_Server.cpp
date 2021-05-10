@@ -48,7 +48,7 @@ void coap_broadcast_to_group(char* Mensaje, uint8_t messageID){
         }
     }
 
-    coap.sendResponse(IPAddress().fromString(ip4addr_ntoa(&Coms.ETH.IP)), 5683, messageID, Mensaje);
+    coap.sendResponse(ChargingGroup.MasterIP, 5683, messageID, Mensaje);
 }
 
 //Enviar mis datos de carga
@@ -75,6 +75,7 @@ void Send_Data(){
   
   cJSON_Delete(Datos_Json);
 
+  Serial.println(ChargingGroup.MasterIP);
   coap.put(ChargingGroup.MasterIP, 5683, "Data", my_json_string);
 
   printf("Enviando mis datos!\n");
@@ -347,7 +348,7 @@ void coap_start() {
             
         }
         
-        ChargingGroup.MasterIP = IPAddress().fromString(ip4addr_ntoa(&Coms.ETH.IP));
+        ChargingGroup.MasterIP.fromString(String(ip4addr_ntoa(&Coms.ETH.IP)));
         coap.server(callback_PARAMS,   "Params");
         coap.server(callback_DATA,     "Data");
         coap.server(callback_CONTROL,  "Control");
