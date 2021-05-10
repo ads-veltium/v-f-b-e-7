@@ -14,10 +14,9 @@ extern carac_group    ChargingGroup;
 bool add_to_group(const char* ID, IPAddress IP, carac_chargers* group);
 void remove_group(carac_chargers* group);
 uint8_t check_in_group(const char* ID, carac_chargers* group);
-void mqtt_publish(char* Topic, char* Data, size_t data_size, size_t topic_size);
 void store_group_in_mem(carac_chargers* group);
 IPAddress get_IP(const char* ID);
-void stop_MQTT();
+
 
 TickType_t xStart;
 TickType_t xStart1;
@@ -99,6 +98,17 @@ void New_Data(const char* Data, int Data_size){
     uint8_t index = check_in_group(Cargador.name,&ChargingGroup.group_chargers);                  
     if(index < 255){
         ChargingGroup.group_chargers.charger_table[index]=Cargador;
+        //comprobar si soy el siguiente
+        if(index+1 < ChargingGroup.group_chargers.size){
+          if(!memcmp(ChargingGroup.group_chargers.charger_table[index+1].name, ConfigFirebase.Device_Id,8)){
+            ChargingGroup.SendNewData = true;
+          }
+        }
+        else{
+          if(!memcmp(ChargingGroup.group_chargers.charger_table[0].name, ConfigFirebase.Device_Id,8)){
+            ChargingGroup.SendNewData = true;
+          }
+        }
     }
     //print_table(ChargingGroup.group_chargers, "Grupo total");
     input_values();
@@ -114,34 +124,6 @@ void New_Params(const char* Data, int Data_size){
   memcpy(&buffer[1],&Data[1],6);
   SendToPSOC5((char*)buffer,7,GROUPS_PARAMS); 
   delay(50);
-}
-
-//Funcion para recibir ordenes de grupo que s ehayan enviado a otro cargador
-void New_Control(const char* Data, int Data_size){
-
-  if(!memcmp(Data,"Pause",5)){
-    printf("Tengo que pausar el grupo\n");
-    ChargingGroup.Params.GroupActive = 0;
-    stop_MQTT();
-
-    char buffer[7];
-    memcpy(&buffer,&ChargingGroup.Params,7);
-    SendToPSOC5((char*)buffer,7,GROUPS_PARAMS); 
-
-  }
-  else if(!memcmp(Data,"Delete",6)){
-    printf("Tengo que borrar el grupo\n");
-    ChargingGroup.Params.GroupActive = 0;
-    ChargingGroup.Params.GroupMaster = 0;
-    ChargingGroup.DeleteOrder = false;
-    stop_MQTT();
-    remove_group(&ChargingGroup.group_chargers);
-    store_group_in_mem(&ChargingGroup.group_chargers);
-
-    char buffer[7];
-    memcpy(&buffer,&ChargingGroup.Params,7);
-    SendToPSOC5((char*)buffer,7,GROUPS_PARAMS); 
-  }
 }
 
 //Funcion para recibir un nuevo grupo de cargadores
@@ -167,37 +149,6 @@ void New_Group(const char* Data, int Data_size){
       remove_group(&FaseChargers);
       delay(50);
     }
-}
-
-//si han solicitado mis datos, mandarlos
-void Send_Data(const char*Data, int Data_size){
-  
-  if(!memcmp(Data,ConfigFirebase.Device_Id,8)){   
-    cJSON *Datos_Json;
-    Datos_Json = cJSON_CreateObject();
-
-    cJSON_AddStringToObject(Datos_Json, "device_id", ConfigFirebase.Device_Id);
-    cJSON_AddNumberToObject(Datos_Json, "fase", Params.Fase);
-    cJSON_AddNumberToObject(Datos_Json, "current", Status.Measures.instant_current);
-
-    //si es trifasico, enviar informacion de todas las fases
-    if(Status.Trifasico){
-        cJSON_AddNumberToObject(Datos_Json, "currentB", Status.MeasuresB.instant_current);
-        cJSON_AddNumberToObject(Datos_Json, "currentC", Status.MeasuresC.instant_current);
-    }
-    cJSON_AddNumberToObject(Datos_Json, "Delta", Status.Delta);
-    cJSON_AddStringToObject(Datos_Json, "HPT", Status.HPT_status);
-    cJSON_AddNumberToObject(Datos_Json, "limite_fase",Status.limite_Fase);
-
-
-    char *my_json_string = cJSON_Print(Datos_Json);   
-    
-    cJSON_Delete(Datos_Json);
-
-    mqtt_publish("Data", my_json_string, strlen(my_json_string),5);
-    free(my_json_string);
-    ChargingGroup.SendNewData = false;     
-  }
 }
 
 // Function for Chart: '<Root>/Charger 1'

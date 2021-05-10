@@ -541,7 +541,7 @@ void procesar_bloque(uint16 tipo_bloque){
 				modifyCharacteristic(buffer_rx_local, 1, LED_LUMIN_COLOR_LUMINOSITY_LEVEL_CHAR_HANDLE);
 
 				luminosidad = buffer_rx_local[0];
-				ChargingGroup.SendNewData  = true;
+				//ChargingGroup.SendNewData  = true;
 				//Hilo piloto
 				if((memcmp(&buffer_rx_local[1], status_hpt_anterior, 2) != 0)){
 					dispositivo_inicializado = 2;
@@ -557,7 +557,7 @@ void procesar_bloque(uint16 tipo_bloque){
 						}
 					}
 #ifdef CONNECTED
-					ChargingGroup.SendNewData  = true;
+					//ChargingGroup.SendNewData  = true;
 					ConfigFirebase.WriteStatus = true;
 #endif
 				}
@@ -584,7 +584,7 @@ void procesar_bloque(uint16 tipo_bloque){
 						serverbleNotCharacteristic(&buffer_rx_local[24],2,MEASURES_INST_CURRENTB_CHAR_HANDLE);
 						serverbleNotCharacteristic(&buffer_rx_local[34],2,MEASURES_INST_CURRENTC_CHAR_HANDLE);
 					}
-					ChargingGroup.SendNewData  = true;
+					//ChargingGroup.SendNewData  = true;
 					ConfigFirebase.WriteStatus = true;
 #endif
 				}

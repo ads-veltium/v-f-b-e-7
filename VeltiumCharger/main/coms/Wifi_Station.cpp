@@ -24,12 +24,10 @@ bool wifi_connecting = false;
 
 static uint8 Reintentos = 0;
 
-void stop_MQTT();
-void start_udp();
+void start_VGP();
+void udp_group();
 void InitServer(void);
 void StopServer(void);
-void start_MQTT_server();
-void start_MQTT_client(IPAddress remoteIP);
 
 static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data){
     Serial.printf("Evento de wifi %s %i\n", event_base, event_id );
@@ -338,7 +336,7 @@ void Eth_Loop(){
                 Coms.ETH.State = CONECTADO;
                 SendToPSOC5(0,SEND_GROUP_DATA);
                 delay(100);
-                start_udp();
+                udp_group();
                 xStart = xTaskGetTickCount();
                 //Solo comprobamos la conexion a internet si no hemos activado el servidro dhcp
                 if(!Coms.ETH.DHCP){
@@ -370,23 +368,19 @@ void Eth_Loop(){
             else if(!ChargingGroup.Conected && Coms.ETH.conectado){
                 if(ChargingGroup.Params.GroupActive){
                     if(GetStateTime(xStart) > 30000){
-                        if(ChargingGroup.StartClient){
-                            start_MQTT_client(ChargingGroup.MasterIP);
-                        }
-                        else{
-                            start_MQTT_server();
-                        }
+                        start_VGP();
+                        ChargingGroup.SendNewData = true;
                     }
                 }
             }
 
             //Apagar el eth
-            if(!Coms.ETH.ON && (ConnectionState ==IDLE || ConnectionState==DISCONNECTED)){  
+            if(!Coms.ETH.ON && (ConnectionState ==IDLE || ConnectionState == DISCONNECTED)){  
                 //Si lo queremos reinicializar para ponerle una ip estatica o quitarsela
                 if(Coms.ETH.restart){
                     if(ChargingGroup.Conected){
-                        ChargingGroup.Params.GroupActive = false;
-                        stop_MQTT();
+                       ChargingGroup.StopOrder = true;
+                       delay(100);
                     }
                     kill_ethernet();
                     Coms.ETH.State = KILLING;
@@ -394,8 +388,8 @@ void Eth_Loop(){
                 }
                 else{
                     if(ChargingGroup.Conected){
-                        ChargingGroup.Params.GroupActive = false;
-                        stop_MQTT();
+                        ChargingGroup.StopOrder = true;
+                        delay(100);
                     }
                     stop_ethernet();
                     Coms.ETH.State = DISCONNECTING;
@@ -407,7 +401,6 @@ void Eth_Loop(){
                 Coms.ETH.State = DISCONNECTING;
                 if(ChargingGroup.Conected){
                     ChargingGroup.Params.GroupActive = false;
-                    stop_MQTT();
                 }
             }
             //Lectura del contador
