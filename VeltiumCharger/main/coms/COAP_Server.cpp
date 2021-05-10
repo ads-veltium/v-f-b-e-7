@@ -22,6 +22,7 @@ extern carac_Comands  Comands ;
 
 static StackType_t xCoapStack [4096*4]     EXT_RAM_ATTR;
 StaticTask_t xCoapBuffer ;
+TaskHandle_t xCoapHandle = NULL;
 
 // UDP and CoAP class
 WiFiUDP  Udp   EXT_RAM_ATTR;
@@ -73,6 +74,7 @@ void Send_Data(){
   cJSON_Delete(Datos_Json);
 
   coap.put(ChargingGroup.MasterIP, 5683, "Data", my_json_string);
+  printf("Enviando mis datos!\n");
   free(my_json_string);
   ChargingGroup.SendNewData = false;     
 
@@ -99,7 +101,7 @@ void callback_PARAMS(CoapPacket &packet, IPAddress ip, int port) {
 }
 
 void callback_DATA(CoapPacket &packet, IPAddress ip, int port) {
- 
+  printf("Data\n");
   // send response
   char p[packet.payloadlen + 1];
   memcpy(p, packet.payload, packet.payloadlen);
@@ -263,6 +265,7 @@ void coap_loop(void *args) {
                 }
             }
         }
+
         //Pedir datos a los esclavos para que no envíen todos a la vez
         coap.sendResponse(get_IP(ChargingGroup.group_chargers.charger_table[turno].name), 5683, SEND_DATA, "X");
         turno++;
@@ -291,6 +294,7 @@ void coap_loop(void *args) {
       coap.loop();
     }
     ChargingGroup.Conected = false;
+    xCoapHandle = NULL;
     vTaskDelete(NULL);
 }
 
@@ -328,22 +332,23 @@ void coap_start() {
             ChargingGroup.Params.GroupActive = false;
             ChargingGroup.Conected = false;
             return;
+            
         }
-
-        coap.server(callback_PARAMS,  "Params");
-        coap.server(callback_DATA, "Data");
-        coap.server(callback_CONTROL, "Control");
+        
+        ChargingGroup.MasterIP = IPAddress().fromString(ip4addr_ntoa(&Coms.ETH.IP));
+        coap.server(callback_PARAMS,   "Params");
+        coap.server(callback_DATA,     "Data");
+        coap.server(callback_CONTROL,  "Control");
         coap.server(callback_CHARGERS, "Chargers");
-    }
-    else{
-        Serial.println("Ya hay un maestro en el grupo, espero a que me ordene conectarme!");
     }
   }
   
   coap.response(callback_response);
 
   // start coap server/client
-  coap.start();
-  xTaskCreateStatic(coap_loop,"coap", 4096*4,NULL,2,xCoapStack,&xCoapBuffer);
+  if(xCoapHandle == NULL){
+    coap.start();
+    xCoapHandle = xTaskCreateStatic(coap_loop,"coap", 4096*4,NULL,2,xCoapStack,&xCoapBuffer);
+  }
 }
 
