@@ -44,13 +44,6 @@ uint8_t Pc_Fase;
 void Calculo_Consigna();
 void input_values();
 
-void Ping_Req(const char* Data){
-  int n=check_in_group(Data,&ChargingGroup.group_chargers);
-  if(n!=255){
-    ChargingGroup.group_chargers.charger_table[n].Period =0;
-  }
-}
-
 //Funcion para procesar los nuevos datos recibidos
 void New_Data(const char* Data, int Data_size){
 
@@ -100,6 +93,7 @@ void New_Data(const char* Data, int Data_size){
     uint8_t index = check_in_group(Cargador.name,&ChargingGroup.group_chargers);                  
     if(index < 255){
         ChargingGroup.group_chargers.charger_table[index]=Cargador;
+        ChargingGroup.group_chargers.charger_table[index].Period=0;
     }
     print_table(ChargingGroup.group_chargers, "Grupo total");
     input_values();

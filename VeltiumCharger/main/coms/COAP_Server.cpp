@@ -20,6 +20,9 @@ extern carac_Comands  Comands ;
 #define SEND_DATA      4
 #define NEW_DATA       5
 
+static StackType_t xCoapStack [4096*4]     EXT_RAM_ATTR;
+StaticTask_t xCoapBuffer ;
+
 // UDP and CoAP class
 WiFiUDP  Udp   EXT_RAM_ATTR;
 Coap     coap  EXT_RAM_ATTR;
@@ -127,22 +130,6 @@ void callback_CONTROL(CoapPacket &packet, IPAddress ip, int port) {
 
 void callback_CHARGERS(CoapPacket &packet, IPAddress ip, int port) {
   Serial.println("CHARGERS");
-  
-  // send response
-  char p[packet.payloadlen + 1];
-  memcpy(p, packet.payload, packet.payloadlen);
-  p[packet.payloadlen] = '\0';
-  
-  String message(p);
-
-  Serial.println(message);
-  if(packet.payloadlen >0){
-    coap_broadcast_to_group((char*)packet.payload, GROUP_CHARGERS);
-  }
-}
-
-void callback_PING(CoapPacket &packet, IPAddress ip, int port) {
-  Serial.println("PING");
   
   // send response
   char p[packet.payloadlen + 1];
@@ -299,11 +286,6 @@ void coap_loop(void *args) {
             break;
         }
       }
-
-      //Avisar al maestro de que seguimos aqui
-      if(!ChargingGroup.Params.GroupMaster){ 
-        coap.put(ChargingGroup.MasterIP, 5683, "Ping", ConfigFirebase.Device_Id);
-      }
       
       delay(ChargingGroup.Params.GroupMaster? 500:2000);   
       coap.loop();
@@ -352,7 +334,6 @@ void coap_start() {
         coap.server(callback_DATA, "Data");
         coap.server(callback_CONTROL, "Control");
         coap.server(callback_CHARGERS, "Chargers");
-        coap.server(callback_PING, "Ping");
     }
     else{
         Serial.println("Ya hay un maestro en el grupo, espero a que me ordene conectarme!");
@@ -363,7 +344,6 @@ void coap_start() {
 
   // start coap server/client
   coap.start();
-  
-  xTaskCreate(coap_loop,"coap", 4096,NULL,2,NULL);
+  xTaskCreateStatic(coap_loop,"coap", 4096*4,NULL,2,xCoapStack,&xCoapBuffer);
 }
 
