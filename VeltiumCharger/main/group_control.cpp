@@ -77,8 +77,8 @@ void New_Data(const char* Data, int Data_size){
         uint8_t index = check_in_group(Cargador.name,&FaseChargers);               
         if(index < 255){                         
             FaseChargers.charger_table[index] =Cargador;
-            cls();
-            print_table(FaseChargers, "Grupo de Fase");
+            //cls();
+            //print_table(FaseChargers, "Grupo de Fase");
         }
         else{
             //Si el cargador no está en la tabla, añadirlo y actualizar los datos
@@ -95,7 +95,7 @@ void New_Data(const char* Data, int Data_size){
         ChargingGroup.group_chargers.charger_table[index]=Cargador;
         ChargingGroup.group_chargers.charger_table[index].Period=0;
     }
-    print_table(ChargingGroup.group_chargers, "Grupo total");
+    //print_table(ChargingGroup.group_chargers, "Grupo total");
     input_values();
     Calculo_Consigna();
 }

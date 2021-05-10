@@ -38,12 +38,15 @@ void send_to(IPAddress IP,  char* Mensaje);
 IPAddress get_IP(const char* ID);
 
 void coap_broadcast_to_group(char* Mensaje, uint8_t messageID){
-
+    printf("Empezando envio\n");
     for(int i =0; i < net_group.size;i++){
         for(int j=0;j < ChargingGroup.group_chargers.size;j++){
-            if(check_in_group(net_group.charger_table[i].name, &ChargingGroup.group_chargers)<255){
-                ChargingGroup.group_chargers.charger_table[j].IP = net_group.charger_table[i].IP; 
-                coap.sendResponse(ChargingGroup.group_chargers.charger_table[j].IP, 5683, messageID, Mensaje);
+            if(check_in_group(net_group.charger_table[i].name, &ChargingGroup.group_chargers) != 255){
+                if(net_group.charger_table[i].IP != INADDR_NONE && net_group.charger_table[i].IP != INADDR_ANY){ 
+                  coap.sendResponse(net_group.charger_table[i].IP, 5683, messageID, Mensaje);
+                  delay(10);
+                  break;
+                }
             }
         }
     }
@@ -249,8 +252,10 @@ void coap_loop(void *args) {
 
       //Controlar si el maestro sigue con vida
       if(!ChargingGroup.Params.GroupMaster){
-        if(pdTICKS_TO_MS(xTaskGetTickCount()-xMasterTimer)> 5000){
+        if(pdTICKS_TO_MS(xTaskGetTickCount()-xMasterTimer)> 2000){
           printf("Maestro desconectado!!!!\n");
+          xTaskCreate(MasterPanicTask, "Master Panic", 4096, NULL,2,NULL);
+          break;
         }
       }
 
@@ -303,7 +308,7 @@ void coap_loop(void *args) {
         }
       }
       
-      delay(ChargingGroup.Params.GroupMaster? 500:2000);   
+      delay(ChargingGroup.Params.GroupMaster? 500:1500);   
       coap.loop();
     }
     printf("Coap detenido\n");
