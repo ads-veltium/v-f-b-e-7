@@ -104,13 +104,21 @@ void New_Data(const char* Data, int Data_size){
         if(index+1 < ChargingGroup.group_chargers.size){
           if(!memcmp(net_active_group.charger_table[index+1].name, ConfigFirebase.Device_Id,8)){
             ChargingGroup.SendNewData = true;
+            printf("Soy el siguiente!\n");
+          }
+          else{
+            printf("No soy el siguiente!\n");
           }
         }
         else{
           if(!memcmp(net_active_group.charger_table[0].name, ConfigFirebase.Device_Id,8)){
             ChargingGroup.SendNewData = true;
           }
+          else{
+            printf("No soy el siguiente!\n");
+          }
         }
+
     }
     //print_table(ChargingGroup.group_chargers, "Grupo total");
     input_values();
