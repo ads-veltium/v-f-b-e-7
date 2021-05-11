@@ -226,14 +226,14 @@ void coap_loop(void *args) {
     char buffer[500];
     uint8_t  turno =0;
     TickType_t xStart = xTaskGetTickCount();
-    xMasterTimer = xTaskGetTickCount();
 
     if(!ChargingGroup.Params.GroupMaster){
       coap.get(ChargingGroup.MasterIP, 5683, "Params");
-      delay(250);
+      delay(1000);
       coap.get(ChargingGroup.MasterIP, 5683, "Chargers");
-      delay(250);
+      delay(1000);
     }
+    xMasterTimer = xTaskGetTickCount();
     while(1){   
       //Enviar nuevos parametros para el grupo
       if( ChargingGroup.SendNewParams){
@@ -281,7 +281,7 @@ void coap_loop(void *args) {
 
       //Controlar si el maestro sigue con vida
       if(!ChargingGroup.Params.GroupMaster){
-        if(pdTICKS_TO_MS(xTaskGetTickCount()-xMasterTimer)> 2000){
+        if(pdTICKS_TO_MS(xTaskGetTickCount()-xMasterTimer)> 5000){
           printf("Maestro desconectado!!!!\n");
           ChargingGroup.Conected  = false;
           xTaskCreate(MasterPanicTask, "Master Panic", 4096, NULL,2,NULL);
