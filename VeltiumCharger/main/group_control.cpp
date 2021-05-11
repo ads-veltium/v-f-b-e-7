@@ -82,6 +82,11 @@ void New_Data(const char* Data, int Data_size){
         }
         else{
             //Si el cargador no está en la tabla, añadirlo y actualizar los datos
+            if(ChargingGroup.Params.GroupMaster){
+              ChargingGroup.SendNewGroup  = true;
+              ChargingGroup.SendNewParams = true;
+            }
+
             add_to_group(Cargador.name, get_IP(Cargador.name),&FaseChargers);
             FaseChargers.charger_table[FaseChargers.size-1] = Cargador;
         }
