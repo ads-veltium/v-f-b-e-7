@@ -340,7 +340,7 @@ void Eth_Loop(){
                 Coms.ETH.State = CONECTADO;
                 SendToPSOC5(0,SEND_GROUP_DATA);
                 delay(100);
-                //start_udp();
+                start_udp();
                 xStart = xTaskGetTickCount();
                 //Solo comprobamos la conexion a internet si no hemos activado el servidro dhcp
                 if(!Coms.ETH.DHCP){
@@ -372,7 +372,7 @@ void Eth_Loop(){
             else if(!ChargingGroup.Conected && Coms.ETH.conectado){
                 if(ChargingGroup.Params.GroupActive){
                     if(GetStateTime(xStart) > 30000){
-                        start_server();
+                        start_client();
                     }
                 }
             }

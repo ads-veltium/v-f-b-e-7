@@ -5,6 +5,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/event_groups.h"
+#include "Arduino.h"
 
 #include "esp_log.h"
 #include "esp_wifi.h"
@@ -177,7 +178,7 @@ static void coap_client(void *p){
 
     sprintf(server_uri, "coaps://%s", ChargingGroup.MasterIP.toString().c_str());
 
-    coap_set_log_level(LOG_NOTICE);
+    coap_set_log_level(LOG_DEBUG);
 
     while (1) {
         #define BUFSIZE 40
@@ -202,8 +203,11 @@ static void coap_client(void *p){
 
         coap_address_init(&dst_addr);
         dst_addr.addr.sin.sin_family      = AF_INET;
-        dst_addr.addr.sin.sin_port        = htons(COAP_DEFAULT_PORT);
-        inet_addr_from_ip4addr(&dst_addr.addr.sin.sin_addr, &Coms.ETH.IP);
+        dst_addr.addr.sin.sin_port        = htons(5684);
+
+        
+        inet_aton(ChargingGroup.MasterIP.toString().c_str(),&dst_addr.addr.sin.sin_addr);
+        //inet_addr_from_ip4addr(&dst_addr.addr.sin.sin_addr, &ChargingGroup.MasterIP);
 
         if (uri.path.length) {
             buflen = BUFSIZE;
@@ -235,14 +239,10 @@ static void coap_client(void *p){
         }
 
         if (uri.scheme == COAP_URI_SCHEME_COAPS) {
-            session = coap_new_client_session_psk(ctx, NULL, &dst_addr,
-                                                  COAP_PROTO_DTLS,
-                                                  ConfigFirebase.Device_Id,
-                                                  (const uint8_t *)EXAMPLE_COAP_PSK_KEY,
-                                                  sizeof(EXAMPLE_COAP_PSK_KEY) - 1);
+            session = coap_new_client_session_psk(ctx, NULL, &dst_addr,COAP_PROTO_DTLS,ConfigFirebase.Device_Id,(const uint8_t *)EXAMPLE_COAP_PSK_KEY,sizeof(EXAMPLE_COAP_PSK_KEY) - 1);
 
-
-        } else {
+        } 
+        else{
             session = coap_new_client_session(ctx, NULL, &dst_addr, COAP_PROTO_UDP );
         }
         if (!session) {
