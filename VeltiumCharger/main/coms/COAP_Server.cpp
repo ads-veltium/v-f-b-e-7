@@ -88,6 +88,7 @@ void Send_Data(){
 // rebotar la informacion segun el topic
 void callback_PARAMS(CoapPacket &packet, IPAddress ip, int port) {
   Serial.println("PARAMS");
+
   
   // send response
   char p[packet.payloadlen + 1];
@@ -218,40 +219,41 @@ void coap_loop(void *args) {
     char buffer[500];
     uint8_t  turno =0;
     TickType_t xStart = xTaskGetTickCount();
+
+    if(!ChargingGroup.Params.GroupMaster){
+      coap.get(ChargingGroup.MasterIP, 5683, "Params");
+      delay(250);
+      coap.get(ChargingGroup.MasterIP, 5683, "Chargers");
+      delay(250);
+    }
     while(1){   
       //Enviar nuevos parametros para el grupo
       if( ChargingGroup.SendNewParams){
-          ChargingGroup.Params.ContractPower = 142;
-          memcpy(buffer, &ChargingGroup.Params,7);
-          Serial.println(buffer);
-          coap.put(ChargingGroup.MasterIP, 5683, "Params", buffer);
+
+          ChargingGroup.Params.ContractPower = 142;     
+
+          cJSON *Params_Json;
+          Params_Json = cJSON_CreateObject();
+
+          cJSON_AddNumberToObject(Params_Json, "cdp", ChargingGroup.Params.CDP);
+          cJSON_AddNumberToObject(Params_Json, "contract", ChargingGroup.Params.ContractPower);
+          cJSON_AddNumberToObject(Params_Json, "active", ChargingGroup.Params.GroupActive);
+          cJSON_AddNumberToObject(Params_Json, "master", ChargingGroup.Params.GroupMaster);
+          cJSON_AddNumberToObject(Params_Json, "inst_max", ChargingGroup.Params.inst_max);
+          cJSON_AddNumberToObject(Params_Json, "pot_max", ChargingGroup.Params.potencia_max);
+          cJSON_AddNumberToObject(Params_Json, "userID", ChargingGroup.Params.UserID);
+          char *my_json_string = cJSON_Print(Params_Json);   
+
+          coap.put(ChargingGroup.MasterIP, 5683, "Params", my_json_string);
+
+          free(my_json_string);
+          cJSON_Delete(Params_Json);
           ChargingGroup.SendNewParams = false;
-
-          cJSON *Datos_Json;
-          Datos_Json = cJSON_CreateObject();
-
-          cJSON_AddStringToObject(Datos_Json, "device_id", ConfigFirebase.Device_Id);
-          cJSON_AddNumberToObject(Datos_Json, "fase", Params.Fase);
-          cJSON_AddNumberToObject(Datos_Json, "current", Status.Measures.instant_current);
-
-          //si es trifasico, enviar informacion de todas las fases
-          if(Status.Trifasico){
-              cJSON_AddNumberToObject(Datos_Json, "currentB", Status.MeasuresB.instant_current);
-              cJSON_AddNumberToObject(Datos_Json, "currentC", Status.MeasuresC.instant_current);
-          }
-          cJSON_AddNumberToObject(Datos_Json, "Delta", Status.Delta);
-          cJSON_AddStringToObject(Datos_Json, "HPT", Status.HPT_status);
-          cJSON_AddNumberToObject(Datos_Json, "limite_fase",Status.limite_Fase);
-
-
-          char *my_json_string = cJSON_Print(Datos_Json);   
-          
-          cJSON_Delete(Datos_Json);
 
       }
 
       //Enviar los cargadores de nuestro grupo
-      if(ChargingGroup.SendNewGroup){
+      else if(ChargingGroup.SendNewGroup){
           if(ChargingGroup.group_chargers.size< 10){
               sprintf(buffer,"0%i",(char)ChargingGroup.group_chargers.size);
           }
@@ -264,7 +266,9 @@ void coap_loop(void *args) {
               itoa(ChargingGroup.group_chargers.charger_table[i].Fase,&buffer[10+(i*9)],10);
           }
           coap.put(ChargingGroup.MasterIP, 5683, "Chargers", buffer);
+
           ChargingGroup.SendNewGroup = false;
+
       }
 
       //Controlar si el maestro sigue con vida

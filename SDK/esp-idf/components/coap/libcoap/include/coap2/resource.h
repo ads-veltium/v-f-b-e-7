@@ -19,7 +19,7 @@
 
 #ifndef COAP_RESOURCE_CHECK_TIME
 /** The interval in seconds to check if resources have changed. */
-#define COAP_RESOURCE_CHECK_TIME 2
+#define COAP_RESOURCE_CHECK_TIME 0.5
 #endif /* COAP_RESOURCE_CHECK_TIME */
 
 #include "uthash.h"

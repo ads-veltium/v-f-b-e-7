@@ -108,7 +108,25 @@ void New_Data(const char* Data, int Data_size){
 //Funcion para recibir nuevos parametros de carga para el grupo
 void New_Params(const char* Data, int Data_size){
   uint8_t buffer[7];
+
+  cJSON *mensaje_Json = cJSON_Parse(Data);
+
+  //compribar que el Json está bien
+  if(!cJSON_HasObjectItem(mensaje_Json,"cdp")){
+    return;
+  }
   
+  //Extraer los datos
+  buffer[0] = (uint8_t) cJSON_GetObjectItem(mensaje_Json,"master")->valueint;
+  buffer[1] = (uint8_t) cJSON_GetObjectItem(mensaje_Json,"active")->valueint;
+  buffer[2] = (uint8_t) cJSON_GetObjectItem(mensaje_Json,"inst_max")->valueint;
+  buffer[3]=  (uint8_t) cJSON_GetObjectItem(mensaje_Json,"cdp")->valueint;
+  buffer[4] = (uint8_t) cJSON_GetObjectItem(mensaje_Json,"contract")->valueint;
+  buffer[5] = (uint8_t) cJSON_GetObjectItem(mensaje_Json,"userID")->valueint;
+  buffer[6]=  (uint8_t) cJSON_GetObjectItem(mensaje_Json,"pot_max")->valueint;
+
+  cJSON_Delete(mensaje_Json);
+
   buffer[0] = ChargingGroup.Params.GroupMaster;
   //buffer[1] = ChargingGroup.Params.GroupActive;
   memcpy(&buffer[1],&Data[1],6);
