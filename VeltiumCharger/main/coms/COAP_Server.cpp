@@ -49,7 +49,6 @@ void coap_broadcast_to_group(char* Mensaje, uint8_t messageID){
             }
         }
     }
-
     coap.sendResponse(ChargingGroup.MasterIP, 5683, messageID, Mensaje);
 }
 
@@ -79,15 +78,58 @@ void Send_Data(){
 
   coap.put(ChargingGroup.MasterIP, 5683, "Data", my_json_string);
 
-  printf("Enviando mis datos!\n");
   free(my_json_string);
   ChargingGroup.SendNewData = false;     
+}
 
+//enviar mi grupo de cargadores
+void Send_Chargers(){
+  char buffer[500];
+  printf("Sending chargers!\n");
+  if(ChargingGroup.group_chargers.size< 10){
+      sprintf(buffer,"0%i",(char)ChargingGroup.group_chargers.size);
+  }
+  else{
+      sprintf(buffer,"%i",(char)ChargingGroup.group_chargers.size);
+  }
+  
+  for(uint8_t i=0;i< ChargingGroup.group_chargers.size;i++){
+      memcpy(&buffer[2+(i*9)],ChargingGroup.group_chargers.charger_table[i].name,8);   
+      itoa(ChargingGroup.group_chargers.charger_table[i].Fase,&buffer[10+(i*9)],10);
+  }
+  coap_broadcast_to_group(buffer, GROUP_CHARGERS);
+}
+
+//Enviar parametros
+void Send_Params(){ 
+  printf("Sending params!\n");
+  cJSON *Params_Json;
+  Params_Json = cJSON_CreateObject();
+
+  cJSON_AddNumberToObject(Params_Json, "cdp", ChargingGroup.Params.CDP);
+  cJSON_AddNumberToObject(Params_Json, "contract", ChargingGroup.Params.ContractPower);
+  cJSON_AddNumberToObject(Params_Json, "active", ChargingGroup.Params.GroupActive);
+  cJSON_AddNumberToObject(Params_Json, "master", ChargingGroup.Params.GroupMaster);
+  cJSON_AddNumberToObject(Params_Json, "inst_max", ChargingGroup.Params.inst_max);
+  cJSON_AddNumberToObject(Params_Json, "pot_max", ChargingGroup.Params.potencia_max);
+  cJSON_AddNumberToObject(Params_Json, "userID", ChargingGroup.Params.UserID);
+  char *my_json_string = cJSON_Print(Params_Json);   
+  cJSON_Delete(Params_Json); 
+  
+  coap_broadcast_to_group(my_json_string, GROUP_PARAMS);
+
+  free(my_json_string);
+     
 }
 
 // rebotar la informacion segun el topic
 void callback_PARAMS(CoapPacket &packet, IPAddress ip, int port) {
   Serial.println("PARAMS");
+
+  if(packet.payloadlen ==0){
+    Send_Params();
+    return;
+  }
 
   
   // send response
@@ -95,15 +137,14 @@ void callback_PARAMS(CoapPacket &packet, IPAddress ip, int port) {
   memcpy(p, packet.payload, packet.payloadlen);
   p[packet.payloadlen] = '\0';
   
+  
   String message(p);
   if(packet.payloadlen >0){
     coap_broadcast_to_group(p, GROUP_PARAMS);
   }
-
 }
 
 void callback_DATA(CoapPacket &packet, IPAddress ip, int port) {
-  printf("Data\n");
   // send response
   char p[packet.payloadlen + 1];
   memcpy(p, packet.payload, packet.payloadlen);
@@ -133,14 +174,19 @@ void callback_CONTROL(CoapPacket &packet, IPAddress ip, int port) {
 
 void callback_CHARGERS(CoapPacket &packet, IPAddress ip, int port) {
   Serial.println("CHARGERS");
-  
+  if(packet.payloadlen ==0){
+    Send_Chargers();
+    return;
+  }
+
   // send response
   char p[packet.payloadlen + 1];
   memcpy(p, packet.payload, packet.payloadlen);
   p[packet.payloadlen] = '\0';
   
   String message(p);
-  Serial.println(message);
+
+  Serial.println(packet.type);
   if(packet.payloadlen >0){
     coap_broadcast_to_group(p, GROUP_CHARGERS);
   }
@@ -239,41 +285,14 @@ void coap_loop(void *args) {
       if( ChargingGroup.SendNewParams){
 
           ChargingGroup.Params.ContractPower = 142;     
-
-          cJSON *Params_Json;
-          Params_Json = cJSON_CreateObject();
-
-          cJSON_AddNumberToObject(Params_Json, "cdp", ChargingGroup.Params.CDP);
-          cJSON_AddNumberToObject(Params_Json, "contract", ChargingGroup.Params.ContractPower);
-          cJSON_AddNumberToObject(Params_Json, "active", ChargingGroup.Params.GroupActive);
-          cJSON_AddNumberToObject(Params_Json, "master", ChargingGroup.Params.GroupMaster);
-          cJSON_AddNumberToObject(Params_Json, "inst_max", ChargingGroup.Params.inst_max);
-          cJSON_AddNumberToObject(Params_Json, "pot_max", ChargingGroup.Params.potencia_max);
-          cJSON_AddNumberToObject(Params_Json, "userID", ChargingGroup.Params.UserID);
-          char *my_json_string = cJSON_Print(Params_Json);   
-
-          coap.put(ChargingGroup.MasterIP, 5683, "Params", my_json_string);
-
-          free(my_json_string);
-          cJSON_Delete(Params_Json);
+          Send_Params();
           ChargingGroup.SendNewParams = false;
 
       }
 
       //Enviar los cargadores de nuestro grupo
       else if(ChargingGroup.SendNewGroup){
-          if(ChargingGroup.group_chargers.size< 10){
-              sprintf(buffer,"0%i",(char)ChargingGroup.group_chargers.size);
-          }
-          else{
-              sprintf(buffer,"%i",(char)ChargingGroup.group_chargers.size);
-          }
-          
-          for(uint8_t i=0;i< ChargingGroup.group_chargers.size;i++){
-              memcpy(&buffer[2+(i*9)],ChargingGroup.group_chargers.charger_table[i].name,8);   
-              itoa(ChargingGroup.group_chargers.charger_table[i].Fase,&buffer[10+(i*9)],10);
-          }
-          coap.put(ChargingGroup.MasterIP, 5683, "Chargers", buffer);
+          Send_Chargers();
 
           ChargingGroup.SendNewGroup = false;
 
