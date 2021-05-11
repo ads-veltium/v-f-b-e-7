@@ -176,7 +176,7 @@ static void coap_client(void *p){
     static coap_uri_t uri;
     char server_uri[100];
 
-    sprintf(server_uri, "coaps://%s", ChargingGroup.MasterIP.toString().c_str());
+    sprintf(server_uri, "coaps://%s/PARAMS", ChargingGroup.MasterIP.toString().c_str());
 
     coap_set_log_level(LOG_DEBUG);
 
@@ -201,13 +201,11 @@ static void coap_client(void *p){
             break;
         }
 
+       
         coap_address_init(&dst_addr);
         dst_addr.addr.sin.sin_family      = AF_INET;
-        dst_addr.addr.sin.sin_port        = htons(5684);
-
-        
+        dst_addr.addr.sin.sin_port        = htons(uri.port);
         inet_aton(ChargingGroup.MasterIP.toString().c_str(),&dst_addr.addr.sin.sin_addr);
-        //inet_addr_from_ip4addr(&dst_addr.addr.sin.sin_addr, &ChargingGroup.MasterIP);
 
         if (uri.path.length) {
             buflen = BUFSIZE;
@@ -294,7 +292,7 @@ clean_up:
          * change the following line to something like sleep(2)
          * if you want the request to continually be sent
          */
-        break;
+        delay(1000);
     }
 
     vTaskDelete(NULL);
@@ -313,7 +311,7 @@ static void coap_server(void *p){
 
     snprintf(espressif_data, sizeof(espressif_data), INITIAL_DATA);
     espressif_data_len = strlen(espressif_data);
-    coap_set_log_level(LOG_NOTICE);
+    coap_set_log_level(LOG_DEBUG);
 
     while (1) {
         coap_endpoint_t *ep = NULL;
