@@ -55,7 +55,7 @@ coap_context_t *ctx = NULL;
 #define EXAMPLE_COAP_PSK_KEY "CONFIG_EXAMPLE_COAP_PSK_KEY"
 #define COAP_DEFAULT_DEMO_URI "coaps://192.168.20.163:5684/PARAMS"
 const static char *TAG = "CoAP_server";
-
+uint8_t Esperando_datos =0;
 static char espressif_data[100];
 static int espressif_data_len = 0;
 static coap_optlist_t *optlist = NULL;
@@ -64,10 +64,13 @@ static int wait_ms;
 #define INITIAL_DATA "hola desde coap!"
 
 static void
-hnd_espressif_get(coap_context_t *ctx, coap_resource_t *resource,coap_session_t *session,coap_pdu_t *request, coap_binary_t *token,coap_string_t *query, coap_pdu_t *response){
-    
-    
+hnd_params_get(coap_context_t *ctx, coap_resource_t *resource,coap_session_t *session,coap_pdu_t *request, coap_binary_t *token,coap_string_t *query, coap_pdu_t *response){    
     coap_add_data_blocked_response(resource, session, request, response, token,COAP_MEDIATYPE_TEXT_PLAIN, 0,(size_t)espressif_data_len,(const u_char*)espressif_data);
+}
+
+static void
+hnd_chargers_get(coap_context_t *ctx, coap_resource_t *resource,coap_session_t *session,coap_pdu_t *request, coap_binary_t *token,coap_string_t *query, coap_pdu_t *response){    
+    coap_add_data_blocked_response(resource, session, request, response, token,COAP_MEDIATYPE_TEXT_PLAIN, 0,(size_t)6,(const u_char*)"KAIXOO");
 }
 
 
@@ -100,6 +103,7 @@ static void message_handler(coap_context_t *ctx, coap_session_t *session,coap_pd
                 pdu = coap_new_pdu(session);
                 if (!pdu) {
                     ESP_LOGE(TAG, "coap_new_pdu() failed");
+                    Esperando_datos =0;
                     return;
                 }
                 pdu->type = COAP_MESSAGE_CON;
@@ -139,7 +143,7 @@ static void message_handler(coap_context_t *ctx, coap_session_t *session,coap_pd
             }
         }
     }
-
+    Esperando_datos =0;
 }
 
 static void hnd_espressif_put(coap_context_t *ctx,coap_resource_t *resource,coap_session_t *session,coap_pdu_t *request,coap_binary_t *token,coap_string_t *query, coap_pdu_t *response){
@@ -166,18 +170,19 @@ static void hnd_espressif_put(coap_context_t *ctx,coap_resource_t *resource,coap
     }
 }
 
-static void POLL(int timeout){
-    while (timeout) {
+static bool POLL(int timeout){
+    while (Esperando_datos) {
         int result = coap_run_once(ctx, timeout);
         if (result >= 0) {
             if (result >= timeout) {
                 ESP_LOGE(TAG, "select timeout");
-                return;
+                return false;
             } else {
                 timeout -= result;
             }
         }
     }
+    return true;
 }
 
 static void Authenticate(coap_session_t * session){
@@ -193,15 +198,22 @@ static void Authenticate(coap_session_t * session){
     request->tid = coap_new_message_id(session);
     request->code = COAP_REQUEST_GET;
 
-    coap_add_optlist_pdu(request, &optlist);
-    coap_send(session, request);
+    //Subscribirnos
+    coap_insert_optlist(&optlist,coap_new_optlist(COAP_OPTION_OBSERVE,coap_opt_length((uint8_t*)"Params"),coap_opt_value((uint8_t*)"Params")));
 
-    POLL(10000);
+    coap_add_optlist_pdu(request, &optlist);
+
+    do{
+        coap_send(session, request);
+        Esperando_datos =1;
+    }while(!POLL(10000));
+
 }
 
-void Send_Data(char* message, char* Topic, coap_session_t * session){
-     coap_pdu_t *request = NULL;
+void coap_get( char* Topic, coap_session_t * session){
+    coap_pdu_t *request = NULL;
 
+    coap_insert_optlist(&optlist,coap_new_optlist(COAP_OPTION_URI_PATH,coap_opt_length((uint8_t*)Topic),coap_opt_value((uint8_t*)Topic)));
     request = coap_new_pdu(session);
     if (!request) {
         ESP_LOGE(TAG, "coap_new_pdu() failed");
@@ -211,14 +223,15 @@ void Send_Data(char* message, char* Topic, coap_session_t * session){
     request->tid = coap_new_message_id(session);
     request->code = COAP_REQUEST_GET;
 
-
-    coap_insert_optlist(&optlist,coap_new_optlist(COAP_OPTION_URI_PATH,coap_opt_length(buf),coap_opt_value(buf)));
-
+    if (optlist) {
+        coap_delete_optlist(optlist);
+        optlist = NULL;
+    }
 
     coap_add_optlist_pdu(request, &optlist);
 
     coap_send(session, request);
-
+    Esperando_datos =1;
     POLL(2000);
 }
 
@@ -230,7 +243,7 @@ static void coap_client(void *p){
     const char       *server_uri = COAP_DEFAULT_DEMO_URI;
     char *phostname = NULL;
 
-    coap_set_log_level(LOG_ERROR);
+    coap_set_log_level(LOG_ERR);
 
     while (1) {
         #define BUFSIZE 40
@@ -239,7 +252,6 @@ static void coap_client(void *p){
         size_t buflen;
         int res;
         coap_session_t *session = NULL;
-        coap_pdu_t *request = NULL;
 
         optlist = NULL;
         if (coap_split_uri((const uint8_t *)server_uri, strlen(server_uri), &uri) == -1) {
@@ -323,8 +335,7 @@ static void coap_client(void *p){
         //Bucle tras autenticacion
         while(1){
 
-
-
+            coap_get("CHARGERS", session);
             delay(1000);
         }
 
@@ -432,8 +443,8 @@ static void coap_server(void *p){
         coap_register_handler(CONTROL, COAP_REQUEST_PUT, hnd_espressif_put);
         coap_register_handler(CHARGERS, COAP_REQUEST_PUT, hnd_espressif_put);
 
-        coap_register_handler(PARAMS, COAP_REQUEST_GET, hnd_espressif_get);
-        coap_register_handler(CHARGERS, COAP_REQUEST_GET, hnd_espressif_get);
+        coap_register_handler(PARAMS, COAP_REQUEST_GET, hnd_params_get);
+        coap_register_handler(CHARGERS, COAP_REQUEST_GET, hnd_chargers_get);
 
         /* We possibly want to Observe the GETs */
         coap_resource_set_get_observable(DATA, 1);
