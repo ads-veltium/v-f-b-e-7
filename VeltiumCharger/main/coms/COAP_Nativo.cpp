@@ -44,16 +44,9 @@ StaticTask_t xClientBuffer;
 
 coap_context_t *ctx = NULL;
 
-/* The examples use simple Pre-Shared-Key configuration that you can set via
-   'make menuconfig'.
-   If you'd rather not, just change the below entries to strings with
-   the config you want - ie #define EXAMPLE_COAP_PSK_KEY "some-agreed-preshared-key"
-   Note: PSK will only be used if the URI is prefixed with coaps://
-   instead of coap:// and the PSK must be one that the server supports
-   (potentially associated with the IDENTITY)
-*/
+
 #define EXAMPLE_COAP_PSK_KEY "CONFIG_EXAMPLE_COAP_PSK_KEY"
-#define COAP_DEFAULT_DEMO_URI "coaps://192.168.20.163:5684/PARAMS"
+
 const static char *TAG = "CoAP_server";
 uint8_t Esperando_datos =0;
 static char espressif_data[100];
@@ -62,6 +55,12 @@ static coap_optlist_t *optlist = NULL;
 static int wait_ms;
 
 #define INITIAL_DATA "hola desde coap!"
+
+static uint8_t* get_passwd(){
+    uint8_t* pass = (uint8_t*) calloc(strlen(ConfigFirebase.Device_Id), sizeof(uint8_t));
+
+    return pass;
+}
 
 static void
 hnd_params_get(coap_context_t *ctx, coap_resource_t *resource,coap_session_t *session,coap_pdu_t *request, coap_binary_t *token,coap_string_t *query, coap_pdu_t *response){    
@@ -272,7 +271,7 @@ void coap_put( char* Topic, char* Message, coap_session_t * session){
     request->type = COAP_MESSAGE_CON;
     request->tid = coap_new_message_id(session);
     request->code = COAP_REQUEST_PUT;
-    memcpy(request->data, (uint8_t*)Message, strlen(Message);
+    memcpy(request->data, (uint8_t*)Message, strlen(Message));
 
     coap_add_optlist_pdu(request, &optlist);
 
@@ -286,8 +285,10 @@ static void coap_client(void *p){
     struct hostent *hp;
     coap_address_t    dst_addr;
     static coap_uri_t uri;
-    const char       *server_uri = COAP_DEFAULT_DEMO_URI;
+    char server_uri[100];
     char *phostname = NULL;
+
+    sprintf(server_uri, "coaps://%s:5684/PARAMS", ChargingGroup.MasterIP.toString().c_str());
 
     coap_set_log_level(LOG_ERR);
 
