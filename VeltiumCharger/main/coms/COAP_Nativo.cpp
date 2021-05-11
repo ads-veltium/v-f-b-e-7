@@ -53,18 +53,25 @@ static char espressif_data[100];
 static int espressif_data_len = 0;
 static coap_optlist_t *optlist = NULL;
 static int wait_ms;
+uint8_t FallosEnvio =0;
 
 #define INITIAL_DATA "hola desde coap!"
 
-static uint8_t* get_passwd(){
-    uint8_t* pass = (uint8_t*) calloc(8, sizeof(uint8_t));
+static char* get_passwd(){
+    char* pass = (char*) calloc(8, sizeof(char));
 
     uint32_t value =0;
-
     for(uint8_t i=0;i< 8;i++){
         value+=ConfigFirebase.Device_Id[i];
     }
-    printf("%i \n", value);
+
+    randomSeed(value);
+    itoa((int)random(12345678, 99999999), pass,8);
+    printf("%s \n", pass);
+    printf("%s \n", pass);
+    printf("%s \n", pass);
+    printf("%s \n", pass);
+    printf("%s \n", pass);
     return pass;
 }
 
@@ -75,7 +82,7 @@ hnd_params_get(coap_context_t *ctx, coap_resource_t *resource,coap_session_t *se
 
 static void
 hnd_chargers_get(coap_context_t *ctx, coap_resource_t *resource,coap_session_t *session,coap_pdu_t *request, coap_binary_t *token,coap_string_t *query, coap_pdu_t *response){    
-    coap_add_data_blocked_response(resource, session, request, response, token,COAP_MEDIATYPE_TEXT_PLAIN, 0,(size_t)6,(const u_char*)"KAIXOO");
+    coap_add_data_blocked_response(resource, session, request, response, token,COAP_MEDIATYPE_TEXT_PLAIN, 0,(size_t)6,(const u_char*)espressif_data);
 }
 
 
@@ -166,13 +173,10 @@ static void hnd_espressif_put(coap_context_t *ctx,coap_resource_t *resource,coap
     /* coap_get_data() sets size to 0 on error */
     (void)coap_get_data(request, &size, &data);
 
-    if (size == 0) {      /* re-init */
-        snprintf(espressif_data, sizeof(espressif_data), INITIAL_DATA);
-        espressif_data_len = strlen(espressif_data);
-    } else {
-        espressif_data_len = size > sizeof (espressif_data) ? sizeof (espressif_data) : size;
-        memcpy (espressif_data, data, espressif_data_len);
-    }
+    printf("He recibido datos %.*s \n", size, data);
+
+    espressif_data_len = size > sizeof (espressif_data) ? sizeof (espressif_data) : size;
+    memcpy (espressif_data, data, espressif_data_len);
 }
 
 static bool POLL(int timeout){
@@ -181,6 +185,7 @@ static bool POLL(int timeout){
         if (result >= 0) {
             if (result >= timeout) {
                 ESP_LOGE(TAG, "select timeout");
+                FallosEnvio++;
                 return false;
             } else {
                 timeout -= result;
@@ -232,7 +237,6 @@ static void Authenticate(coap_session_t * session){
         coap_send(session, request);
         Esperando_datos =1;
     }while(!POLL(10000));
-
 }
 
 void coap_get( char* Topic, coap_session_t * session){
@@ -393,6 +397,12 @@ static void coap_client(void *p){
             delay(500);
             coap_put("CHARGERS", "AGUUUR", session );
             delay(1000);
+
+            if(FallosEnvio > 10){
+                printf("Servidor desconectado!\n");
+                FallosEnvio=0;
+                break;
+            }
         }
 
 clean_up:
@@ -429,7 +439,7 @@ static void coap_server(void *p){
 
     snprintf(espressif_data, sizeof(espressif_data), INITIAL_DATA);
     espressif_data_len = strlen(espressif_data);
-    coap_set_log_level(LOG_DEBUG);
+    coap_set_log_level(LOG_ERROR);
 
     while (1) {
         coap_endpoint_t *ep = NULL;

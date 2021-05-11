@@ -37,7 +37,7 @@ void broadcast_a_grupo(char* Mensaje);
 void send_to(IPAddress IP,  char* Mensaje);
 IPAddress get_IP(const char* ID);
 
-void server_start();
+void start_server();
 void client_start();
 
 void coap_broadcast_to_group(char* Mensaje, uint8_t messageID){
@@ -411,7 +411,7 @@ void coap_start_server(){
         }
         
         ChargingGroup.MasterIP.fromString(String(ip4addr_ntoa(&Coms.ETH.IP)));
-        server_start();
+        start_server();
     }
   }
   

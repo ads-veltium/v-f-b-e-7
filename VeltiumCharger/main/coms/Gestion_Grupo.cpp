@@ -2,13 +2,6 @@
 #include "AsyncUDP.h"
 #include "cJSON.h"
 
-
-extern "C" {
-#include "mongoose.h"
-}
-
-//Funciones del MQTT
-#include "mqtt_server.h"
 #include "../group_control.h"
 
 #define GROUP_PARAMS   1
