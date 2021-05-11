@@ -945,7 +945,7 @@ void procesar_bloque(uint16 tipo_bloque){
 
 		case GROUPS_PARAMS:{
 			memcpy(&ChargingGroup.Params,buffer_rx_local, 7);
-			ChargingGroup.Params.GroupMaster = true;
+			//ChargingGroup.Params.GroupMaster = true;
 			#ifdef DEBUG_GROUPS
 			Serial.printf("Group active %i \n", ChargingGroup.Params.GroupActive);
 			Serial.printf("Group master %i \n", ChargingGroup.Params.GroupMaster);

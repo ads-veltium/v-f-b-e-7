@@ -226,6 +226,7 @@ void coap_loop(void *args) {
     char buffer[500];
     uint8_t  turno =0;
     TickType_t xStart = xTaskGetTickCount();
+    xMasterTimer = xTaskGetTickCount();
 
     if(!ChargingGroup.Params.GroupMaster){
       coap.get(ChargingGroup.MasterIP, 5683, "Params");
