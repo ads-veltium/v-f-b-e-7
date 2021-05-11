@@ -188,7 +188,7 @@ void callback_response(CoapPacket &packet, IPAddress ip, int port) {
 void MasterPanicTask(void *args){
     TickType_t xStart = xTaskGetTickCount();
     uint8 reintentos = 1;
-    ChargingGroup.StartClient = false;
+    ChargingGroup.Params.GroupActive = false;
     int delai = 30000;
     Serial.println("Necesitamos un nuevo maestro!");
     while(!ChargingGroup.Conected){
@@ -197,17 +197,24 @@ void MasterPanicTask(void *args){
 
             if(!memcmp(ChargingGroup.group_chargers.charger_table[reintentos].name,ConfigFirebase.Device_Id,8)){
                 ChargingGroup.Params.GroupActive = true;
+                ChargingGroup.Params.GroupMaster = true;
+                printf("Soy el nuevo maestro!\n");
                 break;
             }
             else{
-                //Ultima opcion, mirar si yo era el maestro
-                if(!memcmp(ChargingGroup.group_chargers.charger_table[0].name,ConfigFirebase.Device_Id,8)){
-                    ChargingGroup.Params.GroupActive = true;
-                }
                 xStart = xTaskGetTickCount();
                 reintentos++;
                 if(reintentos == ChargingGroup.group_chargers.size){
-                    printf("Ya he mirado todos los equipos y no estoy!\n");
+                    //Ultima opcion, mirar si yo era el maestro
+                    if(!memcmp(ChargingGroup.group_chargers.charger_table[0].name,ConfigFirebase.Device_Id,8)){
+                        ChargingGroup.Params.GroupActive = true;
+                        ChargingGroup.Params.GroupMaster = true;
+                        printf("Soy el nuevo maestro2!\n");
+                    }
+                    else{
+                      printf("Ya he mirado todos los equipos y no estoy!\n");
+                    }
+                    
                     break;
                 }
             }
@@ -215,7 +222,7 @@ void MasterPanicTask(void *args){
         if(!Coms.ETH.conectado){
             break;
         }
-        delay(1000);
+        delay(delai);
     }
     vTaskDelete(NULL);
 }
