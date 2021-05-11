@@ -190,6 +190,7 @@ static void Authenticate(coap_session_t * session){
 
     request = coap_new_pdu(session);
 
+    //Autenticarnos
     if (!request) {
         ESP_LOGE(TAG, "coap_new_pdu() failed");
        return;
@@ -198,12 +199,31 @@ static void Authenticate(coap_session_t * session){
     request->tid = coap_new_message_id(session);
     request->code = COAP_REQUEST_GET;
 
-    //Subscribirnos
-    coap_insert_optlist(&optlist,coap_new_optlist(COAP_OPTION_OBSERVE,coap_opt_length((uint8_t*)"Params"),coap_opt_value((uint8_t*)"Params")));
-
     coap_add_optlist_pdu(request, &optlist);
 
     do{
+        coap_send(session, request);
+        Esperando_datos =1;
+    }while(!POLL(10000));
+
+
+    //Suscribirnos
+    request = coap_new_pdu(session);
+
+    if (!request) {
+        ESP_LOGE(TAG, "coap_new_pdu() failed");
+       return;
+    }
+    request->type = COAP_MESSAGE_CON;
+    request->tid = coap_new_message_id(session);
+    request->code = COAP_OPTION_OBSERVE;
+
+    //Subscribirnos
+    coap_insert_optlist(&optlist,coap_new_optlist(COAP_OPTION_OBSERVE,6,(uint8_t*)"PARAMS"));
+
+    coap_add_optlist_pdu(request, &optlist);
+
+     do{
         coap_send(session, request);
         Esperando_datos =1;
     }while(!POLL(10000));
@@ -213,7 +233,12 @@ static void Authenticate(coap_session_t * session){
 void coap_get( char* Topic, coap_session_t * session){
     coap_pdu_t *request = NULL;
 
-    coap_insert_optlist(&optlist,coap_new_optlist(COAP_OPTION_URI_PATH,coap_opt_length((uint8_t*)Topic),coap_opt_value((uint8_t*)Topic)));
+    if (optlist) {
+        coap_delete_optlist(optlist);
+        optlist = NULL;
+    }
+
+    coap_insert_optlist(&optlist,coap_new_optlist(COAP_OPTION_URI_PATH,strlen(Topic),(uint8_t*)Topic));
     request = coap_new_pdu(session);
     if (!request) {
         ESP_LOGE(TAG, "coap_new_pdu() failed");
@@ -223,10 +248,30 @@ void coap_get( char* Topic, coap_session_t * session){
     request->tid = coap_new_message_id(session);
     request->code = COAP_REQUEST_GET;
 
+    coap_add_optlist_pdu(request, &optlist);
+
+    coap_send(session, request);
+    Esperando_datos =1;
+    POLL(2000);
+}
+
+void coap_put( char* Topic, char* Message, coap_session_t * session){
+    coap_pdu_t *request = NULL;
+
     if (optlist) {
         coap_delete_optlist(optlist);
         optlist = NULL;
     }
+
+    coap_insert_optlist(&optlist,coap_new_optlist(COAP_OPTION_URI_PATH,strlen(Topic),(uint8_t*)Topic));
+    request = coap_new_pdu(session);
+    if (!request) {
+        ESP_LOGE(TAG, "coap_new_pdu() failed");
+        return;
+    }
+    request->type = COAP_MESSAGE_CON;
+    request->tid = coap_new_message_id(session);
+    request->code = COAP_REQUEST_PUT;
 
     coap_add_optlist_pdu(request, &optlist);
 
@@ -330,7 +375,6 @@ static void coap_client(void *p){
             Authenticate(session);
         }
         
-        printf("Estamos autenticados!\n");
 
         //Bucle tras autenticacion
         while(1){
