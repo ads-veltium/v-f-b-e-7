@@ -2,6 +2,7 @@
 #include "AsyncUDP.h"
 #include "cJSON.h"
 
+
 extern "C" {
 #include "mongoose.h"
 }
@@ -181,7 +182,7 @@ void start_udp(){
 
                 //Si el cargador está en el grupo de carga, le decimos que es un esclavo
                 if(ChargingGroup.Params.GroupMaster && ChargingGroup.Conected){
-                    if(check_in_group(Desencriptado.c_str(), &ChargingGroup.group_chargers)!=255){
+                    if(check_in_group(Desencriptado.c_str(), &ChargingGroup.group_chargers) != 255){
                         #ifdef DEBUG_GROUPS
                         Serial.printf("El cargador VCD%s está en el grupo de carga\n", Desencriptado.c_str());  
                         #endif
@@ -191,7 +192,7 @@ void start_udp(){
                     }
                 }
           
-                if(check_in_group(Desencriptado.c_str(), &net_group)==255){
+                if(check_in_group(Desencriptado.c_str(), &net_group) == 255){
                     #ifdef DEBUG_GROUPS
                     Serial.printf("El cargador VCD%s con ip %s se ha añadido a la lista de red\n", Desencriptado.c_str(), packet.remoteIP().toString().c_str());  
                     #endif
@@ -199,7 +200,7 @@ void start_udp(){
                 } 
             }
             else{
-                if(!memcmp(Desencriptado.c_str(), "Start client", 13)){
+                if(!memcmp(Desencriptado.c_str(), "Start client", 12)){
                     if(!ChargingGroup.Conected && !ChargingGroup.StartClient){
                         #ifdef DEBUG_GROUPS
                         printf("Soy parte de un grupo !!\n");
@@ -212,12 +213,12 @@ void start_udp(){
                         
                     }
                 }
-                else if(!memcmp(Desencriptado.c_str(), "Hay maestro?", 13)){
+                else if(!memcmp(Desencriptado.c_str(), "Hay maestro?", 12)){
                     if(ChargingGroup.Conected && ChargingGroup.Params.GroupMaster){
                         packet.print(Encipher(String("Bai, hemen nago")).c_str());
                     }
                 }
-                else if(!memcmp(Desencriptado.c_str(), "Bai, hemen nago", 13)){
+                else if(!memcmp(Desencriptado.c_str(), "Bai, hemen nago", 15)){
                     if(!ChargingGroup.Conected && ChargingGroup.Params.GroupMaster){
                         ChargingGroup.StartClient = true;
                         ChargingGroup.Params.GroupMaster = false;

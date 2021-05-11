@@ -38,7 +38,6 @@ void send_to(IPAddress IP,  char* Mensaje);
 IPAddress get_IP(const char* ID);
 
 void coap_broadcast_to_group(char* Mensaje, uint8_t messageID){
-    printf("Empezando envio\n");
     for(int i =0; i < net_group.size;i++){
         for(int j=0;j < ChargingGroup.group_chargers.size;j++){
             if(check_in_group(net_group.charger_table[i].name, &ChargingGroup.group_chargers) != 255){
@@ -78,7 +77,6 @@ void Send_Data(){
   
   cJSON_Delete(Datos_Json);
 
-  Serial.println(ChargingGroup.MasterIP);
   coap.put(ChargingGroup.MasterIP, 5683, "Data", my_json_string);
 
   printf("Enviando mis datos!\n");
@@ -97,12 +95,8 @@ void callback_PARAMS(CoapPacket &packet, IPAddress ip, int port) {
   p[packet.payloadlen] = '\0';
   
   String message(p);
-
-  Serial.println(message);
-  Serial.println(ip);
-
   if(packet.payloadlen >0){
-    coap_broadcast_to_group((char*)packet.payload, GROUP_PARAMS);
+    coap_broadcast_to_group(p, GROUP_PARAMS);
   }
 
 }
@@ -131,9 +125,8 @@ void callback_CONTROL(CoapPacket &packet, IPAddress ip, int port) {
   
   String message(p);
 
-  Serial.println(message);
   if(packet.payloadlen >0){
-    coap_broadcast_to_group((char*)packet.payload, GROUP_CONTROL);
+    coap_broadcast_to_group(p, GROUP_CONTROL);
   }
 }
 
@@ -146,10 +139,9 @@ void callback_CHARGERS(CoapPacket &packet, IPAddress ip, int port) {
   p[packet.payloadlen] = '\0';
   
   String message(p);
-
   Serial.println(message);
   if(packet.payloadlen >0){
-    coap_broadcast_to_group((char*)packet.payload, GROUP_CHARGERS);
+    coap_broadcast_to_group(p, GROUP_CHARGERS);
   }
 }
 
@@ -162,7 +154,7 @@ void callback_response(CoapPacket &packet, IPAddress ip, int port) {
   memcpy(p, packet.payload, packet.payloadlen);
   p[packet.payloadlen] = '\0';
   
-  Serial.println(packet.messageid);
+  Serial.println(p);
 
   switch(packet.messageid){
     case GROUP_PARAMS: 
@@ -172,6 +164,7 @@ void callback_response(CoapPacket &packet, IPAddress ip, int port) {
       New_Control(p, packet.payloadlen);
       break;
     case GROUP_CHARGERS:
+      Serial.println(p);
       New_Group(p, packet.payloadlen);
       break;
     case NEW_DATA:
@@ -235,9 +228,33 @@ void coap_loop(void *args) {
     while(1){   
       //Enviar nuevos parametros para el grupo
       if( ChargingGroup.SendNewParams){
+          ChargingGroup.Params.ContractPower = 142;
           memcpy(buffer, &ChargingGroup.Params,7);
+          Serial.println(buffer);
           coap.put(ChargingGroup.MasterIP, 5683, "Params", buffer);
           ChargingGroup.SendNewParams = false;
+
+          cJSON *Datos_Json;
+          Datos_Json = cJSON_CreateObject();
+
+          cJSON_AddStringToObject(Datos_Json, "device_id", ConfigFirebase.Device_Id);
+          cJSON_AddNumberToObject(Datos_Json, "fase", Params.Fase);
+          cJSON_AddNumberToObject(Datos_Json, "current", Status.Measures.instant_current);
+
+          //si es trifasico, enviar informacion de todas las fases
+          if(Status.Trifasico){
+              cJSON_AddNumberToObject(Datos_Json, "currentB", Status.MeasuresB.instant_current);
+              cJSON_AddNumberToObject(Datos_Json, "currentC", Status.MeasuresC.instant_current);
+          }
+          cJSON_AddNumberToObject(Datos_Json, "Delta", Status.Delta);
+          cJSON_AddStringToObject(Datos_Json, "HPT", Status.HPT_status);
+          cJSON_AddNumberToObject(Datos_Json, "limite_fase",Status.limite_Fase);
+
+
+          char *my_json_string = cJSON_Print(Datos_Json);   
+          
+          cJSON_Delete(Datos_Json);
+
       }
 
       //Enviar los cargadores de nuestro grupo
@@ -261,6 +278,7 @@ void coap_loop(void *args) {
       if(!ChargingGroup.Params.GroupMaster){
         if(pdTICKS_TO_MS(xTaskGetTickCount()-xMasterTimer)> 2000){
           printf("Maestro desconectado!!!!\n");
+          ChargingGroup.Conected  = false;
           xTaskCreate(MasterPanicTask, "Master Panic", 4096, NULL,2,NULL);
           break;
         }
@@ -292,11 +310,8 @@ void coap_loop(void *args) {
         }
 
         //Pedir datos a los esclavos para que no envíen todos a la vez, obviando a los que no tenemos en la lista
-        IPAddress TurnoIP;
-        do{
-          TurnoIP = get_IP(ChargingGroup.group_chargers.charger_table[turno].name);
-          turno++;
-        }while((TurnoIP!= INADDR_NONE || TurnoIP != INADDR_ANY) && turno != ChargingGroup.group_chargers.size);
+        IPAddress TurnoIP = get_IP(ChargingGroup.group_chargers.charger_table[turno].name);
+        turno++;
 
         if(TurnoIP!= INADDR_NONE && TurnoIP != INADDR_ANY){ 
           coap.sendResponse(TurnoIP, 5683, SEND_DATA, "X");
