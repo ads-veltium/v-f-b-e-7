@@ -1,5 +1,4 @@
 #include "Wifi_Station.h"
-#include "COAP_Nativo.h"
 
 esp_netif_t *sta_netif;
 esp_netif_t *ap_netif;
@@ -29,9 +28,9 @@ void stop_MQTT();
 void start_udp();
 void InitServer(void);
 void StopServer(void);
-void coap_start();
-void start_MQTT_server();
-void start_MQTT_client(IPAddress remoteIP);
+void start_client();
+void coap_start_server();
+
 
 static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data){
     Serial.printf("Evento de wifi %s %i\n", event_base, event_id );
@@ -376,7 +375,7 @@ void Eth_Loop(){
                             start_client();
                         }
                         else{
-                            start_server();
+                            coap_start_server();
                         }
                         
                     }

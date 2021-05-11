@@ -57,8 +57,14 @@ static int wait_ms;
 #define INITIAL_DATA "hola desde coap!"
 
 static uint8_t* get_passwd(){
-    uint8_t* pass = (uint8_t*) calloc(strlen(ConfigFirebase.Device_Id), sizeof(uint8_t));
+    uint8_t* pass = (uint8_t*) calloc(8, sizeof(uint8_t));
 
+    uint32_t value =0;
+
+    for(uint8_t i=0;i< 8;i++){
+        value+=ConfigFirebase.Device_Id[i];
+    }
+    printf("%i \n", value);
     return pass;
 }
 
@@ -263,6 +269,7 @@ void coap_put( char* Topic, char* Message, coap_session_t * session){
     }
 
     coap_insert_optlist(&optlist,coap_new_optlist(COAP_OPTION_URI_PATH,strlen(Topic),(uint8_t*)Topic));
+
     request = coap_new_pdu(session);
     if (!request) {
         ESP_LOGE(TAG, "coap_new_pdu() failed");
@@ -271,9 +278,9 @@ void coap_put( char* Topic, char* Message, coap_session_t * session){
     request->type = COAP_MESSAGE_CON;
     request->tid = coap_new_message_id(session);
     request->code = COAP_REQUEST_PUT;
-    memcpy(request->data, (uint8_t*)Message, strlen(Message));
 
     coap_add_optlist_pdu(request, &optlist);
+    coap_add_data(request, strlen(Message),(uint8_t*)Message);
 
     coap_send(session, request);
     Esperando_datos =1;
@@ -361,6 +368,7 @@ static void coap_client(void *p){
             goto clean_up;
         }
         if (uri.scheme == COAP_URI_SCHEME_COAPS) {
+            get_passwd();
             session = coap_new_client_session_psk(ctx, NULL, &dst_addr,COAP_PROTO_DTLS , ConfigFirebase.Device_Id, (const uint8_t *)EXAMPLE_COAP_PSK_KEY, sizeof(EXAMPLE_COAP_PSK_KEY) - 1);
         } else {
             session = coap_new_client_session(ctx, NULL, &dst_addr, COAP_PROTO_UDP);

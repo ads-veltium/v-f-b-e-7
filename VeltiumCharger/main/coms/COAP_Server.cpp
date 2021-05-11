@@ -37,6 +37,9 @@ void broadcast_a_grupo(char* Mensaje);
 void send_to(IPAddress IP,  char* Mensaje);
 IPAddress get_IP(const char* ID);
 
+void server_start();
+void client_start();
+
 void coap_broadcast_to_group(char* Mensaje, uint8_t messageID){
     for(int i =0; i < net_group.size;i++){
         for(int j=0;j < ChargingGroup.group_chargers.size;j++){
@@ -371,7 +374,7 @@ void coap_loop(void *args) {
     vTaskDelete(NULL);
 }
 
-void coap_start() {
+void coap_start_server(){
   coap.set_udp(Udp);
   ChargingGroup.Conected = true;
   if(ChargingGroup.Params.GroupMaster){
@@ -408,19 +411,13 @@ void coap_start() {
         }
         
         ChargingGroup.MasterIP.fromString(String(ip4addr_ntoa(&Coms.ETH.IP)));
-        coap.server(callback_PARAMS,   "Params");
-        coap.server(callback_DATA,     "Data");
-        coap.server(callback_CONTROL,  "Control");
-        coap.server(callback_CHARGERS, "Chargers");
+        server_start();
     }
   }
   
-  coap.response(callback_response);
-
   // start coap server/client
-  if(xCoapHandle == NULL){
-    coap.start();
+  /*if(xCoapHandle == NULL){
     xCoapHandle = xTaskCreateStatic(coap_loop,"coap", 4096*4,NULL,2,xCoapStack,&xCoapBuffer);
-  }
+  }*/
 }
 
