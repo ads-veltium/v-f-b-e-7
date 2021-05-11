@@ -42,6 +42,8 @@ static StackType_t xClientStack [4096*4]     EXT_RAM_ATTR;
 StaticTask_t xServerBuffer;
 StaticTask_t xClientBuffer;
 
+coap_context_t *ctx = NULL;
+
 /* The examples use simple Pre-Shared-Key configuration that you can set via
    'make menuconfig'.
    If you'd rather not, just change the below entries to strings with
@@ -51,12 +53,11 @@ StaticTask_t xClientBuffer;
    (potentially associated with the IDENTITY)
 */
 #define EXAMPLE_COAP_PSK_KEY "CONFIG_EXAMPLE_COAP_PSK_KEY"
-#define COAP_DEFAULT_DEMO_URI "coaps://192.168.20.163/PARAMS"
+#define COAP_DEFAULT_DEMO_URI "coaps://192.168.20.163:5684/PARAMS"
 const static char *TAG = "CoAP_server";
 
 static char espressif_data[100];
 static int espressif_data_len = 0;
-static int resp_wait = 1;
 static coap_optlist_t *optlist = NULL;
 static int wait_ms;
 
@@ -99,7 +100,7 @@ static void message_handler(coap_context_t *ctx, coap_session_t *session,coap_pd
                 pdu = coap_new_pdu(session);
                 if (!pdu) {
                     ESP_LOGE(TAG, "coap_new_pdu() failed");
-                    goto clean_up;
+                    return;
                 }
                 pdu->type = COAP_MESSAGE_CON;
                 pdu->tid = coap_new_message_id(session);
@@ -122,16 +123,11 @@ static void message_handler(coap_context_t *ctx, coap_session_t *session,coap_pd
 
                 /* finally add updated block option from response, clear M bit */
                 /* blocknr = (blocknr & 0xfffffff7) + 0x10; */
-                coap_add_option(pdu,
-                                blktype,
-                                coap_encode_var_safe(buf, sizeof(buf),
-                                                     ((coap_opt_block_num(block_opt) + 1) << 4) |
-                                                     COAP_OPT_BLOCK_SZX(block_opt)), buf);
+                coap_add_option(pdu,blktype,coap_encode_var_safe(buf, sizeof(buf), ((coap_opt_block_num(block_opt) + 1) << 4) | COAP_OPT_BLOCK_SZX(block_opt)), buf);
 
                 tid = coap_send(session, pdu);
 
                 if (tid != COAP_INVALID_TID) {
-                    resp_wait = 1;
                     wait_ms = 0.5 * 1000;
                     return;
                 }
@@ -139,12 +135,11 @@ static void message_handler(coap_context_t *ctx, coap_session_t *session,coap_pd
             printf("\n");
         } else {
             if (coap_get_data(received, &data_len, &data)) {
-                printf("Received: %.*s\n", (int)data_len, data);
+                printf("Received2: %.*s\n", (int)data_len, data);
             }
         }
     }
-clean_up:
-    resp_wait = 0;
+
 }
 
 static void hnd_espressif_put(coap_context_t *ctx,coap_resource_t *resource,coap_session_t *session,coap_pdu_t *request,coap_binary_t *token,coap_string_t *query, coap_pdu_t *response){
@@ -171,22 +166,78 @@ static void hnd_espressif_put(coap_context_t *ctx,coap_resource_t *resource,coap
     }
 }
 
+static void POLL(int timeout){
+    while (timeout) {
+        int result = coap_run_once(ctx, timeout);
+        if (result >= 0) {
+            if (result >= timeout) {
+                ESP_LOGE(TAG, "select timeout");
+                return;
+            } else {
+                timeout -= result;
+            }
+        }
+    }
+}
+
+static void Authenticate(coap_session_t * session){
+    coap_pdu_t *request = NULL;
+
+    request = coap_new_pdu(session);
+
+    if (!request) {
+        ESP_LOGE(TAG, "coap_new_pdu() failed");
+       return;
+    }
+    request->type = COAP_MESSAGE_CON;
+    request->tid = coap_new_message_id(session);
+    request->code = COAP_REQUEST_GET;
+
+    coap_add_optlist_pdu(request, &optlist);
+    coap_send(session, request);
+
+    POLL(10000);
+}
+
+void Send_Data(char* message, char* Topic, coap_session_t * session){
+     coap_pdu_t *request = NULL;
+
+    request = coap_new_pdu(session);
+    if (!request) {
+        ESP_LOGE(TAG, "coap_new_pdu() failed");
+        return;
+    }
+    request->type = COAP_MESSAGE_CON;
+    request->tid = coap_new_message_id(session);
+    request->code = COAP_REQUEST_GET;
+
+
+    coap_insert_optlist(&optlist,coap_new_optlist(COAP_OPTION_URI_PATH,coap_opt_length(buf),coap_opt_value(buf)));
+
+
+    coap_add_optlist_pdu(request, &optlist);
+
+    coap_send(session, request);
+
+    POLL(2000);
+}
+
 static void coap_client(void *p){
-   struct hostent *hp;
+    ChargingGroup.Conected = true;
+    struct hostent *hp;
     coap_address_t    dst_addr;
     static coap_uri_t uri;
     const char       *server_uri = COAP_DEFAULT_DEMO_URI;
     char *phostname = NULL;
 
-    coap_set_log_level(LOG_DEBUG);
+    coap_set_log_level(LOG_ERROR);
 
     while (1) {
-#define BUFSIZE 40
+        #define BUFSIZE 40
         unsigned char _buf[BUFSIZE];
         unsigned char *buf;
         size_t buflen;
         int res;
-        coap_context_t *ctx = NULL;
         coap_session_t *session = NULL;
         coap_pdu_t *request = NULL;
 
@@ -198,10 +249,6 @@ static void coap_client(void *p){
 
         if (uri.scheme == COAP_URI_SCHEME_COAPS && !coap_dtls_is_supported()) {
             ESP_LOGE(TAG, "MbedTLS (D)TLS Client Mode not configured");
-            break;
-        }
-        if (uri.scheme == COAP_URI_SCHEME_COAPS_TCP && !coap_tls_is_supported()) {
-            ESP_LOGE(TAG, "CoAP server uri coaps+tcp:// scheme is not supported");
             break;
         }
 
@@ -221,27 +268,11 @@ static void coap_client(void *p){
             free(phostname);
             continue;
         }
-        char tmpbuf[INET6_ADDRSTRLEN];
+
         coap_address_init(&dst_addr);
-        switch (hp->h_addrtype) {
-            case AF_INET:
-                dst_addr.addr.sin.sin_family      = AF_INET;
-                dst_addr.addr.sin.sin_port        = htons(uri.port);
-                memcpy(&dst_addr.addr.sin.sin_addr, hp->h_addr, sizeof(dst_addr.addr.sin.sin_addr));
-                inet_ntop(AF_INET, &dst_addr.addr.sin.sin_addr, tmpbuf, sizeof(tmpbuf));
-                ESP_LOGI(TAG, "DNS lookup succeeded. IP=%s", tmpbuf);
-                break;
-            case AF_INET6:
-                dst_addr.addr.sin6.sin6_family      = AF_INET6;
-                dst_addr.addr.sin6.sin6_port        = htons(uri.port);
-                memcpy(&dst_addr.addr.sin6.sin6_addr, hp->h_addr, sizeof(dst_addr.addr.sin6.sin6_addr));
-                inet_ntop(AF_INET6, &dst_addr.addr.sin6.sin6_addr, tmpbuf, sizeof(tmpbuf));
-                ESP_LOGI(TAG, "DNS lookup succeeded. IP=%s", tmpbuf);
-                break;
-            default:
-                ESP_LOGE(TAG, "DNS lookup response failed");
-                goto clean_up;
-        }
+        dst_addr.addr.sin.sin_family      = AF_INET;
+        dst_addr.addr.sin.sin_port        = htons(uri.port);
+        memcpy(&dst_addr.addr.sin.sin_addr, hp->h_addr, sizeof(dst_addr.addr.sin.sin_addr));
 
         if (uri.path.length) {
             buflen = BUFSIZE;
@@ -249,11 +280,7 @@ static void coap_client(void *p){
             res = coap_split_path(uri.path.s, uri.path.length, buf, &buflen);
 
             while (res--) {
-                coap_insert_optlist(&optlist,
-                                    coap_new_optlist(COAP_OPTION_URI_PATH,
-                                                     coap_opt_length(buf),
-                                                     coap_opt_value(buf)));
-
+                coap_insert_optlist(&optlist,coap_new_optlist(COAP_OPTION_URI_PATH,coap_opt_length(buf),coap_opt_value(buf)));
                 buf += coap_opt_size(buf);
             }
         }
@@ -264,11 +291,7 @@ static void coap_client(void *p){
             res = coap_split_query(uri.query.s, uri.query.length, buf, &buflen);
 
             while (res--) {
-                coap_insert_optlist(&optlist,
-                                    coap_new_optlist(COAP_OPTION_URI_QUERY,
-                                                     coap_opt_length(buf),
-                                                     coap_opt_value(buf)));
-
+                coap_insert_optlist(&optlist, coap_new_optlist(COAP_OPTION_URI_QUERY, coap_opt_length(buf),coap_opt_value(buf)));
                 buf += coap_opt_size(buf);
             }
         }
@@ -278,86 +301,10 @@ static void coap_client(void *p){
             ESP_LOGE(TAG, "coap_new_context() failed");
             goto clean_up;
         }
-
-        /*
-         * Note that if the URI starts with just coap:// (not coaps://) the
-         * session will still be plain text.
-         *
-         * coaps+tcp:// is NOT supported by the libcoap->mbedtls interface
-         * so COAP_URI_SCHEME_COAPS_TCP will have failed in a test above,
-         * but the code is left in for completeness.
-         */
-        if (uri.scheme == COAP_URI_SCHEME_COAPS || uri.scheme == COAP_URI_SCHEME_COAPS_TCP) {
-#ifndef CONFIG_MBEDTLS_TLS_CLIENT
-            ESP_LOGE(TAG, "MbedTLS (D)TLS Client Mode not configured");
-            goto clean_up;
-#endif /* CONFIG_MBEDTLS_TLS_CLIENT */
-#ifdef CONFIG_COAP_MBEDTLS_PSK
-            session = coap_new_client_session_psk(ctx, NULL, &dst_addr,
-                                                  uri.scheme == COAP_URI_SCHEME_COAPS ? COAP_PROTO_DTLS : COAP_PROTO_TLS,
-                                                  ConfigFirebase.Device_Id,
-                                                  (const uint8_t *)EXAMPLE_COAP_PSK_KEY,
-                                                  sizeof(EXAMPLE_COAP_PSK_KEY) - 1);
-#endif /* CONFIG_COAP_MBEDTLS_PSK */
-
-#ifdef CONFIG_COAP_MBEDTLS_PKI
-            unsigned int ca_pem_bytes = ca_pem_end - ca_pem_start;
-            unsigned int client_crt_bytes = client_crt_end - client_crt_start;
-            unsigned int client_key_bytes = client_key_end - client_key_start;
-            coap_dtls_pki_t dtls_pki;
-            static char client_sni[256];
-
-            memset (&dtls_pki, 0, sizeof(dtls_pki));
-            dtls_pki.version = COAP_DTLS_PKI_SETUP_VERSION;
-            if (ca_pem_bytes) {
-                /*
-                 * Add in additional certificate checking.
-                 * This list of enabled can be tuned for the specific
-                 * requirements - see 'man coap_encryption'.
-                 *
-                 * Note: A list of root ca file can be setup separately using
-                 * coap_context_set_pki_root_cas(), but the below is used to
-                 * define what checking actually takes place.
-                 */
-                dtls_pki.verify_peer_cert        = 1;
-                dtls_pki.require_peer_cert       = 1;
-                dtls_pki.allow_self_signed       = 1;
-                dtls_pki.allow_expired_certs     = 1;
-                dtls_pki.cert_chain_validation   = 1;
-                dtls_pki.cert_chain_verify_depth = 2;
-                dtls_pki.check_cert_revocation   = 1;
-                dtls_pki.allow_no_crl            = 1;
-                dtls_pki.allow_expired_crl       = 1;
-                dtls_pki.allow_bad_md_hash       = 1;
-                dtls_pki.allow_short_rsa_length  = 1;
-                dtls_pki.validate_cn_call_back   = verify_cn_callback;
-                dtls_pki.cn_call_back_arg        = NULL;
-                dtls_pki.validate_sni_call_back  = NULL;
-                dtls_pki.sni_call_back_arg       = NULL;
-                memset(client_sni, 0, sizeof(client_sni));
-                if (uri.host.length) {
-                    memcpy(client_sni, uri.host.s, MIN(uri.host.length, sizeof(client_sni)));
-                } else {
-                    memcpy(client_sni, "localhost", 9);
-                }
-                dtls_pki.client_sni = client_sni;
-            }
-            dtls_pki.pki_key.key_type = COAP_PKI_KEY_PEM_BUF;
-            dtls_pki.pki_key.key.pem_buf.public_cert = client_crt_start;
-            dtls_pki.pki_key.key.pem_buf.public_cert_len = client_crt_bytes;
-            dtls_pki.pki_key.key.pem_buf.private_key = client_key_start;
-            dtls_pki.pki_key.key.pem_buf.private_key_len = client_key_bytes;
-            dtls_pki.pki_key.key.pem_buf.ca_cert = ca_pem_start;
-            dtls_pki.pki_key.key.pem_buf.ca_cert_len = ca_pem_bytes;
-
-            session = coap_new_client_session_pki(ctx, NULL, &dst_addr,
-                                                  uri.scheme == COAP_URI_SCHEME_COAPS ? COAP_PROTO_DTLS : COAP_PROTO_TLS,
-                                                  &dtls_pki);
-#endif /* CONFIG_COAP_MBEDTLS_PKI */
+        if (uri.scheme == COAP_URI_SCHEME_COAPS) {
+            session = coap_new_client_session_psk(ctx, NULL, &dst_addr,COAP_PROTO_DTLS , ConfigFirebase.Device_Id, (const uint8_t *)EXAMPLE_COAP_PSK_KEY, sizeof(EXAMPLE_COAP_PSK_KEY) - 1);
         } else {
-            session = coap_new_client_session(ctx, NULL, &dst_addr,
-                                              uri.scheme == COAP_URI_SCHEME_COAP_TCP ? COAP_PROTO_TCP :
-                                              COAP_PROTO_UDP);
+            session = coap_new_client_session(ctx, NULL, &dst_addr, COAP_PROTO_UDP);
         }
         if (!session) {
             ESP_LOGE(TAG, "coap_new_client_session() failed");
@@ -366,32 +313,21 @@ static void coap_client(void *p){
 
         coap_register_response_handler(ctx, message_handler);
 
-        request = coap_new_pdu(session);
-        if (!request) {
-            ESP_LOGE(TAG, "coap_new_pdu() failed");
-            goto clean_up;
+        //Autenticarnos mediante DTLS
+        if (uri.scheme == COAP_URI_SCHEME_COAPS && !coap_dtls_is_supported()){
+            Authenticate(session);
         }
-        request->type = COAP_MESSAGE_CON;
-        request->tid = coap_new_message_id(session);
-        request->code = COAP_REQUEST_GET;
-        coap_add_optlist_pdu(request, &optlist);
+        
+        printf("Estamos autenticados!\n");
 
-        resp_wait = 1;
-        coap_send(session, request);
+        //Bucle tras autenticacion
+        while(1){
 
-        wait_ms = 2 * 1000;
 
-        while (resp_wait) {
-            int result = coap_run_once(ctx, wait_ms > 1000 ? 1000 : wait_ms);
-            if (result >= 0) {
-                if (result >= wait_ms) {
-                    ESP_LOGE(TAG, "select timeout");
-                    break;
-                } else {
-                    wait_ms -= result;
-                }
-            }
+
+            delay(1000);
         }
+
 clean_up:
         if (optlist) {
             coap_delete_optlist(optlist);
@@ -410,7 +346,7 @@ clean_up:
          */
         break;
     }
-
+    printf("Cerrando cliente coap!\n");
     vTaskDelete(NULL);
 }
 
