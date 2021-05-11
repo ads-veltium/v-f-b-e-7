@@ -456,7 +456,7 @@ coap_add_resource(coap_context_t *context, coap_resource_t *resource) {
     context->unknown_resource = resource;
   }
   else {
-    coap_resource_t *r = coap_get_resource_from_uri_path(context,
+    /*coap_resource_t *r = coap_get_resource_from_uri_path(context,
                                                          resource->uri_path);
 
     if (r) {
@@ -465,7 +465,7 @@ coap_add_resource(coap_context_t *context, coap_resource_t *resource) {
               (int)resource->uri_path->length, (int)resource->uri_path->length,
               resource->uri_path->s);
       coap_delete_resource(context, r);
-    }
+    }*/
     RESOURCES_ADD(context->resources, resource);
   }
 }

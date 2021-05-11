@@ -90,6 +90,7 @@ void coap_delete_str_const(coap_str_const_t *string);
  *
  * @param string The const byte array to convert to a coap_str_const_t *
  */
+
 #ifdef __cplusplus
 namespace libcoap {
   struct CoAPStrConst : coap_str_const_t {
