@@ -272,6 +272,7 @@ void coap_put( char* Topic, char* Message, coap_session_t * session){
     request->type = COAP_MESSAGE_CON;
     request->tid = coap_new_message_id(session);
     request->code = COAP_REQUEST_PUT;
+    memcpy(request->data, (uint8_t*)Message, strlen(Message);
 
     coap_add_optlist_pdu(request, &optlist);
 
@@ -380,6 +381,8 @@ static void coap_client(void *p){
         while(1){
 
             coap_get("CHARGERS", session);
+            delay(500);
+            coap_put("CHARGERS", "AGUUUR", session );
             delay(1000);
         }
 
