@@ -211,6 +211,7 @@ static void message_handler(coap_context_t *ctx, coap_session_t *session,coap_pd
             New_Group((char*)data,  data_len);
             break;
         case NEW_DATA:
+        
             New_Data((char*)data,  data_len);
             break;
         case SEND_DATA:
@@ -330,7 +331,7 @@ static bool Authenticate(){
     return true;
 }
 
-static void Subscribe(){
+static void Subscribe(char* TOPIC){
     coap_pdu_t *request = NULL;
 
     request = coap_new_pdu(session);
@@ -350,7 +351,7 @@ static void Subscribe(){
     }
 
     uint8_t buf[4];
-    coap_insert_optlist(&optlist,coap_new_optlist(COAP_OPTION_URI_PATH,6,(uint8_t*)"PARAMS"));
+    coap_insert_optlist(&optlist,coap_new_optlist(COAP_OPTION_URI_PATH,strlen(TOPIC),(uint8_t*)TOPIC));
     coap_insert_optlist(&optlist,coap_new_optlist(COAP_OPTION_OBSERVE,coap_encode_var_safe(buf, sizeof(buf),COAP_OBSERVE_ESTABLISH), buf));
 
     coap_add_optlist_pdu(request, &optlist);
@@ -395,6 +396,7 @@ void coap_put( char* Topic, char* Message){
         request->code = COAP_REQUEST_PUT;
 
         coap_add_optlist_pdu(request, &optlist);
+        
         coap_add_data(request, strlen(Message),(uint8_t*)Message);
 
         coap_send(session, request);
@@ -480,7 +482,12 @@ static void coap_client(void *p){
         }
 
         //Subscribirnos
-        Subscribe();
+        Subscribe("PARAMS");
+        Subscribe("CHARGERS");
+        Subscribe("DATA");
+        Subscribe("CONTROL");
+
+
 
         //Tras autenticarnos solicitamos los cargadores del grupo y los parametros
         coap_get("CHARGERS", GROUP_CHARGERS);
@@ -489,8 +496,6 @@ static void coap_client(void *p){
         
         //Bucle del grupo
         while(1){
-            coap_get("CHARGERS", NEW_DATA);
-
             if(FallosEnvio > 5){
                 printf("Servidor desconectado !\n");
                 FallosEnvio=0;
