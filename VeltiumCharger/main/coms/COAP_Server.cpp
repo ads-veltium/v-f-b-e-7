@@ -35,7 +35,7 @@ void coap_put( char* Topic, char* Message);
 IPAddress get_IP(const char* ID);
 
 void start_server();
-void client_start();
+void start_client();
 
 //Enviar mis datos de carga
 void Send_Data(){
@@ -305,7 +305,10 @@ void coap_start_server(){
         start_server();
     }
   }
-  
+}
+
+void coap_start_client(){
+  start_client();
   if(xCoapHandle == NULL){
     xCoapHandle = xTaskCreateStatic(coap_loop,"coap", 4096*4,NULL,2,xCoapStack,&xCoapBuffer);
   }

@@ -46,6 +46,11 @@ coap_context_t * ctx      EXT_RAM_ATTR;
 coap_session_t * session  EXT_RAM_ATTR;
 coap_optlist_t * optlist  EXT_RAM_ATTR;
 
+coap_resource_t *DATA EXT_RAM_ATTR;
+coap_resource_t *PARAMS  EXT_RAM_ATTR;
+coap_resource_t *CONTROL  EXT_RAM_ATTR;
+coap_resource_t *CHARGERS  EXT_RAM_ATTR; 
+
 #define EXAMPLE_COAP_PSK_KEY "CONFIG_EXAMPLE_COAP_PSK_KEY"
 
 const static char *TAG = "CoAP_server";
@@ -72,6 +77,8 @@ static char* get_passwd(){
 
     String password = Encipher(String(pass));
     pass=(char*)password.c_str();
+
+    printf("\n\n\n %s \n\n\n", pass);
 
     return pass;
 }
@@ -220,27 +227,26 @@ static void Authenticate(){
         Esperando_datos =1;
     }while(!POLL(10000));
 
-
-    //Suscribirnos
     request = coap_new_pdu(session);
 
+    //Subscribirnos
     if (!request) {
         ESP_LOGE(TAG, "coap_new_pdu() failed");
        return;
     }
     request->type = COAP_MESSAGE_CON;
     request->tid = coap_new_message_id(session);
-    request->code = COAP_OPTION_OBSERVE;
+    request->code = COAP_REQUEST_GET;
 
-    //Subscribirnos
-    coap_insert_optlist(&optlist,coap_new_optlist(COAP_OPTION_OBSERVE,6,(uint8_t*)"PARAMS"));
-
+    coap_insert_optlist(&optlist,coap_new_optlist(COAP_OPTION_URI_PATH,6,(uint8_t*)"PARAMS"));
     coap_add_optlist_pdu(request, &optlist);
-
-     do{
+    coap_add_option(request, COAP_OPTION_SUBSCRIPTION, 0, NULL);
+ 
+    do{
         coap_send(session, request);
         Esperando_datos =1;
     }while(!POLL(10000));
+
 }
 
 void coap_get( char* Topic){
@@ -269,30 +275,47 @@ void coap_get( char* Topic){
 }
 
 void coap_put( char* Topic, char* Message){
-    coap_pdu_t *request = NULL;
+    if(ChargingGroup.Params.GroupMaster){
+        if(!memcmp(DATA->uri_path->s, Topic, DATA->uri_path->length)){
+            coap_resource_notify_observers(DATA, NULL);
+        }
+        else if(!memcmp(PARAMS->uri_path->s, Topic, PARAMS->uri_path->length)){
+            coap_resource_notify_observers(PARAMS, NULL);
+        }
+        else if(!memcmp(CONTROL->uri_path->s, Topic, CONTROL->uri_path->length)){
+            coap_resource_notify_observers(CONTROL, NULL);
+        }
+        else if(!memcmp(CHARGERS->uri_path->s, Topic, CHARGERS->uri_path->length)){
+            coap_resource_notify_observers(CHARGERS, NULL);
+        }
+    }
+    else{
+        coap_pdu_t *request = NULL;
 
-    if (optlist) {
-        coap_delete_optlist(optlist);
-        optlist = NULL;
+        if (optlist) {
+            coap_delete_optlist(optlist);
+            optlist = NULL;
+        }
+
+        coap_insert_optlist(&optlist,coap_new_optlist(COAP_OPTION_URI_PATH,strlen(Topic),(uint8_t*)Topic));
+
+        request = coap_new_pdu(session);
+        if (!request) {
+            ESP_LOGE(TAG, "coap_new_pdu() failed");
+            return;
+        }
+        request->type = COAP_MESSAGE_CON;
+        request->tid = coap_new_message_id(session);
+        request->code = COAP_REQUEST_PUT;
+
+        coap_add_optlist_pdu(request, &optlist);
+        coap_add_data(request, strlen(Message),(uint8_t*)Message);
+
+        coap_send(session, request);
+        Esperando_datos =1;
+        POLL(2000);
     }
 
-    coap_insert_optlist(&optlist,coap_new_optlist(COAP_OPTION_URI_PATH,strlen(Topic),(uint8_t*)Topic));
-
-    request = coap_new_pdu(session);
-    if (!request) {
-        ESP_LOGE(TAG, "coap_new_pdu() failed");
-        return;
-    }
-    request->type = COAP_MESSAGE_CON;
-    request->tid = coap_new_message_id(session);
-    request->code = COAP_REQUEST_PUT;
-
-    coap_add_optlist_pdu(request, &optlist);
-    coap_add_data(request, strlen(Message),(uint8_t*)Message);
-
-    coap_send(session, request);
-    Esperando_datos =1;
-    POLL(2000);
 }
 
 static void coap_client(void *p){
@@ -443,14 +466,15 @@ static void coap_server(void *p){
     ChargingGroup.Conected = true;
     ctx = NULL;
     coap_address_t serv_addr;
-    coap_resource_t *DATA = NULL;
-    coap_resource_t *PARAMS = NULL;
-    coap_resource_t *CONTROL = NULL;
-    coap_resource_t *CHARGERS = NULL; 
 
     snprintf(espressif_data, sizeof(espressif_data), INITIAL_DATA);
     espressif_data_len = strlen(espressif_data);
-    coap_set_log_level(LOG_ERR);
+    coap_set_log_level(LOG_DEBUG);
+
+    DATA = NULL;
+    PARAMS  = NULL;
+    CONTROL  = NULL;
+    CHARGERS  = NULL; 
 
     while (1) {
         coap_endpoint_t *ep = NULL;

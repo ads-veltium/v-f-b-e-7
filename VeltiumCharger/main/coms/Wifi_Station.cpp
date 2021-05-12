@@ -28,8 +28,8 @@ void stop_MQTT();
 void start_udp();
 void InitServer(void);
 void StopServer(void);
-void start_client();
 void coap_start_server();
+void coap_start_client();
 
 
 static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data){
@@ -372,7 +372,7 @@ void Eth_Loop(){
                 if(ChargingGroup.Params.GroupActive){
                     if(GetStateTime(xStart) > 30000){
                         if(ChargingGroup.StartClient){
-                            start_client();
+                            coap_start_client();
                         }
                         else{
                             coap_start_server();
