@@ -62,6 +62,7 @@ uint8_t Esperando_datos =0;
 static char espressif_data[100];
 static int espressif_data_len = 0;
 uint8_t  FallosEnvio =0;
+char* LastData[500] EXT_RAM_ATTR;
 
 #define INITIAL_DATA "hola desde coap!"
 
@@ -90,8 +91,7 @@ hnd_get(coap_context_t *ctx, coap_resource_t *resource,coap_session_t *session,c
     response->code = COAP_RESPONSE_CODE(200);
     char buffer[500];
     if(!memcmp(resource->uri_path->s, "CHARGERS", resource->uri_path->length)){
-        
-        buffer[0] = GROUP_CHARGERS;
+        itoa(GROUP_CHARGERS, buffer, 10);
         
         printf("Sending chargers!\n");
         if(ChargingGroup.group_chargers.size< 10){
@@ -107,7 +107,7 @@ hnd_get(coap_context_t *ctx, coap_resource_t *resource,coap_session_t *session,c
         }
     }
     else if(!memcmp(resource->uri_path->s, "PARAMS", resource->uri_path->length)){
-        buffer[0] = GROUP_PARAMS;
+        itoa(GROUP_PARAMS, buffer, 10);
         printf("Sending params!\n");
         cJSON *Params_Json;
         Params_Json = cJSON_CreateObject();
@@ -119,16 +119,23 @@ hnd_get(coap_context_t *ctx, coap_resource_t *resource,coap_session_t *session,c
         cJSON_AddNumberToObject(Params_Json, "inst_max", ChargingGroup.Params.inst_max);
         cJSON_AddNumberToObject(Params_Json, "pot_max", ChargingGroup.Params.potencia_max);
         cJSON_AddNumberToObject(Params_Json, "userID", ChargingGroup.Params.UserID);
+
         char *my_json_string = cJSON_Print(Params_Json);   
         cJSON_Delete(Params_Json); 
-        memcpy(&buffer[1], my_json_string, strlen(my_json_string));
+        int size = strlen(my_json_string);
+        memcpy(&buffer[1], my_json_string, size);
+        buffer[size+1]='\0';
+
         free(my_json_string);
     }
     else if(!memcmp(resource->uri_path->s, "CONTROL", resource->uri_path->length)){
-        buffer[0] = GROUP_CONTROL;
+        itoa(GROUP_CONTROL, buffer, 10);
+
     }
     else if(!memcmp(resource->uri_path->s, "DATA", resource->uri_path->length)){
-        buffer[0] = NEW_DATA;
+        itoa(NEW_DATA, buffer, 10);
+        memcpy(&buffer[1], LastData, strlen(LastData));
+
     }
     coap_add_data_blocked_response(resource, session, request, response, token,COAP_MEDIATYPE_TEXT_PLAIN, 0,(size_t)strlen((char*)buffer),(const u_char*)buffer);
 }
@@ -230,6 +237,10 @@ static void message_handler(coap_context_t *ctx, coap_session_t *session,coap_pd
 static void hnd_espressif_put(coap_context_t *ctx,coap_resource_t *resource,coap_session_t *session,coap_pdu_t *request,coap_binary_t *token,coap_string_t *query, coap_pdu_t *response){
     size_t size;
     unsigned char *data;
+
+
+
+    
     coap_resource_notify_observers(resource, NULL);
 
     response->code = COAP_RESPONSE_CODE(200);
@@ -288,7 +299,6 @@ void coap_get( char* Topic){
 
     POLL(2000);
 }
-
 
 static bool Authenticate(){
     printf("Autenticandome contra el servidor!!!\n");
@@ -361,7 +371,9 @@ static void Subscribe(char* TOPIC){
 void coap_put( char* Topic, char* Message){
     if(ChargingGroup.Params.GroupMaster){
         if(!memcmp(DATA->uri_path->s, Topic, DATA->uri_path->length)){
+            memcpy(LastData, Message, strlen(Message));
             coap_resource_notify_observers(DATA, NULL);
+            
         }
         else if(!memcmp(PARAMS->uri_path->s, Topic, PARAMS->uri_path->length)){
             coap_resource_notify_observers(PARAMS, NULL);
