@@ -395,10 +395,9 @@ static void coap_client(void *p){
         }
 
         //Tras autenticarnos solicitamos los cargadores del grupo y los parametros
-        coap.get(ChargingGroup.MasterIP, 5683, "Params");
-        oap_get("CHARGERS");
+        coap_get("CHARGERS");
         delay(500);
-        oap_get("PARAMS");
+        coap_get("PARAMS");
         delay(500);
         
         //Bucle del grupo
