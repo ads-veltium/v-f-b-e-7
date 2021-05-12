@@ -214,13 +214,13 @@ static void message_handler(coap_context_t *ctx, coap_session_t *session,coap_pd
                 New_Params(&data[1], data_len-1);
                 break;
             case GROUP_CONTROL:
-                //New_Control(&data[1],  data_len-1);
+                New_Control((char*)data[1],  data_len-1);
                 break;
             case GROUP_CHARGERS:
-                //New_Group(&data[1],  data_len-1);
+                New_Group(&data[1],  data_len-1);
                 break;
             case NEW_DATA:
-                //New_Data(&data[1],  data_len-1);
+                New_Data(&data[1],  data_len-1);
                 break;
             case SEND_DATA:
                 if(!memcmp(&data[1],ConfigFirebase.Device_Id, 8)){
@@ -378,7 +378,7 @@ static void Subscribe(char* TOPIC){
     }
 
     uint8_t buf[4];
-    coap_insert_optlist(&optlist,coap_new_optlist(COAP_OPTION_URI_PATH,strlen(TOPIC),(uint8_t*)TOPIC));
+    coap_insert_optlist(&optlist,coap_new_optlist(COAP_OPTION_URI_PATH,strlen("DATA"),(uint8_t*)"DATA"));
     coap_insert_optlist(&optlist,coap_new_optlist(COAP_OPTION_OBSERVE,coap_encode_var_safe(buf, sizeof(buf),COAP_OBSERVE_ESTABLISH), buf));
 
     coap_add_optlist_pdu(request, &optlist);
@@ -506,9 +506,9 @@ static void coap_client(void *p){
         }
 
         //Subscribirnos
-        Subscribe("PARAMS");
-        Subscribe("CHARGERS");
-        Subscribe("DATA");
+        //Subscribe("PARAMS");
+        //Subscribe("CHARGERS");
+       // Subscribe("DATA");
         Subscribe("CONTROL");
 
         //Tras autenticarnos solicitamos los cargadores del grupo y los parametros
