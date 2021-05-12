@@ -41,6 +41,9 @@ static StackType_t xServerStack [4096*4]     EXT_RAM_ATTR;
 static StackType_t xClientStack [4096*4]     EXT_RAM_ATTR;
 StaticTask_t xServerBuffer;
 StaticTask_t xClientBuffer;
+TaskHandle_t xServerHandle = NULL;
+TaskHandle_t xClientHandle = NULL;
+
 
 coap_context_t * ctx      EXT_RAM_ATTR;
 coap_session_t * session  EXT_RAM_ATTR;
@@ -84,15 +87,14 @@ static char* get_passwd(){
 }
 
 static void
-hnd_params_get(coap_context_t *ctx, coap_resource_t *resource,coap_session_t *session,coap_pdu_t *request, coap_binary_t *token,coap_string_t *query, coap_pdu_t *response){    
-    coap_add_data_blocked_response(resource, session, request, response, token,COAP_MEDIATYPE_TEXT_PLAIN, 0,(size_t)espressif_data_len,(const u_char*)espressif_data);
+hnd_get(coap_context_t *ctx, coap_resource_t *resource,coap_session_t *session,coap_pdu_t *request, coap_binary_t *token,coap_string_t *query, coap_pdu_t *response){    
+    if(!memcmp(resource->uri_path->s, "DATA", resource->uri_path->length)){
+        coap_add_data_blocked_response(resource, session, request, response, token,COAP_MEDIATYPE_TEXT_PLAIN, 0,(size_t)espressif_data_len,(const u_char*)espressif_data);
+    }
+    else if(!memcmp(resource->uri_path->s, "PARAMS", resource->uri_path->length)){
+        coap_add_data_blocked_response(resource, session, request, response, token,COAP_MEDIATYPE_TEXT_PLAIN, 0,(size_t)espressif_data_len,(const u_char*)espressif_data);
+    }
 }
-
-static void
-hnd_chargers_get(coap_context_t *ctx, coap_resource_t *resource,coap_session_t *session,coap_pdu_t *request, coap_binary_t *token,coap_string_t *query, coap_pdu_t *response){    
-    coap_add_data_blocked_response(resource, session, request, response, token,COAP_MEDIATYPE_TEXT_PLAIN, 0,(size_t)6,(const u_char*)espressif_data);
-}
-
 
 static void message_handler(coap_context_t *ctx, coap_session_t *session,coap_pdu_t *sent, coap_pdu_t *received, const coap_tid_t id){
     unsigned char *data = NULL;
@@ -227,26 +229,36 @@ static void Authenticate(){
         Esperando_datos =1;
     }while(!POLL(10000));
 
+
+    printf("Autneticados!!!\n");
+}
+
+static void Subscribe(){
+    coap_pdu_t *request = NULL;
     request = coap_new_pdu(session);
 
     //Subscribirnos
     if (!request) {
         ESP_LOGE(TAG, "coap_new_pdu() failed");
-       return;
+        return;
     }
     request->type = COAP_MESSAGE_CON;
     request->tid = coap_new_message_id(session);
     request->code = COAP_REQUEST_GET;
 
+    if (optlist) {
+        coap_delete_optlist(optlist);
+        optlist = NULL;
+    }
+
     coap_insert_optlist(&optlist,coap_new_optlist(COAP_OPTION_URI_PATH,6,(uint8_t*)"PARAMS"));
+    coap_insert_optlist(&optlist,coap_new_optlist(COAP_OPTION_SUBSCRIPTION,0,NULL));
     coap_add_optlist_pdu(request, &optlist);
-    coap_add_option(request, COAP_OPTION_SUBSCRIPTION, 0, NULL);
- 
+
     do{
         coap_send(session, request);
         Esperando_datos =1;
     }while(!POLL(10000));
-
 }
 
 void coap_get( char* Topic){
@@ -417,6 +429,9 @@ static void coap_client(void *p){
             Authenticate();
         }
 
+        //Subscribirnos
+        Subscribe();
+
         //Tras autenticarnos solicitamos los cargadores del grupo y los parametros
         coap_get("CHARGERS");
         delay(500);
@@ -425,10 +440,6 @@ static void coap_client(void *p){
         
         //Bucle del grupo
         while(1){
-            coap_get("CHARGERS");
-            delay(500);
-            coap_put("CHARGERS", "AGUUUR");
-            delay(1000);
 
             if(FallosEnvio > 5){
                 printf("Servidor desconectado !\n");
@@ -440,6 +451,8 @@ static void coap_client(void *p){
                 ChargingGroup.StopOrder = true;
                 break;
             }
+
+            delay(200);
         }
 
 clean_up:
@@ -459,7 +472,7 @@ clean_up:
     printf("Cerrando cliente coap!\n");
     ChargingGroup.Conected    = false;
     ChargingGroup.StartClient = false;
-    vTaskDelete(NULL);
+    vTaskDelete(xClientHandle);
 }
 
 static void coap_server(void *p){
@@ -543,8 +556,8 @@ static void coap_server(void *p){
         coap_register_handler(CONTROL, COAP_REQUEST_PUT, hnd_espressif_put);
         coap_register_handler(CHARGERS, COAP_REQUEST_PUT, hnd_espressif_put);
 
-        coap_register_handler(PARAMS, COAP_REQUEST_GET, hnd_params_get);
-        coap_register_handler(CHARGERS, COAP_REQUEST_GET, hnd_chargers_get);
+        coap_register_handler(PARAMS, COAP_REQUEST_GET, hnd_get);
+        coap_register_handler(CHARGERS, COAP_REQUEST_GET, hnd_get);
 
         /* We possibly want to Observe the GETs */
         coap_resource_set_get_observable(DATA, 1);
@@ -586,14 +599,18 @@ clean_up:
     printf("Cerrando servidor coap!\n");
     ChargingGroup.Conected    = false;
     ChargingGroup.StartClient = false;
-    vTaskDelete(NULL);
+    vTaskDelete(xServerHandle);
 }
 
 void start_server(){
-    xTaskCreateStatic(coap_server, "coap_server", 4096*4, NULL, 5, xServerStack, &xServerBuffer);
+    if(xServerHandle == NULL){
+        xServerHandle = xTaskCreateStatic(coap_server, "coap_server", 4096*4, NULL, 5, xServerStack, &xServerBuffer);
+    }
+    
 }
 
 void start_client(){
-
-    xTaskCreateStatic(coap_client, "coap_client", 4096*4, NULL, 5, xClientStack,&xClientBuffer);
+    if(xClientHandle == NULL){
+        xClientHandle = xTaskCreateStatic(coap_client, "coap_client", 4096*4, NULL, 5, xClientStack,&xClientBuffer);
+    }
 }
