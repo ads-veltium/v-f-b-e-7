@@ -242,18 +242,18 @@ bool ReadFirebaseGroups(String Path){
       ChargingGroup.last_ts_app_req=ts_app_req;
       
       uint8 buffer[7];
-      buffer[0] = ChargingGroup.Params.GroupMaster;
-      buffer[1] = Lectura["active"].as<uint8_t>();
-      buffer[2] = Lectura["install_limit"];
-      buffer[3] = Lectura["cdp"];
-      buffer[4] = Lectura["p_con"];
-      buffer[5] = ChargingGroup.Params.UserID;
-      buffer[6] = Lectura["p_max"];
+    
+      ChargingGroup.Params.GroupActive = Lectura["active"].as<uint8_t>();
+      ChargingGroup.Params.inst_max = Lectura["install_limit"];
+      ChargingGroup.Params.CDP = Lectura["cdp"];
+      ChargingGroup.Params.GroupActive = Lectura["p_con"];
+      ChargingGroup.Params.potencia_max = Lectura["p_max"];
       
       ChargingGroup.DeleteOrder  = Lectura["delete"].as<bool>();
-      ChargingGroup.Params.GroupActive = buffer[1];
 
       ChargingGroup.SendNewParams = true;
+
+
       delay(250);
       
       if(ChargingGroup.Params.GroupActive){

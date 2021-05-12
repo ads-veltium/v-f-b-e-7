@@ -371,7 +371,7 @@ static void Subscribe(char* TOPIC){
     }
 
     uint8_t buf[4];
-    coap_insert_optlist(&optlist,coap_new_optlist(COAP_OPTION_URI_PATH,strlen("DATA"),(uint8_t*)"DATA"));
+    coap_insert_optlist(&optlist,coap_new_optlist(COAP_OPTION_URI_PATH,strlen("PARAMS"),(uint8_t*)"PARAMS"));
     coap_insert_optlist(&optlist,coap_new_optlist(COAP_OPTION_OBSERVE,coap_encode_var_safe(buf, sizeof(buf),COAP_OBSERVE_ESTABLISH), buf));
 
     coap_add_optlist_pdu(request, &optlist);
@@ -438,6 +438,8 @@ static void coap_client(void *p){
     static coap_uri_t uri;
     char server_uri[100];
     char *phostname = NULL;
+    TickType_t xTimer = xTaskGetTickCount();
+    uint8_t counter =1;
 
     sprintf(server_uri, "coaps://%s", ChargingGroup.MasterIP.toString().c_str());
 
@@ -512,7 +514,37 @@ static void coap_client(void *p){
         coap_get("PARAMS");
         
         //Bucle del grupo
+        xTimer = xTaskGetTickCount();
         while(1){
+
+            //eventos 1 segundo
+            if(pdTICKS_TO_MS(xTaskGetTickCount - xTimer) %1000 ==0){
+                coap_get("DATA");
+            }
+
+            //eventos 5 segundos
+            if(pdTICKS_TO_MS(xTaskGetTickCount - xTimer) %5000 ==0){
+                switch(counter){
+                    case 1:
+                     coap_get("CONTROL");
+                     break;
+                    case 2:
+                     coap_get("CHARGERS");
+                     break;
+                    case 3:
+                     coap_get("PARAMS");
+                     break;
+                    case 4:
+                     counter = 0;
+                     break;
+                    default:
+                     break;
+                }
+                counter++;
+            }
+
+
+            //eventos 5 segundos
             if(FallosEnvio > 5){
                 printf("Servidor desconectado !\n");
                 FallosEnvio=0;

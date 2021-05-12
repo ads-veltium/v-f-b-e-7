@@ -90,6 +90,7 @@ void Send_Params(){
   cJSON_AddNumberToObject(Params_Json, "inst_max", ChargingGroup.Params.inst_max);
   cJSON_AddNumberToObject(Params_Json, "pot_max", ChargingGroup.Params.potencia_max);
   cJSON_AddNumberToObject(Params_Json, "userID", ChargingGroup.Params.UserID);
+  
   char *my_json_string = cJSON_Print(Params_Json);   
   cJSON_Delete(Params_Json); 
   

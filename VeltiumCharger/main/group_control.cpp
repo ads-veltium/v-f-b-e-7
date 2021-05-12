@@ -56,7 +56,6 @@ void New_Data(uint8_t* Buffer, int Data_size){
   free(Data);
 }
 
-
 //Funcion para procesar los nuevos datos recibidos
 void New_Data(char* Data, int Data_size){
     if(Data_size > 0){
