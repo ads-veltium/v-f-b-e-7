@@ -55,16 +55,11 @@ coap_resource_t *PARAMS  EXT_RAM_ATTR;
 coap_resource_t *CONTROL  EXT_RAM_ATTR;
 coap_resource_t *CHARGERS  EXT_RAM_ATTR; 
 
-#define EXAMPLE_COAP_PSK_KEY "CONFIG_EXAMPLE_COAP_PSK_KEY"
-
 const static char *TAG = "CoAP_server";
 uint8_t Esperando_datos =0;
-static char espressif_data[100];
-static int espressif_data_len = 0;
 uint8_t  FallosEnvio =0;
 char LastData[500] EXT_RAM_ATTR;
 
-#define INITIAL_DATA "hola desde coap!"
 
 String Encipher(String input);
 void MasterPanicTask(void *args);
@@ -499,7 +494,7 @@ static void coap_client(void *p){
         //Autenticarnos mediante DTLS
         if (uri.scheme == COAP_URI_SCHEME_COAPS && coap_dtls_is_supported()){
             do{
-                session = coap_new_client_session_psk(ctx, &src_addr, &dst_addr,COAP_PROTO_DTLS , ConfigFirebase.Device_Id, (const uint8_t *)"HOLA", strlen("HOLA") - 1);
+                session = coap_new_client_session_psk(ctx, &src_addr, &dst_addr,COAP_PROTO_DTLS , ConfigFirebase.Device_Id, (const uint8_t *)get_passwd(), sizeof(get_passwd()) - 1);
             }while( !Authenticate());
             
             delay(1000);
@@ -570,8 +565,6 @@ static void coap_server(void *p){
     ctx = NULL;
     coap_address_t serv_addr;
 
-    snprintf(espressif_data, sizeof(espressif_data), INITIAL_DATA);
-    espressif_data_len = strlen(espressif_data);
     coap_set_log_level(LOG_DEBUG);
 
     DATA = NULL;
@@ -595,7 +588,7 @@ static void coap_server(void *p){
         }
 
         /* Need PSK setup before we set up endpoints */     
-        coap_context_set_psk(ctx, "CoAP",(const uint8_t *)"HOLA",strlen("HOLA") - 1);
+        coap_context_set_psk(ctx, "CoAP",(const uint8_t *)get_passwd(),sizeof(get_passwd()) - 1);
         ep = coap_new_endpoint(ctx, &serv_addr, COAP_PROTO_UDP);
 
         if (coap_dtls_is_supported()) {
