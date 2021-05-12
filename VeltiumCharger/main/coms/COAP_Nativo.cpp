@@ -78,7 +78,8 @@ static uint8* get_passwd(){
 
     String password = Encipher(String(pass));
     pass=(char*)password.c_str();
-    return (uint8_t*)pass;
+    printf("Poniendo contraseña %.*s", 8 ,pass);
+    return (u_char*)pass;
 }
 
 static void
@@ -494,7 +495,7 @@ static void coap_client(void *p){
         //Autenticarnos mediante DTLS
         if (uri.scheme == COAP_URI_SCHEME_COAPS && coap_dtls_is_supported()){
             do{
-                session = coap_new_client_session_psk(ctx, &src_addr, &dst_addr,COAP_PROTO_DTLS , ConfigFirebase.Device_Id, (const uint8_t *)get_passwd(), sizeof(get_passwd()) - 1);
+                session = coap_new_client_session_psk(ctx, &src_addr, &dst_addr,COAP_PROTO_DTLS , ConfigFirebase.Device_Id, (const uint8_t *)get_passwd(), 8);
             }while( !Authenticate());
             
             delay(1000);
@@ -588,7 +589,7 @@ static void coap_server(void *p){
         }
 
         /* Need PSK setup before we set up endpoints */     
-        coap_context_set_psk(ctx, "CoAP",(const uint8_t *)get_passwd(),sizeof(get_passwd()) - 1);
+        coap_context_set_psk(ctx, "CoAP",get_passwd(),8);
         ep = coap_new_endpoint(ctx, &serv_addr, COAP_PROTO_UDP);
 
         if (coap_dtls_is_supported()) {
