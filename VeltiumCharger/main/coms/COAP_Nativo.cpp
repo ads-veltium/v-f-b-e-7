@@ -298,25 +298,31 @@ static bool Authenticate(){
     Esperando_datos=1;
     
     coap_pdu_t *request = NULL;
-
+    coap_insert_optlist(&optlist,coap_new_optlist(COAP_OPTION_URI_PATH,strlen("PARAMS"),(uint8_t*)"PARAMS"));
     request = coap_new_pdu(session);
+
     if (!request) {
         ESP_LOGE(TAG, "coap_new_pdu() failed");
         return false;
     }
+    coap_add_optlist_pdu(request, &optlist);
 
     request->type = COAP_MESSAGE_CON;
     request->tid = coap_new_message_id(session);
+    request->code = COAP_REQUEST_GET;
+
+    coap_add_optlist_pdu(request, &optlist);
 
     coap_send(session, request);
     Esperando_datos =   1;
-    POLL(2000);
+    POLL(20000);
 
         
     if(Esperando_datos){
          if (session) {
             coap_session_release(session);
         }
+        delay(10000);
         return false;
     }
 
@@ -406,7 +412,7 @@ static void coap_client(void *p){
     char server_uri[100];
     char *phostname = NULL;
 
-    sprintf(server_uri, "coaps://%s:5684/PARAMS", ChargingGroup.MasterIP.toString().c_str());
+    sprintf(server_uri, "coaps://%s", ChargingGroup.MasterIP.toString().c_str());
 
     coap_set_log_level(LOG_ERR);
 
@@ -451,28 +457,6 @@ static void coap_client(void *p){
         dst_addr.addr.sin.sin_family      = AF_INET;
         dst_addr.addr.sin.sin_port        = htons(uri.port);
         memcpy(&dst_addr.addr.sin.sin_addr, hp->h_addr, sizeof(dst_addr.addr.sin.sin_addr));
-
-        if (uri.path.length) {
-            buflen = BUFSIZE;
-            buf = _buf;
-            res = coap_split_path(uri.path.s, uri.path.length, buf, &buflen);
-
-            while (res--) {
-                coap_insert_optlist(&optlist,coap_new_optlist(COAP_OPTION_URI_PATH,coap_opt_length(buf),coap_opt_value(buf)));
-                buf += coap_opt_size(buf);
-            }
-        }
-
-        if (uri.query.length) {
-            buflen = BUFSIZE;
-            buf = _buf;
-            res = coap_split_query(uri.query.s, uri.query.length, buf, &buflen);
-
-            while (res--) {
-                coap_insert_optlist(&optlist, coap_new_optlist(COAP_OPTION_URI_QUERY, coap_opt_length(buf),coap_opt_value(buf)));
-                buf += coap_opt_size(buf);
-            }
-        }
 
         coap_address_init(&src_addr);
         src_addr.addr.sin.sin_family      = AF_INET;
