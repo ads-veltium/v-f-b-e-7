@@ -1,5 +1,4 @@
 
-#include <coap-simple.h>
 #include <WiFiUdp.h>
 #include "../control.h"
 #include "../group_control.h"
@@ -17,7 +16,6 @@ extern carac_Comands  Comands ;
 static StackType_t xCoapStack [4096*4]     EXT_RAM_ATTR;
 StaticTask_t xCoapBuffer ;
 TaskHandle_t xCoapHandle = NULL;
-TickType_t   xMasterTimer = 0;
 
 uint8_t check_in_group(const char* ID, carac_chargers* group);
 bool add_to_group(const char* ID, IPAddress IP, carac_chargers* group);

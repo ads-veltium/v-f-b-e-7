@@ -343,15 +343,16 @@ static void Subscribe(){
         optlist = NULL;
     }
 
+    uint8_t buf[4];
     coap_insert_optlist(&optlist,coap_new_optlist(COAP_OPTION_URI_PATH,6,(uint8_t*)"PARAMS"));
-    coap_insert_optlist(&optlist,coap_new_optlist(COAP_OPTION_SUBSCRIPTION,0,NULL));
+    coap_insert_optlist(&optlist,coap_new_optlist(COAP_OPTION_OBSERVE,coap_encode_var_safe(buf, sizeof(buf),COAP_OBSERVE_ESTABLISH), buf));
+
     coap_add_optlist_pdu(request, &optlist);
 
     coap_send(session, request);
     Esperando_datos =1;
     POLL(5000);
 }
-
 
 void coap_put( char* Topic, char* Message){
     if(ChargingGroup.Params.GroupMaster){
@@ -488,7 +489,7 @@ static void coap_client(void *p){
         //Autenticarnos mediante DTLS
         if (uri.scheme == COAP_URI_SCHEME_COAPS && coap_dtls_is_supported()){
             do{
-                session = coap_new_client_session_psk(ctx, &src_addr, &dst_addr,COAP_PROTO_DTLS , ConfigFirebase.Device_Id, (const uint8_t *)get_passwd(), sizeof(get_passwd()) - 1);
+                session = coap_new_client_session_psk(ctx, &src_addr, &dst_addr,COAP_PROTO_DTLS , ConfigFirebase.Device_Id, (const uint8_t *)"HOLA", strlen("HOLA") - 1);
             }while( !Authenticate());
             
             delay(1000);
@@ -562,7 +563,7 @@ static void coap_server(void *p){
         coap_address_init(&serv_addr);
         serv_addr.addr.sin.sin_family      = AF_INET;
         inet_addr_from_ip4addr(&serv_addr.addr.sin.sin_addr, &Coms.ETH.IP);
-        serv_addr.addr.sin.sin_port        = htons(COAP_DEFAULT_PORT);
+        serv_addr.addr.sin.sin_port        = htons(COAPS_DEFAULT_PORT);
 
         ctx = coap_new_context(NULL);
         if (!ctx) {
@@ -570,17 +571,11 @@ static void coap_server(void *p){
             continue;
         }
         ctx->session_timeout = 10;
-        /* Need PSK setup before we set up endpoints */
-     
-        coap_context_set_psk(ctx, "CoAP",(const uint8_t *)get_passwd(),sizeof(get_passwd()) - 1);
-        ep = coap_new_endpoint(ctx, &serv_addr, COAP_PROTO_UDP);
-        if (!ep) {
-            ESP_LOGE(TAG, "udp: coap_new_endpoint() failed");
-            goto clean_up;
-        }
+
+        /* Need PSK setup before we set up endpoints */     
+        coap_context_set_psk(ctx, "CoAP",(const uint8_t *)"HOLA",sizeof("HOLA") - 1);
 
         if (coap_dtls_is_supported()) {
-            serv_addr.addr.sin.sin_port = htons(COAPS_DEFAULT_PORT);
             ep = coap_new_endpoint(ctx, &serv_addr, COAP_PROTO_DTLS);
             if (!ep) {
                 ESP_LOGE(TAG, "dtls: coap_new_endpoint() failed");
