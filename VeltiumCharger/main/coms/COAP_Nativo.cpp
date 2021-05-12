@@ -141,7 +141,7 @@ hnd_get(coap_context_t *ctx, coap_resource_t *resource,coap_session_t *session,c
 }
 
 static void message_handler(coap_context_t *ctx, coap_session_t *session,coap_pdu_t *sent, coap_pdu_t *received, const coap_tid_t id){
-    char *data = NULL;
+    uint8_t *data = NULL;
     size_t data_len;
     coap_pdu_t *pdu = NULL;
     coap_opt_t *block_opt;
@@ -159,7 +159,7 @@ static void message_handler(coap_context_t *ctx, coap_session_t *session,coap_pd
             if (coap_opt_block_num(block_opt) == 0) {
                 printf("Received:\n");
             }
-            if (coap_get_data(received, &data_len, (uint8_t**)data)) {
+            if (coap_get_data(received, &data_len, &data)) {
                 printf("%.*s", (int)data_len, data);
             }
             if (COAP_OPT_BLOCK_MORE(block_opt)) {
@@ -203,50 +203,69 @@ static void message_handler(coap_context_t *ctx, coap_session_t *session,coap_pd
             }
             printf("\n");
         } else {
-            if (coap_get_data(received, &data_len, (uint8_t**)data)) {
+            if (coap_get_data(received, &data_len, &data)) {
                 printf("Received2: %.*s\n", (int)data_len, data);
             }
         }
     }
-    char selector = data[0];
-    
-    switch(atoi(&selector)){
-        case GROUP_PARAMS: 
-            New_Params(&data[1], data_len);
-            break;
-        case GROUP_CONTROL:
-            New_Control(&data[1],  data_len);
-            break;
-        case GROUP_CHARGERS:
-            New_Group(&data[1],  data_len);
-            break;
-        case NEW_DATA:
-            New_Data(&data[1],  data_len);
-            break;
-        case SEND_DATA:
-            printf("Debo mandar mis datos!\n");
-            Send_Data();
-            break;
-        case 255:
-            printf("DAtos no esperaddos\n");
-            break;
+    if(data != NULL){
+        switch(data[0]-'0'){
+            case GROUP_PARAMS: 
+                New_Params(&data[1], data_len-1);
+                break;
+            case GROUP_CONTROL:
+                //New_Control(&data[1],  data_len-1);
+                break;
+            case GROUP_CHARGERS:
+                //New_Group(&data[1],  data_len-1);
+                break;
+            case NEW_DATA:
+                //New_Data(&data[1],  data_len-1);
+                break;
+            case SEND_DATA:
+                if(!memcmp(&data[1],ConfigFirebase.Device_Id, 8)){
+                    printf("Debo mandar mis datos!\n");
+                    Send_Data();
+                }
+                else{
+                    printf("No me toca a mí\n");
+                }
+                
+                break;
+            default:
+                printf("DAtos no esperaddos\n");
+                break;
+        }
     }
+    
+
     Esperando_datos = 0;
 }
 
 static void hnd_espressif_put(coap_context_t *ctx,coap_resource_t *resource,coap_session_t *session,coap_pdu_t *request,coap_binary_t *token,coap_string_t *query, coap_pdu_t *response){
     size_t size;
     unsigned char *data;
+    (void)coap_get_data(request, &size, &data);
 
+    if(!memcmp(resource->uri_path->s, "CHARGERS", resource->uri_path->length)){
+        //New_Group(data,  size);
+    }
+    else if(!memcmp(resource->uri_path->s, "PARAMS", resource->uri_path->length)){
+        New_Params(data, size);
+    }
+    else if(!memcmp(resource->uri_path->s, "CONTROL", resource->uri_path->length)){
+        //New_Control(data,  size);
+    }
+    else if(!memcmp(resource->uri_path->s, "DATA", resource->uri_path->length)){
+        //New_Data(data,  size);
+    }
 
-
-    
     coap_resource_notify_observers(resource, NULL);
 
     response->code = COAP_RESPONSE_CODE(200);
 
     /*
-    (void)coap_get_data(request, &size, &data);
+    
 
     if(++count > 5000){
         printf("He recibido datos %.*s \n", size, data);
@@ -505,7 +524,20 @@ static void coap_client(void *p){
                 break;
             }
             else if(ChargingGroup.StopOrder){
-                ChargingGroup.StopOrder = true;
+                char buffer[20];
+                ChargingGroup.StopOrder = false;
+                memcpy(buffer,"Pause",6);
+                coap_put("CONTROL", buffer);
+                delay(250);
+                break;
+            }
+
+            else if(ChargingGroup.DeleteOrder){
+                char buffer[20];
+                ChargingGroup.DeleteOrder = false;
+                memcpy(buffer,"Delete",6);
+                coap_put("CONTROL", buffer);
+                delay(250);
                 break;
             }
 
@@ -522,7 +554,6 @@ clean_up:
         }
         if (ctx) {
             coap_free_context(ctx);
-            free(ctx);
         }
         coap_cleanup();
         break;

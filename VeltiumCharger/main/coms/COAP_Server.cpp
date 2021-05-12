@@ -203,20 +203,10 @@ void coap_loop(void *args) {
       }
 
       //Si nos llega alguna orden de borrado o pausa, enviarla al resto
-      if(ChargingGroup.StopOrder){
-          memcpy(buffer,"Pause",6);
-          coap_put("CONTROL", buffer);
-          delay(250);
+      if(ChargingGroup.StopOrder || ChargingGroup.DeleteOrder){
           break;
       }
 
-      if(ChargingGroup.DeleteOrder){
-          memcpy(buffer,"Delete",6);
-          coap_put("CONTROL", buffer);
-          delay(250);
-          break;
-      }
-      
       delay(ChargingGroup.Params.GroupMaster? 500:1500);   
     }
 
