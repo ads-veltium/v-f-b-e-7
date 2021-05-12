@@ -263,6 +263,10 @@ static void Authenticate(){
 
 static void Subscribe(){
     coap_pdu_t *request = NULL;
+    //coap_subscription_t *subscription;
+    //coap_subscription_init (subscription);
+
+
     request = coap_new_pdu(session);
 
     //Subscribirnos
@@ -434,7 +438,12 @@ static void coap_client(void *p){
             }
         }
 
-        ctx = coap_new_context(NULL);
+        coap_address_init(&src_addr);
+        src_addr.addr.sin.sin_family      = AF_INET;
+        inet_addr_from_ip4addr(&src_addr.addr.sin.sin_addr, &Coms.ETH.IP);
+        src_addr.addr.sin.sin_port        = htons(COAP_DEFAULT_PORT);
+
+        ctx = coap_new_context(src_addr);
         if (!ctx) {
             ESP_LOGE(TAG, "coap_new_context() failed");
             goto clean_up;
@@ -453,7 +462,7 @@ static void coap_client(void *p){
         coap_register_response_handler(ctx, message_handler);
 
         //Autenticarnos mediante DTLS
-        if (uri.scheme == COAP_URI_SCHEME_COAPS && !coap_dtls_is_supported()){
+        if (uri.scheme == COAP_URI_SCHEME_COAPS && coap_dtls_is_supported()){
             Authenticate();
         }
 

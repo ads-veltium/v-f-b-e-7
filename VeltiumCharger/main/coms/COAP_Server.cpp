@@ -243,14 +243,14 @@ void coap_loop(void *args) {
       }
 
       //Si nos llega alguna orden de borrado o pausa, enviarla al resto
-      if(!ChargingGroup.Params.GroupActive){
+      if(ChargingGroup.StopOrder){
           memcpy(buffer,"Pause",6);
           coap_put("CONTROL", buffer);
           delay(250);
           break;
       }
 
-      if(ChargingGroup.DeleteOrder || ChargingGroup.StopOrder){
+      if(ChargingGroup.DeleteOrder){
           memcpy(buffer,"Delete",6);
           coap_put("CONTROL", buffer);
           delay(250);
@@ -304,6 +304,9 @@ void coap_start_server(){
         ChargingGroup.MasterIP.fromString(String(ip4addr_ntoa(&Coms.ETH.IP)));
         start_server();
     }
+  }
+  if(xCoapHandle == NULL){
+    xCoapHandle = xTaskCreateStatic(coap_loop,"coap", 4096*4,NULL,2,xCoapStack,&xCoapBuffer);
   }
 }
 
