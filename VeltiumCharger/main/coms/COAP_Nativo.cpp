@@ -413,6 +413,10 @@ static void coap_client(void *p){
                 xTaskCreate(MasterPanicTask, "Master Panic", 4096, NULL,2,NULL);
                 break;
             }
+            else if(ChargingGroup.StopOrder){
+                ChargingGroup.StopOrder = true;
+                break;
+            }
         }
 
 clean_up:
@@ -430,12 +434,14 @@ clean_up:
         break;
     }
     printf("Cerrando cliente coap!\n");
+    ChargingGroup.Conected    = false;
+    ChargingGroup.StartClient = false;
     vTaskDelete(NULL);
 }
 
 static void coap_server(void *p){
     ChargingGroup.Conected = true;
-    coap_context_t *ctx = NULL;
+    ctx = NULL;
     coap_address_t serv_addr;
     coap_resource_t *DATA = NULL;
     coap_resource_t *PARAMS = NULL;
@@ -541,17 +547,26 @@ static void coap_server(void *p){
                 /* result must have been >= wait_ms, so reset wait_ms */
                 wait_ms = 0.5 * 1000;
             }
+
+            //si llega una orden de detener, parar el servidor
+            if(ChargingGroup.StopOrder){
+                ChargingGroup.StopOrder = true;
+                break;
+            }
         }
     }
 clean_up:
     coap_free_context(ctx);
     coap_cleanup();
 
+    printf("Cerrando servidor coap!\n");
+    ChargingGroup.Conected    = false;
+    ChargingGroup.StartClient = false;
     vTaskDelete(NULL);
 }
 
 void start_server(){
-    xTaskCreateStatic(coap_server, "coap_server", 4096*4, NULL, 5, xServerStack,&xServerBuffer);
+    xTaskCreateStatic(coap_server, "coap_server", 4096*4, NULL, 5, xServerStack, &xServerBuffer);
 }
 
 void start_client(){
