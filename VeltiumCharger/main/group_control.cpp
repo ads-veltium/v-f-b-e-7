@@ -92,8 +92,8 @@ void New_Data(char* Data, int Data_size){
         uint8_t index = check_in_group(Cargador.name,&FaseChargers);               
         if(index < 255){                         
             FaseChargers.charger_table[index] =Cargador;
-            cls();
-            print_table(FaseChargers, "Grupo de Fase");
+            //cls();
+            //print_table(FaseChargers, "Grupo de Fase");
         }
         else{
             //Si el cargador no está en la tabla, añadirlo y actualizar los datos
@@ -110,7 +110,7 @@ void New_Data(char* Data, int Data_size){
         ChargingGroup.group_chargers.charger_table[index]=Cargador;
         ChargingGroup.group_chargers.charger_table[index].Period=0;
     }
-    print_table(ChargingGroup.group_chargers, "Grupo total");
+    //print_table(ChargingGroup.group_chargers, "Grupo total");
     input_values();
     Calculo_Consigna();
     }
@@ -136,6 +136,10 @@ void New_Params(char* Data, int Data_size){
 
   cJSON *mensaje_Json = cJSON_Parse(Data);
 
+  char *Jsonstring =cJSON_Print(mensaje_Json);
+  printf("%s\n",Jsonstring);
+  free(Jsonstring);
+
   //compribar que el Json está bien
   if(!cJSON_HasObjectItem(mensaje_Json,"cdp")){
     return;
@@ -154,9 +158,21 @@ void New_Params(char* Data, int Data_size){
 
   buffer[0] = ChargingGroup.Params.GroupMaster;
   //buffer[1] = ChargingGroup.Params.GroupActive;
-  memcpy(&buffer[1],&Data[1],6);
   SendToPSOC5((char*)buffer,7,GROUPS_PARAMS); 
   delay(50);
+}
+
+void New_Control(uint8_t* Buffer, int Data_size){  
+  if(Data_size <=0){
+    return;
+  }
+
+  char* Data = (char*) calloc(Data_size, '0');
+  memcpy(Data, Buffer, Data_size);
+
+  New_Control(Data, Data_size);
+
+  free(Data);
 }
 
 //Funcion para recibir ordenes de grupo que s ehayan enviado a otro cargador

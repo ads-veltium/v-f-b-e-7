@@ -240,20 +240,15 @@ bool ReadFirebaseGroups(String Path){
     //Leer los parametros del grupo
     if(Database->Send_Command(Path+"/params",&Lectura, LEER, true)){
       ChargingGroup.last_ts_app_req=ts_app_req;
-      
-      uint8 buffer[7];
     
       ChargingGroup.Params.GroupActive = Lectura["active"].as<uint8_t>();
-      ChargingGroup.Params.inst_max = Lectura["install_limit"];
-      ChargingGroup.Params.CDP = Lectura["cdp"];
-      ChargingGroup.Params.GroupActive = Lectura["p_con"];
-      ChargingGroup.Params.potencia_max = Lectura["p_max"];
-      
+      ChargingGroup.Params.inst_max = Lectura["install_limit"].as<uint8_t>();
+      ChargingGroup.Params.CDP = Lectura["cdp"].as<uint8_t>();
+      ChargingGroup.Params.GroupActive = Lectura["p_con"].as<uint8_t>();
+      ChargingGroup.Params.potencia_max = Lectura["p_max"].as<uint8_t>();
       ChargingGroup.DeleteOrder  = Lectura["delete"].as<bool>();
 
       ChargingGroup.SendNewParams = true;
-
-
       delay(250);
       
       if(ChargingGroup.Params.GroupActive){

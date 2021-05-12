@@ -516,14 +516,14 @@ static void coap_client(void *p){
         //Bucle del grupo
         xTimer = xTaskGetTickCount();
         while(1){
-
+            coap_run_once(ctx, 10);
             //eventos 1 segundo
-            if(pdTICKS_TO_MS(xTaskGetTickCount - xTimer) %1000 ==0){
-                coap_get("DATA");
-            }
+            /*if(pdTICKS_TO_MS(xTaskGetTickCount - xTimer) %1000 ==0){
+                coap_get("TXANDA");
+            }*/
 
             //eventos 5 segundos
-            if(pdTICKS_TO_MS(xTaskGetTickCount - xTimer) %5000 ==0){
+            /*if(pdTICKS_TO_MS(xTaskGetTickCount - xTimer) %5000 ==0){
                 switch(counter){
                     case 1:
                      coap_get("CONTROL");
@@ -541,7 +541,7 @@ static void coap_client(void *p){
                      break;
                 }
                 counter++;
-            }
+            }*/
 
 
             //eventos 5 segundos
@@ -621,7 +621,7 @@ static void coap_server(void *p){
 
         /* Need PSK setup before we set up endpoints */     
         coap_context_set_psk(ctx, "CoAP",(const uint8_t *)get_passwd().c_str(),8);
-        ep = coap_new_endpoint(ctx, &serv_addr, COAP_PROTO_UDP);
+        //ep = coap_new_endpoint(ctx, &serv_addr, COAP_PROTO_UDP);
 
         if (coap_dtls_is_supported()) {
             serv_addr.addr.sin.sin_port        = htons(COAPS_DEFAULT_PORT);
