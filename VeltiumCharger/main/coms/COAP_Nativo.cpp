@@ -59,7 +59,6 @@ coap_resource_t *CHARGERS  EXT_RAM_ATTR;
 
 const static char *TAG = "CoAP_server";
 uint8_t Esperando_datos =0;
-uint8_t Esperando_tipo = 0;
 static char espressif_data[100];
 static int espressif_data_len = 0;
 uint8_t  FallosEnvio =0;
@@ -70,7 +69,7 @@ String Encipher(String input);
 void MasterPanicTask(void *args);
 void Send_Data();
 
-static char* get_passwd(){
+static uint8* get_passwd(){
     char* pass = (char*) calloc(8, sizeof(char));
 
     uint32_t value =0;
@@ -83,30 +82,32 @@ static char* get_passwd(){
 
     String password = Encipher(String(pass));
     pass=(char*)password.c_str();
-    return pass;
+    return (uint8_t*)pass;
 }
 
 static void
 hnd_get(coap_context_t *ctx, coap_resource_t *resource,coap_session_t *session,coap_pdu_t *request, coap_binary_t *token,coap_string_t *query, coap_pdu_t *response){    
     response->code = COAP_RESPONSE_CODE(200);
+    char buffer[500];
     if(!memcmp(resource->uri_path->s, "CHARGERS", resource->uri_path->length)){
-        char buffer[500];
+        
+        buffer[0] = GROUP_CHARGERS;
+        
         printf("Sending chargers!\n");
         if(ChargingGroup.group_chargers.size< 10){
-            sprintf(buffer,"0%i",(char)ChargingGroup.group_chargers.size);
+            sprintf(&buffer[1],"0%i",(char)ChargingGroup.group_chargers.size);
         }
         else{
-            sprintf(buffer,"%i",(char)ChargingGroup.group_chargers.size);
+            sprintf(&buffer[1],"%i",(char)ChargingGroup.group_chargers.size);
         }
         
         for(uint8_t i=0;i< ChargingGroup.group_chargers.size;i++){
-            memcpy(&buffer[2+(i*9)],ChargingGroup.group_chargers.charger_table[i].name,8);   
-            itoa(ChargingGroup.group_chargers.charger_table[i].Fase,&buffer[10+(i*9)],10);
+            memcpy(&buffer[3+(i*9)],ChargingGroup.group_chargers.charger_table[i].name,8);   
+            itoa(ChargingGroup.group_chargers.charger_table[i].Fase,&buffer[11+(i*9)],10);
         }
-
-        coap_add_data_blocked_response(resource, session, request, response, token,COAP_MEDIATYPE_TEXT_PLAIN, 0,(size_t)strlen(buffer),(const u_char*)buffer);
     }
     else if(!memcmp(resource->uri_path->s, "PARAMS", resource->uri_path->length)){
+        buffer[0] = GROUP_PARAMS;
         printf("Sending params!\n");
         cJSON *Params_Json;
         Params_Json = cJSON_CreateObject();
@@ -120,14 +121,16 @@ hnd_get(coap_context_t *ctx, coap_resource_t *resource,coap_session_t *session,c
         cJSON_AddNumberToObject(Params_Json, "userID", ChargingGroup.Params.UserID);
         char *my_json_string = cJSON_Print(Params_Json);   
         cJSON_Delete(Params_Json); 
-
-        coap_add_data_blocked_response(resource, session, request, response, token,COAP_MEDIATYPE_TEXT_PLAIN, 0,(size_t)strlen(my_json_string),(const u_char*)my_json_string);
-        
+        memcpy(&buffer[1], my_json_string, strlen(my_json_string));
         free(my_json_string);
     }
-    else{
-        coap_add_data_blocked_response(resource, session, request, response, token,COAP_MEDIATYPE_TEXT_PLAIN, 0,(size_t)strlen("HOLA"),(const u_char*)"HOLA");
+    else if(!memcmp(resource->uri_path->s, "CONTROL", resource->uri_path->length)){
+        buffer[0] = GROUP_CONTROL;
     }
+    else if(!memcmp(resource->uri_path->s, "DATA", resource->uri_path->length)){
+        buffer[0] = NEW_DATA;
+    }
+    coap_add_data_blocked_response(resource, session, request, response, token,COAP_MEDIATYPE_TEXT_PLAIN, 0,(size_t)strlen((char*)buffer),(const u_char*)buffer);
 }
 
 static void message_handler(coap_context_t *ctx, coap_session_t *session,coap_pdu_t *sent, coap_pdu_t *received, const coap_tid_t id){
@@ -200,7 +203,7 @@ static void message_handler(coap_context_t *ctx, coap_session_t *session,coap_pd
     }
     
     
-    switch(Esperando_tipo){
+    switch(atoi((char*)data[0])){
         case GROUP_PARAMS: 
             New_Params((char*)data, data_len);
             break;
@@ -221,7 +224,6 @@ static void message_handler(coap_context_t *ctx, coap_session_t *session,coap_pd
             printf("DAtos no esperaddos\n");
             break;
     }
-    Esperando_tipo = 255;
     Esperando_datos = 0;
 }
 
@@ -261,7 +263,7 @@ static bool POLL(int timeout){
     return true;
 }
 
-void coap_get( char* Topic, uint8_t tipo){
+void coap_get( char* Topic){
     coap_pdu_t *request = NULL;
 
     if (optlist) {
@@ -283,12 +285,8 @@ void coap_get( char* Topic, uint8_t tipo){
 
     coap_send(session, request);
     Esperando_datos =   1;
-    Esperando_tipo  = tipo;
-    POLL(2000);
 
-    while(Esperando_tipo != 255){
-        delay(10);
-    }
+    POLL(2000);
 }
 
 
@@ -499,13 +497,12 @@ static void coap_client(void *p){
         Subscribe();
 
         //Tras autenticarnos solicitamos los cargadores del grupo y los parametros
-        coap_get("CHARGERS", GROUP_CHARGERS);
+        coap_get("CHARGERS");
 
-        coap_get("PARAMS", GROUP_PARAMS);
+        coap_get("PARAMS");
         
         //Bucle del grupo
         while(1){
-            coap_get("CHARGERS", NEW_DATA);
 
             if(FallosEnvio > 5){
                 printf("Servidor desconectado !\n");
@@ -563,19 +560,20 @@ static void coap_server(void *p){
         coap_address_init(&serv_addr);
         serv_addr.addr.sin.sin_family      = AF_INET;
         inet_addr_from_ip4addr(&serv_addr.addr.sin.sin_addr, &Coms.ETH.IP);
-        serv_addr.addr.sin.sin_port        = htons(COAPS_DEFAULT_PORT);
+        serv_addr.addr.sin.sin_port        = htons(COAP_DEFAULT_PORT);
 
         ctx = coap_new_context(NULL);
         if (!ctx) {
             ESP_LOGE(TAG, "coap_new_context() failed");
             continue;
         }
-        ctx->session_timeout = 10;
 
         /* Need PSK setup before we set up endpoints */     
-        coap_context_set_psk(ctx, "CoAP",(const uint8_t *)"HOLA",sizeof("HOLA") - 1);
+        coap_context_set_psk(ctx, "CoAP",(const uint8_t *)"HOLA",strlen("HOLA") - 1);
+        ep = coap_new_endpoint(ctx, &serv_addr, COAP_PROTO_UDP);
 
         if (coap_dtls_is_supported()) {
+            serv_addr.addr.sin.sin_port        = htons(COAPS_DEFAULT_PORT);
             ep = coap_new_endpoint(ctx, &serv_addr, COAP_PROTO_DTLS);
             if (!ep) {
                 ESP_LOGE(TAG, "dtls: coap_new_endpoint() failed");
@@ -619,6 +617,8 @@ static void coap_server(void *p){
 
         coap_register_handler(PARAMS, COAP_REQUEST_GET, hnd_get);
         coap_register_handler(CHARGERS, COAP_REQUEST_GET, hnd_get);
+        coap_register_handler(CONTROL, COAP_REQUEST_GET, hnd_get);
+        coap_register_handler(DATA, COAP_REQUEST_GET, hnd_get);
 
         /* We possibly want to Observe the GETs */
         coap_resource_set_get_observable(DATA, 1);

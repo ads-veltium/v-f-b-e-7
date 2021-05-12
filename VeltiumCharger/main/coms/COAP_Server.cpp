@@ -219,7 +219,7 @@ void coap_loop(void *args) {
       
       delay(ChargingGroup.Params.GroupMaster? 500:1500);   
     }
-    printf("Coap detenido\n");
+
     ChargingGroup.Conected = false;
     xCoapHandle = NULL;
     vTaskDelete(NULL);
