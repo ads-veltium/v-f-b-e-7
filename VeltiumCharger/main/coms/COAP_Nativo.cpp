@@ -62,6 +62,7 @@ uint8_t Esperando_datos =0;
 static char espressif_data[100];
 static int espressif_data_len = 0;
 uint8_t  FallosEnvio =0;
+char LastData[500] EXT_RAM_ATTR;
 
 #define INITIAL_DATA "hola desde coap!"
 
@@ -90,8 +91,7 @@ hnd_get(coap_context_t *ctx, coap_resource_t *resource,coap_session_t *session,c
     response->code = COAP_RESPONSE_CODE(200);
     char buffer[500];
     if(!memcmp(resource->uri_path->s, "CHARGERS", resource->uri_path->length)){
-        
-        buffer[0] = GROUP_CHARGERS;
+        itoa(GROUP_CHARGERS, buffer, 10);
         
         printf("Sending chargers!\n");
         if(ChargingGroup.group_chargers.size< 10){
@@ -107,7 +107,7 @@ hnd_get(coap_context_t *ctx, coap_resource_t *resource,coap_session_t *session,c
         }
     }
     else if(!memcmp(resource->uri_path->s, "PARAMS", resource->uri_path->length)){
-        buffer[0] = GROUP_PARAMS;
+        itoa(GROUP_PARAMS, buffer, 10);
         printf("Sending params!\n");
         cJSON *Params_Json;
         Params_Json = cJSON_CreateObject();
@@ -119,22 +119,29 @@ hnd_get(coap_context_t *ctx, coap_resource_t *resource,coap_session_t *session,c
         cJSON_AddNumberToObject(Params_Json, "inst_max", ChargingGroup.Params.inst_max);
         cJSON_AddNumberToObject(Params_Json, "pot_max", ChargingGroup.Params.potencia_max);
         cJSON_AddNumberToObject(Params_Json, "userID", ChargingGroup.Params.UserID);
+
         char *my_json_string = cJSON_Print(Params_Json);   
         cJSON_Delete(Params_Json); 
-        memcpy(&buffer[1], my_json_string, strlen(my_json_string));
+        int size = strlen(my_json_string);
+        memcpy(&buffer[1], my_json_string, size);
+        buffer[size+1]='\0';
+
         free(my_json_string);
     }
     else if(!memcmp(resource->uri_path->s, "CONTROL", resource->uri_path->length)){
-        buffer[0] = GROUP_CONTROL;
+        itoa(GROUP_CONTROL, buffer, 10);
+
     }
     else if(!memcmp(resource->uri_path->s, "DATA", resource->uri_path->length)){
-        buffer[0] = NEW_DATA;
+        itoa(NEW_DATA, buffer, 10);
+        memcpy(&buffer[1], LastData, strlen(LastData));
+
     }
     coap_add_data_blocked_response(resource, session, request, response, token,COAP_MEDIATYPE_TEXT_PLAIN, 0,(size_t)strlen((char*)buffer),(const u_char*)buffer);
 }
 
 static void message_handler(coap_context_t *ctx, coap_session_t *session,coap_pdu_t *sent, coap_pdu_t *received, const coap_tid_t id){
-    char *data = NULL;
+    uint8_t *data = NULL;
     size_t data_len;
     coap_pdu_t *pdu = NULL;
     coap_opt_t *block_opt;
@@ -152,7 +159,7 @@ static void message_handler(coap_context_t *ctx, coap_session_t *session,coap_pd
             if (coap_opt_block_num(block_opt) == 0) {
                 printf("Received:\n");
             }
-            if (coap_get_data(received, &data_len, (uint8_t**)data)) {
+            if (coap_get_data(received, &data_len, &data)) {
                 printf("%.*s", (int)data_len, data);
             }
             if (COAP_OPT_BLOCK_MORE(block_opt)) {
@@ -196,46 +203,70 @@ static void message_handler(coap_context_t *ctx, coap_session_t *session,coap_pd
             }
             printf("\n");
         } else {
-            if (coap_get_data(received, &data_len, (uint8_t**)data)) {
+            if (coap_get_data(received, &data_len, &data)) {
                 printf("Received2: %.*s\n", (int)data_len, data);
             }
         }
     }
-    char selector = data[0];
-    
-    switch(atoi(&selector)){
-        case GROUP_PARAMS: 
-            New_Params(&data[1], data_len);
-            break;
-        case GROUP_CONTROL:
-            New_Control(&data[1],  data_len);
-            break;
-        case GROUP_CHARGERS:
-            New_Group(&data[1],  data_len);
-            break;
-        case NEW_DATA:
-            New_Data(&data[1],  data_len);
-            break;
-        case SEND_DATA:
-            printf("Debo mandar mis datos!\n");
-            Send_Data();
-            break;
-        case 255:
-            printf("DAtos no esperaddos\n");
-            break;
+    if(data != NULL){
+        switch(data[0]-'0'){
+            case GROUP_PARAMS: 
+                New_Params(&data[1], data_len-1);
+                break;
+            case GROUP_CONTROL:
+                New_Control((char*)data[1],  data_len-1);
+                break;
+            case GROUP_CHARGERS:
+                New_Group(&data[1],  data_len-1);
+                break;
+            case NEW_DATA:
+                New_Data(&data[1],  data_len-1);
+                break;
+            case SEND_DATA:
+                if(!memcmp(&data[1],ConfigFirebase.Device_Id, 8)){
+                    printf("Debo mandar mis datos!\n");
+                    Send_Data();
+                }
+                else{
+                    printf("No me toca a mí\n");
+                }
+                
+                break;
+            default:
+                printf("DAtos no esperaddos\n");
+                break;
+        }
     }
+    
+
     Esperando_datos = 0;
 }
 
 static void hnd_espressif_put(coap_context_t *ctx,coap_resource_t *resource,coap_session_t *session,coap_pdu_t *request,coap_binary_t *token,coap_string_t *query, coap_pdu_t *response){
     size_t size;
     unsigned char *data;
+    (void)coap_get_data(request, &size, &data);
+
+    if(!memcmp(resource->uri_path->s, "CHARGERS", resource->uri_path->length)){
+        New_Group(data,  size);
+    }
+    else if(!memcmp(resource->uri_path->s, "PARAMS", resource->uri_path->length)){
+        New_Params(data, size);
+    }
+    else if(!memcmp(resource->uri_path->s, "CONTROL", resource->uri_path->length)){
+        New_Control((char*)data,  size);
+    }
+    else if(!memcmp(resource->uri_path->s, "DATA", resource->uri_path->length)){
+        New_Data(data,  size);
+        memcpy(LastData, data, size);
+    }
+
     coap_resource_notify_observers(resource, NULL);
 
     response->code = COAP_RESPONSE_CODE(200);
 
     /*
-    (void)coap_get_data(request, &size, &data);
+    
 
     if(++count > 5000){
         printf("He recibido datos %.*s \n", size, data);
@@ -288,7 +319,6 @@ void coap_get( char* Topic){
 
     POLL(2000);
 }
-
 
 static bool Authenticate(){
     printf("Autenticandome contra el servidor!!!\n");
@@ -348,7 +378,7 @@ static void Subscribe(char* TOPIC){
     }
 
     uint8_t buf[4];
-    coap_insert_optlist(&optlist,coap_new_optlist(COAP_OPTION_URI_PATH,strlen(TOPIC),(uint8_t*)TOPIC));
+    coap_insert_optlist(&optlist,coap_new_optlist(COAP_OPTION_URI_PATH,strlen("DATA"),(uint8_t*)"DATA"));
     coap_insert_optlist(&optlist,coap_new_optlist(COAP_OPTION_OBSERVE,coap_encode_var_safe(buf, sizeof(buf),COAP_OBSERVE_ESTABLISH), buf));
 
     coap_add_optlist_pdu(request, &optlist);
@@ -361,7 +391,9 @@ static void Subscribe(char* TOPIC){
 void coap_put( char* Topic, char* Message){
     if(ChargingGroup.Params.GroupMaster){
         if(!memcmp(DATA->uri_path->s, Topic, DATA->uri_path->length)){
+            memcpy(LastData, Message, strlen(Message));
             coap_resource_notify_observers(DATA, NULL);
+            
         }
         else if(!memcmp(PARAMS->uri_path->s, Topic, PARAMS->uri_path->length)){
             coap_resource_notify_observers(PARAMS, NULL);
@@ -474,9 +506,9 @@ static void coap_client(void *p){
         }
 
         //Subscribirnos
-        Subscribe("PARAMS");
-        Subscribe("CHARGERS");
-        Subscribe("DATA");
+        //Subscribe("PARAMS");
+        //Subscribe("CHARGERS");
+       // Subscribe("DATA");
         Subscribe("CONTROL");
 
         //Tras autenticarnos solicitamos los cargadores del grupo y los parametros

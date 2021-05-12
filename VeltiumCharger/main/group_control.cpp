@@ -44,9 +44,16 @@ void Calculo_Consigna();
 void input_values();
 
 //Funcion para procesar los nuevos datos recibidos
-void New_Data(const char* Data, int Data_size){
+void New_Data(uint8_t* Buffer, int Data_size){
+    if(Data_size > 0){
+
+    char* Data = (char*) calloc(Data_size, '0');
+    memcpy(Data, Buffer, Data_size);
 
     cJSON *mensaje_Json = cJSON_Parse(Data);
+
+    free(Data);
+
     carac_charger Cargador;
 
     //compribar que el Json está bien
@@ -97,13 +104,26 @@ void New_Data(const char* Data, int Data_size){
     print_table(ChargingGroup.group_chargers, "Grupo total");
     input_values();
     Calculo_Consigna();
+    }
 }
 
 //Funcion para recibir nuevos parametros de carga para el grupo
-void New_Params(const char* Data, int Data_size){
+void New_Params(uint8_t* Buffer, int Data_size){
+
+  
+  if(Data_size <=0){
+    return;
+  }
+
+
+  char* Data = (char*) calloc(Data_size, '0');
+  memcpy(Data, Buffer, Data_size);
+
   uint8_t buffer[7];
 
   cJSON *mensaje_Json = cJSON_Parse(Data);
+
+  free(Data);
 
   //compribar que el Json está bien
   if(!cJSON_HasObjectItem(mensaje_Json,"cdp")){
@@ -158,7 +178,11 @@ void New_Control(const char* Data, int Data_size){
 }
 
 //Funcion para recibir un nuevo grupo de cargadores
-void New_Group(const char* Data, int Data_size){
+void New_Group(uint8_t* Buffer, int Data_size){
+    char* Data = (char*) calloc(Data_size, '0');
+    memcpy(Data, Buffer, Data_size);
+
+
     char n[2];
     memcpy(n,Data,2);
     uint8_t numero_de_cargadores = atoi(n);
@@ -171,6 +195,7 @@ void New_Group(const char* Data, int Data_size){
           SendToPSOC5((char*)Data,Data_size,GROUPS_DEVICES); 
           remove_group(&FaseChargers);
           delay(50);
+          free(Data);
           return;
         }
       }
@@ -180,6 +205,7 @@ void New_Group(const char* Data, int Data_size){
       remove_group(&FaseChargers);
       delay(50);
     }
+    free(Data);
 }
 
 // Function for Chart: '<Root>/Charger 1'

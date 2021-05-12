@@ -144,7 +144,6 @@ void MasterPanicTask(void *args){
 
 void coap_loop(void *args) {
     printf("Arrancando coap loop\n");
-    char buffer[500];
     uint8_t  turno =0;
     TickType_t xStart = xTaskGetTickCount();
 
