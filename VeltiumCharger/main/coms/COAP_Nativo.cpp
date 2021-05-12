@@ -236,15 +236,19 @@ static bool POLL(int timeout){
     return true;
 }
 
-static void Authenticate(){
+void coap_get( char* Topic){
     coap_pdu_t *request = NULL;
 
-    request = coap_new_pdu(session);
+    if (optlist) {
+        coap_delete_optlist(optlist);
+        optlist = NULL;
+    }
 
-    //Autenticarnos
+    coap_insert_optlist(&optlist,coap_new_optlist(COAP_OPTION_URI_PATH,strlen(Topic),(uint8_t*)Topic));
+    request = coap_new_pdu(session);
     if (!request) {
         ESP_LOGE(TAG, "coap_new_pdu() failed");
-       return;
+        return;
     }
     request->type = COAP_MESSAGE_CON;
     request->tid = coap_new_message_id(session);
@@ -252,11 +256,19 @@ static void Authenticate(){
 
     coap_add_optlist_pdu(request, &optlist);
 
+    coap_send(session, request);
+    Esperando_datos =1;
+    POLL(10000);
+}
+
+
+static void Authenticate(){
+    printf("Autenticadome contra el servidor!!!\n");
     do{
-        coap_send(session, request);
-        Esperando_datos =1;
-        delay(10);
-    }while(!POLL(5000));
+        Esperando_datos=1;
+        coap_get("PARAMS");
+        
+    }while(Esperando_datos);
 
 
     printf("Autneticados!!!\n");
@@ -289,30 +301,6 @@ static void Subscribe(){
     POLL(5000);
 }
 
-void coap_get( char* Topic){
-    coap_pdu_t *request = NULL;
-
-    if (optlist) {
-        coap_delete_optlist(optlist);
-        optlist = NULL;
-    }
-
-    coap_insert_optlist(&optlist,coap_new_optlist(COAP_OPTION_URI_PATH,strlen(Topic),(uint8_t*)Topic));
-    request = coap_new_pdu(session);
-    if (!request) {
-        ESP_LOGE(TAG, "coap_new_pdu() failed");
-        return;
-    }
-    request->type = COAP_MESSAGE_CON;
-    request->tid = coap_new_message_id(session);
-    request->code = COAP_REQUEST_GET;
-
-    coap_add_optlist_pdu(request, &optlist);
-
-    coap_send(session, request);
-    Esperando_datos =1;
-    POLL(2000);
-}
 
 void coap_put( char* Topic, char* Message){
     if(ChargingGroup.Params.GroupMaster){
@@ -439,21 +427,13 @@ static void coap_client(void *p){
             ESP_LOGE(TAG, "coap_new_context() failed");
             goto clean_up;
         }
-        if (uri.scheme == COAP_URI_SCHEME_COAPS) {
-            
-            session = coap_new_client_session_psk(ctx, NULL, &dst_addr,COAP_PROTO_DTLS , ConfigFirebase.Device_Id, (const uint8_t *)get_passwd(), sizeof(get_passwd()) - 1);
-        } else {
-            session = coap_new_client_session(ctx, NULL, &dst_addr, COAP_PROTO_UDP);
-        }
-        if (!session) {
-            ESP_LOGE(TAG, "coap_new_client_session() failed");
-            goto clean_up;
-        }
+
 
         coap_register_response_handler(ctx, message_handler);
 
         //Autenticarnos mediante DTLS
-        if (uri.scheme == COAP_URI_SCHEME_COAPS && !coap_dtls_is_supported()){
+        if (uri.scheme == COAP_URI_SCHEME_COAPS && coap_dtls_is_supported()){
+            session = coap_new_client_session_psk(ctx, NULL, &dst_addr,COAP_PROTO_DTLS , ConfigFirebase.Device_Id, (const uint8_t *)get_passwd(), sizeof(get_passwd()) - 1);
             Authenticate();
             delay(1000);
         }
