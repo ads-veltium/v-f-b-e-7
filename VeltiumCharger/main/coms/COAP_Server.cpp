@@ -107,76 +107,6 @@ void Send_Params(){
      
 }
 
-// rebotar la informacion segun el topic
-void callback_PARAMS(CoapPacket &packet, IPAddress ip, int port) {
-  Serial.println("PARAMS");
-
-  if(packet.payloadlen ==0){
-    Send_Params();
-    return;
-  }
-
-  
-  // send response
-  char p[packet.payloadlen + 1];
-  memcpy(p, packet.payload, packet.payloadlen);
-  p[packet.payloadlen] = '\0';
-  
-  
-  String message(p);
-  if(packet.payloadlen >0){
-    //coap_broadcast_to_group(p, GROUP_PARAMS);
-  }
-}
-
-void callback_DATA(CoapPacket &packet, IPAddress ip, int port) {
-  // send response
-  char p[packet.payloadlen + 1];
-  memcpy(p, packet.payload, packet.payloadlen);
-  p[packet.payloadlen] = '\0';
-  
-  String message(p);
-
-  if(packet.payloadlen >0){
-    //coap_broadcast_to_group(p, NEW_DATA);
-  } 
-}
-
-void callback_CONTROL(CoapPacket &packet, IPAddress ip, int port) {
-  Serial.println("CONTROL");
-  
-  // send response
-  char p[packet.payloadlen + 1];
-  memcpy(p, packet.payload, packet.payloadlen);
-  p[packet.payloadlen] = '\0';
-  
-  String message(p);
-
-  if(packet.payloadlen >0){
-    //coap_broadcast_to_group(p, GROUP_CONTROL);
-  }
-}
-
-void callback_CHARGERS(CoapPacket &packet, IPAddress ip, int port) {
-  Serial.println("CHARGERS");
-  if(packet.payloadlen ==0){
-    Send_Chargers();
-    return;
-  }
-
-  // send response
-  char p[packet.payloadlen + 1];
-  memcpy(p, packet.payload, packet.payloadlen);
-  p[packet.payloadlen] = '\0';
-  
-  String message(p);
-
-  Serial.println(packet.type);
-  if(packet.payloadlen >0){
-    //coap_broadcast_to_group(p, GROUP_CHARGERS);
-  }
-}
-
 // CoAP client response callback
 void callback_response(CoapPacket &packet, IPAddress ip, int port) {
   xMasterTimer = xTaskGetTickCount();
@@ -376,9 +306,8 @@ void coap_start_server(){
     }
   }
   
-  // start coap server/client
-  /*if(xCoapHandle == NULL){
+  if(xCoapHandle == NULL){
     xCoapHandle = xTaskCreateStatic(coap_loop,"coap", 4096*4,NULL,2,xCoapStack,&xCoapBuffer);
-  }*/
+  }
 }
 
