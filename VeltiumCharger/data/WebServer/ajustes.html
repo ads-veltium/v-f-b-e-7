@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <title>Veltium Smart Chargers</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" type="text/css" href="style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+<div class="header">
+  <table>
+    <tr>
+      <td><img src="veltium-logo-big" width="60px" height="60px"> </td>
+      <td><h1>Veltium Smart Chargers</h1>
+      </td>
+    </tr>
+  </table>
+</div>
+<div class="topnav" id="myTopnav">
+    <a href="parameters" >Par&aacutemetros</a>
+    <a href="comands" >Comandos</a>
+    <a href="comms">Comunicaciones</a>
+    <a href="status">Status</a>
+    <a href="ajustes" class="active">Ajustes</a>
+    <div class="topnav-right">
+      <a href="javascript:void(0);" onclick="cerrar(this);" id="19">Cerrar sesion</a>
+    </div>
+    <a href="javascript:void(0);" class="icon" onclick="myFunction()">
+      <i class="fa fa-bars"></i>
+    </a>
+  </div>
+</head>
+<body>
+  <form action="/changepass" accept-charset="UTF-8">
+    <div class="container">
+      <div class="centro">
+        <table>
+          <tr>
+            <td><h4>Cambiar Contrasena</h4></td>
+            <td></td>
+          </tr>
+          <tr>
+              <td><span class="dht-labels">Contrasena Actual</span></td>
+              <td><input class="contrasena" style = "text-align:center;" name="act_pwd" placeholder="Contrasena actual" type="password"></input></td>
+          </tr>
+          <tr>
+            <td><span class="dht-labels">Nueva Contrasena</span></td>
+            <td><input class="contrasena" style = "text-align:center;" name="nueva_pwd" placeholder="Nueva Contrasena" type="password"></input></td>
+          </tr>
+          <tr>
+            <td><span class="dht-labels">Confirmar Contrasena</span></td>
+            <td><input class="contrasena" style = "text-align:center;" name="conf_pwd" placeholder="Confirmar Contrasena" type="password"></input></td>
+          </tr>
+        </table>
+      </div>
+    </div>
+      <div class="container">
+        <input class="boton" type="submit" value="Guardar" onclick = "guardapwd(this)">
+        </div>
+  </form>
+
+
+<script>
+    
+function cerrar(element){
+    var xhr = new XMLHttpRequest();
+    if(element.clicked){ 
+        xhr.open("GET", "/update?output="+element.id+"", true); 
+    }
+    else { 
+        xhr.open("GET", "/update?output="+element.id+"", true); 
+    }
+  xhr.send();
+  self.location.href = "/";
+}
+
+</script>
+</body>
+</html>

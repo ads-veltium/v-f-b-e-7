@@ -183,8 +183,9 @@ class Coap {
         int parseOption(CoapOption *option, uint16_t *running_delta, uint8_t **buf, size_t buflen);
 
     public:
-        
-        void set_udp(UDP& udp);
+        Coap(
+            UDP& udp
+        );
         bool start();
         bool start(int port);
         void response(CoapCallback c) { resp = c; }

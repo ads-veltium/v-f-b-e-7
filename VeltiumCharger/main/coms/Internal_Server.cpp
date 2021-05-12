@@ -1,12 +1,15 @@
 #include "ESPAsyncWebServer.h"
 #include "../control.h"
 #include "stdlib.h"
+#include "EEPROM.h"
 
+#define PASS_LENGTH 21
 /*********************** Globals ************************/
-extern carac_Comands                Comands;
-extern carac_Status                 Status;
-extern carac_Params                 Params;
-extern carac_Coms                   Coms;
+extern carac_Comands                    Comands;
+extern carac_Status                     Status;
+extern carac_Params                     Params;
+extern carac_Coms                       Coms;
+extern carac_Firebase_Configuration     ConfigFirebase;
 
 AsyncWebServer server EXT_RAM_ATTR;
 /*************** Wifi and ETH event handlers *****************/
@@ -29,6 +32,10 @@ const char* AUTH_MODE = "auth_mode";
 const char* INST_CURR_LIM = "inst_curr_lim";
 const char* POT_CONT = "potencia_cont";
 const char* UBI_CDP = "ubi_cdp";
+const char* USER_TYPE = "usr_type";
+const char* ACT_PWD = "act_pwd";
+const char* NEW_PWD = "nueva_pwd";
+const char* CONF_PWD = "conf_pwd";
 
 bool Autenticado=false;
 bool Gsm_On;
@@ -44,9 +51,18 @@ int Desact1=5;
 int Desact2=9;
 int Medidor1=23;
 int Medidor2=27;
+uint8 longitud_pwd;
+
+String password;
+const char* user="admin";
 
 String usuario;
 String contrasena;
+String contrasena_act;
+String contrasena_nueva;
+String contrasena_conf;
+
+String vacio="";
 
 
 /************* Internal server configuration ****************/
@@ -186,7 +202,11 @@ String processor(const String& var){
     else if (var == "COMAND")
 	{
 		return String(Comands.desired_current);
-	}
+	}/*
+    else if (var == "USER_TYPE")
+	{
+		return String(Comands.user_type);
+	}*/
     else if (var == "CURLIM")
 	{
 		return String(Params.inst_current_limit);
@@ -306,7 +326,23 @@ void InitServer(void) {
 	Serial.println(ESP.getFreeHeap());
 
     server.on("/", HTTP_GET_A, [](AsyncWebServerRequest *request){
-     request->send(SPIFFS, "/login.html");
+    String flash="";
+    request->send(SPIFFS, "/login.html");
+    EEPROM.begin(PASS_LENGTH);
+    longitud_pwd=EEPROM.read(0);
+
+    for(int j=1;j<longitud_pwd+1;j++){
+        char a=EEPROM.read(j);
+        flash = flash + a;
+    }
+    String vcd(ConfigFirebase.Device_Id);
+    
+    if(longitud_pwd==NULL){
+        password = vcd;
+    }else{
+        password = flash;
+    }
+
     });
 
     server.on("/veltium-logo-big", HTTP_GET_A, [](AsyncWebServerRequest *request){
@@ -322,9 +358,10 @@ void InitServer(void) {
 	usuario = request->getParam(USER)->value();
 	contrasena = request->getParam(PASSWORD)->value();
 
-	if(usuario!="admin" || contrasena!="admin" ){
+	if(usuario!=user || contrasena!= password ){
 		
 		request->send(SPIFFS, "/login.html",String(), false, processor);
+
 	}
 	else
 	{
@@ -332,6 +369,34 @@ void InitServer(void) {
 		request->send(SPIFFS, "/parameters.html",String(), false, processor);
 	}
    });
+
+    server.on("/changepass", HTTP_GET, [] (AsyncWebServerRequest *request) {
+    
+	contrasena_act = request->getParam(ACT_PWD)->value();
+	contrasena_nueva = request->getParam(NEW_PWD)->value();
+    contrasena_conf = request->getParam(CONF_PWD)->value();
+
+    request->send(SPIFFS, "/ajustes.html",String(), false, processor);
+
+    if(contrasena_act == password && contrasena_nueva==contrasena_conf){
+        
+        for(int i=0;i<PASS_LENGTH;i++){
+            EEPROM.write(i,vacio[i]);
+        }
+        
+        longitud_pwd = contrasena_nueva.length();
+        
+        EEPROM.write(0,longitud_pwd);
+        
+        for(int i=1;i<longitud_pwd+1;i++){
+            EEPROM.write(i,contrasena_nueva[i-1]);
+        }
+
+        EEPROM.commit();
+        
+    }
+    
+    });
 
     server.on("/comands", HTTP_GET_A, [](AsyncWebServerRequest *request){
         if(Autenticado==true){
@@ -365,13 +430,21 @@ void InitServer(void) {
         }
     });
 
+    server.on("/ajustes", HTTP_GET_A, [](AsyncWebServerRequest *request){
+
+        if(Autenticado==true){
+            request->send(SPIFFS, "/ajustes.html",String(), false, processor);
+        }else{
+            request->send(SPIFFS, "/login.html");
+        }
+    });
+
 
     server.on("/style.css", HTTP_GET_A, [](AsyncWebServerRequest *request){
     request->send(SPIFFS, "/style.css", "text/css");
     });
 
     server.on("/get", HTTP_GET_A, [](AsyncWebServerRequest *request){
-        
         
         Coms.GSM.ON = Gsm_On;
         memcpy(Coms.Wifi.AP,request->getParam(AP)->value().c_str(),32);
@@ -420,7 +493,18 @@ void InitServer(void) {
         if(!reiniciar_eth)request->send(SPIFFS, "/comms.html",String(), false, processor);
 
     });
-
+/*
+    server.on("/usertype", HTTP_GET_A, [](AsyncWebServerRequest *request){
+        
+        uint8_t data = request->getParam(USER_TYPE)->value().toInt();
+        Comands.user_type= data;
+        Serial.println(Comands.user_type);
+        SendToPSOC5(data, VCD_NAME_USERS_USER_INDEX_CHAR_HANDLE);
+        
+        request->send(SPIFFS, "/comands.html",String(), false, processor);
+        
+    });
+*/
     server.on("/currcomand", HTTP_GET_A, [](AsyncWebServerRequest *request){
         
         uint8_t data = request->getParam(CURR_COMAND)->value().toInt();
@@ -447,8 +531,11 @@ void InitServer(void) {
         
         request->send(SPIFFS, "/parameters.html",String(), false, processor);
     });
-    
-
+/*
+    server.on("/usertype", HTTP_GET_A, [](AsyncWebServerRequest *request){
+    request->send_P(200, "text/plain", String(Comands.user_type).c_str());
+    });
+*/
     server.on("/hp", HTTP_GET_A, [](AsyncWebServerRequest *request){
     request->send_P(200, "text/plain", String(Status.HPT_status).c_str());
     });

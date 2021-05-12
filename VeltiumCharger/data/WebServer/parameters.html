@@ -20,6 +20,7 @@
     <a href="comands" >Comandos</a>
     <a href="comms">Comunicaciones</a>
     <a href="status">Status</a>
+    <a href="ajustes">Ajustes</a>
     <div class="topnav-right">
         <a href="javascript:void(0);" onclick="cerrar(this);" id="19">Cerrar sesion</a>
     </div>
@@ -85,7 +86,7 @@ function cerrar(element){
   else { xhr.open("GET", "/update?output="+element.id+"", true); }
 
   xhr.send();
-  self.location.href = "/login";
+  self.location.href = "/";
 }
 
 

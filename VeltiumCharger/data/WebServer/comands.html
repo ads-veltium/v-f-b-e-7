@@ -20,6 +20,7 @@
     <a href="comands" class="active">Comandos</a>
     <a href="comms">Comunicaciones</a>
     <a href="status">Status</a>
+    <a href="ajustes">Ajustes</a>
     <div class="topnav-right">
       <a href="javascript:void(0);" onclick="cerrar(this);" id="19">Cerrar sesion</a>
     </div>
@@ -42,6 +43,15 @@
       <input type="submit" id="guardacomand" value="Guardar" onclick = "guardacomand(this)" hidden="hidden">
       </form><br />
     </tr>
+    <!--
+    <tr>
+      <form action="/usertype" accept-charset="UTF-8">
+      <td><span class="dht-labels">User type</span>  </td>
+      <td><input style = "text-align:center;" name="usr_type" placeholder="%USER_TYPE%" type="text"></input></td>
+      <input type="submit" id="guardatype" value="Guardar" onclick = "guardatype(this)" hidden="hidden">
+      </form><br />
+    </tr>
+  -->
     <tr>
       <td><span class="dht-labels">Mecanismo de bloqueo</span> </td>
       <td class="centrado"><span>%CONLOCK%</span></td>
@@ -57,7 +67,7 @@ function cerrar(element){
   else { xhr.open("GET", "/update?output="+element.id+"", true); }
 
   xhr.send();
-  self.location.href = "/login";
+  self.location.href = "/";
 }
 
 function myFunction() {
@@ -84,35 +94,23 @@ xhr.send();
 
 
 function toggleCheckbox(element) {
-
 var xhr = new XMLHttpRequest();
-
   if(element.checked){ xhr.open("GET", "/autoupdate?com="+element.id+"&state=1", true); }
-
   else { xhr.open("GET", "/autoupdate?com="+element.id+"&state=0", true); }
-
 xhr.send();
-
 }
 
 setInterval(function ( ) {
-
 var xhttp = new XMLHttpRequest();
 
 xhttp.onreadystatechange = function() {
-
   if (this.readyState == 4 && this.status == 200) {
-
     document.getElementById("comand").innerHTML = this.responseText;
-
   }
-
 };
 
 xhttp.open("GET", "/comand", true);
-
 xhttp.send();
-
 }, 5000 ) ;
 
 document.getElementsByName("curr_comand").addEventListener("keyup", function(event) {
@@ -121,6 +119,14 @@ document.getElementsByName("curr_comand").addEventListener("keyup", function(eve
    document.getElementById("guardacomand").click();
   }
 });
-    </script>
+/*
+document.getElementsByName("usr_type").addEventListener("keyup", function(event) {
+  if (event.keyCode === 13) {
+   event.preventDefault();
+   document.getElementById("guardatype").click();
+  }
+});
+*/
+</script>
 </body>
 </html>
