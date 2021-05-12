@@ -90,7 +90,7 @@ void Send_Params(){
   cJSON_AddNumberToObject(Params_Json, "inst_max", ChargingGroup.Params.inst_max);
   cJSON_AddNumberToObject(Params_Json, "pot_max", ChargingGroup.Params.potencia_max);
   cJSON_AddNumberToObject(Params_Json, "userID", ChargingGroup.Params.UserID);
-  
+
   char *my_json_string = cJSON_Print(Params_Json);   
   cJSON_Delete(Params_Json); 
   
@@ -186,20 +186,7 @@ void coap_loop(void *args) {
                 }
             }
         }
-        
-
-        //Pedir datos a los esclavos para que no envíen todos a la vez, obviando a los que no tenemos en la lista
-        IPAddress TurnoIP = get_IP(ChargingGroup.group_chargers.charger_table[turno].name);
-        turno++;
-
-        if(TurnoIP!= INADDR_NONE && TurnoIP != INADDR_ANY){ 
-          //coap.sendResponse(TurnoIP, 5683, SEND_DATA, "X");
-        }
-        
-        if(turno == ChargingGroup.group_chargers.size){
-            turno=1;
-            Send_Data(); //Mandar mis datos
-        }
+    
       }
 
       //Si nos llega alguna orden de borrado o pausa, enviarla al resto

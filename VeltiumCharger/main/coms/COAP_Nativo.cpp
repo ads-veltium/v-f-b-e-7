@@ -45,7 +45,6 @@ StaticTask_t xClientBuffer;
 TaskHandle_t xServerHandle = NULL;
 TaskHandle_t xClientHandle = NULL;
 
-
 coap_context_t * ctx      EXT_RAM_ATTR;
 coap_session_t * session  EXT_RAM_ATTR;
 coap_optlist_t * optlist  EXT_RAM_ATTR;
@@ -54,10 +53,12 @@ coap_resource_t *DATA EXT_RAM_ATTR;
 coap_resource_t *PARAMS  EXT_RAM_ATTR;
 coap_resource_t *CONTROL  EXT_RAM_ATTR;
 coap_resource_t *CHARGERS  EXT_RAM_ATTR; 
+coap_resource_t *TXANDA EXT_RAM_ATTR;
 
 const static char *TAG = "CoAP_server";
 uint8_t Esperando_datos =0;
 uint8_t  FallosEnvio =0;
+uint8_t turno =0;
 char LastData[500] EXT_RAM_ATTR;
 
 
@@ -129,6 +130,9 @@ hnd_get(coap_context_t *ctx, coap_resource_t *resource,coap_session_t *session,c
         itoa(NEW_DATA, buffer, 10);
         memcpy(&buffer[1], LastData, strlen(LastData));
 
+    }
+    else if(!memcmp(resource->uri_path->s, "TXANDA", resource->uri_path->length)){
+        sprintf(buffer,"%i%i",TURNO, turno);
     }
     coap_add_data_blocked_response(resource, session, request, response, token,COAP_MEDIATYPE_TEXT_PLAIN, 0,(size_t)strlen((char*)buffer),(const u_char*)buffer);
 }
@@ -207,7 +211,7 @@ static void message_handler(coap_context_t *ctx, coap_session_t *session,coap_pd
                 New_Params(&data[1], data_len-1);
                 break;
             case GROUP_CONTROL:
-                New_Control((char*)data[1],  data_len-1);
+                New_Control(&data[1],  data_len-1);
                 break;
             case GROUP_CHARGERS:
                 New_Group(&data[1],  data_len-1);
@@ -215,8 +219,8 @@ static void message_handler(coap_context_t *ctx, coap_session_t *session,coap_pd
             case NEW_DATA:
                 New_Data(&data[1],  data_len-1);
                 break;
-            case SEND_DATA:
-                if(!memcmp(&data[1],ConfigFirebase.Device_Id, 8)){
+            case TURNO:
+                if(!memcmp(ChargingGroup.group_chargers.charger_table[data[1]-'0'].name,ConfigFirebase.Device_Id, 8)){
                     printf("Debo mandar mis datos!\n");
                     Send_Data();
                 }
@@ -247,11 +251,18 @@ static void hnd_espressif_put(coap_context_t *ctx,coap_resource_t *resource,coap
         New_Params(data, size);
     }
     else if(!memcmp(resource->uri_path->s, "CONTROL", resource->uri_path->length)){
-        New_Control((char*)data,  size);
+        New_Control(data,  size);
     }
     else if(!memcmp(resource->uri_path->s, "DATA", resource->uri_path->length)){
         New_Data(data,  size);
         memcpy(LastData, data, size);
+        //Pedir datos a los esclavos para que no envíen todos a la vez
+        turno++;        
+        delay(250);
+        if(turno == ChargingGroup.group_chargers.size){
+            turno=1;
+            Send_Data(); //Mandar mis datos
+        }
     }
 
     coap_resource_notify_observers(resource, NULL);
@@ -371,7 +382,7 @@ static void Subscribe(char* TOPIC){
     }
 
     uint8_t buf[4];
-    coap_insert_optlist(&optlist,coap_new_optlist(COAP_OPTION_URI_PATH,strlen("PARAMS"),(uint8_t*)"PARAMS"));
+    coap_insert_optlist(&optlist,coap_new_optlist(COAP_OPTION_URI_PATH,strlen(TOPIC),(uint8_t*)TOPIC));
     coap_insert_optlist(&optlist,coap_new_optlist(COAP_OPTION_OBSERVE,coap_encode_var_safe(buf, sizeof(buf),COAP_OBSERVE_ESTABLISH), buf));
 
     coap_add_optlist_pdu(request, &optlist);
@@ -503,10 +514,11 @@ static void coap_client(void *p){
         }
 
         //Subscribirnos
-        //Subscribe("PARAMS");
-        //Subscribe("CHARGERS");
-       // Subscribe("DATA");
+        Subscribe("PARAMS");
+        Subscribe("CHARGERS");
+        Subscribe("DATA");
         Subscribe("CONTROL");
+        Subscribe("TXANDA");
 
         //Tras autenticarnos solicitamos los cargadores del grupo y los parametros
         coap_get("CHARGERS");
@@ -518,9 +530,11 @@ static void coap_client(void *p){
         while(1){
             coap_run_once(ctx, 10);
             //eventos 1 segundo
-            /*if(pdTICKS_TO_MS(xTaskGetTickCount - xTimer) %1000 ==0){
-                coap_get("TXANDA");
-            }*/
+            if(pdTICKS_TO_MS(xTaskGetTickCount - xTimer) >=1000){
+                coap_get("DATA");
+                Send_Data();
+                xTimer =0;
+            }
 
             //eventos 5 segundos
             /*if(pdTICKS_TO_MS(xTaskGetTickCount - xTimer) %5000 ==0){

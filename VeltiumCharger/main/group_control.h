@@ -8,7 +8,7 @@
 #define GROUP_PARAMS   1
 #define GROUP_CONTROL  2
 #define GROUP_CHARGERS 3
-#define SEND_DATA      4
+#define TURNO          4
 #define NEW_DATA       5
       
 void New_Data(uint8_t* Buffer, int Data_size);

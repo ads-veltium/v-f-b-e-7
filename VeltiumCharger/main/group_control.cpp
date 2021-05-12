@@ -176,7 +176,7 @@ void New_Control(uint8_t* Buffer, int Data_size){
 }
 
 //Funcion para recibir ordenes de grupo que s ehayan enviado a otro cargador
-void New_Control(const char* Data, int Data_size){
+void New_Control(char* Data, int Data_size){
 
   if(!memcmp(Data,"Pause",5)){
     printf("Tengo que pausar el grupo\n");
