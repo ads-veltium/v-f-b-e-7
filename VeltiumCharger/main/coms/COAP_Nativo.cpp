@@ -503,7 +503,20 @@ static void coap_client(void *p){
                 break;
             }
             else if(ChargingGroup.StopOrder){
-                ChargingGroup.StopOrder = true;
+                char buffer[20];
+                ChargingGroup.StopOrder = false;
+                memcpy(buffer,"Pause",6);
+                coap_put("CONTROL", buffer);
+                delay(250);
+                break;
+            }
+
+            else if(ChargingGroup.DeleteOrder){
+                char buffer[20];
+                ChargingGroup.DeleteOrder = false;
+                memcpy(buffer,"Delete",6);
+                coap_put("CONTROL", buffer);
+                delay(250);
                 break;
             }
 
@@ -520,7 +533,6 @@ clean_up:
         }
         if (ctx) {
             coap_free_context(ctx);
-            free(ctx);
         }
         coap_cleanup();
         break;

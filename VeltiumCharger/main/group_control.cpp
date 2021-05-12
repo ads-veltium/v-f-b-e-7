@@ -94,7 +94,7 @@ void New_Data(const char* Data, int Data_size){
         ChargingGroup.group_chargers.charger_table[index]=Cargador;
         ChargingGroup.group_chargers.charger_table[index].Period=0;
     }
-    //print_table(ChargingGroup.group_chargers, "Grupo total");
+    print_table(ChargingGroup.group_chargers, "Grupo total");
     input_values();
     Calculo_Consigna();
 }
