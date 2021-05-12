@@ -6,6 +6,7 @@
 #include "freertos/task.h"
 #include "freertos/event_groups.h"
 #include "Arduino.h"
+#include "cJSON.h"
 
 #include "esp_log.h"
 #include "esp_wifi.h"
@@ -80,19 +81,46 @@ static char* get_passwd(){
 
     String password = Encipher(String(pass));
     pass=(char*)password.c_str();
-
-    printf("\n\n\n %s \n\n\n", pass);
-
     return pass;
 }
 
 static void
 hnd_get(coap_context_t *ctx, coap_resource_t *resource,coap_session_t *session,coap_pdu_t *request, coap_binary_t *token,coap_string_t *query, coap_pdu_t *response){    
-    if(!memcmp(resource->uri_path->s, "DATA", resource->uri_path->length)){
-        coap_add_data_blocked_response(resource, session, request, response, token,COAP_MEDIATYPE_TEXT_PLAIN, 0,(size_t)espressif_data_len,(const u_char*)espressif_data);
+    if(!memcmp(resource->uri_path->s, "CHARGERS", resource->uri_path->length)){
+        char buffer[500];
+        printf("Sending chargers!\n");
+        if(ChargingGroup.group_chargers.size< 10){
+            sprintf(buffer,"0%i",(char)ChargingGroup.group_chargers.size);
+        }
+        else{
+            sprintf(buffer,"%i",(char)ChargingGroup.group_chargers.size);
+        }
+        
+        for(uint8_t i=0;i< ChargingGroup.group_chargers.size;i++){
+            memcpy(&buffer[2+(i*9)],ChargingGroup.group_chargers.charger_table[i].name,8);   
+            itoa(ChargingGroup.group_chargers.charger_table[i].Fase,&buffer[10+(i*9)],10);
+        }
+
+        coap_add_data_blocked_response(resource, session, request, response, token,COAP_MEDIATYPE_TEXT_PLAIN, 0,(size_t)strlen(buffer),(const u_char*)buffer);
     }
     else if(!memcmp(resource->uri_path->s, "PARAMS", resource->uri_path->length)){
-        coap_add_data_blocked_response(resource, session, request, response, token,COAP_MEDIATYPE_TEXT_PLAIN, 0,(size_t)espressif_data_len,(const u_char*)espressif_data);
+        printf("Sending params!\n");
+        cJSON *Params_Json;
+        Params_Json = cJSON_CreateObject();
+
+        cJSON_AddNumberToObject(Params_Json, "cdp", ChargingGroup.Params.CDP);
+        cJSON_AddNumberToObject(Params_Json, "contract", ChargingGroup.Params.ContractPower);
+        cJSON_AddNumberToObject(Params_Json, "active", ChargingGroup.Params.GroupActive);
+        cJSON_AddNumberToObject(Params_Json, "master", ChargingGroup.Params.GroupMaster);
+        cJSON_AddNumberToObject(Params_Json, "inst_max", ChargingGroup.Params.inst_max);
+        cJSON_AddNumberToObject(Params_Json, "pot_max", ChargingGroup.Params.potencia_max);
+        cJSON_AddNumberToObject(Params_Json, "userID", ChargingGroup.Params.UserID);
+        char *my_json_string = cJSON_Print(Params_Json);   
+        cJSON_Delete(Params_Json); 
+
+        coap_add_data_blocked_response(resource, session, request, response, token,COAP_MEDIATYPE_TEXT_PLAIN, 0,(size_t)strlen(my_json_string),(const u_char*)my_json_string);
+        
+        free(my_json_string);
     }
 }
 

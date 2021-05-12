@@ -24,7 +24,6 @@ bool wifi_connecting = false;
 
 static uint8 Reintentos = 0;
 
-void stop_MQTT();
 void start_udp();
 void InitServer(void);
 void StopServer(void);
@@ -398,7 +397,7 @@ void Eth_Loop(){
                 else{
                     if(ChargingGroup.Conected){
                         ChargingGroup.Params.GroupActive = false;
-                        stop_MQTT();
+                        ChargingGroup.StopOrder = true;
                     }
                     stop_ethernet();
                     Coms.ETH.State = DISCONNECTING;
@@ -410,7 +409,7 @@ void Eth_Loop(){
                 Coms.ETH.State = DISCONNECTING;
                 if(ChargingGroup.Conected){
                     ChargingGroup.Params.GroupActive = false;
-                    stop_MQTT();
+                    ChargingGroup.StopOrder = true;
                 }
             }
             //Lectura del contador
