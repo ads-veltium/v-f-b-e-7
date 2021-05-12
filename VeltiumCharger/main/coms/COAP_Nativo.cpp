@@ -65,7 +65,7 @@ String Encipher(String input);
 void MasterPanicTask(void *args);
 void Send_Data();
 
-static uint8* get_passwd(){
+static char* get_passwd(){
     char* pass = (char*) calloc(8, sizeof(char));
 
     uint32_t value =0;
@@ -79,7 +79,7 @@ static uint8* get_passwd(){
     String password = Encipher(String(pass));
     pass=(char*)password.c_str();
     printf("Poniendo contraseña %.*s", 8 ,pass);
-    return (u_char*)pass;
+    return pass;
 }
 
 static void
@@ -89,7 +89,6 @@ hnd_get(coap_context_t *ctx, coap_resource_t *resource,coap_session_t *session,c
     if(!memcmp(resource->uri_path->s, "CHARGERS", resource->uri_path->length)){
         itoa(GROUP_CHARGERS, buffer, 10);
         
-        printf("Sending chargers!\n");
         if(ChargingGroup.group_chargers.size< 10){
             sprintf(&buffer[1],"0%i",(char)ChargingGroup.group_chargers.size);
         }
@@ -104,7 +103,6 @@ hnd_get(coap_context_t *ctx, coap_resource_t *resource,coap_session_t *session,c
     }
     else if(!memcmp(resource->uri_path->s, "PARAMS", resource->uri_path->length)){
         itoa(GROUP_PARAMS, buffer, 10);
-        printf("Sending params!\n");
         cJSON *Params_Json;
         Params_Json = cJSON_CreateObject();
 
@@ -389,15 +387,18 @@ void coap_put( char* Topic, char* Message){
         if(!memcmp(DATA->uri_path->s, Topic, DATA->uri_path->length)){
             memcpy(LastData, Message, strlen(Message));
             coap_resource_notify_observers(DATA, NULL);
-            
+            New_Data(Message,  strlen(Message));
         }
         else if(!memcmp(PARAMS->uri_path->s, Topic, PARAMS->uri_path->length)){
+            New_Params(Message,  strlen(Message));
             coap_resource_notify_observers(PARAMS, NULL);
         }
         else if(!memcmp(CONTROL->uri_path->s, Topic, CONTROL->uri_path->length)){
+            New_Control(Message,  strlen(Message));
             coap_resource_notify_observers(CONTROL, NULL);
         }
         else if(!memcmp(CHARGERS->uri_path->s, Topic, CHARGERS->uri_path->length)){
+            New_Group(Message,  strlen(Message));
             coap_resource_notify_observers(CHARGERS, NULL);
         }
     }
@@ -497,7 +498,6 @@ static void coap_client(void *p){
             do{
                 session = coap_new_client_session_psk(ctx, &src_addr, &dst_addr,COAP_PROTO_DTLS , ConfigFirebase.Device_Id, (const uint8_t *)get_passwd(), 8);
             }while( !Authenticate());
-            
             delay(1000);
         }
 
@@ -589,7 +589,7 @@ static void coap_server(void *p){
         }
 
         /* Need PSK setup before we set up endpoints */     
-        coap_context_set_psk(ctx, "CoAP",get_passwd(),8);
+        coap_context_set_psk(ctx, "CoAP",(const uint8_t *)get_passwd(),8);
         ep = coap_new_endpoint(ctx, &serv_addr, COAP_PROTO_UDP);
 
         if (coap_dtls_is_supported()) {

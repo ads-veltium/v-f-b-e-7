@@ -15,6 +15,12 @@ void New_Data(uint8_t* Buffer, int Data_size);
 void New_Params(uint8_t* Buffer, int Data_size);
 void New_Control(const char* Data, int Data_size);
 void New_Group(uint8_t* Buffer, int Data_size);
+
+void New_Data(char* Data, int Data_size);
+void New_Params(char* Data, int Data_size);
+void New_Group(char* Data, int Data_size);
+
+
 void Calculo_Consigna();
 void input_values();
 void Ping_Req(const char* Data);

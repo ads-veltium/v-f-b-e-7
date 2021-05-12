@@ -43,16 +43,26 @@ uint8_t Pc_Fase;
 void Calculo_Consigna();
 void input_values();
 
+void New_Data(uint8_t* Buffer, int Data_size){  
+  if(Data_size <=0){
+    return;
+  }
+
+  char* Data = (char*) calloc(Data_size, '0');
+  memcpy(Data, Buffer, Data_size);
+
+  New_Data(Data, Data_size);
+
+  free(Data);
+}
+
+
 //Funcion para procesar los nuevos datos recibidos
-void New_Data(uint8_t* Buffer, int Data_size){
+void New_Data(char* Data, int Data_size){
     if(Data_size > 0){
 
-    char* Data = (char*) calloc(Data_size, '0');
-    memcpy(Data, Buffer, Data_size);
 
     cJSON *mensaje_Json = cJSON_Parse(Data);
-
-    free(Data);
 
     carac_charger Cargador;
 
@@ -107,23 +117,25 @@ void New_Data(uint8_t* Buffer, int Data_size){
     }
 }
 
-//Funcion para recibir nuevos parametros de carga para el grupo
-void New_Params(uint8_t* Buffer, int Data_size){
-
-  
+void New_Params(uint8_t* Buffer, int Data_size){  
   if(Data_size <=0){
     return;
   }
 
-
   char* Data = (char*) calloc(Data_size, '0');
   memcpy(Data, Buffer, Data_size);
+
+  New_Params(Data, Data_size);
+
+  free(Data);
+}
+
+//Funcion para recibir nuevos parametros de carga para el grupo
+void New_Params(char* Data, int Data_size){    
 
   uint8_t buffer[7];
 
   cJSON *mensaje_Json = cJSON_Parse(Data);
-
-  free(Data);
 
   //compribar que el Json está bien
   if(!cJSON_HasObjectItem(mensaje_Json,"cdp")){
@@ -177,11 +189,21 @@ void New_Control(const char* Data, int Data_size){
   }
 }
 
-//Funcion para recibir un nuevo grupo de cargadores
-void New_Group(uint8_t* Buffer, int Data_size){
-    char* Data = (char*) calloc(Data_size, '0');
-    memcpy(Data, Buffer, Data_size);
+void New_Group(uint8_t* Buffer, int Data_size){  
+  if(Data_size <=0){
+    return;
+  }
 
+  char* Data = (char*) calloc(Data_size, '0');
+  memcpy(Data, Buffer, Data_size);
+
+  New_Group(Data, Data_size);
+
+  free(Data);
+}
+
+//Funcion para recibir un nuevo grupo de cargadores
+void New_Group(char* Data, int Data_size){
 
     char n[2];
     memcpy(n,Data,2);
@@ -195,7 +217,6 @@ void New_Group(uint8_t* Buffer, int Data_size){
           SendToPSOC5((char*)Data,Data_size,GROUPS_DEVICES); 
           remove_group(&FaseChargers);
           delay(50);
-          free(Data);
           return;
         }
       }
@@ -205,7 +226,6 @@ void New_Group(uint8_t* Buffer, int Data_size){
       remove_group(&FaseChargers);
       delay(50);
     }
-    free(Data);
 }
 
 // Function for Chart: '<Root>/Charger 1'
