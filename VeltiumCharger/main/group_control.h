@@ -11,10 +11,10 @@
 #define SEND_DATA      4
 #define NEW_DATA       5
       
-void New_Data(const char* Data, int Data_size);
+void New_Data(uint8_t* Buffer, int Data_size);
 void New_Params(uint8_t* Buffer, int Data_size);
 void New_Control(const char* Data, int Data_size);
-void New_Group(const char* Data, int Data_size);
+void New_Group(uint8_t* Buffer, int Data_size);
 void Calculo_Consigna();
 void input_values();
 void Ping_Req(const char* Data);

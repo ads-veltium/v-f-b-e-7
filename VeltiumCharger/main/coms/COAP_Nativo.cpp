@@ -62,7 +62,7 @@ uint8_t Esperando_datos =0;
 static char espressif_data[100];
 static int espressif_data_len = 0;
 uint8_t  FallosEnvio =0;
-char* LastData[500] EXT_RAM_ATTR;
+char LastData[500] EXT_RAM_ATTR;
 
 #define INITIAL_DATA "hola desde coap!"
 
@@ -248,16 +248,17 @@ static void hnd_espressif_put(coap_context_t *ctx,coap_resource_t *resource,coap
     (void)coap_get_data(request, &size, &data);
 
     if(!memcmp(resource->uri_path->s, "CHARGERS", resource->uri_path->length)){
-        //New_Group(data,  size);
+        New_Group(data,  size);
     }
     else if(!memcmp(resource->uri_path->s, "PARAMS", resource->uri_path->length)){
         New_Params(data, size);
     }
     else if(!memcmp(resource->uri_path->s, "CONTROL", resource->uri_path->length)){
-        //New_Control(data,  size);
+        New_Control((char*)data,  size);
     }
     else if(!memcmp(resource->uri_path->s, "DATA", resource->uri_path->length)){
-        //New_Data(data,  size);
+        New_Data(data,  size);
+        memcpy(LastData, data, size);
     }
 
     coap_resource_notify_observers(resource, NULL);
