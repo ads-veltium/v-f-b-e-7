@@ -134,7 +134,7 @@ hnd_get(coap_context_t *ctx, coap_resource_t *resource,coap_session_t *session,c
 }
 
 static void message_handler(coap_context_t *ctx, coap_session_t *session,coap_pdu_t *sent, coap_pdu_t *received, const coap_tid_t id){
-    unsigned char *data = NULL;
+    char *data = NULL;
     size_t data_len;
     coap_pdu_t *pdu = NULL;
     coap_opt_t *block_opt;
@@ -152,7 +152,7 @@ static void message_handler(coap_context_t *ctx, coap_session_t *session,coap_pd
             if (coap_opt_block_num(block_opt) == 0) {
                 printf("Received:\n");
             }
-            if (coap_get_data(received, &data_len, &data)) {
+            if (coap_get_data(received, &data_len, (uint8_t**)data)) {
                 printf("%.*s", (int)data_len, data);
             }
             if (COAP_OPT_BLOCK_MORE(block_opt)) {
@@ -196,26 +196,25 @@ static void message_handler(coap_context_t *ctx, coap_session_t *session,coap_pd
             }
             printf("\n");
         } else {
-            if (coap_get_data(received, &data_len, &data)) {
+            if (coap_get_data(received, &data_len, (uint8_t**)data)) {
                 printf("Received2: %.*s\n", (int)data_len, data);
             }
         }
     }
+    char selector = data[0];
     
-    
-    switch(atoi((char*)data[0])){
+    switch(atoi(&selector)){
         case GROUP_PARAMS: 
-            New_Params((char*)data, data_len);
+            New_Params(&data[1], data_len);
             break;
         case GROUP_CONTROL:
-            New_Control((char*)data,  data_len);
+            New_Control(&data[1],  data_len);
             break;
         case GROUP_CHARGERS:
-            New_Group((char*)data,  data_len);
+            New_Group(&data[1],  data_len);
             break;
         case NEW_DATA:
-        
-            New_Data((char*)data,  data_len);
+            New_Data(&data[1],  data_len);
             break;
         case SEND_DATA:
             printf("Debo mandar mis datos!\n");
@@ -417,11 +416,6 @@ static void coap_client(void *p){
     coap_set_log_level(LOG_ERR);
 
     while (1) {
-        #define BUFSIZE 40
-        unsigned char _buf[BUFSIZE];
-        unsigned char *buf;
-        size_t buflen;
-        int res;
         session = NULL;
         ctx     = NULL;
         optlist = NULL;
@@ -484,8 +478,6 @@ static void coap_client(void *p){
         Subscribe("CHARGERS");
         Subscribe("DATA");
         Subscribe("CONTROL");
-
-
 
         //Tras autenticarnos solicitamos los cargadores del grupo y los parametros
         coap_get("CHARGERS");
