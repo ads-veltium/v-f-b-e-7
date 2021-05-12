@@ -18,6 +18,7 @@ extern carac_Coms  Coms;
 extern carac_Firebase_Configuration ConfigFirebase;
 extern carac_Contador   ContadorExt;
 extern carac_Params Params;
+extern carac_group  ChargingGroup;
 
 static esp_eth_handle_t s_eth_handle = NULL;
 
@@ -28,7 +29,6 @@ esp_netif_t *eth_netif;
 
 void initialize_ping(ip_addr_t target_addr, uint8_t *resultado);
 void end_ping();
-void stop_MQTT();
 
 void BuscarContador_Task(void *args){
 
@@ -166,7 +166,7 @@ static void eth_event_handler(void *arg, esp_event_base_t event_base, int32_t ev
                 eth_link_up = false;
                 Coms.ETH.conectado = false;
                 Coms.ETH.Internet = false;
-                stop_MQTT();
+                ChargingGroup.StopOrder = true;
                 break;
             default:
                 break;

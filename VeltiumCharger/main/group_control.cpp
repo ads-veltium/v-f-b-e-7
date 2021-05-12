@@ -18,7 +18,6 @@ uint8_t check_in_group(const char* ID, carac_chargers* group);
 void mqtt_publish(char* Topic, char* Data, size_t data_size, size_t topic_size);
 void store_group_in_mem(carac_chargers* group);
 IPAddress get_IP(const char* ID);
-void stop_MQTT();
 
 TickType_t xStart;
 TickType_t xStart1;
@@ -135,7 +134,7 @@ void New_Control(const char* Data, int Data_size){
   if(!memcmp(Data,"Pause",5)){
     printf("Tengo que pausar el grupo\n");
     ChargingGroup.Params.GroupActive = 0;
-    stop_MQTT();
+    ChargingGroup.StopOrder = true;
 
     char buffer[7];
     memcpy(&buffer,&ChargingGroup.Params,7);
@@ -147,7 +146,8 @@ void New_Control(const char* Data, int Data_size){
     ChargingGroup.Params.GroupActive = 0;
     ChargingGroup.Params.GroupMaster = 0;
     ChargingGroup.DeleteOrder = false;
-    stop_MQTT();
+    ChargingGroup.StopOrder = true;
+    
     remove_group(&ChargingGroup.group_chargers);
     store_group_in_mem(&ChargingGroup.group_chargers);
 

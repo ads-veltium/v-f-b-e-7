@@ -29,13 +29,6 @@ carac_chargers net_group EXT_RAM_ATTR;
 extern carac_chargers FaseChargers;
 
 
-void stop_MQTT(){
-    ChargingGroup.Conected   = false;
-    ChargingGroup.StartClient = false;
-    StopMQTT = true;
-    printf("Stopping MQTT\n");
-}
-
 //Añadir un cargador a un equipo
 bool add_to_group(const char* ID, IPAddress IP, carac_chargers* group){
     if(group->size < MAX_GROUP_SIZE){
