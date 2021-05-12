@@ -262,16 +262,22 @@ void coap_get( char* Topic){
 }
 
 
-static void Authenticate(){
+static bool Authenticate(){
     printf("Autenticadome contra el servidor!!!\n");
-    do{
-        Esperando_datos=1;
-        coap_get("PARAMS");
+
+    Esperando_datos=1;
+    coap_get("PARAMS");
         
-    }while(Esperando_datos);
+    if(Esperando_datos){
+         if (session) {
+            coap_session_release(session);
+        }
+        return false;
+    }
 
 
     printf("Autneticados!!!\n");
+    return true;
 }
 
 static void Subscribe(){
@@ -353,7 +359,7 @@ void coap_put( char* Topic, char* Message){
 static void coap_client(void *p){
     ChargingGroup.Conected = true;
     struct hostent *hp;
-    coap_address_t    dst_addr;
+    coap_address_t    dst_addr, src_addr;
     static coap_uri_t uri;
     char server_uri[100];
     char *phostname = NULL;
@@ -431,19 +437,19 @@ static void coap_client(void *p){
         inet_addr_from_ip4addr(&src_addr.addr.sin.sin_addr, &Coms.ETH.IP);
         src_addr.addr.sin.sin_port        = htons(COAP_DEFAULT_PORT);
 
-        ctx = coap_new_context(src_addr);
+        ctx = coap_new_context(NULL);
         if (!ctx) {
             ESP_LOGE(TAG, "coap_new_context() failed");
             goto clean_up;
         }
-
-
         coap_register_response_handler(ctx, message_handler);
 
         //Autenticarnos mediante DTLS
         if (uri.scheme == COAP_URI_SCHEME_COAPS && coap_dtls_is_supported()){
-            session = coap_new_client_session_psk(ctx, NULL, &dst_addr,COAP_PROTO_DTLS , ConfigFirebase.Device_Id, (const uint8_t *)get_passwd(), sizeof(get_passwd()) - 1);
-            Authenticate();
+            do{
+                session = coap_new_client_session_psk(ctx, &src_addr, &dst_addr,COAP_PROTO_DTLS , ConfigFirebase.Device_Id, (const uint8_t *)get_passwd(), sizeof(get_passwd()) - 1);
+            }while( !Authenticate());
+            
             delay(1000);
         }
 
