@@ -255,7 +255,8 @@ static void Authenticate(){
     do{
         coap_send(session, request);
         Esperando_datos =1;
-    }while(!POLL(10000));
+        delay(10);
+    }while(!POLL(5000));
 
 
     printf("Autneticados!!!\n");
@@ -287,10 +288,9 @@ static void Subscribe(){
     coap_insert_optlist(&optlist,coap_new_optlist(COAP_OPTION_SUBSCRIPTION,0,NULL));
     coap_add_optlist_pdu(request, &optlist);
 
-    do{
-        coap_send(session, request);
-        Esperando_datos =1;
-    }while(!POLL(10000));
+    coap_send(session, request);
+    Esperando_datos =1;
+    POLL(5000);
 }
 
 void coap_get( char* Topic){
@@ -464,6 +464,7 @@ static void coap_client(void *p){
         //Autenticarnos mediante DTLS
         if (uri.scheme == COAP_URI_SCHEME_COAPS && coap_dtls_is_supported()){
             Authenticate();
+            delay(1000);
         }
 
         //Subscribirnos
