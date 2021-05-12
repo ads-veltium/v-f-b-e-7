@@ -136,15 +136,16 @@ IPAddress get_IP(const char* ID){
 }
 
 //Enviar mensajes solo a los miembros del grupo
-void broadcast_a_grupo(char* Mensaje){
-    AsyncUDPMessage mensaje (13);
-    mensaje.write((uint8_t*)(Encipher(Mensaje).c_str()), 13);
+void broadcast_a_grupo(char* Mensaje, uint16_t size){
+    AsyncUDPMessage mensaje (size);
+    mensaje.write((uint8_t*)(Encipher(Mensaje).c_str()), size);
 
     for(int i =0; i < net_group.size;i++){
         for(int j=0;j < ChargingGroup.group_chargers.size;j++){
-            if(check_in_group(net_group.charger_table[i].name, &ChargingGroup.group_chargers)<255){
+            if(check_in_group(net_group.charger_table[i].name, &ChargingGroup.group_chargers) < 255){
                 udp.sendTo(mensaje, net_group.charger_table[i].IP,2702);
                 ChargingGroup.group_chargers.charger_table[j].IP = net_group.charger_table[i].IP; 
+                break;
             }
         }
     }

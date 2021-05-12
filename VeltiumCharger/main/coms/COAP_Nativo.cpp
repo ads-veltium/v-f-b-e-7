@@ -42,8 +42,9 @@ static StackType_t xClientStack [4096*4]     EXT_RAM_ATTR;
 StaticTask_t xServerBuffer;
 StaticTask_t xClientBuffer;
 
-coap_context_t *ctx = NULL;
-
+coap_context_t * ctx      EXT_RAM_ATTR;
+coap_session_t * session  EXT_RAM_ATTR;
+coap_optlist_t * optlist  EXT_RAM_ATTR;
 
 #define EXAMPLE_COAP_PSK_KEY "CONFIG_EXAMPLE_COAP_PSK_KEY"
 
@@ -51,27 +52,27 @@ const static char *TAG = "CoAP_server";
 uint8_t Esperando_datos =0;
 static char espressif_data[100];
 static int espressif_data_len = 0;
-static coap_optlist_t *optlist = NULL;
-static int wait_ms;
-uint8_t FallosEnvio =0;
+uint8_t  FallosEnvio =0;
 
 #define INITIAL_DATA "hola desde coap!"
+
+String Encipher(String input);
+void MasterPanicTask(void *args);
 
 static char* get_passwd(){
     char* pass = (char*) calloc(8, sizeof(char));
 
     uint32_t value =0;
-    for(uint8_t i=0;i< 8;i++){
-        value+=ConfigFirebase.Device_Id[i];
+    for(uint8_t i=0;i< 4;i++){
+        value+=ChargingGroup.MasterIP[i];
     }
 
     randomSeed(value);
     itoa((int)random(12345678, 99999999), pass,8);
-    printf("%s \n", pass);
-    printf("%s \n", pass);
-    printf("%s \n", pass);
-    printf("%s \n", pass);
-    printf("%s \n", pass);
+
+    String password = Encipher(String(pass));
+    pass=(char*)password.c_str();
+
     return pass;
 }
 
@@ -144,7 +145,6 @@ static void message_handler(coap_context_t *ctx, coap_session_t *session,coap_pd
                 tid = coap_send(session, pdu);
 
                 if (tid != COAP_INVALID_TID) {
-                    wait_ms = 0.5 * 1000;
                     return;
                 }
             }
@@ -161,7 +161,7 @@ static void message_handler(coap_context_t *ctx, coap_session_t *session,coap_pd
 static void hnd_espressif_put(coap_context_t *ctx,coap_resource_t *resource,coap_session_t *session,coap_pdu_t *request,coap_binary_t *token,coap_string_t *query, coap_pdu_t *response){
     size_t size;
     unsigned char *data;
-
+    static int count=0;
     coap_resource_notify_observers(resource, NULL);
 
     if (strcmp (espressif_data, INITIAL_DATA) == 0) {
@@ -173,7 +173,10 @@ static void hnd_espressif_put(coap_context_t *ctx,coap_resource_t *resource,coap
     /* coap_get_data() sets size to 0 on error */
     (void)coap_get_data(request, &size, &data);
 
-    printf("He recibido datos %.*s \n", size, data);
+    if(++count > 5000){
+        printf("He recibido datos %.*s \n", size, data);
+    }
+    
 
     espressif_data_len = size > sizeof (espressif_data) ? sizeof (espressif_data) : size;
     memcpy (espressif_data, data, espressif_data_len);
@@ -192,10 +195,11 @@ static bool POLL(int timeout){
             }
         }
     }
+    FallosEnvio=0;
     return true;
 }
 
-static void Authenticate(coap_session_t * session){
+static void Authenticate(){
     coap_pdu_t *request = NULL;
 
     request = coap_new_pdu(session);
@@ -239,7 +243,7 @@ static void Authenticate(coap_session_t * session){
     }while(!POLL(10000));
 }
 
-void coap_get( char* Topic, coap_session_t * session){
+void coap_get( char* Topic){
     coap_pdu_t *request = NULL;
 
     if (optlist) {
@@ -264,7 +268,7 @@ void coap_get( char* Topic, coap_session_t * session){
     POLL(2000);
 }
 
-void coap_put( char* Topic, char* Message, coap_session_t * session){
+void coap_put( char* Topic, char* Message){
     coap_pdu_t *request = NULL;
 
     if (optlist) {
@@ -309,9 +313,10 @@ static void coap_client(void *p){
         unsigned char *buf;
         size_t buflen;
         int res;
-        coap_session_t *session = NULL;
-
+        session = NULL;
+        ctx     = NULL;
         optlist = NULL;
+
         if (coap_split_uri((const uint8_t *)server_uri, strlen(server_uri), &uri) == -1) {
             ESP_LOGE(TAG, "CoAP server uri error");
             break;
@@ -372,8 +377,8 @@ static void coap_client(void *p){
             goto clean_up;
         }
         if (uri.scheme == COAP_URI_SCHEME_COAPS) {
-            get_passwd();
-            session = coap_new_client_session_psk(ctx, NULL, &dst_addr,COAP_PROTO_DTLS , ConfigFirebase.Device_Id, (const uint8_t *)EXAMPLE_COAP_PSK_KEY, sizeof(EXAMPLE_COAP_PSK_KEY) - 1);
+            
+            session = coap_new_client_session_psk(ctx, NULL, &dst_addr,COAP_PROTO_DTLS , ConfigFirebase.Device_Id, (const uint8_t *)get_passwd(), sizeof(get_passwd()) - 1);
         } else {
             session = coap_new_client_session(ctx, NULL, &dst_addr, COAP_PROTO_UDP);
         }
@@ -386,21 +391,27 @@ static void coap_client(void *p){
 
         //Autenticarnos mediante DTLS
         if (uri.scheme == COAP_URI_SCHEME_COAPS && !coap_dtls_is_supported()){
-            Authenticate(session);
+            Authenticate();
         }
+
+        //Tras autenticarnos solicitamos los cargadores del grupo y los parametros
+        coap.get(ChargingGroup.MasterIP, 5683, "Params");
+        oap_get("CHARGERS");
+        delay(500);
+        oap_get("PARAMS");
+        delay(500);
         
-
-        //Bucle tras autenticacion
+        //Bucle del grupo
         while(1){
-
-            coap_get("CHARGERS", session);
+            coap_get("CHARGERS");
             delay(500);
-            coap_put("CHARGERS", "AGUUUR", session );
+            coap_put("CHARGERS", "AGUUUR");
             delay(1000);
 
-            if(FallosEnvio > 10){
-                printf("Servidor desconectado!\n");
+            if(FallosEnvio > 5){
+                printf("Servidor desconectado !\n");
                 FallosEnvio=0;
+                xTaskCreate(MasterPanicTask, "Master Panic", 4096, NULL,2,NULL);
                 break;
             }
         }
@@ -417,16 +428,11 @@ clean_up:
             coap_free_context(ctx);
         }
         coap_cleanup();
-        /*
-         * change the following line to something like sleep(2)
-         * if you want the request to continually be sent
-         */
         break;
     }
     printf("Cerrando cliente coap!\n");
     vTaskDelete(NULL);
 }
-
 
 static void coap_server(void *p){
     ChargingGroup.Conected = true;
@@ -439,11 +445,10 @@ static void coap_server(void *p){
 
     snprintf(espressif_data, sizeof(espressif_data), INITIAL_DATA);
     espressif_data_len = strlen(espressif_data);
-    coap_set_log_level(LOG_ERROR);
+    coap_set_log_level(LOG_ERR);
 
     while (1) {
         coap_endpoint_t *ep = NULL;
-        unsigned wait_ms;
 
         /* Prepare the CoAP server socket */
         coap_address_init(&serv_addr);
@@ -457,7 +462,7 @@ static void coap_server(void *p){
             continue;
         }
         /* Need PSK setup before we set up endpoints */
-        coap_context_set_psk(ctx, "CoAP",(const uint8_t *)EXAMPLE_COAP_PSK_KEY,sizeof(EXAMPLE_COAP_PSK_KEY) - 1);
+        coap_context_set_psk(ctx, "CoAP",(const uint8_t *)get_passwd(),sizeof(get_passwd()) - 1);
 
 
         ep = coap_new_endpoint(ctx, &serv_addr, COAP_PROTO_UDP);
@@ -523,7 +528,7 @@ static void coap_server(void *p){
         coap_add_resource(ctx, CONTROL);
         coap_add_resource(ctx, CHARGERS);
 
-        wait_ms = 0.5 * 1000;
+        int wait_ms = 0.5 * 1000;
 
         while (1) {
             int result = coap_run_once(ctx, wait_ms);
