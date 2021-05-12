@@ -14,12 +14,6 @@ extern carac_chargers FaseChargers;
 extern carac_chargers net_group;
 extern carac_Comands  Comands ;
 
-#define GROUP_PARAMS   1
-#define GROUP_CONTROL  2
-#define GROUP_CHARGERS 3
-#define SEND_DATA      4
-#define NEW_DATA       5
-
 static StackType_t xCoapStack [4096*4]     EXT_RAM_ATTR;
 StaticTask_t xCoapBuffer ;
 TaskHandle_t xCoapHandle = NULL;
@@ -105,38 +99,6 @@ void Send_Params(){
 
   free(my_json_string);
      
-}
-
-// CoAP client response callback
-void callback_response(CoapPacket &packet, IPAddress ip, int port) {
-  xMasterTimer = xTaskGetTickCount();
-  Serial.println("[Coap Response got]");
-  
-  char p[packet.payloadlen + 1];
-  memcpy(p, packet.payload, packet.payloadlen);
-  p[packet.payloadlen] = '\0';
-  
-  Serial.println(p);
-
-  switch(packet.messageid){
-    case GROUP_PARAMS: 
-      New_Params(p, packet.payloadlen);
-      break;
-    case GROUP_CONTROL:
-      New_Control(p, packet.payloadlen);
-      break;
-    case GROUP_CHARGERS:
-      Serial.println(p);
-      New_Group(p, packet.payloadlen);
-      break;
-    case NEW_DATA:
-      New_Data(p, packet.payloadlen);
-      break;
-    case SEND_DATA:
-      printf("Debo mandar mis datos!\n");
-      Send_Data();
-      break;
-  }
 }
 
 /*Tarea de emergencia para cuando el maestro se queda muerto mucho tiempo*/

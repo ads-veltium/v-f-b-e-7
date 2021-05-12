@@ -221,9 +221,7 @@ coap_socket_bind_udp(coap_socket_t *sock,
   switch (listen_addr->addr.sa.sa_family) {
   case AF_INET:
     if (setsockopt(sock->fd, IPPROTO_IP, GEN_IP_PKTINFO, OPTVAL_T(&on), sizeof(on)) == COAP_SOCKET_ERROR)
-      coap_log(LOG_ALERT,
-               "coap_socket_bind_udp: setsockopt IP_PKTINFO: %s\n",
-                coap_socket_strerror());
+      coap_log(LOG_ALERT,"coap_socket_bind_udp: setsockopt IP_PKTINFO: %s\n", coap_socket_strerror());
     break;
   case AF_INET6:
     /* Configure the socket as dual-stacked */
