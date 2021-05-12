@@ -12,14 +12,15 @@ void CoapPacket::addOption(uint8_t number, uint8_t length, uint8_t *opt_payload)
     ++optionnum;
 }
 
+Coap::Coap(
+    UDP& udp
+) {
+    this->_udp = &udp;
+}
 
 bool Coap::start() {
     this->start(COAP_DEFAULT_PORT);
     return true;
-}
-
-void Coap::set_udp(UDP& udp){
-    this->_udp = &udp;
 }
 
 bool Coap::start(int port) {
