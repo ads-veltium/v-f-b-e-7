@@ -45,8 +45,8 @@ void input_values();
 
 //Funcion para procesar los nuevos datos recibidos
 void New_Data(const char* Data, int Data_size){
-
-    cJSON *mensaje_Json = cJSON_Parse(Data);
+    if(Data_size > 0){
+      cJSON *mensaje_Json = cJSON_Parse(Data);
     carac_charger Cargador;
 
     //compribar que el Json está bien
@@ -97,13 +97,25 @@ void New_Data(const char* Data, int Data_size){
     print_table(ChargingGroup.group_chargers, "Grupo total");
     input_values();
     Calculo_Consigna();
+    }
 }
 
 //Funcion para recibir nuevos parametros de carga para el grupo
-void New_Params(const char* Data, int Data_size){
+void New_Params(uint8_t* Buffer, int Data_size){
+
+  
+  if(Data_size <=0){
+    return;
+  }
+  char* Data = (char*) calloc(Data_size, '0');
+  memcpy(Data, Buffer, Data_size);
+
+  printf(" %i %.*s\n",Data_size,Data_size, Data);
   uint8_t buffer[7];
 
   cJSON *mensaje_Json = cJSON_Parse(Data);
+
+  free(Data);
 
   //compribar que el Json está bien
   if(!cJSON_HasObjectItem(mensaje_Json,"cdp")){
