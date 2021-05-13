@@ -440,7 +440,12 @@ static void coap_client(void *p){
 
     sprintf(server_uri, "coaps://%s", ChargingGroup.MasterIP.toString().c_str());
 
+    #ifdef DEBUG_GROUPS
     coap_set_log_level(LOG_ERR);
+    printf("Arrancando cliente coaps\n")
+    #else
+    coap_set_log_level(LOG_EMERG);
+    #endif
 
     while (1) {
         session = NULL;
@@ -530,7 +535,9 @@ static void coap_client(void *p){
             }
             
             if(FallosEnvio > 5 || pdTICKS_TO_MS(xTaskGetTickCount()- xMasterTimer) > 5000){
+                #ifdef DEBUG_GROUPS
                 printf("Servidor desconectado !\n");
+                #endif
                 FallosEnvio=0;
                 xTaskCreate(MasterPanicTask, "Master Panic", 4096, NULL,2,NULL);
                 break;
@@ -568,7 +575,9 @@ clean_up:
         coap_cleanup();
         break;
     }
+    #ifdef DEBUG_GROUPS
     printf("Cerrando cliente coap!\n");
+    #endif
     ChargingGroup.Conected    = false;
     ChargingGroup.StartClient = false;
     xClientHandle = NULL;
@@ -580,7 +589,12 @@ static void coap_server(void *p){
     ctx = NULL;
     coap_address_t serv_addr;
 
-    coap_set_log_level(LOG_DEBUG);
+    #ifdef DEBUG_GROUPS
+    printf("Arrancando servidor COAP\n");
+    coap_set_log_level(LOG_ERR);
+    #else
+    coap_set_log_level(LOG_EMERG);
+    #endif
 
     DATA = NULL;
     PARAMS  = NULL;
@@ -689,8 +703,8 @@ static void coap_server(void *p){
             }
             if (result) {
                 /* result must have been >= wait_ms, so reset wait_ms */
-                wait_ms = 1 * 1000;
-                //printf("%i\n", esp_get_free_internal_heap_size());
+                wait_ms = 0.25 * 1000;
+                printf("%i\n", esp_get_free_internal_heap_size());
             }
 
             //Enviar nuevos parametros para el grupo
@@ -925,9 +939,6 @@ void coap_start_server(){
 
   ChargingGroup.Conected = true;
   if(ChargingGroup.Params.GroupMaster){
-
-    printf("Arrancando servidor COAP\n");
-
     //Preguntar si hay maestro en el grupo
     for(uint8_t i =0; i<10;i++){
         broadcast_a_grupo("Hay maestro?", 12);
@@ -949,7 +960,6 @@ void coap_start_server(){
         }
         else{
             //Si el grupo está vacio o el cargador no está en el grupo,
-            printf("No tengo cargadores en el grupo o no estoy en mi propio grupo!\n");
             ChargingGroup.Params.GroupMaster = false;
             ChargingGroup.Params.GroupActive = false;
             ChargingGroup.Conected = false;
@@ -960,6 +970,11 @@ void coap_start_server(){
         ChargingGroup.MasterIP.fromString(String(ip4addr_ntoa(&Coms.ETH.IP)));
         start_server();
     }
+    #ifdef DEBUG_GROUPS
+    else{
+        printf("No arranco el servidor, o ya hay uno o tengo mal el grupo!\n");
+    }
+    #endif
   }
 
 }
