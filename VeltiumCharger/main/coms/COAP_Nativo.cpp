@@ -442,7 +442,7 @@ static void coap_client(void *p){
 
     #ifdef DEBUG_GROUPS
     coap_set_log_level(LOG_ERR);
-    printf("Arrancando cliente coaps\n")
+    printf("Arrancando cliente coaps\n");
     #else
     coap_set_log_level(LOG_EMERG);
     #endif
