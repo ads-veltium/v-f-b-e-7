@@ -244,7 +244,7 @@ bool ReadFirebaseGroups(String Path){
       ChargingGroup.Params.GroupActive = Lectura["active"].as<uint8_t>();
       ChargingGroup.Params.inst_max = Lectura["install_limit"].as<uint8_t>();
       ChargingGroup.Params.CDP = Lectura["cdp"].as<uint8_t>();
-      ChargingGroup.Params.GroupActive = Lectura["p_con"].as<uint8_t>();
+      ChargingGroup.Params.ContractPower = Lectura["p_con"].as<uint8_t>();
       ChargingGroup.Params.potencia_max = Lectura["p_max"].as<uint8_t>();
       ChargingGroup.DeleteOrder  = Lectura["delete"].as<bool>();
 

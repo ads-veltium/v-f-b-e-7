@@ -42,6 +42,7 @@ StaticTask_t xServerBuffer;
 StaticTask_t xClientBuffer;
 TaskHandle_t xServerHandle = NULL;
 TaskHandle_t xClientHandle = NULL;
+TickType_t   xMasterTimer  = 0;
 
 coap_context_t * ctx      EXT_RAM_ATTR;
 coap_session_t * session  EXT_RAM_ATTR;
@@ -104,6 +105,7 @@ hnd_get(coap_context_t *ctx, coap_resource_t *resource,coap_session_t *session,c
         }
     }
     else if(!memcmp(resource->uri_path->s, "PARAMS", resource->uri_path->length)){
+        
         itoa(GROUP_PARAMS, buffer, 10);
         cJSON *Params_Json;
         Params_Json = cJSON_CreateObject();
@@ -211,6 +213,7 @@ static void message_handler(coap_context_t *ctx, coap_session_t *session,coap_pd
         }
     }
     if(data != NULL){
+        xMasterTimer = xTaskGetTickCount();
         switch(data[0]-'0'){
             case GROUP_PARAMS: 
                 New_Params(&data[1], data_len-1);
@@ -261,13 +264,6 @@ static void hnd_espressif_put(coap_context_t *ctx,coap_resource_t *resource,coap
     else if(!memcmp(resource->uri_path->s, "DATA", resource->uri_path->length)){
         New_Data(data,  size);
         memcpy(LastData, data, size);
-        //Pedir datos a los esclavos para que no envíen todos a la vez
-        turno++;        
-        delay(250);
-        if(turno == ChargingGroup.group_chargers.size){
-            turno=1;
-            Send_Data(); //Mandar mis datos
-        }
     }
 
     coap_resource_notify_observers(resource, NULL);
@@ -387,8 +383,8 @@ static void Subscribe(char* TOPIC){
 void coap_put( char* Topic, char* Message){
     if(ChargingGroup.Params.GroupMaster){
         if(!memcmp(DATA->uri_path->s, Topic, DATA->uri_path->length)){
-            strcpy(LastData, Message);
-           // memcpy(LastData, Message, strlen(Message));
+            //strcpy(LastData, Message);
+            memcpy(LastData, Message, strlen(Message));
             coap_resource_notify_observers(DATA, NULL);
             New_Data(Message,  strlen(Message));
         }
@@ -441,7 +437,6 @@ static void coap_client(void *p){
     static coap_uri_t uri;
     char server_uri[100];
     char *phostname = NULL;
-    TickType_t xTimer = xTaskGetTickCount();
 
     sprintf(server_uri, "coaps://%s", ChargingGroup.MasterIP.toString().c_str());
 
@@ -517,7 +512,7 @@ static void coap_client(void *p){
         coap_get("PARAMS");
         
         //Bucle del grupo
-        xTimer = xTaskGetTickCount();
+        xMasterTimer = xTaskGetTickCount();
         while(1){
             coap_run_once(ctx, 1000);
 
@@ -534,7 +529,7 @@ static void coap_client(void *p){
                 ChargingGroup.SendNewGroup = false;
             }
             
-            if(FallosEnvio > 5){
+            if(FallosEnvio > 5 || pdTICKS_TO_MS(xTaskGetTickCount()- xMasterTimer) > 5000){
                 printf("Servidor desconectado !\n");
                 FallosEnvio=0;
                 xTaskCreate(MasterPanicTask, "Master Panic", 4096, NULL,2,NULL);
@@ -637,12 +632,17 @@ static void coap_server(void *p){
         Chargers_Name.length = sizeof("CHARGERS")-1;
         Chargers_Name.s = reinterpret_cast<const uint8_t *>("CHARGERS");
 
+        coap_str_const_t Txanda_name;
+        Txanda_name.length = sizeof("TXANDA")-1;
+        Txanda_name.s = reinterpret_cast<const uint8_t *>("TXANDA");
+
         DATA     = coap_resource_init(&Data_Name, COAP_RESOURCE_FLAGS_RELEASE_URI);
         PARAMS   = coap_resource_init(&Params_Name, COAP_RESOURCE_FLAGS_RELEASE_URI);
         CONTROL  = coap_resource_init(&Control_Name, COAP_RESOURCE_FLAGS_RELEASE_URI);
         CHARGERS = coap_resource_init(&Chargers_Name, COAP_RESOURCE_FLAGS_RELEASE_URI);
+        TXANDA   = coap_resource_init(&Txanda_name, COAP_RESOURCE_FLAGS_RELEASE_URI);
 
-        if (!DATA || !PARAMS || !CONTROL || !CHARGERS) {
+        if (!DATA || !PARAMS || !CONTROL || !CHARGERS || !TXANDA) {
             ESP_LOGE(TAG, "coap_resource_init() failed");
             goto clean_up;
         }
@@ -677,6 +677,7 @@ static void coap_server(void *p){
 
         int wait_ms = 1 * 1000;
         TickType_t xStart = xTaskGetTickCount();
+        TickType_t xTimerTurno = xTaskGetTickCount();
         while (1) {
             int result = coap_run_once(ctx, wait_ms);
 
@@ -689,7 +690,7 @@ static void coap_server(void *p){
             if (result) {
                 /* result must have been >= wait_ms, so reset wait_ms */
                 wait_ms = 1 * 1000;
-                printf("%i\n", esp_get_free_internal_heap_size());
+                //printf("%i\n", esp_get_free_internal_heap_size());
             }
 
             //Enviar nuevos parametros para el grupo
@@ -722,8 +723,20 @@ static void coap_server(void *p){
                 break;
             }
 
+            //Pedir datos a los esclavos para que no envíen todos a la vez
+            if(pdTICKS_TO_MS(xTaskGetTickCount() - xTimerTurno) >=250){
+                turno++;        
+                if(turno == ChargingGroup.group_chargers.size){
+                    turno=1;
+                    Send_Data(); //Mandar mis datos
+                }
+                xTimerTurno = xTaskGetTickCount();
+                coap_resource_notify_observers(TXANDA, NULL);
+            }
+
+
             //Comprobar si los esclavos se desconectan cada 15 segundos
-            TickType_t Transcurrido = xTaskGetTickCount() - xStart;
+            int Transcurrido = pdTICKS_TO_MS(xTaskGetTickCount() - xStart);
             if(Transcurrido > 15000){
                 xStart = xTaskGetTickCount();
                 for(uint8_t i=0 ;i<ChargingGroup.group_chargers.size;i++){
