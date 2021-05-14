@@ -267,10 +267,6 @@ bool ReadFirebaseGroups(String Path){
           ChargingGroup.group_chargers.size = index;
           store_group_in_mem(&ChargingGroup.group_chargers);
 
-          //si soy el maestro, avisar a los nuevos de que son parte de mi grupo
-          if(ChargingGroup.Params.GroupMaster){
-            broadcast_a_grupo("Satrt client", 12);
-          }
           ChargingGroup.SendNewGroup = true;
         }
       }    

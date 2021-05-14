@@ -941,6 +941,8 @@ void procesar_bloque(uint16 tipo_bloque){
 						ChargingGroup.SendNewGroup = true;
 					}
 				}
+				//si soy el maestro, avisar a los nuevos de que son parte de mi grupo
+            	broadcast_a_grupo("Satrt client", 12);
 			}
 			print_table(ChargingGroup.group_chargers, "Grupo desde PSOC");
 		}
