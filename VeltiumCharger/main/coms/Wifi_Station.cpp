@@ -340,7 +340,7 @@ void Eth_Loop(){
                 delay(100);
                 start_udp();
                 xStart = xTaskGetTickCount();
-                //Solo comprobamos la conexion a internet si no hemos activado el servidro dhcp
+                //Solo comprobamos la conexion a internet si no hemos activado el servidor dhcp
                 if(!Coms.ETH.DHCP){
                     if(ComprobarConexion()){
                         Coms.ETH.Internet = true;
@@ -382,7 +382,7 @@ void Eth_Loop(){
             }
 
             //Apagar el eth
-            if(!Coms.ETH.ON && (ConnectionState ==IDLE || ConnectionState==DISCONNECTED)){  
+            if(!Coms.ETH.ON && (ConnectionState == IDLE || ConnectionState == DISCONNECTED)){  
                 //Si lo queremos reinicializar para ponerle una ip estatica o quitarsela
                 if(Coms.ETH.restart){
                     if(ChargingGroup.Conected){

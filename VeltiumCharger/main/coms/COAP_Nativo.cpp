@@ -724,7 +724,7 @@ static void coap_server(void *p){
             if (result) {
                 /* result must have been >= wait_ms, so reset wait_ms */
                 wait_ms = 0.1 * 1000;
-                printf("%i\n", esp_get_free_internal_heap_size());
+                //printf("%i\n", esp_get_free_internal_heap_size());
             }
 
             //Enviar nuevos parametros para el grupo
@@ -962,14 +962,17 @@ void start_client(){
  * Funciones para llamar desde otros puntos del codigo
  * ****************************************************/
 void coap_start_server(){
-
+  ChargingGroup.Params.GroupMaster = true;
   ChargingGroup.Conected = true;
-  if(ChargingGroup.Params.GroupMaster){
+
     //Preguntar si hay maestro en el grupo
     for(uint8_t i =0; i<10;i++){
         broadcast_a_grupo("Hay maestro?", 12);
         delay(5);
-        if(!ChargingGroup.Params.GroupMaster)break;
+        if(!ChargingGroup.Params.GroupMaster){
+            ChargingGroup.Conected = false;
+            break;
+        }
     }
     if(ChargingGroup.Params.GroupMaster){
         broadcast_a_grupo("Start client", 12);
@@ -990,7 +993,6 @@ void coap_start_server(){
             ChargingGroup.Params.GroupActive = false;
             ChargingGroup.Conected = false;
             return;
-            
         }
         
         ChargingGroup.MasterIP.fromString(String(ip4addr_ntoa(&Coms.ETH.IP)));
@@ -1001,8 +1003,6 @@ void coap_start_server(){
         printf("No arranco el servidor, o ya hay uno o tengo mal el grupo!\n");
     }
     #endif
-  }
-
 }
 
 void coap_start_client(){
