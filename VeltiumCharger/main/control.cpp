@@ -541,7 +541,6 @@ void procesar_bloque(uint16 tipo_bloque){
 				modifyCharacteristic(buffer_rx_local, 1, LED_LUMIN_COLOR_LUMINOSITY_LEVEL_CHAR_HANDLE);
 
 				luminosidad = buffer_rx_local[0];
-				ChargingGroup.SendNewData  = true;
 				//Hilo piloto
 				if((memcmp(&buffer_rx_local[1], status_hpt_anterior, 2) != 0)){
 					dispositivo_inicializado = 2;
@@ -557,7 +556,6 @@ void procesar_bloque(uint16 tipo_bloque){
 						}
 					}
 #ifdef CONNECTED
-					ChargingGroup.SendNewData  = true;
 					ConfigFirebase.WriteStatus = true;
 #endif
 				}
@@ -584,7 +582,6 @@ void procesar_bloque(uint16 tipo_bloque){
 						serverbleNotCharacteristic(&buffer_rx_local[24],2,MEASURES_INST_CURRENTB_CHAR_HANDLE);
 						serverbleNotCharacteristic(&buffer_rx_local[34],2,MEASURES_INST_CURRENTC_CHAR_HANDLE);
 					}
-					ChargingGroup.SendNewData  = true;
 					ConfigFirebase.WriteStatus = true;
 #endif
 				}
@@ -924,7 +921,7 @@ void procesar_bloque(uint16 tipo_bloque){
 			}
 
 			//Ponerme el primero en el grupo para indicar que soy el maestro
-			/*if(ChargingGroup.Params.GroupMaster){
+			if(ChargingGroup.Params.GroupMaster){
 				if(memcmp(ChargingGroup.group_chargers.charger_table[0].name,ConfigFirebase.Device_Id, 8)){
 					if(ChargingGroup.group_chargers.size > 0 && check_in_group(ConfigFirebase.Device_Id,&ChargingGroup.group_chargers ) != 255){
 						while(memcmp(ChargingGroup.group_chargers.charger_table[0].name,ConfigFirebase.Device_Id, 8)){
@@ -936,7 +933,7 @@ void procesar_bloque(uint16 tipo_bloque){
 						ChargingGroup.SendNewGroup = true;
 					}
 				}
-			}*/
+			}
 
 
 			print_table(ChargingGroup.group_chargers, "Grupo desde PSOC");

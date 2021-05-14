@@ -1,7 +1,6 @@
 #include "contador.h"
 
 extern carac_Status Status;
-extern xParametrosPing ParametrosPing;
 extern carac_Coms Coms;
 extern carac_Contador   ContadorExt;
 
@@ -12,8 +11,9 @@ Cliente_HTTP CounterClient("192.168.1.1", 1000);
 
 //Buscar el contador
 void Contador::find(){
+    #ifdef DEVELOPMENT
     Serial.println("Iniciando fase busqueda ");
-    IP4_ADDR(&ParametrosPing.BaseAdress , ip4_addr1(&Coms.ETH.IP),ip4_addr2(&Coms.ETH.IP),ip4_addr3(&Coms.ETH.IP),ip4_addr4(&Coms.ETH.IP));
+    #endif
     xTaskCreate( BuscarContador_Task, "BuscarContador", 4096*4, NULL, 5, NULL);   
 }
 
@@ -37,7 +37,9 @@ bool Contador::read(){
     CounterClient.Send_Command(CounterUrl,LEER);
 
     if (!CounterClient.Send_Command(CounterUrl,LEER)) {
+        #ifdef DEVELOPMENT
         Serial.printf("Counter reading error\n");
+        #endif
         return false;
     }
 
@@ -58,8 +60,6 @@ void Contador::parse(){
     medida = Measurements["measurements"]["I3"].as<String>();
     ContadorExt.DomesticCurrentC = medida.toFloat() *100;
 
-
-    
     medida = Measurements["measurements"]["U1"].as<String>();
     Status.Measures.instant_voltage = medida.toFloat() *100;
     Serial.println(Status.Measures.instant_voltage);

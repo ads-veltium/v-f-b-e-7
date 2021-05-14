@@ -4,22 +4,21 @@
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 #pragma GCC diagnostic ignored "-Wwrite-strings"
 
-//configuration
-#define USE_COMS
-#define USE_DRACO_BLE
+/*********** Configuracion del build**************/
 
-#define DEVELOPMENT
-#define GROUPS
+#define USE_COMS                   //Comentar para no utilzar las comunicaciones [ Veltium lite Zero]
+
+#define DEVELOPMENT				   //Comentar para pasar firmware a produccion ( Cambio de base de datos y quitar debugs)
 
 #ifdef DEVELOPMENT
-	#define DEBUG
+	#define DEBUG				   //Activar los distintos debugs
 	#ifdef DEBUG 
-		#define DEBUG_GROUPS
-		#define DEBUG_BLE
+		#define DEBUG_GROUPS       //Activar el debug de los grupos
+		#define DEBUG_BLE		   //Activar el debug del ble
 	#endif
 #endif
 
-
+/*********** Fin configuracion build**************/
 #define MAX_GROUP_SIZE 50
 
 #include "Arduino.h"

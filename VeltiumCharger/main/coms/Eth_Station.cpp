@@ -112,9 +112,14 @@ void BuscarContador_Task(void *args){
     Coms.ETH.Wifi_Perm = true;
     Cliente.end();
     
-    if(!ContadorExt.ContadorConectado){
-        Serial.println("No he encontrado ningun medidor");
-    }
+    #ifdef DEVELOPMENT
+        if(!ContadorExt.ContadorConectado){
+            Serial.println("No he encontrado ningun medidor");
+        }
+        else{
+            printf("HE encontrado un cargador!!!\n");
+        }
+    #endif
     vTaskDelete(NULL);
 }
 
@@ -129,7 +134,6 @@ bool ComprobarConexion(void){
         if (err == ESP_OK) {
             if(esp_http_client_get_status_code(client) == 200){
                 esp_http_client_cleanup(client);
-                Serial.println("Detectada conexion a internet!");
                 return true;
             }
         }
@@ -137,7 +141,6 @@ bool ComprobarConexion(void){
     }
 
     esp_http_client_cleanup(client);
-    Serial.println("Sin salida a internet detectada");
 	return false;
 }
 
@@ -177,7 +180,9 @@ static void eth_event_handler(void *arg, esp_event_base_t event_base, int32_t ev
             ip_event_got_ip_t *event = (ip_event_got_ip_t *) event_data;
             const esp_netif_ip_info_t *ip_info = &event->ip_info;
 
-            Serial.printf( "ETHIP: %d %d %d %d\n",IP2STR(&ip_info->ip));
+            #ifdef DEVELOPMENT
+                Serial.printf( "ETHIP: %d %d %d %d\n",IP2STR(&ip_info->ip));
+            #endif
             
             Coms.ETH.IP.addr = ip_info->ip.addr;
 
@@ -197,7 +202,9 @@ static void eth_event_handler(void *arg, esp_event_base_t event_base, int32_t ev
 void initialize_ethernet(void){  
 
     esp_netif_config_t cfg = ESP_NETIF_DEFAULT_ETH();
+    #ifdef DEVELOPMENT
     Serial.println("Arrancando ethernet");
+    #endif
     //servidor DHCP
     if(!Coms.ETH.Auto && Params.Tipo_Sensor){
         //si tenemos IP estatica y un medidor conectado, activamos el dhcp
@@ -289,7 +296,6 @@ void kill_ethernet(void){
 
 bool stop_ethernet(void){
     if(esp_eth_stop(s_eth_handle) != ESP_OK){
-        Serial.println("esp_eth_stop failed");
         return false;
     }
 
@@ -301,7 +307,6 @@ bool stop_ethernet(void){
 
 bool restart_ethernet(void){
     if(esp_eth_start(s_eth_handle) != ESP_OK){
-        Serial.println("esp_eth_stop failed");
         return false;
     }
     eth_connecting = true;

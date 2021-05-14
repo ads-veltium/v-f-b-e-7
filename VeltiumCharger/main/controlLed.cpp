@@ -134,14 +134,23 @@ void LedControl_Task(void *arg){
 
 	while(1){
 
-		//TODO: Borrar
-		if(ChargingGroup.Params.GroupMaster){
-			displayAll(100,ROJO);	
-			delay(500);
-		}
+		#ifdef DEBUG_GROUPS
+			if(ChargingGroup.SendNewData){
+				displayAll(100,HUE_WHITE);	
+				delay(50);
+			}
+			
+			else if(ChargingGroup.Params.GroupMaster){
+				displayAll(100,ROJO);	
+				delay(50);
+			}
 
-		//Efectos puntuales
-		else if(LastBle!=serverbleGetConnected()){		
+
+		else if(LastBle!=serverbleGetConnected()){	
+		#else
+		if(LastBle!=serverbleGetConnected()){
+		#endif
+		
 			displayAll(50,BLANCO);	
 			vTaskDelay(pdMS_TO_TICKS(500));
 			LastBle=serverbleGetConnected();

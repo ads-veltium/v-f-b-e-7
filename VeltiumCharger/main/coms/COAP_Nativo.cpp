@@ -59,6 +59,7 @@ uint8_t Esperando_datos =0;
 uint8_t  FallosEnvio =0;
 uint8_t turno =0;
 char LastData[500] EXT_RAM_ATTR;
+char LastControl[50] EXT_RAM_ATTR;
 
 /*****************************
  * Funciones externas
@@ -129,6 +130,9 @@ hnd_get(coap_context_t *ctx, coap_resource_t *resource,coap_session_t *session,c
     }
     else if(!memcmp(resource->uri_path->s, "CONTROL", resource->uri_path->length)){
         itoa(GROUP_CONTROL, buffer, 10);
+        int size = strlen(LastControl);
+        memcpy(&buffer[1], LastControl, size);
+        buffer[size+1]='\0';
 
     }
     else if(!memcmp(resource->uri_path->s, "DATA", resource->uri_path->length)){
@@ -212,6 +216,7 @@ static void message_handler(coap_context_t *ctx, coap_session_t *session,coap_pd
             }
         }
     }
+    
     if(data != NULL){
         xMasterTimer = xTaskGetTickCount();
         switch(data[0]-'0'){
@@ -234,6 +239,7 @@ static void message_handler(coap_context_t *ctx, coap_session_t *session,coap_pd
                 }
                 else{
                     printf("No me toca a mí\n");
+                    ChargingGroup.SendNewData= false;
                 }
                 
                 break;
@@ -260,6 +266,7 @@ static void hnd_espressif_put(coap_context_t *ctx,coap_resource_t *resource,coap
     }
     else if(!memcmp(resource->uri_path->s, "CONTROL", resource->uri_path->length)){
         New_Control(data,  size);
+        memcpy(LastControl, data, size);
     }
     else if(!memcmp(resource->uri_path->s, "DATA", resource->uri_path->length)){
         New_Data(data,  size);
@@ -383,7 +390,6 @@ static void Subscribe(char* TOPIC){
 void coap_put( char* Topic, char* Message){
     if(ChargingGroup.Params.GroupMaster){
         if(!memcmp(DATA->uri_path->s, Topic, DATA->uri_path->length)){
-            //strcpy(LastData, Message);
             memcpy(LastData, Message, strlen(Message));
             coap_resource_notify_observers(DATA, NULL);
             New_Data(Message,  strlen(Message));
@@ -393,6 +399,7 @@ void coap_put( char* Topic, char* Message){
             coap_resource_notify_observers(PARAMS, NULL);
         }
         else if(!memcmp(CONTROL->uri_path->s, Topic, CONTROL->uri_path->length)){
+            memcpy(LastControl, Message, strlen(Message));
             New_Control(Message,  strlen(Message));
             coap_resource_notify_observers(CONTROL, NULL);
         }
@@ -586,6 +593,7 @@ clean_up:
 
 static void coap_server(void *p){
     ChargingGroup.Conected = true;
+    ChargingGroup.StopOrder = false;
     ctx = NULL;
     coap_address_t serv_addr;
 
@@ -703,7 +711,7 @@ static void coap_server(void *p){
             }
             if (result) {
                 /* result must have been >= wait_ms, so reset wait_ms */
-                wait_ms = 0.25 * 1000;
+                wait_ms = 0.1 * 1000;
                 printf("%i\n", esp_get_free_internal_heap_size());
             }
 
@@ -743,6 +751,7 @@ static void coap_server(void *p){
                 if(turno == ChargingGroup.group_chargers.size){
                     turno=1;
                     Send_Data(); //Mandar mis datos
+                    ChargingGroup.SendNewData = true;
                 }
                 xTimerTurno = xTaskGetTickCount();
                 coap_resource_notify_observers(TXANDA, NULL);
@@ -814,8 +823,7 @@ void Send_Data(){
 
   coap_put("DATA", my_json_string);
 
-  free(my_json_string);
-  ChargingGroup.SendNewData = false;     
+  free(my_json_string);    
 }
 
 //enviar mi grupo de cargadores

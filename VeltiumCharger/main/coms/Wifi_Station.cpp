@@ -413,7 +413,7 @@ void Eth_Loop(){
                 }
             }
             //Lectura del contador
-			if(ContadorExt.ContadorConectado && Params.Ubicacion_Sensor){
+			if(ContadorExt.ContadorConectado && Params.Tipo_Sensor){
 				if(!Counter.Inicializado){
                     printf("Arrancando lectura del contador\n");
 					Counter.begin(ContadorExt.ContadorIp);
@@ -489,10 +489,13 @@ void Eth_Loop(){
             Serial.println("Estado no implementado en maquina de ETH!!!");
         break;
     }
+
+    #ifdef DEVELOPMENT
     if(LastStatus!= Coms.ETH.State){
       Serial.printf("Maquina de estados de ETH de % i a %i \n", LastStatus, Coms.ETH.State);
       LastStatus= Coms.ETH.State;
     }
+    #endif
 }
 
 void ComsTask(void *args){
