@@ -616,7 +616,7 @@ static void coap_server(void *p){
 
     #ifdef DEBUG_GROUPS
     printf("Arrancando servidor COAP\n");
-    coap_set_log_level(LOG_DEBUG);
+    coap_set_log_level(LOG_ERR);
     #else
     coap_set_log_level(LOG_EMERG);
     #endif
@@ -732,7 +732,7 @@ static void coap_server(void *p){
             if (result) {
                 /* result must have been >= wait_ms, so reset wait_ms */
                 wait_ms = 250;
-                //printf("%i\n", esp_get_free_internal_heap_size());
+                printf("%i\n", esp_get_free_internal_heap_size());
             }
 
             //Enviar nuevos parametros para el grupo
@@ -747,22 +747,27 @@ static void coap_server(void *p){
                 ChargingGroup.SendNewGroup = false;
             }
 
+            //Esto son ordenes internas, por lo que no las enviamos al resto
             else if(ChargingGroup.StopOrder){
-                char buffer[20];
+                /*char buffer[20];
                 ChargingGroup.StopOrder = false;
-                memcpy(buffer,"Pause",6);
-                coap_put("CONTROL", buffer);
+                memcpy(buffer,"Pause",5);
+                coap_put("CONTROL", buffer);*/
+                New_Control("Pause", 5);
+                ChargingGroup.StopOrder = false;
                 break;
             }
 
             else if(ChargingGroup.DeleteOrder){
-                char buffer[20];
-                ChargingGroup.DeleteOrder = false;
+                /*char buffer[20];
                 memcpy(buffer,"Delete",6);
                 coap_put("CONTROL", buffer);
+                delay(250);*/
+                New_Control("Delete", 6);
+                ChargingGroup.DeleteOrder = false;
                 break;
             }
-
+            
             //Pedir datos a los esclavos para que no envíen todos a la vez
             if(pdTICKS_TO_MS(xTaskGetTickCount() - xTimerTurno) >= 250){
                 turno++;        
