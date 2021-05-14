@@ -20,6 +20,7 @@ extern uint8_t ConnectionState;
 void DownloadTask(void *arg);
 void store_group_in_mem(carac_chargers* group);
 void coap_put( char* Topic, char* Message);
+void broadcast_a_grupo(char* Mensaje, uint16_t size);
 
 
 uint16 ParseFirmwareVersion(String Texto){
@@ -264,6 +265,12 @@ bool ReadFirebaseGroups(String Path){
             index ++;
           }
           ChargingGroup.group_chargers.size = index;
+          store_group_in_mem(&ChargingGroup.group_chargers);
+
+          //si soy el maestro, avisar a los nuevos de que son parte de mi grupo
+          if(ChargingGroup.Params.GroupMaster){
+            broadcast_a_grupo("Satrt client", 12);
+          }
           ChargingGroup.SendNewGroup = true;
         }
       }    
