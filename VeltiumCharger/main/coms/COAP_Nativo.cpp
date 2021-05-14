@@ -233,9 +233,21 @@ static void message_handler(coap_context_t *ctx, coap_session_t *session,coap_pd
                 New_Data(&data[1],  data_len-1);
                 break;
             case TURNO:
-                if(!memcmp(ChargingGroup.group_chargers.charger_table[data[1]-'0'].name,ConfigFirebase.Device_Id, 8)){
+                uint8_t index;
+                if(data_len > 2){
+                    char index_char[2];
+                    memcpy(index_char, &data[1],2);
+                    index = atoi(index_char);
+                }
+                else{
+                    index = data[1]-'0';
+                }
+                
+                
+                if(!memcmp(ChargingGroup.group_chargers.charger_table[index].name,ConfigFirebase.Device_Id, 8)){
                     printf("Debo mandar mis datos!\n");
                     Send_Data();
+                    ChargingGroup.SendNewData= true;
                 }
                 else{
                     printf("No me toca a mí\n");
@@ -439,6 +451,7 @@ void coap_put( char* Topic, char* Message){
 
 static void coap_client(void *p){
     ChargingGroup.Conected = true;
+    ChargingGroup.StopOrder = false;
     struct hostent *hp;
     coap_address_t    dst_addr, src_addr;
     static coap_uri_t uri;
@@ -545,7 +558,6 @@ static void coap_client(void *p){
                 #ifdef DEBUG_GROUPS
                 printf("Servidor desconectado !\n");
                 #endif
-                FallosEnvio=0;
                 xTaskCreate(MasterPanicTask, "Master Panic", 4096, NULL,2,NULL);
                 break;
             }
@@ -753,6 +765,9 @@ static void coap_server(void *p){
                     Send_Data(); //Mandar mis datos
                     ChargingGroup.SendNewData = true;
                 }
+                else{
+                    ChargingGroup.SendNewData = false;
+                }
                 xTimerTurno = xTaskGetTickCount();
                 coap_resource_notify_observers(TXANDA, NULL);
             }
@@ -889,11 +904,13 @@ void MasterPanicTask(void *args){
     TickType_t xStart = xTaskGetTickCount();
     uint8 reintentos = 1;
     ChargingGroup.Params.GroupActive = false;
-    int delai = 30000;
+    ChargingGroup.Conected    = false;
+    ChargingGroup.StartClient = false;
+    int delai = 5000;
     Serial.println("Necesitamos un nuevo maestro!");
     while(!ChargingGroup.Conected){
         if(pdTICKS_TO_MS(xTaskGetTickCount() - xStart) > delai){ //si pasan 30 segundos, elegir un nuevo maestro
-            delai=10000;           
+            delai=500;           
 
             if(!memcmp(ChargingGroup.group_chargers.charger_table[reintentos].name,ConfigFirebase.Device_Id,8)){
                 ChargingGroup.Params.GroupActive = true;
@@ -914,16 +931,17 @@ void MasterPanicTask(void *args){
                     else{
                       printf("Ya he mirado todos los equipos y no estoy!\n");
                     }
-                    
                     break;
                 }
             }
         }
         if(!Coms.ETH.conectado){
+            printf("Parando deteccion de maestro por ethernet desconectado!\n");
             break;
         }
         delay(delai);
     }
+    printf("Fin tarea busqueda maestro\n");
     vTaskDelete(NULL);
 }
 
