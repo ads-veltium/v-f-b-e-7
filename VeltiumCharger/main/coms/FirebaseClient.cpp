@@ -19,6 +19,7 @@ extern uint8_t ConnectionState;
 
 void DownloadTask(void *arg);
 void store_group_in_mem(carac_chargers* group);
+void coap_put( char* Topic, char* Message);
 
 
 uint16 ParseFirmwareVersion(String Texto){
@@ -267,8 +268,20 @@ bool ReadFirebaseGroups(String Path){
         }
       }    
 
+      else{
+          if(ChargingGroup.Conected){
+            char buffer[20];
+            memcpy(buffer,"Pause",5);
+            coap_put("CONTROL", buffer);
+          }
+      }
       if(ChargingGroup.DeleteOrder){
-        WriteFirebasegroups(Path);
+          WriteFirebasegroups(Path);
+          if(ChargingGroup.Conected){
+            char buffer[20];
+            memcpy(buffer,"Delete",6);
+            coap_put("CONTROL", buffer);
+         }
       }
       
       if(!Database->Send_Command(Path+"/ts_dev_ack",&Lectura,TIMESTAMP, true)){

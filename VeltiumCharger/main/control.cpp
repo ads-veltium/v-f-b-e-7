@@ -920,6 +920,14 @@ void procesar_bloque(uint16 tipo_bloque){
 				}
 			}
 
+			//si llega un grupo en el que no estoy, significa que me han sacado de el
+			//cierro el coap y borro el grupo
+			if(check_in_group(ConfigFirebase.Device_Id,&ChargingGroup.group_chargers ) == 255){
+				if(ChargingGroup.Conected){
+					ChargingGroup.DeleteOrder = true;
+				}
+			}
+
 			//Ponerme el primero en el grupo para indicar que soy el maestro
 			if(ChargingGroup.Params.GroupMaster){
 				if(memcmp(ChargingGroup.group_chargers.charger_table[0].name,ConfigFirebase.Device_Id, 8)){
@@ -934,8 +942,6 @@ void procesar_bloque(uint16 tipo_bloque){
 					}
 				}
 			}
-
-
 			print_table(ChargingGroup.group_chargers, "Grupo desde PSOC");
 		}
 		break;
