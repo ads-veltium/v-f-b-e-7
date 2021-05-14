@@ -60,6 +60,7 @@ uint8_t  FallosEnvio =0;
 uint8_t turno =0;
 char LastData[500] EXT_RAM_ATTR;
 char LastControl[50] EXT_RAM_ATTR;
+bool hello_verification = false;
 
 /*****************************
  * Funciones externas
@@ -717,6 +718,9 @@ static void coap_server(void *p){
         TickType_t xStart = xTaskGetTickCount();
         TickType_t xTimerTurno = xTaskGetTickCount();
         while (1) {
+            if(hello_verification){
+                wait_ms = 10000;
+            }
             int result = coap_run_once(ctx, wait_ms);
             
             if (result < 0) {
@@ -927,6 +931,7 @@ void MasterPanicTask(void *args){
                     if(!memcmp(ChargingGroup.group_chargers.charger_table[0].name,ConfigFirebase.Device_Id,8)){
                         ChargingGroup.Params.GroupActive = true;
                         ChargingGroup.Params.GroupMaster = true;
+
                         printf("Soy el nuevo maestro2!\n");
                     }
                     else{
@@ -943,6 +948,9 @@ void MasterPanicTask(void *args){
         delay(delai);
     }
     printf("Fin tarea busqueda maestro\n");
+    char buffer[7];
+    memcpy(buffer, &ChargingGroup.Params,7);
+    SendToPSOC5((char*)buffer,7,GROUPS_PARAMS); 
     vTaskDelete(NULL);
 }
 
@@ -1004,6 +1012,10 @@ void coap_start_server(){
         printf("No arranco el servidor, o ya hay uno o tengo mal el grupo!\n");
     }
     #endif
+
+    char buffer[7];
+    memcpy(buffer, &ChargingGroup.Params,7);
+    SendToPSOC5((char*)buffer,7,GROUPS_PARAMS); 
 }
 
 void coap_start_client(){
