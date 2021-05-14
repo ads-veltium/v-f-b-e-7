@@ -785,15 +785,14 @@ static void coap_server(void *p){
                     ChargingGroup.group_chargers.charger_table[i].Period += Transcurrido;
                     //si un equipo lleva mucho sin contestar, lo intentamos despertar
                     if(ChargingGroup.group_chargers.charger_table[i].Period >=30000 && ChargingGroup.group_chargers.charger_table[i].Period <= 60000){ 
-                        send_to(ChargingGroup.group_chargers.charger_table[i].IP, "Start client");
+                        send_to(get_IP(ChargingGroup.group_chargers.charger_table[i].name), "Start client");
                     }
                     
                     //si un equipo lleva muchisimo sin contestar, lo damos por muerto y lo eliminamos de la tabla
                     if(ChargingGroup.group_chargers.charger_table[i].Period >=60000 && ChargingGroup.group_chargers.charger_table[i].Period <= 65000){
                         if(memcmp(ChargingGroup.group_chargers.charger_table[i].name, ConfigFirebase.Device_Id,8)){
-                            remove_from_group(ChargingGroup.group_chargers.charger_table[i].name,&net_group);
                             if(ChargingGroup.group_chargers.charger_table[i].Fase == Params.Fase){
-                            remove_from_group(ChargingGroup.group_chargers.charger_table[i].name,&FaseChargers);
+                                remove_from_group(ChargingGroup.group_chargers.charger_table[i].name,&FaseChargers);
                             }
                         }
                     }

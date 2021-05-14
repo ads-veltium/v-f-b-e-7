@@ -135,8 +135,10 @@ void broadcast_a_grupo(char* Mensaje, uint16_t size){
 
     for(int i =0; i < net_group.size;i++){
         for(int j=0;j < ChargingGroup.group_chargers.size;j++){
-            if(check_in_group(net_group.charger_table[i].name, &ChargingGroup.group_chargers) < 255){
-                udp.sendTo(mensaje, net_group.charger_table[i].IP,2702);
+            if(check_in_group(net_group.charger_table[i].name, &ChargingGroup.group_chargers) != 255){
+                if(net_group.charger_table[i].IP != IPADDR_NONE && net_group.charger_table[i].IP != IPADDR_ANY){
+                    udp.sendTo(mensaje, net_group.charger_table[i].IP,2702);
+                }
                 ChargingGroup.group_chargers.charger_table[j].IP = net_group.charger_table[i].IP; 
                 break;
             }
@@ -147,7 +149,9 @@ void broadcast_a_grupo(char* Mensaje, uint16_t size){
 void send_to(IPAddress IP,  char* Mensaje){
     AsyncUDPMessage _mensaje (strlen(Mensaje));
     _mensaje.write((uint8_t*)(Encipher(Mensaje).c_str()), 13);
-    udp.sendTo(_mensaje,IP,2702);
+    if(IP != IPADDR_NONE && IP != IPADDR_ANY){
+        udp.sendTo(_mensaje,IP,2702);
+    }
 }
 
 //Arrancar la comunicacion udp para escuchar cuando el maestro nos lo ordene
