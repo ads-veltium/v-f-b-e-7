@@ -92,6 +92,7 @@ void modifyCharacteristic(uint8* data, uint16 len, uint16 attrHandle);
 void proceso_recepcion(void);
 int Convert_To_Epoch(uint8_t DateTime[6]);
 void Disable_VELT1_CHARGER_services(void);
+void broadcast_a_grupo(char* Mensaje, uint16_t size);
 
 
 #ifdef CONNECTED

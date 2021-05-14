@@ -554,7 +554,7 @@ static void coap_client(void *p){
                 ChargingGroup.SendNewGroup = false;
             }
             
-            if(FallosEnvio > 5 || pdTICKS_TO_MS(xTaskGetTickCount()- xMasterTimer) > 5000){
+            if(FallosEnvio > 10 || pdTICKS_TO_MS(xTaskGetTickCount()- xMasterTimer) > 60000){
                 #ifdef DEBUG_GROUPS
                 printf("Servidor desconectado !\n");
                 #endif
@@ -615,7 +615,7 @@ static void coap_server(void *p){
 
     #ifdef DEBUG_GROUPS
     printf("Arrancando servidor COAP\n");
-    coap_set_log_level(LOG_ERR);
+    coap_set_log_level(LOG_DEBUG);
     #else
     coap_set_log_level(LOG_EMERG);
     #endif
@@ -713,7 +713,7 @@ static void coap_server(void *p){
         coap_add_resource(ctx, CHARGERS);
         coap_add_resource(ctx, TXANDA);
 
-        int wait_ms = 1 * 1000;
+        int wait_ms = 10;
         TickType_t xStart = xTaskGetTickCount();
         TickType_t xTimerTurno = xTaskGetTickCount();
         while (1) {
@@ -727,7 +727,7 @@ static void coap_server(void *p){
             }
             if (result) {
                 /* result must have been >= wait_ms, so reset wait_ms */
-                wait_ms = 0.1 * 1000;
+                wait_ms = 10;
                 //printf("%i\n", esp_get_free_internal_heap_size());
             }
 
@@ -748,7 +748,6 @@ static void coap_server(void *p){
                 ChargingGroup.StopOrder = false;
                 memcpy(buffer,"Pause",6);
                 coap_put("CONTROL", buffer);
-                delay(250);
                 break;
             }
 
@@ -757,7 +756,6 @@ static void coap_server(void *p){
                 ChargingGroup.DeleteOrder = false;
                 memcpy(buffer,"Delete",6);
                 coap_put("CONTROL", buffer);
-                delay(250);
                 break;
             }
 

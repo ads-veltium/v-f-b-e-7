@@ -374,7 +374,12 @@ void Eth_Loop(){
                             coap_start_client();
                         }
                         else{
-                            coap_start_server();
+                            if(ChargingGroup.Params.GroupMaster){
+                                coap_start_server();
+                            }
+                            else if(GetStateTime(xStart) > 60000){
+                                coap_start_server();
+                            }
                         }
                         
                     }

@@ -20,7 +20,7 @@ extern uint8_t ConnectionState;
 void DownloadTask(void *arg);
 void store_group_in_mem(carac_chargers* group);
 void coap_put( char* Topic, char* Message);
-void broadcast_a_grupo(char* Mensaje, uint16_t size);
+
 
 
 uint16 ParseFirmwareVersion(String Texto){

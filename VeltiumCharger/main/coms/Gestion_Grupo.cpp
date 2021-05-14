@@ -171,24 +171,25 @@ void start_udp(){
                     packet.print(Encipher(String(ConfigFirebase.Device_Id)).c_str());
                 }
 
-                //Si el cargador está en el grupo de carga, le decimos que es un esclavo
-                if(ChargingGroup.Params.GroupMaster && ChargingGroup.Conected){
-                    if(check_in_group(Desencriptado.c_str(), &ChargingGroup.group_chargers) != 255){
-                        #ifdef DEBUG_GROUPS
-                        Serial.printf("El cargador VCD%s está en el grupo de carga\n", Desencriptado.c_str());  
-                        #endif
-                        AsyncUDPMessage mensaje (13);
-                        mensaje.write((uint8_t*)(Encipher("Start client").c_str()), 13);
-                        udp.sendTo(mensaje,packet.remoteIP(),2702);
-                    }
-                }
-          
                 if(check_in_group(Desencriptado.c_str(), &net_group) == 255){
                     #ifdef DEBUG_GROUPS
                     Serial.printf("El cargador VCD%s con ip %s se ha añadido a la lista de red\n", Desencriptado.c_str(), packet.remoteIP().toString().c_str());  
                     #endif
                     add_to_group(Desencriptado.c_str(), packet.remoteIP(), &net_group);
                 } 
+
+                //Si el cargador está en el grupo de carga, le decimos que es un esclavo
+                if(ChargingGroup.Params.GroupMaster && ChargingGroup.Conected){
+                    if(check_in_group(Desencriptado.c_str(), &ChargingGroup.group_chargers) != 255){
+                        #ifdef DEBUG_GROUPS
+                        Serial.printf("El cargador VCD%s está en el grupo de carga\n", Desencriptado.c_str());  
+                        #endif
+                        broadcast_a_grupo("Start client", 12);
+                        AsyncUDPMessage mensaje (13);
+                        mensaje.write((uint8_t*)(Encipher("Start client").c_str()), 13);
+                        udp.sendTo(mensaje,packet.remoteIP(),2702);
+                    }
+                }
             }
             else{
                 if(!memcmp(Desencriptado.c_str(), "Start client", 12)){
@@ -202,6 +203,11 @@ void start_udp(){
                         ChargingGroup.Params.GroupActive = true;
                         ChargingGroup.MasterIP =packet.remoteIP();
                         
+                    }
+                    else if(ChargingGroup.Params.GroupMaster){
+                        #ifdef DEBUG_GROUPS
+                        printf("Estamos mas de un maestro!\n");
+                        #endif
                     }
                 }
                 else if(!memcmp(Desencriptado.c_str(), "Hay maestro?", 12)){
