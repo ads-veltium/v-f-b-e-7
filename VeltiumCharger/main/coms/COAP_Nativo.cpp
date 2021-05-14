@@ -713,12 +713,12 @@ static void coap_server(void *p){
         coap_add_resource(ctx, CHARGERS);
         coap_add_resource(ctx, TXANDA);
 
-        int wait_ms = 10;
+        int wait_ms = 250;
         TickType_t xStart = xTaskGetTickCount();
         TickType_t xTimerTurno = xTaskGetTickCount();
         while (1) {
             int result = coap_run_once(ctx, wait_ms);
-
+            
             if (result < 0) {
                 break;
             } else if (result && (unsigned)result < wait_ms) {
@@ -727,7 +727,7 @@ static void coap_server(void *p){
             }
             if (result) {
                 /* result must have been >= wait_ms, so reset wait_ms */
-                wait_ms = 10;
+                wait_ms = 250;
                 //printf("%i\n", esp_get_free_internal_heap_size());
             }
 
@@ -760,7 +760,7 @@ static void coap_server(void *p){
             }
 
             //Pedir datos a los esclavos para que no envíen todos a la vez
-            if(pdTICKS_TO_MS(xTaskGetTickCount() - xTimerTurno) >=250){
+            if(pdTICKS_TO_MS(xTaskGetTickCount() - xTimerTurno) >= 250){
                 turno++;        
                 if(turno == ChargingGroup.group_chargers.size){
                     turno=1;
@@ -782,7 +782,7 @@ static void coap_server(void *p){
                 for(uint8_t i=0 ;i<ChargingGroup.group_chargers.size;i++){
                     ChargingGroup.group_chargers.charger_table[i].Period += Transcurrido;
                     //si un equipo lleva mucho sin contestar, lo intentamos despertar
-                    if(ChargingGroup.group_chargers.charger_table[i].Period >=30000 && ChargingGroup.group_chargers.charger_table[i].Period <= 60000){ 
+                    if(ChargingGroup.group_chargers.charger_table[i].Period >=30000){ 
                         send_to(get_IP(ChargingGroup.group_chargers.charger_table[i].name), "Start client");
                     }
                     
@@ -969,7 +969,7 @@ void coap_start_server(){
     //Preguntar si hay maestro en el grupo
     for(uint8_t i =0; i<10;i++){
         broadcast_a_grupo("Hay maestro?", 12);
-        delay(5);
+        delay(20);
         if(!ChargingGroup.Params.GroupMaster){
             ChargingGroup.Conected = false;
             break;

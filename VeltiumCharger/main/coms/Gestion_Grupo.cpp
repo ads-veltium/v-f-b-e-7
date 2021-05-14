@@ -204,11 +204,7 @@ void start_udp(){
                         ChargingGroup.MasterIP =packet.remoteIP();
                         
                     }
-                    else if(ChargingGroup.Params.GroupMaster){
-                        #ifdef DEBUG_GROUPS
-                        printf("Estamos mas de un maestro!\n");
-                        #endif
-                    }
+      
                 }
                 else if(!memcmp(Desencriptado.c_str(), "Hay maestro?", 12)){
                     if(ChargingGroup.Conected && ChargingGroup.Params.GroupMaster){
@@ -216,7 +212,7 @@ void start_udp(){
                     }
                 }
                 else if(!memcmp(Desencriptado.c_str(), "Bai, hemen nago", 15)){
-                    if(!ChargingGroup.Conected && ChargingGroup.Params.GroupMaster){
+                    if(ChargingGroup.Conected && ChargingGroup.Params.GroupMaster){
                         ChargingGroup.StartClient = true;
                         ChargingGroup.Params.GroupMaster = false;
                         ChargingGroup.Params.GroupActive = true;
