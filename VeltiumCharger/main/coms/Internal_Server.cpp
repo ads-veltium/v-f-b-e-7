@@ -337,7 +337,7 @@ void InitServer(void) {
     }
     String vcd(ConfigFirebase.Device_Id);
     
-    if(longitud_pwd==NULL){
+    if(longitud_pwd==255){
         password = vcd;
     }else{
         password = flash;
