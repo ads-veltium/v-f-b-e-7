@@ -144,7 +144,8 @@ hnd_get(coap_context_t *ctx, coap_resource_t *resource,coap_session_t *session,c
         Data_JSON = cJSON_CreateObject();   
 
         for(uint8_t i=0; i<=ChargingGroup.group_chargers.size;i++){
-            cJSON *charger = cJSON_CreateObject();
+            cJSON *charger ;
+            charger = cJSON_CreateObject();
 
             cJSON_AddStringToObject(charger, "device_Id", ChargingGroup.group_chargers.charger_table[i].name);
             cJSON_AddNumberToObject(charger, "fase", ChargingGroup.group_chargers.charger_table[i].Fase);
@@ -153,7 +154,8 @@ hnd_get(coap_context_t *ctx, coap_resource_t *resource,coap_session_t *session,c
             cJSON_AddStringToObject(charger, "HPT", ChargingGroup.group_chargers.charger_table[i].HPT);
             cJSON_AddNumberToObject(charger, "limite_fase", ChargingGroup.group_chargers.charger_table[i].limite_fase);
             cJSON_AddItemToObject(Data_JSON, ChargingGroup.group_chargers.charger_table[i].name, charger);
-            cJSON_Delete(Data_JSON); 
+
+            //cJSON_Delete(charger); 
         }   
 
         char *my_json_string = cJSON_Print(Data_JSON);   
@@ -558,16 +560,18 @@ static void coap_client(void *p){
         Subscribe("CHARGERS");
         //Subscribe("DATA");
         Subscribe("CONTROL");
-        Subscribe("TXANDA");
 
         //Tras autenticarnos solicitamos los cargadores del grupo y los parametros
         coap_get("CHARGERS");
+        POLL(100);
         coap_get("PARAMS");
+        POLL(100);
         
         //Bucle del grupo
         xMasterTimer = xTaskGetTickCount();
         while(1){
-            coap_run_once(ctx, 100);
+            coap_get("DATA");
+            coap_run_once(ctx, 500);
 
             
             //Enviar nuevos parametros para el grupo
@@ -610,6 +614,7 @@ static void coap_client(void *p){
                 ChargingGroup.DeleteOrder = false;
                 break;
             }
+            delay(250);
         }
 
 clean_up:
