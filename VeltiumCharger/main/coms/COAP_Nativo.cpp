@@ -253,14 +253,14 @@ static void message_handler(coap_context_t *ctx, coap_session_t *session,coap_pd
                 }
                 else{
                     printf("No me toca a mí\n");
+                    delay(50);
+                    coap_get("DATA");
                     ChargingGroup.SendNewData= false;
                 }
                 
                 break;
             default:
                 printf("DAtos no esperados\n");
-                delay(50);
-                coap_get("DATA");
                 break;
         }
     }
@@ -645,7 +645,7 @@ static void coap_server(void *p){
 
         /* Need PSK setup before we set up endpoints */     
         coap_context_set_psk(ctx, "CoAP",(const uint8_t *)get_passwd().c_str(),8);
-        //ep = coap_new_endpoint(ctx, &serv_addr, COAP_PROTO_UDP);
+        ep = coap_new_endpoint(ctx, &serv_addr, COAP_PROTO_UDP);
 
         if (coap_dtls_is_supported()) {
             serv_addr.addr.sin.sin_port        = htons(COAPS_DEFAULT_PORT);
@@ -771,7 +771,7 @@ static void coap_server(void *p){
             }
             
             //Pedir datos a los esclavos para que no envíen todos a la vez
-            if(pdTICKS_TO_MS(xTaskGetTickCount() - xTimerTurno) >= 250){
+            if(pdTICKS_TO_MS(xTaskGetTickCount() - xTimerTurno) >= 500){
                 turno++;        
                 if(turno == ChargingGroup.group_chargers.size){
                     turno=1;
@@ -802,6 +802,8 @@ static void coap_server(void *p){
                         if(memcmp(ChargingGroup.group_chargers.charger_table[i].name, ConfigFirebase.Device_Id,8)){
                             if(ChargingGroup.group_chargers.charger_table[i].Fase == Params.Fase){
                                 remove_from_group(ChargingGroup.group_chargers.charger_table[i].name,&FaseChargers);
+                                //TODO:
+                                //Falta hacer que envie datos de 0 del equipo borrado
                             }
                         }
                     }
