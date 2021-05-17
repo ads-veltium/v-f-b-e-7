@@ -76,6 +76,7 @@ void store_group_in_mem(carac_chargers* group);
 void broadcast_a_grupo(char* Mensaje, uint16_t size);
 void send_to(IPAddress IP,  char* Mensaje);
 void coap_put( char* Topic, char* Message);
+void coap_get( char* Topic);
 
 /*****************************
  * Prototipos de funciones 
@@ -257,7 +258,9 @@ static void message_handler(coap_context_t *ctx, coap_session_t *session,coap_pd
                 
                 break;
             default:
-                printf("DAtos no esperaddos\n");
+                printf("DAtos no esperados\n");
+                delay(50);
+                coap_get("DATA");
                 break;
         }
     }
@@ -528,19 +531,18 @@ static void coap_client(void *p){
         //Subscribirnos
         Subscribe("PARAMS");
         Subscribe("CHARGERS");
-        Subscribe("DATA");
+        //Subscribe("DATA");
         Subscribe("CONTROL");
         Subscribe("TXANDA");
 
         //Tras autenticarnos solicitamos los cargadores del grupo y los parametros
         coap_get("CHARGERS");
-
         coap_get("PARAMS");
         
         //Bucle del grupo
         xMasterTimer = xTaskGetTickCount();
         while(1){
-            coap_run_once(ctx, 1000);
+            coap_run_once(ctx, 100);
 
             
             //Enviar nuevos parametros para el grupo
