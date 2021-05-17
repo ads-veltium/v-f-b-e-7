@@ -52,7 +52,6 @@ coap_resource_t *DATA EXT_RAM_ATTR;
 coap_resource_t *PARAMS  EXT_RAM_ATTR;
 coap_resource_t *CONTROL  EXT_RAM_ATTR;
 coap_resource_t *CHARGERS  EXT_RAM_ATTR; 
-coap_resource_t *TXANDA EXT_RAM_ATTR;
 
 const static char *TAG = "CoAP_server";
 uint8_t Esperando_datos =0;
@@ -87,11 +86,97 @@ void Send_Chargers();
 String get_passwd();
 void MasterPanicTask(void *args);
 
+bool Parse_Data_JSON(uint8_t* data, int Data_size){
+    if(Data_size <=0){
+        return false;
+    }
+
+    char* Data = (char*) calloc(Data_size, '0');
+    memcpy(Data, data, Data_size);
+
+
+    cJSON *mensaje_Json = cJSON_Parse(Data);
+
+    char *Jsonstring =cJSON_Print(mensaje_Json);
+    printf("%s\n",Jsonstring);
+    free(Jsonstring);
+
+    //comprobar que el Json está bien
+    if(!cJSON_HasObjectItem(mensaje_Json,"Txanda")){
+        return false;
+    }
+
+    //Obtener el turno del que le toca escribir
+    uint8_t index = (uint8_t) cJSON_GetObjectItem(mensaje_Json,"Txanda")->valueint;
+    
+    if(!memcmp(ChargingGroup.group_chargers.charger_table[index].name,ConfigFirebase.Device_Id, 8)){
+        printf("Debo mandar mis datos!\n");
+        Send_Data();
+        delay(50);
+        coap_get("DATA");
+        ChargingGroup.SendNewData= true;
+    }
+    else{
+        printf("No me toca a mí\n");
+        ChargingGroup.SendNewData= false;
+    }
+
+    cJSON *cargadores = cJSON_GetObjectItem(mensaje_Json,"Cargadores");
+    if( cargadores ) {
+        cJSON *cargador = cargadores->child;
+        while( cargador ) {
+            char *Cargador_String =cJSON_Print(cargador);
+            New_Data(Cargador_String,  strlen(Cargador_String));
+            cargador = cargador->next;
+            free(Cargador_String);
+        }
+    }
+
+    cJSON_Delete(mensaje_Json);
+    free(Data);
+    return true;
+}
+
+static void
+hnd_get_data (coap_context_t *ctx, coap_resource_t *resource,coap_session_t *session,coap_pdu_t *request, coap_binary_t *token,coap_string_t *query, coap_pdu_t *response){    
+    cJSON *Big_JSON;
+    Big_JSON = cJSON_CreateObject(); 
+
+    //Añadir el turno al JSON
+    cJSON_AddNumberToObject(Big_JSON, "Txanda", turno);
+
+    //Añadir los datos del grupo al JSON
+    cJSON *Data_JSON;
+    Data_JSON = cJSON_CreateObject();   
+
+    for(uint8_t i=0; i< ChargingGroup.group_chargers.size;i++){
+        cJSON *charger;
+        charger = cJSON_CreateObject();
+
+        cJSON_AddStringToObject(charger, "device_Id", ChargingGroup.group_chargers.charger_table[i].name);
+        cJSON_AddNumberToObject(charger, "fase", ChargingGroup.group_chargers.charger_table[i].Fase);
+        cJSON_AddNumberToObject(charger, "current", ChargingGroup.group_chargers.charger_table[i].Current);
+        cJSON_AddNumberToObject(charger, "Delta", ChargingGroup.group_chargers.charger_table[i].Delta);
+        cJSON_AddStringToObject(charger, "HPT", ChargingGroup.group_chargers.charger_table[i].HPT);
+        cJSON_AddNumberToObject(charger, "limite_fase", ChargingGroup.group_chargers.charger_table[i].limite_fase);
+        cJSON_AddItemToObject(Data_JSON, ChargingGroup.group_chargers.charger_table[i].name, charger);
+    }   
+
+    cJSON_AddItemToObject(Big_JSON, "Cargadores", Data_JSON);
+
+    char *my_json_string = cJSON_Print(Big_JSON);   
+    cJSON_Delete(Big_JSON); 
+    
+    response->code = COAP_RESPONSE_CODE(200);
+
+    coap_add_data_blocked_response(resource, session, request, response, token,COAP_MEDIATYPE_APPLICATION_JSON, 1,(size_t)strlen(my_json_string),(const u_char*)my_json_string);
+    free(my_json_string);
+} 
 
 static void
 hnd_get(coap_context_t *ctx, coap_resource_t *resource,coap_session_t *session,coap_pdu_t *request, coap_binary_t *token,coap_string_t *query, coap_pdu_t *response){    
-    response->code = COAP_RESPONSE_CODE(200);
     char buffer[500];
+    
     if(!memcmp(resource->uri_path->s, "CHARGERS", resource->uri_path->length)){
         itoa(GROUP_CHARGERS, buffer, 10);
         
@@ -102,7 +187,7 @@ hnd_get(coap_context_t *ctx, coap_resource_t *resource,coap_session_t *session,c
             sprintf(&buffer[1],"%i",(char)ChargingGroup.group_chargers.size);
         }
         
-        for(uint8_t i=0;i< ChargingGroup.group_chargers.size;i++){
+        for(uint8_t i=0;i< ChargingGroup.group_chargers.size-1;i++){
             memcpy(&buffer[3+(i*9)],ChargingGroup.group_chargers.charger_table[i].name,8);   
             itoa(ChargingGroup.group_chargers.charger_table[i].Fase,&buffer[11+(i*9)],10);
         }
@@ -135,42 +220,10 @@ hnd_get(coap_context_t *ctx, coap_resource_t *resource,coap_session_t *session,c
         int size = strlen(LastControl);
         memcpy(&buffer[1], LastControl, size);
         buffer[size+1]='\0';
-
     }
-    else if(!memcmp(resource->uri_path->s, "DATA", resource->uri_path->length)){
-        itoa(NEW_DATA, buffer, 10);
 
-        cJSON *Data_JSON;
-        Data_JSON = cJSON_CreateObject();   
-
-        for(uint8_t i=0; i<=ChargingGroup.group_chargers.size;i++){
-            cJSON *charger ;
-            charger = cJSON_CreateObject();
-
-            cJSON_AddStringToObject(charger, "device_Id", ChargingGroup.group_chargers.charger_table[i].name);
-            cJSON_AddNumberToObject(charger, "fase", ChargingGroup.group_chargers.charger_table[i].Fase);
-            cJSON_AddNumberToObject(charger, "current", ChargingGroup.group_chargers.charger_table[i].Current);
-            cJSON_AddNumberToObject(charger, "Delta", ChargingGroup.group_chargers.charger_table[i].Delta);
-            cJSON_AddStringToObject(charger, "HPT", ChargingGroup.group_chargers.charger_table[i].HPT);
-            cJSON_AddNumberToObject(charger, "limite_fase", ChargingGroup.group_chargers.charger_table[i].limite_fase);
-            cJSON_AddItemToObject(Data_JSON, ChargingGroup.group_chargers.charger_table[i].name, charger);
-
-            //cJSON_Delete(charger); 
-        }   
-
-        char *my_json_string = cJSON_Print(Data_JSON);   
-        cJSON_Delete(Data_JSON); 
-
-        int size = strlen(my_json_string);
-        memcpy(&buffer[1], my_json_string, size);
-        buffer[size+1]='\0';
-
-        free(my_json_string);
-    }
-    else if(!memcmp(resource->uri_path->s, "TXANDA", resource->uri_path->length)){
-        sprintf(buffer,"%i%i",TURNO, turno);
-    }
-    coap_add_data_blocked_response(resource, session, request, response, token,COAP_MEDIATYPE_TEXT_PLAIN, 10,(size_t)strlen((char*)buffer),(const u_char*)buffer);
+    response->code = COAP_RESPONSE_CODE(200);
+    coap_add_data_blocked_response(resource, session, request, response, token,COAP_MEDIATYPE_APPLICATION_JSON, 0,(size_t)strlen((char*)buffer),(const u_char*)buffer);
 }
 
 static void message_handler(coap_context_t *ctx, coap_session_t *session,coap_pdu_t *sent, coap_pdu_t *received, const coap_tid_t id){
@@ -244,48 +297,22 @@ static void message_handler(coap_context_t *ctx, coap_session_t *session,coap_pd
     
     if(data != NULL){
         xMasterTimer = xTaskGetTickCount();
-        switch(data[0]-'0'){
-            case GROUP_PARAMS: 
-                New_Params(&data[1], data_len-1);
-                break;
-            case GROUP_CONTROL:
-                New_Control(&data[1],  data_len-1);
-                break;
-            case GROUP_CHARGERS:
-                New_Group(&data[1],  data_len-1);
-                break;
-            case NEW_DATA:
-                New_Data(&data[1],  data_len-1);
-                break;
-            case TURNO:
-                uint8_t index;
-                if(data_len > 2){
-                    char index_char[2];
-                    memcpy(index_char, &data[1],2);
-                    index = atoi(index_char);
-                }
-                else{
-                    index = data[1]-'0';
-                }
-                
-                
-                if(!memcmp(ChargingGroup.group_chargers.charger_table[index].name,ConfigFirebase.Device_Id, 8)){
-                    printf("Debo mandar mis datos!\n");
-                    Send_Data();
-                    
-                    ChargingGroup.SendNewData= true;
-                }
-                else{
-                    printf("No me toca a mí\n");
-                    delay(50);
-                    coap_get("DATA");
-                    ChargingGroup.SendNewData= false;
-                }
-                
-                break;
-            default:
-                printf("DAtos no esperados\n");
-                break;
+        if(!Parse_Data_JSON(data, data_len)){
+            switch(data[0]-'0'){
+                case GROUP_PARAMS: 
+                    New_Params(&data[1], data_len-1);
+                    break;
+                case GROUP_CONTROL:
+                    New_Control(&data[1],  data_len-1);
+                    break;
+                case GROUP_CHARGERS:
+                    New_Group(&data[1],  data_len-1);
+                    break;
+
+                default:
+                    printf("Datos no esperados\n");
+                    break;
+            }
         }
     }
     
@@ -315,9 +342,7 @@ static void hnd_espressif_put(coap_context_t *ctx,coap_resource_t *resource,coap
         New_Data(data,  size);
         //memcpy(LastData, data, size);
         coap_resource_notify_observers(DATA, NULL);
-    }
-
-    
+    }   
 
     response->code = COAP_RESPONSE_CODE(200);
 }
@@ -657,7 +682,6 @@ static void coap_server(void *p){
     PARAMS  = NULL;
     CONTROL  = NULL;
     CHARGERS  = NULL; 
-    TXANDA = NULL;
 
     while (1) {
         coap_endpoint_t *ep = NULL;
@@ -704,17 +728,12 @@ static void coap_server(void *p){
         Chargers_Name.length = sizeof("CHARGERS")-1;
         Chargers_Name.s = reinterpret_cast<const uint8_t *>("CHARGERS");
 
-        coap_str_const_t Txanda_name;
-        Txanda_name.length = sizeof("TXANDA")-1;
-        Txanda_name.s = reinterpret_cast<const uint8_t *>("TXANDA");
-
         DATA     = coap_resource_init(&Data_Name, COAP_RESOURCE_FLAGS_RELEASE_URI);
         PARAMS   = coap_resource_init(&Params_Name, COAP_RESOURCE_FLAGS_RELEASE_URI);
         CONTROL  = coap_resource_init(&Control_Name, COAP_RESOURCE_FLAGS_RELEASE_URI);
         CHARGERS = coap_resource_init(&Chargers_Name, COAP_RESOURCE_FLAGS_RELEASE_URI);
-        TXANDA   = coap_resource_init(&Txanda_name, COAP_RESOURCE_FLAGS_RELEASE_URI);
 
-        if (!DATA || !PARAMS || !CONTROL || !CHARGERS || !TXANDA) {
+        if (!DATA || !PARAMS || !CONTROL || !CHARGERS) {
             ESP_LOGE(TAG, "coap_resource_init() failed");
             goto clean_up;
         }
@@ -725,13 +744,11 @@ static void coap_server(void *p){
         coap_register_handler(PARAMS, COAP_REQUEST_PUT, hnd_espressif_put);
         coap_register_handler(CONTROL, COAP_REQUEST_PUT, hnd_espressif_put);
         coap_register_handler(CHARGERS, COAP_REQUEST_PUT, hnd_espressif_put);
-        coap_register_handler(TXANDA, COAP_REQUEST_PUT, hnd_espressif_put);
 
         coap_register_handler(PARAMS, COAP_REQUEST_GET, hnd_get);
         coap_register_handler(CHARGERS, COAP_REQUEST_GET, hnd_get);
         coap_register_handler(CONTROL, COAP_REQUEST_GET, hnd_get);
-        coap_register_handler(DATA, COAP_REQUEST_GET, hnd_get);
-        coap_register_handler(TXANDA, COAP_REQUEST_GET, hnd_get);
+        coap_register_handler(DATA, COAP_REQUEST_GET, hnd_get_data);
 
 
         /* We possibly want to Observe the GETs */
@@ -739,13 +756,11 @@ static void coap_server(void *p){
         coap_resource_set_get_observable(PARAMS, 1);
         coap_resource_set_get_observable(CONTROL, 1);
         coap_resource_set_get_observable(CHARGERS, 1);
-        coap_resource_set_get_observable(TXANDA, 1);
 
         coap_add_resource(ctx, DATA);
         coap_add_resource(ctx, PARAMS);
         coap_add_resource(ctx, CONTROL);
         coap_add_resource(ctx, CHARGERS);
-        coap_add_resource(ctx, TXANDA);
 
         int wait_ms = 250;
         TickType_t xStart = xTaskGetTickCount();
@@ -813,7 +828,6 @@ static void coap_server(void *p){
                     ChargingGroup.SendNewData = false;
                 }
                 xTimerTurno = xTaskGetTickCount();
-                coap_resource_notify_observers(TXANDA, NULL);
             }
 
 
@@ -998,14 +1012,14 @@ void MasterPanicTask(void *args){
 
 void start_server(){
     if(xServerHandle == NULL){
-        xServerHandle = xTaskCreateStatic(coap_server, "coap_server", 4096*4, NULL, 5, xServerStack, &xServerBuffer);
+        xServerHandle = xTaskCreateStatic(coap_server, "coap_server", 4096*4, NULL, 1, xServerStack, &xServerBuffer);
     }
     
 }
 
 void start_client(){
     if(xClientHandle == NULL){
-        xClientHandle = xTaskCreateStatic(coap_client, "coap_client", 4096*4, NULL, 5, xClientStack,&xClientBuffer);
+        xClientHandle = xTaskCreateStatic(coap_client, "coap_client", 4096*4, NULL, 1, xClientStack,&xClientBuffer);
     }
 }
 
