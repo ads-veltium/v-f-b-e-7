@@ -139,15 +139,36 @@ hnd_get(coap_context_t *ctx, coap_resource_t *resource,coap_session_t *session,c
     }
     else if(!memcmp(resource->uri_path->s, "DATA", resource->uri_path->length)){
         itoa(NEW_DATA, buffer, 10);
-        int size = strlen(LastData);
-        memcpy(&buffer[1], LastData, size);
+
+        cJSON *Data_JSON;
+        Data_JSON = cJSON_CreateObject();   
+
+        for(uint8_t i=0; i<=ChargingGroup.group_chargers.size;i++){
+            cJSON *charger = cJSON_CreateObject();
+
+            cJSON_AddStringToObject(charger, "device_Id", ChargingGroup.group_chargers.charger_table[i].name);
+            cJSON_AddNumberToObject(charger, "fase", ChargingGroup.group_chargers.charger_table[i].Fase);
+            cJSON_AddNumberToObject(charger, "current", ChargingGroup.group_chargers.charger_table[i].Current);
+            cJSON_AddNumberToObject(charger, "Delta", ChargingGroup.group_chargers.charger_table[i].Delta);
+            cJSON_AddStringToObject(charger, "HPT", ChargingGroup.group_chargers.charger_table[i].HPT);
+            cJSON_AddNumberToObject(charger, "limite_fase", ChargingGroup.group_chargers.charger_table[i].limite_fase);
+            cJSON_AddItemToObject(Data_JSON, ChargingGroup.group_chargers.charger_table[i].name, charger);
+            cJSON_Delete(Data_JSON); 
+        }   
+
+        char *my_json_string = cJSON_Print(Data_JSON);   
+        cJSON_Delete(Data_JSON); 
+
+        int size = strlen(my_json_string);
+        memcpy(&buffer[1], my_json_string, size);
         buffer[size+1]='\0';
 
+        free(my_json_string);
     }
     else if(!memcmp(resource->uri_path->s, "TXANDA", resource->uri_path->length)){
         sprintf(buffer,"%i%i",TURNO, turno);
     }
-    coap_add_data_blocked_response(resource, session, request, response, token,COAP_MEDIATYPE_TEXT_PLAIN, 0,(size_t)strlen((char*)buffer),(const u_char*)buffer);
+    coap_add_data_blocked_response(resource, session, request, response, token,COAP_MEDIATYPE_TEXT_PLAIN, 10,(size_t)strlen((char*)buffer),(const u_char*)buffer);
 }
 
 static void message_handler(coap_context_t *ctx, coap_session_t *session,coap_pdu_t *sent, coap_pdu_t *received, const coap_tid_t id){
@@ -249,6 +270,7 @@ static void message_handler(coap_context_t *ctx, coap_session_t *session,coap_pd
                 if(!memcmp(ChargingGroup.group_chargers.charger_table[index].name,ConfigFirebase.Device_Id, 8)){
                     printf("Debo mandar mis datos!\n");
                     Send_Data();
+                    
                     ChargingGroup.SendNewData= true;
                 }
                 else{
@@ -276,20 +298,24 @@ static void hnd_espressif_put(coap_context_t *ctx,coap_resource_t *resource,coap
 
     if(!memcmp(resource->uri_path->s, "CHARGERS", resource->uri_path->length)){
         New_Group(data,  size);
+        coap_resource_notify_observers(resource, NULL);
     }
     else if(!memcmp(resource->uri_path->s, "PARAMS", resource->uri_path->length)){
         New_Params(data, size);
+        coap_resource_notify_observers(resource, NULL);
     }
     else if(!memcmp(resource->uri_path->s, "CONTROL", resource->uri_path->length)){
         New_Control(data,  size);
         memcpy(LastControl, data, size);
+        coap_resource_notify_observers(resource, NULL);
     }
     else if(!memcmp(resource->uri_path->s, "DATA", resource->uri_path->length)){
         New_Data(data,  size);
-        memcpy(LastData, data, size);
+        //memcpy(LastData, data, size);
+        coap_resource_notify_observers(DATA, NULL);
     }
 
-    coap_resource_notify_observers(resource, NULL);
+    
 
     response->code = COAP_RESPONSE_CODE(200);
 }
@@ -366,7 +392,6 @@ static bool Authenticate(){
          if (session) {
             coap_session_release(session);
         }
-        delay(10000);
         return false;
     }
 
@@ -406,9 +431,9 @@ static void Subscribe(char* TOPIC){
 void coap_put( char* Topic, char* Message){
     if(ChargingGroup.Params.GroupMaster){
         if(!memcmp(DATA->uri_path->s, Topic, DATA->uri_path->length)){
-            memcpy(LastData, Message, strlen(Message));
-            coap_resource_notify_observers(DATA, NULL);
+            //memcpy(LastData, Message, strlen(Message));            
             New_Data(Message,  strlen(Message));
+            coap_resource_notify_observers(DATA, NULL);
         }
         else if(!memcmp(PARAMS->uri_path->s, Topic, PARAMS->uri_path->length)){
             New_Params(Message,  strlen(Message));
@@ -627,6 +652,7 @@ static void coap_server(void *p){
     PARAMS  = NULL;
     CONTROL  = NULL;
     CHARGERS  = NULL; 
+    TXANDA = NULL;
 
     while (1) {
         coap_endpoint_t *ep = NULL;
@@ -734,7 +760,7 @@ static void coap_server(void *p){
             if (result) {
                 /* result must have been >= wait_ms, so reset wait_ms */
                 wait_ms = 250;
-                printf("%i\n", esp_get_free_internal_heap_size());
+                //printf("%i\n", esp_get_free_internal_heap_size());
             }
 
             //Enviar nuevos parametros para el grupo
@@ -851,6 +877,8 @@ void Send_Data(){
   cJSON_Delete(Datos_Json);
 
   coap_put("DATA", my_json_string);
+
+  New_Data(my_json_string,  strlen(my_json_string));
 
   free(my_json_string);    
 }

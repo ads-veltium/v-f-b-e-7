@@ -149,7 +149,6 @@ typedef struct{
 
 typedef struct{
 	bool   Tipo_Sensor;
-	bool   Ubicacion_Sensor;
 	bool   CDP_On;
 	bool   Sensor_Conectado;
 	bool   NewData;
