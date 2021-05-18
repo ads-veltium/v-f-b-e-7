@@ -94,16 +94,16 @@ bool Parse_Data_JSON(char* Data, int Data_size){
 
     cJSON *mensaje_Json = cJSON_Parse(Data);
 
-    char *Jsonstring =cJSON_Print(mensaje_Json);
-    printf("Json nuevooo!!!\n");
-    printf("%s\n",Jsonstring);
-    free(Jsonstring);
-
     //comprobar que el Json está bien
     if(!cJSON_HasObjectItem(mensaje_Json,"Txanda")){
         printf("No tengo dataaa!\n");
         return false;
     }
+    
+    char *Jsonstring =cJSON_Print(mensaje_Json);
+    printf("Json nuevooo!!!\n");
+    printf("%s\n",Jsonstring);
+    free(Jsonstring);
 
     //Obtener el turno del que le toca escribir
     uint8_t index = (uint8_t) cJSON_GetObjectItem(mensaje_Json,"Txanda")->valueint;
@@ -250,7 +250,7 @@ message_handler(coap_context_t *ctx, coap_session_t *session,coap_pdu_t *sent, c
             if (coap_get_data(received, &data_len, &data)) {
                 memcpy(&FullData[FullSize], data, data_len);
                 FullSize += data_len;
-                //printf("%.*s", (int)data_len, data);
+                printf("%.*s", (int)data_len, data);
             }
             if (COAP_OPT_BLOCK_MORE(block_opt)) {
                 /* more bit is set */
@@ -294,7 +294,8 @@ message_handler(coap_context_t *ctx, coap_session_t *session,coap_pdu_t *sent, c
             else{
                 Parse_Data_JSON(FullData, (int)FullSize);
             }
-        } else {
+        } 
+        else {
             if (coap_get_data(received, &data_len, &data)) {
                  if(data != NULL){
                     switch(data[0]-'0'){
@@ -895,8 +896,6 @@ void Send_Data(){
   cJSON_Delete(Datos_Json);
 
   coap_put("DATA", my_json_string);
-
-  New_Data(my_json_string,  strlen(my_json_string));
 
   free(my_json_string);    
 }
