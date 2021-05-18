@@ -59,6 +59,7 @@ uint8_t  FallosEnvio =0;
 uint8_t turno =0;
 char LastData[500] EXT_RAM_ATTR;
 char LastControl[50] EXT_RAM_ATTR;
+static char FullData[4096] EXT_RAM_ATTR;
 bool hello_verification = false;
 
 /*****************************
@@ -86,23 +87,21 @@ void Send_Chargers();
 String get_passwd();
 void MasterPanicTask(void *args);
 
-bool Parse_Data_JSON(uint8_t* data, int Data_size){
+bool Parse_Data_JSON(char* Data, int Data_size){
     if(Data_size <=0){
         return false;
     }
 
-    char* Data = (char*) calloc(Data_size, '0');
-    memcpy(Data, data, Data_size);
-
-
     cJSON *mensaje_Json = cJSON_Parse(Data);
 
-    char *Jsonstring =cJSON_Print(mensaje_Json);
+    /*char *Jsonstring =cJSON_Print(mensaje_Json);
+    printf("Json nuevooo!!!\n");
     printf("%s\n",Jsonstring);
-    free(Jsonstring);
+    free(Jsonstring);*/
 
     //comprobar que el Json está bien
     if(!cJSON_HasObjectItem(mensaje_Json,"Txanda")){
+        printf("No tengo dataaa!\n");
         return false;
     }
 
@@ -121,19 +120,19 @@ bool Parse_Data_JSON(uint8_t* data, int Data_size){
         ChargingGroup.SendNewData= false;
     }
 
+    //Obtener la lista de cargadores
     cJSON *cargadores = cJSON_GetObjectItem(mensaje_Json,"Cargadores");
     if( cargadores ) {
         cJSON *cargador = cargadores->child;
         while( cargador ) {
-            char *Cargador_String =cJSON_Print(cargador);
+            char *Cargador_String = cJSON_Print(cargador);
             New_Data(Cargador_String,  strlen(Cargador_String));
             cargador = cargador->next;
             free(Cargador_String);
         }
+        cJSON_Delete(cargador);
     }
-
     cJSON_Delete(mensaje_Json);
-    free(Data);
     return true;
 }
 
@@ -187,7 +186,7 @@ hnd_get(coap_context_t *ctx, coap_resource_t *resource,coap_session_t *session,c
             sprintf(&buffer[1],"%i",(char)ChargingGroup.group_chargers.size);
         }
         
-        for(uint8_t i=0;i< ChargingGroup.group_chargers.size-1;i++){
+        for(uint8_t i=0;i< ChargingGroup.group_chargers.size;i++){
             memcpy(&buffer[3+(i*9)],ChargingGroup.group_chargers.charger_table[i].name,8);   
             itoa(ChargingGroup.group_chargers.charger_table[i].Fase,&buffer[11+(i*9)],10);
         }
@@ -226,7 +225,8 @@ hnd_get(coap_context_t *ctx, coap_resource_t *resource,coap_session_t *session,c
     coap_add_data_blocked_response(resource, session, request, response, token,COAP_MEDIATYPE_APPLICATION_JSON, 0,(size_t)strlen((char*)buffer),(const u_char*)buffer);
 }
 
-static void message_handler(coap_context_t *ctx, coap_session_t *session,coap_pdu_t *sent, coap_pdu_t *received, const coap_tid_t id){
+static void 
+message_handler(coap_context_t *ctx, coap_session_t *session,coap_pdu_t *sent, coap_pdu_t *received, const coap_tid_t id){
     uint8_t *data = NULL;
     size_t data_len;
     coap_pdu_t *pdu = NULL;
@@ -235,6 +235,8 @@ static void message_handler(coap_context_t *ctx, coap_session_t *session,coap_pd
     unsigned char buf[4];
     coap_optlist_t *option;
     coap_tid_t tid;
+    static int FullSize =0;
+    
 
     if (COAP_RESPONSE_CLASS(received->code) == 2) {
         /* Need to see if blocked response */
@@ -243,10 +245,12 @@ static void message_handler(coap_context_t *ctx, coap_session_t *session,coap_pd
             uint16_t blktype = opt_iter.type;
 
             if (coap_opt_block_num(block_opt) == 0) {
-                printf("Received:\n");
+                FullSize = 0;
             }
             if (coap_get_data(received, &data_len, &data)) {
-                printf("%.*s", (int)data_len, data);
+                memcpy(&FullData[FullSize], data, data_len);
+                FullSize += data_len;
+                //printf("%.*s", (int)data_len, data);
             }
             if (COAP_OPT_BLOCK_MORE(block_opt)) {
                 /* more bit is set */
@@ -287,35 +291,31 @@ static void message_handler(coap_context_t *ctx, coap_session_t *session,coap_pd
                     return;
                 }
             }
-            printf("\n");
+            else{
+                Parse_Data_JSON(FullData, (int)FullSize);
+            }
         } else {
             if (coap_get_data(received, &data_len, &data)) {
-                printf("Received2: %.*s\n", (int)data_len, data);
-            }
-        }
-    }
-    
-    if(data != NULL){
-        xMasterTimer = xTaskGetTickCount();
-        if(!Parse_Data_JSON(data, data_len)){
-            switch(data[0]-'0'){
-                case GROUP_PARAMS: 
-                    New_Params(&data[1], data_len-1);
-                    break;
-                case GROUP_CONTROL:
-                    New_Control(&data[1],  data_len-1);
-                    break;
-                case GROUP_CHARGERS:
-                    New_Group(&data[1],  data_len-1);
-                    break;
+                 if(data != NULL){
+                    switch(data[0]-'0'){
+                        case GROUP_PARAMS: 
+                            New_Params(&data[1], data_len-1);
+                            break;
+                        case GROUP_CONTROL:
+                            New_Control(&data[1],  data_len-1);
+                            break;
+                        case GROUP_CHARGERS:
+                            New_Group(&data[1],  data_len-1);
+                            break;
 
-                default:
-                    printf("Datos no esperados\n");
-                    break;
+                        default:
+                            printf("Datos no esperados\n");
+                            break;
+                    }
+                }
             }
         }
-    }
-    
+    }   
 
     Esperando_datos = 0;
 }

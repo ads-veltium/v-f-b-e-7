@@ -70,17 +70,27 @@ void New_Data(char* Data, int Data_size){
       return;
     }
     
-    /*char *Jsonstring =cJSON_Print(mensaje_Json);
+    char *Jsonstring =cJSON_Print(mensaje_Json);
     printf("%s\n",Jsonstring);
-    free(Jsonstring);*/
+    free(Jsonstring);
 
     //Extraer los datos
     memcpy(Cargador.HPT,cJSON_GetObjectItem(mensaje_Json,"HPT")->valuestring,3);
-    memcpy(Cargador.name,cJSON_GetObjectItem(mensaje_Json,"device_id")->valuestring,9);
-    Cargador.limite_fase = cJSON_GetObjectItem(mensaje_Json,"limite_fase")->valueint;
-    Cargador.Fase = cJSON_GetObjectItem(mensaje_Json,"fase")->valueint;
-    Cargador.Current = cJSON_GetObjectItem(mensaje_Json,"current")->valueint;
-    Cargador.Delta = cJSON_GetObjectItem(mensaje_Json,"Delta")->valueint;
+    if(!cJSON_HasObjectItem(mensaje_Json,"device_id")){
+      memcpy(Cargador.name,cJSON_GetObjectItem(mensaje_Json,"device_id")->valuestring,9);
+    }
+    if(!cJSON_HasObjectItem(mensaje_Json,"limite_fase")){
+      Cargador.limite_fase = cJSON_GetObjectItem(mensaje_Json,"limite_fase")->valueint;
+    }
+    if(!cJSON_HasObjectItem(mensaje_Json,"fase")){
+      Cargador.Fase = cJSON_GetObjectItem(mensaje_Json,"fase")->valueint;
+    }
+    if(!cJSON_HasObjectItem(mensaje_Json,"current")){
+      Cargador.Current = cJSON_GetObjectItem(mensaje_Json,"current")->valueint;
+    }
+    if(!cJSON_HasObjectItem(mensaje_Json,"Delta")){
+      Cargador.Delta = cJSON_GetObjectItem(mensaje_Json,"Delta")->valueint;
+    }
 
     cJSON_Delete(mensaje_Json);
 
