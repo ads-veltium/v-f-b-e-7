@@ -5,13 +5,14 @@
 #define DELTA_TIMEOUT 20000
 #define MAX_CURRENT 32 
 
-#define GROUP_PARAMS   1
-#define GROUP_CONTROL  2
-#define GROUP_CHARGERS 3
-#define TURNO          4
-#define NEW_DATA       5
+#define GROUP_PARAMS    1
+#define GROUP_CONTROL   2
+#define GROUP_CHARGERS  3
+#define CURRENT_COMMAND 6
+#define TURNO           4
+#define NEW_DATA        5
       
-void New_Data(uint8_t* Buffer, int Data_size);
+uint8_t New_Data(uint8_t* Buffer, int Data_size);
 void New_Params(uint8_t* Buffer, int Data_size);
 void New_Control(uint8_t* Buffer, int Data_size);
 void New_Group(uint8_t* Buffer, int Data_size);

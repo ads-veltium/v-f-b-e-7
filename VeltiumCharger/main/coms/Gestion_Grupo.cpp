@@ -28,7 +28,6 @@ extern carac_Comands  Comands ;
 carac_chargers net_group EXT_RAM_ATTR;
 extern carac_chargers FaseChargers;
 
-
 //Añadir un cargador a un equipo
 bool add_to_group(const char* ID, IPAddress IP, carac_chargers* group){
     if(group->size < MAX_GROUP_SIZE){
@@ -132,7 +131,6 @@ void store_group_in_mem(carac_chargers* group){
     
     printf("Error al almacenar el grupo en la memoria\n");
 }
-
 
 //Eliminar grupo
 void remove_group(carac_chargers* group){

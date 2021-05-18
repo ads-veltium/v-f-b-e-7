@@ -158,7 +158,7 @@ hnd_get_data (coap_context_t *ctx, coap_resource_t *resource,coap_session_t *ses
         cJSON_AddNumberToObject(charger, "D", ChargingGroup.group_chargers.charger_table[i].Delta);
         cJSON_AddStringToObject(charger, "H", ChargingGroup.group_chargers.charger_table[i].HPT);
         cJSON_AddNumberToObject(charger, "l", ChargingGroup.group_chargers.charger_table[i].limite_fase);
-        cJSON_AddItemToObject(Data_JSON, " ", charger);
+        cJSON_AddItemToObject(Data_JSON, "", charger);
     }   
 
     cJSON_AddItemToObject(Big_JSON, "Cargadores", Data_JSON);
@@ -294,11 +294,13 @@ message_handler(coap_context_t *ctx, coap_session_t *session,coap_pdu_t *sent, c
                 }
             }
             else{
-                Parse_Data_JSON(FullData, (int)FullSize);
+                //Parse_Data_JSON(FullData, (int)FullSize);
             }
         } 
         else {
+            
             if (coap_get_data(received, &data_len, &data)) {
+                printf("%.*s", (int)data_len, data);
                  if(data != NULL){
                     switch(data[0]-'0'){
                         case GROUP_PARAMS: 
@@ -309,6 +311,9 @@ message_handler(coap_context_t *ctx, coap_session_t *session,coap_pdu_t *sent, c
                             break;
                         case GROUP_CHARGERS:
                             New_Group(&data[1],  data_len-1);
+                            break;
+                        case CURRENT_COMMAND:
+                            printf("Nueva consigna de corriente! %i\n",atoi((char*)data[1]));
                             break;
 
                         default:
@@ -326,6 +331,7 @@ message_handler(coap_context_t *ctx, coap_session_t *session,coap_pdu_t *sent, c
 static void hnd_espressif_put(coap_context_t *ctx,coap_resource_t *resource,coap_session_t *session,coap_pdu_t *request,coap_binary_t *token,coap_string_t *query, coap_pdu_t *response){
     size_t size;
     unsigned char *data;
+    char buffer[20];
     (void)coap_get_data(request, &size, &data);
     if(!memcmp(resource->uri_path->s, "CHARGERS", resource->uri_path->length)){
         New_Group(data,  size);
@@ -341,9 +347,9 @@ static void hnd_espressif_put(coap_context_t *ctx,coap_resource_t *resource,coap
         coap_resource_notify_observers(resource, NULL);
     }
     else if(!memcmp(resource->uri_path->s, "DATA", resource->uri_path->length)){
-        New_Data(data,  size);
-        //memcpy(LastData, data, size);
-        coap_resource_notify_observers(DATA, NULL);
+        uint8_t Currentcommand = New_Data(data,  size);
+        sprintf(buffer,"%i%i",CURRENT_COMMAND,Currentcommand); 
+        coap_add_data_blocked_response(resource, session, request, response, token,COAP_MEDIATYPE_APPLICATION_JSON, 1,(size_t)strlen((char*)buffer),(const u_char*)buffer);
     }   
 
     response->code = COAP_RESPONSE_CODE(200);
@@ -597,7 +603,7 @@ static void coap_client(void *p){
         //Bucle del grupo
         xMasterTimer = xTaskGetTickCount();
         while(1){
-            coap_get("DATA");
+            Send_Data();
             coap_run_once(ctx, 1000);
 
             
@@ -641,7 +647,6 @@ static void coap_client(void *p){
                 ChargingGroup.DeleteOrder = false;
                 break;
             }
-            delay(750);
         }
 
 clean_up:

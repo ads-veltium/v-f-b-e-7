@@ -43,15 +43,16 @@ uint8_t Pc_Fase;
 void Calculo_Consigna();
 void input_values();
 
-void New_Data(uint8_t* Buffer, int Data_size){  
+uint8_t New_Data(uint8_t* Buffer, int Data_size){  
   if(Data_size <=0){
-    return;
+    return 0;
   }
 
   char* Data = (char*) calloc(Data_size, '0');
   memcpy(Data, Buffer, Data_size);
 
-  New_Data(Data, Data_size);
+  //New_Data(Data, Data_size);
+  return 62;
 
   free(Data);
 }
