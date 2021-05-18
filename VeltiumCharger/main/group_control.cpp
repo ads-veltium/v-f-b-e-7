@@ -227,33 +227,27 @@ void New_Group(uint8_t* Buffer, int Data_size){
 
 //Funcion para recibir un nuevo grupo de cargadores
 void New_Group(char* Data, int Data_size){
-
+    char ID[8];
     char n[2];
     memcpy(n,Data,2);
     uint8_t numero_de_cargadores = atoi(n);
 
-
-
     //comprobar si el grupo es distinto
     //Si es distinto del que ya tenemos almacenado, lo guardamos en la flash
-    if(numero_de_cargadores == ChargingGroup.group_chargers.size){
-      for(uint8_t i=0;i<numero_de_cargadores;i++){
-        if(memcmp(ChargingGroup.group_chargers.charger_table[i].name, &Data[i*9+2],8) || ChargingGroup.group_chargers.charger_table[i].Fase != Data[i*9+10]-'0'){
-          SendToPSOC5((char*)Data,Data_size,GROUPS_DEVICES_PART_1); 
-          remove_group(&FaseChargers);
-          delay(50);
-          return;
+    for(uint8_t i=0; i<numero_de_cargadores;i++){    
+        for(uint8_t j =0; j< 8; j++){
+            ID[j]=(char)Data[2+i*9+j];
         }
-      }
-    }
-    else{
-      if(numero_de_cargadores <=25){
-        SendToPSOC5((char*)Data,Data_size,GROUPS_DEVICES_PART_1); 
-        remove_group(&FaseChargers);
-        delay(50);
-      }
+        add_to_group(ID, get_IP(ID), &ChargingGroup.group_chargers);
+        ChargingGroup.group_chargers.charger_table[i].Fase = buffer_rx_local[10+i*9]-'0';
 
+        if(!memcmp(ID,ConfigFirebase.Device_Id,8)){
+            ChargingGroup.group_chargers.charger_table[i].Conected = true;
+            Params.Fase =buffer_rx_local[10+i*9]-'0';
+        }
     }
+    store_group_in_mem(&ChargingGroup.group_chargers);
+    print_table(ChargingGroup, "Grupo desde COAP");
 }
 
 // Function for Chart: '<Root>/Charger 1'
