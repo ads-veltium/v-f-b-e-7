@@ -52,6 +52,7 @@ coap_resource_t *DATA EXT_RAM_ATTR;
 coap_resource_t *PARAMS  EXT_RAM_ATTR;
 coap_resource_t *CONTROL  EXT_RAM_ATTR;
 coap_resource_t *CHARGERS  EXT_RAM_ATTR; 
+coap_resource_t *TXANDA  EXT_RAM_ATTR; 
 
 const static char *TAG = "CoAP_server";
 uint8_t Esperando_datos =0;
@@ -86,93 +87,6 @@ void Send_Data();
 void Send_Chargers();
 String get_passwd();
 void MasterPanicTask(void *args);
-
-bool Parse_Data_JSON(char* Data, int Data_size){
-    if(Data_size <=0){
-        return false;
-    }
-
-    cJSON *mensaje_Json = cJSON_Parse(Data);
-
-    //comprobar que el Json está bien
-    if(!cJSON_HasObjectItem(mensaje_Json,"Txanda")){
-        printf("No tengo dataaa!\n");
-        return false;
-    }
-    
-    char *Jsonstring =cJSON_Print(mensaje_Json);
-    printf("Json nuevooo!!!\n");
-    printf("%s\n",Jsonstring);
-    free(Jsonstring);
-
-    //Obtener el turno del que le toca escribir
-    uint8_t index = (uint8_t) cJSON_GetObjectItem(mensaje_Json,"Txanda")->valueint;
-    
-    if(!memcmp(ChargingGroup.group_chargers.charger_table[index].name,ConfigFirebase.Device_Id, 8)){
-        printf("Debo mandar mis datos!\n");
-        Send_Data();
-        delay(50);
-        coap_get("DATA");
-        ChargingGroup.SendNewData= true;
-    }
-    else{
-        printf("No me toca a mí\n");
-        ChargingGroup.SendNewData= false;
-    }
-
-    //Obtener la lista de cargadores
-    cJSON *cargadores = cJSON_GetObjectItem(mensaje_Json,"Cargadores");
-    if( cargadores ) {
-        cJSON *cargador = cargadores->child;
-        while( cargador ) {
-            char *Cargador_String = cJSON_Print(cargador);
-            New_Data(Cargador_String,  strlen(Cargador_String));
-            cargador = cargador->next;
-            free(Cargador_String);
-        }
-        cJSON_Delete(cargador);
-    }
-    cJSON_Delete(mensaje_Json);
-    return true;
-}
-
-static void
-hnd_get_data (coap_context_t *ctx, coap_resource_t *resource,coap_session_t *session,coap_pdu_t *request, coap_binary_t *token,coap_string_t *query, coap_pdu_t *response){    
-    cJSON *Big_JSON;
-    Big_JSON = cJSON_CreateObject(); 
-
-    //Añadir el turno al JSON
-    cJSON_AddNumberToObject(Big_JSON, "Txanda", turno);
-
-    //Añadir los datos del grupo al JSON
-    cJSON *Data_JSON;
-    Data_JSON = cJSON_CreateObject();   
-
-    for(uint8_t i=0; i< ChargingGroup.group_chargers.size;i++){
-        cJSON *charger;
-        charger = cJSON_CreateObject();
-
-        cJSON_AddStringToObject(charger, "N", ChargingGroup.group_chargers.charger_table[i].name);
-        cJSON_AddNumberToObject(charger, "F", ChargingGroup.group_chargers.charger_table[i].Fase);
-        cJSON_AddNumberToObject(charger, "C", ChargingGroup.group_chargers.charger_table[i].Current);
-        cJSON_AddNumberToObject(charger, "D", ChargingGroup.group_chargers.charger_table[i].Delta);
-        cJSON_AddStringToObject(charger, "H", ChargingGroup.group_chargers.charger_table[i].HPT);
-        cJSON_AddNumberToObject(charger, "l", ChargingGroup.group_chargers.charger_table[i].limite_fase);
-        cJSON_AddItemToObject(Data_JSON, "", charger);
-    }   
-
-    cJSON_AddItemToObject(Big_JSON, "Cargadores", Data_JSON);
-
-    char *my_json_string = cJSON_Print(Big_JSON);   
-    cJSON_Delete(Big_JSON); 
-
-    printf("Enviando %s\n", my_json_string);
-    
-    response->code = COAP_RESPONSE_CODE(200);
-
-    coap_add_data_blocked_response(resource, session, request, response, token,COAP_MEDIATYPE_APPLICATION_JSON, 5,(size_t)strlen(my_json_string),(const u_char*)my_json_string);
-    free(my_json_string);
-} 
 
 static void
 hnd_get(coap_context_t *ctx, coap_resource_t *resource,coap_session_t *session,coap_pdu_t *request, coap_binary_t *token,coap_string_t *query, coap_pdu_t *response){    
@@ -221,6 +135,9 @@ hnd_get(coap_context_t *ctx, coap_resource_t *resource,coap_session_t *session,c
         int size = strlen(LastControl);
         memcpy(&buffer[1], LastControl, size);
         buffer[size+1]='\0';
+    }
+    else if(!memcmp(resource->uri_path->s, "TXANDA", resource->uri_path->length)){
+        sprintf(buffer,"%i%i",TURNO, turno);
     }
 
     response->code = COAP_RESPONSE_CODE(200);
@@ -300,7 +217,6 @@ message_handler(coap_context_t *ctx, coap_session_t *session,coap_pdu_t *sent, c
         else {
             
             if (coap_get_data(received, &data_len, &data)) {
-                printf("%.*s", (int)data_len, data);
                  if(data != NULL){
                     switch(data[0]-'0'){
                         case GROUP_PARAMS: 
@@ -312,8 +228,20 @@ message_handler(coap_context_t *ctx, coap_session_t *session,coap_pdu_t *sent, c
                         case GROUP_CHARGERS:
                             New_Group(&data[1],  data_len-1);
                             break;
+                        case TURNO:
+                            if(!memcmp(ChargingGroup.group_chargers.charger_table[data[1]-'0'].name,ConfigFirebase.Device_Id, 8)){
+                                printf("Debo mandar mis datos!\n");
+                                Send_Data();
+                            }
+                            else{
+                                printf("No me toca a mí\n");
+                            }
+                            
+                            break;
                         case CURRENT_COMMAND:
-                            printf("Nueva consigna de corriente! %i\n",atoi((char*)data[1]));
+                            char current[2];
+                            memcpy(current, &data[1],2);
+                            printf("Nueva consigna de corriente! %i\n",atoi(current));
                             break;
 
                         default:
@@ -465,10 +393,8 @@ static void Subscribe(char* TOPIC){
 
 void coap_put( char* Topic, char* Message){
     if(ChargingGroup.Params.GroupMaster){
-        if(!memcmp(DATA->uri_path->s, Topic, DATA->uri_path->length)){
-            //memcpy(LastData, Message, strlen(Message));            
+        if(!memcmp(DATA->uri_path->s, Topic, DATA->uri_path->length)){         
             New_Data(Message,  strlen(Message));
-            coap_resource_notify_observers(DATA, NULL);
         }
         else if(!memcmp(PARAMS->uri_path->s, Topic, PARAMS->uri_path->length)){
             New_Params(Message,  strlen(Message));
@@ -591,7 +517,7 @@ static void coap_client(void *p){
         //Subscribirnos
         Subscribe("PARAMS");
         Subscribe("CHARGERS");
-        //Subscribe("DATA");
+        Subscribe("TXANDA");
         Subscribe("CONTROL");
 
         //Tras autenticarnos solicitamos los cargadores del grupo y los parametros
@@ -603,9 +529,7 @@ static void coap_client(void *p){
         //Bucle del grupo
         xMasterTimer = xTaskGetTickCount();
         while(1){
-            Send_Data();
             coap_run_once(ctx, 1000);
-
             
             //Enviar nuevos parametros para el grupo
             if( ChargingGroup.SendNewParams){
@@ -689,6 +613,7 @@ static void coap_server(void *p){
     PARAMS  = NULL;
     CONTROL  = NULL;
     CHARGERS  = NULL; 
+    TXANDA = NULL;
 
     while (1) {
         coap_endpoint_t *ep = NULL;
@@ -735,12 +660,17 @@ static void coap_server(void *p){
         Chargers_Name.length = sizeof("CHARGERS")-1;
         Chargers_Name.s = reinterpret_cast<const uint8_t *>("CHARGERS");
 
+        coap_str_const_t Txanda_Name;
+        Chargers_Name.length = sizeof("TXANDA")-1;
+        Chargers_Name.s = reinterpret_cast<const uint8_t *>("TXANDA");
+
         DATA     = coap_resource_init(&Data_Name, COAP_RESOURCE_FLAGS_RELEASE_URI);
         PARAMS   = coap_resource_init(&Params_Name, COAP_RESOURCE_FLAGS_RELEASE_URI);
         CONTROL  = coap_resource_init(&Control_Name, COAP_RESOURCE_FLAGS_RELEASE_URI);
         CHARGERS = coap_resource_init(&Chargers_Name, COAP_RESOURCE_FLAGS_RELEASE_URI);
+        TXANDA   = coap_resource_init(&Txanda_Name, COAP_RESOURCE_FLAGS_RELEASE_URI);
 
-        if (!DATA || !PARAMS || !CONTROL || !CHARGERS) {
+        if (!DATA || !PARAMS || !CONTROL || !CHARGERS || !TXANDA) {
             ESP_LOGE(TAG, "coap_resource_init() failed");
             goto clean_up;
         }
@@ -751,15 +681,17 @@ static void coap_server(void *p){
         coap_register_handler(PARAMS, COAP_REQUEST_PUT, hnd_espressif_put);
         coap_register_handler(CONTROL, COAP_REQUEST_PUT, hnd_espressif_put);
         coap_register_handler(CHARGERS, COAP_REQUEST_PUT, hnd_espressif_put);
+        coap_register_handler(TXANDA, COAP_REQUEST_PUT, hnd_espressif_put);
 
         coap_register_handler(PARAMS, COAP_REQUEST_GET, hnd_get);
         coap_register_handler(CHARGERS, COAP_REQUEST_GET, hnd_get);
         coap_register_handler(CONTROL, COAP_REQUEST_GET, hnd_get);
-        coap_register_handler(DATA, COAP_REQUEST_GET, hnd_get_data);
+        coap_register_handler(DATA, COAP_REQUEST_GET, hnd_get);
+        coap_register_handler(TXANDA, COAP_REQUEST_GET, hnd_get);
 
 
         /* We possibly want to Observe the GETs */
-        coap_resource_set_get_observable(DATA, 1);
+        coap_resource_set_get_observable(TXANDA, 1);
         coap_resource_set_get_observable(PARAMS, 1);
         coap_resource_set_get_observable(CONTROL, 1);
         coap_resource_set_get_observable(CHARGERS, 1);
@@ -767,6 +699,7 @@ static void coap_server(void *p){
         coap_add_resource(ctx, DATA);
         coap_add_resource(ctx, PARAMS);
         coap_add_resource(ctx, CONTROL);
+        coap_add_resource(ctx, TXANDA);
         coap_add_resource(ctx, CHARGERS);
 
         int wait_ms = 250;
@@ -835,6 +768,7 @@ static void coap_server(void *p){
                     ChargingGroup.SendNewData = false;
                 }
                 xTimerTurno = xTaskGetTickCount();
+                coap_resource_notify_observers(TXANDA,NULL);
             }
 
 
