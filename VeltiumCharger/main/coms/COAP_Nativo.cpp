@@ -141,7 +141,7 @@ hnd_get(coap_context_t *ctx, coap_resource_t *resource,coap_session_t *session,c
     }
 
     response->code = COAP_RESPONSE_CODE(200);
-    coap_add_data_blocked_response(resource, session, request, response, token,COAP_MEDIATYPE_APPLICATION_JSON, 1,(size_t)strlen((char*)buffer),(const u_char*)buffer);
+    coap_add_data_blocked_response(resource, session, request, response, token,COAP_MEDIATYPE_APPLICATION_JSON, 5,(size_t)strlen((char*)buffer),(const u_char*)buffer);
 }
 
 static void 
@@ -529,7 +529,7 @@ static void coap_client(void *p){
         //Bucle del grupo
         xMasterTimer = xTaskGetTickCount();
         while(1){
-            coap_run_once(ctx, 1000);
+            coap_run_once(ctx, 250);
             
             //Enviar nuevos parametros para el grupo
             if( ChargingGroup.SendNewParams){
@@ -661,8 +661,8 @@ static void coap_server(void *p){
         Chargers_Name.s = reinterpret_cast<const uint8_t *>("CHARGERS");
 
         coap_str_const_t Txanda_Name;
-        Chargers_Name.length = sizeof("TXANDA")-1;
-        Chargers_Name.s = reinterpret_cast<const uint8_t *>("TXANDA");
+        Txanda_Name.length = sizeof("TXANDA")-1;
+        Txanda_Name.s = reinterpret_cast<const uint8_t *>("TXANDA");
 
         DATA     = coap_resource_init(&Data_Name, COAP_RESOURCE_FLAGS_RELEASE_URI);
         PARAMS   = coap_resource_init(&Params_Name, COAP_RESOURCE_FLAGS_RELEASE_URI);
