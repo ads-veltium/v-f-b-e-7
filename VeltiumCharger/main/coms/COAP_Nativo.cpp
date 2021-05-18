@@ -165,6 +165,8 @@ hnd_get_data (coap_context_t *ctx, coap_resource_t *resource,coap_session_t *ses
 
     char *my_json_string = cJSON_Print(Big_JSON);   
     cJSON_Delete(Big_JSON); 
+
+    printf("Enviando %s\n", my_json_string);
     
     response->code = COAP_RESPONSE_CODE(200);
 
@@ -596,7 +598,7 @@ static void coap_client(void *p){
         xMasterTimer = xTaskGetTickCount();
         while(1){
             coap_get("DATA");
-            coap_run_once(ctx, 500);
+            coap_run_once(ctx, 1000);
 
             
             //Enviar nuevos parametros para el grupo
@@ -639,7 +641,7 @@ static void coap_client(void *p){
                 ChargingGroup.DeleteOrder = false;
                 break;
             }
-            delay(250);
+            delay(750);
         }
 
 clean_up:

@@ -65,7 +65,7 @@ void New_Data(char* Data, int Data_size){
 
     carac_charger Cargador;
 
-    //compribar que el Json está bien
+    //comprobar que el Json está bien
     if(!cJSON_HasObjectItem(mensaje_Json,"HPT")){
       return;
     }
