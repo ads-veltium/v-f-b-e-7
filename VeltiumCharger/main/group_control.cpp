@@ -221,13 +221,15 @@ void New_Group(char* Data, int Data_size){
     char n[2];
     memcpy(n,Data,2);
     uint8_t numero_de_cargadores = atoi(n);
-   
+
+
+
     //comprobar si el grupo es distinto
     //Si es distinto del que ya tenemos almacenado, lo guardamos en la flash
     if(numero_de_cargadores == ChargingGroup.group_chargers.size){
       for(uint8_t i=0;i<numero_de_cargadores;i++){
         if(memcmp(ChargingGroup.group_chargers.charger_table[i].name, &Data[i*9+2],8) || ChargingGroup.group_chargers.charger_table[i].Fase != Data[i*9+10]-'0'){
-          SendToPSOC5((char*)Data,Data_size,GROUPS_DEVICES); 
+          SendToPSOC5((char*)Data,Data_size,GROUPS_DEVICES_PART_1); 
           remove_group(&FaseChargers);
           delay(50);
           return;
@@ -235,9 +237,12 @@ void New_Group(char* Data, int Data_size){
       }
     }
     else{
-      SendToPSOC5((char*)Data,Data_size,GROUPS_DEVICES); 
-      remove_group(&FaseChargers);
-      delay(50);
+      if(numero_de_cargadores <=25){
+        SendToPSOC5((char*)Data,Data_size,GROUPS_DEVICES_PART_1); 
+        remove_group(&FaseChargers);
+        delay(50);
+      }
+
     }
 }
 
