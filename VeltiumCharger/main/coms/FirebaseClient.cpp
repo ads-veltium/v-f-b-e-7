@@ -270,7 +270,7 @@ bool ReadFirebaseGroups(String Path){
           /*ChargingGroup.group_chargers.size = index;*/
           store_group_in_mem(&ChargingGroup.group_chargers);
 
-          //ChargingGroup.SendNewGroup = true;
+          ChargingGroup.SendNewGroup = true;
         }
         print_table(ChargingGroup.group_chargers, "Grupo desde firebase");
       }    
