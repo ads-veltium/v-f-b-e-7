@@ -152,13 +152,13 @@ hnd_get_data (coap_context_t *ctx, coap_resource_t *resource,coap_session_t *ses
         cJSON *charger;
         charger = cJSON_CreateObject();
 
-        cJSON_AddStringToObject(charger, "device_Id", ChargingGroup.group_chargers.charger_table[i].name);
-        cJSON_AddNumberToObject(charger, "fase", ChargingGroup.group_chargers.charger_table[i].Fase);
-        cJSON_AddNumberToObject(charger, "current", ChargingGroup.group_chargers.charger_table[i].Current);
-        cJSON_AddNumberToObject(charger, "Delta", ChargingGroup.group_chargers.charger_table[i].Delta);
-        cJSON_AddStringToObject(charger, "HPT", ChargingGroup.group_chargers.charger_table[i].HPT);
-        cJSON_AddNumberToObject(charger, "limite_fase", ChargingGroup.group_chargers.charger_table[i].limite_fase);
-        cJSON_AddItemToObject(Data_JSON, ChargingGroup.group_chargers.charger_table[i].name, charger);
+        cJSON_AddStringToObject(charger, "N", ChargingGroup.group_chargers.charger_table[i].name);
+        cJSON_AddNumberToObject(charger, "F", ChargingGroup.group_chargers.charger_table[i].Fase);
+        cJSON_AddNumberToObject(charger, "C", ChargingGroup.group_chargers.charger_table[i].Current);
+        cJSON_AddNumberToObject(charger, "D", ChargingGroup.group_chargers.charger_table[i].Delta);
+        cJSON_AddStringToObject(charger, "H", ChargingGroup.group_chargers.charger_table[i].HPT);
+        cJSON_AddNumberToObject(charger, "l", ChargingGroup.group_chargers.charger_table[i].limite_fase);
+        cJSON_AddItemToObject(Data_JSON, NULL, charger);
     }   
 
     cJSON_AddItemToObject(Big_JSON, "Cargadores", Data_JSON);
@@ -170,7 +170,7 @@ hnd_get_data (coap_context_t *ctx, coap_resource_t *resource,coap_session_t *ses
     
     response->code = COAP_RESPONSE_CODE(200);
 
-    coap_add_data_blocked_response(resource, session, request, response, token,COAP_MEDIATYPE_APPLICATION_JSON, 1,(size_t)strlen(my_json_string),(const u_char*)my_json_string);
+    coap_add_data_blocked_response(resource, session, request, response, token,COAP_MEDIATYPE_APPLICATION_JSON, 5,(size_t)strlen(my_json_string),(const u_char*)my_json_string);
     free(my_json_string);
 } 
 
@@ -224,7 +224,7 @@ hnd_get(coap_context_t *ctx, coap_resource_t *resource,coap_session_t *session,c
     }
 
     response->code = COAP_RESPONSE_CODE(200);
-    coap_add_data_blocked_response(resource, session, request, response, token,COAP_MEDIATYPE_APPLICATION_JSON, 0,(size_t)strlen((char*)buffer),(const u_char*)buffer);
+    coap_add_data_blocked_response(resource, session, request, response, token,COAP_MEDIATYPE_APPLICATION_JSON, 1,(size_t)strlen((char*)buffer),(const u_char*)buffer);
 }
 
 static void 
