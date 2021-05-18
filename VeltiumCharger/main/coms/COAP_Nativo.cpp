@@ -241,9 +241,7 @@ message_handler(coap_context_t *ctx, coap_session_t *session,coap_pdu_t *sent, c
                             
                             break;
                         case CURRENT_COMMAND:
-                            char current[2];
-                            memcpy(current, &data[1],2);
-                            printf("Nueva consigna de corriente! %i\n",atoi(current));
+                            New_Current(&data[1],  data_len-1);
                             break;
 
                         default:
@@ -277,8 +275,25 @@ static void hnd_espressif_put(coap_context_t *ctx,coap_resource_t *resource,coap
         coap_resource_notify_observers(resource, NULL);
     }
     else if(!memcmp(resource->uri_path->s, "DATA", resource->uri_path->length)){
-        uint8_t Currentcommand = New_Data(data,  size);
-        sprintf(buffer,"%i%i",CURRENT_COMMAND,Currentcommand); 
+        carac_charger Cargador = New_Data(data,  size);
+         
+        itoa(CURRENT_COMMAND, buffer, 10);
+        cJSON *COMMAND_Json;
+        COMMAND_Json = cJSON_CreateObject();
+
+        cJSON_AddNumberToObject(COMMAND_Json, "DC", Cargador.DesiredCurrent);
+        cJSON_AddNumberToObject(COMMAND_Json, "LF", Cargador.limite_fase);
+        cJSON_AddNumberToObject(COMMAND_Json, "D", Cargador.Delta);
+
+        char *my_json_string = cJSON_Print(COMMAND_Json);   
+        cJSON_Delete(COMMAND_Json); 
+
+        int size = strlen(my_json_string);
+        memcpy(&buffer[1], my_json_string, size);
+        buffer[size+1]='\0';
+
+        free(my_json_string);
+         
         coap_add_data_blocked_response(resource, session, request, response, token,COAP_MEDIATYPE_APPLICATION_JSON, 1,(size_t)strlen((char*)buffer),(const u_char*)buffer);
     }   
 

@@ -12,12 +12,13 @@
 #define TURNO           4
 #define NEW_DATA        5
       
-uint8_t New_Data(uint8_t* Buffer, int Data_size);
+carac_charger New_Data(uint8_t* Buffer, int Data_size);
 void New_Params(uint8_t* Buffer, int Data_size);
 void New_Control(uint8_t* Buffer, int Data_size);
 void New_Group(uint8_t* Buffer, int Data_size);
+void New_Current(uint8_t* Buffer, int Data_size);
 
-void New_Data(char* Data, int Data_size);
+carac_charger New_Data(char* Data, int Data_size);
 void New_Params(char* Data, int Data_size);
 void New_Group(char* Data, int Data_size);
 void New_Control(char* Data, int Data_size);

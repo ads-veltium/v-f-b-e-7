@@ -261,8 +261,11 @@ typedef struct{
 	char      HPT[3];
 	uint8_t     Fase;
 	uint16_t Current;
+	uint16_t CurrentB;
+	uint16_t CurrentC;
 	uint16_t   Delta;
 	uint16_t Delta_fase;
+	uint16_t DesiredCurrent;
 	uint8_t limite_fase;
 	TickType_t Period;
 	bool Conected = false;
