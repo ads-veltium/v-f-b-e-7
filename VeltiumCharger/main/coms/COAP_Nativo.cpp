@@ -229,7 +229,9 @@ message_handler(coap_context_t *ctx, coap_session_t *session,coap_pdu_t *sent, c
                             New_Group(&data[1],  data_len-1);
                             break;
                         case TURNO:
-                            if(!memcmp(ChargingGroup.group_chargers.charger_table[data[1]-'0'].name,ConfigFirebase.Device_Id, 8)){
+                            char turno[2];
+                            memcpy(turno, &data[1],2);
+                            if(!memcmp(ChargingGroup.group_chargers.charger_table[atoi(turno)].name,ConfigFirebase.Device_Id, 8)){
                                 printf("Debo mandar mis datos!\n");
                                 Send_Data();
                             }
