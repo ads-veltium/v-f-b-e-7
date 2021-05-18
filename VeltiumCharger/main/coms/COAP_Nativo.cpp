@@ -702,7 +702,7 @@ static void coap_server(void *p){
         coap_add_resource(ctx, TXANDA);
         coap_add_resource(ctx, CHARGERS);
 
-        int wait_ms = 250;
+        int wait_ms = 100;
         TickType_t xStart = xTaskGetTickCount();
         TickType_t xTimerTurno = xTaskGetTickCount();
         while (1) {
@@ -719,7 +719,7 @@ static void coap_server(void *p){
             }
             if (result) {
                 /* result must have been >= wait_ms, so reset wait_ms */
-                wait_ms = 250;
+                wait_ms = 100;
                 //printf("%i\n", esp_get_free_internal_heap_size());
             }
 
@@ -757,7 +757,7 @@ static void coap_server(void *p){
             }
             
             //Pedir datos a los esclavos para que no envíen todos a la vez
-            if(pdTICKS_TO_MS(xTaskGetTickCount() - xTimerTurno) >= 500){
+            if(pdTICKS_TO_MS(xTaskGetTickCount() - xTimerTurno) >= 100){
                 turno++;        
                 if(turno == ChargingGroup.group_chargers.size){
                     turno=1;

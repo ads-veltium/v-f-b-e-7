@@ -48,13 +48,13 @@ uint8_t New_Data(uint8_t* Buffer, int Data_size){
     return 0;
   }
 
-  char* Data = (char*) calloc(Data_size, '0');
-  memcpy(Data, Buffer, Data_size);
+  //char* Data = (char*) calloc(Data_size, '0');
+  //memcpy(Data, Buffer, Data_size);
 
   //New_Data(Data, Data_size);
   return 62;
 
-  free(Data);
+  //free(Data);
 }
 
 //Funcion para procesar los nuevos datos recibidos
