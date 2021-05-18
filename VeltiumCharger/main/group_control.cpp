@@ -72,26 +72,26 @@ carac_charger New_Data(char* Data, int Data_size){
     
     //Extraer los datos
     memcpy(Cargador.HPT,cJSON_GetObjectItem(mensaje_Json,"HPT")->valuestring,3);
-    if(!cJSON_HasObjectItem(mensaje_Json,"device_id")){
+    if(cJSON_HasObjectItem(mensaje_Json,"device_id")){
       memcpy(Cargador.name,cJSON_GetObjectItem(mensaje_Json,"device_id")->valuestring,9);
     }
-    if(!cJSON_HasObjectItem(mensaje_Json,"limite_fase")){
+    if(cJSON_HasObjectItem(mensaje_Json,"limite_fase")){
       Cargador.limite_fase = cJSON_GetObjectItem(mensaje_Json,"limite_fase")->valueint;
     }
-    if(!cJSON_HasObjectItem(mensaje_Json,"fase")){
+    if(cJSON_HasObjectItem(mensaje_Json,"fase")){
       Cargador.Fase = cJSON_GetObjectItem(mensaje_Json,"fase")->valueint;
     }
-    if(!cJSON_HasObjectItem(mensaje_Json,"current")){
+    if(cJSON_HasObjectItem(mensaje_Json,"current")){
       Cargador.Current = cJSON_GetObjectItem(mensaje_Json,"current")->valueint;
     }
-    if(!cJSON_HasObjectItem(mensaje_Json,"Delta")){
+    if(cJSON_HasObjectItem(mensaje_Json,"Delta")){
       Cargador.Delta = cJSON_GetObjectItem(mensaje_Json,"Delta")->valueint;
     }
     //Datos para los trifasicos
-    if(!cJSON_HasObjectItem(mensaje_Json,"currentB")){
+    if(cJSON_HasObjectItem(mensaje_Json,"currentB")){
       Cargador.CurrentB = cJSON_GetObjectItem(mensaje_Json,"currentB")->valueint;
     }
-    if(!cJSON_HasObjectItem(mensaje_Json,"currentC")){
+    if(cJSON_HasObjectItem(mensaje_Json,"currentC")){
       Cargador.CurrentC = cJSON_GetObjectItem(mensaje_Json,"DeltcurrentC")->valueint;
     }
 

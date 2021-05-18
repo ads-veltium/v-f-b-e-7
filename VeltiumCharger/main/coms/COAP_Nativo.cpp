@@ -410,8 +410,17 @@ static void Subscribe(char* TOPIC){
 
 void coap_put( char* Topic, char* Message){
     if(ChargingGroup.Params.GroupMaster){
-        if(!memcmp(DATA->uri_path->s, Topic, DATA->uri_path->length)){         
-            New_Data(Message,  strlen(Message));
+        if(!memcmp(DATA->uri_path->s, Topic, DATA->uri_path->length)){    
+            carac_charger Cargador = New_Data(Message,  strlen(Message));
+            uint8_t desired_current = Cargador.DesiredCurrent;
+            Status.limite_Fase= Cargador.limite_fase;
+            Status.Delta = Cargador.Delta;
+
+            printf("nueva consigna de corriente! %i\n", desired_current);
+            if(desired_current!=Comands.desired_current &&  !memcmp(Status.HPT_status,"C2",2)){
+                //SendToPSOC5(desired_current,MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
+            }
+
         }
         else if(!memcmp(PARAMS->uri_path->s, Topic, PARAMS->uri_path->length)){
             New_Params(Message,  strlen(Message));
