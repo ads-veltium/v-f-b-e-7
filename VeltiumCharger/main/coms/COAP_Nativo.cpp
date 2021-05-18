@@ -158,7 +158,7 @@ hnd_get_data (coap_context_t *ctx, coap_resource_t *resource,coap_session_t *ses
         cJSON_AddNumberToObject(charger, "Delta", ChargingGroup.group_chargers.charger_table[i].Delta);
         cJSON_AddStringToObject(charger, "HPT", ChargingGroup.group_chargers.charger_table[i].HPT);
         cJSON_AddNumberToObject(charger, "limite_fase", ChargingGroup.group_chargers.charger_table[i].limite_fase);
-        cJSON_AddItemToObject(Data_JSON, ChargingGroup.group_chargers.charger_table[i].name, charger);
+        cJSON_AddItemToObject(Data_JSON, "", charger);
     }   
 
     cJSON_AddItemToObject(Big_JSON, "Cargadores", Data_JSON);
@@ -170,7 +170,7 @@ hnd_get_data (coap_context_t *ctx, coap_resource_t *resource,coap_session_t *ses
     
     response->code = COAP_RESPONSE_CODE(200);
 
-    coap_add_data_blocked_response(resource, session, request, response, token,COAP_MEDIATYPE_APPLICATION_JSON, 1,(size_t)strlen(my_json_string),(const u_char*)my_json_string);
+    coap_add_data_blocked_response(resource, session, request, response, token,COAP_MEDIATYPE_APPLICATION_JSON, 5,(size_t)strlen(my_json_string),(const u_char*)my_json_string);
     free(my_json_string);
 } 
 
