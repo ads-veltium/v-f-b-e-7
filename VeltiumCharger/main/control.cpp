@@ -905,52 +905,106 @@ void procesar_bloque(uint16 tipo_bloque){
 		} 
 		break;
 
-		case GROUPS_DEVICES:{
-			Serial.printf("Nuevo grupo recibido\n");
-			char n[2];
-			char ID[8];
-   			memcpy(n,buffer_rx_local,2);
-			ChargingGroup.group_chargers.size=0;
+		case GROUPS_DEVICES_PART_1:{
+            Serial.printf("Nuevo grupo recibido\n");
+            char n[2];
+            char ID[8];
+            memcpy(n,buffer_rx_local,2);
+            ChargingGroup.group_chargers.size=0;
+            uint8_t limit = atoi(n) > 25? 25: atoi(n);
 			
-			for(uint8_t i=0; i<atoi(n);i++){	
-				for(uint8_t j =0; j< 8; j++){
-					ID[j]=(char)buffer_rx_local[2+i*9+j];
-				}
-				add_to_group(ID, get_IP(ID), &ChargingGroup.group_chargers);
-				ChargingGroup.group_chargers.charger_table[i].Fase = buffer_rx_local[10+i*9]-'0';
-				if(!memcmp(ID,ConfigFirebase.Device_Id,8)){
-					ChargingGroup.group_chargers.charger_table[i].Conected = true;
-					Params.Fase =buffer_rx_local[10+i*9]-'0';
-				}
-			}
+            for(uint8_t i=0; i<limit;i++){    
+                for(uint8_t j =0; j< 8; j++){
+                    ID[j]=(char)buffer_rx_local[2+i*9+j];
+                }
+                add_to_group(ID, get_IP(ID), &ChargingGroup.group_chargers);
+                ChargingGroup.group_chargers.charger_table[i].Fase = buffer_rx_local[10+i*9]-'0';
+                if(!memcmp(ID,ConfigFirebase.Device_Id,8)){
+                    ChargingGroup.group_chargers.charger_table[i].Conected = true;
+                    Params.Fase =buffer_rx_local[10+i*9]-'0';
+                }
+            }
 
-			//si llega un grupo en el que no estoy, significa que me han sacado de el
-			//cierro el coap y borro el grupo
-			if(check_in_group(ConfigFirebase.Device_Id,&ChargingGroup.group_chargers ) == 255){
-				if(ChargingGroup.Conected){
-					ChargingGroup.DeleteOrder = true;
-				}
-			}
+            //Si tenemos mas de 25, las comprobaciones del grupo las realizamos en la segunda parte
+            if(atoi(n)>25){
+                break;
+            }
 
-			//Ponerme el primero en el grupo para indicar que soy el maestro
-			if(ChargingGroup.Params.GroupMaster){
-				if(memcmp(ChargingGroup.group_chargers.charger_table[0].name,ConfigFirebase.Device_Id, 8)){
-					if(ChargingGroup.group_chargers.size > 0 && check_in_group(ConfigFirebase.Device_Id,&ChargingGroup.group_chargers ) != 255){
-						while(memcmp(ChargingGroup.group_chargers.charger_table[0].name,ConfigFirebase.Device_Id, 8)){
-							carac_charger OldMaster=ChargingGroup.group_chargers.charger_table[0];
-							remove_from_group(OldMaster.name, &ChargingGroup.group_chargers);
-							add_to_group(OldMaster.name, OldMaster.IP, &ChargingGroup.group_chargers);
-							ChargingGroup.group_chargers.charger_table[ChargingGroup.group_chargers.size-1].Fase=OldMaster.Fase;
-						}
-						ChargingGroup.SendNewGroup = true;
-					}
-				}
-				//si soy el maestro, avisar a los nuevos de que son parte de mi grupo
-            	broadcast_a_grupo("Satrt client", 12);
-			}
-			print_table(ChargingGroup.group_chargers, "Grupo desde PSOC");
-		}
-		break;
+            //si llega un grupo en el que no estoy, significa que me han sacado de el
+            //cierro el coap y borro el grupo
+            if(check_in_group(ConfigFirebase.Device_Id,&ChargingGroup.group_chargers ) == 255){
+                if(ChargingGroup.Conected){
+                    ChargingGroup.DeleteOrder = true;
+                }
+            }
+
+            //Ponerme el primero en el grupo para indicar que soy el maestro
+            if(ChargingGroup.Params.GroupMaster){
+                if(memcmp(ChargingGroup.group_chargers.charger_table[0].name,ConfigFirebase.Device_Id, 8)){
+                    if(ChargingGroup.group_chargers.size > 0 && check_in_group(ConfigFirebase.Device_Id,&ChargingGroup.group_chargers ) != 255){
+                        while(memcmp(ChargingGroup.group_chargers.charger_table[0].name,ConfigFirebase.Device_Id, 8)){
+                            carac_charger OldMaster=ChargingGroup.group_chargers.charger_table[0];
+                            remove_from_group(OldMaster.name, &ChargingGroup.group_chargers);
+                            add_to_group(OldMaster.name, OldMaster.IP, &ChargingGroup.group_chargers);
+                            ChargingGroup.group_chargers.charger_table[ChargingGroup.group_chargers.size-1].Fase=OldMaster.Fase;
+                        }
+                        ChargingGroup.SendNewGroup = true;
+                    }
+                }
+                //si soy el maestro, avisar a los nuevos de que son parte de mi grupo
+                broadcast_a_grupo("Satrt client", 12);
+            }
+            print_table(ChargingGroup.group_chargers, "Grupo desde PSOC");
+        }
+        break;
+
+        //Segunda parte del grupo de cargadores
+        case GROUPS_DEVICES_PART_2:{
+            Serial.printf("Segunda parte del grupo recibida\n");
+            char n[2];
+            char ID[8];
+            memcpy(n,buffer_rx_local,2);
+            
+            for(uint8_t i=0; i<atoi(n);i++){    
+                for(uint8_t j =0; j< 8; j++){
+                    ID[j]=(char)buffer_rx_local[2+i*9+j];
+                }
+                add_to_group(ID, get_IP(ID), &ChargingGroup.group_chargers);
+                ChargingGroup.group_chargers.charger_table[ChargingGroup.group_chargers.size-1].Fase = buffer_rx_local[10+i*9]-'0';
+
+                if(!memcmp(ID,ConfigFirebase.Device_Id,8)){
+                    Params.Fase =buffer_rx_local[10+i*9]-'0';
+                }
+
+            }
+
+            //si llega un grupo en el que no estoy, significa que me han sacado de el
+            //cierro el coap y borro el grupo
+            if(check_in_group(ConfigFirebase.Device_Id,&ChargingGroup.group_chargers ) == 255){
+                if(ChargingGroup.Conected){
+                    ChargingGroup.DeleteOrder = true;
+                }
+            }
+
+            //Ponerme el primero en el grupo para indicar que soy el maestro
+            if(ChargingGroup.Params.GroupMaster){
+                if(memcmp(ChargingGroup.group_chargers.charger_table[0].name,ConfigFirebase.Device_Id, 8)){
+                    if(ChargingGroup.group_chargers.size > 0 && check_in_group(ConfigFirebase.Device_Id,&ChargingGroup.group_chargers ) != 255){
+                        while(memcmp(ChargingGroup.group_chargers.charger_table[0].name,ConfigFirebase.Device_Id, 8)){
+                            carac_charger OldMaster=ChargingGroup.group_chargers.charger_table[0];
+                            remove_from_group(OldMaster.name, &ChargingGroup.group_chargers);
+                            add_to_group(OldMaster.name, OldMaster.IP, &ChargingGroup.group_chargers);
+                            ChargingGroup.group_chargers.charger_table[ChargingGroup.group_chargers.size-1].Fase=OldMaster.Fase;
+                        }
+                        ChargingGroup.SendNewGroup = true;
+                    }
+                }
+                //si soy el maestro, avisar a los nuevos de que son parte de mi grupo
+                broadcast_a_grupo("Satrt client", 12);
+            }
+            print_table(ChargingGroup.group_chargers, "Grupo desde PSOC");
+        }
+
 
 		case GROUPS_PARAMS:{
 			memcpy(&ChargingGroup.Params,buffer_rx_local, 7);

@@ -2,8 +2,8 @@
 
 Real_Time_Database *Database = new Real_Time_Database();
 
-StaticJsonDocument<1024>  Lectura        EXT_RAM_ATTR;
-StaticJsonDocument<1024>  Escritura      EXT_RAM_ATTR;
+StaticJsonDocument<2048>  Lectura        EXT_RAM_ATTR;
+StaticJsonDocument<2048>  Escritura      EXT_RAM_ATTR;
 
 //Extern variables
 extern carac_Firebase_Configuration ConfigFirebase;
@@ -20,7 +20,7 @@ extern uint8_t ConnectionState;
 void DownloadTask(void *arg);
 void store_group_in_mem(carac_chargers* group);
 void coap_put( char* Topic, char* Message);
-
+bool add_to_group(const char* ID, IPAddress IP, carac_chargers* group);
 
 
 uint16 ParseFirmwareVersion(String Texto){
@@ -258,17 +258,21 @@ bool ReadFirebaseGroups(String Path){
         Lectura.clear();
         if(Database->Send_Command(Path+"/devices",&Lectura, LEER, true)){ 
           JsonObject root = Lectura.as<JsonObject>();
-          int index =0;
+          ChargingGroup.group_chargers.size = 0;
+          //int index =0;
           for (JsonPair kv : root) {
-            memcpy(ChargingGroup.group_chargers.charger_table[index].name, kv.key().c_str(),8);
+            add_to_group(kv.key().c_str(),IPADDR_ANY, &ChargingGroup.group_chargers);
+            ChargingGroup.group_chargers.charger_table[ChargingGroup.group_chargers.size-1].Fase = Lectura[kv.key().c_str()]["phase"].as<uint8_t>();
+            /*memcpy(ChargingGroup.group_chargers.charger_table[index].name, kv.key().c_str(),8);
             ChargingGroup.group_chargers.charger_table[index].Fase = Lectura[kv.key().c_str()]["phase"].as<uint8_t>();
-            index ++;
+            index ++;*/
           }
-          ChargingGroup.group_chargers.size = index;
+          /*ChargingGroup.group_chargers.size = index;*/
           store_group_in_mem(&ChargingGroup.group_chargers);
 
-          ChargingGroup.SendNewGroup = true;
+          //ChargingGroup.SendNewGroup = true;
         }
+        print_table(ChargingGroup.group_chargers, "Grupo desde firebase");
       }    
 
       else{

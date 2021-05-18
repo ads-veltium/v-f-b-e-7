@@ -337,12 +337,12 @@ void InitServer(void) {
     }
     String vcd(ConfigFirebase.Device_Id);
     
-    if(longitud_pwd==255){
+    if(longitud_pwd==NULL){
         password = vcd;
     }else{
         password = flash;
     }
-
+    Serial.println(password);
     });
 
     server.on("/veltium-logo-big", HTTP_GET_A, [](AsyncWebServerRequest *request){
@@ -371,31 +371,33 @@ void InitServer(void) {
    });
 
     server.on("/changepass", HTTP_GET, [] (AsyncWebServerRequest *request) {
-    
-	contrasena_act = request->getParam(ACT_PWD)->value();
-	contrasena_nueva = request->getParam(NEW_PWD)->value();
-    contrasena_conf = request->getParam(CONF_PWD)->value();
+    if(Autenticado==true){
+        contrasena_act = request->getParam(ACT_PWD)->value();
+        contrasena_nueva = request->getParam(NEW_PWD)->value();
+        contrasena_conf = request->getParam(CONF_PWD)->value();
 
-    request->send(SPIFFS, "/ajustes.html",String(), false, processor);
+        request->send(SPIFFS, "/ajustes.html",String(), false, processor);
 
-    if(contrasena_act == password && contrasena_nueva==contrasena_conf){
-        
-        for(int i=0;i<PASS_LENGTH;i++){
-            EEPROM.write(i,vacio[i]);
+        if(contrasena_act == password && contrasena_nueva==contrasena_conf){
+            
+            for(int i=0;i<PASS_LENGTH;i++){
+                EEPROM.write(i,vacio[i]);
+            }
+            
+            longitud_pwd = contrasena_nueva.length();
+            
+            EEPROM.write(0,longitud_pwd);
+            
+            for(int i=1;i<longitud_pwd+1;i++){
+                EEPROM.write(i,contrasena_nueva[i-1]);
+            }
+
+            EEPROM.commit();
+            
         }
-        
-        longitud_pwd = contrasena_nueva.length();
-        
-        EEPROM.write(0,longitud_pwd);
-        
-        for(int i=1;i<longitud_pwd+1;i++){
-            EEPROM.write(i,contrasena_nueva[i-1]);
-        }
-
-        EEPROM.commit();
-        
+    }else{
+        request->send(SPIFFS, "/login.html");
     }
-    
     });
 
     server.on("/comands", HTTP_GET_A, [](AsyncWebServerRequest *request){
@@ -445,52 +447,55 @@ void InitServer(void) {
     });
 
     server.on("/get", HTTP_GET_A, [](AsyncWebServerRequest *request){
-        
-        Coms.GSM.ON = Gsm_On;
-        memcpy(Coms.Wifi.AP,request->getParam(AP)->value().c_str(),32);
-        Coms.Wifi.Pass = request->getParam(WIFI_PWD)->value();
-                
-        //Hay que reiniciar ethernet si activampos una ip estatica
-        bool reiniciar_eth = Coms.ETH.Auto != Eth_Auto;
-        Coms.ETH.Auto = Eth_Auto;
+        if(Autenticado==true){
+            Coms.GSM.ON = Gsm_On;
+            memcpy(Coms.Wifi.AP,request->getParam(AP)->value().c_str(),32);
+            Coms.Wifi.Pass = request->getParam(WIFI_PWD)->value();
+                    
+            //Hay que reiniciar ethernet si activampos una ip estatica
+            bool reiniciar_eth = Coms.ETH.Auto != Eth_Auto;
+            Coms.ETH.Auto = Eth_Auto;
 
-        if(!Coms.ETH.Auto && Eth_On){
-            const char *IP=request->getParam(IP1)->value().c_str();
-            const char *MASKARA=request->getParam("mask")->value().c_str();
-            const char *GATE=request->getParam("gateway")->value().c_str();
-            ip4addr_aton(IP,&Coms.ETH.IP ); 
-            ip4addr_aton(GATE,&Coms.ETH.Gateway ); 
-            ip4addr_aton(MASKARA,&Coms.ETH.Mask ); 
+            if(!Coms.ETH.Auto && Eth_On){
+                const char *IP=request->getParam(IP1)->value().c_str();
+                const char *MASKARA=request->getParam("mask")->value().c_str();
+                const char *GATE=request->getParam("gateway")->value().c_str();
+                ip4addr_aton(IP,&Coms.ETH.IP ); 
+                ip4addr_aton(GATE,&Coms.ETH.Gateway ); 
+                ip4addr_aton(MASKARA,&Coms.ETH.Mask ); 
+            }
+
+            if(reiniciar_eth){
+                Coms.ETH.restart = true;
+                request->send(SPIFFS, "/comms.html",String(), false, processor);
+                Coms.ETH.ON = false;
+                SendToPSOC5(Coms.ETH.ON,COMS_CONFIGURATION_ETH_ON);
+                delay(1000);
+            }
+
+            while(Coms.ETH.ON != Eth_On){
+                SendToPSOC5(Eth_On,COMS_CONFIGURATION_ETH_ON);
+                delay(50);
+            }
+
+            Coms.GSM.APN = request->getParam(APN)->value();
+            Coms.GSM.Pass = request->getParam(GSM_PWD)->value();
+
+            Serial.println((char*)Coms.Wifi.AP);
+            Serial.println(ip4addr_ntoa(&Coms.ETH.IP));
+            Serial.println(ip4addr_ntoa(&Coms.ETH.Gateway));
+            Serial.println(ip4addr_ntoa(&Coms.ETH.Mask));
+            Serial.println(Coms.ETH.Auto);       
+
+            while(Coms.Wifi.ON != Wifi_On){
+                SendToPSOC5(Wifi_On,COMS_CONFIGURATION_WIFI_ON);
+                delay(50);
+            }
+
+            if(!reiniciar_eth)request->send(SPIFFS, "/comms.html",String(), false, processor);
+        }else{
+            request->send(SPIFFS, "/login.html");
         }
-
-        if(reiniciar_eth){
-            Coms.ETH.restart = true;
-            request->send(SPIFFS, "/comms.html",String(), false, processor);
-            Coms.ETH.ON = false;
-            SendToPSOC5(Coms.ETH.ON,COMS_CONFIGURATION_ETH_ON);
-            delay(1000);
-        }
-
-        while(Coms.ETH.ON != Eth_On){
-            SendToPSOC5(Eth_On,COMS_CONFIGURATION_ETH_ON);
-            delay(50);
-        }
-
-        Coms.GSM.APN = request->getParam(APN)->value();
-        Coms.GSM.Pass = request->getParam(GSM_PWD)->value();
-
-        Serial.println((char*)Coms.Wifi.AP);
-        Serial.println(ip4addr_ntoa(&Coms.ETH.IP));
-        Serial.println(ip4addr_ntoa(&Coms.ETH.Gateway));
-        Serial.println(ip4addr_ntoa(&Coms.ETH.Mask));
-        Serial.println(Coms.ETH.Auto);       
-
-        while(Coms.Wifi.ON != Wifi_On){
-            SendToPSOC5(Wifi_On,COMS_CONFIGURATION_WIFI_ON);
-            delay(50);
-        }
-
-        if(!reiniciar_eth)request->send(SPIFFS, "/comms.html",String(), false, processor);
 
     });
 /*
@@ -506,30 +511,39 @@ void InitServer(void) {
     });
 */
     server.on("/currcomand", HTTP_GET_A, [](AsyncWebServerRequest *request){
-        
-        uint8_t data = request->getParam(CURR_COMAND)->value().toInt();
+        if(Autenticado==true){
+            uint8_t data = request->getParam(CURR_COMAND)->value().toInt();
 
-        SendToPSOC5(data, MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
-        
-        request->send(SPIFFS, "/comands.html",String(), false, processor);
+            SendToPSOC5(data, MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
+            
+            request->send(SPIFFS, "/comands.html",String(), false, processor);
+        }else{
+            request->send(SPIFFS, "/login.html");
+        }
     });
 
     server.on("/instcurlim", HTTP_GET_A, [](AsyncWebServerRequest *request){
-        
-        uint8_t data = request->getParam(INST_CURR_LIM)->value().toInt();
+        if(Autenticado==true){
+            uint8_t data = request->getParam(INST_CURR_LIM)->value().toInt();
 
-        SendToPSOC5(data, MEASURES_INSTALATION_CURRENT_LIMIT_CHAR_HANDLE);
-        
-        request->send(SPIFFS, "/parameters.html",String(), false, processor);
+            SendToPSOC5(data, MEASURES_INSTALATION_CURRENT_LIMIT_CHAR_HANDLE);
+            
+            request->send(SPIFFS, "/parameters.html",String(), false, processor);
+        }else{
+            request->send(SPIFFS, "/login.html");
+        }
     });
 
     server.on("/powercont", HTTP_GET_A, [](AsyncWebServerRequest *request){
-        
-        uint8_t data = request->getParam(POT_CONT)->value().toInt();
+         if(Autenticado==true){
+            uint8_t data = request->getParam(POT_CONT)->value().toInt();
 
-        SendToPSOC5(data, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_CHAR_HANDLE);
-        
-        request->send(SPIFFS, "/parameters.html",String(), false, processor);
+            SendToPSOC5(data, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_CHAR_HANDLE);
+            
+            request->send(SPIFFS, "/parameters.html",String(), false, processor);
+         }else{
+            request->send(SPIFFS, "/login.html");
+         }
     });
 /*
     server.on("/usertype", HTTP_GET_A, [](AsyncWebServerRequest *request){
@@ -625,7 +639,7 @@ void InitServer(void) {
     });
   
    server.on("/update", HTTP_GET_A, [] (AsyncWebServerRequest *request) {
-
+    if(Autenticado==true){ 
 		int entrada;
 		entrada = request->getParam(NUM_BOTON)->value().toInt();
 		
@@ -685,11 +699,14 @@ void InitServer(void) {
         default:
 
             break;
+        }
+    }else{
+        request->send(SPIFFS, "/login.html");
     }
-
    });
 
    server.on("/autoupdate", HTTP_GET_A, [] (AsyncWebServerRequest *request) {
+    if(Autenticado==true){
     	bool estado;
         int numero;
         Serial.println(Params.autentication_mode);  
@@ -730,6 +747,9 @@ void InitServer(void) {
         default:
             break;
         }
+    }else{
+        request->send(SPIFFS, "/login.html");
+    }
    });
    Serial.println(ESP.getFreeHeap());
 }

@@ -39,8 +39,14 @@ bool add_to_group(const char* ID, IPAddress IP, carac_chargers* group){
             group->size++;
             return true;
         }
+        else{
+            printf("el cargador y %.*s ya esta en el grupo! \n",8, ID);
+        }
     }
-    printf("Error al añadir al grupo \n");
+    else{
+        printf("Grupo lleno! \n");
+    }
+    
     return false;
 }
 
@@ -74,6 +80,7 @@ bool remove_from_group(const char* ID ,carac_chargers* group){
 }
 
 //Almacenar grupo en la flash
+//Si el tamaño del grupo es mayor de 25 cargadores, enviarlo en dos trozos
 void store_group_in_mem(carac_chargers* group){
     char sendBuffer[252];
     if(group->size< 10){
@@ -83,26 +90,55 @@ void store_group_in_mem(carac_chargers* group){
         sprintf(&sendBuffer[0],"%i",(char)group->size);
     }
 
-    if(group->size < 25){
-        if(group->size>0){
+    if(group->size>0){
+        if(group->size>25){
+            //Envio de la primera parte
+            for(uint8_t i = 0;i < 25; i++){
+                memcpy(&sendBuffer[2+(i*9)],group->charger_table[i].name,8);
+                itoa(group->charger_table[i].Fase,&sendBuffer[10+(i*9)],10);
+            }
+            Serial.println("Mandando primera parte");
+            SendToPSOC5(sendBuffer,227,GROUPS_DEVICES_PART_1); 
+            delay(250);
+
+            //Envio de la segunda mitad
+            if(group->size - 25< 10){
+                sprintf(&sendBuffer[0],"0%i",(char)group->size-25);
+            }
+            else{
+                sprintf(&sendBuffer[0],"%i",(char)group->size-25);
+            }
+            for(uint8_t i=0;i<(group->size - 25);i++){
+                memcpy(&sendBuffer[2+(i*9)],group->charger_table[i+25].name,8);
+                itoa(group->charger_table[i+25].Fase,&sendBuffer[10+(i*9)],10);
+            }
+            Serial.println("Mandando segunda parte");
+            SendToPSOC5(sendBuffer,(group->size - 25)*9+2,GROUPS_DEVICES_PART_2); 
+            delay(100);
+        }
+        else{
+
+            //El grupo entra en una parte, asique solo mandamos una
             for(uint8_t i=0;i<group->size;i++){
                 memcpy(&sendBuffer[2+(i*9)],group->charger_table[i].name,8);
                 itoa(group->charger_table[i].Fase,&sendBuffer[10+(i*9)],10);
             }
-            SendToPSOC5(sendBuffer,ChargingGroup.group_chargers.size*9+2,GROUPS_DEVICES); 
+            SendToPSOC5(sendBuffer,ChargingGroup.group_chargers.size*9+2,GROUPS_DEVICES_PART_1); 
         }
-        else{
-            for(int i=0;i<=250;i++){
-                sendBuffer[i]=(char)0;
-            }
-            SendToPSOC5(sendBuffer,250,GROUPS_DEVICES); 
-        }
-        
-        delay(100);
-        return;
     }
+    else{
+        for(int i=0;i<=250;i++){
+            sendBuffer[i]=(char)0;
+        }
+        SendToPSOC5(sendBuffer,250,GROUPS_DEVICES_PART_1); 
+        SendToPSOC5(sendBuffer,250,GROUPS_DEVICES_PART_2); 
+        
+    }
+    return;
+    
     printf("Error al almacenar el grupo en la memoria\n");
 }
+
 
 //Eliminar grupo
 void remove_group(carac_chargers* group){
