@@ -51,7 +51,7 @@ uint8_t New_Data(uint8_t* Buffer, int Data_size){
   char* Data = (char*) calloc(Data_size, '0');
   memcpy(Data, Buffer, Data_size);
 
-  //New_Data(Data, Data_size);
+  New_Data(Data, Data_size);
   return 62;
 
   free(Data);
@@ -63,6 +63,7 @@ void New_Data(char* Data, int Data_size){
 
 
     cJSON *mensaje_Json = cJSON_Parse(Data);
+    printf("%Datos recibidos %.*s\n", Data_size,Data);
 
     carac_charger Cargador;
 
@@ -228,9 +229,8 @@ void New_Group(char* Data, int Data_size){
     char n[2];
     memcpy(n,Data,2);
     uint8_t numero_de_cargadores = atoi(n);
+    ChargingGroup.group_chargers.size = 0;
 
-    //comprobar si el grupo es distinto
-    //Si es distinto del que ya tenemos almacenado, lo guardamos en la flash
     for(uint8_t i=0; i<numero_de_cargadores;i++){    
         for(uint8_t j =0; j< 8; j++){
             ID[j]=(char)Data[2+i*9+j];
