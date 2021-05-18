@@ -94,10 +94,10 @@ bool Parse_Data_JSON(char* Data, int Data_size){
 
     cJSON *mensaje_Json = cJSON_Parse(Data);
 
-    /*char *Jsonstring =cJSON_Print(mensaje_Json);
+    char *Jsonstring =cJSON_Print(mensaje_Json);
     printf("Json nuevooo!!!\n");
     printf("%s\n",Jsonstring);
-    free(Jsonstring);*/
+    free(Jsonstring);
 
     //comprobar que el Json está bien
     if(!cJSON_HasObjectItem(mensaje_Json,"Txanda")){
@@ -236,7 +236,7 @@ message_handler(coap_context_t *ctx, coap_session_t *session,coap_pdu_t *sent, c
     coap_optlist_t *option;
     coap_tid_t tid;
     static int FullSize =0;
-    
+    xMasterTimer = xTaskGetTickCount();
 
     if (COAP_RESPONSE_CLASS(received->code) == 2) {
         /* Need to see if blocked response */
@@ -324,7 +324,6 @@ static void hnd_espressif_put(coap_context_t *ctx,coap_resource_t *resource,coap
     size_t size;
     unsigned char *data;
     (void)coap_get_data(request, &size, &data);
-
     if(!memcmp(resource->uri_path->s, "CHARGERS", resource->uri_path->length)){
         New_Group(data,  size);
         coap_resource_notify_observers(resource, NULL);
@@ -611,7 +610,7 @@ static void coap_client(void *p){
                 ChargingGroup.SendNewGroup = false;
             }
             
-            if(FallosEnvio > 10 || pdTICKS_TO_MS(xTaskGetTickCount()- xMasterTimer) > 60000){
+            if(/*FallosEnvio > 10 || */pdTICKS_TO_MS(xTaskGetTickCount()- xMasterTimer) > 60000){
                 #ifdef DEBUG_GROUPS
                 printf("Servidor desconectado !\n");
                 #endif

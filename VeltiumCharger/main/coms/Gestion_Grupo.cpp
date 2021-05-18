@@ -39,14 +39,8 @@ bool add_to_group(const char* ID, IPAddress IP, carac_chargers* group){
             group->size++;
             return true;
         }
-        else{
-            printf("el cargador y %.*s ya esta en el grupo! \n",8, ID);
-        }
     }
-    else{
-        printf("Grupo lleno! \n");
-    }
-    
+   
     return false;
 }
 

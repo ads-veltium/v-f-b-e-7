@@ -1003,6 +1003,7 @@ void procesar_bloque(uint16 tipo_bloque){
                 broadcast_a_grupo("Satrt client", 12);
             }
             print_table(ChargingGroup.group_chargers, "Grupo desde PSOC");
+			break;
         }
 
 

@@ -70,10 +70,6 @@ void New_Data(char* Data, int Data_size){
       return;
     }
     
-    char *Jsonstring =cJSON_Print(mensaje_Json);
-    printf("%s\n",Jsonstring);
-    free(Jsonstring);
-
     //Extraer los datos
     memcpy(Cargador.HPT,cJSON_GetObjectItem(mensaje_Json,"HPT")->valuestring,3);
     if(!cJSON_HasObjectItem(mensaje_Json,"device_id")){
