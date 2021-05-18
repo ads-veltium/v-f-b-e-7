@@ -239,15 +239,15 @@ void New_Group(char* Data, int Data_size){
             ID[j]=(char)Data[2+i*9+j];
         }
         add_to_group(ID, get_IP(ID), &ChargingGroup.group_chargers);
-        ChargingGroup.group_chargers.charger_table[i].Fase = buffer_rx_local[10+i*9]-'0';
+        ChargingGroup.group_chargers.charger_table[i].Fase = Data[10+i*9]-'0';
 
         if(!memcmp(ID,ConfigFirebase.Device_Id,8)){
             ChargingGroup.group_chargers.charger_table[i].Conected = true;
-            Params.Fase =buffer_rx_local[10+i*9]-'0';
+            Params.Fase =Data[10+i*9]-'0';
         }
     }
     store_group_in_mem(&ChargingGroup.group_chargers);
-    print_table(ChargingGroup, "Grupo desde COAP");
+    print_table(ChargingGroup.group_chargers, "Grupo desde COAP");
 }
 
 // Function for Chart: '<Root>/Charger 1'
