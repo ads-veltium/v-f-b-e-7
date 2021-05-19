@@ -56,6 +56,7 @@ uint8_t Esperando_datos =0;
 uint8_t FallosEnvio =0;
 uint8_t turno =0;
 char LastControl[50] EXT_RAM_ATTR;
+char LastData[100]   EXT_RAM_ATTR;
 static char FullData[4096] EXT_RAM_ATTR;
 bool hello_verification = false;
 
@@ -134,6 +135,12 @@ hnd_get(coap_context_t *ctx, coap_resource_t *resource,coap_session_t *session,c
     }
     else if(!memcmp(resource->uri_path->s, "TXANDA", resource->uri_path->length)){
         sprintf(buffer,"%i%i",TURNO, turno);
+    }
+    else if(!memcmp(resource->uri_path->s, "DATA", resource->uri_path->length)){
+        itoa(CURRENT_COMMAND, buffer, 10);
+        int size = strlen(LastData);
+        memcpy(&buffer[1], LastData, size);
+        buffer[size+1]='\0';        
     }
 
     response->code = COAP_RESPONSE_CODE(205);
@@ -271,7 +278,7 @@ static void hnd_espressif_put(coap_context_t *ctx,coap_resource_t *resource,coap
         coap_resource_notify_observers(resource, NULL);
     }
     else if(!memcmp(resource->uri_path->s, "DATA", resource->uri_path->length)){
-        char buffer[20];
+        char buffer[50];
         carac_charger Cargador = New_Data(data,  size);
          
         itoa(CURRENT_COMMAND, buffer, 10);
@@ -287,6 +294,7 @@ static void hnd_espressif_put(coap_context_t *ctx,coap_resource_t *resource,coap
 
         int size = strlen(my_json_string);
         memcpy(&buffer[1], my_json_string, size);
+        memcpy(LastData, my_json_string, size);
         buffer[size+1]='\0';
 
         free(my_json_string);
