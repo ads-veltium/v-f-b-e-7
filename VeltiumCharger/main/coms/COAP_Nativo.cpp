@@ -271,7 +271,7 @@ static void hnd_espressif_put(coap_context_t *ctx,coap_resource_t *resource,coap
         coap_resource_notify_observers(resource, NULL);
     }
     else if(!memcmp(resource->uri_path->s, "DATA", resource->uri_path->length)){
-        char buffer[20];
+        char buffer[50];
         carac_charger Cargador = New_Data(data,  size);
          
         itoa(CURRENT_COMMAND, buffer, 10);
@@ -536,7 +536,7 @@ static void coap_client(void *p){
             uint8_t intentos = 0;
             do{
                 session = coap_new_client_session_psk(ctx, &src_addr, &dst_addr,COAP_PROTO_DTLS , ConfigFirebase.Device_Id, (const uint8_t *)get_passwd().c_str(), 8);
-            }while( !Authenticate() || ++intentos < 4);
+            }while( !Authenticate() && ++intentos < 4);
             if(intentos >= 4){
                 break;
             }
