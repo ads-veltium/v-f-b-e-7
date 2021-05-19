@@ -216,6 +216,11 @@ void New_Current(uint8_t* Buffer, int Data_size){
     return;
   }
   
+  //si no son mis datos los ignoro
+  if(memcmp(ConfigFirebase.Device_Id,cJSON_GetObjectItem(mensaje_Json,"N")->valuestring,9)){
+    printf("No son mis datos!\n");
+    return;
+  }
   //Extraer los datos
   uint8_t desired_current = (uint8_t) cJSON_GetObjectItem(mensaje_Json,"DC")->valueint;
   Status.limite_Fase= (uint8_t) cJSON_GetObjectItem(mensaje_Json,"LF")->valueint;

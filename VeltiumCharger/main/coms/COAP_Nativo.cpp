@@ -137,14 +137,16 @@ hnd_get(coap_context_t *ctx, coap_resource_t *resource,coap_session_t *session,c
         sprintf(buffer,"%i%i",TURNO, turno);
     }
     else if(!memcmp(resource->uri_path->s, "DATA", resource->uri_path->length)){
-        itoa(CURRENT_COMMAND, buffer, 10);
+        /*itoa(CURRENT_COMMAND, buffer, 10);
         int size = strlen(LastData);
         memcpy(&buffer[1], LastData, size);
-        buffer[size+1]='\0';        
+        buffer[size+1]='\0';  */      
     }
 
     response->code = COAP_RESPONSE_CODE(205);
-    coap_add_data_blocked_response(resource, session, request, response, token,COAP_MEDIATYPE_APPLICATION_JSON, 5,(size_t)strlen((char*)buffer),(const u_char*)buffer);
+    if(strlen((char*)buffer) >0){
+        coap_add_data_blocked_response(resource, session, request, response, token,COAP_MEDIATYPE_APPLICATION_JSON, 2,(size_t)strlen((char*)buffer),(const u_char*)buffer);
+    }
 }
 
 static void 
@@ -285,6 +287,7 @@ static void hnd_espressif_put(coap_context_t *ctx,coap_resource_t *resource,coap
         cJSON *COMMAND_Json;
         COMMAND_Json = cJSON_CreateObject();
 
+        cJSON_AddStringToObject(COMMAND_Json, "N", Cargador.name);
         cJSON_AddNumberToObject(COMMAND_Json, "DC", Cargador.DesiredCurrent);
         cJSON_AddNumberToObject(COMMAND_Json, "LF", Cargador.limite_fase);
         cJSON_AddNumberToObject(COMMAND_Json, "D", Cargador.Delta);
@@ -299,7 +302,7 @@ static void hnd_espressif_put(coap_context_t *ctx,coap_resource_t *resource,coap
 
         free(my_json_string);
          
-        coap_add_data_blocked_response(resource, session, request, response, token,COAP_MEDIATYPE_APPLICATION_JSON, 1,(size_t)strlen((char*)buffer),(const u_char*)buffer);
+        coap_add_data_blocked_response(resource, session, request, response, token,COAP_MEDIATYPE_APPLICATION_JSON, 2,(size_t)strlen((char*)buffer),(const u_char*)buffer);
     }   
 
     response->code = COAP_RESPONSE_CODE(205);
@@ -372,7 +375,6 @@ static bool Authenticate(){
     coap_send(session, request);
     Esperando_datos =   1;
     POLL(20000);
-
         
     if(Esperando_datos){
          if (session) {
@@ -532,7 +534,7 @@ static void coap_client(void *p){
         inet_addr_from_ip4addr(&src_addr.addr.sin.sin_addr, &Coms.ETH.IP);
         src_addr.addr.sin.sin_port        = htons(COAP_DEFAULT_PORT);
 
-        ctx = coap_new_context(NULL);
+        ctx = coap_new_context(&src_addr);
         if (!ctx) {
             ESP_LOGE(TAG, "coap_new_context() failed");
             goto clean_up;
@@ -660,7 +662,7 @@ static void coap_server(void *p){
         inet_addr_from_ip4addr(&serv_addr.addr.sin.sin_addr, &Coms.ETH.IP);
         serv_addr.addr.sin.sin_port        = htons(COAP_DEFAULT_PORT);
 
-        ctx = coap_new_context(NULL);
+        ctx = coap_new_context(&serv_addr);
         if (!ctx) {
             ESP_LOGE(TAG, "coap_new_context() failed");
             continue;
