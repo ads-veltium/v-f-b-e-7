@@ -259,15 +259,15 @@ typedef struct{
 	char     name[9];
 	IPAddress     IP;
 	char      HPT[3];
-	uint8_t     Fase;
-	uint16_t Current;
-	uint16_t CurrentB;
-	uint16_t CurrentC;
-	uint16_t   Delta;
-	uint16_t Delta_fase;
-	uint16_t DesiredCurrent;
-	uint8_t limite_fase;
-	TickType_t Period;
+	uint8_t     Fase  = 1;
+	uint16_t Current  = 0;
+	uint16_t CurrentB = 0;
+	uint16_t CurrentC = 0;
+	uint16_t   Delta  = 0;
+	uint16_t Delta_fase = 0;
+	uint16_t DesiredCurrent = 0;
+	uint8_t limite_fase = 0;
+	TickType_t Period = 0;
 	bool Conected = false;
 
 }carac_charger;

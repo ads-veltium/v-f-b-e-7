@@ -5,7 +5,6 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/event_groups.h"
-#include "Arduino.h"
 #include "cJSON.h"
 #include "../group_control.h"
 #include "esp_log.h"
@@ -32,8 +31,6 @@ extern carac_Firebase_Configuration ConfigFirebase;
 extern carac_Status Status;
 extern carac_Params Params;
 extern carac_group  ChargingGroup;
-extern carac_chargers FaseChargers;
-extern carac_chargers net_group;
 extern carac_Comands  Comands ;
 
 static StackType_t xServerStack [4096*4]     EXT_RAM_ATTR;
@@ -44,21 +41,20 @@ TaskHandle_t xServerHandle = NULL;
 TaskHandle_t xClientHandle = NULL;
 TickType_t   xMasterTimer  = 0;
 
-coap_context_t * ctx      EXT_RAM_ATTR;
-coap_session_t * session  EXT_RAM_ATTR;
-coap_optlist_t * optlist  EXT_RAM_ATTR;
+coap_context_t  *ctx      EXT_RAM_ATTR;
+coap_session_t  *session  EXT_RAM_ATTR;
+coap_optlist_t  *optlist  EXT_RAM_ATTR;
 
-coap_resource_t *DATA EXT_RAM_ATTR;
-coap_resource_t *PARAMS  EXT_RAM_ATTR;
+coap_resource_t *DATA     EXT_RAM_ATTR;
+coap_resource_t *PARAMS   EXT_RAM_ATTR;
 coap_resource_t *CONTROL  EXT_RAM_ATTR;
-coap_resource_t *CHARGERS  EXT_RAM_ATTR; 
-coap_resource_t *TXANDA  EXT_RAM_ATTR; 
+coap_resource_t *CHARGERS EXT_RAM_ATTR; 
+coap_resource_t *TXANDA   EXT_RAM_ATTR; 
 
-const static char *TAG = "CoAP_server";
+const static char *TAG = "CoAP";
 uint8_t Esperando_datos =0;
-uint8_t  FallosEnvio =0;
+uint8_t FallosEnvio =0;
 uint8_t turno =0;
-char LastData[500] EXT_RAM_ATTR;
 char LastControl[50] EXT_RAM_ATTR;
 static char FullData[4096] EXT_RAM_ATTR;
 bool hello_verification = false;
@@ -76,8 +72,6 @@ bool remove_from_group(const char* ID ,carac_chargers* group);
 void store_group_in_mem(carac_chargers* group);
 void broadcast_a_grupo(char* Mensaje, uint16_t size);
 void send_to(IPAddress IP,  char* Mensaje);
-void coap_put( char* Topic, char* Message);
-void coap_get( char* Topic);
 
 /*****************************
  * Prototipos de funciones 
@@ -86,11 +80,13 @@ void Send_Params();
 void Send_Data();
 void Send_Chargers();
 String get_passwd();
+void coap_put( char* Topic, char* Message);
+void coap_get( char* Topic);
 void MasterPanicTask(void *args);
 
 static void
 hnd_get(coap_context_t *ctx, coap_resource_t *resource,coap_session_t *session,coap_pdu_t *request, coap_binary_t *token,coap_string_t *query, coap_pdu_t *response){    
-    char buffer[500];
+    char buffer[300];
     
     if(!memcmp(resource->uri_path->s, "CHARGERS", resource->uri_path->length)){
         itoa(GROUP_CHARGERS, buffer, 10);
@@ -140,7 +136,7 @@ hnd_get(coap_context_t *ctx, coap_resource_t *resource,coap_session_t *session,c
         sprintf(buffer,"%i%i",TURNO, turno);
     }
 
-    response->code = COAP_RESPONSE_CODE(200);
+    response->code = COAP_RESPONSE_CODE(205);
     coap_add_data_blocked_response(resource, session, request, response, token,COAP_MEDIATYPE_APPLICATION_JSON, 5,(size_t)strlen((char*)buffer),(const u_char*)buffer);
 }
 
@@ -169,7 +165,6 @@ message_handler(coap_context_t *ctx, coap_session_t *session,coap_pdu_t *sent, c
             if (coap_get_data(received, &data_len, &data)) {
                 memcpy(&FullData[FullSize], data, data_len);
                 FullSize += data_len;
-                printf("%.*s", (int)data_len, data);
             }
             if (COAP_OPT_BLOCK_MORE(block_opt)) {
                 /* more bit is set */
@@ -192,8 +187,7 @@ message_handler(coap_context_t *ctx, coap_session_t *session,coap_pdu_t *sent, c
                     case COAP_OPTION_URI_PORT :
                     case COAP_OPTION_URI_PATH :
                     case COAP_OPTION_URI_QUERY :
-                        coap_add_option(pdu, option->number, option->length,
-                                        option->data);
+                        coap_add_option(pdu, option->number, option->length,option->data);
                         break;
                     default:
                         ;     /* skip other options */
@@ -211,13 +205,14 @@ message_handler(coap_context_t *ctx, coap_session_t *session,coap_pdu_t *sent, c
                 }
             }
             else{
+                printf("Datos 2 %.*s\n", (int)FullSize, FullData);
                 //Parse_Data_JSON(FullData, (int)FullSize);
             }
         } 
-        else {
-            
+        else {          
             if (coap_get_data(received, &data_len, &data)) {
                  if(data != NULL){
+                    printf("%.*s\n", (int)data_len, data);
                     switch(data[0]-'0'){
                         case GROUP_PARAMS: 
                             New_Params(&data[1], data_len-1);
@@ -232,11 +227,7 @@ message_handler(coap_context_t *ctx, coap_session_t *session,coap_pdu_t *sent, c
                             char turno[2];
                             memcpy(turno, &data[1],2);
                             if(!memcmp(ChargingGroup.group_chargers.charger_table[atoi(turno)].name,ConfigFirebase.Device_Id, 8)){
-                                printf("Debo mandar mis datos!\n");
                                 Send_Data();
-                            }
-                            else{
-                                printf("No me toca a mí\n");
                             }
                             
                             break;
@@ -245,22 +236,27 @@ message_handler(coap_context_t *ctx, coap_session_t *session,coap_pdu_t *sent, c
                             break;
 
                         default:
-                            printf("Datos no esperados\n");
+                            printf("Datos no esperados en coap message handler\n");
                             break;
                     }
                 }
             }
         }
-    }   
+    }  
+    else{
+        ESP_LOGE(TAG, "codigo de coap %i \n", COAP_RESPONSE_CLASS(received->code));
+    } 
 
     Esperando_datos = 0;
 }
 
+//Handler para las request a los puts que puedan hacer los esclavos
 static void hnd_espressif_put(coap_context_t *ctx,coap_resource_t *resource,coap_session_t *session,coap_pdu_t *request,coap_binary_t *token,coap_string_t *query, coap_pdu_t *response){
     size_t size;
     unsigned char *data;
-    char buffer[20];
+
     (void)coap_get_data(request, &size, &data);
+
     if(!memcmp(resource->uri_path->s, "CHARGERS", resource->uri_path->length)){
         New_Group(data,  size);
         coap_resource_notify_observers(resource, NULL);
@@ -275,6 +271,7 @@ static void hnd_espressif_put(coap_context_t *ctx,coap_resource_t *resource,coap
         coap_resource_notify_observers(resource, NULL);
     }
     else if(!memcmp(resource->uri_path->s, "DATA", resource->uri_path->length)){
+        char buffer[20];
         carac_charger Cargador = New_Data(data,  size);
          
         itoa(CURRENT_COMMAND, buffer, 10);
@@ -297,7 +294,7 @@ static void hnd_espressif_put(coap_context_t *ctx,coap_resource_t *resource,coap
         coap_add_data_blocked_response(resource, session, request, response, token,COAP_MEDIATYPE_APPLICATION_JSON, 1,(size_t)strlen((char*)buffer),(const u_char*)buffer);
     }   
 
-    response->code = COAP_RESPONSE_CODE(200);
+    response->code = COAP_RESPONSE_CODE(205);
 }
 
 static bool POLL(int timeout){
@@ -305,7 +302,6 @@ static bool POLL(int timeout){
         int result = coap_run_once(ctx, timeout);
         if (result >= 0) {
             if (result >= timeout) {
-                ESP_LOGE(TAG, "select timeout");
                 FallosEnvio++;
                 return false;
             } else {
@@ -343,7 +339,9 @@ void coap_get( char* Topic){
 }
 
 static bool Authenticate(){
+    #ifdef DEBUG_GROUPS
     printf("Autenticandome contra el servidor!!!\n");
+    #endif
 
     Esperando_datos=1;
     
@@ -375,7 +373,9 @@ static bool Authenticate(){
         return false;
     }
 
-    printf("Autneticados!!!\n");
+    #ifdef DEBUG_GROUPS
+    printf("Autenticados!!!\n");
+    #endif
     return true;
 }
 
@@ -415,10 +415,8 @@ void coap_put( char* Topic, char* Message){
             uint8_t desired_current = Cargador.DesiredCurrent;
             Status.limite_Fase= Cargador.limite_fase;
             Status.Delta = Cargador.Delta;
-
-            printf("nueva consigna de corriente! %i\n", desired_current);
             if(desired_current!=Comands.desired_current &&  !memcmp(Status.HPT_status,"C2",2)){
-                //SendToPSOC5(desired_current,MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
+                SendToPSOC5(desired_current,MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
             }
 
         }
@@ -460,6 +458,7 @@ void coap_put( char* Topic, char* Message){
         coap_add_data(request, strlen(Message),(uint8_t*)Message);
 
         coap_send(session, request);
+        
         Esperando_datos =1;
     }
 
@@ -534,10 +533,13 @@ static void coap_client(void *p){
 
         //Autenticarnos mediante DTLS
         if (uri.scheme == COAP_URI_SCHEME_COAPS && coap_dtls_is_supported()){
+            uint8_t intentos = 0;
             do{
                 session = coap_new_client_session_psk(ctx, &src_addr, &dst_addr,COAP_PROTO_DTLS , ConfigFirebase.Device_Id, (const uint8_t *)get_passwd().c_str(), 8);
-            }while( !Authenticate());
-            delay(1000);
+            }while( !Authenticate() || ++intentos < 4);
+            if(intentos >= 4){
+                break;
+            }
         }
 
         //Subscribirnos
@@ -812,11 +814,12 @@ static void coap_server(void *p){
                     //si un equipo lleva muchisimo sin contestar, lo damos por muerto y lo eliminamos de la tabla
                     if(ChargingGroup.group_chargers.charger_table[i].Period >=60000 && ChargingGroup.group_chargers.charger_table[i].Period <= 65000){
                         if(memcmp(ChargingGroup.group_chargers.charger_table[i].name, ConfigFirebase.Device_Id,8)){
-                            if(ChargingGroup.group_chargers.charger_table[i].Fase == Params.Fase){
-                                remove_from_group(ChargingGroup.group_chargers.charger_table[i].name,&FaseChargers);
-                                //TODO:
-                                //Falta hacer que envie datos de 0 del equipo borrado
-                            }
+                            memcpy(ChargingGroup.group_chargers.charger_table[i].HPT, "0V", 2);
+                            ChargingGroup.group_chargers.charger_table[i].Current     = 0;
+                            ChargingGroup.group_chargers.charger_table[i].CurrentB    = 0;
+                            ChargingGroup.group_chargers.charger_table[i].CurrentC    = 0;
+                            ChargingGroup.group_chargers.charger_table[i].Delta       = 0;
+                            ChargingGroup.group_chargers.charger_table[i].limite_fase = 0;
                         }
                     }
                 }
@@ -827,7 +830,9 @@ clean_up:
     coap_free_context(ctx);
     coap_cleanup();
 
+    #ifdef DEBUG_GROUPS
     printf("Cerrando servidor coap!\n");
+    #endif
     ChargingGroup.Conected    = false;
     ChargingGroup.StartClient = false;
     xServerHandle = NULL;
@@ -870,7 +875,7 @@ void Send_Data(){
 //enviar mi grupo de cargadores
 void Send_Chargers(){
   char buffer[500];
-  printf("Sending chargers!\n");
+
   if(ChargingGroup.group_chargers.size< 10){
       sprintf(buffer,"0%i",(char)ChargingGroup.group_chargers.size);
   }
@@ -887,7 +892,7 @@ void Send_Chargers(){
 
 //Enviar parametros
 void Send_Params(){ 
-  printf("Sending params!\n");
+
   cJSON *Params_Json;
   Params_Json = cJSON_CreateObject();
 
@@ -933,7 +938,9 @@ void MasterPanicTask(void *args){
     ChargingGroup.Conected    = false;
     ChargingGroup.StartClient = false;
     int delai = 5000;
+    #ifdef DEBUG_GROUPS
     Serial.println("Necesitamos un nuevo maestro!");
+    #endif
     while(!ChargingGroup.Conected){
         if(pdTICKS_TO_MS(xTaskGetTickCount() - xStart) > delai){ //si pasan 30 segundos, elegir un nuevo maestro
             delai=500;           
@@ -941,7 +948,6 @@ void MasterPanicTask(void *args){
             if(!memcmp(ChargingGroup.group_chargers.charger_table[reintentos].name,ConfigFirebase.Device_Id,8)){
                 ChargingGroup.Params.GroupActive = true;
                 ChargingGroup.Params.GroupMaster = true;
-                printf("Soy el nuevo maestro!\n");
                 break;
             }
             else{
@@ -952,23 +958,19 @@ void MasterPanicTask(void *args){
                     if(!memcmp(ChargingGroup.group_chargers.charger_table[0].name,ConfigFirebase.Device_Id,8)){
                         ChargingGroup.Params.GroupActive = true;
                         ChargingGroup.Params.GroupMaster = true;
-
-                        printf("Soy el nuevo maestro2!\n");
-                    }
-                    else{
-                      printf("Ya he mirado todos los equipos y no estoy!\n");
                     }
                     break;
                 }
             }
         }
         if(!Coms.ETH.conectado){
-            printf("Parando deteccion de maestro por ethernet desconectado!\n");
             break;
         }
         delay(delai);
     }
+    #ifdef DEBUG_GROUPS
     printf("Fin tarea busqueda maestro\n");
+    #endif
     char buffer[7];
     memcpy(buffer, &ChargingGroup.Params,7);
     SendToPSOC5((char*)buffer,7,GROUPS_PARAMS); 
@@ -978,8 +980,7 @@ void MasterPanicTask(void *args){
 void start_server(){
     if(xServerHandle == NULL){
         xServerHandle = xTaskCreateStatic(coap_server, "coap_server", 4096*4, NULL, 1, xServerStack, &xServerBuffer);
-    }
-    
+    }  
 }
 
 void start_client(){
@@ -1028,12 +1029,6 @@ void coap_start_server(){
         ChargingGroup.MasterIP.fromString(String(ip4addr_ntoa(&Coms.ETH.IP)));
         start_server();
     }
-    #ifdef DEBUG_GROUPS
-    else{
-        printf("No arranco el servidor, o ya hay uno o tengo mal el grupo!\n");
-    }
-    #endif
-
     char buffer[7];
     memcpy(buffer, &ChargingGroup.Params,7);
     SendToPSOC5((char*)buffer,7,GROUPS_PARAMS); 

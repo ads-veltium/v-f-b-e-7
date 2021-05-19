@@ -211,10 +211,6 @@ void New_Current(uint8_t* Buffer, int Data_size){
 
   free(Data);
 
-  char *Jsonstring =cJSON_Print(mensaje_Json);
-  printf("%s\n",Jsonstring);
-  free(Jsonstring);
-
   //compribar que el Json está bien
   if(!cJSON_HasObjectItem(mensaje_Json,"DC")){
     return;
@@ -226,7 +222,7 @@ void New_Current(uint8_t* Buffer, int Data_size){
   Status.Delta = (uint8_t) cJSON_GetObjectItem(mensaje_Json,"D")->valueint;
 
   cJSON_Delete(mensaje_Json);
-  printf("nueva consigna de corriente! %i\n", desired_current);
+
   if(desired_current!=Comands.desired_current &&  !memcmp(Status.HPT_status,"C2",2)){
       //SendToPSOC5(desired_current,MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
   }
