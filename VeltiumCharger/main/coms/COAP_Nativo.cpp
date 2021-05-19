@@ -544,7 +544,7 @@ static void coap_client(void *p){
             uint8_t intentos = 0;
             do{
                 session = coap_new_client_session_psk(ctx, &src_addr, &dst_addr,COAP_PROTO_DTLS , ConfigFirebase.Device_Id, (const uint8_t *)get_passwd().c_str(), 8);
-            }while( !Authenticate() || ++intentos < 4);
+            }while( !Authenticate() && ++intentos < 4);
             if(intentos >= 4){
                 break;
             }
