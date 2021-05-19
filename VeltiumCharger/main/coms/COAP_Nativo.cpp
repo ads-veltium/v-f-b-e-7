@@ -137,10 +137,10 @@ hnd_get(coap_context_t *ctx, coap_resource_t *resource,coap_session_t *session,c
         sprintf(buffer,"%i%i",TURNO, turno);
     }
     else if(!memcmp(resource->uri_path->s, "DATA", resource->uri_path->length)){
-        /*itoa(CURRENT_COMMAND, buffer, 10);
+        itoa(CURRENT_COMMAND, buffer, 10);
         int size = strlen(LastData);
         memcpy(&buffer[1], LastData, size);
-        buffer[size+1]='\0';  */      
+        buffer[size+1]='\0';   
     }
 
     response->code = COAP_RESPONSE_CODE(205);
