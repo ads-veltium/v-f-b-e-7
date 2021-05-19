@@ -994,6 +994,10 @@ void start_server(){
 }
 
 void start_client(){
+    ChargingGroup.Params.GroupMaster = 0;
+    char buffer[7];
+    memcpy(buffer, &ChargingGroup.Params,7);
+    SendToPSOC5((char*)buffer,7,GROUPS_PARAMS); 
     if(xClientHandle == NULL){
         xClientHandle = xTaskCreateStatic(coap_client, "coap_client", 4096*4, NULL, 1, xClientStack,&xClientBuffer);
     }

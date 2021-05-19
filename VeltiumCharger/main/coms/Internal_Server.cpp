@@ -326,23 +326,23 @@ void InitServer(void) {
 	Serial.println(ESP.getFreeHeap());
 
     server.on("/", HTTP_GET_A, [](AsyncWebServerRequest *request){
-    String flash="";
-    request->send(SPIFFS, "/login.html");
-    EEPROM.begin(PASS_LENGTH);
-    longitud_pwd=EEPROM.read(0);
+        String flash="";
+        request->send(SPIFFS, "/login.html");
+        EEPROM.begin(PASS_LENGTH);
+        longitud_pwd=EEPROM.read(0);
 
-    for(int j=1;j<longitud_pwd+1;j++){
-        char a=EEPROM.read(j);
-        flash = flash + a;
-    }
-    String vcd(ConfigFirebase.Device_Id);
-    
-    if(longitud_pwd==NULL){
-        password = vcd;
-    }else{
-        password = flash;
-    }
-    Serial.println(password);
+        for(int j=1;j<longitud_pwd+1;j++){
+            char a=EEPROM.read(j);
+            flash = flash + a;
+        }
+        String vcd(ConfigFirebase.Device_Id);
+        
+        if(longitud_pwd==255){
+            password = vcd;
+        }else{
+            password = flash;
+        }
+
     });
 
     server.on("/veltium-logo-big", HTTP_GET_A, [](AsyncWebServerRequest *request){
