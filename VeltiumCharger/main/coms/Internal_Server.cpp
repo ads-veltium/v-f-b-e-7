@@ -37,14 +37,17 @@ const char* ACT_PWD = "act_pwd";
 const char* NEW_PWD = "nueva_pwd";
 const char* CONF_PWD = "conf_pwd";
 
+bool Alert1=false;
+bool Alert=false;
 bool Autenticado=false;
 bool Gsm_On;
 bool Eth_On;
 bool Eth_Auto;
 bool Wifi_On;
-const char* Man="MA";
-const char* Aut="AA";
 const char* None="WA";
+const char* Aut="AA";
+const char* Man="MA";
+
 int Curve1=7;
 int Curve2=11;
 int Desact1=5;
@@ -83,7 +86,8 @@ String outputState(){
 //Función para ver estado de la autenticacion 
 String outputStateAuth(const char* modo){
   if(!memcmp(Params.autentication_mode,modo,2)){
-    return " active";
+      Serial.println(Params.autentication_mode);
+    return " active3";
   }
   else {
     return "";
@@ -113,9 +117,9 @@ String outputStateCDPUb(int param1,int param2,int param3){
 //Función para ver estado de las variables de las comunicaciones
 String outputStateWifi(bool com){
   if(com == true){
-      return "checked";
+        return "checked";
   }else{
-    return "";  
+        return "";  
   }
 }
 
@@ -312,7 +316,27 @@ String processor(const String& var){
 
 		checkbox += "<label class=\"switch\"><input type=\"checkbox\" onchange=\"toggleCheckbox(this)\" id=\"17\""+outputStateWifi(Comands.conn_lock)+"><span class=\"slider round\"></span></label>";
 		return checkbox;
-    }
+    }    
+    else if (var == "ALERT")
+	{
+        String alerta = "";
+        if(Alert==true){
+        alerta += "<p><span class=\"dht-labels\" style=\"color:red;\">Invalid username or password</span></p>";
+        }else{
+        alerta += "";
+        }
+		return alerta;
+	}
+    else if (var == "P_ERROR")
+	{
+        String p_error = "";
+        if(Alert1==true){
+        p_error += "<p><span class=\"dht-labels\" style=\"color:red;\">Los datos introducidos son incorrectos!</span></p>";
+        }else{
+        p_error += "";
+        }
+		return p_error;
+	}
 	return String();
 }
 void StopServer(void){
@@ -326,23 +350,23 @@ void InitServer(void) {
 	Serial.println(ESP.getFreeHeap());
 
     server.on("/", HTTP_GET_A, [](AsyncWebServerRequest *request){
-        String flash="";
-        request->send(SPIFFS, "/login.html");
-        EEPROM.begin(PASS_LENGTH);
-        longitud_pwd=EEPROM.read(0);
+    String flash="";
+    request->send(SPIFFS, "/login.html",String(), false, processor);
+    EEPROM.begin(PASS_LENGTH);
+    longitud_pwd=EEPROM.read(0);
 
-        for(int j=1;j<longitud_pwd+1;j++){
-            char a=EEPROM.read(j);
-            flash = flash + a;
-        }
-        String vcd(ConfigFirebase.Device_Id);
-        
-        if(longitud_pwd==255){
-            password = vcd;
-        }else{
-            password = flash;
-        }
-
+    for(int j=1;j<longitud_pwd+1;j++){
+        char a=EEPROM.read(j);
+        flash = flash + a;
+    }
+    String vcd(ConfigFirebase.Device_Id);
+    
+    if(longitud_pwd==255){
+        password = vcd;
+    }else{
+        password = flash;
+    }
+    Serial.println(password);
     });
 
     server.on("/veltium-logo-big", HTTP_GET_A, [](AsyncWebServerRequest *request){
@@ -350,7 +374,7 @@ void InitServer(void) {
     });
 
     server.on("/login", HTTP_GET_A, [](AsyncWebServerRequest *request){
-     request->send(SPIFFS, "/login.html");
+     request->send(SPIFFS, "/login.html",String(), false, processor);
     });
 
     server.on("/loginForm", HTTP_GET, [] (AsyncWebServerRequest *request) {
@@ -359,27 +383,30 @@ void InitServer(void) {
 	contrasena = request->getParam(PASSWORD)->value();
 
 	if(usuario!=user || contrasena!= password ){
-		
-		request->send(SPIFFS, "/login.html",String(), false, processor);
 
+		Alert=true;
+		request->send(SPIFFS, "/login.html",String(), false, processor);
+        
 	}
 	else
 	{
+        Alert=false;
         Autenticado=true;
 		request->send(SPIFFS, "/parameters.html",String(), false, processor);
 	}
    });
 
     server.on("/changepass", HTTP_GET, [] (AsyncWebServerRequest *request) {
+        Alert1=false;
     if(Autenticado==true){
         contrasena_act = request->getParam(ACT_PWD)->value();
         contrasena_nueva = request->getParam(NEW_PWD)->value();
         contrasena_conf = request->getParam(CONF_PWD)->value();
 
-        request->send(SPIFFS, "/ajustes.html",String(), false, processor);
-
         if(contrasena_act == password && contrasena_nueva==contrasena_conf){
-            
+            request->send(SPIFFS, "/ajustes.html",String(), false, processor);
+            Alert1=false;
+            Serial.println(Alert1);
             for(int i=0;i<PASS_LENGTH;i++){
                 EEPROM.write(i,vacio[i]);
             }
@@ -394,9 +421,15 @@ void InitServer(void) {
 
             EEPROM.commit();
             
+        }else{
+            Alert1=true;
+            request->send(SPIFFS, "/ajustes.html",String(), false, processor);
+            Serial.println(Alert1);
         }
+        
     }else{
-        request->send(SPIFFS, "/login.html");
+        
+        request->send(SPIFFS, "/login.html",String(), false, processor);
     }
     });
 

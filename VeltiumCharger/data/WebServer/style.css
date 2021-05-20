@@ -300,7 +300,7 @@ input:checked + .slider:before {
 }
 
 /* Style the active class, and buttons on mouse-over */
-.active,.active1,.active2, .btn:hover, .btn1:hover, .btn2:hover {
+.active3,.active1,.active2, .btn:hover, .btn1:hover, .btn2:hover {
   background-color: #008CBA;
   color: white;
 }
