@@ -807,7 +807,13 @@ void procesar_bloque(uint16 tipo_bloque){
 					record_buffer[i+3] = 0;
 				}				
 			}
-			WriteFirebaseHistoric((char*)buffer_rx_local);
+
+#ifdef CONNECTED
+			//Si no estamos conectados por ble
+			if(!serverbleGetConnected()){
+				WriteFirebaseHistoric((char*)buffer_rx_local);
+			}
+#endif
 			modifyCharacteristic(record_buffer, 512, ENERGY_RECORD_RECORD_CHAR_HANDLE);
 		} 
 		break;

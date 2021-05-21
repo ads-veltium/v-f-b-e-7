@@ -209,7 +209,7 @@ bool WriteFirebasegroups(String Path){
 }
 
 bool WriteFirebaseHistoric(char* buffer){
-  if(ConnectionState == IDLE){
+  /*if(ConnectionState == IDLE){
     String Path = "/records/";
     Escritura.clear();
     long conTime=123456789; 
@@ -227,8 +227,8 @@ bool WriteFirebaseHistoric(char* buffer){
     if(Database->Send_Command(Path+buf,&Escritura,UPDATE)){
       return true;
     }
-  }
-  
+  }*/
+  return true;
   return false;
 }
 /***************************************************
