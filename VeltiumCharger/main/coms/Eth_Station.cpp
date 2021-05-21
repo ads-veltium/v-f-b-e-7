@@ -31,7 +31,7 @@ void initialize_ping(ip_addr_t target_addr, uint8_t *resultado);
 void end_ping();
 
 void BuscarContador_Task(void *args){
-
+    bool *finding = (bool*) args;
     uint8 i = 100;
     uint8 Sup = 1, inf = 1 ;
     char ip[16]={"0"};
@@ -85,7 +85,7 @@ void BuscarContador_Task(void *args){
             initialize_ping(target, &resultado);
 
             while(resultado == TRABAJANDO){
-                delay(10);
+                delay(5);
             }
             end_ping();
 
@@ -93,21 +93,25 @@ void BuscarContador_Task(void *args){
                 char url[100] = "http://";
                 strcat(url, ip);
                 strcat(url, "/get_command?command=get_measurements");
-
-                if(Cliente.Send_Command(url,LEER)) {
-
-                    String respuesta = Cliente.ObtenerRespuesta();               
-                    if(respuesta.indexOf("IE38MD")>-1){
-                        strcpy(ContadorExt.ContadorIp,ip);
-                        ContadorExt.ContadorConectado = true;
-                        break;
+                printf("Probando a ver si es de verdad\n");
+                for(uint8_t i=0; i <=5;i++){
+                    if(Cliente.Send_Command(url,LEER)) {
+                        String respuesta = Cliente.ObtenerRespuesta();               
+                        if(respuesta.indexOf("IE38MD")>-1){
+                            strcpy(ContadorExt.ContadorIp,ip);
+                            ContadorExt.ContadorConectado = true;
+                            break;
+                        }
                     }
+                }
+                if(ContadorExt.ContadorConectado){
+                    break;
                 }
             }
             Serial.println("Nada, seguimos buscando");
             NextOne = true;
         }
-        delay(250);
+        delay(50);
     }
     Coms.ETH.Wifi_Perm = true;
     Cliente.end();
@@ -115,9 +119,10 @@ void BuscarContador_Task(void *args){
     #ifdef DEVELOPMENT
         if(!ContadorExt.ContadorConectado){
             Serial.println("No he encontrado ningun medidor");
+            *finding = false;
         }
         else{
-            printf("HE encontrado un cargador!!!\n");
+            printf("He encontrado un cargador!!!\n");
         }
     #endif
     vTaskDelete(NULL);
@@ -208,8 +213,8 @@ void initialize_ethernet(void){
     //servidor DHCP
     if(!Coms.ETH.Auto && Params.Tipo_Sensor){
         //si tenemos IP estatica y un medidor conectado, activamos el dhcp
-        //Coms.ETH.DHCP = true;
-        SendToPSOC5(Coms.ETH.DHCP,COMS_CONFIGURATION_ETH_DHCP);
+        Coms.ETH.DHCP = true;
+        SendToPSOC5(Coms.ETH.Auto,COMS_CONFIGURATION_ETH_AUTO);
     }
 
     if(Coms.ETH.DHCP){
@@ -224,9 +229,22 @@ void initialize_ethernet(void){
         ESP_ERROR_CHECK(esp_netif_dhcps_stop(eth_netif));
 
         esp_netif_ip_info_t DHCP_Server_IP;
-        DHCP_Server_IP.ip.addr=Coms.ETH.IP.addr;
-        DHCP_Server_IP.gw.addr=Coms.ETH.Gateway.addr;
-        DHCP_Server_IP.netmask.addr=Coms.ETH.Mask.addr;
+
+        if(Coms.ETH.IP.addr == IPADDR_ANY){
+            IP4_ADDR(&DHCP_Server_IP.ip, 192, 168, 15, 22);
+   	        IP4_ADDR(&DHCP_Server_IP.gw, 192, 168, 15, 1);
+   	        IP4_ADDR(&DHCP_Server_IP.netmask, 255, 255, 255, 0);
+        }
+
+        else{
+            DHCP_Server_IP.ip.addr = Coms.ETH.IP.addr;
+   	        DHCP_Server_IP.gw.addr = Coms.ETH.Gateway.addr;
+   	        DHCP_Server_IP.netmask.addr = Coms.ETH.Mask.addr;
+        }
+
+
+        Coms.ETH.IP.addr = DHCP_Server_IP.ip.addr;
+
         ESP_ERROR_CHECK(esp_netif_set_ip_info(eth_netif, &DHCP_Server_IP)); 
 
         ESP_ERROR_CHECK(esp_netif_dhcps_start(eth_netif));
@@ -240,7 +258,7 @@ void initialize_ethernet(void){
     }   
     
     //Si fijamos una IP estatica:
-    else if(!Coms.ETH.Auto){
+    else if(!Coms.ETH.Auto && Coms.ETH.IP.addr != IPADDR_ANY){
         Serial.println("Arrancando con IP estatica!");
         eth_netif = esp_netif_new(&cfg);
         ESP_ERROR_CHECK(esp_netif_dhcpc_stop(eth_netif));

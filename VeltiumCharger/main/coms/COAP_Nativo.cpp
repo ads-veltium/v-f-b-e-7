@@ -386,6 +386,7 @@ static bool Authenticate(){
     #ifdef DEBUG_GROUPS
     printf("Autenticados!!!\n");
     #endif
+
     return true;
 }
 

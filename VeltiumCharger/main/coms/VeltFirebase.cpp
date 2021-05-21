@@ -370,7 +370,7 @@ void Cliente_HTTP::begin(){
         .is_async = false,
     };
     _client = esp_http_client_init(&config);
-    //esp_http_client_set_header(_client,"Content-Type", "application/json");
+    esp_http_client_set_header(_client,"Content-Type", "application/json");
 }
 
 void Cliente_HTTP::end(){
@@ -385,6 +385,7 @@ String Cliente_HTTP::ObtenerRespuesta(){
 bool Cliente_HTTP::Send_Command(String url, uint8_t Command){   
     uint8_t tiempo_lectura =0;
     esp_http_client_set_url(_client, url.c_str());
+    Serial.println(url);
 
     switch(Command){
         case ESCRIBIR:        

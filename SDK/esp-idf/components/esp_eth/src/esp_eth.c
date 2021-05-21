@@ -237,7 +237,7 @@ esp_err_t esp_eth_driver_uninstall(esp_eth_handle_t hdl)
         goto err;
     }
     // don't uninstall driver unless there's only one reference
-    int expected_ref_count = 1;
+    int expected_ref_count = 2;
     if (!atomic_compare_exchange_strong(&eth_driver->ref_count, &expected_ref_count, 0)) {
         ESP_LOGE(TAG, "%d ethernet reference in use", expected_ref_count);
         ret = ESP_ERR_INVALID_STATE;

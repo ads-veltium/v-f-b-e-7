@@ -488,6 +488,7 @@ void InitServer(void) {
             //Hay que reiniciar ethernet si activampos una ip estatica
             bool reiniciar_eth = Coms.ETH.Auto != Eth_Auto;
             Coms.ETH.Auto = Eth_Auto;
+            SendToPSOC5(Coms.ETH.Auto,COMS_CONFIGURATION_ETH_AUTO);
 
             if(!Coms.ETH.Auto && Eth_On){
                 const char *IP=request->getParam(IP1)->value().c_str();

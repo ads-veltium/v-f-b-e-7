@@ -323,6 +323,7 @@ void start_wifi(void)
 
 void Eth_Loop(){
     static TickType_t xStart = 0;
+    static TickType_t xConnect = 0;
     static bool finding = false;
     static uint8_t LastStatus = APAGADO;
     switch (Coms.ETH.State){
@@ -336,10 +337,10 @@ void Eth_Loop(){
         case CONNECTING:
             if(eth_connected){
                 Coms.ETH.State = CONECTADO;
-                SendToPSOC5(0,SEND_GROUP_DATA);
+                //SendToPSOC5(0,SEND_GROUP_DATA);
                 delay(100);
-                start_udp();
-                xStart = xTaskGetTickCount();
+                //start_udp();
+                xConnect = xTaskGetTickCount();
                 //Solo comprobamos la conexion a internet si no hemos activado el servidor dhcp
                 if(!Coms.ETH.DHCP){
                     if(ComprobarConexion()){
@@ -353,6 +354,16 @@ void Eth_Loop(){
                 stop_ethernet();
                 Coms.ETH.State = DISCONNECTING;                
             }
+            //si tenemos configurado un medidor, y a los 30 segundos no tenemos conexion a internet, activamos el DHCP
+            else if(Params.Tipo_Sensor){
+                if(GetStateTime(xStart) > 30000){
+                    Serial.println("Tengo un cargador conectado y no tengo internet, activo DHCP");
+                    kill_ethernet();
+                    Coms.ETH.Auto = false;
+                    Coms.ETH.State = KILLING;
+                    SendToPSOC5(Coms.ETH.Auto,COMS_CONFIGURATION_ETH_AUTO);
+                }
+            }
             
         break;
 
@@ -360,8 +371,8 @@ void Eth_Loop(){
             //Buscar el contador
             if(Params.Tipo_Sensor && !finding){
                 if(GetStateTime(xStart) > 60000){
-                    Serial.println("Iniciando fase busqueda ");
-                    xTaskCreate( BuscarContador_Task, "BuscarContador", 4096*4, NULL, 5, NULL); 
+                    Serial.println("Iniciando fase busqueda !!!!");
+                    xTaskCreate( BuscarContador_Task, "BuscarContador", 4096*4, &finding, 5, NULL); 
                     finding = true;
                 }
             }
@@ -369,16 +380,16 @@ void Eth_Loop(){
             //Arrancar los grupos
             else if(!ChargingGroup.Conected && Coms.ETH.conectado){
                 if(ChargingGroup.Params.GroupActive){
-                    if(GetStateTime(xStart) > 30000){
+                    if(GetStateTime(xConnect) > 30000){
                         if(ChargingGroup.StartClient){
-                            coap_start_client();
+                            //coap_start_client();
                         }
                         else{
                             if(ChargingGroup.Params.GroupMaster){
-                                coap_start_server();
+                                //coap_start_server();
                             }
-                            else if(GetStateTime(xStart) > 60000){
-                                coap_start_server();
+                            else if(GetStateTime(xConnect) > 60000){
+                                //coap_start_server();
                             }
                         }
                         
@@ -422,6 +433,7 @@ void Eth_Loop(){
 				if(!Counter.Inicializado){
                     printf("Arrancando lectura del contador\n");
 					Counter.begin(ContadorExt.ContadorIp);
+                    SendToPSOC5(0, BLOQUEO_CARGA);
 				}
 
 				Counter.read();
@@ -446,6 +458,9 @@ void Eth_Loop(){
                 ContadorExt.ContadorConectado = false;
                 Counter.Inicializado = false;
                 Counter.end();
+                finding = false;
+                //Si habiamos activado el dhcp, lo desactivamos
+                
             }
 
         break;
@@ -582,6 +597,6 @@ void ComsTask(void *args){
                 ServidorArrancado = true;
             }
         }
-        delay(500);
+        delay(750);
     }
 }

@@ -10,6 +10,8 @@ extern carac_Update_Status UpdateStatus;
 extern carac_Status  Status;
 extern uint8 dispositivo_inicializado;
 extern carac_group    ChargingGroup;
+extern carac_Params	  Params;
+extern carac_Contador   ContadorExt;
 
 //Adafruit_NeoPixel strip EXT_RAM_ATTR;
 CRGB leds[NUM_PIXELS] EXT_RAM_ATTR;
@@ -76,7 +78,7 @@ void Kit (void){
 		displayOne(100,ROJO,j);
 		vTaskDelay(pdMS_TO_TICKS(50));
 	}
-	for (int j = 7; j >= 0; j--){
+	for (int j = 6; j >= 0; j--){
 		displayOne(100,ROJO,j);
 		vTaskDelay(pdMS_TO_TICKS(50));
 	
@@ -86,7 +88,7 @@ void Kit (void){
 
 void LedControl_Task(void *arg){
 	uint8 subiendo=1, luminosidad_carga= 0, LedPointer =0,luminosidad_Actual=50, togle_led=0;
-	uint8 _LED_COLOR=0;
+	uint8 _LED_COLOR=VERDE;
 	uint16 cnt_parpadeo=TIME_PARPADEO, Delay= 20;
 	bool LastBle=0;
 	initLeds();
@@ -106,31 +108,28 @@ void LedControl_Task(void *arg){
 		AZUL_CLARITO,
 		HUE_WHITE 
 		};
+	
 	//Arrancando
 	while(dispositivo_inicializado != 2){
-		if(subiendo){
-			luminosidad_carga++;
-			if(luminosidad_carga>=90){
-				subiendo=0;
+		LedPointer++;			
+		if(LedPointer>=7){
+			if(luminosidad==90){
+				_LED_COLOR=0;
+				luminosidad=0;
 			}
-		}
-		else{
-			luminosidad_carga--;
-			if(luminosidad_carga<=5){
-				subiendo=1;
-				count++;
+			else{
+				_LED_COLOR = VERDE;
+				luminosidad=90;
 			}
-		}
-		if(count == 4){
-			count=0;
-		}
-		displayAll(luminosidad_carga,colors[count]);
-
-		delay(5);
+			LedPointer=0;
+		} 
+		changeOne(luminosidad,_LED_COLOR,LedPointer);
+		delay(150);
 	}
-
+	_LED_COLOR = 0;
+	LedPointer = 0;
 	subiendo=0;
-	luminosidad_carga=0;
+	luminosidad_carga=90;
 
 	while(1){
 
@@ -155,6 +154,8 @@ void LedControl_Task(void *arg){
 			vTaskDelay(pdMS_TO_TICKS(500));
 			LastBle=serverbleGetConnected();
 		}
+
+		//Instalando archivo
 		else if(UpdateStatus.InstalandoArchivo){			
 			Delay=150;
 			LedPointer++;			
@@ -171,22 +172,38 @@ void LedControl_Task(void *arg){
 			} 
 			changeOne(luminosidad,_LED_COLOR,LedPointer);
 		}
+
+		//Descargando archivo
 		else if(UpdateStatus.DescargandoArchivo){
 			Delay=25;
 			if(subiendo){
 				luminosidad_carga++;
-				if(luminosidad_carga>=100){
+				if(luminosidad_carga>=90){
 					subiendo=0;
 				}
 			}
 			else{
 				luminosidad_carga--;
-				if(luminosidad_carga<=30){
+				if(luminosidad_carga<=5){
 					subiendo=1;
 				}
 			}
 			displayAll(luminosidad_carga,HUE_PURPLE);
 		}
+
+		//Buscando Medidor
+		else if(Params.Tipo_Sensor && !ContadorExt.ContadorConectado){
+			for (int j = 0; j < 7; j++){
+				displayOne(90,VERDE,j);
+				delay(100);
+			}
+			delay(100);
+			for (int j = 6; j >= 0; j--){
+				displayOne(90,VERDE,j);
+				delay(100);
+			}
+		}
+
 		else{
 			
 			//Funcionamiento normal

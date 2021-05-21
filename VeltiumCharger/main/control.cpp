@@ -45,7 +45,7 @@ uint8 authChallengeQuery[10] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
 TickType_t AuthTimer=0;
 uint8 contador_cent_segundos = 0, contador_cent_segundos_ant = 0;
 uint32 cont_seg = 0, cont_seg_ant = 0, cont_min_ant = 0, cont_min=0, cont_hour=0, cont_hour_ant=0;
-uint8 luminosidad = 60, rojo, verde, azul, togle_led = 0 ;
+uint8 luminosidad = 90, rojo, verde, azul, togle_led = 0 ;
 uint8 estado_inicial = 1;
 uint8 estado_actual = ESTADO_ARRANQUE;
 uint8 authSuccess = 0;
@@ -83,6 +83,7 @@ uint8 PSOC5_version_firmware[11] ;
 
 uint8 systemStarted = 0;
 uint8 Record_Num =4;
+uint8 Bloqueo_de_carga = 1;
 int TimeoutMainDisconnect = 0;
 extern bool deviceBleDisconnect;
 void startSystem(void);
@@ -489,7 +490,6 @@ void procesar_bloque(uint16 tipo_bloque){
 				memcpy(deviceSerNum, &buffer_rx_local[219], 10);			
 				modifyCharacteristic(&buffer_rx_local[229], 2, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_CHAR_HANDLE);
 				modifyCharacteristic(&buffer_rx_local[231], 1, LED_LUMIN_COLOR_LUMINOSITY_LEVEL_CHAR_HANDLE);
-				luminosidad=buffer_rx_local[231];
 				modifyCharacteristic(&buffer_rx_local[232], 1, DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE);
 				modifyCharacteristic(&buffer_rx_local[233], 1, MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
 				modifyCharacteristic(&buffer_rx_local[234], 2, COMS_FW_UPDATEMODE_CHAR_HANDLE);
@@ -502,11 +502,22 @@ void procesar_bloque(uint16 tipo_bloque){
 					Params.inst_current_limit = buffer_rx_local[11];
 					Params.potencia_contratada=buffer_rx_local[229]+buffer_rx_local[230]*0x100;
 					Params.CDP 	  =  buffer_rx_local[232];
-					Params.Tipo_Sensor    = (buffer_rx_local[232]  >> 4);
+					
+					if((buffer_rx_local[232] >> 1) && 0x01){
+						Params.Tipo_Sensor    = (buffer_rx_local[232]  >> 4);
+					}
+					else{
+						Params.Tipo_Sensor    = 0;
+					}
+					
+					
 					memcpy(Params.Fw_Update_mode, &buffer_rx_local[234],2);
 					Comands.desired_current = buffer_rx_local[233];
+					Coms.ETH.Auto = buffer_rx_local[240];
+					Serial.printf("ETH auto%i \n", Coms.ETH.Auto);
 					Coms.Wifi.ON = buffer_rx_local[236];
 					Coms.ETH.ON = buffer_rx_local[237];	
+					
 
 				#endif
 
@@ -541,10 +552,16 @@ void procesar_bloque(uint16 tipo_bloque){
 				//Leds
 				modifyCharacteristic(buffer_rx_local, 1, LED_LUMIN_COLOR_LUMINOSITY_LEVEL_CHAR_HANDLE);
 
-				luminosidad = buffer_rx_local[0];
 				//Hilo piloto
 				if((memcmp(&buffer_rx_local[1], status_hpt_anterior, 2) != 0)){
 					dispositivo_inicializado = 2;
+
+					//si no tenemos medidor, o ya lo hemos encontrado, permitimos la carga
+					if(!Params.Tipo_Sensor || (Params.Tipo_Sensor && ContadorExt.ContadorConectado)){
+						Bloqueo_de_carga = false;
+						SendToPSOC5(Bloqueo_de_carga, BLOQUEO_CARGA);  
+					}
+
 					Serial.printf("%c %c \n",buffer_rx_local[1],buffer_rx_local[2]);
 					memcpy(status_hpt_anterior, &buffer_rx_local[1], 2);
 					modifyCharacteristic(&buffer_rx_local[1], 2, STATUS_HPT_STATUS_CHAR_HANDLE);
@@ -750,12 +767,6 @@ void procesar_bloque(uint16 tipo_bloque){
 		} 
 		break;
 		
-		case LED_LUMIN_COLOR_LUMINOSITY_LEVEL_CHAR_HANDLE:{
-			luminosidad = buffer_rx_local[0];
-			modifyCharacteristic(&buffer_rx_local[0], 1, LED_LUMIN_COLOR_LUMINOSITY_LEVEL_CHAR_HANDLE);
-		} 
-		break;
-		
 		case RESET_RESET_CHAR_HANDLE:{
 			ESP.restart();
 			//modifyCharacteristic(&buffer_rx_local[0], 1, RESET_RESET_CHAR_HANDLE);
@@ -856,10 +867,32 @@ void procesar_bloque(uint16 tipo_bloque){
 			#ifdef CONNECTED
 				Params.CDP				  = buffer_rx_local[0];
 				if((buffer_rx_local[0] >> 1) && 0x01){
-					Params.Tipo_Sensor    = (buffer_rx_local[0]  >> 4);
+					if(!Params.Tipo_Sensor){
+						Params.Tipo_Sensor    = (buffer_rx_local[0]  >> 4);
+						//Bloquear la carga hasta que encontremos el medidor
+						if(Params.Tipo_Sensor){
+							Bloqueo_de_carga = 1;
+							SendToPSOC5(Bloqueo_de_carga,BLOQUEO_CARGA);
+							SendToPSOC5(1,COMS_CONFIGURATION_ETH_ON);
+						}
+						
+					}
+					else{
+						Params.Tipo_Sensor    = (buffer_rx_local[0]  >> 4);
+					}
 				}
 				else{
 					Params.Tipo_Sensor    = 0;
+					Bloqueo_de_carga = 0;
+					SendToPSOC5(Bloqueo_de_carga,BLOQUEO_CARGA);
+				}
+
+				if(!Params.Tipo_Sensor){
+					if(!Coms.ETH.Auto){
+						Coms.ETH.Auto = true;
+						Coms.ETH.DHCP = false;
+						SendToPSOC5(Coms.ETH.Auto,COMS_CONFIGURATION_ETH_AUTO);
+					}
 				}
 				
 				Serial.printf("New CDP %i %i \n", Params.CDP, Params.Tipo_Sensor);
@@ -884,10 +917,10 @@ void procesar_bloque(uint16 tipo_bloque){
 		} 
 		break;
 
-		case COMS_CONFIGURATION_ETH_DHCP:{
-			Coms.ETH.DHCP    =  buffer_rx_local[0];
-			Serial.print("DHCP ON:");
-			Serial.println(Coms.ETH.DHCP);
+		case COMS_CONFIGURATION_ETH_AUTO:{
+			Coms.ETH.Auto    =  buffer_rx_local[0];
+			Serial.print("ETH Auto :");
+			Serial.println(Coms.ETH.Auto);
 		} 
 		break;
 		
