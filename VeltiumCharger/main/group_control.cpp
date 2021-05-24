@@ -230,7 +230,7 @@ void New_Current(uint8_t* Buffer, int Data_size){
   cJSON_Delete(mensaje_Json);
 
   if(desired_current!=Comands.desired_current &&  !memcmp(Status.HPT_status,"C2",2)){
-      //SendToPSOC5(desired_current,MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
+      SendToPSOC5(desired_current,MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
   }
 
 }
