@@ -298,6 +298,7 @@ typedef struct{
 	bool DeleteOrder   = false;
 	bool StartClient   = false;
 	bool ChargPerm     = false;
+	bool Finding       = false;
 
 	IPAddress MasterIP;
 
