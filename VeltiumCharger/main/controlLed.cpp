@@ -134,12 +134,8 @@ void LedControl_Task(void *arg){
 	while(1){
 
 		#ifdef DEBUG_GROUPS
-			if(ChargingGroup.SendNewData){
-				displayAll(100,HUE_WHITE);	
-				delay(50);
-			}
-			
-			else if(ChargingGroup.Params.GroupMaster){
+		
+			if(ChargingGroup.Params.GroupMaster){
 				displayAll(100,ROJO);	
 				delay(50);
 			}
@@ -234,6 +230,7 @@ void LedControl_Task(void *arg){
 				}
 				else {
 					_LED_COLOR = VERDE;
+					luminosidad = 90;
 					if(!memcmp(Status.HPT_status, "B", 1 )){
 						_LED_COLOR = HUE_BLUE;
 					}

@@ -337,9 +337,9 @@ void Eth_Loop(){
         case CONNECTING:
             if(eth_connected){
                 Coms.ETH.State = CONECTADO;
-                //SendToPSOC5(0,SEND_GROUP_DATA);
+                SendToPSOC5(0,SEND_GROUP_DATA);
                 delay(100);
-                //start_udp();
+                start_udp();
                 xConnect = xTaskGetTickCount();
                 //Solo comprobamos la conexion a internet si no hemos activado el servidor dhcp
                 if(!Coms.ETH.DHCP){
@@ -382,14 +382,14 @@ void Eth_Loop(){
                 if(ChargingGroup.Params.GroupActive){
                     if(GetStateTime(xConnect) > 30000){
                         if(ChargingGroup.StartClient){
-                            //coap_start_client();
+                            coap_start_client();
                         }
                         else{
                             if(ChargingGroup.Params.GroupMaster){
-                                //coap_start_server();
+                                coap_start_server();
                             }
                             else if(GetStateTime(xConnect) > 60000){
-                                //coap_start_server();
+                                coap_start_server();
                             }
                         }
                         

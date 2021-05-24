@@ -60,7 +60,6 @@ carac_charger New_Data(uint8_t* Buffer, int Data_size){
 carac_charger New_Data(char* Data, int Data_size){
 
     cJSON *mensaje_Json = cJSON_Parse(Data);
-    printf("Datos recibidos %.*s\n", Data_size,Data);
 
     carac_charger Cargador;
 
@@ -101,9 +100,11 @@ carac_charger New_Data(char* Data, int Data_size){
     //Buscar el equipo en el grupo total
     uint8_t index = check_in_group(Cargador.name,&ChargingGroup.group_chargers);                  
     if(index < 255){
+        Cargador.Conected = true;
         ChargingGroup.group_chargers.charger_table[index]=Cargador;
         ChargingGroup.group_chargers.charger_table[index].Period=0;
-        //print_table(ChargingGroup.group_chargers, "Grupo total");
+        cls();
+        print_table(ChargingGroup.group_chargers, "Grupo total");
         if(!memcmp(Cargador.HPT, "C2", 2)){
           input_values(Cargador);
           Calculo_Consigna(&Cargador);

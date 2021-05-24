@@ -209,27 +209,73 @@ bool WriteFirebasegroups(String Path){
 }
 
 bool WriteFirebaseHistoric(char* buffer){
-  /*if(ConnectionState == IDLE){
-    String Path = "/records/";
-    Escritura.clear();
-    long conTime=123456789; 
 
-    Escritura["act"] = "123";
-    Escritura["con"] = "123";
-    Escritura["dis"] = "123";
-    Escritura["rea"] = "123";
-    Escritura["sta"] = "123";
-    Escritura["usr"] = "123";
+    struct tm t = {0};  // Initalize to all 0's
+    t.tm_year = (buffer[2]!=0)?buffer[2]+100:0;  // This is year-1900, so 112 = 2012
+    t.tm_mon  = (buffer[3]!=0)?buffer[3]-1:0;
+    t.tm_mday = buffer[4];
+    t.tm_hour = buffer[5];
+    t.tm_min  = buffer[6];
+    t.tm_sec  = buffer[7];
+    int ConectionTS = mktime(&t);
 
-    char buf[10];
-    ltoa(conTime, buf, 10); 
-    printf("Escribiendo historico\n");
-    if(Database->Send_Command(Path+buf,&Escritura,UPDATE)){
-      return true;
+    t = {0};  // Initalize to all 0's
+    t.tm_year = (buffer[8]!=0)?buffer[8]+100:0;  // This is year-1900, so 112 = 2012
+    t.tm_mon  = (buffer[9]!=0)?buffer[9]-1:0;
+    t.tm_mday = buffer[10];
+    t.tm_hour = buffer[11];
+    t.tm_min  = buffer[12];
+    t.tm_sec  = buffer[13];
+    int StartTs = mktime(&t);
+
+    t = {0};  // Initalize to all 0's
+    t.tm_year = (buffer[14]!=0)?buffer[14]+100:0;  // This is year-1900, so 112 = 2012
+    t.tm_mon  = (buffer[15]!=0)?buffer[15]-1:0;
+    t.tm_mday = buffer[16];
+    t.tm_hour = buffer[17];
+    t.tm_min  = buffer[18];
+    t.tm_sec  = buffer[19];
+    int DisconTs = mktime(&t);
+
+    uint8 record_buffer[256];
+    int size=0;
+    for(int i =0;i<256;i++){		
+      if(buffer[i+20]==255 && buffer[i+21]==255){
+        size = i;
+        break;
+      }
+      int PotLeida=buffer[20+i]*0x100+buffer[21+i];
+      if(PotLeida >0 && PotLeida < 5500){
+        record_buffer[i]   = buffer[i+20];
+      }
     }
-  }*/
+
+    Serial.println();
+    for(int i =0; i <size ;i ++){
+      printf("%i ", record_buffer[i]);
+    }
+    Serial.println();
+  
+    if(ConnectionState == IDLE){
+      String Path = "/records/";
+      Escritura.clear();
+
+      Escritura["act"] = "123";
+      Escritura["con"] = ConectionTS;
+      Escritura["dis"] = DisconTs;
+      Escritura["rea"] = "";
+      Escritura["sta"] = StartTs;
+      Escritura["usr"] = buffer[0] + buffer[1]*0x100;
+
+      char buf[10];
+      ltoa(ConectionTS, buf, 10); 
+      printf("Escribiendo historico\n");
+      if(Database->Send_Command(Path+buf,&Escritura,UPDATE)){
+        return true;
+      }
+    }
+
   return true;
-  return false;
 }
 /***************************************************
   Funciones de lectura

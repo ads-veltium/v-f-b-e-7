@@ -741,7 +741,7 @@ static void coap_server(void *p){
         coap_add_resource(ctx, TXANDA);
         coap_add_resource(ctx, CHARGERS);
 
-        int wait_ms = 100;
+        int wait_ms = 250;
         TickType_t xStart = xTaskGetTickCount();
         TickType_t xTimerTurno = xTaskGetTickCount();
         while (1) {
@@ -758,7 +758,7 @@ static void coap_server(void *p){
             }
             if (result) {
                 /* result must have been >= wait_ms, so reset wait_ms */
-                wait_ms = 100;
+                wait_ms = 250;
                 //printf("%i\n", esp_get_free_internal_heap_size());
             }
 
@@ -796,15 +796,11 @@ static void coap_server(void *p){
             }
             
             //Pedir datos a los esclavos para que no envíen todos a la vez
-            if(pdTICKS_TO_MS(xTaskGetTickCount() - xTimerTurno) >= 100){
+            if(pdTICKS_TO_MS(xTaskGetTickCount() - xTimerTurno) >= 250){
                 turno++;        
                 if(turno == ChargingGroup.group_chargers.size){
                     turno=1;
                     Send_Data(); //Mandar mis datos
-                    ChargingGroup.SendNewData = true;
-                }
-                else{
-                    ChargingGroup.SendNewData = false;
                 }
                 xTimerTurno = xTaskGetTickCount();
                 coap_resource_notify_observers(TXANDA,NULL);
@@ -831,6 +827,7 @@ static void coap_server(void *p){
                             ChargingGroup.group_chargers.charger_table[i].CurrentC    = 0;
                             ChargingGroup.group_chargers.charger_table[i].Delta       = 0;
                             ChargingGroup.group_chargers.charger_table[i].limite_fase = 0;
+                            ChargingGroup.group_chargers.charger_table[i].Conected = 0;
                         }
                     }
                 }
