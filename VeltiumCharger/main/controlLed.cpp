@@ -101,14 +101,6 @@ void LedControl_Task(void *arg){
 	vTaskDelay(pdMS_TO_TICKS(350));
 	displayAll(50,VERDE);*/
 
-	uint8_t count =0;
-	uint8_t colors[4] ={ 
-		VERDE_CLARITO , 
-		HUE_PURPLE,
-		AZUL_CLARITO,
-		HUE_WHITE 
-		};
-	
 	//Arrancando
 	while(dispositivo_inicializado != 2){
 		LedPointer++;			

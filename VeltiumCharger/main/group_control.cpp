@@ -40,6 +40,7 @@ uint8_t Pc_Fase;
 
 void Calculo_Consigna(carac_charger* Cargador);
 void input_values(carac_charger Cargador);
+bool check_perm(carac_charger Cargador); 
 
 carac_charger New_Data(uint8_t* Buffer, int Data_size){  
   carac_charger cargador;
@@ -60,7 +61,7 @@ carac_charger New_Data(uint8_t* Buffer, int Data_size){
 carac_charger New_Data(char* Data, int Data_size){
 
     cJSON *mensaje_Json = cJSON_Parse(Data);
-
+    bool baimena = false;
     carac_charger Cargador;
 
     //comprobar que el Json está bien
@@ -71,6 +72,7 @@ carac_charger New_Data(char* Data, int Data_size){
     
     //Extraer los datos
     memcpy(Cargador.HPT,cJSON_GetObjectItem(mensaje_Json,"HPT")->valuestring,3);
+
     if(cJSON_HasObjectItem(mensaje_Json,"device_id")){
       memcpy(Cargador.name,cJSON_GetObjectItem(mensaje_Json,"device_id")->valuestring,9);
     }
@@ -86,6 +88,10 @@ carac_charger New_Data(char* Data, int Data_size){
     if(cJSON_HasObjectItem(mensaje_Json,"Delta")){
       Cargador.Delta = cJSON_GetObjectItem(mensaje_Json,"Delta")->valueint;
     }
+    if(cJSON_HasObjectItem(mensaje_Json,"Perm")){
+      baimena = cJSON_GetObjectItem(mensaje_Json,"Perm")->valueint;
+    }
+
     //Datos para los trifasicos
     if(cJSON_HasObjectItem(mensaje_Json,"currentB")){
       Cargador.CurrentB = cJSON_GetObjectItem(mensaje_Json,"currentB")->valueint;
@@ -103,13 +109,25 @@ carac_charger New_Data(char* Data, int Data_size){
         Cargador.Conected = true;
         ChargingGroup.group_chargers.charger_table[index]=Cargador;
         ChargingGroup.group_chargers.charger_table[index].Period=0;
-        cls();
-        print_table(ChargingGroup.group_chargers, "Grupo total");
-        if(!memcmp(Cargador.HPT, "C2", 2)){
+        //cls();
+        //print_table(ChargingGroup.group_chargers, "Grupo total");
+        if(!memcmp(Cargador.HPT, "B1", 2)&& baimena){
+          if(check_perm(Cargador)){
+            input_values(Cargador);
+            Calculo_Consigna(&Cargador);
+          }
+          else{
+            Cargador.DesiredCurrent = 0;
+          }
+        }
+        else if(!memcmp(Cargador.HPT, "C2", 2)){
           input_values(Cargador);
           Calculo_Consigna(&Cargador);
         }
-        Cargador.DesiredCurrent =0;
+        else{
+          Cargador.DesiredCurrent =0;
+        }
+        
     }
     return Cargador;
 }
@@ -226,6 +244,7 @@ void New_Current(uint8_t* Buffer, int Data_size){
   uint8_t desired_current = (uint8_t) cJSON_GetObjectItem(mensaje_Json,"DC")->valueint;
   Status.limite_Fase= (uint8_t) cJSON_GetObjectItem(mensaje_Json,"LF")->valueint;
   Status.Delta = (uint8_t) cJSON_GetObjectItem(mensaje_Json,"D")->valueint;
+  ChargingGroup.ChargPerm = (bool) cJSON_GetObjectItem(mensaje_Json,"P")->valueint;
 
   cJSON_Delete(mensaje_Json);
 
@@ -537,14 +556,81 @@ void Calculo_Consigna(carac_charger* Cargador)
     }
 
 #ifdef DEBUG_GROUPS
-  //cls();
-  //printf("is_c3_charger= %i\n",is_c3_charger);
-  //printf("Conex = %i\n", Conex);
-  //printf("Comand desired current %i \n", desired_current);
-  //printf("Max p = %i \n", ChargingGroup.Params.potencia_max);
-  //printf("Inst max = %i \n", ChargingGroup.Params.inst_max);
+  cls();
+  printf("Cargador %s\n", Cargador->name);
+  printf("is_c3_charger= %i\n",is_c3_charger);
+  printf("Conex = %i\n", Conex);
+  printf("Comand desired current %i \n", desired_current);
+  printf("Max p = %i \n", ChargingGroup.Params.potencia_max);
+  printf("Inst max = %i \n", ChargingGroup.Params.inst_max);
 #endif
-  Cargador->DesiredCurrent=desired_current;
+  Cargador->DesiredCurrent = desired_current;
+  printf("Comand desired current2 %i \n", Cargador->DesiredCurrent);
+}
+
+//Comprobar si permitimos que un cargador empieze a cargar
+bool check_perm(carac_charger Cargador){
+  Conex=0;
+  Conex_Delta=0;
+  Conex_Delta_Fase=0;
+  Delta_total=0;
+  Delta_total_fase=0;
+  Fases_limitadas=0;
+  Pc=0;
+  Pc_Fase=0;
+  uint16_t total_pc =0;
+  uint16_t total_pc_fase =0;
+
+  for(int i=0; i< ChargingGroup.group_chargers.size;i++){
+      //Datos por Grupo
+      if(!memcmp(ChargingGroup.group_chargers.charger_table[i].HPT,"C2",2) && ChargingGroup.group_chargers.charger_table[i].Current >500){
+          Conex++;
+          total_pc += ChargingGroup.group_chargers.charger_table[i].Current;
+          if(ChargingGroup.group_chargers.charger_table[i].Delta > 0){
+              Conex_Delta++;
+              Delta_total += ChargingGroup.group_chargers.charger_table[i].Delta;
+          }
+      }
+
+      //Datos por fase
+      if(Cargador.Fase == ChargingGroup.group_chargers.charger_table[i].Fase){
+        if(!memcmp(ChargingGroup.group_chargers.charger_table[i].HPT,"C2",2) && ChargingGroup.group_chargers.charger_table[i].Current >500){
+            Conex_Fase++;
+            if(ChargingGroup.group_chargers.charger_table[i].Delta > 0){
+                Conex_Delta_Fase++;
+            }
+        }
+        total_pc_fase += ChargingGroup.group_chargers.charger_table[i].Current;
+        Delta_total_fase += ChargingGroup.group_chargers.charger_table[i].Delta_fase;
+      }
+
+      Fases_limitadas+= ChargingGroup.group_chargers.charger_table[i].limite_fase;      
+  }
+
+  Pc=total_pc/100;
+  Pc_Fase=total_pc_fase/100;  
+
+  //Si estamos por debajo de la potenica límite
+  if(Pc < ChargingGroup.Params.potencia_max && Pc_Fase < ChargingGroup.Params.inst_max){
+    Cargador.Baimena = true;
+    memcpy(Cargador.HPT, "C2",2);
+    return true;
+  }
+
+  //si no, le intentamos buscar un hueco
+  else{
+    Cargador.Baimena = true;
+    memcpy(Cargador.HPT, "C2",2);
+    Cargador.Current = ChargingGroup.Params.potencia_max * 100;
+    input_values(Cargador);
+    Calculo_Consigna(&Cargador);
+    if(Cargador.DesiredCurrent > 6){
+      return true;
+    }
+            
+  }
+
+  return false;
 }
 
 void input_values(carac_charger Cargador){
@@ -560,7 +646,6 @@ void input_values(carac_charger Cargador){
     uint16_t total_pc_fase =0;
 
     for(int i=0; i< ChargingGroup.group_chargers.size;i++){
-
         //Datos por Grupo
         if(!memcmp(ChargingGroup.group_chargers.charger_table[i].HPT,"C2",2) && ChargingGroup.group_chargers.charger_table[i].Current >500){
             Conex++;

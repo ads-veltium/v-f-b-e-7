@@ -476,7 +476,7 @@ void procesar_bloque(uint16 tipo_bloque){
 				modifyCharacteristic(&buffer_rx_local[25], 1, CHARGING_START_STOP_START_MODE_CHAR_HANDLE);
 				modifyCharacteristic(&buffer_rx_local[26], 168, SCHED_CHARGING_SCHEDULE_MATRIX_CHAR_HANDLE);
 				modifyCharacteristic(&buffer_rx_local[194], 1, VCD_NAME_USERS_USERS_NUMBER_CHAR_HANDLE);
-				modifyCharacteristic(&buffer_rx_local[195], 1, VCD_NAME_USERS_UI_X_USER_ID_CHAR_HANDLE);
+				modifyCharacteristic(&buffer_rx_local[195], 1, VCD_NAME_USERS_USER_TYPE_CHAR_HANDLE);
 				modifyCharacteristic(&buffer_rx_local[196], 1, VCD_NAME_USERS_USER_INDEX_CHAR_HANDLE);
 				modifyCharacteristic(&buffer_rx_local[197], 10, VERSIONES_VERSION_FIRMWARE_CHAR_HANDLE);
 				memcpy(PSOC5_version_firmware, &buffer_rx_local[197],10);
@@ -555,12 +555,6 @@ void procesar_bloque(uint16 tipo_bloque){
 				//Hilo piloto
 				if((memcmp(&buffer_rx_local[1], status_hpt_anterior, 2) != 0)){
 					dispositivo_inicializado = 2;
-
-					//si no tenemos medidor, o ya lo hemos encontrado, permitimos la carga
-					if(!Params.Tipo_Sensor || (Params.Tipo_Sensor && ContadorExt.ContadorConectado)){
-						Bloqueo_de_carga = false;
-						SendToPSOC5(Bloqueo_de_carga, BLOQUEO_CARGA);  
-					}
 
 					Serial.printf("%c %c \n",buffer_rx_local[1],buffer_rx_local[2]);
 					memcpy(status_hpt_anterior, &buffer_rx_local[1], 2);
@@ -740,9 +734,9 @@ void procesar_bloque(uint16 tipo_bloque){
 		}
 		break;
 		
-		case VCD_NAME_USERS_UI_X_USER_ID_CHAR_HANDLE:{
+		case VCD_NAME_USERS_USER_TYPE_CHAR_HANDLE:{
 		
-			modifyCharacteristic(buffer_rx_local, 1, VCD_NAME_USERS_UI_X_USER_ID_CHAR_HANDLE);
+			modifyCharacteristic(buffer_rx_local, 1, VCD_NAME_USERS_USER_TYPE_CHAR_HANDLE);
 		} 
 		break;
 		
@@ -890,9 +884,7 @@ void procesar_bloque(uint16 tipo_bloque){
 					}
 				}
 				else{
-					Params.Tipo_Sensor    = 0;
-					Bloqueo_de_carga = 0;
-					SendToPSOC5(Bloqueo_de_carga,BLOQUEO_CARGA);
+					Params.Tipo_Sensor = 0;
 				}
 
 				if(!Params.Tipo_Sensor){
@@ -941,7 +933,7 @@ void procesar_bloque(uint16 tipo_bloque){
 		break;
 		
 		case COMS_CONFIGURATION_LAN_IP:{
-			Serial.print("Direccion IP Eth Recibida: ");
+
 			ip4_addr adress;
 			IP4_ADDR(&adress, buffer_rx_local[0],buffer_rx_local[1],buffer_rx_local[2],buffer_rx_local[3]);
 			ip4_addr_copy(Coms.ETH.IP,adress);
@@ -1058,7 +1050,7 @@ void procesar_bloque(uint16 tipo_bloque){
 
 		case GROUPS_PARAMS:{
 			memcpy(&ChargingGroup.Params,buffer_rx_local, 7);
-			//ChargingGroup.Params.GroupMaster = true;
+
 			#ifdef DEBUG_GROUPS
 			Serial.printf("Group active %i \n", ChargingGroup.Params.GroupActive);
 			Serial.printf("Group master %i \n", ChargingGroup.Params.GroupMaster);
@@ -1067,6 +1059,32 @@ void procesar_bloque(uint16 tipo_bloque){
 			Serial.printf("Group inst_max %i \n", ChargingGroup.Params.inst_max);
 			Serial.printf("Group CDP %i \n", ChargingGroup.Params.CDP);	
 			#endif	
+		}
+
+		case BLOQUEO_CARGA:{
+			//si somos parte de un grupo, debemos pedir permiso al maestro
+			if(ChargingGroup.Params.GroupActive){
+				if(ChargingGroup.Conected && ChargingGroup.ChargPerm){
+					Bloqueo_de_carga = false;
+				}
+				//Pedir permiso
+				else{
+					ChargingGroup.AskPerm = true;
+				}
+			}
+
+			//Si tenemos un medidor conectado, asta que no nos conectemos a el no permitimos la carga
+			else if(Params.Tipo_Sensor){
+				if(ContadorExt.ContadorConectado){
+					Bloqueo_de_carga = false;
+				}
+			}
+
+			//si no se cumple nada de lo anterior, permitimos la carga
+			else{
+				Bloqueo_de_carga = false;
+			}
+			SendToPSOC5(Bloqueo_de_carga, BLOQUEO_CARGA);
 		}
 		break;
 #endif

@@ -269,6 +269,7 @@ typedef struct{
 	uint8_t limite_fase = 0;
 	TickType_t Period = 0;
 	bool Conected = false;
+	bool Baimena = false;
 
 }carac_charger;
 
@@ -285,16 +286,18 @@ typedef struct{
 	uint8_t ContractPower = 0;
 	uint8_t UserID      = 0;
 	uint8_t potencia_max = 0;	
+
 }carac_group_params;
 
 typedef struct{
-	bool SendNewData   = false;
+	bool AskPerm   = false;
 	bool SendNewParams = false;
 	bool SendNewGroup  = false;
 	bool Conected	   = false;
 	bool StopOrder     = false;
 	bool DeleteOrder   = false;
 	bool StartClient   = false;
+	bool ChargPerm     = false;
 
 	IPAddress MasterIP;
 
@@ -386,7 +389,7 @@ typedef struct{
 #define VCD_NAME_USERS_SERVICE_INDEX   (0x06u) /* Index of VCD_Name_Users service in the cyBle_customs array */
 #define VCD_NAME_USERS_CHARGER_DEVICE_ID_CHAR_INDEX   (0x00u) /* Index of Charger_Device_ID characteristic */
 #define VCD_NAME_USERS_USERS_NUMBER_CHAR_INDEX   (0x01u) /* Index of Users_Number characteristic */
-#define VCD_NAME_USERS_UI_X_USER_ID_CHAR_INDEX   (0x02u) /* Index of UI_X_User_ID characteristic */
+#define VCD_NAME_USERS_USER_TYPE_CHAR_INDEX   (0x02u) /* Index of User type characteristic */
 #define VCD_NAME_USERS_USER_INDEX_CHAR_INDEX   (0x03u) /* Index of User_Index characteristic */
 
 #define TEST_SERVICE_INDEX   (0x07u) /* Index of Test service in the cyBle_customs array */
@@ -525,8 +528,8 @@ typedef struct{
 #define VCD_NAME_USERS_CHARGER_DEVICE_ID_CHAR_HANDLE   (0x0052u) /* Handle of Charger_Device_ID characteristic */
 #define VCD_NAME_USERS_USERS_NUMBER_DECL_HANDLE   (0x0053u) /* Handle of Users_Number characteristic declaration */
 #define VCD_NAME_USERS_USERS_NUMBER_CHAR_HANDLE   (0x0054u) /* Handle of Users_Number characteristic */
-#define VCD_NAME_USERS_UI_X_USER_ID_DECL_HANDLE   (0x0055u) /* Handle of UI_X_User_ID characteristic declaration */
-#define VCD_NAME_USERS_UI_X_USER_ID_CHAR_HANDLE   (0x0056u) /* Handle of UI_X_User_ID characteristic */
+#define VCD_NAME_USERS_USER_TYPE_DECL_HANDLE   (0x0055u) /* Handle of user_type characteristic declaration */
+#define VCD_NAME_USERS_USER_TYPE_CHAR_HANDLE   (0x0056u) /* Handle of user_type characteristic */
 #define VCD_NAME_USERS_USER_INDEX_DECL_HANDLE   (0x0057u) /* Handle of User_Index characteristic declaration */
 #define VCD_NAME_USERS_USER_INDEX_CHAR_HANDLE   (0x0058u) /* Handle of User_Index characteristic */
 

@@ -286,15 +286,21 @@ static void hnd_espressif_put(coap_context_t *ctx,coap_resource_t *resource,coap
         itoa(CURRENT_COMMAND, buffer, 10);
         cJSON *COMMAND_Json;
         COMMAND_Json = cJSON_CreateObject();
-
         cJSON_AddStringToObject(COMMAND_Json, "N", Cargador.name);
         cJSON_AddNumberToObject(COMMAND_Json, "DC", Cargador.DesiredCurrent);
         cJSON_AddNumberToObject(COMMAND_Json, "LF", Cargador.limite_fase);
         cJSON_AddNumberToObject(COMMAND_Json, "D", Cargador.Delta);
+        
+        if(Cargador.Current > 0){
+            cJSON_AddNumberToObject(COMMAND_Json, "P", 1);
+        }
+        else{
+            cJSON_AddNumberToObject(COMMAND_Json, "P", 0);
+        }
+        
 
         char *my_json_string = cJSON_Print(COMMAND_Json);   
         cJSON_Delete(COMMAND_Json); 
-
         int size = strlen(my_json_string);
         memcpy(&buffer[1], my_json_string, size);
         memcpy(LastData, my_json_string, size);
@@ -426,6 +432,7 @@ void coap_put( char* Topic, char* Message){
             uint8_t desired_current = Cargador.DesiredCurrent;
             Status.limite_Fase= Cargador.limite_fase;
             Status.Delta = Cargador.Delta;
+            ChargingGroup.ChargPerm = true;
             if(desired_current!=Comands.desired_current &&  !memcmp(Status.HPT_status,"C2",2)){
                 SendToPSOC5(desired_current,MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
             }
@@ -870,6 +877,9 @@ void Send_Data(){
   cJSON_AddStringToObject(Datos_Json, "HPT", Status.HPT_status);
   cJSON_AddNumberToObject(Datos_Json, "limite_fase",Status.limite_Fase);
 
+  if(ChargingGroup.AskPerm){
+      cJSON_AddNumberToObject(Datos_Json, "Perm",1);
+  }
 
   char *my_json_string = cJSON_Print(Datos_Json);   
   
