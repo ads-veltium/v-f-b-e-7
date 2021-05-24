@@ -28,6 +28,8 @@ extern carac_Comands  Comands ;
 carac_chargers net_group EXT_RAM_ATTR;
 extern carac_chargers FaseChargers;
 
+bool udp_arrancado = false;
+
 //Añadir un cargador a un equipo
 bool add_to_group(const char* ID, IPAddress IP, carac_chargers* group){
     if(group->size < MAX_GROUP_SIZE){
@@ -127,6 +129,30 @@ void store_group_in_mem(carac_chargers* group){
         SendToPSOC5(sendBuffer,250,GROUPS_DEVICES_PART_2); 
         
     }
+    //si llega un grupo en el que no estoy, significa que me han sacado de el
+    //cierro el coap y borro el grupo
+    if(check_in_group(ConfigFirebase.Device_Id,&ChargingGroup.group_chargers ) == 255){
+        if(ChargingGroup.Conected){
+            printf("!No estoy en el grupo!!!\n");
+            ChargingGroup.DeleteOrder = true;
+        }
+    }
+
+    //Ponerme el primero en el grupo para indicar que soy el maestro
+    if(ChargingGroup.Params.GroupMaster){
+        if(memcmp(ChargingGroup.group_chargers.charger_table[0].name,ConfigFirebase.Device_Id, 8)){
+            if(ChargingGroup.group_chargers.size > 0 && check_in_group(ConfigFirebase.Device_Id,&ChargingGroup.group_chargers ) != 255){
+                while(memcmp(ChargingGroup.group_chargers.charger_table[0].name,ConfigFirebase.Device_Id, 8)){
+                    carac_charger OldMaster=ChargingGroup.group_chargers.charger_table[0];
+                    remove_from_group(OldMaster.name, &ChargingGroup.group_chargers);
+                    add_to_group(OldMaster.name, OldMaster.IP, &ChargingGroup.group_chargers);
+                    ChargingGroup.group_chargers.charger_table[ChargingGroup.group_chargers.size-1].Fase=OldMaster.Fase;
+                }
+                ChargingGroup.SendNewGroup = true;
+            }
+        }
+    }
+
     return;
     
     printf("Error al almacenar el grupo en la memoria\n");
@@ -184,6 +210,11 @@ void send_to(IPAddress IP,  char* Mensaje){
 
 //Arrancar la comunicacion udp para escuchar cuando el maestro nos lo ordene
 void start_udp(){
+    if(udp_arrancado){
+        return;
+    }
+    udp_arrancado = true;
+
     if(udp.listen(2702)) {
         udp.onPacket([](AsyncUDPPacket packet) {         
             int size = packet.length();
@@ -253,4 +284,8 @@ void start_udp(){
 
     //Avisar al resto de equipos de que estamos aqui!
     udp.broadcast(Encipher(String(ConfigFirebase.Device_Id)).c_str());
+}
+
+void close_udp(){
+    udp.close();
 }

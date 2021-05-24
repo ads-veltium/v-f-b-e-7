@@ -111,7 +111,7 @@ void BuscarContador_Task(void *args){
             Serial.println("Nada, seguimos buscando");
             NextOne = true;
         }
-        delay(50);
+        delay(75);
     }
     Coms.ETH.Wifi_Perm = true;
     Cliente.end();
@@ -210,6 +210,7 @@ void initialize_ethernet(void){
     #ifdef DEVELOPMENT
     Serial.println("Arrancando ethernet");
     #endif
+
     //servidor DHCP
     if(!Coms.ETH.Auto && Params.Tipo_Sensor){
         //si tenemos IP estatica y un medidor conectado, activamos el dhcp
@@ -264,9 +265,9 @@ void initialize_ethernet(void){
         ESP_ERROR_CHECK(esp_netif_dhcpc_stop(eth_netif));
         esp_netif_ip_info_t  info;
         memset(&info, 0, sizeof(info));
-        info.ip.addr=Coms.ETH.IP.addr;
-        info.gw.addr=Coms.ETH.Gateway.addr;
-        info.netmask.addr=Coms.ETH.Mask.addr;
+        info.ip.addr      = Coms.ETH.IP.addr;
+        info.gw.addr      = Coms.ETH.Gateway.addr;
+        info.netmask.addr = Coms.ETH.Mask.addr;
 	    ESP_ERROR_CHECK(esp_netif_set_ip_info(eth_netif, &info));  
         esp_eth_set_default_handlers(eth_netif);
         eth_connected = true;

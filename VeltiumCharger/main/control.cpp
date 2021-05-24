@@ -878,6 +878,7 @@ void procesar_bloque(uint16 tipo_bloque){
 						Params.Tipo_Sensor    = (buffer_rx_local[0]  >> 4);
 						//Bloquear la carga hasta que encontremos el medidor
 						if(Params.Tipo_Sensor){
+							Coms.ETH.ON = true;
 							Bloqueo_de_carga = 1;
 							SendToPSOC5(Bloqueo_de_carga,BLOQUEO_CARGA);
 							SendToPSOC5(1,COMS_CONFIGURATION_ETH_ON);
@@ -941,7 +942,14 @@ void procesar_bloque(uint16 tipo_bloque){
 		
 		case COMS_CONFIGURATION_LAN_IP:{
 			Serial.print("Direccion IP Eth Recibida: ");
-			modifyCharacteristic(buffer_rx_local, 4, COMS_CONFIGURATION_LAN_IP);
+			ip4_addr adress;
+			IP4_ADDR(&adress, buffer_rx_local[0],buffer_rx_local[1],buffer_rx_local[2],buffer_rx_local[3]);
+			ip4_addr_copy(Coms.ETH.IP,adress);
+			IP4_ADDR(&adress, buffer_rx_local[4],buffer_rx_local[5],buffer_rx_local[6],buffer_rx_local[7]);
+			ip4_addr_copy(Coms.ETH.Gateway,adress);
+			IP4_ADDR(&adress, buffer_rx_local[8],buffer_rx_local[9],buffer_rx_local[10],buffer_rx_local[11]);
+			ip4_addr_copy(Coms.ETH.Mask,adress);
+			
 		} 
 		break;
 
@@ -1022,6 +1030,7 @@ void procesar_bloque(uint16 tipo_bloque){
             //cierro el coap y borro el grupo
             if(check_in_group(ConfigFirebase.Device_Id,&ChargingGroup.group_chargers ) == 255){
                 if(ChargingGroup.Conected){
+					printf("!No estoy en el grupo!!!\n");
                     ChargingGroup.DeleteOrder = true;
                 }
             }

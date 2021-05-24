@@ -67,6 +67,8 @@ String contrasena_conf;
 
 String vacio="";
 
+extern bool ServidorArrancado;
+
 
 /************* Internal server configuration ****************/
 void notFound(AsyncWebServerRequest *request) {
@@ -500,11 +502,14 @@ void InitServer(void) {
             }
 
             if(reiniciar_eth){
+                
                 Coms.ETH.restart = true;
                 request->send(SPIFFS, "/comms.html",String(), false, processor);
-                Coms.ETH.ON = false;
+                Coms.ETH.ON = false; 
                 SendToPSOC5(Coms.ETH.ON,COMS_CONFIGURATION_ETH_ON);
                 delay(1000);
+                StopServer();
+                ServidorArrancado = false;
             }
 
             while(Coms.ETH.ON != Eth_On){
@@ -516,10 +521,27 @@ void InitServer(void) {
             Coms.GSM.Pass = request->getParam(GSM_PWD)->value();
 
             Serial.println((char*)Coms.Wifi.AP);
-            Serial.println(ip4addr_ntoa(&Coms.ETH.IP));
-            Serial.println(ip4addr_ntoa(&Coms.ETH.Gateway));
-            Serial.println(ip4addr_ntoa(&Coms.ETH.Mask));
-            Serial.println(Coms.ETH.Auto);       
+            uint8_t IPBuffer[12];
+
+            IPBuffer[0]  = ip4_addr1(&Coms.ETH.IP);
+            IPBuffer[1]  = ip4_addr2(&Coms.ETH.IP);
+            IPBuffer[2]  = ip4_addr3(&Coms.ETH.IP);
+            IPBuffer[3]  = ip4_addr4(&Coms.ETH.IP);
+
+            IPBuffer[4]  = ip4_addr1(&Coms.ETH.Gateway);
+            IPBuffer[5]  = ip4_addr2(&Coms.ETH.Gateway);
+            IPBuffer[6]  = ip4_addr3(&Coms.ETH.Gateway);
+            IPBuffer[7]  = ip4_addr4(&Coms.ETH.Gateway);
+
+            IPBuffer[8]  = ip4_addr1(&Coms.ETH.Mask);
+            IPBuffer[9]  = ip4_addr2(&Coms.ETH.Mask);
+            IPBuffer[10] = ip4_addr3(&Coms.ETH.Mask);
+            IPBuffer[11] = ip4_addr4(&Coms.ETH.Mask);
+
+            SendToPSOC5((char*)IPBuffer,12,COMS_CONFIGURATION_LAN_IP);
+            delay(100);
+            SendToPSOC5(Coms.ETH.Auto,COMS_CONFIGURATION_ETH_AUTO);
+   
 
             while(Coms.Wifi.ON != Wifi_On){
                 SendToPSOC5(Wifi_On,COMS_CONFIGURATION_WIFI_ON);

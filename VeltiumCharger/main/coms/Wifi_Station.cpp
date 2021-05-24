@@ -21,10 +21,11 @@ extern uint8_t ConnectionState;
 
 bool wifi_connected  = false;
 bool wifi_connecting = false;
-
+bool ServidorArrancado = false;
 static uint8 Reintentos = 0;
 
 void start_udp();
+void close_udp();
 void InitServer(void);
 void StopServer(void);
 void coap_start_server();
@@ -403,9 +404,10 @@ void Eth_Loop(){
                 if(Coms.ETH.restart){
                     if(ChargingGroup.Conected){
                         ChargingGroup.Params.GroupActive = false;
-                        //stop_MQTT();
+                        ChargingGroup.StopOrder = true;
                         
                     }
+                    close_udp();
                     kill_ethernet();
                     Coms.ETH.State = KILLING;
                     Coms.ETH.restart = false;
@@ -415,6 +417,7 @@ void Eth_Loop(){
                         ChargingGroup.Params.GroupActive = false;
                         ChargingGroup.StopOrder = true;
                     }
+                    close_udp();
                     stop_ethernet();
                     Coms.ETH.State = DISCONNECTING;
                 }                
@@ -423,6 +426,7 @@ void Eth_Loop(){
             //Desconexion del cable
             if(!eth_connected && !eth_link_up && (ConnectionState ==IDLE || ConnectionState==DISCONNECTED)){
                 Coms.ETH.State = DISCONNECTING;
+                close_udp();
                 if(ChargingGroup.Conected){
                     ChargingGroup.Params.GroupActive = false;
                     ChargingGroup.StopOrder = true;
@@ -520,7 +524,7 @@ void Eth_Loop(){
 }
 
 void ComsTask(void *args){
-    bool ServidorArrancado = false;
+    
     Coms.ETH.State=APAGADO;
     while(!Coms.StartConnection){
         vTaskDelay(pdMS_TO_TICKS(500));
