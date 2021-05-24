@@ -221,7 +221,6 @@ message_handler(coap_context_t *ctx, coap_session_t *session,coap_pdu_t *sent, c
         else {          
             if (coap_get_data(received, &data_len, &data)) {
                  if(data != NULL){
-                    printf("%.*s\n", (int)data_len, data);
                     switch(data[0]-'0'){
                         case GROUP_PARAMS: 
                             New_Params(&data[1], data_len-1);
