@@ -118,8 +118,8 @@ carac_charger New_Data(char* Data, int Data_size){
             printf("Tiene permiso para cargar!\n");
             memcpy(ChargingGroup.group_chargers.charger_table[index].HPT,"C2", 2);
             ChargingGroup.group_chargers.charger_table[index].Current = 600;
-            ChargingGroup.group_chargers.charger_table[index].DesiredCurrent = 600;
-            Cargador.DesiredCurrent = 600;
+            ChargingGroup.group_chargers.charger_table[index].DesiredCurrent = 6;
+            Cargador.DesiredCurrent = 6;
           }
           else{
             Cargador.DesiredCurrent = 0;
@@ -131,8 +131,8 @@ carac_charger New_Data(char* Data, int Data_size){
           //si está recien conectado (Cargando a menos de 6)lo conectamos a 6 A
           if(Cargador.Current < 500){
             ChargingGroup.group_chargers.charger_table[index].Current = 600;
-            ChargingGroup.group_chargers.charger_table[index].DesiredCurrent = 600;
-            Cargador.DesiredCurrent = 600;
+            ChargingGroup.group_chargers.charger_table[index].DesiredCurrent = 6;
+            Cargador.DesiredCurrent = 6;
           }
           else{
             input_values(Cargador);
@@ -292,7 +292,6 @@ void New_Group(char* Data, int Data_size){
     //crear una copia temporal para almacenar los que están cargando
     carac_chargers temp_chargers;
 
-    print_table(ChargingGroup.group_chargers, "Big group");
     for(uint8_t i=0; i<ChargingGroup.group_chargers.size;i++){    
       if(!memcmp(ChargingGroup.group_chargers.charger_table[i].HPT, "C2",2)){
           memcpy(temp_chargers.charger_table[temp_chargers.size].name,ChargingGroup.group_chargers.charger_table[i].name,9);
@@ -305,7 +304,6 @@ void New_Group(char* Data, int Data_size){
           temp_chargers.size ++;
       }
     }
-    print_table(temp_chargers, "Temp_chargers");
 
     ChargingGroup.group_chargers.size = 0;
 

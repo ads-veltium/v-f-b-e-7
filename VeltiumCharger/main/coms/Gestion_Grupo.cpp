@@ -148,7 +148,6 @@ void store_group_in_mem(carac_chargers* group){
         }
     }
     
-    print_table(ChargingGroup.group_chargers, "Mandando primera parte!\n");
     //Ponerme el primero en el grupo para indicar que soy el maestro
     if(ChargingGroup.Params.GroupMaster){
         if(memcmp(ChargingGroup.group_chargers.charger_table[0].name,ConfigFirebase.Device_Id, 8)){
