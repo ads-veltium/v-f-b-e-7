@@ -257,11 +257,13 @@ void New_Current(uint8_t* Buffer, int Data_size){
   uint8_t desired_current = (uint8_t) cJSON_GetObjectItem(mensaje_Json,"DC")->valueint;
   Status.limite_Fase= (uint8_t) cJSON_GetObjectItem(mensaje_Json,"LF")->valueint;
   Status.Delta = (uint8_t) cJSON_GetObjectItem(mensaje_Json,"D")->valueint;
-  ChargingGroup.ChargPerm = (bool) cJSON_GetObjectItem(mensaje_Json,"P")->valueint;
+  if(cJSON_HasObjectItem(mensaje_Json,"P")){
+    ChargingGroup.ChargPerm = (bool) cJSON_GetObjectItem(mensaje_Json,"P")->valueint;
+  }
   printf("Permiso desde maestro %i \n",ChargingGroup.ChargPerm );
   cJSON_Delete(mensaje_Json);
 
-  if(desired_current!=Comands.desired_current &&  !memcmp(Status.HPT_status,"C2",2)){
+  if(desired_current!=Comands.desired_current &&  (!memcmp(Status.HPT_status,"C2",2) || ChargingGroup.ChargPerm)){
       SendToPSOC5(desired_current,MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
   }
 
