@@ -903,8 +903,12 @@ coap_network_send(coap_socket_t *sock, const coap_session_t *session, const uint
 #endif /* WITH_CONTIKI */
   }
 
-  if (bytes_written < 0)
+  if (bytes_written < 0){
     coap_log(LOG_CRIT, "coap_network_send: %s\n", coap_socket_strerror());
+    printf("%.*s\n", datalen,data);
+  }
+    
+
 
   return bytes_written;
 }

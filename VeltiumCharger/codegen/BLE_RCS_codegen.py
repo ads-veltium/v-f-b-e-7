@@ -56,7 +56,7 @@ def read_chlist(ifn):
             if len(key) < 1: continue
             ch[keys[i]] = toks[i]
 
-        if int(ch['sz']) > 16: continue
+        if int(ch['sz']) > 64: continue
         if ch['t'].endswith('N'): continue
 
         idx += 1

@@ -174,7 +174,7 @@ void remove_group(carac_chargers* group){
     if(group->size >0){
         for(int j=0;j < group->size;j++){
             group->charger_table[j].IP = INADDR_NONE;       
-            group->charger_table[j].Fase = 0;       
+            group->charger_table[j].Fase = 1;       
             memset(group->charger_table[j].name,0,9);
         }
         group->size = 0;

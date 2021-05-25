@@ -260,7 +260,7 @@ void New_Current(uint8_t* Buffer, int Data_size){
   if(cJSON_HasObjectItem(mensaje_Json,"P")){
     ChargingGroup.ChargPerm = (bool) cJSON_GetObjectItem(mensaje_Json,"P")->valueint;
   }
-  printf("Permiso desde maestro %i \n",ChargingGroup.ChargPerm );
+
   cJSON_Delete(mensaje_Json);
 
   if(desired_current!=Comands.desired_current &&  (!memcmp(Status.HPT_status,"C2",2) || ChargingGroup.ChargPerm)){
@@ -336,7 +336,6 @@ void New_Group(char* Data, int Data_size){
     print_table(ChargingGroup.group_chargers, "Grupo desde COAP");
 }
 
-// Function for Chart: '<Root>/Charger 1'
 void LimiteConsumo(carac_charger* Cargador){
   if (ChargingGroup.Params.inst_max < Pc_Fase) {
     Cargador->Delta = 0;
@@ -366,19 +365,16 @@ void LimiteConsumo(carac_charger* Cargador){
 
     switch (is_LimiteConsumo) {
      case IN_Cargando1:
-
         tmp = desired_current * Conex;
-
         if (tmp > ChargingGroup.Params.potencia_max) {
           is_LimiteConsumo = IN_Cargando2;
-
           desired_current = ChargingGroup.Params.potencia_max ;
-        } else if ((Pc >= ChargingGroup.Params.potencia_max) && (tmp < ChargingGroup.Params.potencia_max)) {
+        } 
+        else if ((Pc >= ChargingGroup.Params.potencia_max) && (tmp < ChargingGroup.Params.potencia_max)) {
           is_LimiteConsumo = IN_ReduccionPc;
-
           desired_current = ChargingGroup.Params.potencia_max / Conex;
-        } else {
-
+        } 
+        else {
           desired_current = ChargingGroup.Params.potencia_max ;
         }
         break;
@@ -387,12 +383,10 @@ void LimiteConsumo(carac_charger* Cargador){
 
         if (Pc >= ChargingGroup.Params.potencia_max) {
           is_LimiteConsumo = IN_ReduccionPc;
-
           desired_current = ChargingGroup.Params.potencia_max / Conex;
         } 
         else if (desired_current * Conex < ChargingGroup.Params.potencia_max) {
           is_LimiteConsumo = IN_Cargando1;
-
           desired_current = ChargingGroup.Params.potencia_max ;
         } 
         else {
@@ -409,18 +403,14 @@ void LimiteConsumo(carac_charger* Cargador){
         } 
         else if (desired_current - Cargador->Current > 6) {
           is_LimiteConsumo = IN_Contador;
-
           xStart = xTaskGetTickCount();
-          
-        } else if ((Fases_limitadas > 0) && (ChargingGroup.Params.potencia_max > (ChargingGroup.Params.potencia_max  - desired_current) + Pc)) {
+        } 
+        else if ((Fases_limitadas > 0) && (ChargingGroup.Params.potencia_max > (ChargingGroup.Params.potencia_max  - desired_current) + Pc)) {
           is_LimiteConsumo = IN_Cargando4;
-
           desired_current = ChargingGroup.Params.potencia_max ;
-        } else {
-
-          desired_current = Delta_total / (Conex - Conex_Delta) + ChargingGroup.Params.potencia_max / Conex;
-
-          
+        } 
+        else {
+          desired_current = Delta_total / (Conex - Conex_Delta) + ChargingGroup.Params.potencia_max / Conex;          
         }
         break;
 
@@ -429,11 +419,12 @@ void LimiteConsumo(carac_charger* Cargador){
         if (ChargingGroup.Params.potencia_max <= (ChargingGroup.Params.potencia_max  - desired_current) + Pc) {
           is_LimiteConsumo = IN_Cargando3;
           desired_current = Delta_total / (Conex - Conex_Delta) + ChargingGroup.Params.potencia_max / Conex;
-          
-        } else if (Fases_limitadas == 0) {
+        } 
+        else if (Fases_limitadas == 0) {
           is_LimiteConsumo = IN_Cargando1;
           desired_current = ChargingGroup.Params.potencia_max ;
-        } else {
+        } 
+        else {
           desired_current = ChargingGroup.Params.potencia_max ;
         }
         break;
@@ -443,7 +434,6 @@ void LimiteConsumo(carac_charger* Cargador){
         if (desired_current - Cargador->Current <= 6) {
           is_LimiteConsumo = IN_Cargando3;
           desired_current = Delta_total / (Conex - Conex_Delta) + ChargingGroup.Params.potencia_max / Conex;
-          
         } 
         else if (pdTICKS_TO_MS(xTaskGetTickCount()-xStart) >= 20000) {
           is_LimiteConsumo = IN_Repartir;
@@ -457,8 +447,8 @@ void LimiteConsumo(carac_charger* Cargador){
         if ((ChargingGroup.Params.potencia_max > Pc) && (desired_current * Conex <= ChargingGroup.Params.potencia_max)) {
           is_LimiteConsumo = IN_Cargando3;
           desired_current = Delta_total / (Conex - Conex_Delta) + ChargingGroup.Params.potencia_max / Conex;
-          
-        } else {
+        } 
+        else {
           desired_current = ChargingGroup.Params.potencia_max / Conex;
         }
         break;
@@ -470,8 +460,8 @@ void LimiteConsumo(carac_charger* Cargador){
           Status.Delta = 0;
           is_LimiteConsumo = IN_Cargando3;
           desired_current = Delta_total / (Conex - Conex_Delta) + ChargingGroup.Params.potencia_max / Conex;
-          
-        } else {
+        } 
+        else {
           desired_current = ChargingGroup.Params.potencia_max / Conex;
           Cargador->Delta = desired_current - Cargador->Current;
         }
@@ -481,7 +471,6 @@ void LimiteConsumo(carac_charger* Cargador){
 
 }
 
-// Model step function
 void Calculo_Consigna(carac_charger* Cargador)
 {
   switch (is_c3_charger) {
@@ -496,18 +485,13 @@ void Calculo_Consigna(carac_charger* Cargador)
           is_LimiteConsumo = IN_Cargando1;
 
           desired_current = ChargingGroup.Params.potencia_max ;
-        } else {
-          if (Delta_total > 0) {
-            is_LimiteConsumo = IN_Cargando3;
-
-            desired_current = Delta_total / (Conex - Conex_Delta) + ChargingGroup.Params.potencia_max / Conex;
-
-            
-          }
+        } 
+        else if (Delta_total > 0)  {
+          is_LimiteConsumo = IN_Cargando3;
+          desired_current = Delta_total / (Conex - Conex_Delta) + ChargingGroup.Params.potencia_max / Conex;
         }
       } 
       else {
-   
         desired_current = 0;
       }
       break;

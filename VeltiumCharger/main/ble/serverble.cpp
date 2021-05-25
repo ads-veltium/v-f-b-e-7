@@ -9,8 +9,8 @@ static StackType_t xBLEStack[4096*2] EXT_RAM_ATTR;
 
 //Update sistem files
 File UpdateFile;
-uint8_t UpdateType=0;
-uint16_t Conn_Handle =0;
+uint8_t  UpdateType  = 0;
+uint16_t Conn_Handle = 0;
 
 extern carac_Update_Status 			UpdateStatus;
 extern carac_Firebase_Configuration ConfigFirebase;
@@ -60,14 +60,14 @@ BLECharacteristic *pbleCharacteristics[NUMBER_OF_CHARACTERISTICS];
 #define PROP_WN NIMBLE_PROPERTY::WRITE |NIMBLE_PROPERTY::NOTIFY
 
 
-// VSC_SELECTOR       RW 16
-// VSC_OMNIBUS        RW 16
-// VSC_OMNINOT        RN 16
+// VSC_SELECTOR       RW  16
+// VSC_OMNIBUS        RW  16
+// VSC_OMNINOT        RN  16
 // VSC_RECORD         R  512
 // VSC_SCHED_MATRIX   RW 168
 // VSC_FW_COMMAND     WN 288
-// VSC_NET_GROUP
-// VSC_CHARGING_GROUP
+// VSC_NET_GROUP      N  451
+// VSC_CHARGING_GROUP RW 451
 
 BLE_FIELD blefields[MAX_BLE_FIELDS] =
 {
@@ -79,10 +79,14 @@ BLE_FIELD blefields[MAX_BLE_FIELDS] =
 	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC005),NUMBER_OF_CHARACTERISTICS, PROP_R,  0, RCS_RECORD,    BLE_CHA_RCS_RECORD,  0},
 	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC006),NUMBER_OF_CHARACTERISTICS, PROP_RW, 0, RCS_SCH_MAT,   BLE_CHA_RCS_SCH_MAT, 0},
 	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC007),NUMBER_OF_CHARACTERISTICS, PROP_WN, 0, FW_DATA,       BLE_CHA_FW_DATA,     1},
-	#ifdef CONNECTED
+
+#ifdef CONNECTED
 	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC008),NUMBER_OF_CHARACTERISTICS, PROP_RN, 0, RCS_INSB_CURR, BLE_CHA_INSB_CURR,   1},
 	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC009),NUMBER_OF_CHARACTERISTICS, PROP_RN, 0, RCS_INSC_CURR, BLE_CHA_INSC_CURR,   1},
-	#endif
+	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC00A),NUMBER_OF_CHARACTERISTICS, PROP_RN, 0, RCS_NET_GROUP, BLE_CHA_NET_GROUP,   1},
+	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC00B),NUMBER_OF_CHARACTERISTICS, PROP_RW, 0, RCS_CHARGING_GROUP, BLE_CHA_CHARGING_GROUP,   1},
+#endif
+
 } ;
 
 
@@ -110,6 +114,16 @@ void serverbleNotCharacteristic ( uint8_t *data, int len, uint16_t handle )
 		pbleCharacteristics[BLE_CHA_INSC_CURR]->notify();
 		return;
 	}
+	if (handle == CHARGING_GROUP_BLE_NET_DEVICES) {
+		pbleCharacteristics[BLE_CHA_NET_GROUP]->setValue(data, len);
+		pbleCharacteristics[BLE_CHA_NET_GROUP]->notify();
+		return;
+	}
+	if (handle == CHARGING_GROUP_BLE_CHARGING_GROUP) {
+		pbleCharacteristics[BLE_CHA_CHARGING_GROUP]->setValue(data, len);
+		pbleCharacteristics[BLE_CHA_CHARGING_GROUP]->notify();
+		return;
+	}
 #endif
 	if (handle == FWUPDATE_BIRD_DATA_PSEUDO_CHAR_HANDLE) {
 		pbleCharacteristics[BLE_CHA_FW_DATA]->setValue(data, len);
@@ -130,6 +144,15 @@ void serverbleSetCharacteristic ( uint8_t *data, int len, uint16_t handle )
 		return;
 	}
 #ifdef CONNECTED
+	if (handle == MEASURES_INST_CURRENTB_CHAR_HANDLE) {
+		pbleCharacteristics[BLE_CHA_INSB_CURR]->setValue(data, len);
+		return;
+	}
+	if (handle == MEASURES_INST_CURRENTC_CHAR_HANDLE) {
+		pbleCharacteristics[BLE_CHA_INSC_CURR]->setValue(data, len);
+		return;
+	}
+
 	if (handle == MEASURES_INST_CURRENTB_CHAR_HANDLE) {
 		pbleCharacteristics[BLE_CHA_INSB_CURR]->setValue(data, len);
 		return;

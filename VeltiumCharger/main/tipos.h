@@ -260,6 +260,7 @@ typedef struct{
 	IPAddress     IP;
 	char      HPT[3];
 	uint8_t     Fase  = 1;
+	uint8_t  Circuito = 1;
 	uint16_t Current  = 0;
 	uint16_t CurrentB = 0;
 	uint16_t CurrentC = 0;
@@ -637,16 +638,20 @@ typedef struct{
 #define COMS_CONFIGURATION_ETH_ON	       (0x00B9u)
 #define COMS_CONFIGURATION_LAN_IP	       (0x00BBu)
 #define COMS_CONFIGURATION_ETH_AUTO        (0x00BFu)
+
 #define MEASURES_INST_CURRENTB_CHAR_HANDLE (0x00C1u)
 #define MEASURES_INST_CURRENTC_CHAR_HANDLE (0x00C3u)
 #define MEASURES_EXTERNAL_COUNTER		   (0x00C5u)
 #define COMS_FW_UPDATEMODE_CHAR_HANDLE     (0x00C7u)
-
 #define GROUPS_DEVICES_PART_1 	  		   (0x00C9u)
 #define GROUPS_DEVICES_PART_2 	  		   (0x00CAu)
 #define GROUPS_PARAMS		 		 	   (0x00CBu)
 #define SEND_GROUP_DATA		 		 	   (0x00CDu)
 #define BLOQUEO_CARGA                      (0x00CEu)
+
+#define CHARGING_GROUP_BLE_NET_DEVICES	   (0x00CFu)
+#define CHARGING_GROUP_BLE_CHARGING_GROUP  (0x00D1u)
+ 
 //Handlers para el medidor trifásico 
 
 
