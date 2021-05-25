@@ -290,7 +290,7 @@ static void hnd_espressif_put(coap_context_t *ctx,coap_resource_t *resource,coap
         cJSON_AddNumberToObject(COMMAND_Json, "LF", Cargador.limite_fase);
         cJSON_AddNumberToObject(COMMAND_Json, "D", Cargador.Delta);
         
-        if(Cargador.Current > 0){
+        if(Cargador.Baimena){
             cJSON_AddNumberToObject(COMMAND_Json, "P", 1);
         }
         else{

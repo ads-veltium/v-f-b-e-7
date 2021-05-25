@@ -339,7 +339,7 @@ void Eth_Loop(){
             if(eth_connected){
                 Coms.ETH.State = CONECTADO;
                 SendToPSOC5(0,SEND_GROUP_DATA);
-                delay(100);
+                delay(1000);
                 start_udp();
                 xConnect = xTaskGetTickCount();
                 //Solo comprobamos la conexion a internet si no hemos activado el servidor dhcp
