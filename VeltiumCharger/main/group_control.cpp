@@ -260,7 +260,7 @@ void New_Current(uint8_t* Buffer, int Data_size){
   Status.limite_Fase= (uint8_t) cJSON_GetObjectItem(mensaje_Json,"LF")->valueint;
   Status.Delta = (uint8_t) cJSON_GetObjectItem(mensaje_Json,"D")->valueint;
   ChargingGroup.ChargPerm = (bool) cJSON_GetObjectItem(mensaje_Json,"P")->valueint;
-
+  printf("Permiso desde maestro %i \n",ChargingGroup.ChargPerm );
   cJSON_Delete(mensaje_Json);
 
   if(desired_current!=Comands.desired_current &&  !memcmp(Status.HPT_status,"C2",2)){

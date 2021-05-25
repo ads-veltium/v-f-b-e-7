@@ -561,6 +561,7 @@ void procesar_bloque(uint16 tipo_bloque){
 					modifyCharacteristic(&buffer_rx_local[1], 2, STATUS_HPT_STATUS_CHAR_HANDLE);
 					if(serverbleGetConnected()){
 						if(buffer_rx_local[1]!= 'E' && buffer_rx_local[1]!= 'F'){
+							Bloqueo_de_carga = true;
 							serverbleNotCharacteristic(&buffer_rx_local[1], 2, STATUS_HPT_STATUS_CHAR_HANDLE); 
 						}
 						else{
@@ -569,6 +570,13 @@ void procesar_bloque(uint16 tipo_bloque){
 					}
 #ifdef CONNECTED
 					ConfigFirebase.WriteStatus = true;
+
+					//Si sale de C2 bloquear la siguiente carga
+					if(memcmp(&buffer_rx_local[1],"C2",2) && memcmp(&buffer_rx_local[1],"B2",2)){
+						Bloqueo_de_carga = true;
+						printf("Bloqueando la carga\n");
+						SendToPSOC5(Bloqueo_de_carga, BLOQUEO_CARGA);
+					}
 #endif
 				}
 
@@ -1059,16 +1067,23 @@ void procesar_bloque(uint16 tipo_bloque){
 			Serial.printf("Group inst_max %i \n", ChargingGroup.Params.inst_max);
 			Serial.printf("Group CDP %i \n", ChargingGroup.Params.CDP);	
 			#endif	
+			break;
 		}
 
 		case BLOQUEO_CARGA:{
+
+			if(dispositivo_inicializado != 2){
+				Bloqueo_de_carga = true;
+			}
+
 			//si somos parte de un grupo, debemos pedir permiso al maestro
-			if(ChargingGroup.Params.GroupActive){
+			else if(ChargingGroup.Params.GroupActive || ChargingGroup.Finding ){
 				if(ChargingGroup.Conected && ChargingGroup.ChargPerm){
 					Bloqueo_de_carga = false;
+					ChargingGroup.AskPerm = false;
 				}
 				//Pedir permiso
-				else{
+				else if(!ChargingGroup.AskPerm){
 					ChargingGroup.AskPerm = true;
 				}
 			}
@@ -1085,8 +1100,8 @@ void procesar_bloque(uint16 tipo_bloque){
 				Bloqueo_de_carga = false;
 			}
 			SendToPSOC5(Bloqueo_de_carga, BLOQUEO_CARGA);
+			break;
 		}
-		break;
 #endif
 
 		default:

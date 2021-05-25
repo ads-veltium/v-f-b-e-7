@@ -878,6 +878,7 @@ void Send_Data(){
 
   if(ChargingGroup.AskPerm){
       cJSON_AddNumberToObject(Datos_Json, "Perm",1);
+      printf("Pidiendo permiso al maestro \n");
   }
 
   char *my_json_string = cJSON_Print(Datos_Json);   
@@ -954,6 +955,7 @@ void MasterPanicTask(void *args){
     ChargingGroup.Params.GroupActive = false;
     ChargingGroup.Conected    = false;
     ChargingGroup.StartClient = false;
+    ChargingGroup.Finding = true;
     int delai = 5000;
     #ifdef DEBUG_GROUPS
     Serial.println("Necesitamos un nuevo maestro!");
@@ -991,6 +993,7 @@ void MasterPanicTask(void *args){
     char buffer[7];
     memcpy(buffer, &ChargingGroup.Params,7);
     SendToPSOC5((char*)buffer,7,GROUPS_PARAMS); 
+    ChargingGroup.Finding = false;
     vTaskDelete(NULL);
 }
 
