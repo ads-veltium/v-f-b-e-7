@@ -318,7 +318,6 @@ bool ReadFirebaseGroups(String Path){
 
           ChargingGroup.SendNewGroup = true;
         }
-        print_table(ChargingGroup.group_chargers, "Grupo desde firebase");
       }    
 
       else{
@@ -855,7 +854,7 @@ void Firebase_Conn_Task(void *args){
     }
 
     //chivatos de la ram
-    if(ESP.getFreePsram() < 3800000 || ESP.getFreeHeap() < 20000){
+    if(ESP.getFreePsram() < 2000000 || ESP.getFreeHeap() < 20000){
         Serial.println(ESP.getFreePsram());
         Serial.println(ESP.getFreeHeap());
     }

@@ -37,6 +37,14 @@ bool add_to_group(const char* ID, IPAddress IP, carac_chargers* group){
             memcpy(group->charger_table[group->size].name, ID, 8);
             group->charger_table[group->size].name[8]='\0';
             group->charger_table[group->size].IP = IP;
+            memset(group->charger_table[group->size].HPT,'0',3);
+            group->charger_table[group->size].Current = 0;
+            group->charger_table[group->size].Conected = 0;
+            group->charger_table[group->size].Delta = 0;
+            group->charger_table[group->size].Delta_fase = 0;
+            group->charger_table[group->size].DesiredCurrent = 0;
+            group->charger_table[group->size].limite_fase = 0;
+            group->charger_table[group->size].Period = 0;
             group->size++;
             return true;
         }
