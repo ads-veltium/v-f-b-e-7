@@ -37,7 +37,8 @@ bool add_to_group(const char* ID, IPAddress IP, carac_chargers* group){
             memcpy(group->charger_table[group->size].name, ID, 8);
             group->charger_table[group->size].name[8]='\0';
             group->charger_table[group->size].IP = IP;
-            memset(group->charger_table[group->size].HPT,'0',3);
+            memset(group->charger_table[group->size].HPT,'0',2);
+            group->charger_table[group->size].HPT[2]='\0';
             group->charger_table[group->size].Current = 0;
             group->charger_table[group->size].Conected = 0;
             group->charger_table[group->size].Delta = 0;
@@ -100,7 +101,7 @@ void store_group_in_mem(carac_chargers* group){
                 memcpy(&sendBuffer[2+(i*9)],group->charger_table[i].name,8);
                 itoa(group->charger_table[i].Fase,&sendBuffer[10+(i*9)],10);
             }
-            Serial.println("Mandando primera parte");
+
             SendToPSOC5(sendBuffer,227,GROUPS_DEVICES_PART_1); 
             delay(250);
 
@@ -115,7 +116,7 @@ void store_group_in_mem(carac_chargers* group){
                 memcpy(&sendBuffer[2+(i*9)],group->charger_table[i+25].name,8);
                 itoa(group->charger_table[i+25].Fase,&sendBuffer[10+(i*9)],10);
             }
-            Serial.println("Mandando segunda parte");
+
             SendToPSOC5(sendBuffer,(group->size - 25)*9+2,GROUPS_DEVICES_PART_2); 
             delay(100);
         }
@@ -137,24 +138,27 @@ void store_group_in_mem(carac_chargers* group){
         SendToPSOC5(sendBuffer,250,GROUPS_DEVICES_PART_2); 
         
     }
+
     //si llega un grupo en el que no estoy, significa que me han sacado de el
     //cierro el coap y borro el grupo
     if(check_in_group(ConfigFirebase.Device_Id,&ChargingGroup.group_chargers ) == 255){
         if(ChargingGroup.Conected){
-            printf("!No estoy en el grupo!!!\n");
+            printf("¡No estoy en el grupo!!!\n");
             ChargingGroup.DeleteOrder = true;
         }
     }
-
+    
+    print_table(ChargingGroup.group_chargers, "Mandando primera parte!\n");
     //Ponerme el primero en el grupo para indicar que soy el maestro
     if(ChargingGroup.Params.GroupMaster){
         if(memcmp(ChargingGroup.group_chargers.charger_table[0].name,ConfigFirebase.Device_Id, 8)){
             if(ChargingGroup.group_chargers.size > 0 && check_in_group(ConfigFirebase.Device_Id,&ChargingGroup.group_chargers ) != 255){
                 while(memcmp(ChargingGroup.group_chargers.charger_table[0].name,ConfigFirebase.Device_Id, 8)){
-                    carac_charger OldMaster=ChargingGroup.group_chargers.charger_table[0];
+                    carac_charger OldMaster = ChargingGroup.group_chargers.charger_table[0];
                     remove_from_group(OldMaster.name, &ChargingGroup.group_chargers);
                     add_to_group(OldMaster.name, OldMaster.IP, &ChargingGroup.group_chargers);
                     ChargingGroup.group_chargers.charger_table[ChargingGroup.group_chargers.size-1].Fase=OldMaster.Fase;
+                    ChargingGroup.group_chargers.charger_table[ChargingGroup.group_chargers.size-1] = OldMaster;
                 }
                 ChargingGroup.SendNewGroup = true;
             }

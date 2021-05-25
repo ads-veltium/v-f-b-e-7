@@ -21,6 +21,7 @@ void DownloadTask(void *arg);
 void store_group_in_mem(carac_chargers* group);
 void coap_put( char* Topic, char* Message);
 bool add_to_group(const char* ID, IPAddress IP, carac_chargers* group);
+uint8_t check_in_group(const char* ID, carac_chargers* group);
 
 
 uint16 ParseFirmwareVersion(String Texto){
@@ -304,14 +305,41 @@ bool ReadFirebaseGroups(String Path){
         Lectura.clear();
         if(Database->Send_Command(Path+"/devices",&Lectura, LEER, true)){ 
           JsonObject root = Lectura.as<JsonObject>();
+
+          //crear una copia temporal para almacenar los que están cargando
+          carac_chargers temp_chargers;
+
+          for(uint8_t i=0; i<ChargingGroup.group_chargers.size;i++){    
+            if(!memcmp(ChargingGroup.group_chargers.charger_table[i].HPT, "C2",2)){
+                memcpy(temp_chargers.charger_table[temp_chargers.size].name,ChargingGroup.group_chargers.charger_table[i].name,9);
+                temp_chargers.charger_table[temp_chargers.size].Current = ChargingGroup.group_chargers.charger_table[i].Current;
+                temp_chargers.charger_table[temp_chargers.size].CurrentB = ChargingGroup.group_chargers.charger_table[i].CurrentB;
+                temp_chargers.charger_table[temp_chargers.size].CurrentC = ChargingGroup.group_chargers.charger_table[i].CurrentC;
+
+                temp_chargers.charger_table[temp_chargers.size].Delta = ChargingGroup.group_chargers.charger_table[i].Delta;
+                temp_chargers.charger_table[temp_chargers.size].limite_fase = ChargingGroup.group_chargers.charger_table[i].limite_fase;
+                temp_chargers.size ++;
+            }
+          }
+
+
           ChargingGroup.group_chargers.size = 0;
           //int index =0;
           for (JsonPair kv : root) {
             add_to_group(kv.key().c_str(),IPADDR_ANY, &ChargingGroup.group_chargers);
             ChargingGroup.group_chargers.charger_table[ChargingGroup.group_chargers.size-1].Fase = Lectura[kv.key().c_str()]["phase"].as<uint8_t>();
-            /*memcpy(ChargingGroup.group_chargers.charger_table[index].name, kv.key().c_str(),8);
-            ChargingGroup.group_chargers.charger_table[index].Fase = Lectura[kv.key().c_str()]["phase"].as<uint8_t>();
-            index ++;*/
+
+            uint8_t index =check_in_group(kv.key().c_str(), &temp_chargers);
+            if(index != 255){
+              memcpy(ChargingGroup.group_chargers.charger_table[ChargingGroup.group_chargers.size-1].HPT,"C2",2);
+              ChargingGroup.group_chargers.charger_table[ChargingGroup.group_chargers.size-1].Current = temp_chargers.charger_table[index].Current;
+              ChargingGroup.group_chargers.charger_table[ChargingGroup.group_chargers.size-1].CurrentB = temp_chargers.charger_table[index].CurrentB;
+              ChargingGroup.group_chargers.charger_table[ChargingGroup.group_chargers.size-1].CurrentC = temp_chargers.charger_table[index].CurrentC;
+              ChargingGroup.group_chargers.charger_table[ChargingGroup.group_chargers.size-1].Delta = temp_chargers.charger_table[index].Delta;
+              ChargingGroup.group_chargers.charger_table[ChargingGroup.group_chargers.size-1].limite_fase = temp_chargers.charger_table[index].limite_fase;
+            }
+
+
           }
           /*ChargingGroup.group_chargers.size = index;*/
           store_group_in_mem(&ChargingGroup.group_chargers);

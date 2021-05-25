@@ -69,6 +69,7 @@ carac_charger New_Data(char* Data, int Data_size){
       cJSON_Delete(mensaje_Json);
       return Cargador;
     }
+
     
     //Extraer los datos
     memcpy(Cargador.HPT,cJSON_GetObjectItem(mensaje_Json,"HPT")->valuestring,3);
@@ -126,6 +127,7 @@ carac_charger New_Data(char* Data, int Data_size){
         }
         
         else if(!memcmp(Cargador.HPT, "C2", 2)){
+          Cargador.Baimena = 1;
           //si está recien conectado (Cargando a menos de 6)lo conectamos a 6 A
           if(Cargador.Current < 500){
             ChargingGroup.group_chargers.charger_table[index].Current = 600;
@@ -167,11 +169,7 @@ void New_Params(char* Data, int Data_size){
 
   cJSON *mensaje_Json = cJSON_Parse(Data);
 
-  /*char *Jsonstring =cJSON_Print(mensaje_Json);
-  printf("%s\n",Jsonstring);
-  free(Jsonstring);*/
-
-  //compribar que el Json está bien
+  //comprobar que el Json está bien
   if(!cJSON_HasObjectItem(mensaje_Json,"cdp")){
     return;
   }
@@ -319,7 +317,6 @@ void New_Group(char* Data, int Data_size){
         ChargingGroup.group_chargers.charger_table[i].Fase = Data[10+i*9]-'0';
 
         uint8_t index =check_in_group(ID, &temp_chargers);
-
         if(index != 255){
           memcpy(ChargingGroup.group_chargers.charger_table[i].HPT,"C2",2);
           ChargingGroup.group_chargers.charger_table[i].Current = temp_chargers.charger_table[index].Current;
