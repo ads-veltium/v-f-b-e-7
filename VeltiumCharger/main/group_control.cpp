@@ -93,6 +93,7 @@ carac_charger New_Data(char* Data, int Data_size){
         Cargador.Consigna = ChargingGroup.group_chargers.charger_table[index].Consigna;
         ChargingGroup.group_chargers.charger_table[index] = Cargador;
         ChargingGroup.group_chargers.charger_table[index].Period = 0;
+        print_table(ChargingGroup.group_chargers, "Calculo de grupo");
     }
 
     return Cargador;
@@ -308,7 +309,7 @@ void LimiteConsumo(void *p){
         for(int i = 0; i < ChargingGroup.group_chargers.size; i++){
           if(!memcmp(ChargingGroup.group_chargers.charger_table[i].HPT, "B1", 2) && ChargingGroup.group_chargers.charger_table[i].Baimena){
             printf("%s me esta pidiendo permiso! \n", ChargingGroup.group_chargers.charger_table[i].name);
-            printf("Se lo doy porque no hay nadie mas cargando");
+            printf("Se lo doy porque no hay nadie mas cargando\n");
             memcpy(ChargingGroup.group_chargers.charger_table[i].HPT, "C2", 2);
             ControlGrupoState = CALCULO;
           }
@@ -502,7 +503,9 @@ void Calculo_General(){
     for(uint8_t i =0; i < 3; i++){
       Fases[i].corriente_total /= 100;
       //Ver corriente disponible en fase
-      Fases[i].corriente_disponible = ChargingGroup.Params.inst_max / Fases[i].conex;
+      if(Fases[i].conex > 0){
+        Fases[i].corriente_disponible = ChargingGroup.Params.inst_max / Fases[i].conex;
+      }
     }
 
     Consumo_total = total_pc/100;
