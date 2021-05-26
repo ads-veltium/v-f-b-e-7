@@ -325,6 +325,9 @@ void LimiteConsumo(void *p){
         Calculo_General();
 
         //Ver corriente y consigna disponible total
+        if(Conex < 0){
+          break;
+        }
         float Corriente_disponible_total = ChargingGroup.Params.potencia_max / Conex;
 
         //Repartir toda la potenica disponible viendo cual es la mas pequeña
@@ -337,7 +340,13 @@ void LimiteConsumo(void *p){
 
         //Repartir la corriente sobrante
         if(Delta_total > 0){
-          uint16_t Delta_disponible = Delta_total / ( Conex - Conex_Delta);
+          uint16_t Delta_disponible = 0;
+          
+          if(Conex_Delta > = Conex)
+             uint16_t Delta_disponible = Delta_total / 1;
+          else
+            uint16_t Delta_disponible = Delta_total / ( Conex - Conex_Delta);
+
           for(int i = 0; i < ChargingGroup.group_chargers.size; i++){
             if(!memcmp(ChargingGroup.group_chargers.charger_table[i].HPT,"C2",2)){
               if(ChargingGroup.group_chargers.charger_table[i].Delta > 0){
