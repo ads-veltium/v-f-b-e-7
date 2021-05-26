@@ -36,11 +36,16 @@ extern carac_group  ChargingGroup;
 extern carac_Comands  Comands ;
 
 static StackType_t xServerStack [4096*4]     EXT_RAM_ATTR;
+static StackType_t xLimitStack [4096*4]     EXT_RAM_ATTR;
 static StackType_t xClientStack [4096*4]     EXT_RAM_ATTR;
 StaticTask_t xServerBuffer;
 StaticTask_t xClientBuffer;
+StaticTask_t xLimitBuffer;
+
 TaskHandle_t xServerHandle = NULL;
 TaskHandle_t xClientHandle = NULL;
+TaskHandle_t xLimitHandle = NULL;
+
 TickType_t   xMasterTimer  = 0;
 
 coap_context_t  *ctx      EXT_RAM_ATTR;
@@ -288,11 +293,9 @@ static void hnd_espressif_put(coap_context_t *ctx,coap_resource_t *resource,coap
         cJSON *COMMAND_Json;
         COMMAND_Json = cJSON_CreateObject();
         cJSON_AddStringToObject(COMMAND_Json, "N", Cargador.name);
-        cJSON_AddNumberToObject(COMMAND_Json, "DC", Cargador.DesiredCurrent);
-        cJSON_AddNumberToObject(COMMAND_Json, "LF", Cargador.limite_fase);
-        cJSON_AddNumberToObject(COMMAND_Json, "D", Cargador.Delta);
+        cJSON_AddNumberToObject(COMMAND_Json, "DC", Cargador.Consigna);
         
-        if(Cargador.Baimena){
+        if(Cargador.Consigna > 0){
             cJSON_AddNumberToObject(COMMAND_Json, "P", 1);
         }
         else{
@@ -430,12 +433,11 @@ void coap_put( char* Topic, char* Message){
     if(ChargingGroup.Params.GroupMaster){
         if(!memcmp(DATA->uri_path->s, Topic, DATA->uri_path->length)){    
             carac_charger Cargador = New_Data(Message,  strlen(Message));
-            uint8_t desired_current = Cargador.DesiredCurrent;
-            Status.limite_Fase= Cargador.limite_fase;
-            Status.Delta = Cargador.Delta;
-            ChargingGroup.ChargPerm = true;
-            if(desired_current!=Comands.desired_current &&  !memcmp(Status.HPT_status,"C2",2)){
-                SendToPSOC5(desired_current,MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
+            
+            ChargingGroup.ChargPerm = Cargador.Consigna > 0 ;
+            
+            if((uint8_t)Cargador.Consigna != Comands.desired_current &&  !memcmp(Status.HPT_status,"C2",2)){
+                SendToPSOC5((uint8_t)Cargador.Consigna,MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
             }
 
         }
@@ -833,9 +835,10 @@ static void coap_server(void *p){
                             ChargingGroup.group_chargers.charger_table[i].Current     = 0;
                             ChargingGroup.group_chargers.charger_table[i].CurrentB    = 0;
                             ChargingGroup.group_chargers.charger_table[i].CurrentC    = 0;
+                            ChargingGroup.group_chargers.charger_table[i].Consigna    = 0;
                             ChargingGroup.group_chargers.charger_table[i].Delta       = 0;
-                            ChargingGroup.group_chargers.charger_table[i].limite_fase = 0;
-                            ChargingGroup.group_chargers.charger_table[i].Conected = 0;
+                            ChargingGroup.group_chargers.charger_table[i].Delta_timer = 0;
+                            ChargingGroup.group_chargers.charger_table[i].Conected    = 0;
                         }
                     }
                 }
@@ -852,6 +855,8 @@ clean_up:
     ChargingGroup.Conected    = false;
     ChargingGroup.StartClient = false;
     xServerHandle = NULL;
+    vTaskDelete(xLimitHandle);
+    xLimitHandle = NULL;
     vTaskDelete(NULL);
 }
 
@@ -874,9 +879,7 @@ void Send_Data(){
       cJSON_AddNumberToObject(Datos_Json, "currentB", Status.MeasuresB.instant_current);
       cJSON_AddNumberToObject(Datos_Json, "currentC", Status.MeasuresC.instant_current);
   }
-  cJSON_AddNumberToObject(Datos_Json, "Delta", Status.Delta);
   cJSON_AddStringToObject(Datos_Json, "HPT", Status.HPT_status);
-  cJSON_AddNumberToObject(Datos_Json, "limite_fase",Status.limite_Fase);
 
   if(ChargingGroup.AskPerm){
       cJSON_AddNumberToObject(Datos_Json, "Perm",1);
@@ -1002,6 +1005,7 @@ void MasterPanicTask(void *args){
 void start_server(){
     if(xServerHandle == NULL){
         xServerHandle = xTaskCreateStatic(coap_server, "coap_server", 4096*4, NULL, 1, xServerStack, &xServerBuffer);
+        xLimitHandle  = xTaskCreateStatic(LimiteConsumo, "limite_consumo", 4096*4, NULL, 1, xLimitStack, &xLimitBuffer);
     }  
 }
 

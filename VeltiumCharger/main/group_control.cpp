@@ -20,23 +20,13 @@ IPAddress get_IP(const char* ID);
 TickType_t xStart;
 TickType_t xStart1;
 
-uint8_t  is_c3_charger = IN_CochesConectados;         
-uint8_t  is_LimiteConsumo;
-uint8_t  is_LimiteInstalacion;
-uint8_t  Delta_total;
-uint8_t  Delta_total_fase;
-uint8_t  desired_current;
+static carac_fase Fases[3];
 
-int Conex;
-int Conex_Delta;
-int Conex_Delta_Fase;
-int Conex_Fase;
-int Fases_limitadas;
-int Comand_no_lim;
-int tmp;
+int Delta_total;
 
-uint8_t Pc;
-uint8_t Pc_Fase;
+uint8_t Consumo_total = 0;
+uint8_t Conex_Delta;
+uint8_t Conex;
 
 void Calculo_Consigna(carac_charger* Cargador);
 void input_values(carac_charger Cargador);
@@ -61,7 +51,6 @@ carac_charger New_Data(uint8_t* Buffer, int Data_size){
 carac_charger New_Data(char* Data, int Data_size){
 
     cJSON *mensaje_Json = cJSON_Parse(Data);
-    bool baimena = false;
     carac_charger Cargador;
 
     //comprobar que el Json está bien
@@ -69,7 +58,6 @@ carac_charger New_Data(char* Data, int Data_size){
       cJSON_Delete(mensaje_Json);
       return Cargador;
     }
-
     
     //Extraer los datos
     memcpy(Cargador.HPT,cJSON_GetObjectItem(mensaje_Json,"HPT")->valuestring,3);
@@ -77,20 +65,14 @@ carac_charger New_Data(char* Data, int Data_size){
     if(cJSON_HasObjectItem(mensaje_Json,"device_id")){
       memcpy(Cargador.name,cJSON_GetObjectItem(mensaje_Json,"device_id")->valuestring,9);
     }
-    if(cJSON_HasObjectItem(mensaje_Json,"limite_fase")){
-      Cargador.limite_fase = cJSON_GetObjectItem(mensaje_Json,"limite_fase")->valueint;
-    }
     if(cJSON_HasObjectItem(mensaje_Json,"fase")){
       Cargador.Fase = cJSON_GetObjectItem(mensaje_Json,"fase")->valueint;
     }
     if(cJSON_HasObjectItem(mensaje_Json,"current")){
       Cargador.Current = cJSON_GetObjectItem(mensaje_Json,"current")->valueint;
     }
-    if(cJSON_HasObjectItem(mensaje_Json,"Delta")){
-      Cargador.Delta = cJSON_GetObjectItem(mensaje_Json,"Delta")->valueint;
-    }
     if(cJSON_HasObjectItem(mensaje_Json,"Perm")){
-      baimena = cJSON_GetObjectItem(mensaje_Json,"Perm")->valueint;
+      Cargador.Baimena = cJSON_GetObjectItem(mensaje_Json,"Perm")->valueint;
     }
 
     //Datos para los trifasicos
@@ -108,42 +90,9 @@ carac_charger New_Data(char* Data, int Data_size){
     uint8_t index = check_in_group(Cargador.name,&ChargingGroup.group_chargers);                  
     if(index < 255){
         Cargador.Conected = true;
+        Cargador.Consigna = ChargingGroup.group_chargers.charger_table[index].Consigna;
         ChargingGroup.group_chargers.charger_table[index] = Cargador;
         ChargingGroup.group_chargers.charger_table[index].Period = 0;
-
-        //print_table(ChargingGroup.group_chargers, "Grupo total");
-        if(!memcmp(Cargador.HPT, "B1", 2) && baimena){
-          printf("%s me esta pidiendo permiso! \n", Cargador.name);
-          if(check_perm(&Cargador)){
-            printf("Tiene permiso para cargar!\n");
-            memcpy(ChargingGroup.group_chargers.charger_table[index].HPT,"C2", 2);
-            ChargingGroup.group_chargers.charger_table[index].Current = 600;
-            ChargingGroup.group_chargers.charger_table[index].DesiredCurrent = 6;
-            Cargador.DesiredCurrent = 6;
-          }
-          else{
-            Cargador.DesiredCurrent = 0;
-          }
-        }
-        
-        else if(!memcmp(Cargador.HPT, "C2", 2)){
-          Cargador.Baimena = 1;
-          //si está recien conectado (Cargando a menos de 6)lo conectamos a 6 A
-          if(Cargador.Current < 500){
-            ChargingGroup.group_chargers.charger_table[index].Current = 600;
-            ChargingGroup.group_chargers.charger_table[index].DesiredCurrent = 6;
-            Cargador.DesiredCurrent = 6;
-          }
-          else{
-            input_values(Cargador);
-            Calculo_Consigna(&Cargador);
-          }
-
-        }
-        else{ 
-          Cargador.DesiredCurrent =0;
-        }
-        
     }
 
     return Cargador;
@@ -255,8 +204,6 @@ void New_Current(uint8_t* Buffer, int Data_size){
   }
   //Extraer los datos
   uint8_t desired_current = (uint8_t) cJSON_GetObjectItem(mensaje_Json,"DC")->valueint;
-  Status.limite_Fase= (uint8_t) cJSON_GetObjectItem(mensaje_Json,"LF")->valueint;
-  Status.Delta = (uint8_t) cJSON_GetObjectItem(mensaje_Json,"D")->valueint;
   if(cJSON_HasObjectItem(mensaje_Json,"P")){
     ChargingGroup.ChargPerm = (bool) cJSON_GetObjectItem(mensaje_Json,"P")->valueint;
   }
@@ -300,7 +247,10 @@ void New_Group(char* Data, int Data_size){
           temp_chargers.charger_table[temp_chargers.size].CurrentC = ChargingGroup.group_chargers.charger_table[i].CurrentC;
 
           temp_chargers.charger_table[temp_chargers.size].Delta = ChargingGroup.group_chargers.charger_table[i].Delta;
-          temp_chargers.charger_table[temp_chargers.size].limite_fase = ChargingGroup.group_chargers.charger_table[i].limite_fase;
+          temp_chargers.charger_table[temp_chargers.size].Consigna = ChargingGroup.group_chargers.charger_table[i].Consigna;
+          temp_chargers.charger_table[temp_chargers.size].Delta_timer = ChargingGroup.group_chargers.charger_table[i].Delta_timer;
+          
+          
           temp_chargers.size ++;
       }
     }
@@ -323,8 +273,10 @@ void New_Group(char* Data, int Data_size){
           ChargingGroup.group_chargers.charger_table[i].CurrentB = temp_chargers.charger_table[index].CurrentB;
           ChargingGroup.group_chargers.charger_table[i].CurrentC = temp_chargers.charger_table[index].CurrentC;
           ChargingGroup.group_chargers.charger_table[i].Delta = temp_chargers.charger_table[index].Delta;
-          ChargingGroup.group_chargers.charger_table[i].limite_fase = temp_chargers.charger_table[index].limite_fase;
+          ChargingGroup.group_chargers.charger_table[i].Consigna = temp_chargers.charger_table[index].Consigna;
+          ChargingGroup.group_chargers.charger_table[i].Delta_timer = temp_chargers.charger_table[index].Delta_timer;
         }
+        
 
         if(!memcmp(ID,ConfigFirebase.Device_Id,8)){
             ChargingGroup.group_chargers.charger_table[i].Conected = true;
@@ -336,383 +288,229 @@ void New_Group(char* Data, int Data_size){
     print_table(ChargingGroup.group_chargers, "Grupo desde COAP");
 }
 
-void LimiteConsumo(carac_charger* Cargador){
-  if (ChargingGroup.Params.inst_max < Pc_Fase) {
-    Cargador->Delta = 0;
-    is_LimiteConsumo = IN_NO_ACTIVE_CHILD;
-    is_c3_charger = IN_LimiteInstalacion;
+void LimiteConsumo(void *p){
+  static uint8_t Estado_Anterior = REPOSO;
+  static uint8_t ControlGrupoState = REPOSO;
+  static uint8_t LastConex = 0;
 
-    Cargador->limite_fase = 1;
 
-    if (Delta_total_fase == 0) {
-      is_LimiteInstalacion = IN_Limitacion;
-      desired_current = ChargingGroup.Params.inst_max / Conex_Fase;
-    } 
-    else if (Delta_total_fase > 0){
-      is_LimiteInstalacion = IN_Limitacion1;
-      desired_current = Delta_total_fase / (Conex_Fase - Conex_Delta_Fase) + ChargingGroup.Params.inst_max / Conex_Fase;
-    }
-  } 
-  else if (memcmp(Cargador->HPT,"C2",2) || Cargador->Current < 500) {
-    is_LimiteConsumo = IN_NO_ACTIVE_CHILD;
-    is_c3_charger = IN_CochesConectados;
-    desired_current = 0;    
-  } 
-  else {
- 
-    Comand_no_lim = desired_current;
-    Cargador->limite_fase = 0;
+  TickType_t Delta_Timer = xTaskGetTickCount();
 
-    switch (is_LimiteConsumo) {
-     case IN_Cargando1:
-        tmp = desired_current * Conex;
-        if (tmp > ChargingGroup.Params.potencia_max) {
-          is_LimiteConsumo = IN_Cargando2;
-          desired_current = ChargingGroup.Params.potencia_max ;
-        } 
-        else if ((Pc >= ChargingGroup.Params.potencia_max) && (tmp < ChargingGroup.Params.potencia_max)) {
-          is_LimiteConsumo = IN_ReduccionPc;
-          desired_current = ChargingGroup.Params.potencia_max / Conex;
-        } 
-        else {
-          desired_current = ChargingGroup.Params.potencia_max ;
+  Fases[0].numero = 1;
+  Fases[1].numero = 2;
+  Fases[2].numero = 3;
+
+  while (1){
+
+    switch(ControlGrupoState){
+      //Estado reposo, no hay nadie cargando
+      case REPOSO:
+        for(int i = 0; i < ChargingGroup.group_chargers.size; i++){
+          if(!memcmp(ChargingGroup.group_chargers.charger_table[i].HPT, "B1", 2) && ChargingGroup.group_chargers.charger_table[i].Baimena){
+            printf("%s me esta pidiendo permiso! \n", ChargingGroup.group_chargers.charger_table[i].name);
+            printf("Se lo doy porque no hay nadie mas cargando");
+            memcpy(ChargingGroup.group_chargers.charger_table[i].HPT, "C2", 2);
+            ControlGrupoState = CALCULO;
+          }
+          else{
+            ChargingGroup.group_chargers.charger_table[i].Consigna = 0;
+          }
         }
-        break;
-
-     case IN_Cargando2:
-
-        if (Pc >= ChargingGroup.Params.potencia_max) {
-          is_LimiteConsumo = IN_ReduccionPc;
-          desired_current = ChargingGroup.Params.potencia_max / Conex;
-        } 
-        else if (desired_current * Conex < ChargingGroup.Params.potencia_max) {
-          is_LimiteConsumo = IN_Cargando1;
-          desired_current = ChargingGroup.Params.potencia_max ;
-        } 
-        else {
-          desired_current = ChargingGroup.Params.potencia_max ;
-        }
-        break;
-
-     case IN_Cargando3:
-
-        if (ChargingGroup.Params.potencia_max > Conex * ChargingGroup.Params.potencia_max ) {
-          is_LimiteConsumo = IN_Cargando1;
-    
-          desired_current = ChargingGroup.Params.potencia_max ;
-        } 
-        else if (desired_current - Cargador->Current > 6) {
-          is_LimiteConsumo = IN_Contador;
-          xStart = xTaskGetTickCount();
-        } 
-        else if ((Fases_limitadas > 0) && (ChargingGroup.Params.potencia_max > (ChargingGroup.Params.potencia_max  - desired_current) + Pc)) {
-          is_LimiteConsumo = IN_Cargando4;
-          desired_current = ChargingGroup.Params.potencia_max ;
-        } 
-        else {
-          desired_current = Delta_total / (Conex - Conex_Delta) + ChargingGroup.Params.potencia_max / Conex;          
-        }
-        break;
-
-     case IN_Cargando4:
-
-        if (ChargingGroup.Params.potencia_max <= (ChargingGroup.Params.potencia_max  - desired_current) + Pc) {
-          is_LimiteConsumo = IN_Cargando3;
-          desired_current = Delta_total / (Conex - Conex_Delta) + ChargingGroup.Params.potencia_max / Conex;
-        } 
-        else if (Fases_limitadas == 0) {
-          is_LimiteConsumo = IN_Cargando1;
-          desired_current = ChargingGroup.Params.potencia_max ;
-        } 
-        else {
-          desired_current = ChargingGroup.Params.potencia_max ;
-        }
-        break;
-
-     case IN_Contador:
-
-        if (desired_current - Cargador->Current <= 6) {
-          is_LimiteConsumo = IN_Cargando3;
-          desired_current = Delta_total / (Conex - Conex_Delta) + ChargingGroup.Params.potencia_max / Conex;
-        } 
-        else if (pdTICKS_TO_MS(xTaskGetTickCount()-xStart) >= 20000) {
-          is_LimiteConsumo = IN_Repartir;
-          desired_current = ChargingGroup.Params.potencia_max / Conex;
-          Cargador->Delta = desired_current - Cargador->Current;
-        }
-        break;
-
-     case IN_ReduccionPc:
-
-        if ((ChargingGroup.Params.potencia_max > Pc) && (desired_current * Conex <= ChargingGroup.Params.potencia_max)) {
-          is_LimiteConsumo = IN_Cargando3;
-          desired_current = Delta_total / (Conex - Conex_Delta) + ChargingGroup.Params.potencia_max / Conex;
-        } 
-        else {
-          desired_current = ChargingGroup.Params.potencia_max / Conex;
-        }
-        break;
-
-     default:
-
-      // case IN_Repartir:
-        if (desired_current - Cargador->Current <= 6) {
-          Status.Delta = 0;
-          is_LimiteConsumo = IN_Cargando3;
-          desired_current = Delta_total / (Conex - Conex_Delta) + ChargingGroup.Params.potencia_max / Conex;
-        } 
-        else {
-          desired_current = ChargingGroup.Params.potencia_max / Conex;
-          Cargador->Delta = desired_current - Cargador->Current;
-        }
-        break;
-    }
-  }
-
-}
-
-void Calculo_Consigna(carac_charger* Cargador)
-{
-  switch (is_c3_charger) {
-     case IN_CochesConectados:
-      if (!memcmp(Cargador->HPT,"C2",2) && Cargador->Current> 500) {
-        is_c3_charger = IN_LimiteConsumo;
-        
-        Comand_no_lim = desired_current;
-
-        Cargador->limite_fase = 0;
-        if (Delta_total == 0) {
-          is_LimiteConsumo = IN_Cargando1;
-
-          desired_current = ChargingGroup.Params.potencia_max ;
-        } 
-        else if (Delta_total > 0)  {
-          is_LimiteConsumo = IN_Cargando3;
-          desired_current = Delta_total / (Conex - Conex_Delta) + ChargingGroup.Params.potencia_max / Conex;
-        }
-      } 
-      else {
-        desired_current = 0;
-      }
+          
       break;
 
-     case IN_LimiteConsumo:
-      LimiteConsumo(Cargador);
-      break;
+      case CALCULO:{
+        //Calculo general
+        Calculo_General();
 
-     default:
-  
-      if (ChargingGroup.Params.inst_max >= Conex_Fase * Comand_no_lim) {
-        is_LimiteInstalacion = IN_NO_ACTIVE_CHILD;
-        is_c3_charger = IN_LimiteConsumo;
-        
-        Comand_no_lim = desired_current;
+        //Ver corriente y consigna disponible total
+        float Corriente_disponible_total = ChargingGroup.Params.potencia_max / Conex;
 
-        Cargador->limite_fase = 0;
-        if (Delta_total == 0) {
-          is_LimiteConsumo = IN_Cargando1;
-
-          desired_current = ChargingGroup.Params.potencia_max ;
-        } 
-        else if (Delta_total > 0) {
-
-            is_LimiteConsumo = IN_Cargando3;
-            desired_current = Delta_total / (Conex - Conex_Delta) + ChargingGroup.Params.potencia_max / Conex;
-
+        //Repartir toda la potenica disponible viendo cual es la mas pequeña
+        for(int i = 0; i < ChargingGroup.group_chargers.size; i++){
+          if(!memcmp(ChargingGroup.group_chargers.charger_table[i].HPT,"C2",2)){
+            ChargingGroup.group_chargers.charger_table[i].Consigna = Fases[ChargingGroup.group_chargers.charger_table[i].Fase-1].corriente_disponible >= Corriente_disponible_total ? Corriente_disponible_total : Fases[ChargingGroup.group_chargers.charger_table[i].Fase-1].corriente_disponible;
+            ChargingGroup.group_chargers.charger_table[i].Consigna = ChargingGroup.group_chargers.charger_table[i].Consigna > 32 ? 32 : ChargingGroup.group_chargers.charger_table[i].Consigna;
+          }
         }
-      } 
-      else if (memcmp(Cargador->HPT,"C2",2) || Cargador->Current < 500) {
-        is_LimiteInstalacion = IN_NO_ACTIVE_CHILD;
-        is_c3_charger = IN_CochesConectados;
 
-        desired_current = 0;
-        
-      } 
-      else {
-        Cargador->limite_fase = 1;
-        switch (is_LimiteInstalacion) {
-         case IN_ContadorFase:
-          if (desired_current - Cargador-> Current <= 6) {
-            is_LimiteInstalacion = IN_Limitacion1;
-            desired_current = Delta_total_fase / (Conex_Fase - Conex_Delta_Fase) + ChargingGroup.Params.inst_max / Conex_Fase;
-
-            
-          } else if (pdTICKS_TO_MS(xTaskGetTickCount()-xStart1) >= 20000) {
-            is_LimiteInstalacion = IN_RepartirFase;
-            desired_current = ChargingGroup.Params.inst_max / Conex_Fase;
-
-            Cargador->Delta_fase = desired_current - Cargador->Current;
-          }
-          break;
-
-         case IN_Limitacion:
-          if ((ChargingGroup.Params.inst_max > Pc_Fase) && (desired_current * Conex_Fase <= ChargingGroup.Params.inst_max)) {
-            is_LimiteInstalacion = IN_Limitacion1;
-            desired_current = Delta_total_fase / (Conex_Fase - Conex_Delta_Fase) + ChargingGroup.Params.inst_max / Conex_Fase;
-            
-          } 
-          else {
-            desired_current = ChargingGroup.Params.inst_max / Conex_Fase;
-          }
-          break;
-
-         case IN_Limitacion1:
-          if (desired_current - Cargador->Current > 6) {
-            is_LimiteInstalacion = IN_ContadorFase;
-
-            xStart1 = xTaskGetTickCount();
-          } else {
-            desired_current = Delta_total_fase / (Conex_Fase - Conex_Delta_Fase) + ChargingGroup.Params.inst_max / Conex_Fase;
-          }
-          break;
-
-         default:
-          // case IN_RepartirFase:
-          if (desired_current - Cargador->Current <= 6) {
-      
-            Cargador->Delta_fase = 0;
-            is_LimiteInstalacion = IN_Limitacion1;
-            desired_current = Delta_total_fase / (Conex_Fase - Conex_Delta_Fase) + ChargingGroup.Params.inst_max / Conex_Fase;
-          } 
-          else {
-            desired_current = ChargingGroup.Params.inst_max / Conex_Fase;
-            Cargador->Delta_fase = desired_current - Cargador->Current;
-          }
-          break;
-        }
-      }
-      break;
-    }
-
-#ifdef DEBUG_GROUPS
-
-  printf("Cargador %s\n", Cargador->name);
-  printf("is_c3_charger= %i\n",is_c3_charger);
-  printf("Conex = %i\n", Conex);
-  printf("Comand desired current %i \n", desired_current);
-  printf("Max p = %i \n", ChargingGroup.Params.potencia_max);
-  printf("Inst max = %i \n", ChargingGroup.Params.inst_max);
-#endif
-  Cargador->DesiredCurrent = desired_current;
-  printf("Comand desired current2 %i \n", Cargador->DesiredCurrent);
-}
-
-//Comprobar si permitimos que un cargador empieze a cargar
-bool check_perm(carac_charger *Cargador){
-  Conex=0;
-  Conex_Delta=0;
-  Conex_Delta_Fase=0;
-  Delta_total=0;
-  Delta_total_fase=0;
-  Fases_limitadas=0;
-  Pc=0;
-  Pc_Fase=0;
-  uint16_t total_pc =0;
-  uint16_t total_pc_fase =0;
-
-  for(int i=0; i< ChargingGroup.group_chargers.size;i++){
-      //Datos por Grupo
-      if(!memcmp(ChargingGroup.group_chargers.charger_table[i].HPT,"C2",2) && ChargingGroup.group_chargers.charger_table[i].Current >500){
-          Conex++;
-          total_pc += ChargingGroup.group_chargers.charger_table[i].Current;
-          if(ChargingGroup.group_chargers.charger_table[i].Delta > 0){
-              Conex_Delta++;
-              Delta_total += ChargingGroup.group_chargers.charger_table[i].Delta;
-          }
-      }
-
-      //Datos por fase
-      if(Cargador->Fase == ChargingGroup.group_chargers.charger_table[i].Fase){
-        if(!memcmp(ChargingGroup.group_chargers.charger_table[i].HPT,"C2",2) && ChargingGroup.group_chargers.charger_table[i].Current >500){
-            Conex_Fase++;
-            if(ChargingGroup.group_chargers.charger_table[i].Delta > 0){
-                Conex_Delta_Fase++;
+        //Repartir la corriente sobrante
+        if(Delta_total > 0){
+          uint16_t Delta_disponible = Delta_total / ( Conex - Conex_Delta);
+          for(int i = 0; i < ChargingGroup.group_chargers.size; i++){
+            if(!memcmp(ChargingGroup.group_chargers.charger_table[i].HPT,"C2",2)){
+              if(ChargingGroup.group_chargers.charger_table[i].Delta > 0){
+                ChargingGroup.group_chargers.charger_table[i].Consigna = ChargingGroup.group_chargers.charger_table[i].Current / 100;
+              }
+              else{
+                uint16_t current_limit = ChargingGroup.Params.inst_max > ChargingGroup.Params.potencia_max ? ChargingGroup.Params.potencia_max :  ChargingGroup.Params.inst_max;
+                if(ChargingGroup.group_chargers.charger_table[i].Consigna + Delta_disponible > current_limit){
+                  ChargingGroup.group_chargers.charger_table[i].Consigna = ChargingGroup.group_chargers.charger_table[i].Consigna +Delta_disponible > 32 ? 32 : ChargingGroup.group_chargers.charger_table[i].Consigna + Delta_disponible;
+                } 
+              }
             }
+          }
         }
-        total_pc_fase += ChargingGroup.group_chargers.charger_table[i].Current;
-        Delta_total_fase += ChargingGroup.group_chargers.charger_table[i].Delta_fase;
+
+        //Check 
+        int Suma_Consignas = 0;
+        int Suma_Consignas1 = 0;
+        int Suma_Consignas2 = 0;
+        int Suma_Consignas3 = 0;
+        
+        for(int i = 0; i < ChargingGroup.group_chargers.size; i++){
+          Suma_Consignas += ChargingGroup.group_chargers.charger_table[i].Consigna; 
+
+          if(ChargingGroup.group_chargers.charger_table[i].Fase ==1){
+            Suma_Consignas1 += ChargingGroup.group_chargers.charger_table[i].Consigna;
+          }
+
+          if(ChargingGroup.group_chargers.charger_table[i].Fase ==2){
+            Suma_Consignas2 += ChargingGroup.group_chargers.charger_table[i].Consigna;
+          }
+
+          if(ChargingGroup.group_chargers.charger_table[i].Fase ==3){
+            Suma_Consignas3 += ChargingGroup.group_chargers.charger_table[i].Consigna;
+          }
+        }
+
+        printf("Sumas de las consgnas %i %i %i %i \n", Suma_Consignas1, Suma_Consignas2, Suma_Consignas3, Suma_Consignas);
+
+
+        ControlGrupoState = EQUILIBRADO;
+      break;
       }
 
-      Fases_limitadas+= ChargingGroup.group_chargers.charger_table[i].limite_fase;      
-  }
+      case EQUILIBRADO:{
+        //Calculo general
+        Calculo_General();
 
-  Pc=total_pc/100;
-  Pc_Fase=total_pc_fase/100;  
+        //Comprobar si ha cambiado el numero de equipos (Alguien se desconecta)
+        if(LastConex != Conex){
+          ControlGrupoState = Conex == 0 ? REPOSO : CALCULO;
+          break;
+        }
 
-  //Si estamos por debajo de la potencia límite
-  if(Pc < ChargingGroup.Params.potencia_max && Pc_Fase < ChargingGroup.Params.inst_max){
-    if(ChargingGroup.Params.potencia_max - Pc > 6){
-      printf("Me sobra corriente, se la doy!\n");
-      //Falseo sus datos:)
-      memcpy(Cargador->HPT, "C2",2);
-      Cargador->Current = ChargingGroup.Params.potencia_max * 100;
-      Cargador->Baimena = true;
-      return true;
+        //Comprobar si algun equipo quiere comenzar a cargar
+        for(int i = 0; i < ChargingGroup.group_chargers.size; i++){
+          if(!memcmp(ChargingGroup.group_chargers.charger_table[i].HPT, "B1", 2) && ChargingGroup.group_chargers.charger_table[i].Baimena){
+            printf("%s me esta pidiendo permiso! \n", ChargingGroup.group_chargers.charger_table[i].name);
+
+            //Compruebo si entraria en el grupo con la corriente general
+            if(ChargingGroup.Params.potencia_max / (Conex+1) > 6){
+              //Compruebo si entraria en la fase 
+              if(Fases[ChargingGroup.group_chargers.charger_table[i].Fase-1].corriente_disponible / (Fases[ChargingGroup.group_chargers.charger_table[i].Fase-1].conex +1) > 6){
+                //TODO: Añadir circuito!!!
+                printf("Entra en el grupo!\n");
+                memcpy(ChargingGroup.group_chargers.charger_table[i].HPT, "C2", 2);
+                ControlGrupoState = CALCULO;
+                break;
+              }
+            }
+
+            printf("No hay sitio en el grupo!\n");
+            ChargingGroup.group_chargers.charger_table[i].Consigna = 0;
+          }
+        }
+
+        uint16_t transcurrido = pdTICKS_TO_MS (xTaskGetTickCount() -Delta_Timer);
+
+        //Comprobar si alguno de los cargadores tiene corriente de sobra
+        for(int i = 0; i < ChargingGroup.group_chargers.size; i++){
+          if(!memcmp(ChargingGroup.group_chargers.charger_table[i].HPT,"C2",2)){
+            uint16_t Delta_cargador = ChargingGroup.group_chargers.charger_table[i].Consigna - ChargingGroup.group_chargers.charger_table[i].Current;
+
+            if(Delta_cargador > 2){
+              ChargingGroup.group_chargers.charger_table[i].Delta_timer += transcurrido;
+            }
+            else{
+              ChargingGroup.group_chargers.charger_table[i].Delta_timer = 0;
+            }
+
+            //Si transcurre un minuto sin alcanzar la consigna
+            if(ChargingGroup.group_chargers.charger_table[i].Delta_timer > 60000){
+              ChargingGroup.group_chargers.charger_table[i].Delta = Delta_cargador;
+              ChargingGroup.group_chargers.charger_table[i].Delta_timer = 0;
+              ControlGrupoState = CALCULO;
+            } 
+          }
+        }
+        Delta_Timer = xTaskGetTickCount();
+
+      break;
+      }
+      
+
+      default:
+        printf("La maquina de Control de grupo tiene algun valor malo\n");
+      break;
     }
-  }
 
-  //si no, le intentamos buscar un hueco
-  else{
-    printf("No me sobra corriente, se la busco!\n");
-    //Falseo sus datos:)
-    memcpy(Cargador->HPT, "C2",2);
-    Cargador->Current = ChargingGroup.Params.potencia_max * 100;
-    input_values(*Cargador);
-    Calculo_Consigna(Cargador);
-    if(Cargador->DesiredCurrent > 6){
-      printf("No tengo nada de corriente disponible, tendrá que esperar!\n");
-      Cargador->Baimena = true;
-      return true;
+  #ifdef DEBUG_GROUPS
+    if(Estado_Anterior != ControlGrupoState){
+      printf("La maquina de control de grupo pasa de %i a %i\n ",Estado_Anterior, ControlGrupoState);
+      Estado_Anterior = ControlGrupoState;
     }
-            
+  #endif
+    delay(250);
   }
-  Cargador->Baimena = false;
-  return false;
 }
 
-void input_values(carac_charger Cargador){
+void Calculo_General(){
     Conex=0;
-    Conex_Delta=0;
-    Conex_Delta_Fase=0;
-    Delta_total=0;
-    Delta_total_fase=0;
-    Fases_limitadas=0;
-    Pc=0;
-    Pc_Fase=0;
+    Consumo_total = 0;
+    Delta_total = 0;
+    Conex_Delta = 0;
     uint16_t total_pc =0;
-    uint16_t total_pc_fase =0;
 
-    for(int i=0; i< ChargingGroup.group_chargers.size;i++){
+    //Resetear valores
+    for(uint8_t i =0; i < 3; i++){
+        Fases[i].conex = 0;
+        Fases[i].corriente_total = 0;
+        Fases[i].consigna_total  = 0;
+    }
+
+    for(int i = 0; i < ChargingGroup.group_chargers.size; i++){
+
         //Datos por Grupo
         if(!memcmp(ChargingGroup.group_chargers.charger_table[i].HPT,"C2",2) && ChargingGroup.group_chargers.charger_table[i].Current >500){
             Conex++;
-            if(ChargingGroup.group_chargers.charger_table[i].Delta > 0){
-                Conex_Delta++;
+        }
+
+        total_pc += ChargingGroup.group_chargers.charger_table[i].Current;
+
+        //Datos por fase
+        for(uint8_t i =0; i < 3; i++){
+            if(ChargingGroup.group_chargers.charger_table[i].Fase == Fases[i].numero){
+              if(!memcmp(ChargingGroup.group_chargers.charger_table[i].HPT,"C2",2) && ChargingGroup.group_chargers.charger_table[i].Current >500){
+                  Fases[i].conex++;
+                  Fases[i].corriente_total += ChargingGroup.group_chargers.charger_table[i].Current;
+                  Fases[i].consigna_total += ChargingGroup.group_chargers.charger_table[i].Consigna;
+              }
+              break;
             }
         }
 
-        //Datos por fase
-        if(Cargador.Fase == ChargingGroup.group_chargers.charger_table[i].Fase){
-          if(!memcmp(ChargingGroup.group_chargers.charger_table[i].HPT,"C2",2) && ChargingGroup.group_chargers.charger_table[i].Current >500){
-              Conex_Fase++;
-              if(ChargingGroup.group_chargers.charger_table[i].Delta > 0){
-                  Conex_Delta_Fase++;
-              }
-          }
-          total_pc_fase += ChargingGroup.group_chargers.charger_table[i].Current;
-          Delta_total_fase += ChargingGroup.group_chargers.charger_table[i].Delta_fase;
+        //Comprobar si alguno tiene corriente de sobra
+        if(ChargingGroup.group_chargers.charger_table[i].Delta > 0){
+          Delta_total += ChargingGroup.group_chargers.charger_table[i].Delta;
+          Conex_Delta ++;
         }
-
-
-        Fases_limitadas+= ChargingGroup.group_chargers.charger_table[i].limite_fase;
-        Delta_total += ChargingGroup.group_chargers.charger_table[i].Delta;
-        total_pc += ChargingGroup.group_chargers.charger_table[i].Current;
     }   
-    Pc=total_pc/100;
-    Pc_Fase=total_pc_fase/100;
+
+
+    for(uint8_t i =0; i < 3; i++){
+      Fases[i].corriente_total /= 100;
+      //Ver corriente disponible en fase
+      Fases[i].corriente_disponible = ChargingGroup.Params.inst_max / Fases[i].conex;
+    }
+
+    Consumo_total = total_pc/100;
+
 #ifdef DEBUG_GROUPS
-    //f("Total PC of phase %i\n",Pc); 
-    //printf("Total PC and Delta %i %i \n",Pc,Delta_total);    
+    printf("Total PC of phase %i %i %i\n",Fases[0].corriente_total, Fases[1].corriente_total, Fases[3].corriente_total); 
+    printf("Total consigna of phase %i %i %i\n",Fases[0].consigna_total, Fases[1].consigna_total, Fases[3].consigna_total); 
+    printf("Total PC and Delta %i \n",Consumo_total);    
 #endif
 }
 

@@ -510,14 +510,12 @@ void procesar_bloque(uint16 tipo_bloque){
 						Params.Tipo_Sensor    = 0;
 					}
 					
-					
 					memcpy(Params.Fw_Update_mode, &buffer_rx_local[234],2);
 					Comands.desired_current = buffer_rx_local[233];
 					Coms.ETH.Auto = buffer_rx_local[240];
 					Serial.printf("ETH auto%i \n", Coms.ETH.Auto);
 					Coms.Wifi.ON = buffer_rx_local[236];
 					Coms.ETH.ON = buffer_rx_local[237];	
-					
 
 				#endif
 

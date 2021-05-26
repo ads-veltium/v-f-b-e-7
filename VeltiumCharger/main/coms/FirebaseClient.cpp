@@ -317,7 +317,8 @@ bool ReadFirebaseGroups(String Path){
                 temp_chargers.charger_table[temp_chargers.size].CurrentC = ChargingGroup.group_chargers.charger_table[i].CurrentC;
 
                 temp_chargers.charger_table[temp_chargers.size].Delta = ChargingGroup.group_chargers.charger_table[i].Delta;
-                temp_chargers.charger_table[temp_chargers.size].limite_fase = ChargingGroup.group_chargers.charger_table[i].limite_fase;
+                temp_chargers.charger_table[temp_chargers.size].Consigna = ChargingGroup.group_chargers.charger_table[i].Consigna;
+                temp_chargers.charger_table[temp_chargers.size].Delta_timer = ChargingGroup.group_chargers.charger_table[i].Delta_timer;
                 temp_chargers.size ++;
             }
           }
@@ -336,7 +337,8 @@ bool ReadFirebaseGroups(String Path){
               ChargingGroup.group_chargers.charger_table[ChargingGroup.group_chargers.size-1].CurrentB = temp_chargers.charger_table[index].CurrentB;
               ChargingGroup.group_chargers.charger_table[ChargingGroup.group_chargers.size-1].CurrentC = temp_chargers.charger_table[index].CurrentC;
               ChargingGroup.group_chargers.charger_table[ChargingGroup.group_chargers.size-1].Delta = temp_chargers.charger_table[index].Delta;
-              ChargingGroup.group_chargers.charger_table[ChargingGroup.group_chargers.size-1].limite_fase = temp_chargers.charger_table[index].limite_fase;
+              ChargingGroup.group_chargers.charger_table[ChargingGroup.group_chargers.size-1].Consigna = temp_chargers.charger_table[index].Consigna;
+              ChargingGroup.group_chargers.charger_table[ChargingGroup.group_chargers.size-1].Delta_timer = temp_chargers.charger_table[index].Delta_timer;
             }
 
 

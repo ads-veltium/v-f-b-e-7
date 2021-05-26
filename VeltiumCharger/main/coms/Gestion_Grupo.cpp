@@ -44,9 +44,9 @@ bool add_to_group(const char* ID, IPAddress IP, carac_chargers* group){
             group->charger_table[group->size].Current = 0;
             group->charger_table[group->size].Conected = 0;
             group->charger_table[group->size].Delta = 0;
-            group->charger_table[group->size].Delta_fase = 0;
-            group->charger_table[group->size].DesiredCurrent = 0;
-            group->charger_table[group->size].limite_fase = 0;
+            group->charger_table[group->size].Delta_timer = 0;
+            group->charger_table[group->size].Circuito = 0;
+            group->charger_table[group->size].Consigna = 0;
             group->charger_table[group->size].Period = 0;
             group->size++;
             return true;

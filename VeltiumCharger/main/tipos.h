@@ -133,9 +133,6 @@ typedef struct{
 	bool Con_Lock;
 	bool Trifasico = false;
 	uint8 error_code;
-	uint8 Delta;
-	uint8 Delta_Fase;
-	uint8 limite_Fase;
 
 	char HPT_status[2];
 	
@@ -262,13 +259,14 @@ typedef struct{
 	char      HPT[3];
 	uint8_t     Fase  = 1;
 	uint8_t  Circuito = 1;
+	uint16_t Consigna = 0;
 	uint16_t Current  = 0;
 	uint16_t CurrentB = 0;
 	uint16_t CurrentC = 0;
 	uint16_t   Delta  = 0;
-	uint16_t Delta_fase = 0;
-	uint16_t DesiredCurrent = 0;
-	uint8_t limite_fase = 0;
+
+
+	TickType_t Delta_timer = 0;
 	TickType_t Period = 0;
 	bool Conected = false;
 	bool Baimena = false;

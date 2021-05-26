@@ -23,24 +23,22 @@ void New_Params(char* Data, int Data_size);
 void New_Group(char* Data, int Data_size);
 void New_Control(char* Data, int Data_size);
 
-void Calculo_Consigna();
-void input_values();
-void Ping_Req(const char* Data);
+void Calculo_General();
+void LimiteConsumo(void *p);
 
-#define IN_Cargando1 1
-#define IN_Cargando2 2
-#define IN_Cargando3 3
-#define IN_Cargando4 4
-#define IN_CochesConectados 8
-#define IN_Contador 5
-#define IN_ContadorFase 9
-#define IN_Limitacion 10
-#define IN_Limitacion1 11
-#define IN_LimiteConsumo 12
-#define IN_LimiteInstalacion 13
-#define IN_NO_ACTIVE_CHILD 0
-#define IN_ReduccionPc 6
-#define IN_Repartir 7
-#define IN_RepartirFase 14
+typedef struct{
+    uint8_t numero = 0;
+	int corriente_total = 0;
+    int conex = 0;
+    int consigna_total = 0;
+    float corriente_disponible = 0;
+}carac_fase;
+
+
+
+
+#define REPOSO 1
+#define EQUILIBRADO 2
+#define CALCULO 3
 
 #endif
