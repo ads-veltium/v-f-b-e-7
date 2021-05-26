@@ -6,7 +6,7 @@
 
 /*********** Configuracion del build**************/
 
-#define USE_COMS                   //Comentar para no utilzar las comunicaciones [ Veltium lite Zero]
+//#define USE_COMS                   //Comentar para no utilzar las comunicaciones [ Veltium lite Zero]
 
 #define DEVELOPMENT				   //Comentar para pasar firmware a produccion ( Cambio de base de datos y quitar debugs)
 
@@ -15,16 +15,17 @@
 	#ifdef DEBUG 
 		#define DEBUG_GROUPS       //Activar el debug de los grupos
 		#define DEBUG_BLE		   //Activar el debug del ble
+		#define DEBUG_WIFI		   //Activar el debug del wifi
+		#define DEBUG_ETH		   //Activar el debug del ETH
 	#endif
 #endif
 
 /*********** Fin configuracion build**************/
-#define MAX_GROUP_SIZE 50
-
 #include "Arduino.h"
 #include "tipos.h"
 
 #ifdef USE_COMS	
+	#define MAX_GROUP_SIZE 50
 	#include "coms/Wifi_Station.h"
 	#ifndef CONNECTED
 		#define CONNECTED

@@ -78,7 +78,7 @@ typedef struct _BLE_FIELD
 }BLE_FIELD;
 
 
-void serverbleInit(void);
+void serverbleInit();
 void serverbleStartAdvertising(void);
 bool serverbleGetConnected(void);
 void serverbleSetConnected(bool value);

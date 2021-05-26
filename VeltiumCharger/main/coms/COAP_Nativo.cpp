@@ -1,3 +1,4 @@
+#ifdef USE_COMS
 #include <string.h>
 #include <sys/socket.h>
 #include <netdb.h>
@@ -1061,3 +1062,4 @@ void coap_start_server(){
 void coap_start_client(){
   start_client();
 }
+#endif

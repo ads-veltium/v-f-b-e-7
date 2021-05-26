@@ -1,3 +1,5 @@
+#ifdef USE_COMS
+
 #include "../control.h"
 #include "AsyncUDP.h"
 #include "cJSON.h"
@@ -300,3 +302,5 @@ void start_udp(){
 void close_udp(){
     udp.close();
 }
+
+#endif

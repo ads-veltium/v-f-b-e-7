@@ -8,10 +8,15 @@
 extern uint8 luminosidad;
 extern carac_Update_Status UpdateStatus;
 extern carac_Status  Status;
-extern uint8 dispositivo_inicializado;
-extern carac_group    ChargingGroup;
 extern carac_Params	  Params;
-extern carac_Contador   ContadorExt;
+extern uint8 dispositivo_inicializado;
+
+#ifdef USE_COMS
+	extern carac_Contador   ContadorExt;
+	extern carac_group    ChargingGroup;
+#endif
+
+
 
 //Adafruit_NeoPixel strip EXT_RAM_ATTR;
 CRGB leds[NUM_PIXELS] EXT_RAM_ATTR;
@@ -87,7 +92,7 @@ void Kit (void){
 
 
 void LedControl_Task(void *arg){
-	uint8 subiendo=1, luminosidad_carga= 0, LedPointer =0,luminosidad_Actual=50, togle_led=0;
+	uint8 subiendo=1, luminosidad_carga= 0, LedPointer =8,luminosidad_Actual=50, togle_led=0;
 	uint8 _LED_COLOR=VERDE;
 	uint16 cnt_parpadeo=TIME_PARPADEO, Delay= 20;
 	bool LastBle=0;
@@ -125,19 +130,8 @@ void LedControl_Task(void *arg){
 
 	while(1){
 
-		#ifdef DEBUG_GROUPS
-		
-			if(ChargingGroup.Params.GroupMaster){
-				displayAll(100,ROJO);	
-				delay(50);
-			}
 
-
-		else if(LastBle!=serverbleGetConnected()){	
-		#else
-		if(LastBle!=serverbleGetConnected()){
-		#endif
-		
+		if(LastBle!=serverbleGetConnected()){	
 			displayAll(50,BLANCO);	
 			vTaskDelay(pdMS_TO_TICKS(500));
 			LastBle=serverbleGetConnected();
@@ -179,6 +173,7 @@ void LedControl_Task(void *arg){
 			displayAll(luminosidad_carga,HUE_PURPLE);
 		}
 
+#ifdef USE_COMS
 		//Buscando Medidor
 		else if(Params.Tipo_Sensor && !ContadorExt.ContadorConectado){
 			for (int j = 0; j < 7; j++){
@@ -191,7 +186,7 @@ void LedControl_Task(void *arg){
 				delay(100);
 			}
 		}
-
+#endif
 		else{
 			
 			//Funcionamiento normal

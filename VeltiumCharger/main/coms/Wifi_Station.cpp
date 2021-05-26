@@ -1,3 +1,4 @@
+#ifdef USE_COMS
 #include "Wifi_Station.h"
 
 esp_netif_t *sta_netif;
@@ -285,40 +286,71 @@ void initialise_provisioning(void){
 void start_wifi(void)
 {
     wifi_connected  = false;
+
+    #ifdef DEBUG_WIFI
     Serial.println("Starting wifi");
-    //Station_Begin();
-    //Wifi de esp
+    #endif
 
-    sta_netif = esp_netif_create_default_wifi_sta();
+    //Si nos conectamos con credenciales recibidas desde el navegador interno
+    if(Coms.Wifi.SetFromInternal){
+        #ifdef DEBUG_WIFI
+        printf("Empezando wifi con credenciales internas\n");
+        #endif
+        sta_netif = esp_netif_create_default_wifi_sta();
 
-    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+        Coms.Wifi.SetFromInternal = false;
+        wifi_config_t config;
 
-    wifi_prov_mgr_config_t config = {
-        .scheme = wifi_prov_scheme_softap,
-        .scheme_event_handler = WIFI_PROV_EVENT_HANDLER_NONE
-    };
+        memcpy(config.sta.ssid, Coms.Wifi.AP,strlen((char*)Coms.Wifi.AP));
+        memcpy(config.sta.password, Coms.Wifi.Pass,strlen((char*)Coms.Wifi.Pass));
 
-    ESP_ERROR_CHECK(wifi_prov_mgr_init(config));
+        wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
 
-    bool provisioned = false;
+        ESP_ERROR_CHECK(esp_wifi_init(&cfg));
 
-    ESP_ERROR_CHECK(wifi_prov_mgr_is_provisioned(&provisioned));
+        esp_wifi_set_config((wifi_interface_t)ESP_IF_WIFI_STA, &config);
+        ESP_ERROR_CHECK(esp_wifi_start() );
 
-    if (!provisioned) {
-        Serial.printf( "Sin credenciales almacenadas, pausando wifi\n");    
-        stop_wifi();
-        wifi_prov_mgr_stop_provisioning();
-        wifi_prov_mgr_deinit();
-        Coms.Wifi.ON=false;
-        SendToPSOC5(Coms.Wifi.ON,COMS_CONFIGURATION_WIFI_ON);
-    } else {
-        wifi_prov_mgr_deinit();
-        ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
-        ESP_ERROR_CHECK(esp_wifi_start());
         wifi_connecting = true;
         esp_wifi_connect();
-        Serial.println("Hay credenciales y nos conectamos");
+    }
+
+    else{
+        sta_netif = esp_netif_create_default_wifi_sta();
+
+        wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+        ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+
+        wifi_prov_mgr_config_t config = {
+            .scheme = wifi_prov_scheme_softap,
+            .scheme_event_handler = WIFI_PROV_EVENT_HANDLER_NONE
+        };
+
+        ESP_ERROR_CHECK(wifi_prov_mgr_init(config));
+
+        bool provisioned = false;
+
+        ESP_ERROR_CHECK(wifi_prov_mgr_is_provisioned(&provisioned));
+
+        if (!provisioned) {
+            #ifdef DEBUG_WIFI
+            Serial.printf( "Sin credenciales almacenadas, pausando wifi\n");    
+            #endif
+            stop_wifi();
+            wifi_prov_mgr_stop_provisioning();
+            wifi_prov_mgr_deinit();
+            Coms.Wifi.ON=false;
+            SendToPSOC5(Coms.Wifi.ON,COMS_CONFIGURATION_WIFI_ON);
+        } else {
+            wifi_prov_mgr_deinit();
+            ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
+            ESP_ERROR_CHECK(esp_wifi_start());
+            wifi_connecting = true;
+            esp_wifi_connect();
+            #ifdef DEBUG_WIFI
+            Serial.println("Hay credenciales y nos conectamos");
+            #endif
+        }
     }
 }
 
@@ -358,7 +390,9 @@ void Eth_Loop(){
             //si tenemos configurado un medidor, y a los 30 segundos no tenemos conexion a internet, activamos el DHCP
             else if(Params.Tipo_Sensor){
                 if(GetStateTime(xStart) > 30000){
+                    #ifdef DEBUG_ETH
                     Serial.println("Tengo un cargador conectado y no tengo internet, activo DHCP");
+                    #endif
                     kill_ethernet();
                     Coms.ETH.Auto = false;
                     Coms.ETH.State = KILLING;
@@ -372,7 +406,6 @@ void Eth_Loop(){
             //Buscar el contador
             if(Params.Tipo_Sensor && !finding){
                 if(GetStateTime(xStart) > 60000){
-                    Serial.println("Iniciando fase busqueda !!!!");
                     xTaskCreate( BuscarContador_Task, "BuscarContador", 4096*4, &finding, 5, NULL); 
                     finding = true;
                 }
@@ -435,7 +468,6 @@ void Eth_Loop(){
             //Lectura del contador
 			if(ContadorExt.ContadorConectado && Params.Tipo_Sensor){
 				if(!Counter.Inicializado){
-                    printf("Arrancando lectura del contador\n");
 					Counter.begin(ContadorExt.ContadorIp);
                     SendToPSOC5(0, BLOQUEO_CARGA);
 				}
@@ -511,15 +543,20 @@ void Eth_Loop(){
         break;
 
         default:
+            #ifdef DEBUG_ETH
             Serial.println("Estado no implementado en maquina de ETH!!!");
+            #endif
         break;
     }
 
     #ifdef DEVELOPMENT
+    #ifdef DEBUG_ETH
     if(LastStatus!= Coms.ETH.State){
+      
       Serial.printf("Maquina de estados de ETH de % i a %i \n", LastStatus, Coms.ETH.State);
       LastStatus= Coms.ETH.State;
     }
+    #endif
     #endif
 }
 
@@ -589,9 +626,10 @@ void ComsTask(void *args){
                     start_wifi();
                 }                
             }
-            else if(!Coms.Wifi.ON && (wifi_connected || wifi_connecting)){
-                if(ConnectionState ==IDLE ||ConnectionState==DISCONNECTED){
+            else if((!Coms.Wifi.ON || Coms.Wifi.restart) && (wifi_connected || wifi_connecting)){
+                if(ConnectionState == IDLE ||ConnectionState == DISCONNECTED){
                     stop_wifi();
+                    Coms.Wifi.restart = false;
                 }
 
             }
@@ -601,6 +639,7 @@ void ComsTask(void *args){
                 ServidorArrancado = true;
             }
         }
-        delay(750);
+        delay(500);
     }
 }
+#endif

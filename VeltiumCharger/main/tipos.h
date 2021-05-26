@@ -164,11 +164,12 @@ typedef struct{
 
 typedef struct{
 	bool ON;
-	bool Auto;
 	bool Internet = false;
 	uint8_t AP[34]={'\0'};
-	String Pass;
+	uint8_t Pass[64]={'\0'};
 	ip4_addr_t IP;
+	bool restart = false;
+	bool SetFromInternal = false;
 }carac_WIFI;
 
 typedef struct{
@@ -637,24 +638,27 @@ typedef struct{
 #define COMS_CONFIGURATION_WIFI_START_PROV (0x00B7u)
 #define COMS_CONFIGURATION_ETH_ON	       (0x00B9u)
 #define COMS_CONFIGURATION_LAN_IP	       (0x00BBu)
-#define COMS_CONFIGURATION_ETH_AUTO        (0x00BFu)
+#define COMS_CONFIGURATION_ETH_AUTO        (0x00BCu)
 
-#define MEASURES_INST_CURRENTB_CHAR_HANDLE (0x00C1u)
-#define MEASURES_INST_CURRENTC_CHAR_HANDLE (0x00C3u)
-#define MEASURES_EXTERNAL_COUNTER		   (0x00C5u)
-#define COMS_FW_UPDATEMODE_CHAR_HANDLE     (0x00C7u)
-#define GROUPS_DEVICES_PART_1 	  		   (0x00C9u)
-#define GROUPS_DEVICES_PART_2 	  		   (0x00CAu)
-#define GROUPS_PARAMS		 		 	   (0x00CBu)
-#define SEND_GROUP_DATA		 		 	   (0x00CDu)
-#define BLOQUEO_CARGA                      (0x00CEu)
+//Custom handles for groups
+#define GROUPS_OPERATIONS				   (0x00BDu)
+#define GROUPS_PARAMS		 		 	   (0x00BFu)
+#define GROUPS_CIRCUITS					   (0x00C1u)
 
-#define CHARGING_GROUP_BLE_NET_DEVICES	   (0x00CFu)
-#define CHARGING_GROUP_BLE_CHARGING_GROUP  (0x00D1u)
- 
-//Handlers para el medidor trifásico 
+#define DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA2_CHAR_HANDLE (0x00C3u)
 
+#define MEASURES_INST_CURRENTB_CHAR_HANDLE (0x00C5u)
+#define MEASURES_INST_CURRENTC_CHAR_HANDLE (0x00C7u)
+#define MEASURES_EXTERNAL_COUNTER		   (0x00C9u)
+#define COMS_FW_UPDATEMODE_CHAR_HANDLE     (0x00CAu)
+#define GROUPS_DEVICES_PART_1 	  		   (0x00CCu)
+#define GROUPS_DEVICES_PART_2 	  		   (0x00CDu)
 
+#define SEND_GROUP_DATA		 		 	   (0x00CFu)
+#define BLOQUEO_CARGA                      (0x00D1u)
+
+#define CHARGING_GROUP_BLE_NET_DEVICES	   (0x00D3u)
+#define CHARGING_GROUP_BLE_CHARGING_GROUP  (0x00D5u)
 
 #endif
 

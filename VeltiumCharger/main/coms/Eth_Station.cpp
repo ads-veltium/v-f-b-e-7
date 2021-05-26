@@ -1,3 +1,4 @@
+#ifdef USE_COMS
 #include "Eth_Station.h"
 #include "VeltFirebase.h"
 #include "lwip/sys.h"
@@ -332,3 +333,4 @@ bool restart_ethernet(void){
     delay(100);
     return true;
 }
+#endif

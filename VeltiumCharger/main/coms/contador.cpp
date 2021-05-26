@@ -1,3 +1,4 @@
+#ifdef USE_COMS
 #include "contador.h"
 
 extern carac_Status Status;
@@ -78,4 +79,4 @@ void Contador::parse(){
 
 }
 
-//Contador de Carlo Gavazzi
+#endif

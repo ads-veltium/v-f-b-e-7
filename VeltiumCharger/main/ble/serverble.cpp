@@ -2,6 +2,7 @@
 #include "../control.h"
 #include "ble_rcs.h"
 #include "ble_rcs_server.h"
+#include "services/gap/ble_svc_gap.h"
 
 
 StaticTask_t xBLEBuffer ;
@@ -12,10 +13,14 @@ File UpdateFile;
 uint8_t  UpdateType  = 0;
 uint16_t Conn_Handle = 0;
 
+NimBLEDevice BLE_SERVER EXT_RAM_ATTR;
+
 extern carac_Update_Status 			UpdateStatus;
-extern carac_Firebase_Configuration ConfigFirebase;
 extern carac_Comands                Comands;
-extern carac_Coms					Coms;
+#ifdef CONNECTED
+	extern carac_Coms					Coms;
+	extern carac_Firebase_Configuration ConfigFirebase;
+#endif
 
 /* milestone: one-liner for reporting memory usage */
 void milestone(const char* mname)
@@ -31,7 +36,7 @@ void milestone(const char* mname)
 }
 
 //BLEServer *pServer = NULL;
-BLEServer *pServer = (BLEServer*) ps_malloc(sizeof(BLEServer));
+BLEServer *pServer = (BLEServer*) heap_caps_malloc(sizeof(BLEServer), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
 bool deviceBleConnected = false;
 bool oldDeviceBleConnected = false;
 bool deviceBleDisconnect = false;
@@ -535,10 +540,12 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 
 CBCharacteristic pbleCharacteristicCallbacks;
 
-BLEAdvertisementData advert;
-BLEAdvertising *pAdvertising;
+BLEAdvertisementData advert EXT_RAM_ATTR;
+BLEAdvertising *pAdvertising EXT_RAM_ATTR;
 
 void changeAdvName( uint8_t * name ){
+	ble_svc_gap_device_name_set(std::string((char*)name).c_str());
+
 	pAdvertising = pServer->getAdvertising();
 	pAdvertising->stop();
 
@@ -550,7 +557,7 @@ void changeAdvName( uint8_t * name ){
 	#ifdef DEBUG_BLE
 	Serial.println(advert.getPayload().c_str());
 	#endif
-	
+
 	pAdvertising->setAdvertisementData(advert);
 	pAdvertising->setName(std::string((char*)name));
 	pAdvertising->setMaxInterval(1600);
@@ -574,14 +581,15 @@ void serverbleInit() {
 	milestone("at the beginning of serverbleInit");
 
 	#endif
-	// Create the BLE Device
-	BLEDevice::init("VCD1701XXXX");
+	// Create the BLE_SERVER Device
+	BLE_SERVER.init("VCD1701XXXX");
+	BLE_SERVER.setMTU(512);
 
 	#ifdef DEBUG_BLE
 	milestone("after creating BLEDevice");
 	#endif
-	// Create the BLE Server
-	pServer = BLEDevice::createServer();
+	// Create the BLE_SERVER Server
+	pServer = BLE_SERVER.createServer();
 
 	#ifdef DEBUG_BLE
 	milestone("after BLEDevice::createServer");
@@ -638,7 +646,7 @@ void serverbleInit() {
 	printf("Waiting a client connection to notify...\r\n");
 	#endif
 
-	xTaskCreateStatic(serverbleTask,"TASK BLE",4096*2,NULL,PRIORIDAD_BLE,xBLEStack,&xBLEBuffer); 
+	xTaskCreateStatic(serverbleTask,"TASK BLE_SERVER",4096*2,NULL,PRIORIDAD_BLE,xBLEStack,&xBLEBuffer); 
 
 	#ifdef DEBUG_BLE
 	milestone("after creating serverbleTask");

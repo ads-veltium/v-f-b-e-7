@@ -3,6 +3,9 @@
 #include "stdlib.h"
 #include "EEPROM.h"
 
+
+#ifdef USE_COMS
+
 #define PASS_LENGTH 21
 /*********************** Globals ************************/
 extern carac_Comands                    Comands;
@@ -484,10 +487,10 @@ void InitServer(void) {
     server.on("/get", HTTP_GET_A, [](AsyncWebServerRequest *request){
         if(Autenticado==true){
             Coms.GSM.ON = Gsm_On;
-            memcpy(Coms.Wifi.AP,request->getParam(AP)->value().c_str(),32);
-            Coms.Wifi.Pass = request->getParam(WIFI_PWD)->value();
+            Coms.GSM.APN = request->getParam(APN)->value();
+            Coms.GSM.Pass = request->getParam(GSM_PWD)->value();
                     
-            //Hay que reiniciar ethernet si activampos una ip estatica
+            //Hay que reiniciar ethernet si activamos una ip estatica
             bool reiniciar_eth = Coms.ETH.Auto != Eth_Auto;
             Coms.ETH.Auto = Eth_Auto;
             SendToPSOC5(Coms.ETH.Auto,COMS_CONFIGURATION_ETH_AUTO);
@@ -502,7 +505,6 @@ void InitServer(void) {
             }
 
             if(reiniciar_eth){
-                
                 Coms.ETH.restart = true;
                 request->send(SPIFFS, "/comms.html",String(), false, processor);
                 Coms.ETH.ON = false; 
@@ -517,10 +519,6 @@ void InitServer(void) {
                 delay(50);
             }
 
-            Coms.GSM.APN = request->getParam(APN)->value();
-            Coms.GSM.Pass = request->getParam(GSM_PWD)->value();
-
-            Serial.println((char*)Coms.Wifi.AP);
             uint8_t IPBuffer[12];
 
             IPBuffer[0]  = ip4_addr1(&Coms.ETH.IP);
@@ -541,8 +539,28 @@ void InitServer(void) {
             SendToPSOC5((char*)IPBuffer,12,COMS_CONFIGURATION_LAN_IP);
             delay(100);
             SendToPSOC5(Coms.ETH.Auto,COMS_CONFIGURATION_ETH_AUTO);
-   
 
+            //Configuracion del wifi            
+
+            char W_AP[32];
+            char Pass[64];
+
+            memcpy(W_AP,request->getParam(AP)->value().c_str(),request->getParam(AP)->value().length());
+            memcpy(Pass,request->getParam(WIFI_PWD)->value().c_str(),request->getParam(WIFI_PWD)->value().length());
+            
+            if(Wifi_On && (memcmp(Coms.Wifi.AP, W_AP, strlen(W_AP)) || memcmp(Coms.Wifi.Pass, Pass, strlen(Pass)))){
+                memcpy(Coms.Wifi.AP, W_AP, strlen(W_AP));
+                memcpy(Coms.Wifi.Pass, Pass, strlen(Pass));
+
+                Coms.Wifi.Pass[strlen(Pass)]='\0';
+                Coms.Wifi.SetFromInternal = true;
+                if(Coms.Wifi.ON){
+                    Coms.Wifi.restart = true;
+                }
+
+                Serial.println((char*)Coms.Wifi.AP);
+                Serial.println((char*)Coms.Wifi.Pass);
+            }
             while(Coms.Wifi.ON != Wifi_On){
                 SendToPSOC5(Wifi_On,COMS_CONFIGURATION_WIFI_ON);
                 delay(50);
@@ -809,3 +827,5 @@ void InitServer(void) {
    });
    Serial.println(ESP.getFreeHeap());
 }
+
+#endif
