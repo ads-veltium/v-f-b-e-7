@@ -1,10 +1,11 @@
-#include "ESPAsyncWebServer.h"
+
 #include "../control.h"
+
+
+#ifdef CONNECTED
+#include "ESPAsyncWebServer.h"
 #include "stdlib.h"
 #include "EEPROM.h"
-
-
-#ifdef USE_COMS
 
 #define PASS_LENGTH 21
 /*********************** Globals ************************/

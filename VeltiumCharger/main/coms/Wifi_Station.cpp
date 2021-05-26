@@ -1,6 +1,6 @@
-#ifdef USE_COMS
 #include "Wifi_Station.h"
 
+#ifdef CONNECTED
 esp_netif_t *sta_netif;
 esp_netif_t *ap_netif;
 

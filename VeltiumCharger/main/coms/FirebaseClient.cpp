@@ -1,5 +1,5 @@
 #include "VeltFirebase.h"
-
+#ifdef CONNECTED
 Real_Time_Database *Database = new Real_Time_Database();
 
 StaticJsonDocument<2048>  Lectura        EXT_RAM_ATTR;
@@ -889,3 +889,4 @@ void Firebase_Conn_Task(void *args){
   }
 }
 
+#endif

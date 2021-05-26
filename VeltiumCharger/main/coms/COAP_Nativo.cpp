@@ -1,4 +1,5 @@
-#ifdef USE_COMS
+#include "../control.h"
+#ifdef CONNECTED
 #include <string.h>
 #include <sys/socket.h>
 #include <netdb.h>
@@ -13,7 +14,7 @@
 #include "esp_event.h"
 
 #include "nvs_flash.h"
-#include "../control.h"
+
 
 #ifdef __cplusplus
 extern "C" {

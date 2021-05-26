@@ -1,4 +1,5 @@
 #include "VeltFirebase.h"
+#ifdef CONNECTED
 #include <string>
 #include <iostream>
 
@@ -434,3 +435,4 @@ bool Cliente_HTTP::Send_Command(String url, uint8_t Command){
 
     return true;
 }
+#endif

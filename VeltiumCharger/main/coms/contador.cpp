@@ -1,5 +1,6 @@
-#ifdef USE_COMS
 #include "contador.h"
+
+#ifdef CONNECTED
 
 extern carac_Status Status;
 extern carac_Coms Coms;

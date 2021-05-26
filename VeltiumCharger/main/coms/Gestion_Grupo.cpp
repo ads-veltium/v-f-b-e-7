@@ -1,6 +1,6 @@
-#ifdef USE_COMS
-
 #include "../control.h"
+#ifdef CONNECTED
+
 #include "AsyncUDP.h"
 #include "cJSON.h"
 

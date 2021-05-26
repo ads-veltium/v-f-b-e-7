@@ -1,5 +1,6 @@
-#ifdef USE_COMS
 #include "Eth_Station.h"
+#ifdef USE_COMS
+
 #include "VeltFirebase.h"
 #include "lwip/sys.h"
 
