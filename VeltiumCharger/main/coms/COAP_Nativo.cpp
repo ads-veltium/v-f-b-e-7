@@ -434,9 +434,10 @@ void coap_put( char* Topic, char* Message){
         if(!memcmp(DATA->uri_path->s, Topic, DATA->uri_path->length)){    
             carac_charger Cargador = New_Data(Message,  strlen(Message));
             
-            ChargingGroup.ChargPerm = Cargador.Consigna > 0 ;
+            ChargingGroup.ChargPerm = Cargador.Consigna > 0;
+            printf("\n\nconsigna y permiso %i %i \n", Cargador.Consigna,  ChargingGroup.ChargPerm);
             
-            if((uint8_t)Cargador.Consigna != Comands.desired_current &&  !memcmp(Status.HPT_status,"C2",2)){
+            if((uint8_t)Cargador.Consigna != Comands.desired_current){
                 SendToPSOC5((uint8_t)Cargador.Consigna,MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
             }
 

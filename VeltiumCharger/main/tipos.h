@@ -266,7 +266,7 @@ typedef struct{
 	uint16_t   Delta  = 0;
 
 
-	TickType_t Delta_timer = 0;
+	uint16_t Delta_timer = 0;
 	TickType_t Period = 0;
 	bool Conected = false;
 	bool Baimena = false;
