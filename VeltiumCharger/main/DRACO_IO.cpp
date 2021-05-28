@@ -1,17 +1,10 @@
-/*
- * DRACO_IO.c
- *
- *  Created on: 21 feb. 2020
- *      Author: Draco
- */
-
 #include <Arduino.h>
 
 #include "DRACO_IO.h"
 
 
 unsigned char DRACO_GPIO_Init(void) {
-	/*
+	
 	//INPUTS
 	pinMode( GPIO_MODEM_PWRMON, INPUT_PULLUP);
 	digitalWrite(GPIO_MODEM_PWRMON, LOW);
@@ -19,7 +12,7 @@ unsigned char DRACO_GPIO_Init(void) {
 	//OUTPUTS
 	pinMode ( GPIO_MODEM_PWR_EN,OUTPUT);
 	digitalWrite(GPIO_MODEM_PWR_EN, LOW);
-    */
+    
     pinMode ( EMAC_nRESET,OUTPUT);
 	digitalWrite(EMAC_nRESET,LOW);
             

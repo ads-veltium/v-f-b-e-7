@@ -2,6 +2,7 @@
 #include "../control.h"
 #include "ble_rcs.h"
 #include "ble_rcs_server.h"
+#include "services/gap/ble_svc_gap.h"
 
 
 StaticTask_t xBLEBuffer ;
@@ -9,12 +10,17 @@ static StackType_t xBLEStack[4096*2] EXT_RAM_ATTR;
 
 //Update sistem files
 File UpdateFile;
-uint8_t UpdateType=0;
+uint8_t  UpdateType  = 0;
+uint16_t Conn_Handle = 0;
+
+NimBLEDevice BLE_SERVER EXT_RAM_ATTR;
 
 extern carac_Update_Status 			UpdateStatus;
-extern carac_Firebase_Configuration ConfigFirebase;
 extern carac_Comands                Comands;
-extern carac_Coms					Coms;
+#ifdef CONNECTED
+	extern carac_Coms					Coms;
+	extern carac_Firebase_Configuration ConfigFirebase;
+#endif
 
 /* milestone: one-liner for reporting memory usage */
 void milestone(const char* mname)
@@ -30,9 +36,10 @@ void milestone(const char* mname)
 }
 
 //BLEServer *pServer = NULL;
-BLEServer *pServer = (BLEServer*) ps_malloc(sizeof(BLEServer));
+BLEServer *pServer = (BLEServer*) heap_caps_malloc(sizeof(BLEServer), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
 bool deviceBleConnected = false;
 bool oldDeviceBleConnected = false;
+bool deviceBleDisconnect = false;
 
 uint8_t txValue = 0;
 
@@ -43,7 +50,7 @@ TaskHandle_t hdServerble = NULL;
 // plus 4 header bytes, so 300 bytes should be enough.
 // actually
 //uint8 *buffer_tx=(uint8 *)ps_calloc(300,sizeof(uint8)); EXT_RAM_ATTR
-uint8 buffer_tx[300];// EXT_RAM_ATTR;
+uint8 buffer_tx[500] EXT_RAM_ATTR;
 
 
 BLEService *pbleServices[NUMBER_OF_SERVICES];
@@ -58,12 +65,14 @@ BLECharacteristic *pbleCharacteristics[NUMBER_OF_CHARACTERISTICS];
 #define PROP_WN NIMBLE_PROPERTY::WRITE |NIMBLE_PROPERTY::NOTIFY
 
 
-// VSC_SELECTOR     RW 16
-// VSC_OMNIBUS      RW 16
-// VSC_OMNINOT      RN 16
-// VSC_RECORD       R  512
-// VSC_SCHED_MATRIX RW 168
-// VSC_FW_COMMAND   WN 288
+// VSC_SELECTOR       RW  16
+// VSC_OMNIBUS        RW  16
+// VSC_OMNINOT        RN  16
+// VSC_RECORD         R  512
+// VSC_SCHED_MATRIX   RW 168
+// VSC_FW_COMMAND     WN 288
+// VSC_NET_GROUP      N  451
+// VSC_CHARGING_GROUP RW 451
 
 BLE_FIELD blefields[MAX_BLE_FIELDS] =
 {
@@ -75,10 +84,14 @@ BLE_FIELD blefields[MAX_BLE_FIELDS] =
 	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC005),NUMBER_OF_CHARACTERISTICS, PROP_R,  0, RCS_RECORD,    BLE_CHA_RCS_RECORD,  0},
 	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC006),NUMBER_OF_CHARACTERISTICS, PROP_RW, 0, RCS_SCH_MAT,   BLE_CHA_RCS_SCH_MAT, 0},
 	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC007),NUMBER_OF_CHARACTERISTICS, PROP_WN, 0, FW_DATA,       BLE_CHA_FW_DATA,     1},
-	#ifdef CONNECTED
+
+#ifdef CONNECTED
 	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC008),NUMBER_OF_CHARACTERISTICS, PROP_RN, 0, RCS_INSB_CURR, BLE_CHA_INSB_CURR,   1},
 	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC009),NUMBER_OF_CHARACTERISTICS, PROP_RN, 0, RCS_INSC_CURR, BLE_CHA_INSC_CURR,   1},
-	#endif
+	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC00A),NUMBER_OF_CHARACTERISTICS, PROP_RN, 0, RCS_NET_GROUP, BLE_CHA_NET_GROUP,   1},
+	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC00B),NUMBER_OF_CHARACTERISTICS, PROP_RW, 0, RCS_CHARGING_GROUP, BLE_CHA_CHARGING_GROUP,   1},
+#endif
+
 } ;
 
 
@@ -104,6 +117,16 @@ void serverbleNotCharacteristic ( uint8_t *data, int len, uint16_t handle )
 	if (handle == MEASURES_INST_CURRENTC_CHAR_HANDLE) {
 		pbleCharacteristics[BLE_CHA_INSC_CURR]->setValue(data, len);
 		pbleCharacteristics[BLE_CHA_INSC_CURR]->notify();
+		return;
+	}
+	if (handle == CHARGING_GROUP_BLE_NET_DEVICES) {
+		pbleCharacteristics[BLE_CHA_NET_GROUP]->setValue(data, len);
+		pbleCharacteristics[BLE_CHA_NET_GROUP]->notify();
+		return;
+	}
+	if (handle == CHARGING_GROUP_BLE_CHARGING_GROUP) {
+		pbleCharacteristics[BLE_CHA_CHARGING_GROUP]->setValue(data, len);
+		pbleCharacteristics[BLE_CHA_CHARGING_GROUP]->notify();
 		return;
 	}
 #endif
@@ -134,6 +157,15 @@ void serverbleSetCharacteristic ( uint8_t *data, int len, uint16_t handle )
 		pbleCharacteristics[BLE_CHA_INSC_CURR]->setValue(data, len);
 		return;
 	}
+
+	if (handle == MEASURES_INST_CURRENTB_CHAR_HANDLE) {
+		pbleCharacteristics[BLE_CHA_INSB_CURR]->setValue(data, len);
+		return;
+	}
+	if (handle == MEASURES_INST_CURRENTC_CHAR_HANDLE) {
+		pbleCharacteristics[BLE_CHA_INSC_CURR]->setValue(data, len);
+		return;
+	}
 #endif
 	if (handle == ENERGY_RECORD_RECORD_CHAR_HANDLE) {
 		pbleCharacteristics[BLE_CHA_RCS_RECORD]->setValue(data, len);
@@ -147,6 +179,10 @@ void serverbleSetCharacteristic ( uint8_t *data, int len, uint16_t handle )
 	rcs_server_set_chr_value(handle, data, len);
 }
 
+void serverbleSetConnected(bool value){
+	deviceBleConnected = value;
+}
+
 bool serverbleGetConnected(void)
 {
 	return deviceBleConnected;
@@ -154,18 +190,10 @@ bool serverbleGetConnected(void)
 
 class serverCallbacks: public BLEServerCallbacks 
 {
-	void onConnect(BLEServer* pServer) 
+	void onConnect(BLEServer* pServer, ble_gap_conn_desc *desc) 
 	{
-		deviceBleConnected = true;
-		deviceConnectInd();
-
-		buffer_tx[0] = HEADER_TX;
-		buffer_tx[1] = (uint8)(BLOQUE_STATUS >> 8);
-		buffer_tx[2] = (uint8)(BLOQUE_STATUS);
-		buffer_tx[3] = 2;
-		buffer_tx[4] = deviceBleConnected;
-		buffer_tx[5] = ESTADO_NORMAL;
-		controlSendToSerialLocal(buffer_tx, 6);
+		deviceConnectInd();		
+		Conn_Handle = desc->conn_handle;
 
 	};
 
@@ -180,6 +208,8 @@ class serverCallbacks: public BLEServerCallbacks
 		buffer_tx[4] = deviceBleConnected;
 		buffer_tx[5] = ESTADO_NORMAL;
 		controlSendToSerialLocal(buffer_tx, 6);
+
+		Conn_Handle=0;
 	}
 };
 
@@ -213,8 +243,9 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 			// size of payload to be written to omnibus characteristic
 			uint8_t  pldsize = rcs_get_size(selector);
 
+			#ifdef DEBUG_BLE
 			Serial.printf("Received write request for selector %u\n", selector);
-
+			#endif
 			// prepare packet to be written to characteristic:
 			// header with 2 bytes selector little endian, 2 bytes payload size little endian
 			// afterwards, the payload with the actual data
@@ -273,9 +304,10 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 
 			uint8_t* payload = data + 4;
 
+			#ifdef DEBUG_BLE
 			Serial.printf("Received omnibus write request for selector %u\n", selector);
 			Serial.printf("Received omnibus write request for handle   %u\n", handle);
-			
+			#endif
 
 			// special cases
 			if (handle == AUTENTICACION_TOKEN_CHAR_HANDLE) {
@@ -311,17 +343,13 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 				uint32_t fileSize;
 				memcpy(&fileSize, &payload[10], sizeof(fileSize));
 
-				/*uint16_t partCount;
-				memcpy(&partCount, &payload[14], sizeof(partCount));*/
-
+				#ifdef DEBUG_BLE
 				Serial.printf("Received FwUpdate Prolog\n");
 				Serial.printf("Firmware file with signature %s has %u bytes\n", signature, fileSize);
+				#endif
 
 				uint32_t successCode = 0x00000000;
 				//Empezar el sistema de actualizacion
-				#ifdef USE_
-					if(getfirebaseClientStatus())ConfigFirebase.StopSistem=true;
-				#endif
 				UpdateStatus.DescargandoArchivo=1;
 				if(strstr (signature,"VBLE")){
 					UpdateType= VBLE_UPDATE;
@@ -369,15 +397,15 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 			}
 			if (handle == FWUPDATE_BIRD_EPILOG_PSEUDO_CHAR_HANDLE) {
 				// epilog
-				Serial.printf("Received FwUpdate Epilog\n");
-				//for (int i = 0; i < size; i++) Serial.printf("%02X ", payload[i]);
-				//Serial.printf("\n");
+				
 
 				uint32_t fullCRC32;
 				memcpy(&fullCRC32, &payload[0], 4);
 
+				#ifdef DEBUG_BLE
 				Serial.printf("Firmware file has global crc32 %08X\n", fullCRC32);
-
+				Serial.printf("Received FwUpdate Epilog\n");
+				#endif
 				// notify success (0x00000000)
 				uint32_t successCode = 0x00000000;
 				serverbleNotCharacteristic((uint8_t*)&successCode, sizeof(successCode), FWUPDATE_BIRD_DATA_PSEUDO_CHAR_HANDLE);
@@ -419,16 +447,10 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 				return;
 			}
 			else if(handle == COMS_CONFIGURATION_ETH_ON){
-				while(Coms.ETH.ON != payload[0]){
-					SendToPSOC5(payload[0],COMS_CONFIGURATION_ETH_ON);
-					delay(50);
-				}
+				SendToPSOC5(payload[0],COMS_CONFIGURATION_ETH_ON);
 			}
 			else if(handle == COMS_CONFIGURATION_WIFI_ON){
-				while(Coms.Wifi.ON != payload[0]){
-					SendToPSOC5(payload[0],COMS_CONFIGURATION_WIFI_ON);
-					delay(50);
-				}
+				SendToPSOC5(payload[0],COMS_CONFIGURATION_WIFI_ON);
 			}
 #endif			
 			// if we are here, we are authenticated.
@@ -518,10 +540,12 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 
 CBCharacteristic pbleCharacteristicCallbacks;
 
-BLEAdvertisementData advert;
-BLEAdvertising *pAdvertising;
+BLEAdvertisementData advert EXT_RAM_ATTR;
+BLEAdvertising *pAdvertising EXT_RAM_ATTR;
 
 void changeAdvName( uint8_t * name ){
+	ble_svc_gap_device_name_set(std::string((char*)name).c_str());
+
 	pAdvertising = pServer->getAdvertising();
 	pAdvertising->stop();
 
@@ -529,7 +553,10 @@ void changeAdvName( uint8_t * name ){
 	advert.setName(std::string((char*)name));
 	advert.setCompleteServices((BLEUUID((uint16_t)0xCD01)));
 	advert.setPreferredParams(6,128);
+	
+	#ifdef DEBUG_BLE
 	Serial.println(advert.getPayload().c_str());
+	#endif
 
 	pAdvertising->setAdvertisementData(advert);
 	pAdvertising->setName(std::string((char*)name));
@@ -546,24 +573,33 @@ void changeAdvName( uint8_t * name ){
 
 void serverbleInit() {
 
+	#ifdef DEBUG_BLE
 	Serial.printf("sizeof(BLEService): %d, NUM: %d, total:%d\n", sizeof(BLEService), NUMBER_OF_SERVICES, sizeof(BLEService) * NUMBER_OF_SERVICES);
 	Serial.printf("sizeof(BLECharacteristic): %d, NUM: %d, total:%d\n", sizeof(BLECharacteristic), NUMBER_OF_CHARACTERISTICS, sizeof(BLECharacteristic) * NUMBER_OF_CHARACTERISTICS);
 	Serial.printf("sizeof(BLE_FIELD): %d, NUM: %d, total:%d\n", sizeof(BLEService), MAX_BLE_FIELDS, sizeof(BLEService) * MAX_BLE_FIELDS);
 
 	milestone("at the beginning of serverbleInit");
 
-	// Create the BLE Device
-	BLEDevice::init("VCD1701XXXX");
+	#endif
+	// Create the BLE_SERVER Device
+	BLE_SERVER.init("VCD1701XXXX");
+	BLE_SERVER.setMTU(512);
 
+	#ifdef DEBUG_BLE
 	milestone("after creating BLEDevice");
+	#endif
+	// Create the BLE_SERVER Server
+	pServer = BLE_SERVER.createServer();
 
-	// Create the BLE Server
-	pServer = BLEDevice::createServer();
+	#ifdef DEBUG_BLE
 	milestone("after BLEDevice::createServer");
+	#endif
 
 	pServer->setCallbacks(new serverCallbacks());
-	milestone("after creating and setting serverCallbacks");
 
+	#ifdef DEBUG_BLE
+	milestone("after creating and setting serverCallbacks");
+	#endif
 
 	int indexService = 0;
 	int indexCharacteristic = 0;
@@ -588,7 +624,9 @@ void serverbleInit() {
 		}
 	}
 
+	#ifdef DEBUG_BLE
 	milestone("after creating services and characteristics");
+	#endif 
 
 	// Start the service
 	for ( i = 0; i < NUMBER_OF_SERVICES; i++ )
@@ -596,19 +634,23 @@ void serverbleInit() {
 		pbleServices[i]->start();
 	}
 
+	#ifdef DEBUG_BLE
 	milestone("after starting services");
+	#endif
 
 	// Setup advertising
 	pServer->getAdvertising()->addServiceUUID(BLEUUID((uint16_t)0xCD01));
 
+	#ifdef DEBUG_BLE
 	milestone("after starting advertising");
-
 	printf("Waiting a client connection to notify...\r\n");
+	#endif
 
-	xTaskCreateStatic(serverbleTask,"TASK BLE",4096*2,NULL,PRIORIDAD_BLE,xBLEStack,&xBLEBuffer); 
+	xTaskCreateStatic(serverbleTask,"TASK BLE_SERVER",4096*2,NULL,PRIORIDAD_BLE,xBLEStack,&xBLEBuffer); 
 
+	#ifdef DEBUG_BLE
 	milestone("after creating serverbleTask");
-
+	#endif
 }
 
 void serverbleStartAdvertising(void)
@@ -627,11 +669,15 @@ void serverbleTask(void *arg)
 
 		// disconnecting
 		if (!deviceBleConnected && oldDeviceBleConnected) {
-
-			pServer->stopAdvertising();
-			pServer->startAdvertising(); // restart advertising
 			printf(" disconnecting \r\n");
+			pServer->stopAdvertising();
+			
+			while(!pServer->getAdvertising()->isAdvertising()){
+				delay(100);
+				pServer->startAdvertising(); // restart advertising
+			}
 			printf("start advertising again\r\n");
+			
 			UpdateStatus.DescargandoArchivo=0;
 			oldDeviceBleConnected = deviceBleConnected;
 		}
@@ -640,6 +686,12 @@ void serverbleTask(void *arg)
 			printf(" connecting \r\n");
 			// do stuff here on connecting
 			oldDeviceBleConnected = deviceBleConnected;
+		}
+
+		if(deviceBleDisconnect){
+			printf("desconectandome del intruso!!!\n");
+			pServer->disconnect(Conn_Handle);
+			deviceBleDisconnect= false;
 		}
 		vTaskDelay(pdMS_TO_TICKS(250));	
 	}

@@ -11,14 +11,14 @@
 #define NUMBER_OF_SERVICES 		  1
 
 #ifdef CONNECTED
-#define NUMBER_OF_CHARACTERISTICS 9
+#define NUMBER_OF_CHARACTERISTICS 11
 #else
 #define NUMBER_OF_CHARACTERISTICS 7
 #endif
 
 #define MAX_BLE_FIELDS            (NUMBER_OF_SERVICES+NUMBER_OF_CHARACTERISTICS) 
 
-#define TYPE_SERV		0
+#define TYPE_SERV	0
 #define TYPE_CHAR	1 
 
 enum indexServices
@@ -37,8 +37,10 @@ enum indexCharacteristicsAll
 	RCS_SCH_MAT  = 6,
 	FW_DATA      = 7,
 #ifdef CONNECTED
-	RCS_INSB_CURR   = 8,
-	RCS_INSC_CURR   = 9,
+	RCS_INSB_CURR  		=  8,
+	RCS_INSC_CURR  		=  9,
+	RCS_NET_GROUP  		= 10,
+	RCS_CHARGING_GROUP  = 11,
 #endif
 };
 
@@ -52,10 +54,14 @@ enum indexCharacteristics
 	BLE_CHA_RCS_RECORD  = 4,
 	BLE_CHA_RCS_SCH_MAT = 5,
 	BLE_CHA_FW_DATA     = 6,
+
 #ifdef CONNECTED
-	BLE_CHA_INSB_CURR   = 7,
-	BLE_CHA_INSC_CURR   = 8,
+	BLE_CHA_INSB_CURR       = 7,
+	BLE_CHA_INSC_CURR       = 8,
+	BLE_CHA_NET_GROUP       = 9,
+	BLE_CHA_CHARGING_GROUP  =10,
 #endif
+
 };
 
 typedef struct _BLE_FIELD
@@ -72,9 +78,10 @@ typedef struct _BLE_FIELD
 }BLE_FIELD;
 
 
-void serverbleInit(void);
+void serverbleInit();
 void serverbleStartAdvertising(void);
 bool serverbleGetConnected(void);
+void serverbleSetConnected(bool value);
 
 void serverbleTask(void *arg);
 void serverbleSetCharacteristic(uint8_t * data, int len, uint16_t handle);

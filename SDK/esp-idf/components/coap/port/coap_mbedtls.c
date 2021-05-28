@@ -125,6 +125,7 @@ typedef struct coap_mbedtls_context_t {
   int psk_pki_enabled;
 } coap_mbedtls_context_t;
 
+extern bool hello_verification;
 static int coap_dgram_read(void *ctx, unsigned char *out, size_t outl)
 {
   ssize_t ret = 0;
@@ -1118,6 +1119,7 @@ static int do_mbedtls_handshake(coap_session_t *c_session,
     m_env->established = 1;
     coap_log(LOG_DEBUG, "*  %s: MbedTLS established\n",
                                             coap_session_str(c_session));
+    hello_verification = false;
     ret = 1;
     break;
   case MBEDTLS_ERR_SSL_WANT_READ:
@@ -1127,6 +1129,7 @@ static int do_mbedtls_handshake(coap_session_t *c_session,
     break;
   case MBEDTLS_ERR_SSL_HELLO_VERIFY_REQUIRED:
     coap_log(LOG_INFO, "hello verification requested\n");
+    hello_verification = true;
     ret = -1;
     mbedtls_ssl_session_reset(&m_env->ssl);
     break;

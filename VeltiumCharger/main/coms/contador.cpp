@@ -1,17 +1,21 @@
 #include "contador.h"
 
+#ifdef CONNECTED
+
 extern carac_Status Status;
-extern xParametrosPing ParametrosPing;
 extern carac_Coms Coms;
 extern carac_Contador   ContadorExt;
+
+Cliente_HTTP CounterClient("192.168.1.1", 1000);
 
 //Contador de Iskra
 /*********** Clase Contador ************/
 
 //Buscar el contador
 void Contador::find(){
+    #ifdef DEVELOPMENT
     Serial.println("Iniciando fase busqueda ");
-    IP4_ADDR(&ParametrosPing.BaseAdress , ip4_addr1(&Coms.ETH.IP),ip4_addr2(&Coms.ETH.IP),ip4_addr3(&Coms.ETH.IP),ip4_addr4(&Coms.ETH.IP));
+    #endif
     xTaskCreate( BuscarContador_Task, "BuscarContador", 4096*4, NULL, 5, NULL);   
 }
 
@@ -20,47 +24,31 @@ void Contador::begin(String Host){
     CounterUrl+=Host+"/get_command?command=get_measurements";
     Serial.println(CounterUrl);
 
-    CounterClient.begin(CounterUrl);
-    CounterClient.addHeader("Content-Type", "application/json"); 
-    CounterClient.setTimeout(10000);
-    CounterClient.setConnectTimeout(1000);
-    CounterClient.setReuse(true);
+    CounterClient.set_url(CounterUrl);
+    CounterClient.begin();
     Inicializado = true;
 }
 
 void Contador::end(){
     CounterClient.end();
+    Inicializado = false;
 }
 
 bool Contador::read(){
-    int response;
 
-    response = CounterClient.GET();
+    CounterClient.Send_Command(CounterUrl,LEER);
 
-    if (response < 0) {
-        Serial.println(response);
-        Serial.printf("Counter reading error: %s\n", 
-        CounterClient.errorToString(response).c_str());
+    if (!CounterClient.Send_Command(CounterUrl,LEER)) {
+        #ifdef DEVELOPMENT
+        Serial.printf("Counter reading error\n");
+        #endif
         return false;
     }
 
-    String payload = CounterClient.getString();
     Measurements.clear();
-    deserializeJson(Measurements,payload);
+    deserializeJson(Measurements,CounterClient.ObtenerRespuesta());
 
-    //conection refused
-    if(response == -1){
-        Serial.println("Counter conection refused");
-        return false;
-    }
     return true;
-}
-bool Contador::parseModel(){
-    if(!strcmp(Measurements["header"]["model"].as<String>().c_str(), "IE38MD")){
-        Serial.println("IE38MD Encontrado!");
-        return true;
-    }
-    return false;
 }
 /*********** Convertir los datos del json ************/
 void Contador::parse(){
@@ -74,12 +62,10 @@ void Contador::parse(){
     medida = Measurements["measurements"]["I3"].as<String>();
     ContadorExt.DomesticCurrentC = medida.toFloat() *100;
 
-    
-    
-    /*medida = Measurements["measurements"]["U1"].as<String>();
+    medida = Measurements["measurements"]["U1"].as<String>();
     Status.Measures.instant_voltage = medida.toFloat() *100;
     Serial.println(Status.Measures.instant_voltage);
-    medida = Measurements["measurements"]["P1"].as<String>();
+    /*medida = Measurements["measurements"]["P1"].as<String>();
     Status.Measures.active_power = medida.toFloat() *100;
 
     medida = Measurements["measurements"]["U2"].as<String>();
@@ -94,4 +80,4 @@ void Contador::parse(){
 
 }
 
-//Contador de Carlo Gavazzi
+#endif

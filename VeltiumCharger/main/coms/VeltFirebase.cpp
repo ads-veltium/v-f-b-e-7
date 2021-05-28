@@ -1,4 +1,5 @@
 #include "VeltFirebase.h"
+#ifdef CONNECTED
 #include <string>
 #include <iostream>
 
@@ -7,6 +8,7 @@ int  Readed = 0;
 char *TotalResponse = new char[1500];
 
 esp_err_t _http_event_handle(esp_http_client_event_t *evt){
+
     char *Respuesta = new char[512];
     switch(evt->event_id) {
         case HTTP_EVENT_ERROR:
@@ -114,7 +116,7 @@ void Real_Time_Database::endAuth(void){
 }
 
 bool Real_Time_Database::checkPermisions(void){
-    char Respuesta[1024]= {"0"};
+
     uint8 Timeout = 0;
     DynamicJsonDocument Response(1024);
 
@@ -147,6 +149,10 @@ bool Real_Time_Database::checkPermisions(void){
 void Real_Time_Database::begin(String Host, String DatabaseID){
     RTDB_url="https://";
     RTDB_url+=Host+("prod/devices/"+DatabaseID);
+
+    GROUPS_url = "https://";
+    GROUPS_url+=Host+("groups/");
+
     Base_Path="https://";
     Base_Path+=Host;
 
@@ -157,6 +163,7 @@ void Real_Time_Database::begin(String Host, String DatabaseID){
         .timeout_ms = 5000,
         .event_handler = _http_event_handle,
         .buffer_size_tx = 2048,
+        .is_async = true,
     };
 
     RTDB_client = esp_http_client_init(&config);
@@ -183,10 +190,15 @@ void Real_Time_Database::reload (){
     esp_http_client_set_header(RTDB_client,"Content-Type", "application/json");
 }
 
-bool Real_Time_Database::Send_Command(String path, JsonDocument *doc, uint8_t Command){   
+bool Real_Time_Database::Send_Command(String path, JsonDocument *doc, uint8_t Command, bool groups){   
     String SerializedData;
     uint8 Timeout = 0;
     Write_url = RTDB_url+path+".json?auth="+idToken;
+
+    if(groups){
+        Write_url = GROUPS_url+path+".json?auth="+idToken;
+    }
+
 
     if(Command < 3){      
         Write_url += +"&timeout=2500ms";           
@@ -196,7 +208,7 @@ bool Real_Time_Database::Send_Command(String path, JsonDocument *doc, uint8_t Co
     esp_http_client_set_url(RTDB_client, Write_url.c_str());
 
     switch(Command){
-        case WRITE:        
+        case ESCRIBIR:        
             esp_http_client_set_method(RTDB_client, HTTP_METHOD_POST);
             esp_http_client_set_post_field(RTDB_client, SerializedData.c_str(), SerializedData.length());
             break;
@@ -208,7 +220,7 @@ bool Real_Time_Database::Send_Command(String path, JsonDocument *doc, uint8_t Co
             esp_http_client_set_method(RTDB_client, HTTP_METHOD_PUT);
             esp_http_client_set_post_field(RTDB_client, "{\".sv\": \"timestamp\"}", strlen("{\".sv\": \"timestamp\"}"));
             break;
-        case READ:
+        case LEER:
             esp_http_client_set_method(RTDB_client, HTTP_METHOD_GET);
             break;
         case READ_FW:
@@ -254,11 +266,16 @@ bool Real_Time_Database::Send_Command(String path, JsonDocument *doc, uint8_t Co
     return true;
 }
 
-long long  Real_Time_Database::Get_Timestamp(String path, JsonDocument *respuesta){
+long long  Real_Time_Database::Get_Timestamp(String path, JsonDocument *respuesta, bool groups){
     String SerializedData;
     respuesta->clear();
     uint8 Timeout = 0;
-    Write_url = RTDB_url+path+".json?auth="+idToken+"&timeout=2000ms";
+    if(groups){
+        Write_url = GROUPS_url+path+".json?auth="+idToken+"&timeout=2000ms";
+    }
+    else{
+        Write_url = RTDB_url+path+".json?auth="+idToken+"&timeout=2000ms";
+    }
 
     esp_http_client_set_url(RTDB_client, Write_url.c_str());
     esp_http_client_set_method(RTDB_client, HTTP_METHOD_GET);
@@ -304,8 +321,8 @@ bool _lectura_finalizada = false;
 int  _leidos = 0;
 char *_respuesta_total = new char[1500];
 esp_err_t _generic_http_event_handle(esp_http_client_event_t *evt){
-    //char *response = new char[512];
-    char *response = (char*)heap_caps_malloc(512, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT); 
+
+    char *response = (char*)heap_caps_calloc(1,512, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT); 
     switch(evt->event_id) {
         case HTTP_EVENT_ERROR:
             break;
@@ -313,11 +330,13 @@ esp_err_t _generic_http_event_handle(esp_http_client_event_t *evt){
             _lectura_finalizada = false;
             _leidos = 0;
             free(_respuesta_total);
-            //_respuesta_total = new char[1500];
+            _respuesta_total = new char[1500];
             break;
         case HTTP_EVENT_HEADER_SENT:
             break;
         case HTTP_EVENT_ON_HEADER:
+            ESP_LOGI("HTTP_CLIENT", "HTTP_EVENT_ON_HEADER");
+            printf("%.*s", evt->data_len, (char*)evt->data);
             break;
         case HTTP_EVENT_ON_DATA:
             if(evt->data_len>0){
@@ -338,33 +357,39 @@ esp_err_t _generic_http_event_handle(esp_http_client_event_t *evt){
     free(response);
     return ESP_OK;
 }
+void Cliente_HTTP::set_url(String url){
+    _url=url;
+}
 
 void Cliente_HTTP::begin(){
+    
     esp_http_client_config_t config = {
         .url = _url.c_str(),
-        .timeout_ms = _timeout,
+        .timeout_ms = 5000,
         .event_handler = _generic_http_event_handle,
         .buffer_size_tx = 2048,
+        .is_async = false,
     };
     _client = esp_http_client_init(&config);
     esp_http_client_set_header(_client,"Content-Type", "application/json");
 }
 
 void Cliente_HTTP::end(){
+
     esp_http_client_cleanup(_client);
 }
 
-void Cliente_HTTP::ObtenerRespuesta(String *Respuesta){
-    std::string s(_respuesta_total, _respuesta_total+_leidos);
-    *Respuesta=s.c_str();
+String Cliente_HTTP::ObtenerRespuesta(){
+    return String(_respuesta_total);
 }
 
 bool Cliente_HTTP::Send_Command(String url, uint8_t Command){   
     uint8_t tiempo_lectura =0;
     esp_http_client_set_url(_client, url.c_str());
+    Serial.println(url);
 
     switch(Command){
-        case WRITE:        
+        case ESCRIBIR:        
             esp_http_client_set_method(_client, HTTP_METHOD_POST);
             //esp_http_client_set_post_field(_client, SerializedData.c_str(), SerializedData.length());
             break;
@@ -376,12 +401,12 @@ bool Cliente_HTTP::Send_Command(String url, uint8_t Command){
             esp_http_client_set_method(_client, HTTP_METHOD_PUT);
             esp_http_client_set_post_field(_client, "{\".sv\": \"timestamp\"}", strlen("{\".sv\": \"timestamp\"}"));
             break;
-        case READ:
+        case LEER:
             esp_http_client_set_method(_client, HTTP_METHOD_GET);
             break;
 
         default:
-            Serial.print("Accion no implementada!");
+            Serial.println("Accion no implementada!");
             return false;
             break;
     }
@@ -397,11 +422,11 @@ bool Cliente_HTTP::Send_Command(String url, uint8_t Command){
         return true;
     }
 
-    while(!_lectura_finalizada && ++tiempo_lectura <30 ){
+    while(!_lectura_finalizada && ++tiempo_lectura <60 ){
         delay(50);
     }
 
-    if(tiempo_lectura >= 30){
+    if(tiempo_lectura >= 60){
         return false;
     }
 
@@ -410,3 +435,4 @@ bool Cliente_HTTP::Send_Command(String url, uint8_t Command){
 
     return true;
 }
+#endif

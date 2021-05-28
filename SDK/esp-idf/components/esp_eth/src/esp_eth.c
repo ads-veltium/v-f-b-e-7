@@ -142,6 +142,12 @@ static esp_err_t eth_on_state_changed(esp_eth_mediator_t *eth, esp_eth_state_t s
         eth_driver->duplex = duplex;
         break;
     }
+
+    case ETH_STATE_PAUSE: {
+        uint32_t peer_pause_ability = (uint32_t)args;
+        ETH_CHECK(mac->set_peer_pause_ability(mac, peer_pause_ability)== ESP_OK, "ethernet mac set peer pause ability failed", err, ESP_FAIL);
+        break;
+    }
     default:
         ETH_CHECK(false, "unknown ethernet state: %d", err, ESP_ERR_INVALID_ARG, state);
         break;
@@ -156,7 +162,9 @@ static void eth_check_link_timer_cb(TimerHandle_t xTimer)
     esp_eth_driver_t *eth_driver = (esp_eth_driver_t *)pvTimerGetTimerID(xTimer);
     esp_eth_phy_t *phy = eth_driver->phy;
     esp_eth_increase_reference(eth_driver);
+    //phy->negotiate(phy);
     phy->get_link(phy);
+    
     esp_eth_decrease_reference(eth_driver);
 }
 
@@ -179,11 +187,12 @@ esp_err_t esp_eth_driver_install(const esp_eth_config_t *config, esp_eth_handle_
     ETH_CHECK(eth_driver, "request memory for eth_driver failed", err, ESP_ERR_NO_MEM);
     atomic_init(&eth_driver->ref_count, 1);
     atomic_init(&eth_driver->fsm, ESP_ETH_FSM_STOP);
+
     eth_driver->mac = mac;
     eth_driver->phy = phy;
     eth_driver->link = ETH_LINK_DOWN;
-    eth_driver->duplex = ETH_DUPLEX_HALF;
-    eth_driver->speed = ETH_SPEED_10M;
+    eth_driver->duplex = ETH_DUPLEX_FULL;
+    eth_driver->speed = ETH_SPEED_100M;
     eth_driver->stack_input = config->stack_input;
     eth_driver->on_lowlevel_init_done = config->on_lowlevel_init_done;
     eth_driver->on_lowlevel_deinit_done = config->on_lowlevel_deinit_done;
@@ -197,8 +206,10 @@ esp_err_t esp_eth_driver_install(const esp_eth_config_t *config, esp_eth_handle_
     ETH_CHECK(phy->set_mediator(phy, &eth_driver->mediator) == ESP_OK, "set mediator for phy failed", err_mediator, ESP_FAIL);
     ETH_CHECK(mac->init(mac) == ESP_OK, "init mac failed", err_init_mac, ESP_FAIL);
     ETH_CHECK(phy->init(phy) == ESP_OK, "init phy failed", err_init_phy, ESP_FAIL);
-    eth_driver->check_link_timer = xTimerCreate("eth_link_timer", pdMS_TO_TICKS(config->check_link_period_ms), pdTRUE,
-                                   eth_driver, eth_check_link_timer_cb);
+        mac->set_duplex(mac,ETH_DUPLEX_FULL);
+    mac->set_speed(mac,ETH_SPEED_100M);
+
+    eth_driver->check_link_timer = xTimerCreate("eth_link_timer", pdMS_TO_TICKS(config->check_link_period_ms), pdTRUE,eth_driver, eth_check_link_timer_cb);
     ETH_CHECK(eth_driver->check_link_timer, "create eth_link_timer failed", err_create_timer, ESP_FAIL);
     *out_hdl = (esp_eth_handle_t)eth_driver;
     return ESP_OK;
@@ -226,7 +237,7 @@ esp_err_t esp_eth_driver_uninstall(esp_eth_handle_t hdl)
         goto err;
     }
     // don't uninstall driver unless there's only one reference
-    int expected_ref_count = 1;
+    int expected_ref_count = 2;
     if (!atomic_compare_exchange_strong(&eth_driver->ref_count, &expected_ref_count, 0)) {
         ESP_LOGE(TAG, "%d ethernet reference in use", expected_ref_count);
         ret = ESP_ERR_INVALID_STATE;
@@ -361,6 +372,14 @@ esp_err_t esp_eth_ioctl(esp_eth_handle_t hdl, esp_eth_io_cmd_t cmd, void *data)
         break;
     case ETH_CMD_S_PROMISCUOUS:
         ETH_CHECK(mac->set_promiscuous(mac, (bool)data) == ESP_OK, "set promiscuous mode failed", err, ESP_FAIL);
+        break;
+     case ETH_CMD_S_FLOW_CTRL:
+        ETH_CHECK(mac->enable_flow_ctrl(mac, (bool)data) == ESP_OK, "enable mac flow control failed", err, ESP_FAIL);
+        ETH_CHECK(phy->advertise_pause_ability(phy, (uint32_t)data) == ESP_OK, "phy advertise pause ability failed", err, ESP_FAIL);
+        break;
+    case ETH_CMD_G_DUPLEX_MODE:
+        ETH_CHECK(data!= ESP_ERR_INVALID_ARG, "no mem to store duplex value", err, ESP_FAIL);
+        *(eth_duplex_t *)data = eth_driver->duplex;
         break;
     default:
         ETH_CHECK(false, "unknown io command: %d", err, ESP_ERR_INVALID_ARG, cmd);

@@ -83,7 +83,7 @@ typedef struct{
 } caract_measures;
 
 typedef struct{
-
+	long long actual_time;
 	long long connect_date_time;
 	long long disconnect_date_time;
 	long long charge_start_time;
@@ -132,7 +132,7 @@ typedef struct{
 	bool DC_Leack_status;
 	bool Con_Lock;
 	bool Trifasico = false;
-	uint8  error_code;
+	uint8 error_code;
 
 	char HPT_status[2];
 	
@@ -146,13 +146,12 @@ typedef struct{
 
 typedef struct{
 	bool   Tipo_Sensor;
-	bool   Ubicacion_Sensor;
 	bool   CDP_On;
 	bool   Sensor_Conectado;
 	bool   NewData;
 	char   Fw_Update_mode[2];
 	char   autentication_mode[2];
-	uint8  Fase =1;
+	uint8  Fase = 1;
 	uint8  CDP;
 	uint8  inst_current_limit;
 	uint16 potencia_contratada;
@@ -162,11 +161,12 @@ typedef struct{
 
 typedef struct{
 	bool ON;
-	bool Auto;
 	bool Internet = false;
 	uint8_t AP[34]={'\0'};
-	String Pass;
+	uint8_t Pass[64]={'\0'};
 	ip4_addr_t IP;
+	bool restart = false;
+	bool SetFromInternal = false;
 }carac_WIFI;
 
 typedef struct{
@@ -175,6 +175,7 @@ typedef struct{
 	bool DHCP = 0;
 	bool Internet = false;
 	bool Wifi_Perm = false;
+	bool restart = false;
 
 	ip4_addr_t IP;
 	ip4_addr_t Gateway;
@@ -182,7 +183,7 @@ typedef struct{
 
 	uint8_t   State;
 	uint8_t   Puerto;
-	bool conectado = false;
+	bool 	conectado = false;
 }carac_ETH;
 
 typedef struct{
@@ -228,7 +229,6 @@ typedef struct{
 	bool WriteStatus  = false;
 	bool WriteComs    = false;
 	bool WriteControl = false;
-	bool StopSistem   = false;
 	bool WriteTime    = false;
 
 	bool ReadControl  = false;
@@ -253,29 +253,61 @@ typedef struct{
 
 }carac_Firebase_Configuration;
 
-
-
 typedef struct{
 	char     name[9];
 	IPAddress     IP;
-	char      HPT[2];
-	uint8_t     Fase;
-	uint16_t Voltage;
+	char      HPT[3];
+	uint8_t     Fase  = 1;
+	uint8_t  Circuito = 1;
+	uint16_t Consigna = 0;
+	uint16_t Current  = 0;
+	uint16_t CurrentB = 0;
+	uint16_t CurrentC = 0;
+	uint16_t   Delta  = 0;
+
+
+	uint16_t Delta_timer = 0;
+	TickType_t Period = 0;
+	bool Conected = false;
+	bool Baimena = false;
 
 }carac_charger;
 
 typedef struct{
-    carac_charger charger_table[10];
-    int size = 0;
+    carac_charger charger_table[50];
+    uint8_t size = 0;
 }carac_chargers;
 
 typedef struct{
-	bool GroupActive  = false;
-	bool GroupMaster  = false;
-	bool ServerActive = false;
-	bool SendNewData  = false;
+	uint8_t GroupMaster = 0;
+    uint8_t GroupActive = 0;
+	uint8_t inst_max    = 0;
+	uint8_t CDP         = 0;
+	uint8_t ContractPower = 0;
+	uint8_t UserID      = 0;
+	uint8_t potencia_max = 0;	
+
+}carac_group_params;
+
+typedef struct{
+	bool AskPerm   = false;
+	bool SendNewParams = false;
+	bool SendNewGroup  = false;
+	bool Conected	   = false;
+	bool StopOrder     = false;
+	bool DeleteOrder   = false;
+	bool StartClient   = false;
+	bool ChargPerm     = false;
+	bool Finding       = false;
+
+	IPAddress MasterIP;
 
 	carac_chargers group_chargers;
+	carac_group_params Params;
+
+	char GroupId[10] = {'0'};
+	long long last_ts_app_req= 0;
+
 }carac_group;
 
 typedef struct{
@@ -358,7 +390,7 @@ typedef struct{
 #define VCD_NAME_USERS_SERVICE_INDEX   (0x06u) /* Index of VCD_Name_Users service in the cyBle_customs array */
 #define VCD_NAME_USERS_CHARGER_DEVICE_ID_CHAR_INDEX   (0x00u) /* Index of Charger_Device_ID characteristic */
 #define VCD_NAME_USERS_USERS_NUMBER_CHAR_INDEX   (0x01u) /* Index of Users_Number characteristic */
-#define VCD_NAME_USERS_UI_X_USER_ID_CHAR_INDEX   (0x02u) /* Index of UI_X_User_ID characteristic */
+#define VCD_NAME_USERS_USER_TYPE_CHAR_INDEX   (0x02u) /* Index of User type characteristic */
 #define VCD_NAME_USERS_USER_INDEX_CHAR_INDEX   (0x03u) /* Index of User_Index characteristic */
 
 #define TEST_SERVICE_INDEX   (0x07u) /* Index of Test service in the cyBle_customs array */
@@ -497,8 +529,8 @@ typedef struct{
 #define VCD_NAME_USERS_CHARGER_DEVICE_ID_CHAR_HANDLE   (0x0052u) /* Handle of Charger_Device_ID characteristic */
 #define VCD_NAME_USERS_USERS_NUMBER_DECL_HANDLE   (0x0053u) /* Handle of Users_Number characteristic declaration */
 #define VCD_NAME_USERS_USERS_NUMBER_CHAR_HANDLE   (0x0054u) /* Handle of Users_Number characteristic */
-#define VCD_NAME_USERS_UI_X_USER_ID_DECL_HANDLE   (0x0055u) /* Handle of UI_X_User_ID characteristic declaration */
-#define VCD_NAME_USERS_UI_X_USER_ID_CHAR_HANDLE   (0x0056u) /* Handle of UI_X_User_ID characteristic */
+#define VCD_NAME_USERS_USER_TYPE_DECL_HANDLE   (0x0055u) /* Handle of user_type characteristic declaration */
+#define VCD_NAME_USERS_USER_TYPE_CHAR_HANDLE   (0x0056u) /* Handle of user_type characteristic */
 #define VCD_NAME_USERS_USER_INDEX_DECL_HANDLE   (0x0057u) /* Handle of User_Index characteristic declaration */
 #define VCD_NAME_USERS_USER_INDEX_CHAR_HANDLE   (0x0058u) /* Handle of User_Index characteristic */
 
@@ -604,19 +636,27 @@ typedef struct{
 #define COMS_CONFIGURATION_WIFI_START_PROV (0x00B7u)
 #define COMS_CONFIGURATION_ETH_ON	       (0x00B9u)
 #define COMS_CONFIGURATION_LAN_IP	       (0x00BBu)
-#define COMS_CONFIGURATION_ETH_DHCP        (0x00BFu)
-#define MEASURES_INST_CURRENTB_CHAR_HANDLE (0x00C1u)
-#define MEASURES_INST_CURRENTC_CHAR_HANDLE (0x00C3u)
-#define MEASURES_EXTERNAL_COUNTER		   (0x00C5u)
-#define COMS_FW_UPDATEMODE_CHAR_HANDLE     (0x00C7u)
+#define COMS_CONFIGURATION_ETH_AUTO        (0x00BCu)
 
-#define ENERGY_PARTIAL_RECORD_1			   (0x00D0u)
-#define ENERGY_PARTIAL_RECORD_2			   (0x00D1u)
+//Custom handles for groups
+#define GROUPS_OPERATIONS				   (0x00BDu)
+#define GROUPS_PARAMS		 		 	   (0x00BFu)
+#define GROUPS_CIRCUITS					   (0x00C1u)
 
-//Handlers para el medidor trifásico 
+#define DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA2_CHAR_HANDLE (0x00C3u)
 
+#define MEASURES_INST_CURRENTB_CHAR_HANDLE (0x00C5u)
+#define MEASURES_INST_CURRENTC_CHAR_HANDLE (0x00C7u)
+#define MEASURES_EXTERNAL_COUNTER		   (0x00C9u)
+#define COMS_FW_UPDATEMODE_CHAR_HANDLE     (0x00CAu)
+#define GROUPS_DEVICES_PART_1 	  		   (0x00CCu)
+#define GROUPS_DEVICES_PART_2 	  		   (0x00CDu)
 
+#define SEND_GROUP_DATA		 		 	   (0x00CFu)
+#define BLOQUEO_CARGA                      (0x00D1u)
 
+#define CHARGING_GROUP_BLE_NET_DEVICES	   (0x00D3u)
+#define CHARGING_GROUP_BLE_CHARGING_GROUP  (0x00D5u)
 
 #endif
 

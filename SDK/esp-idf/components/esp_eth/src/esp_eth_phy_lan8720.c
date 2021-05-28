@@ -173,14 +173,15 @@ typedef struct {
 static esp_err_t lan8720_update_link_duplex_speed(phy_lan8720_t *lan8720)
 {
     esp_eth_mediator_t *eth = lan8720->eth;
-    eth_speed_t speed = ETH_SPEED_10M;
-    eth_duplex_t duplex = ETH_DUPLEX_HALF;
+    eth_speed_t speed = ETH_SPEED_100M;
+    eth_duplex_t duplex = ETH_DUPLEX_FULL;
     bmsr_reg_t bmsr;
     pscsr_reg_t pscsr;
     eth_link_t link = ETH_LINK_DOWN;
+    anar_reg_t anar;
+    uint32_t peer_pause_ability = false;
 
     //Cambios Veltium para leer los dos puertos
-
     //Read link1
     PHY_CHECK(eth->phy_reg_read(eth, 1, ETH_PHY_BMSR_REG_ADDR, &(bmsr.val)) == ESP_OK,"read BMSR1 failed", err);
     eth_link_t link1 = bmsr.link_status ? ETH_LINK_UP : ETH_LINK_DOWN;
@@ -220,13 +221,10 @@ static esp_err_t lan8720_update_link_duplex_speed(phy_lan8720_t *lan8720)
             default:
                 break;
             }
-            PHY_CHECK(eth->on_state_changed(eth, ETH_STATE_SPEED, (void *)speed) == ESP_OK,
-                      "change speed failed", err);
-            PHY_CHECK(eth->on_state_changed(eth, ETH_STATE_DUPLEX, (void *)duplex) == ESP_OK,
-                      "change duplex failed", err);
-        }
-        PHY_CHECK(eth->on_state_changed(eth, ETH_STATE_LINK, (void *)link) == ESP_OK,
-                  "change link failed", err);
+            PHY_CHECK(eth->on_state_changed(eth, ETH_STATE_SPEED, (void *)speed) == ESP_OK,"change speed failed", err);
+            PHY_CHECK(eth->on_state_changed(eth, ETH_STATE_DUPLEX, (void *)duplex) == ESP_OK,"change duplex failed", err);
+     }
+        PHY_CHECK(eth->on_state_changed(eth, ETH_STATE_LINK, (void *)link) == ESP_OK,"change link failed", err);
         lan8720->link_status = link;
         lan8720->parent.link1  = link1;
         lan8720->parent.link2  = link2;
@@ -265,8 +263,9 @@ static esp_err_t lan8720_reset(esp_eth_phy_t *phy)
     lan8720->parent.link2  = ETH_LINK_DOWN;
     esp_eth_mediator_t *eth = lan8720->eth;
     bmcr_reg_t bmcr = {.reset = 1};
-    PHY_CHECK(eth->phy_reg_write(eth, lan8720->addr, ETH_PHY_BMCR_REG_ADDR, bmcr.val) == ESP_OK,
-              "write BMCR failed", err);
+    PHY_CHECK(eth->phy_reg_write(eth, 0, ETH_PHY_BMCR_REG_ADDR, bmcr.val) == ESP_OK,"write BMCR failed", err);
+    PHY_CHECK(eth->phy_reg_write(eth, 1, ETH_PHY_BMCR_REG_ADDR, bmcr.val) == ESP_OK,"write BMCR failed", err);
+    PHY_CHECK(eth->phy_reg_write(eth, 2, ETH_PHY_BMCR_REG_ADDR, bmcr.val) == ESP_OK,"write BMCR failed", err);
     /* wait for reset complete */
     uint32_t to = 0;
     for (to = 0; to < lan8720->reset_timeout_ms / 10; to++) {
@@ -299,6 +298,13 @@ static esp_err_t lan8720_negotiate(esp_eth_phy_t *phy)
 {
     phy_lan8720_t *lan8720 = __containerof(phy, phy_lan8720_t, parent);
     esp_eth_mediator_t *eth = lan8720->eth;
+    bmsr_reg_t bmsr;
+    pscsr_reg_t pscsr;
+
+    if(lan8720->parent.link1 == ETH_LINK_UP && lan8720->parent.link2 == ETH_LINK_UP){
+        return;
+    }
+
     /* Restart auto negotiation */
     bmcr_reg_t bmcr = {
         .speed_select = 1,     /* 100Mbps */
@@ -306,19 +312,39 @@ static esp_err_t lan8720_negotiate(esp_eth_phy_t *phy)
         .en_auto_nego = 1,     /* Auto Negotiation */
         .restart_auto_nego = 1 /* Restart Auto Negotiation */
     };
-    PHY_CHECK(eth->phy_reg_write(eth, lan8720->addr, ETH_PHY_BMCR_REG_ADDR, bmcr.val) == ESP_OK, "write BMCR failed", err);
+    
+    if (lan8720->link_status == ETH_LINK_UP){
+        return;
+    }
+    if(lan8720->parent.link1 == ETH_LINK_DOWN){
+        PHY_CHECK(eth->phy_reg_write(eth, 1, ETH_PHY_BMCR_REG_ADDR, bmcr.val) == ESP_OK, "write BMCR failed", err);
+    }
+
+    if(lan8720->parent.link2 == ETH_LINK_DOWN){
+        PHY_CHECK(eth->phy_reg_write(eth, 2, ETH_PHY_BMCR_REG_ADDR, bmcr.val) == ESP_OK, "write BMCR failed", err);
+    }
+    
     /* Wait for auto negotiation complete */
-    bmsr_reg_t bmsr;
-    pscsr_reg_t pscsr;
     int32_t to = 0;
     for (to = 0; to < lan8720->autonego_timeout_ms / 10; to++) {
         vTaskDelay(pdMS_TO_TICKS(10));
-        PHY_CHECK(eth->phy_reg_read(eth, lan8720->addr, ETH_PHY_BMSR_REG_ADDR, &(bmsr.val)) == ESP_OK,
-                  "read BMSR failed", err);
-        PHY_CHECK(eth->phy_reg_read(eth, lan8720->addr, ETH_PHY_PSCSR_REG_ADDR, &(pscsr.val)) == ESP_OK,
-                  "read PSCSR failed", err);
-        if (bmsr.auto_nego_complete && pscsr.auto_nego_done) {
-            break;
+
+        if(lan8720->parent.link1 == ETH_LINK_DOWN){
+            PHY_CHECK(eth->phy_reg_read(eth, 1, ETH_PHY_BMSR_REG_ADDR, &(bmsr.val)) == ESP_OK,"read BMSR failed", err);
+            PHY_CHECK(eth->phy_reg_read(eth, 1, ETH_PHY_PSCSR_REG_ADDR, &(pscsr.val)) == ESP_OK,"read PSCSR failed", err);
+            if (bmsr.auto_nego_complete && pscsr.auto_nego_done) {
+                printf("PHY1 negociado %i %i \n",bmsr.val, pscsr.val);
+                break;
+            }
+        }
+
+        if(lan8720->parent.link2 == ETH_LINK_DOWN){
+            PHY_CHECK(eth->phy_reg_read(eth, 2, ETH_PHY_BMSR_REG_ADDR, &(bmsr.val)) == ESP_OK,"read BMSR failed", err);
+            PHY_CHECK(eth->phy_reg_read(eth, 2, ETH_PHY_PSCSR_REG_ADDR, &(pscsr.val)) == ESP_OK,"read PSCSR failed", err);
+            if (bmsr.auto_nego_complete && pscsr.auto_nego_done) {
+                printf("PHY2 negociado %i %i \n",bmsr.val, pscsr.val);
+                break;
+            }
         }
     }
     /* Auto negotiation failed, maybe no network cable plugged in, so output a warning */
@@ -346,10 +372,10 @@ static esp_err_t lan8720_pwrctl(esp_eth_phy_t *phy, bool enable)
         /* Normal operation Mode */
         bmcr.power_down = 0;
     }
-    PHY_CHECK(eth->phy_reg_write(eth, lan8720->addr, ETH_PHY_BMCR_REG_ADDR, bmcr.val) == ESP_OK,
-              "write BMCR failed", err);
-    PHY_CHECK(eth->phy_reg_read(eth, lan8720->addr, ETH_PHY_BMCR_REG_ADDR, &(bmcr.val)) == ESP_OK,
-              "read BMCR failed", err);
+    PHY_CHECK(eth->phy_reg_write(eth, 0, ETH_PHY_BMCR_REG_ADDR, bmcr.val) == ESP_OK,"write BMCR failed", err);
+    PHY_CHECK(eth->phy_reg_write(eth, 1, ETH_PHY_BMCR_REG_ADDR, bmcr.val) == ESP_OK,"write BMCR failed", err);
+    PHY_CHECK(eth->phy_reg_write(eth, 2, ETH_PHY_BMCR_REG_ADDR, bmcr.val) == ESP_OK,"write BMCR failed", err);
+    PHY_CHECK(eth->phy_reg_read(eth, lan8720->addr, ETH_PHY_BMCR_REG_ADDR, &(bmcr.val)) == ESP_OK,"read BMCR failed", err);
     if (!enable) {
         PHY_CHECK(bmcr.power_down == 1, "power down failed", err);
     } else {
@@ -387,12 +413,23 @@ static esp_err_t lan8720_del(esp_eth_phy_t *phy)
 static esp_err_t lan8720_init(esp_eth_phy_t *phy)
 {
     // DRACO not check ID
-//    phy_lan8720_t *lan8720 = __containerof(phy, phy_lan8720_t, parent);
-//    esp_eth_mediator_t *eth = lan8720->eth;
+    phy_lan8720_t *lan8720 = __containerof(phy, phy_lan8720_t, parent);
+    esp_eth_mediator_t *eth = lan8720->eth;
     /* Power on Ethernet PHY */
     PHY_CHECK(lan8720_pwrctl(phy, true) == ESP_OK, "power control failed", err);
     /* Reset Ethernet PHY */
     PHY_CHECK(lan8720_reset(phy) == ESP_OK, "reset failed", err);
+
+    //Establecer valores de negociacion
+    bmcr_reg_t bmcr = {
+        .speed_select = 1,     /* 100Mbps */
+        .duplex_mode = 1,      /* Full Duplex */
+        .en_auto_nego = 1,     /* Auto Negotiation */
+        .restart_auto_nego = 1 /* Restart Auto Negotiation */
+    };
+    PHY_CHECK(eth->phy_reg_write(eth, 0, ETH_PHY_BMCR_REG_ADDR, bmcr.val) == ESP_OK, "write BMCR failed", err);
+    PHY_CHECK(eth->phy_reg_write(eth, 1, ETH_PHY_BMCR_REG_ADDR, bmcr.val) == ESP_OK, "write BMCR failed", err);
+    PHY_CHECK(eth->phy_reg_write(eth, 2, ETH_PHY_BMCR_REG_ADDR, bmcr.val) == ESP_OK, "write BMCR failed", err);
     /* Check PHY ID */
     // DRACO not check ID
 //    phyidr1_reg_t id1;
@@ -415,6 +452,27 @@ static esp_err_t lan8720_deinit(esp_eth_phy_t *phy)
 err:
     return ESP_FAIL;
 }
+
+static esp_err_t lan8720_advertise_pause_ability(esp_eth_phy_t *phy, uint32_t ability)
+{
+
+    phy_lan8720_t *lan8720 = __containerof(phy, phy_lan8720_t, parent);
+    esp_eth_mediator_t *eth = lan8720->eth;
+    /* Set PAUSE function ability */
+    anar_reg_t anar;
+    eth->phy_reg_read(eth, lan8720->addr, ETH_PHY_ANAR_REG_ADDR, &(anar.val));
+    if (ability) {
+        anar.asymmetric_pause = 1;
+        anar.symmetric_pause = 1;
+    } else {
+        anar.asymmetric_pause = 0;
+        anar.symmetric_pause = 0;
+    }
+    eth->phy_reg_write(eth, lan8720->addr, ETH_PHY_ANAR_REG_ADDR, anar.val);
+    return ESP_OK;
+
+}
+
 
 esp_eth_phy_t *esp_eth_phy_new_lan8720(const eth_phy_config_t *config)
 {
@@ -440,6 +498,7 @@ esp_eth_phy_t *esp_eth_phy_new_lan8720(const eth_phy_config_t *config)
     lan8720->parent.pwrctl = lan8720_pwrctl;
     lan8720->parent.get_addr = lan8720_get_addr;
     lan8720->parent.set_addr = lan8720_set_addr;
+    lan8720->parent.advertise_pause_ability = lan8720_advertise_pause_ability;
     lan8720->parent.del = lan8720_del;
 
     return &(lan8720->parent);

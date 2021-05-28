@@ -1,21 +1,39 @@
 #ifndef __CONTROL_MAIN
 #define __CONTROL_MAIN
 
-//configuration
-#define USE_COMS
-#define USE_DRACO_BLE
+#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+#pragma GCC diagnostic ignored "-Wwrite-strings"
 
-//#define DEVELOPMENT
-//#define DOUBLE
+/*********** Configuracion del build**************/
+
+#define USE_COMS                   //Comentar para no utilzar las comunicaciones [ Veltium lite Zero]
+
+#define DEVELOPMENT				   //Comentar para pasar firmware a produccion ( Cambio de base de datos y quitar debugs)
+//#define USE_GROUPS			   //Comentar para no utilizar los grupos de potencia
 
 #ifdef DEVELOPMENT
-#warning "************************************************CUIDAOOOOO!!!!!Vas a cargar esto en Development!!!!!!!*********************************************"
+	#define DEBUG				   //Activar los distintos debugs
+	#ifdef DEBUG 
+
+		#ifdef USE_GROUPS
+			#define DEBUG_GROUPS       //Activar el debug de los grupos
+		#endif
+
+		#define DEBUG_BLE		   //Activar el debug del ble
+
+		#ifdef USE_COMS	
+			#define DEBUG_WIFI		   //Activar el debug del wifi
+			#define DEBUG_ETH		   //Activar el debug del ETH
+		#endif
+	#endif
 #endif
 
+/*********** Fin configuracion build**************/
 #include "Arduino.h"
 #include "tipos.h"
 
 #ifdef USE_COMS	
+	#define MAX_GROUP_SIZE 50
 	#include "coms/Wifi_Station.h"
 	#ifndef CONNECTED
 		#define CONNECTED
@@ -51,12 +69,12 @@
 #define BLE  0
 #define COMS 1
 //Prioridades FreeRTOS
-#define PRIORIDAD_LEDS     1
+#define PRIORIDAD_LEDS     2
 #define PRIORIDAD_CONTROL  4
-#define PRIORIDAD_BLE      2
-#define PRIORIDAD_FIREBASE 2
-#define PRIORIDAD_COMS	   1
-#define PRIORIDAD_MQTT     2
+#define PRIORIDAD_BLE      3
+#define PRIORIDAD_FIREBASE 3
+#define PRIORIDAD_COMS	   2
+#define PRIORIDAD_MQTT     1
 
 // ESTADO GENERAL
 #define	ESTADO_ARRANQUE			0
@@ -106,7 +124,7 @@ void controlInit(void);
 void UpdateTask(void *arg);
 void UpdateESP();
 void modifyCharacteristic(uint8* data, uint16 len, uint16 attrHandle);
-
+int Convert_To_Epoch(uint8* data);
 void SendToPSOC5(uint8 data, uint16 attrHandle);
 void SendToPSOC5(char *data, uint16 len, uint16 attrHandle);
 

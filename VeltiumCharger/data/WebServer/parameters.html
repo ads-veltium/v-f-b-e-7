@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <title>Veltium Smart Chargers</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" type="text/css" href="style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+<div class="header">
+  <table>
+    <tr>
+      <td><img src="veltium-logo-big" width="60px" height="60px"> </td>
+      <td><h1>Veltium Smart Chargers</h1>
+      </td>
+    </tr>
+  </table>
+</div>
+<div class="topnav" id="myTopnav">
+    <a href="parameters" class="active">Par&aacutemetros</a>
+    <a href="comands" >Comandos</a>
+    <a href="comms">Comunicaciones</a>
+    <a href="status">Status</a>
+    <a href="ajustes">Ajustes</a>
+    <div class="topnav-right">
+        <a href="javascript:void(0);" onclick="cerrar(this);" id="19">Cerrar sesion</a>
+    </div>
+    <a href="javascript:void(0);" class="icon" onclick="myFunction()">
+      <i class="fa fa-bars"></i>
+    </a>
+  </div>
+</head>
+<body>
+  
+    <table class="center">
+      <tr>
+        <td><span class="dht-labels">Modo de autenticaci&oacuten</span></td>
+        <td>
+          <div  id="myDIV">
+            <span>%AUTH%</span>
+          </div>
+        </td>
+      </tr>
+      <tr>
+        <form action="/instcurlim" accept-charset="UTF-8">
+        <td><span class="dht-labels">L&iacutemite de corriente de instalaci&oacuten</span></td>
+        <td><input style = "text-align:center;" name="inst_curr_lim" placeholder="%CURLIM% A" type="text"></input></td>
+        <input type="submit" id="guardainst" value="Guardar" onclick = "guardainst(this)" hidden="hidden">
+        </form>
+      </tr>
+      <tr>
+        <form action="/powercont" accept-charset="UTF-8">
+        <td><span class="dht-labels">Potencia contratada</span> </td>
+        <td><input style = "text-align:center;" name="potencia_cont" placeholder="%POWER% kW" type="text"></input></td>
+        <input type="submit" id="guardapower" value="Guardar" onclick = "guardapower(this)" hidden="hidden">
+        </form>
+      </tr>
+      <tr>
+        <td><span class="dht-labels">Control din&aacutemico de potencia</span></td>
+        <td>
+          <div  id="myDIV1">
+            <span>%CDP%</span>
+          </div>
+        </td>
+      </tr>
+      <tr>
+        <td><span class="dht-labels">Ubicaci&oacuten del sensor</span></td>
+        <td>
+          <div  id="myDIV2">
+            <span>%UBCDP%</span>
+          </div>
+        </td>
+      </tr>
+      <tr>
+        <td><span class="dht-labels">Actualizaciones autom&aacuteticas</span> </td>
+        <td class="centrado"><span>%AUTOUPDATE%</span></td>
+      </tr>
+    </table>
+
+    <script>
+
+function cerrar(element){
+  var xhr = new XMLHttpRequest();
+
+  if(element.clicked){ xhr.open("GET", "/update?output="+element.id+"", true); }
+
+  else { xhr.open("GET", "/update?output="+element.id+"", true); }
+
+  xhr.send();
+  self.location.href = "/";
+}
+
+
+  // Add active class to the current button (highlight it)
+  var header = document.getElementById("myDIV");
+  var btns = header.getElementsByClassName("btn");
+  for (var i = 0; i < btns.length; i++) {
+    btns[i].addEventListener("click", function() {
+    var current = document.getElementsByClassName("active3");
+    current[0].className = current[0].className.replace("active3", "");
+    this.className += " active3";
+    console. log(current);
+    });
+  }
+
+  var header = document.getElementById("myDIV1");
+  var btns = header.getElementsByClassName("btn1");
+  for (var i = 0; i < btns.length; i++) {
+    btns[i].addEventListener("click", function() {
+    var current = document.getElementsByClassName("active1");
+    current[0].className = current[0].className.replace("active1", "");
+    this.className += " active1";
+    console. log(current);
+    });
+  }
+
+  var header = document.getElementById("myDIV2");
+  var btns = header.getElementsByClassName("btn2");
+  for (var i = 0; i < btns.length; i++) {
+    btns[i].addEventListener("click", function() {
+    var current = document.getElementsByClassName("active2");
+    current[0].className = current[0].className.replace("active2", "");
+    this.className += " active2";
+    console. log(current);
+    });
+  }
+
+function myFunction() {
+  var x = document.getElementById("myTopnav");
+  if (x.className === "topnav") {
+    x.className += " responsive";
+  } else {
+    x.className = "topnav";
+  }
+}
+
+
+function Startbutton(element) {
+
+var xhr = new XMLHttpRequest();
+
+  if(element.clicked){ xhr.open("GET", "/update?output="+element.id+"", true); }
+
+  else { xhr.open("GET", "/update?output="+element.id+"", true); }
+
+xhr.send();
+
+}
+
+
+
+function toggleCheckbox(element) {
+
+var xhr = new XMLHttpRequest();
+
+  if(element.checked){ xhr.open("GET", "/autoupdate?com="+element.id+"&state=1", true); }
+
+  else { xhr.open("GET", "/autoupdate?com="+element.id+"&state=0", true); }
+
+xhr.send();
+
+}
+
+setInterval(function ( ) {
+
+var xhttp = new XMLHttpRequest();
+
+xhttp.onreadystatechange = function() {
+
+  if (this.readyState == 4 && this.status == 200) {
+
+    document.getElementById("curlim").innerHTML = this.responseText;
+
+  }
+
+};
+
+xhttp.open("GET", "/curlim", true);
+
+xhttp.send();
+
+}, 5000 ) ;
+
+setInterval(function ( ) {
+
+var xhttp = new XMLHttpRequest();
+
+xhttp.onreadystatechange = function() {
+
+  if (this.readyState == 4 && this.status == 200) {
+
+    document.getElementById("power").innerHTML = this.responseText;
+
+  }
+
+};
+
+xhttp.open("GET", "/power", true);
+
+xhttp.send();
+
+}, 5000 ) ;
+
+
+document.getElementsByName("inst_curr_lim").addEventListener("keyup", function(event) {
+  if (event.keyCode === 13) {
+   event.preventDefault();
+   document.getElementById("guardainst").click();
+  }
+});
+
+document.getElementsByName("potencia_cont").addEventListener("keyup", function(event) {
+  if (event.keyCode === 13) {
+   event.preventDefault();
+   document.getElementById("guardapower").click();
+  }
+});
+
+</script>
+</body>
+</html>

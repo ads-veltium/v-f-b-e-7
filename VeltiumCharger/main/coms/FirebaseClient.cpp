@@ -1,9 +1,10 @@
 #include "VeltFirebase.h"
-
+#ifdef CONNECTED
+#include "base64.h"
 Real_Time_Database *Database = new Real_Time_Database();
 
-StaticJsonDocument<1024>  Lectura        EXT_RAM_ATTR;
-StaticJsonDocument<1024>  Escritura      EXT_RAM_ATTR;
+StaticJsonDocument<2048>  Lectura        EXT_RAM_ATTR;
+StaticJsonDocument<2048>  Escritura      EXT_RAM_ATTR;
 
 //Extern variables
 extern carac_Firebase_Configuration ConfigFirebase;
@@ -13,8 +14,19 @@ extern carac_Update_Status          UpdateStatus;
 extern carac_Params                 Params;
 extern carac_Coms                   Coms;
 
+#ifdef USE_GROUPS
+extern carac_group                  ChargingGroup;
+#endif
+
+extern uint8_t ConnectionState;
+
 
 void DownloadTask(void *arg);
+void store_group_in_mem(carac_chargers* group);
+void coap_put( char* Topic, char* Message);
+bool add_to_group(const char* ID, IPAddress IP, carac_chargers* group);
+uint8_t check_in_group(const char* ID, carac_chargers* group);
+
 
 uint16 ParseFirmwareVersion(String Texto){
   String sub = Texto.substring(6, 10); 
@@ -26,7 +38,6 @@ uint16 ParseFirmwareVersion(String Texto){
 *************************/
 bool initFirebaseClient(){
 
-    Serial.println("INIT Firebase Client");
     Database->deviceID = ConfigFirebase.Device_Id;
     if(!Database->LogIn()){
       return false;
@@ -130,21 +141,17 @@ bool WriteFirebaseParams(String Path){
 
 bool WriteFirebaseComs(String Path){
 
-  Serial.println("Write Coms CALLED");
   Escritura.clear();
-
-
-      Escritura["wifi/on"]    = Coms.Wifi.ON;
-      Escritura["wifi/ssid"]    = Coms.Wifi.AP;
-      Escritura["eth/on"]    = Coms.ETH.ON;
+      Escritura["wifi/on"]     = Coms.Wifi.ON;
+      Escritura["wifi/ssid"]   = Coms.Wifi.AP;
+      Escritura["eth/on"]      = Coms.ETH.ON;
       Escritura["eth/auto"]    = Coms.ETH.Auto;
 
     if(Coms.ETH.Auto){
-      Escritura["eth/ip1"]      = ip4addr_ntoa(&Coms.ETH.IP);
+      Escritura["eth/ip"]      = ip4addr_ntoa(&Coms.ETH.IP);
       Escritura["eth/gateway"]  = ip4addr_ntoa(&Coms.ETH.Gateway);
       Escritura["eth/mask"]     = ip4addr_ntoa(&Coms.ETH.Mask);
     }
-
 
   #ifdef USE_GSM
     Comms_Json.set("modem/apn",Coms.GSM.APN);
@@ -152,7 +159,6 @@ bool WriteFirebaseComs(String Path){
   #endif
   
   if(Database->Send_Command(Path,&Escritura,UPDATE)){     
-    //Write readed Timestamp
     if(Database->Send_Command(Path+"/ts_dev_ack",&Escritura,TIMESTAMP)){
       return true;
     }
@@ -178,8 +184,15 @@ bool WriteFirebaseControl(String Path){
 bool WriteFirebaseFW(String Path){
   Escritura.clear();
 
-  Escritura["VBLE2"] = "VBLE2_"+String(UpdateStatus.ESP_Act_Ver);
-  Escritura["VELT2"] = "VELT2_"+String(UpdateStatus.PSOC5_Act_Ver);
+  if(UpdateStatus.ESP_Act_Ver < 1000){
+    Escritura["VBLE2"] = "VBLE2_0"+String(UpdateStatus.ESP_Act_Ver);
+    Escritura["VELT2"] = "VELT2_0"+String(UpdateStatus.PSOC5_Act_Ver);
+  }
+  else{
+    Escritura["VBLE2"] = "VBLE2_"+String(UpdateStatus.ESP_Act_Ver);
+    Escritura["VELT2"] = "VELT2_"+String(UpdateStatus.PSOC5_Act_Ver);
+  }
+
 
   if(Database->Send_Command(Path,&Escritura,UPDATE)){
     return true;
@@ -187,33 +200,233 @@ bool WriteFirebaseFW(String Path){
 
   return false;
 }
+
+bool WriteFirebasegroups(String Path){
+    Escritura.clear();
+
+    Escritura["delete"] = false;
+
+    if(Database->Send_Command(Path+"/params",&Escritura,UPDATE)){
+      return true;
+    }
+
+    return false;
+}
+
+bool WriteFirebaseHistoric(char* buffer){
+
+    struct tm t = {0};  // Initalize to all 0's
+    t.tm_year = (buffer[4]!=0)?buffer[4]+100:0;  // This is year-1900, so 112 = 2012
+    t.tm_mon  = (buffer[3]!=0)?buffer[3]-1:0;
+    t.tm_mday = buffer[2];
+    t.tm_hour = buffer[5];
+    t.tm_min  = buffer[6];
+    t.tm_sec  = buffer[7];
+    int ConectionTS = mktime(&t);
+
+    if(ConectionTS> Status.Time.actual_time || ConectionTS < 1417305600){
+      printf("Hay algun error con las horas %i %lli \n", ConectionTS, Status.Time.actual_time);
+      return true;
+    }
+
+    t = {0};  // Initalize to all 0's
+    t.tm_year = (buffer[10]!=0)?buffer[10]+100:0;  // This is year-1900, so 112 = 2012
+    t.tm_mon  = (buffer[9]!=0)?buffer[9]-1:0;
+    t.tm_mday = buffer[8];
+    t.tm_hour = buffer[11];
+    t.tm_min  = buffer[12];
+    t.tm_sec  = buffer[13];
+    int StartTs = mktime(&t);
+
+    if(StartTs> Status.Time.actual_time || StartTs < 1417305600){
+      printf("Hay algun error con las horas 2\n");
+      return true;
+    }
+
+    t = {0};  // Initalize to all 0's
+    t.tm_year = (buffer[16]!=0)?buffer[16]+100:0;  // This is year-1900, so 112 = 2012
+    t.tm_mon  = (buffer[15]!=0)?buffer[15]-1:0;
+    t.tm_mday = buffer[14];
+    t.tm_hour = buffer[17];
+    t.tm_min  = buffer[18];
+    t.tm_sec  = buffer[19];
+    int DisconTs = mktime(&t);
+
+    if(DisconTs < StartTs || DisconTs < 1417305600){
+      printf("Hay algun error con las horas 3\n");
+      return true;
+    }
+
+    int j = 20;
+    int size =0;
+    bool end = false;
+    uint8_t* record_buffer = (uint8_t*) malloc(252);
+
+    for(int i = 0;i<252;i+=2){		
+      if(j<252){
+        if(buffer[j]==255 && buffer[j+1]==255){
+          end = true;
+          break;
+        }
+        uint16_t PotLeida=buffer[j]*0x100+buffer[j+1];
+        if(PotLeida > 0 && PotLeida < 5500 && !end){
+          record_buffer[i]   = buffer[j];
+          record_buffer[i+1]   = buffer[j+1];
+          printf("%i \n", PotLeida);
+          size+=2;
+        }
+        else{
+          record_buffer[i]   = 0;
+          size+=2;
+        }
+        j+=2;
+      }
+      else{
+        record_buffer[i]   = 0;
+        size+=2;
+      }				
+    }
+
+    
+  
+    String Encoded = base64::encode(record_buffer,(size_t)size);
+    printf("Encoded buffer: %s\n", Encoded.c_str());
+
+    free(record_buffer);
+  
+    if(ConnectionState == IDLE){
+      String Path = "/records/";
+      Escritura.clear();
+
+      Escritura["act"] = Encoded;
+      Escritura["con"] = ConectionTS;
+      Escritura["dis"] = DisconTs;
+      Escritura["rea"] = "";
+      Escritura["sta"] = StartTs;
+      Escritura["usr"] = buffer[0] + buffer[1]*0x100;
+
+      char buf[10];
+      ltoa(ConectionTS, buf, 10); 
+      printf("Escribiendo historico\n");
+      if(Database->Send_Command(Path+buf,&Escritura,UPDATE)){
+        return true;
+      }
+    }
+
+  return true;
+}
 /***************************************************
   Funciones de lectura
 ***************************************************/
+#ifdef USE_GROUPS
+bool ReadFirebaseGroups(String Path){
+
+  long long ts_app_req=Database->Get_Timestamp(Path+"/ts_app_req",&Lectura, true);
+  if(ts_app_req > ChargingGroup.last_ts_app_req){
+    Lectura.clear();
+    //Leer los parametros del grupo
+    if(Database->Send_Command(Path+"/params",&Lectura, LEER, true)){
+      ChargingGroup.last_ts_app_req=ts_app_req;
+    
+      ChargingGroup.Params.GroupActive = Lectura["active"].as<uint8_t>();
+      ChargingGroup.Params.inst_max = Lectura["install_limit"].as<uint8_t>();
+      ChargingGroup.Params.CDP = Lectura["cdp"].as<uint8_t>();
+      ChargingGroup.Params.ContractPower = Lectura["p_con"].as<uint8_t>();
+      ChargingGroup.Params.potencia_max = Lectura["p_max"].as<uint8_t>();
+      ChargingGroup.DeleteOrder  = Lectura["delete"].as<bool>();
+
+      ChargingGroup.SendNewParams = true;
+      delay(250);
+      
+      if(ChargingGroup.Params.GroupActive){
+        //Leer los equipos del grupo
+        Lectura.clear();
+        if(Database->Send_Command(Path+"/devices",&Lectura, LEER, true)){ 
+          JsonObject root = Lectura.as<JsonObject>();
+
+          //crear una copia temporal para almacenar los que están cargando
+          carac_chargers temp_chargers;
+
+          for(uint8_t i=0; i<ChargingGroup.group_chargers.size;i++){    
+            if(!memcmp(ChargingGroup.group_chargers.charger_table[i].HPT, "C2",2)){
+                memcpy(temp_chargers.charger_table[temp_chargers.size].name,ChargingGroup.group_chargers.charger_table[i].name,9);
+                temp_chargers.charger_table[temp_chargers.size].Current = ChargingGroup.group_chargers.charger_table[i].Current;
+                temp_chargers.charger_table[temp_chargers.size].CurrentB = ChargingGroup.group_chargers.charger_table[i].CurrentB;
+                temp_chargers.charger_table[temp_chargers.size].CurrentC = ChargingGroup.group_chargers.charger_table[i].CurrentC;
+
+                temp_chargers.charger_table[temp_chargers.size].Delta = ChargingGroup.group_chargers.charger_table[i].Delta;
+                temp_chargers.charger_table[temp_chargers.size].Consigna = ChargingGroup.group_chargers.charger_table[i].Consigna;
+                temp_chargers.charger_table[temp_chargers.size].Delta_timer = ChargingGroup.group_chargers.charger_table[i].Delta_timer;
+                temp_chargers.size ++;
+            }
+          }
+
+
+          ChargingGroup.group_chargers.size = 0;
+          //int index =0;
+          for (JsonPair kv : root) {
+            add_to_group(kv.key().c_str(),IPADDR_ANY, &ChargingGroup.group_chargers);
+            ChargingGroup.group_chargers.charger_table[ChargingGroup.group_chargers.size-1].Fase = Lectura[kv.key().c_str()]["phase"].as<uint8_t>();
+
+            uint8_t index =check_in_group(kv.key().c_str(), &temp_chargers);
+            if(index != 255){
+              memcpy(ChargingGroup.group_chargers.charger_table[ChargingGroup.group_chargers.size-1].HPT,"C2",2);
+              ChargingGroup.group_chargers.charger_table[ChargingGroup.group_chargers.size-1].Current = temp_chargers.charger_table[index].Current;
+              ChargingGroup.group_chargers.charger_table[ChargingGroup.group_chargers.size-1].CurrentB = temp_chargers.charger_table[index].CurrentB;
+              ChargingGroup.group_chargers.charger_table[ChargingGroup.group_chargers.size-1].CurrentC = temp_chargers.charger_table[index].CurrentC;
+              ChargingGroup.group_chargers.charger_table[ChargingGroup.group_chargers.size-1].Delta = temp_chargers.charger_table[index].Delta;
+              ChargingGroup.group_chargers.charger_table[ChargingGroup.group_chargers.size-1].Consigna = temp_chargers.charger_table[index].Consigna;
+              ChargingGroup.group_chargers.charger_table[ChargingGroup.group_chargers.size-1].Delta_timer = temp_chargers.charger_table[index].Delta_timer;
+            }
+
+
+          }
+          /*ChargingGroup.group_chargers.size = index;*/
+          store_group_in_mem(&ChargingGroup.group_chargers);
+
+          ChargingGroup.SendNewGroup = true;
+        }
+      }    
+
+      else{
+          if(ChargingGroup.Conected){
+            char buffer[20];
+            memcpy(buffer,"Pause",5);
+            coap_put("CONTROL", buffer);
+          }
+      }
+      if(ChargingGroup.DeleteOrder){
+          WriteFirebasegroups(Path);
+          if(ChargingGroup.Conected){
+            char buffer[20];
+            memcpy(buffer,"Delete",6);
+            coap_put("CONTROL", buffer);
+         }
+      }
+      
+      if(!Database->Send_Command(Path+"/ts_dev_ack",&Lectura,TIMESTAMP, true)){
+          return false;
+      } 
+    }
+  }
+  return true;
+
+}
+#endif
+
 bool ReadFirebaseComs(String Path){
 
   long long ts_app_req=Database->Get_Timestamp(Path+"/ts_app_req",&Lectura);
   if(ts_app_req > Coms.last_ts_app_req){
     Lectura.clear();
-    if(Database->Send_Command(Path,&Lectura, READ)){
+    if(Database->Send_Command(Path,&Lectura, LEER)){
       Coms.last_ts_app_req=ts_app_req;
 
       Coms.Wifi.ON   = Lectura["wifi"]["on"];
-      //Coms.Wifi.AP   = Lectura["wifi"]["apn"].as<String>();
-      //Coms.Wifi.Pass = Lectura["wifi"]["passwd"].as<String>();
 
       Coms.ETH.ON   = Lectura["eth"]["on"];
       Coms.ETH.Auto = Lectura["eth"]["auto"];
       
-      /*if(!Coms.ETH.Auto){
-        //Coms.RestartConection = (Coms.ETH.IP != addr) ? true : Coms.RestartConection; //Si el valor no es le mismo que el que tenemos acutalmente, reincia la conexion para aplicarlo
-        Coms.ETH.IP     = ip4addr_aton(Lectura["eth"]["ip1"].as<char*>());
-       
-        Coms.ETH.Gateway = ip4addr_aton(Lectura["eth"]["gateway"].as<char*>());
-
-        Coms.ETH.Mask    = ip4addr_aton(Lectura["eth"]["mask"].as<char*>());
-      }*/
-
       #ifdef USE_GSM
         Coms.GSM.ON    = Lectura["modem"]["on"];
         Coms.GSM.APN   = Lectura["modem"]["apn"];
@@ -235,7 +448,7 @@ bool ReadFirebaseParams(String Path){
   long long ts_app_req=Database->Get_Timestamp(Path+"/ts_app_req",&Lectura);
   if(ts_app_req > Params.last_ts_app_req){
     Lectura.clear();
-    if(Database->Send_Command(Path,&Lectura, READ)){
+    if(Database->Send_Command(Path,&Lectura, LEER)){
       
       Params.last_ts_app_req=ts_app_req;
 
@@ -266,7 +479,7 @@ bool ReadFirebaseControl(String Path){
   long long ts_app_req=Database->Get_Timestamp(Path+"/ts_app_req",&Lectura);
   if(ts_app_req> Comands.last_ts_app_req){
     Lectura.clear();
-    if(Database->Send_Command(Path,&Lectura, READ)){
+    if(Database->Send_Command(Path,&Lectura, LEER)){
     
       Comands.last_ts_app_req = ts_app_req;
       Comands.start           = Lectura["start"]     ? true : Comands.start;
@@ -447,7 +660,8 @@ void DownloadFileTask(void *args){
 ***************************************************/
 
 void Firebase_Conn_Task(void *args){
-  uint8_t ConnectionState =  DISCONNECTED,  LastStatus = DISCONNECTED, NextState = 0;
+  ConnectionState =  DISCONNECTED;
+  uint8_t  LastStatus = DISCONNECTED, NextState = 0;
   uint8_t Error_Count = 0, null_count=0;
   //timeouts para leer parametros y coms (Para leer menos a menudo)
   uint8 Params_Coms_Timeout =0;
@@ -466,7 +680,7 @@ void Firebase_Conn_Task(void *args){
       delete Database;
       Database = new Real_Time_Database();
 
-      if(ConfigFirebase.InternetConection && !ConfigFirebase.StopSistem){
+      if(ConfigFirebase.InternetConection){
         Error_Count=0;
         Base_Path="prod/devices/";
         ConnectionState=CONNECTING;
@@ -484,12 +698,18 @@ void Firebase_Conn_Task(void *args){
     
     case CONECTADO:
       //Inicializar los timeouts
-      Status.last_ts_app_req  = Database->Get_Timestamp("/status/ts_app_req",&Lectura);
+#ifdef USE_GROUPS
+      ChargingGroup.last_ts_app_req = Database->Get_Timestamp("123456789/ts_app_req",&Lectura, true);
+      ChargingGroup.last_ts_app_req = Database->Get_Timestamp("123456789/ts_app_req",&Lectura, true);
+#else
+      Params.last_ts_app_req  = Database->Get_Timestamp("/params/ts_app_req",&Lectura);
+#endif
       Params.last_ts_app_req  = Database->Get_Timestamp("/params/ts_app_req",&Lectura);
       Comands.last_ts_app_req = Database->Get_Timestamp("/control/ts_app_req",&Lectura);
       Coms.last_ts_app_req    = Database->Get_Timestamp("/coms/ts_app_req",&Lectura);
-      Serial.println("Conectado a firebase!");
-      //Error_Count+=!WriteFirebaseFW("/fw/current");
+      Status.last_ts_app_req  = Database->Get_Timestamp("/status/ts_app_req",&Lectura);
+      
+      Error_Count+=!WriteFirebaseFW("/fw/current");
       ConnectionState=IDLE;
       break;
 
@@ -497,7 +717,7 @@ void Firebase_Conn_Task(void *args){
     
       //No connection == Disconnect
       //Error_count > 10 == Disconnect
-      if(!ConfigFirebase.InternetConection || Error_Count>10 || ConfigFirebase.StopSistem){
+      if(!ConfigFirebase.InternetConection || Error_Count>10){
         ConnectionState=DISCONNECTING;
         break;
       }
@@ -512,16 +732,10 @@ void Firebase_Conn_Task(void *args){
       ts_app_req=Database->Get_Timestamp("/status/ts_app_req",&Lectura);
       if(ts_app_req < 1){//connection refused o autenticacion terminada, comprobar respuesta
         String ResponseString = Lectura["error"];
-        Serial.println(ResponseString);
-        serializeJson(Lectura,Serial);
         if(strcmp(ResponseString.c_str(),"Auth token is expired") == 0){
             Serial.println("Autorizacion expirada, solicitando una nueva");
             if(Database->LogIn()){
-              Serial.println("Autorizacion obtenida, continuando");
               break;
-            }
-            else{
-              Serial.println("No se ha podido obtener una autorizacion, reiniciando...");
             }
             ConnectionState=DISCONNECTING;
         }
@@ -538,7 +752,7 @@ void Firebase_Conn_Task(void *args){
 
       //Comprobar actualizaciones automaticas
       if(++UpdateCheckTimeout>8575){ // Unas 12 horas
-        if(!memcmp(Status.HPT_status, "A1",2) || !memcmp(Status.HPT_status, "0V",2) ){
+        if(!memcmp(Status.HPT_status, "A1",2) || !memcmp(Status.HPT_status, "0V",2)){
           UpdateCheckTimeout=0;
           if(!memcmp(Params.Fw_Update_mode, "AA",2)){
             Serial.println("Comprobando firmware nuevo");
@@ -564,6 +778,7 @@ void Firebase_Conn_Task(void *args){
         xStarted = xTaskGetTickCount();
         Serial.println("User connected!");
         ConnectionState = WRITTING_STATUS;
+        NextState = WRITTING_COMS;
         break;
       }
  
@@ -604,7 +819,18 @@ void Firebase_Conn_Task(void *args){
           ConnectionState = READING_PARAMS;
           Params_Coms_Timeout = 0;
           break; 
-        }        
+        }
+
+        //Comprobar actualizaciones manuales
+        else if(Comands.fw_update){
+          if(!memcmp(Status.HPT_status, "A1",2) || !memcmp(Status.HPT_status, "0V",2) ){
+            UpdateCheckTimeout=0;
+            Comands.fw_update=0;
+            ConnectionState = UPDATING;
+            break;
+          }
+        }
+        
 
         //Mientras hay un cliente conectado y nada que hacer, miramos control
         ConnectionState=READING_CONTROL;
@@ -641,20 +867,30 @@ void Firebase_Conn_Task(void *args){
     case READING_CONTROL:
       Error_Count+=!ReadFirebaseControl("/control");
       ConnectionState=IDLE;
-      //NextState=WRITTING_STATUS;
       break;
 
     case READING_PARAMS:
       Error_Count+=!ReadFirebaseParams("/params");
       ConnectionState=IDLE;
-      NextState=WRITTING_STATUS;
+#ifdef USE_GROUPS
+      NextState=READING_GROUP;
+#endif
       break;
     
-    case READING_COMS: //Está preparado pero nunca lee las comunicaciones de firebase
+    //Está preparado pero nunca lee las comunicaciones de firebase
+    case READING_COMS: 
       Error_Count+=!ReadFirebaseComs("/coms");
       ConnectionState=IDLE;
       NextState=READING_PARAMS;
       break;
+
+#ifdef USE_GROUPS
+    case READING_GROUP:
+      Error_Count+=!ReadFirebaseGroups("123456789");
+      ConnectionState=IDLE;
+      NextState=WRITTING_STATUS;
+      break;
+#endif
 
     /*********************** UPDATING states **********************/
     case UPDATING:
@@ -685,12 +921,12 @@ void Firebase_Conn_Task(void *args){
 
     /*********************** DISCONNECT states **********************/
     case DISCONNECTING:
-      ConnectionState=DISCONNECTED;
       Database->end();
+      ConnectionState=DISCONNECTED;
       break;
     default:
       while(1){
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        delay(1000);
         Serial.printf("Error en la maquina d estados de firebase: %i \n", ConnectionState);
       }
       break;
@@ -700,14 +936,16 @@ void Firebase_Conn_Task(void *args){
       LastStatus= ConnectionState;
     }
     
-    vTaskDelay(pdMS_TO_TICKS(ConfigFirebase.ClientConnected ? 150:200));
+    if(ConnectionState!=DISCONNECTING){
+      delay(ConfigFirebase.ClientConnected ? 500:5000);
+    }
+
     //chivatos de la ram
-    if(ESP.getFreePsram() < 3800000 || ESP.getFreeHeap() < 20000){
+    if(ESP.getFreePsram() < 2000000 || ESP.getFreeHeap() < 20000){
         Serial.println(ESP.getFreePsram());
         Serial.println(ESP.getFreeHeap());
-        ConnectionState=DISCONNECTING;
-
     }
   }
 }
 
+#endif

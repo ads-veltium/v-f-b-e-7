@@ -2,34 +2,17 @@
 #define VeltFirebase_h
 
 #define ARDUINOJSON_USE_LONG_LONG 1
-#include "HTTPClient.h"
+
 #include "ArduinoJson.h"
-#include "Update.h"
 #include "../control.h"
 #include "contador.h"
 #include "esp32-hal-psram.h"
+#include "esp_http_client.h"
 
 #define FIREBASE_API_KEY "AIzaSyBaJA88_Y3ViCzNF_J08f4LBMAM771aZLs"
 #define FIREBASE_PROJECT "veltiumbackend.firebaseio.com"
 #define FIREBASE_DEV_API_KEY "AIzaSyCYZpVNUOQvrXvc3qETxCqX4DPfp3Fwe3w"
 #define FIREBASE_DEV_PROJECT "veltiumdev-default-rtdb.firebaseio.com"
-
-#define DISCONNECTED      0
-#define CONNECTING        5
-#define CONECTADO        10
-#define IDLE             20
-#define READING_CONTROL  25
-#define READING_PARAMS   26
-#define READING_COMS     27
-#define WRITTING_CONTROL 35
-#define WRITTING_STATUS  36
-#define WRITTING_PARAMS  37
-#define WRITTING_COMS    38
-#define WRITTING_TIMES   39
-#define DISCONNECTING    45
-#define DOWNLOADING      55
-#define UPDATING         65
-#define INSTALLING       70
 
 bool initFirebaseClient();
 void GetUpdateFile(String URL);
@@ -39,7 +22,7 @@ uint16  ParseFirmwareVersion(String Texto);
 
 
 class Real_Time_Database{
-    String RTDB_url, Read_url, Write_url, Base_Path;
+    String RTDB_url, Read_url, GROUPS_url,Write_url, Base_Path;
     esp_http_client_handle_t RTDB_client, *Auth_client; 
     
 
@@ -48,10 +31,10 @@ class Real_Time_Database{
     StaticJsonDocument<256> AuthDoc;
 
   public:
-    #define WRITE     0
+    #define ESCRIBIR  0
     #define UPDATE    1
     #define TIMESTAMP 4
-    #define READ      5
+    #define LEER      5
     #define READ_FW   6
 
     String deviceID;
@@ -66,8 +49,8 @@ class Real_Time_Database{
     bool checkPermisions(void);
 
     //Database functions
-    bool Send_Command(String path, JsonDocument *doc, uint8_t Command);
-    long long  Get_Timestamp(String path,JsonDocument *response);
+    bool Send_Command(String path, JsonDocument *doc, uint8_t Command, bool groups=false);
+    long long  Get_Timestamp(String path,JsonDocument *response,bool groups = false);
     void begin(String Host, String DatabaseID);
     void reload();
     void end();
@@ -83,10 +66,11 @@ class Cliente_HTTP{
     int  _timeout;
     
   public:
-    #define WRITE     0
+
+    #define ESCRIBIR  0
     #define UPDATE    1
     #define TIMESTAMP 4
-    #define READ      5
+    #define LEER      5
     #define READ_FW   6
     
     
@@ -94,7 +78,8 @@ class Cliente_HTTP{
     bool Send_Command(String url,  uint8_t Command);
     void begin();
     void end();
-    void ObtenerRespuesta(String *Respuesta);
+    String ObtenerRespuesta();
+    void set_url(String url);
 
 
     //Constructor

@@ -1,75 +1,76 @@
+<!--
 <!DOCTYPE html>
+<html>
+<head>
+    <title>Veltium Smart Chargers</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" type="text/css" href="style.css">
+</head>
+<body>
+    <div class="container">
+            <form name="loginForm" action="/loginForm">
+            <h1>VELTIUM Login</h1>
+            <input class="login" name="userid" placeholder="User ID" type="text"> 
+            <input class="login" name="pwd" placeholder="Password" type="password"> 
+            <input type="submit" onclick=errormesage(this) class="btn" value="Login">
+            </br></br>
+            </form>
+    </div>
+</body>
 
+
+-->
 <html>
 
 <head>
-
     <title>Veltium Smart Chargers</title>
-
     <meta name="viewport" content="width=device-width, initial-scale=1">
-
     <link rel="stylesheet" type="text/css" href="style.css">
-    <script src="https://www.gstatic.com/firebasejs/4.8.2/firebase.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/4.8.2/firebase-auth.js"></script>
-    <script src="https://cdn.firebase.com/libs/firebaseui/2.5.1/firebaseui.js"></script>
-    <link type="text/css" rel="stylesheet" href="https://cdn.firebase.com/libs/firebaseui/2.5.1/firebaseui.css" />
-   
 </head>
 
-<body>
-
-    <!-- The surrounding HTML is left untouched by FirebaseUI.
-         Your app may use that space for branding, controls and other customizations.-->
-         <h1 style="text-align: center;">Veltium Smart Chargers</h1>
-         <div id="firebaseui-auth-container"></div>
-
+<body class="log">
+    <table class="center">
+        <tr>
+            <div class="container">
+                <div class="centrado">
+            <img src="veltium-logo-big" width="90px" height="90px">
+                </div>
+            </div>
+        </tr>
+        <tr>
+            <div class="portada">
+                <div class="centrado">
+                
+                <span class="init">Veltium Smart Chargers</span>
+                </div>
+            </div>
+        </tr>
+        <tr>
+            <div class="wrapper">
+               
+                <div id="formContent">
+                
+                  <form name="loginForm" action="/loginForm">
+                    <input type="user" name="userid" placeholder="login">
+                    <input class="pwd" type="password" name="pwd" placeholder="password">
+                    <input class="log_button" type="submit" onclick=errormesage(this) value="Log In">
+                    %ALERT%
+                  </form>   
+                  </div>
+            </div>
+        </tr>
 </body>
 
 
 <script>
 
-
-
-
-
-var fireBase = fireBase || firebase;
-var hasInit = false;
-var config = {
-  apiKey: "AIzaSyCYZpVNUOQvrXvc3qETxCqX4DPfp3Fwe3w",
-  authDomain: "veltiumdev.firebaseapp.com",
-  projectId: "veltiumdev",
-  databaseURL: "https://veltiumdev-default-rtdb.firebaseio.com",
-  storageBucket: "veltiumdev.appspot.com",
-  messagingSenderId: "1020185418136",
-  appId: "1:1020185418136:web:6453b887d5d71329c633ed",
-  measurementId: "G-VN3G1YL6TX"
-  };
-if(!hasInit){
-    firebase.initializeApp(config);
-    hasInit = true;
+function errormesage(element) {
+    var xhr = new XMLHttpRequest();
+    if(element.clicked){ xhr.open("GET", "/loginForm", true); }
+      else { xhr.open("GET", "/", true); }
+      xhr.send();
 }
 
-
-
-// FirebaseUI config.
-var uiConfig = {
-  signInSuccessUrl: 'datos',
-  signInOptions: [
-    // Leave the lines as is for the providers you want to offer your users.
-          //firebase.auth.GoogleAuthProvider.PROVIDER_ID,
-          //firebase.auth.FacebookAuthProvider.PROVIDER_ID,
-          //firebase.auth.TwitterAuthProvider.PROVIDER_ID,
-          //firebase.auth.GithubAuthProvider.PROVIDER_ID,
-          firebase.auth.EmailAuthProvider.PROVIDER_ID,
-          //firebase.auth.PhoneAuthProvider.PROVIDER_ID
-  ],
-  // Terms of service url.
-  tosUrl: 'datos'
-};
-
-// Initialize the FirebaseUI Widget using Firebase.
-var ui = new firebaseui.auth.AuthUI(firebase.auth());
-// The start method will wait until the DOM is loaded.
-ui.start('#firebaseui-auth-container', uiConfig);
 </script>
+
 </html>

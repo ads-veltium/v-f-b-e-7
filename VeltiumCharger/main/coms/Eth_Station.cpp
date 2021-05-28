@@ -1,6 +1,13 @@
 #include "Eth_Station.h"
+#ifdef USE_COMS
+
 #include "VeltFirebase.h"
 #include "lwip/sys.h"
+
+#define TRABAJANDO   0
+#define PING_END     1
+#define PING_SUCCESS 2
+#define PING_TIMEOUT 3
 
 bool eth_link_up     = false;
 bool eth_connected   = false;
@@ -12,6 +19,11 @@ extern bool wifi_connected;
 extern carac_Coms  Coms;
 extern carac_Firebase_Configuration ConfigFirebase;
 extern carac_Contador   ContadorExt;
+extern carac_Params Params;
+
+#ifdef USE_GROUPS
+extern carac_group  ChargingGroup;
+#endif
 
 static esp_eth_handle_t s_eth_handle = NULL;
 
@@ -20,10 +32,11 @@ esp_eth_phy_t *phy=NULL;
 
 esp_netif_t *eth_netif;
 
-//Variables para buscar el contador
+void initialize_ping(ip_addr_t target_addr, uint8_t *resultado);
+void end_ping();
 
 void BuscarContador_Task(void *args){
-
+    bool *finding = (bool*) args;
     uint8 i = 100;
     uint8 Sup = 1, inf = 1 ;
     char ip[16]={"0"};
@@ -33,7 +46,7 @@ void BuscarContador_Task(void *args){
     i =ip4_addr4(&Coms.ETH.IP);
     bool NextOne =true;
 
-    Cliente_HTTP Cliente("http://192.168.1.1", 100);
+    Cliente_HTTP Cliente("http://192.168.1.1", 1000);
     Cliente.begin();
 
     while(!TopeSup || !TopeInf){
@@ -70,26 +83,53 @@ void BuscarContador_Task(void *args){
         }
         else{            
             sprintf(ip,"%i.%i.%i.%i", ip4_addr1(&Coms.ETH.IP),ip4_addr2(&Coms.ETH.IP),ip4_addr3(&Coms.ETH.IP),i-1); 
-            char url[100] = "http://";
-            strcat(url, ip);
-            //strcat(url, "/index.html");
-            Serial.println(url);
-            
-            if (Cliente.Send_Command(url,READ)) {
-                String respuesta;
-                Cliente.ObtenerRespuesta(&respuesta);
-                Serial.println(respuesta);
+            printf("%s\n", ip);
+            ip_addr_t target;
+            ipaddr_aton(ip,&target);
+            uint8_t resultado = 0;
+            initialize_ping(target, &resultado);
+
+            while(resultado == TRABAJANDO){
+                delay(5);
+            }
+            end_ping();
+
+            if(resultado == PING_SUCCESS){           
+                char url[100] = "http://";
+                strcat(url, ip);
+                strcat(url, "/get_command?command=get_measurements");
+                printf("Probando a ver si es de verdad\n");
+                for(uint8_t i=0; i <=5;i++){
+                    if(Cliente.Send_Command(url,LEER)) {
+                        String respuesta = Cliente.ObtenerRespuesta();               
+                        if(respuesta.indexOf("IE38MD")>-1){
+                            strcpy(ContadorExt.ContadorIp,ip);
+                            ContadorExt.ContadorConectado = true;
+                            break;
+                        }
+                    }
+                }
+                if(ContadorExt.ContadorConectado){
+                    break;
+                }
             }
             Serial.println("Nada, seguimos buscando");
             NextOne = true;
         }
-        delay(20);
-    }
-    if(!ContadorExt.ContadorConectado){
-        Serial.println("No he encontrado ningun medidor");
+        delay(75);
     }
     Coms.ETH.Wifi_Perm = true;
     Cliente.end();
+    
+    #ifdef DEVELOPMENT
+        if(!ContadorExt.ContadorConectado){
+            Serial.println("No he encontrado ningun medidor");
+            *finding = false;
+        }
+        else{
+            printf("He encontrado un cargador!!!\n");
+        }
+    #endif
     vTaskDelete(NULL);
 }
 
@@ -104,7 +144,6 @@ bool ComprobarConexion(void){
         if (err == ESP_OK) {
             if(esp_http_client_get_status_code(client) == 200){
                 esp_http_client_cleanup(client);
-                Serial.println("Detectada conexion a internet!");
                 return true;
             }
         }
@@ -112,7 +151,6 @@ bool ComprobarConexion(void){
     }
 
     esp_http_client_cleanup(client);
-    Serial.println("Sin salida a internet detectada");
 	return false;
 }
 
@@ -141,6 +179,9 @@ static void eth_event_handler(void *arg, esp_event_base_t event_base, int32_t ev
                 eth_link_up = false;
                 Coms.ETH.conectado = false;
                 Coms.ETH.Internet = false;
+#ifdef USE_GROUPS
+                ChargingGroup.StopOrder = true;
+#endif
                 break;
             default:
                 break;
@@ -151,8 +192,9 @@ static void eth_event_handler(void *arg, esp_event_base_t event_base, int32_t ev
             ip_event_got_ip_t *event = (ip_event_got_ip_t *) event_data;
             const esp_netif_ip_info_t *ip_info = &event->ip_info;
 
-            Serial.println( "Ethernet 1 Got IP Address");
-            Serial.printf( "ETHIP: %d %d %d %d\n",IP2STR(&ip_info->ip));
+            #ifdef DEVELOPMENT
+                Serial.printf( "ETHIP: %d %d %d %d\n",IP2STR(&ip_info->ip));
+            #endif
             
             Coms.ETH.IP.addr = ip_info->ip.addr;
 
@@ -172,8 +214,17 @@ static void eth_event_handler(void *arg, esp_event_base_t event_base, int32_t ev
 void initialize_ethernet(void){  
 
     esp_netif_config_t cfg = ESP_NETIF_DEFAULT_ETH();
+    #ifdef DEVELOPMENT
     Serial.println("Arrancando ethernet");
+    #endif
+
     //servidor DHCP
+    if(!Coms.ETH.Auto && Params.Tipo_Sensor){
+        //si tenemos IP estatica y un medidor conectado, activamos el dhcp
+        Coms.ETH.DHCP = true;
+        SendToPSOC5(Coms.ETH.Auto,COMS_CONFIGURATION_ETH_AUTO);
+    }
+
     if(Coms.ETH.DHCP){
         Serial.println("Arrancando servidor dhcp!");
         esp_netif_inherent_config_t config;
@@ -186,9 +237,22 @@ void initialize_ethernet(void){
         ESP_ERROR_CHECK(esp_netif_dhcps_stop(eth_netif));
 
         esp_netif_ip_info_t DHCP_Server_IP;
-        IP4_ADDR(&DHCP_Server_IP.ip, 192, 168, 1, 1);
-        IP4_ADDR(&DHCP_Server_IP.gw, 192, 168, 1, 1);
-        IP4_ADDR(&DHCP_Server_IP.netmask, 255, 255, 255, 0);
+
+        if(Coms.ETH.IP.addr == IPADDR_ANY || Coms.ETH.IP.addr == IPADDR_NONE){
+            IP4_ADDR(&DHCP_Server_IP.ip, 192, 168, 15, 22);
+   	        IP4_ADDR(&DHCP_Server_IP.gw, 192, 168, 15, 1);
+   	        IP4_ADDR(&DHCP_Server_IP.netmask, 255, 255, 255, 0);
+        }
+
+        else{
+            DHCP_Server_IP.ip.addr = Coms.ETH.IP.addr;
+   	        DHCP_Server_IP.gw.addr = Coms.ETH.Gateway.addr;
+   	        DHCP_Server_IP.netmask.addr = Coms.ETH.Mask.addr;
+        }
+
+
+        Coms.ETH.IP.addr = DHCP_Server_IP.ip.addr;
+
         ESP_ERROR_CHECK(esp_netif_set_ip_info(eth_netif, &DHCP_Server_IP)); 
 
         ESP_ERROR_CHECK(esp_netif_dhcps_start(eth_netif));
@@ -196,27 +260,24 @@ void initialize_ethernet(void){
         esp_event_handler_register(ETH_EVENT, ETHERNET_EVENT_START, esp_netif_action_start, eth_netif);
         esp_event_handler_register(ETH_EVENT, ETHERNET_EVENT_STOP, esp_netif_action_stop, eth_netif);
         eth_connected = true;
-
-        /*Coms.ETH.IP[0] =ip4_addr1(&DHCP_Server_IP.ip);
-        Coms.ETH.IP[1] =ip4_addr2(&DHCP_Server_IP.ip);
-        Coms.ETH.IP[2] =ip4_addr3(&DHCP_Server_IP.ip);
-        Coms.ETH.IP[3] =ip4_addr4(&DHCP_Server_IP.ip);*/
         
         uint8_t ip_Array[4] = { ip4_addr1(&Coms.ETH.IP),ip4_addr2(&Coms.ETH.IP),ip4_addr3(&Coms.ETH.IP),ip4_addr4(&Coms.ETH.IP)};
         modifyCharacteristic(&ip_Array[0], 4, COMS_CONFIGURATION_LAN_IP);
     }   
+    
     //Si fijamos una IP estatica:
-    else if(!Coms.ETH.Auto){
+    else if(!Coms.ETH.Auto && Coms.ETH.IP.addr != IPADDR_ANY){
         Serial.println("Arrancando con IP estatica!");
         eth_netif = esp_netif_new(&cfg);
         ESP_ERROR_CHECK(esp_netif_dhcpc_stop(eth_netif));
         esp_netif_ip_info_t  info;
         memset(&info, 0, sizeof(info));
-        IP4_ADDR(&info.ip, 192, 168, 1, 5);
-	    IP4_ADDR(&info.gw, 192, 168, 1, 1);
-	    IP4_ADDR(&info.netmask, 255, 255, 255, 0);
+        info.ip.addr      = Coms.ETH.IP.addr;
+        info.gw.addr      = Coms.ETH.Gateway.addr;
+        info.netmask.addr = Coms.ETH.Mask.addr;
 	    ESP_ERROR_CHECK(esp_netif_set_ip_info(eth_netif, &info));  
         esp_eth_set_default_handlers(eth_netif);
+        eth_connected = true;
     }
     //Configuracion automatica
     else{
@@ -261,7 +322,6 @@ void kill_ethernet(void){
 
 bool stop_ethernet(void){
     if(esp_eth_stop(s_eth_handle) != ESP_OK){
-        Serial.println("esp_eth_stop failed");
         return false;
     }
 
@@ -273,10 +333,10 @@ bool stop_ethernet(void){
 
 bool restart_ethernet(void){
     if(esp_eth_start(s_eth_handle) != ESP_OK){
-        Serial.println("esp_eth_stop failed");
         return false;
     }
     eth_connecting = true;
     delay(100);
     return true;
 }
+#endif

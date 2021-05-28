@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <title>Veltium Smart Chargers</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" type="text/css" href="style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+<div class="header">
+  <table>
+    <tr>
+      <td><img src="veltium-logo-big" width="60px" height="60px"> </td>
+      <td><h1>Veltium Smart Chargers</h1>
+      </td>
+    </tr>
+  </table>
+</div>
+<div class="topnav" id="myTopnav">
+    <a href="parameters" >Par&aacutemetros</a>
+    <a href="comands" class="active">Comandos</a>
+    <a href="comms">Comunicaciones</a>
+    <a href="status">Status</a>
+    <a href="ajustes">Ajustes</a>
+    <div class="topnav-right">
+      <a href="javascript:void(0);" onclick="cerrar(this);" id="19">Cerrar sesion</a>
+    </div>
+    <a href="javascript:void(0);" class="icon" onclick="myFunction()">
+      <i class="fa fa-bars"></i>
+    </a>
+  </div>
+</head>
+<body>
+
+  <table class="center">
+    <tr>
+      <td><span class="dht-labels">Orden de carga</span></td>
+      <td class="centrado">%BUTTONPLACEHOLDER%</td>
+    </tr>
+    <tr>
+      <form action="/currcomand" accept-charset="UTF-8">
+      <td><span class="dht-labels">Corriente deseada</span>  </td>
+      <td><input style = "text-align:center;" name="curr_comand" placeholder="%COMAND% A" type="text"></input></td>
+      <input type="submit" id="guardacomand" value="Guardar" onclick = "guardacomand(this)" hidden="hidden">
+      </form><br />
+    </tr>
+    <!--
+    <tr>
+      <form action="/usertype" accept-charset="UTF-8">
+      <td><span class="dht-labels">User type</span>  </td>
+      <td><input style = "text-align:center;" name="usr_type" placeholder="%USER_TYPE%" type="text"></input></td>
+      <input type="submit" id="guardatype" value="Guardar" onclick = "guardatype(this)" hidden="hidden">
+      </form><br />
+    </tr>
+  -->
+    <tr>
+      <td><span class="dht-labels">Mecanismo de bloqueo</span> </td>
+      <td class="centrado"><span>%CONLOCK%</span></td>
+    </tr>
+  </table>
+  
+    <script>
+function cerrar(element){
+  var xhr = new XMLHttpRequest();
+
+  if(element.clicked){ xhr.open("GET", "/update?output="+element.id+"", true); }
+
+  else { xhr.open("GET", "/update?output="+element.id+"", true); }
+
+  xhr.send();
+  self.location.href = "/";
+}
+
+function myFunction() {
+  var x = document.getElementById("myTopnav");
+  if (x.className === "topnav") {
+    x.className += " responsive";
+  } else {
+    x.className = "topnav";
+  }
+}
+
+function Startbutton(element) {
+
+var xhr = new XMLHttpRequest();
+
+  if(element.clicked){ xhr.open("GET", "/update?output="+element.id+"", true); }
+
+  else { xhr.open("GET", "/update?output="+element.id+"", true); }
+
+xhr.send();
+
+}
+
+
+
+function toggleCheckbox(element) {
+var xhr = new XMLHttpRequest();
+  if(element.checked){ xhr.open("GET", "/autoupdate?com="+element.id+"&state=1", true); }
+  else { xhr.open("GET", "/autoupdate?com="+element.id+"&state=0", true); }
+xhr.send();
+}
+
+setInterval(function ( ) {
+var xhttp = new XMLHttpRequest();
+
+xhttp.onreadystatechange = function() {
+  if (this.readyState == 4 && this.status == 200) {
+    document.getElementById("comand").innerHTML = this.responseText;
+  }
+};
+
+xhttp.open("GET", "/comand", true);
+xhttp.send();
+}, 5000 ) ;
+
+document.getElementsByName("curr_comand").addEventListener("keyup", function(event) {
+  if (event.keyCode === 13) {
+   event.preventDefault();
+   document.getElementById("guardacomand").click();
+  }
+});
+/*
+document.getElementsByName("usr_type").addEventListener("keyup", function(event) {
+  if (event.keyCode === 13) {
+   event.preventDefault();
+   document.getElementById("guardatype").click();
+  }
+});
+*/
+</script>
+</body>
+</html>

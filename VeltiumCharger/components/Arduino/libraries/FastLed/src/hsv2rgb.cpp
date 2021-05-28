@@ -647,7 +647,7 @@ CHSV rgb2hsv_approximate( const CRGB& rgb)
             h += scale8( qsub8(r, 128), FIXFRAC8(48,128));
         } else if ( (r - g) > g) {
             // if R-G > G then we're in Red-Orange
-            h = HUE_RED;
+            h = HUE_WHITE;
             h += scale8( g, FIXFRAC8(32,85));
         } else {
             // R-G < G, we're in Orange-Yellow

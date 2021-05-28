@@ -165,7 +165,8 @@
                 "${workspaceFolder}/components/Arduino/tools/sdk/esp32/include/newlib/platform_include",
                 "${workspaceFolder}/components/Arduino/tools/sdk/esp32/include/newlib/platform_include",
                 "${workspaceFolder}/components/Arduino/tools/sdk/esp32/include/newlib/platform_include",
-                "${workspaceFolder}/components/Arduino/tools/sdk/esp32/include/newlib/platform_include"
+                "${workspaceFolder}/components/Arduino/tools/sdk/esp32/include/newlib/platform_include",
+                "/home/joel/Documents/fw-bird-esp32/SDK/esp-idf/components/bt/host/nimble/nimble/nimble/host/services/gap/include"
             ],
             "intelliSenseMode": "clang-x64",
             "browse": {

@@ -12,89 +12,92 @@
 // IT MUST BE INCLUDED ONLY FROM ble_rcs.c
 //
 
-// idx name                      size type format      srvu chru hndl  defval            
-//   0 INVALID                      2 RW   utf8s       0    0    0                       
-//   1 ICP_Status                   2 R    utf8s       CD01 CCC2 0011  OP                
-//   2 MCB_Status                   2 R    utf8s       CD01 CCC3 0013  TR                
-//   3 RCD_Status                   2 R    utf8s       CD01 CCC4 0015  TR                
-//   4 Conn_Lock_Status             2 RW   utf8s       CD01 CCC5 0017  UL                
-//   5 Max_Current_Cable            1 R    uint8       CD02 CCB0 001A  0                 
-//   6 Instalation_Current_Limit    1 RW   uint8       CD02 CCB1 001C  0                 
-//   7 Current_Command              1 RW   uint8       CD02 CCB2 001E  0                 
-//   8 Inst_Voltage                 2 R    uint16      CD02 CCB4 0023  0                 
-//   9 Active_Power                 2 R    16bit       CD02 CCB5 0025  0                 
-//  10 Reactive_Power               2 R    16bit       CD02 CCB6 0027  0                 
-//  11 Active_Energy                4 R    32bit       CD02 CCB7 0029  0                 
-//  12 Reactive_Energy              4 R    32bit       CD02 CCB8 002B  0                 
-//  13 Apparent_Power               4 R    32bit       CD02 CCB9 002D  0                 
-//  14 Power_Factor                 1 R    uint8       CD02 CCBA 002F                    
-//  15 User                         1 RW   uint8       CD03 CBC1 0034  0                 
-//  16 Session_Number               1 R    uint8       CD03 CBC2 0036  0                 
-//  17 Date_Time                    6 RW   uint8_array CD04 CCD0 0039  00:00:00:00:00:00 
-//  18 Connection_Date_Time         6 R    uint8_array CD04 CCD1 003B  00:00:00:00:00:00 
-//  19 Disconnection_Date_Time      6 R    uint8_array CD04 CCD2 003D  00:00:00:00:00:00 
-//  20 Delta_Delay_for_Charging     2 RW   uint8_array CD04 CCD3 003F  00:00             
-//  21 Charging_Start_Time          6 RW   uint8_array CD04 CCD4 0041  00:00:00:00:00:00 
-//  22 Charging_Stop_Time           6 RW   uint8_array CD04 CCD5 0043  00:00:00:00:00:00 
-//  23 Instant_Delayed              1 RW   uint8       CD05 CCE0 0046  0                 
-//  24 Start_Stop_Start_Mode        1 RW   uint8       CD05 CCE1 0048  0                 
-//  25 BLE_Manual_start             1 RW   uint8       CD05 CCE2 004A  0                 
-//  26 BLE_Manual_Stop              1 RW   uint8       CD05 CCE3 004C  0                 
-//  27 Charger_Device_ID           11 RW   utf8s       CD07 CC00 0052  VCD17010000       
-//  28 Users_Number                 1 RW   uint8       CD07 CC01 0054  0                 
-//  29 UI_X_User_ID                 1 RW   uint8       CD07 CC02 0056  0                 
-//  30 User_Index                   1 RW   uint8       CD07 CC03 0058  0                 
-//  31 Launch_RCD_PE_Test           1 RW   uint8       CD08 CC10 005B  0                 
-//  32 RCD_PE_Test_Result           1 RW   uint8       CD08 CC11 005D  0                 
-//  33 Launch_MCB_Test              1 RW   uint8       CD08 CC12 005F  0                 
-//  34 MCB_Test_Result              1 RW   uint8       CD08 CC13 0061  0                 
-//  35 Locking_Mechanism_ON_OFF     1 RW   uint8       CD09 CC20 0064  0                 
-//  36 Protection_Code              1 R    uint8       CD0A CC30 0067  255               
-//  37 Load_SW_App                  1 RW   uint8       CD0A CC31 0069  0                 
-//  38 Luminosity_Level             1 RW   uint8       CD0B CC40 006F  50                
-//  39 R_Led_Colour                 1 RW   uint8       CD0B CC41 0071  50                
-//  40 G_Led_Colour                 1 RW   uint8       CD0B CC42 0073  50                
-//  41 B_Led_Colour                 1 RW   uint8       CD0B CC43 0075  50                
-//  42 Reset                        1 W    uint8       CD0C CC50 0078  0                 
-//  43 Write_Pass                   6 W    utf8s       CD0D CC60 007B  000000            
-//  44 Rec_Capacity                 2 RW   uint16      CD0E CCA0 007E  16                
-//  45 Rec_Last                     2 R    16bit       CD0E CCA1 0080  -1                
-//  46 Rec_Index                    2 RW   uint16      CD0E CCA2 0082  0                 
-//  47 Rec_Laps                     2 R    uint16      CD0E CCA3 0084  0                 
-//  48 Version_Firmware            10 R    utf8s       CD0F CC70 0087  VELT1_0000        
-//  49 Version_Firm_BLE            10 R    utf8s       CD0F CC71 0089  VBLE1_0000        
-//  50 Autentication_Modes          2 RW   utf8s       CD00 CC80 008C  AA                
-//  51 Serial_Number               10 W    uint8_array CD10 CC90 008F                    
-//  52 Matrix                       8 R    uint8_array CD10 CC91 0091                    
-//  53 Token                        8 W    uint8_array CD10 CC92 0093                    
-//  54 Real_Current_Limit           1 RW   uint8       CD20 CE00 0096                    
-//  55 Domestic_Current             2 R    uint16      CD20 CE01 0098  0                 
-//  56 KS                           1 RW   uint8       CD20 CE02 009A                    
-//  57 FCT                          1 RW   uint8       CD20 CE03 009C                    
-//  58 FS                           1 RW   uint8       CD20 CE04 009E                    
-//  59 Potencia_Contratada          2 RW   uint16      CD20 CE05 00A0                    
-//  60 DPC_Mode                     1 RW   uint8       CD20 CE06 00A2                    
-//  61 Error_Code                   1 R    uint8       CD30 CF00 00A5                    
-//  62 FwProlog                    16 W    uint8_array CD01 C0A7 00AD                    
-//  63 FwEpilog                     4 W    uint8_array CD01 C0B7 00AF                    
-//  64 WiFi_ON                      1 RW   uint8       CD40 XXXX 00B1  
-//  65 SSID_1                      16 R    uint8_array CD40 XXXX 00B3  
-//  66 SSID_2                      16 R    uint8_array CD40 XXXX 00B5  
-//  67 Start_Prov                   1 W    uint8       CD40 XXXX 00B7  
-//  68 Eth_ON                       1 RW   uint8       CD40 XXXX 00B9  
-//  69 LAN_IP1                      4 R    uint8_array CD40 XXXX 00BB  
-//  70 LAN_IP2                      4 R    uint8_array CD40 XXXX 00BD  
+// idx name                      size type format      srvu chru hndl defval            
+//   0 INVALID                      2 RW   utf8s       0    0    0                      
+//   1 ICP_Status                   2 R    utf8s       CD01 CCC2 0011 OP                
+//   2 MCB_Status                   2 R    utf8s       CD01 CCC3 0013 TR                
+//   3 RCD_Status                   2 R    utf8s       CD01 CCC4 0015 TR                
+//   4 Conn_Lock_Status             2 RW   utf8s       CD01 CCC5 0017 UL                
+//   5 Max_Current_Cable            1 R    uint8       CD02 CCB0 001A 0                 
+//   6 Instalation_Current_Limit    1 RW   uint8       CD02 CCB1 001C 0                 
+//   7 Current_Command              1 RW   uint8       CD02 CCB2 001E 0                 
+//   8 Inst_Voltage                 2 R    uint16      CD02 CCB4 0023 0                 
+//   9 Active_Power                 2 R    16bit       CD02 CCB5 0025 0                 
+//  10 Reactive_Power               2 R    16bit       CD02 CCB6 0027 0                 
+//  11 Active_Energy                4 R    32bit       CD02 CCB7 0029 0                 
+//  12 Reactive_Energy              4 R    32bit       CD02 CCB8 002B 0                 
+//  13 Apparent_Power               4 R    32bit       CD02 CCB9 002D 0                 
+//  14 Power_Factor                 1 R    uint8       CD02 CCBA 002F                   
+//  15 User                         1 RW   uint8       CD03 CBC1 0034 0                 
+//  16 Session_Number               1 R    uint8       CD03 CBC2 0036 0                 
+//  17 Date_Time                    6 RW   uint8_array CD04 CCD0 0039 00:00:00:00:00:00 
+//  18 Connection_Date_Time         6 R    uint8_array CD04 CCD1 003B 00:00:00:00:00:00 
+//  19 Disconnection_Date_Time      6 R    uint8_array CD04 CCD2 003D 00:00:00:00:00:00 
+//  20 Delta_Delay_for_Charging     2 RW   uint8_array CD04 CCD3 003F 00:00             
+//  21 Charging_Start_Time          6 RW   uint8_array CD04 CCD4 0041 00:00:00:00:00:00 
+//  22 Charging_Stop_Time           6 RW   uint8_array CD04 CCD5 0043 00:00:00:00:00:00 
+//  23 Instant_Delayed              1 RW   uint8       CD05 CCE0 0046 0                 
+//  24 Start_Stop_Start_Mode        1 RW   uint8       CD05 CCE1 0048 0                 
+//  25 BLE_Manual_start             1 RW   uint8       CD05 CCE2 004A 0                 
+//  26 BLE_Manual_Stop              1 RW   uint8       CD05 CCE3 004C 0                 
+//  27 Charger_Device_ID           11 RW   utf8s       CD07 CC00 0052 VCD17010000       
+//  28 Users_Number                 1 RW   uint8       CD07 CC01 0054 0                 
+//  29 user_type                    1 RW   uint8       CD07 CC02 0056 0                 
+//  30 User_Index                   1 RW   uint8       CD07 CC03 0058 0                 
+//  31 Launch_RCD_PE_Test           1 RW   uint8       CD08 CC10 005B 0                 
+//  32 RCD_PE_Test_Result           1 RW   uint8       CD08 CC11 005D 0                 
+//  33 Launch_MCB_Test              1 RW   uint8       CD08 CC12 005F 0                 
+//  34 MCB_Test_Result              1 RW   uint8       CD08 CC13 0061 0                 
+//  35 Locking_Mechanism_ON_OFF     1 RW   uint8       CD09 CC20 0064 0                 
+//  36 Protection_Code              1 R    uint8       CD0A CC30 0067 255               
+//  37 Load_SW_App                  1 RW   uint8       CD0A CC31 0069 0                 
+//  38 Luminosity_Level             1 RW   uint8       CD0B CC40 006F 50                
+//  39 R_Led_Colour                 1 RW   uint8       CD0B CC41 0071 50                
+//  40 G_Led_Colour                 1 RW   uint8       CD0B CC42 0073 50                
+//  41 B_Led_Colour                 1 RW   uint8       CD0B CC43 0075 50                
+//  42 Reset                        1 W    uint8       CD0C CC50 0078 0                 
+//  43 Write_Pass                   6 W    utf8s       CD0D CC60 007B 000000            
+//  44 Rec_Capacity                 2 RW   uint16      CD0E CCA0 007E 16                
+//  45 Rec_Last                     2 R    16bit       CD0E CCA1 0080 -1                
+//  46 Rec_Index                    2 RW   uint16      CD0E CCA2 0082 0                 
+//  47 Rec_Laps                     2 R    uint16      CD0E CCA3 0084 0                 
+//  48 Version_Firmware            10 R    utf8s       CD0F CC70 0087 VELT1_0000        
+//  49 Version_Firm_BLE            10 R    utf8s       CD0F CC71 0089 VBLE1_0000        
+//  50 Autentication_Modes          2 RW   utf8s       CD00 CC80 008C AA                
+//  51 Serial_Number               10 W    uint8_array CD10 CC90 008F                   
+//  52 Matrix                       8 R    uint8_array CD10 CC91 0091                   
+//  53 Token                        8 W    uint8_array CD10 CC92 0093                   
+//  54 Real_Current_Limit           1 RW   uint8       CD20 CE00 0096                   
+//  55 Domestic_Current             2 R    uint16      CD20 CE01 0098 0                 
+//  56 KS                           1 RW   uint8       CD20 CE02 009A                   
+//  57 FCT                          1 RW   uint8       CD20 CE03 009C                   
+//  58 FS                           1 RW   uint8       CD20 CE04 009E                   
+//  59 Potencia_Contratada          2 RW   uint16      CD20 CE05 00A0                   
+//  60 DPC_Mode                     1 RW   uint8       CD20 CE06 00A2                   
+//  61 Error_Code                   1 R    uint8       CD30 CF00 00A5                   
+//  62 FwProlog                    16 W    uint8_array CD01 C0A7 00AD                   
+//  63 FwEpilog                     4 W    uint8_array CD01 C0B7 00AF                   
+//  64 WiFi_ON                      1 RW   uint8       CD40 XXXX 00B1                   
+//  65 SSID_1                      16 R    uint8_array CD40 XXXX 00B3                   
+//  66 SSID_2                      16 R    uint8_array CD40 XXXX 00B5                   
+//  67 Start_Prov                   1 W    uint8       CD40 XXXX 00B7                   
+//  68 Eth_ON                       1 RW   uint8       CD40 XXXX 00B9                   
+//  69 LAN_IP                       4 R    uint8_array CD40 XXXX 00BB                   
+//  70 Group_operations             1 W    uint8       CD40 XXXX 00BD                   
+//  71 Group_params                 1 RW   uint8       CD40 XXXX 00BF                   
+//  72 Circuits                    51 RW   uint8_array CD40 XXXX 00C1                   
+//  73 Potencia_Contratada2         2 RW   uint16      CD20 XXXX 00C3                   
 
-// table with 71 bytes
+// table with 74 bytes
 static uint8_t table_handle_for_idx[1+RCS_MAX_IDX] = {
     0,17,19,21,23,26,28,30,35,37,39,41,43,45,47,52,
     54,57,59,61,63,65,67,70,72,74,76,82,84,86,88,91,
     93,95,97,100,103,105,111,113,115,117,120,123,126,128,130,132,
     135,137,140,143,145,147,150,152,154,156,158,160,162,165,173,175,
-    177,179,181,183,185,187,189
+    177,179,181,183,185,187,189,191,193,195
 };
 
-// table with 190 bytes
+// table with 196 bytes
 static uint8_t table_idx_for_handle[1+RCS_MAX_HANDLE] = {
     0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
     0,1,0,2,0,3,0,4,0,0,5,0,6,0,7,0,
@@ -107,23 +110,24 @@ static uint8_t table_idx_for_handle[1+RCS_MAX_HANDLE] = {
     45,0,46,0,47,0,0,48,0,49,0,0,50,0,0,51,
     0,52,0,53,0,0,54,0,55,0,56,0,57,0,58,0,
     59,0,60,0,0,61,0,0,0,0,0,0,0,62,0,63,
-    0,64,0,65,0,66,0,67,0,68,0,69,0,70
+    0,64,0,65,0,66,0,67,0,68,0,69,0,70,0,71,
+    0,72,0,73
 };
 
-// table with 71 bytes
+// table with 74 bytes
 static uint8_t table_size_for_idx[1+RCS_MAX_IDX] = {
     2,2,2,2,2,1,1,1,2,2,2,4,4,4,1,1,
     1,6,6,6,2,6,6,1,1,1,1,11,1,1,1,1,
     1,1,1,1,1,1,1,1,1,1,1,6,2,2,2,2,
     10,10,2,10,8,8,1,2,1,1,1,2,1,1,16,4,
-    1,16,16,1,1,4,4
+    1,16,16,1,1,4,1,1,51,2
 };
 
-// table with 71 bytes
+// table with 74 bytes
 static uint8_t table_type_for_idx[1+RCS_MAX_IDX] = {
     3,1,1,1,3,1,3,3,1,1,1,1,1,1,1,3,
     1,3,1,1,3,3,3,3,3,3,3,3,3,3,3,3,
     3,3,3,3,1,3,3,3,3,3,2,2,3,1,3,1,
     1,1,3,2,1,2,3,1,3,3,3,3,3,1,2,2,
-    3,1,1,2,3,1,1
+    3,1,1,2,3,1,2,3,3,3
 };

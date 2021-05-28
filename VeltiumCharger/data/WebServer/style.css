@@ -1,10 +1,431 @@
-<style>
-#file-input,input{width:100%;height: 80px;border-radius:4px;margin:10px auto;font-size:15px}
-input{background:#f1f1f1;border:0;padding:0 15px}
-body{background:#000000;font-family:sans-serif;font-size:14px;color:#777}
-#file-input{padding:0;border:1px solid #EEE;line-height:80px;text-align:left;display:block;cursor:pointer}
-#bar,#prgbar{background-color:#f1f1f1;border-radius:10px}
-#bar{background-color:#3498db;width:0%;height:10px}
-form{background:#fff;max-width:300px;margin:60px auto;padding:30px;border-radius:5px;text-align:center}
-.btn{background:#3498db;color:#fff;cursor:pointer}
-</style></html>
+
+h1 {
+    
+    background-size: 40px;
+    padding-left: 35px;
+    background-position-y: -3px;
+}
+.header {
+    padding: 20px;
+    text-align: left;
+    background: #1abc9c;
+    background: rgb(61, 173, 248);
+    color: white;
+    text-align: center;
+    padding-left: 45px;
+  }
+
+.topnav-right {
+    float: right;
+  }
+
+.titulo {
+    display: inline-block;
+    color: #f2f2f2;
+    background-color: rgb(61, 173, 248);
+    }
+
+body {
+    margin: 0;
+    font-family: Arial, Helvetica, sans-serif;
+  }
+
+  .topnav {
+    overflow: hidden;
+    background-color: #333;
+  }
+
+  
+  .topnav a {
+    float: left;
+    display: block;
+    color: #f2f2f2;
+    text-align: center;
+    padding: 14px 16px;
+    text-decoration: none;
+    font-size: 17px;
+  }
+  
+  .topnav a:hover {
+    background-color: #ddd;
+    color: black;
+  }
+  
+  .topnav a.active {
+    background-color: #0288D1;
+    color: white;
+  }
+  
+  .topnav .icon {
+    display: none;
+  }
+  
+  @media screen and (max-width: 600px) {
+    .topnav a:not(:first-child) {display: none;}
+    .topnav a.icon {
+      float: right;
+      display: block;
+    }
+  }
+  
+  @media screen and (max-width: 600px) {
+    .topnav.responsive {position: relative;}
+    .topnav.responsive .icon {
+      position: absolute;
+      right: 0;
+      top: 0;
+    }
+    .topnav.responsive a {
+      float: none;
+      display: block;
+    }
+  }
+
+  div.centro{
+    display: inline-block; 
+    text-align: left;
+  }
+  div.container {
+/*  position:absolute;
+    height: 50px;
+    width: 50px;  
+    left:30%;*/
+    margin:  50px 50px 15px;
+    text-align: center;
+  }
+
+  input[type=text], select {
+    width: 100%;
+    padding: 8px 20px;
+    margin: 8px 0;
+    display: block;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+  }
+
+  .contrasena, select {
+    width: 100%;
+    padding: 8px 20px;
+    margin: 8px 0;
+    display: block;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+  }
+  /*input[type=submit] {
+    width: 100%;
+    background-color: #4CAF50;
+    color: white;
+    padding: 14px 20px;
+    margin: 8px 0;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  
+  input[type=submit]:hover {
+    background-color: #45a049;
+  } */
+  
+  span[class=dht-labels]{
+    padding: 8px 8px;
+    line-height : 45px;
+  }
+
+  span[class=units]{
+    margin-left: 4px;
+  }
+  h4{
+    padding: 8px 20px;
+  }
+
+  /* Create three equal columns that floats next to each other */
+.column {
+  float: left;
+  width: 33.33%;
+  height: 360px;
+}
+
+/* Clear floats after the columns */
+.row:after {
+  content: "";
+  display: table;
+  clear: both;
+}
+
+/* Responsive layout - makes the three columns stack on top of each other instead of next to each other on smaller screens (600px wide or less) */
+@media screen and (max-width: 600px) {
+  .column {
+    width: 100%;
+  }
+}
+
+  /* Create three equal columns that floats next to each other */
+  .columnstatus {
+    float: left;
+    width: 20%;
+    /*padding: 10px;*/
+    height: 400px;
+    
+  }
+  
+  /* Clear floats after the columns */
+  .row:after {
+    content: "";
+    display: table;
+    clear: both;
+  }
+
+  .center {
+    margin-left: auto;
+    margin-right: auto;
+    margin-top:  50px;
+  }
+
+  body{
+    background-color: #f2f2f2;
+  }
+
+  .centrado{
+    text-align: center;
+  }
+
+  .logo{
+    text-indent: -99999999px;
+    background: url('veltium-logo-big.png');
+  }
+
+  .boton {
+    background-color: #008CBA; /* Green */
+    border: grey;
+    color: white;
+    width: 100px;
+    height: 40px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 14px;
+    margin: 4px 2px;
+    cursor: pointer;
+    border-radius: 8px;
+  }
+
+  .boton:hover{
+    background-color: #ddd;
+    color: black;
+  }
+
+  /* The switch - the box around the slider */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 30px;
+  height: 17px;
+}
+
+/* Hide default HTML checkbox */
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+/* The slider */
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  -webkit-transition: .4s;
+  transition: .4s;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 13px;
+  width: 13px;
+  left: 2px;
+  bottom: 2px;
+  background-color: white;
+  -webkit-transition: .4s;
+  transition: .4s;
+}
+
+input:checked + .slider {
+  background-color: #2196F3;
+}
+
+input:focus + .slider {
+  box-shadow: 0 0 1px #2196F3;
+}
+
+input:checked + .slider:before {
+  -webkit-transform: translateX(13px);
+  -ms-transform: translateX(13px);
+  transform: translateX(13px);
+}
+
+/* Rounded sliders */
+.slider.round {
+  border-radius: 17px;
+}
+
+.slider.round:before {
+  border-radius: 50%;
+}
+
+.status_content label{
+  display: inline-block;
+}
+
+.btn,.btn1,.btn2{
+  background-color: #ddd;
+  color: black;
+  border:  #008CBA;
+  outline: none;
+  width: 120px;
+  height: 40px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 14px;
+  margin: 4px 2px;
+  cursor: pointer;
+  border-radius: 8px;
+}
+
+/* Style the active class, and buttons on mouse-over */
+.active3,.active1,.active2, .btn:hover, .btn1:hover, .btn2:hover {
+  background-color: #008CBA;
+  color: white;
+}
+
+#formContent {
+  -webkit-border-radius: 10px 10px 10px 10px;
+  border-radius: 10px 10px 10px 10px;
+  background: #fff;
+  width: 90%;
+  max-width: 450px;
+  position: relative;
+  padding top: 20px;
+  -webkit-box-shadow: 0 30px 60px 0 rgba(0,0,0,0.3);
+  box-shadow: 0 30px 60px 0 rgba(0,0,0,0.3);
+  text-align: center;
+}
+
+.log_button{
+  background-color: #56baed;
+  border: none;
+  color: white;
+  padding: 15px 80px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  text-transform: uppercase;
+  font-size: 13px;
+  -webkit-box-shadow: 0 10px 30px 0 rgba(95,186,233,0.4);
+  box-shadow: 0 10px 30px 0 rgba(95,186,233,0.4);
+  -webkit-border-radius: 5px 5px 5px 5px;
+  border-radius: 5px 5px 5px 5px;
+  margin: 5px 20px 20px 20px;
+  -webkit-transition: all 0.3s ease-in-out;
+  -moz-transition: all 0.3s ease-in-out;
+  -ms-transition: all 0.3s ease-in-out;
+  -o-transition: all 0.3s ease-in-out;
+  transition: all 0.3s ease-in-out;
+}
+
+.log_button:hover  {
+  background-color: #39ace7;
+}
+
+.log_button:active  {
+  -moz-transform: scale(0.95);
+  -webkit-transform: scale(0.95);
+  -o-transform: scale(0.95);
+  -ms-transform: scale(0.95);
+  transform: scale(0.95);
+}
+
+input[type=user], .pwd{
+  background-color: #f6f6f6;
+  border: none;
+  color: #0d0d0d;
+  padding: 15px 32px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 16px;
+  margin: 20px 20px 20px 20px;
+  width: 85%;
+  border: 2px solid #f6f6f6;
+  -webkit-transition: all 0.5s ease-in-out;
+  -moz-transition: all 0.5s ease-in-out;
+  -ms-transition: all 0.5s ease-in-out;
+  -o-transition: all 0.5s ease-in-out;
+  transition: all 0.5s ease-in-out;
+  -webkit-border-radius: 5px 5px 5px 5px;
+  border-radius: 5px 5px 5px 5px;
+}
+
+
+.login:focus {
+  background-color: #fff;
+  border-bottom: 2px solid #5fbae9;
+}
+
+.login:placeholder {
+  color: #cccccc;
+}
+
+.underlineHover:after {
+  display: block;
+  left: 0;
+  bottom: -10px;
+  width: 0;
+  height: 2px;
+  background-color: #56baed;
+  content: "";
+  transition: width 0.2s;
+}
+
+.underlineHover:hover {
+  color: #0d0d0d;
+}
+
+.underlineHover:hover:after{
+  width: 100%;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.log{
+  background-color: #56baed;
+}
+
+.init{
+  font-size: 50px;
+  color: white;
+}
+
+div.portada{
+  margin-top: 0px;
+  margin-bottom: 40px;
+  text-align: center;
+  align-items: center; 
+}
+
+.wrapper {
+  display: flex;
+  align-items: center;
+  flex-direction: column; 
+  justify-content: center;
+
+}
