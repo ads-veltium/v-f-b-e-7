@@ -92,7 +92,6 @@ String outputState(){
 //Función para ver estado de la autenticacion 
 String outputStateAuth(const char* modo){
   if(!memcmp(Params.autentication_mode,modo,2)){
-      Serial.println(Params.autentication_mode);
     return " active3";
   }
   else {
@@ -353,7 +352,9 @@ void InitServer(void) {
     SPIFFS.begin(false,"/spiffs",10,"WebServer");
 	server.begin();
 	//Cargar los archivos del servidor
+#ifdef DEBUG_WIFI
 	Serial.println(ESP.getFreeHeap());
+#endif
 
     server.on("/", HTTP_GET_A, [](AsyncWebServerRequest *request){
     String flash="";
@@ -372,7 +373,6 @@ void InitServer(void) {
     }else{
         password = flash;
     }
-    Serial.println(password);
     });
 
     server.on("/veltium-logo-big", HTTP_GET_A, [](AsyncWebServerRequest *request){
@@ -412,7 +412,7 @@ void InitServer(void) {
         if(contrasena_act == password && contrasena_nueva==contrasena_conf){
             request->send(SPIFFS, "/ajustes.html",String(), false, processor);
             Alert1=false;
-            Serial.println(Alert1);
+
             for(int i=0;i<PASS_LENGTH;i++){
                 EEPROM.write(i,vacio[i]);
             }
@@ -430,7 +430,6 @@ void InitServer(void) {
         }else{
             Alert1=true;
             request->send(SPIFFS, "/ajustes.html",String(), false, processor);
-            Serial.println(Alert1);
         }
         
     }else{
@@ -558,9 +557,6 @@ void InitServer(void) {
                 if(Coms.Wifi.ON){
                     Coms.Wifi.restart = true;
                 }
-
-                Serial.println((char*)Coms.Wifi.AP);
-                Serial.println((char*)Coms.Wifi.Pass);
             }
             while(Coms.Wifi.ON != Wifi_On){
                 SendToPSOC5(Wifi_On,COMS_CONFIGURATION_WIFI_ON);
@@ -578,7 +574,6 @@ void InitServer(void) {
         
         uint8_t data = request->getParam(USER_TYPE)->value().toInt();
         Comands.user_type= data;
-        Serial.println(Comands.user_type);
         SendToPSOC5(data, VCD_NAME_USERS_USER_INDEX_CHAR_HANDLE);
         
         request->send(SPIFFS, "/comands.html",String(), false, processor);
@@ -783,8 +778,7 @@ void InitServer(void) {
    server.on("/autoupdate", HTTP_GET_A, [] (AsyncWebServerRequest *request) {
     if(Autenticado==true){
     	bool estado;
-        int numero;
-        Serial.println(Params.autentication_mode);  
+        int numero;  
 		estado = request->getParam(ESTADO)->value().toInt();
         numero = request->getParam(SALIDA)->value().toInt();
         
@@ -818,7 +812,6 @@ void InitServer(void) {
                 }               
                 break;
 
-                
         default:
             break;
         }
@@ -826,7 +819,10 @@ void InitServer(void) {
         request->send(SPIFFS, "/login.html");
     }
    });
+
+#ifdef DEBUG_WIFI
    Serial.println(ESP.getFreeHeap());
+#endif
 }
 
 #endif

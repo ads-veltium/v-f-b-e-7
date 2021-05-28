@@ -9,7 +9,7 @@ extern carac_Firebase_Configuration ConfigFirebase;
 extern carac_Status Status;
 extern carac_Contador   ContadorExt;
 extern carac_Params Params;
-extern carac_group  ChargingGroup;
+
 
 //Contador trifasico
 Contador Counter   EXT_RAM_ATTR;
@@ -25,12 +25,17 @@ bool wifi_connecting = false;
 bool ServidorArrancado = false;
 static uint8 Reintentos = 0;
 
-void start_udp();
-void close_udp();
+
 void InitServer(void);
 void StopServer(void);
+
+#ifdef USE_GROUPS
+extern carac_group  ChargingGroup;
 void coap_start_server();
 void coap_start_client();
+void start_udp();
+void close_udp();
+#endif
 
 
 static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data){
@@ -370,9 +375,11 @@ void Eth_Loop(){
         case CONNECTING:
             if(eth_connected){
                 Coms.ETH.State = CONECTADO;
+#ifdef USE_GROUPS
                 SendToPSOC5(0,SEND_GROUP_DATA);
                 delay(1000);
                 start_udp();
+#endif
                 xConnect = xTaskGetTickCount();
                 //Solo comprobamos la conexion a internet si no hemos activado el servidor dhcp
                 if(!Coms.ETH.DHCP){
@@ -411,6 +418,8 @@ void Eth_Loop(){
                 }
             }
 
+#ifdef USE_GROUPS
+
             //Arrancar los grupos
             else if(!ChargingGroup.Conected && Coms.ETH.conectado){
                 if(ChargingGroup.Params.GroupActive){
@@ -430,27 +439,31 @@ void Eth_Loop(){
                     }
                 }
             }
+#endif
 
             //Apagar el eth
             if(!Coms.ETH.ON && (ConnectionState == IDLE || ConnectionState == DISCONNECTED)){  
                 //Si lo queremos reinicializar para ponerle una ip estatica o quitarsela
                 if(Coms.ETH.restart){
+#ifdef USE_GROUPS
                     if(ChargingGroup.Conected){
                         ChargingGroup.Params.GroupActive = false;
-                        ChargingGroup.StopOrder = true;
-                        
+                        ChargingGroup.StopOrder = true;   
                     }
                     close_udp();
+#endif
                     kill_ethernet();
                     Coms.ETH.State = KILLING;
                     Coms.ETH.restart = false;
                 }
                 else{
+#ifdef USE_GROUPS
                     if(ChargingGroup.Conected){
                         ChargingGroup.Params.GroupActive = false;
                         ChargingGroup.StopOrder = true;
                     }
                     close_udp();
+#endif
                     stop_ethernet();
                     Coms.ETH.State = DISCONNECTING;
                 }                
@@ -459,11 +472,13 @@ void Eth_Loop(){
             //Desconexion del cable
             if(!eth_connected && !eth_link_up && (ConnectionState ==IDLE || ConnectionState==DISCONNECTED)){
                 Coms.ETH.State = DISCONNECTING;
+#ifdef USE_GROUPS
                 close_udp();
                 if(ChargingGroup.Conected){
                     ChargingGroup.Params.GroupActive = false;
                     ChargingGroup.StopOrder = true;
                 }
+#endif
             }
             //Lectura del contador
 			if(ContadorExt.ContadorConectado && Params.Tipo_Sensor){
@@ -615,7 +630,7 @@ void ComsTask(void *args){
                 ConfigFirebase.InternetConection=true;
             }
 
-            //Encendido de las interfaces          
+            //Encendido de las interfaces        
             if(Coms.Wifi.ON && !wifi_connected && !wifi_connecting){
                 if(Coms.ETH.ON){
                     if(!Coms.ETH.Internet && Coms.ETH.Wifi_Perm){

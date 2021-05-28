@@ -1,5 +1,6 @@
 #include "VeltFirebase.h"
 #ifdef CONNECTED
+#include "base64.h"
 Real_Time_Database *Database = new Real_Time_Database();
 
 StaticJsonDocument<2048>  Lectura        EXT_RAM_ATTR;
@@ -12,7 +13,10 @@ extern carac_Status                 Status;
 extern carac_Update_Status          UpdateStatus;
 extern carac_Params                 Params;
 extern carac_Coms                   Coms;
+
+#ifdef USE_GROUPS
 extern carac_group                  ChargingGroup;
+#endif
 
 extern uint8_t ConnectionState;
 
@@ -212,56 +216,89 @@ bool WriteFirebasegroups(String Path){
 bool WriteFirebaseHistoric(char* buffer){
 
     struct tm t = {0};  // Initalize to all 0's
-    t.tm_year = (buffer[2]!=0)?buffer[2]+100:0;  // This is year-1900, so 112 = 2012
+    t.tm_year = (buffer[4]!=0)?buffer[4]+100:0;  // This is year-1900, so 112 = 2012
     t.tm_mon  = (buffer[3]!=0)?buffer[3]-1:0;
-    t.tm_mday = buffer[4];
+    t.tm_mday = buffer[2];
     t.tm_hour = buffer[5];
     t.tm_min  = buffer[6];
     t.tm_sec  = buffer[7];
     int ConectionTS = mktime(&t);
 
+    if(ConectionTS> Status.Time.actual_time || ConectionTS < 1417305600){
+      printf("Hay algun error con las horas %i %lli \n", ConectionTS, Status.Time.actual_time);
+      return true;
+    }
+
     t = {0};  // Initalize to all 0's
-    t.tm_year = (buffer[8]!=0)?buffer[8]+100:0;  // This is year-1900, so 112 = 2012
+    t.tm_year = (buffer[10]!=0)?buffer[10]+100:0;  // This is year-1900, so 112 = 2012
     t.tm_mon  = (buffer[9]!=0)?buffer[9]-1:0;
-    t.tm_mday = buffer[10];
+    t.tm_mday = buffer[8];
     t.tm_hour = buffer[11];
     t.tm_min  = buffer[12];
     t.tm_sec  = buffer[13];
     int StartTs = mktime(&t);
 
+    if(StartTs> Status.Time.actual_time || StartTs < 1417305600){
+      printf("Hay algun error con las horas 2\n");
+      return true;
+    }
+
     t = {0};  // Initalize to all 0's
-    t.tm_year = (buffer[14]!=0)?buffer[14]+100:0;  // This is year-1900, so 112 = 2012
+    t.tm_year = (buffer[16]!=0)?buffer[16]+100:0;  // This is year-1900, so 112 = 2012
     t.tm_mon  = (buffer[15]!=0)?buffer[15]-1:0;
-    t.tm_mday = buffer[16];
+    t.tm_mday = buffer[14];
     t.tm_hour = buffer[17];
     t.tm_min  = buffer[18];
     t.tm_sec  = buffer[19];
     int DisconTs = mktime(&t);
 
-    uint8 record_buffer[256];
-    int size=0;
-    for(int i =0;i<256;i++){		
-      if(buffer[i+20]==255 && buffer[i+21]==255){
-        size = i;
-        break;
-      }
-      int PotLeida=buffer[20+i]*0x100+buffer[21+i];
-      if(PotLeida >0 && PotLeida < 5500){
-        record_buffer[i]   = buffer[i+20];
-      }
+    if(DisconTs < StartTs || DisconTs < 1417305600){
+      printf("Hay algun error con las horas 3\n");
+      return true;
     }
 
-    Serial.println();
-    for(int i =0; i <size ;i ++){
-      printf("%i ", record_buffer[i]);
+    int j = 20;
+    int size =0;
+    bool end = false;
+    uint8_t* record_buffer = (uint8_t*) malloc(252);
+
+    for(int i = 0;i<252;i+=2){		
+      if(j<252){
+        if(buffer[j]==255 && buffer[j+1]==255){
+          end = true;
+          break;
+        }
+        uint16_t PotLeida=buffer[j]*0x100+buffer[j+1];
+        if(PotLeida > 0 && PotLeida < 5500 && !end){
+          record_buffer[i]   = buffer[j];
+          record_buffer[i+1]   = buffer[j+1];
+          printf("%i \n", PotLeida);
+          size+=2;
+        }
+        else{
+          record_buffer[i]   = 0;
+          size+=2;
+        }
+        j+=2;
+      }
+      else{
+        record_buffer[i]   = 0;
+        size+=2;
+      }				
     }
-    Serial.println();
+
+    
+  
+    String Encoded = base64::encode(record_buffer,(size_t)size);
+    printf("Encoded buffer: %s\n", Encoded.c_str());
+
+    free(record_buffer);
   
     if(ConnectionState == IDLE){
       String Path = "/records/";
       Escritura.clear();
 
-      Escritura["act"] = "123";
+      Escritura["act"] = Encoded;
       Escritura["con"] = ConectionTS;
       Escritura["dis"] = DisconTs;
       Escritura["rea"] = "";
@@ -281,6 +318,7 @@ bool WriteFirebaseHistoric(char* buffer){
 /***************************************************
   Funciones de lectura
 ***************************************************/
+#ifdef USE_GROUPS
 bool ReadFirebaseGroups(String Path){
 
   long long ts_app_req=Database->Get_Timestamp(Path+"/ts_app_req",&Lectura, true);
@@ -374,6 +412,7 @@ bool ReadFirebaseGroups(String Path){
   return true;
 
 }
+#endif
 
 bool ReadFirebaseComs(String Path){
 
@@ -659,8 +698,12 @@ void Firebase_Conn_Task(void *args){
     
     case CONECTADO:
       //Inicializar los timeouts
+#ifdef USE_GROUPS
       ChargingGroup.last_ts_app_req = Database->Get_Timestamp("123456789/ts_app_req",&Lectura, true);
       ChargingGroup.last_ts_app_req = Database->Get_Timestamp("123456789/ts_app_req",&Lectura, true);
+#else
+      Params.last_ts_app_req  = Database->Get_Timestamp("/params/ts_app_req",&Lectura);
+#endif
       Params.last_ts_app_req  = Database->Get_Timestamp("/params/ts_app_req",&Lectura);
       Comands.last_ts_app_req = Database->Get_Timestamp("/control/ts_app_req",&Lectura);
       Coms.last_ts_app_req    = Database->Get_Timestamp("/coms/ts_app_req",&Lectura);
@@ -768,7 +811,7 @@ void Firebase_Conn_Task(void *args){
           break; 
         }
 
-        //Comprobar actualizaciones
+        //Comprobar actualizaciones manuales
         else if(Comands.fw_update){
           if(!memcmp(Status.HPT_status, "A1",2) || !memcmp(Status.HPT_status, "0V",2) ){
             UpdateCheckTimeout=0;
@@ -819,7 +862,9 @@ void Firebase_Conn_Task(void *args){
     case READING_PARAMS:
       Error_Count+=!ReadFirebaseParams("/params");
       ConnectionState=IDLE;
+#ifdef USE_GROUPS
       NextState=READING_GROUP;
+#endif
       break;
     
     //Está preparado pero nunca lee las comunicaciones de firebase
@@ -829,11 +874,13 @@ void Firebase_Conn_Task(void *args){
       NextState=READING_PARAMS;
       break;
 
+#ifdef USE_GROUPS
     case READING_GROUP:
       Error_Count+=!ReadFirebaseGroups("123456789");
       ConnectionState=IDLE;
       NextState=WRITTING_STATUS;
       break;
+#endif
 
     /*********************** UPDATING states **********************/
     case UPDATING:

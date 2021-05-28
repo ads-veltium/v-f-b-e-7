@@ -25,14 +25,19 @@ StaticTask_t xFirebaseBuffer ;
 
 //Variables Firebase
 carac_Update_Status UpdateStatus EXT_RAM_ATTR;
-carac_Firebase_Configuration ConfigFirebase EXT_RAM_ATTR;
 carac_Comands  Comands       EXT_RAM_ATTR;
 carac_Status   Status        EXT_RAM_ATTR;
 carac_Params   Params        EXT_RAM_ATTR;
+#ifdef CONNECTED
 carac_Coms     Coms          EXT_RAM_ATTR;
 carac_Contador ContadorExt   EXT_RAM_ATTR;
+carac_Firebase_Configuration ConfigFirebase EXT_RAM_ATTR;
+
+#ifdef USE_GROUPS
 carac_group    ChargingGroup EXT_RAM_ATTR;
-carac_chargers FaseChargers  EXT_RAM_ATTR;
+#endif
+#endif
+
 
 /* VARIABLES BLE */
 uint8 device_ID[16] = {"VCD17010001"};
@@ -45,7 +50,6 @@ uint8 authChallengeQuery[10] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
 TickType_t AuthTimer=0;
 uint8 contador_cent_segundos = 0, contador_cent_segundos_ant = 0;
 uint32 cont_seg = 0, cont_seg_ant = 0, cont_min_ant = 0, cont_min=0, cont_hour=0, cont_hour_ant=0;
-uint8 luminosidad = 90, rojo, verde, azul, togle_led = 0 ;
 uint8 estado_inicial = 1;
 uint8 estado_actual = ESTADO_ARRANQUE;
 uint8 authSuccess = 0;
@@ -462,6 +466,7 @@ void proceso_recepcion(void)
 }
 
 void procesar_bloque(uint16 tipo_bloque){
+	static int LastRecord =0;
 
 	switch(tipo_bloque){
 		case BLOQUE_INICIALIZACION:
@@ -513,7 +518,6 @@ void procesar_bloque(uint16 tipo_bloque){
 					memcpy(Params.Fw_Update_mode, &buffer_rx_local[234],2);
 					Comands.desired_current = buffer_rx_local[233];
 					Coms.ETH.Auto = buffer_rx_local[240];
-					Serial.printf("ETH auto%i \n", Coms.ETH.Auto);
 					Coms.Wifi.ON = buffer_rx_local[236];
 					Coms.ETH.ON = buffer_rx_local[237];	
 
@@ -572,7 +576,6 @@ void procesar_bloque(uint16 tipo_bloque){
 					//Si sale de C2 bloquear la siguiente carga
 					if(memcmp(&buffer_rx_local[1],"C2",2) && memcmp(&buffer_rx_local[1],"B2",2)){
 						Bloqueo_de_carga = true;
-						printf("Bloqueando la carga\n");
 						SendToPSOC5(Bloqueo_de_carga, BLOQUEO_CARGA);
 					}
 #endif
@@ -670,6 +673,10 @@ void procesar_bloque(uint16 tipo_bloque){
 				if(TimeStamp!=Status.Time.charge_stop_time){
 					Status.Time.charge_stop_time = TimeStamp;
 					ConfigFirebase.WriteTime = true;
+				}
+				TimeStamp = Convert_To_Epoch(buffer_rx_local);
+				if(TimeStamp!=Status.Time.actual_time){
+					Status.Time.actual_time = TimeStamp;
 				}
 				
 			#endif
@@ -811,15 +818,17 @@ void procesar_bloque(uint16 tipo_bloque){
 #ifdef CONNECTED
 			//Si no estamos conectados por ble
 
-			//if(!serverbleGetConnected()){
+			if(!serverbleGetConnected()){
 				WriteFirebaseHistoric((char*)buffer_rx_local);
-			//}
+			}
 #endif
 			modifyCharacteristic(record_buffer, 512, ENERGY_RECORD_RECORD_CHAR_HANDLE);
 		} 
 		break;
 		
 		case RECORDING_REC_LAST_CHAR_HANDLE:{
+			printf("Me ha llegado una nueva recarga! %i\n", (buffer_rx_local[0] + buffer_rx_local[1]*0x100));
+			LastRecord = (buffer_rx_local[0] + buffer_rx_local[1]*0x100);
 			modifyCharacteristic(buffer_rx_local, 2, RECORDING_REC_LAST_CHAR_HANDLE);
 		} 
 		break;
@@ -830,7 +839,15 @@ void procesar_bloque(uint16 tipo_bloque){
 		break;
 		
 		case RECORDING_REC_LAPS_CHAR_HANDLE:{
+			uint8_t buffer[2];
+			printf("Me ha llegado una nueva vuelta! %i\n", (buffer_rx_local[0] + buffer_rx_local[1]*0x100));
+
+			buffer[0] = (uint8)(LastRecord & 0x00FF);
+			buffer[1] = (uint8)((LastRecord >> 8) & 0x00FF);
+
 			modifyCharacteristic(buffer_rx_local, 2, RECORDING_REC_LAPS_CHAR_HANDLE);
+			delay(10);
+			SendToPSOC5((char*)buffer, 2, RECORDING_REC_INDEX_CHAR_HANDLE);
 		} 
 		break;
 		
@@ -916,7 +933,8 @@ void procesar_bloque(uint16 tipo_bloque){
 		break;
 		
 		case COMS_CONFIGURATION_ETH_ON:{
-			Coms.ETH.ON     =  buffer_rx_local[0];
+			
+			Coms.ETH.ON     =  Params.Tipo_Sensor ? true : buffer_rx_local[0];
 			Serial.print("ETH ON:");
 			Serial.println(Coms.ETH.ON);
 			modifyCharacteristic(buffer_rx_local,  1, COMS_CONFIGURATION_ETH_ON);
@@ -951,6 +969,7 @@ void procesar_bloque(uint16 tipo_bloque){
 		} 
 		break;
 
+#ifdef USE_GROUPS
 		case GROUPS_DEVICES_PART_1:{
             Serial.printf("Nuevo grupo recibido\n");
             char n[2];
@@ -1067,12 +1086,15 @@ void procesar_bloque(uint16 tipo_bloque){
 			#endif	
 			break;
 		}
+#endif
 
 		case BLOQUEO_CARGA:{
 
 			if(dispositivo_inicializado != 2){
 				Bloqueo_de_carga = true;
 			}
+
+#ifdef USE_GROUPS
 
 			//si somos parte de un grupo, debemos pedir permiso al maestro
 			else if(ChargingGroup.Params.GroupActive || ChargingGroup.Finding ){
@@ -1085,7 +1107,7 @@ void procesar_bloque(uint16 tipo_bloque){
 					ChargingGroup.AskPerm = true;
 				}
 			}
-
+#endif
 			//Si tenemos un medidor conectado, asta que no nos conectemos a el no permitimos la carga
 			else if(Params.Tipo_Sensor){
 				if(ContadorExt.ContadorConectado){

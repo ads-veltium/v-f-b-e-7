@@ -20,7 +20,10 @@ extern carac_Coms  Coms;
 extern carac_Firebase_Configuration ConfigFirebase;
 extern carac_Contador   ContadorExt;
 extern carac_Params Params;
+
+#ifdef USE_GROUPS
 extern carac_group  ChargingGroup;
+#endif
 
 static esp_eth_handle_t s_eth_handle = NULL;
 
@@ -176,7 +179,9 @@ static void eth_event_handler(void *arg, esp_event_base_t event_base, int32_t ev
                 eth_link_up = false;
                 Coms.ETH.conectado = false;
                 Coms.ETH.Internet = false;
+#ifdef USE_GROUPS
                 ChargingGroup.StopOrder = true;
+#endif
                 break;
             default:
                 break;
@@ -233,7 +238,7 @@ void initialize_ethernet(void){
 
         esp_netif_ip_info_t DHCP_Server_IP;
 
-        if(Coms.ETH.IP.addr == IPADDR_ANY){
+        if(Coms.ETH.IP.addr == IPADDR_ANY || Coms.ETH.IP.addr == IPADDR_NONE){
             IP4_ADDR(&DHCP_Server_IP.ip, 192, 168, 15, 22);
    	        IP4_ADDR(&DHCP_Server_IP.gw, 192, 168, 15, 1);
    	        IP4_ADDR(&DHCP_Server_IP.netmask, 255, 255, 255, 0);

@@ -1,5 +1,5 @@
 #include "../control.h"
-#ifdef CONNECTED
+#if (defined CONNECTED && defined USE_GROUPS)
 #include <string.h>
 #include <sys/socket.h>
 #include <netdb.h>

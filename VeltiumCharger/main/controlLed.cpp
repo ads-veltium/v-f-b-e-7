@@ -22,6 +22,15 @@ extern uint8 dispositivo_inicializado;
 CRGB leds[NUM_PIXELS] EXT_RAM_ATTR;
 
 uint8 Actualcolor;
+uint8 luminosidad = 90;
+uint8 LedPointer = 0;
+uint8 toggle_led  = 0;
+uint16 cnt_parpadeo=TIME_PARPADEO;
+bool subiendo    = 1;
+uint8 Fadecolor = 0;
+uint8 _LED_COLOR=VERDE;
+
+
 //Encender un solo led (Y apagar el resto)
 void displayOne( uint8_t i, uint8_t color, uint8_t pixeln){
 	i=map(i,0,100,0,255);
@@ -70,13 +79,14 @@ void initLeds ( void )
 	digitalWrite(EN_NEOPIXEL,HIGH);
 
 	FastLED.addLeds<NEOPIXEL, DO_NEOPIXEL>(leds, NUM_PIXELS);
-
+	displayAll(0,0);
 }
 
 
 /***************************
  *   Efectos de los leds
  * ************************/
+//
 void Kit (void){
 	
 	for (int j = 0; j < 7; j++){
@@ -90,87 +100,174 @@ void Kit (void){
 	}
 }
 
+//Efecto de ola
+void OLA(uint8 color){
+	if(subiendo){
+		luminosidad +=4;
+		if(luminosidad >= 90){
+			LedPointer++;
+			luminosidad = 0;
+			if(LedPointer>=7){
+				LedPointer = 0;
+				luminosidad = 90;
+				subiendo = false;
+			}
+		}
+	}
+	else{
+		luminosidad -=4;
+		if(luminosidad <= 5){
+			LedPointer++;
+			luminosidad = 90;
+			if(LedPointer>=7){
+				LedPointer = 0;
+				luminosidad = 0;
+				subiendo = true;
+			}
+		}
+	}
+
+	changeOne(luminosidad,color,LedPointer);
+}
+
+//
+void Fade(uint8 color){
+					
+	if(subiendo){
+		luminosidad++;
+		if(luminosidad>=90){
+			subiendo=0;
+		}
+	}
+	else{
+		luminosidad--;
+		if(luminosidad<=30){
+			subiendo=1;
+		}
+	}
+	displayAll(luminosidad,color);
+
+}
+
+void Parpadeo(uint8 color){
+					
+	if(++cnt_parpadeo >= TIME_PARPADEO)	{
+		cnt_parpadeo = 0;
+		if(toggle_led == 0)
+		{
+			toggle_led = 1;
+			displayAll(100, HUE_YELLOW);
+		}
+		else
+		{
+			toggle_led = 0;
+			displayAll(100, ROJO);
+		}
+	}
+
+}
+
+void FadeDoble(uint8 color1, uint8 color2){
+	
+	if(Fadecolor ==0){
+		Fadecolor = color1;
+	}
+					
+	if(subiendo){
+		luminosidad++;
+		if(luminosidad>=90){
+			subiendo=0;
+			Fadecolor = color1;
+		}
+	}
+	else{
+		luminosidad--;
+		if(luminosidad<=30){
+			subiendo=1;
+			Fadecolor = color2;
+		}
+	}
+	displayAll(luminosidad,Fadecolor);
+
+}
+
+void TransicionAverde(){
+
+	while(1){
+		if(subiendo){
+			luminosidad +=4;
+			if(luminosidad >= 90){
+				LedPointer++;
+				luminosidad = 0;
+				if(LedPointer>=7){
+					changeOne(luminosidad,VERDE,LedPointer);
+					break;
+				}
+			}
+		}
+		else{
+			luminosidad -=4;
+			if(luminosidad <= 5){
+				LedPointer++;
+				luminosidad = 90;
+				if(LedPointer>=7){
+					LedPointer = 0;
+					luminosidad = 0;
+					subiendo = true;
+				}
+			}
+		}
+		delay(5);
+		changeOne(luminosidad,VERDE,LedPointer);
+	}
+	
+}
+void Reset_Values(){
+	
+	luminosidad = 90;
+	LedPointer  = 8;
+	toggle_led  = 0;
+	subiendo    = 0;
+	_LED_COLOR=VERDE;
+	cnt_parpadeo=TIME_PARPADEO;
+	Fadecolor =0;
+}
+
 
 void LedControl_Task(void *arg){
-	uint8 subiendo=1, luminosidad_carga= 0, LedPointer =8,luminosidad_Actual=50, togle_led=0;
-	uint8 _LED_COLOR=VERDE;
-	uint16 cnt_parpadeo=TIME_PARPADEO, Delay= 20;
+	uint8 luminosidad_Actual=90;
+	uint16 Delay= 20;
 	bool LastBle=0;
 	initLeds();
-	/*vTaskDelay(pdMS_TO_TICKS(100));
-	displayAll(50,VERDE);	
-	vTaskDelay(pdMS_TO_TICKS(350));
-	displayAll(50,ROJO);
-	vTaskDelay(pdMS_TO_TICKS(350));
-	displayAll(50,AZUL_OSCURO);
-	vTaskDelay(pdMS_TO_TICKS(350));
-	displayAll(50,VERDE);*/
-
+	Reset_Values();
 	//Arrancando
 	while(dispositivo_inicializado != 2){
-		LedPointer++;			
-		if(LedPointer>=7){
-			if(luminosidad==90){
-				_LED_COLOR=0;
-				luminosidad=0;
-			}
-			else{
-				_LED_COLOR = VERDE;
-				luminosidad=90;
-			}
-			LedPointer=0;
-		} 
-		changeOne(luminosidad,_LED_COLOR,LedPointer);
-		delay(150);
+		OLA(VERDE);
+		delay(5);
 	}
-	_LED_COLOR = 0;
-	LedPointer = 0;
-	subiendo=0;
-	luminosidad_carga=90;
+	TransicionAverde();
+	Reset_Values();
+	
 
 	while(1){
 
 
 		if(LastBle!=serverbleGetConnected()){	
-			displayAll(50,BLANCO);	
-			vTaskDelay(pdMS_TO_TICKS(500));
+			displayAll(90,BLANCO);	
+			delay(500);
 			LastBle=serverbleGetConnected();
 		}
 
 		//Instalando archivo
 		else if(UpdateStatus.InstalandoArchivo){			
-			Delay=150;
-			LedPointer++;			
-			if(LedPointer>=7){
-				if(luminosidad==100){
-					_LED_COLOR=0;
-					luminosidad=0;
-				}
-				else{
-					_LED_COLOR = HUE_AQUA;
-					luminosidad=100;
-				}
-				LedPointer=0;
-			} 
-			changeOne(luminosidad,_LED_COLOR,LedPointer);
+			OLA(HUE_AQUA);
+			Delay = 7;
 		}
 
 		//Descargando archivo
 		else if(UpdateStatus.DescargandoArchivo){
 			Delay=25;
-			if(subiendo){
-				luminosidad_carga++;
-				if(luminosidad_carga>=90){
-					subiendo=0;
-				}
-			}
-			else{
-				luminosidad_carga--;
-				if(luminosidad_carga<=5){
-					subiendo=1;
-				}
-			}
-			displayAll(luminosidad_carga,HUE_PURPLE);
+			Fade(HUE_PURPLE);
 		}
 
 #ifdef USE_COMS
@@ -191,33 +288,16 @@ void LedControl_Task(void *arg){
 			
 			//Funcionamiento normal
 			if(Status.error_code == 0){
-				Delay=50;
-				if(!memcmp(Status.HPT_status, "C", 1 )) { //Cargando o actualizando		
-					uint8 lumin_limit=100;
-					
-					if(Status.Measures.instant_current>900){
-						lumin_limit=(32000-Status.Measures.instant_current)*100/32000;
-						if(lumin_limit<10){
-							lumin_limit=10;
-						}
+				
+				if(!memcmp(Status.HPT_status, "C", 1 )) { //Cargando		
+					Delay=50;
+					if(Status.Measures.instant_current>600){
+						Delay = map(Status.Measures.instant_current, 600, 35000, 50, 5);
 					}
-					if(subiendo){
-						luminosidad_carga++;
-						if(luminosidad_carga>=lumin_limit){
-							subiendo=0;
-						}
-					}
-					else{
-						luminosidad_carga--;
-						if(luminosidad_carga<=30){
-							subiendo=1;
-						}
-					}
-					displayAll(luminosidad_carga,HUE_BLUE);
+					Fade(HUE_BLUE);
 				}
 				else {
-					_LED_COLOR = VERDE;
-					luminosidad = 90;
+					Reset_Values();
 					if(!memcmp(Status.HPT_status, "B", 1 )){
 						_LED_COLOR = HUE_BLUE;
 					}
@@ -239,31 +319,15 @@ void LedControl_Task(void *arg){
 							displayAll(luminosidad_Actual,_LED_COLOR);
 							delay(10);
 						}	
-						luminosidad_carga = luminosidad;
-						luminosidad_Actual=luminosidad;
-						
-					}
-					
-					
+						luminosidad_Actual=luminosidad;	
+					}					
 				}
 			}
 			else{//Si hay algun error
 				//Error transitorio			 
 				if((Status.error_code <= (uint8)0x33 && Status.error_code != (uint8)0x30) || Status.error_code == (uint8)0x80){
 					Delay=40;
-					if(++cnt_parpadeo >= TIME_PARPADEO){
-						cnt_parpadeo = 0;
-						if(togle_led == 0)
-						{
-							togle_led = 1;
-							displayAll(0, 0);
-						}
-						else
-						{
-							togle_led = 0;
-							displayAll(100, ROJO);
-						}
-					}
+					Fade(ROJO);
 				}
 				//Error grave
 				else if(Status.error_code == (uint8)0x60 || Status.error_code == (uint8)0x70 || Status.error_code == (uint8)0x30){
@@ -273,20 +337,7 @@ void LedControl_Task(void *arg){
 				//Error instalacion
 				else if(Status.error_code == (uint8)0x40 || Status.error_code == (uint8)0x50){
 					Delay=10;
-					if(++cnt_parpadeo >= TIME_PARPADEO)
-					{
-						cnt_parpadeo = 0;
-						if(togle_led == 0)
-						{
-							togle_led = 1;
-							displayAll(100, HUE_YELLOW);
-						}
-						else
-						{
-							togle_led = 0;
-							displayAll(100, ROJO);
-						}
-					}
+					FadeDoble(HUE_YELLOW, ROJO);
 				}
 			}
 

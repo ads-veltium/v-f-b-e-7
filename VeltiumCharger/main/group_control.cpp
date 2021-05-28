@@ -1,5 +1,6 @@
 #include "group_control.h"
 #include "control.h"
+#if (defined CONNECTED && defined USE_GROUPS)
 #include <string.h>
 #include "helpers.h"
 #include "cJSON.h"
@@ -536,3 +537,4 @@ void Calculo_General(){
 #endif
 }
 
+#endif

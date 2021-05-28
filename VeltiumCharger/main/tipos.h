@@ -83,7 +83,7 @@ typedef struct{
 } caract_measures;
 
 typedef struct{
-
+	long long actual_time;
 	long long connect_date_time;
 	long long disconnect_date_time;
 	long long charge_start_time;
