@@ -114,11 +114,14 @@ void BuscarContador_Task(void *args){
                 }
             }
             Serial.println("Nada, seguimos buscando");
+            if(!Params.Tipo_Sensor){
+                break;
+            }
             NextOne = true;
         }
         delay(75);
     }
-    Coms.ETH.Wifi_Perm = true;
+    
     Cliente.end();
     
     #ifdef DEVELOPMENT
@@ -128,6 +131,7 @@ void BuscarContador_Task(void *args){
         }
         else{
             printf("He encontrado un cargador!!!\n");
+            Coms.ETH.Wifi_Perm = true;
         }
     #endif
     vTaskDelete(NULL);

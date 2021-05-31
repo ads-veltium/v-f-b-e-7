@@ -87,17 +87,30 @@ void initLeds ( void )
  *   Efectos de los leds
  * ************************/
 //
-void Kit (void){
-	
-	for (int j = 0; j < 7; j++){
-		displayOne(100,ROJO,j);
-		vTaskDelay(pdMS_TO_TICKS(50));
+void Kit (uint8_t color){
+
+	if(subiendo){
+		LedPointer++;
+		if(LedPointer==6){
+			subiendo = false;
+		}
 	}
-	for (int j = 6; j >= 0; j--){
-		displayOne(100,ROJO,j);
-		vTaskDelay(pdMS_TO_TICKS(50));
-	
+	else{
+		LedPointer--;
+		if(LedPointer==0){
+			subiendo = true;
+		}
 	}
+	changeOne(10,color,LedPointer-4);
+	changeOne(25,color,LedPointer-3);
+	changeOne(50,color,LedPointer-2);
+	changeOne(75,color,LedPointer-1);
+	changeOne(luminosidad,color,LedPointer);
+	changeOne(75,color,LedPointer+1);
+	changeOne(50,color,LedPointer+2);
+	changeOne(25,color,LedPointer+3);
+	changeOne(10,color,LedPointer+4);
+	
 }
 
 //Efecto de ola
@@ -222,6 +235,7 @@ void TransicionAverde(){
 	}
 	
 }
+
 void Reset_Values(){
 	
 	luminosidad = 90;
@@ -232,7 +246,6 @@ void Reset_Values(){
 	cnt_parpadeo=TIME_PARPADEO;
 	Fadecolor =0;
 }
-
 
 void LedControl_Task(void *arg){
 	uint8 luminosidad_Actual=90;
@@ -273,15 +286,8 @@ void LedControl_Task(void *arg){
 #ifdef USE_COMS
 		//Buscando Medidor
 		else if(Params.Tipo_Sensor && !ContadorExt.ContadorConectado){
-			for (int j = 0; j < 7; j++){
-				displayOne(90,VERDE,j);
-				delay(100);
-			}
-			delay(100);
-			for (int j = 6; j >= 0; j--){
-				displayOne(90,VERDE,j);
-				delay(100);
-			}
+			Kit(VERDE);
+			delay(75);
 		}
 #endif
 		else{

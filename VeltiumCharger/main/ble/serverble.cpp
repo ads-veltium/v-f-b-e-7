@@ -12,6 +12,7 @@ static StackType_t xBLEStack[4096*2] EXT_RAM_ATTR;
 File UpdateFile;
 uint8_t  UpdateType  = 0;
 uint16_t Conn_Handle = 0;
+extern uint8 device_ID[16];
 
 NimBLEDevice BLE_SERVER EXT_RAM_ATTR;
 
@@ -545,7 +546,7 @@ BLEAdvertising *pAdvertising EXT_RAM_ATTR;
 
 void changeAdvName( uint8_t * name ){
 	ble_svc_gap_device_name_set(std::string((char*)name).c_str());
-
+	BLE_SERVER.setMTU(512);
 	pAdvertising = pServer->getAdvertising();
 	pAdvertising->stop();
 
@@ -566,7 +567,7 @@ void changeAdvName( uint8_t * name ){
 	pAdvertising->setMinPreferred(6);
 	pAdvertising->addServiceUUID(BLEUUID((uint16_t)0xCD01));
 	pAdvertising->start();
-
+	
 	return;
 }
 
@@ -665,6 +666,8 @@ void serverbleTask(void *arg)
 	{
 		if (deviceBleConnected && !oldDeviceBleConnected) {
 			printf("connected----\r\n");
+			printf("MTUUU %i \n",pServer->getPeerInfo(0).getMTU());
+			//pServer->getAdvertising().
 		}
 
 		// disconnecting
@@ -674,7 +677,8 @@ void serverbleTask(void *arg)
 			
 			while(!pServer->getAdvertising()->isAdvertising()){
 				delay(100);
-				pServer->startAdvertising(); // restart advertising
+				//pServer->startAdvertising(); // restart advertising
+				changeAdvName(device_ID);
 			}
 			printf("start advertising again\r\n");
 			

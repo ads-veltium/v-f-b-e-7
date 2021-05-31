@@ -1,5 +1,5 @@
 #include "contador.h"
-
+#include "cJSON.h"
 #ifdef CONNECTED
 
 extern carac_Status Status;
@@ -7,6 +7,7 @@ extern carac_Coms Coms;
 extern carac_Contador   ContadorExt;
 
 Cliente_HTTP CounterClient("192.168.1.1", 1000);
+
 
 //Contador de Iskra
 /*********** Clase Contador ************/
@@ -45,8 +46,9 @@ bool Contador::read(){
         return false;
     }
 
-    Measurements.clear();
-    deserializeJson(Measurements,CounterClient.ObtenerRespuesta());
+    cJSON *mensaje_Json = cJSON_Parse(CounterClient.ObtenerRespuesta().c_str());
+    
+    cJSON_free(mensaje_Json);
 
     return true;
 }
@@ -55,17 +57,17 @@ void Contador::parse(){
     //Podemos medir lo que nos salga, pero de momento solo queremos intensidades
     String medida;
 
-    medida = Measurements["measurements"]["I1"].as<String>();
+    /*medida = Measurements["measurements"]["I1"].as<String>();
     ContadorExt.DomesticCurrentA = medida.toFloat() *100;
     medida = Measurements["measurements"]["I2"].as<String>();
     ContadorExt.DomesticCurrentB = medida.toFloat() *100;
     medida = Measurements["measurements"]["I3"].as<String>();
-    ContadorExt.DomesticCurrentC = medida.toFloat() *100;
+    ContadorExt.DomesticCurrentC = medida.toFloat() *100;*/
 
-    medida = Measurements["measurements"]["U1"].as<String>();
+    /*medida = Measurements["measurements"]["U1"].as<String>();
     Status.Measures.instant_voltage = medida.toFloat() *100;
     Serial.println(Status.Measures.instant_voltage);
-    /*medida = Measurements["measurements"]["P1"].as<String>();
+    medida = Measurements["measurements"]["P1"].as<String>();
     Status.Measures.active_power = medida.toFloat() *100;
 
     medida = Measurements["measurements"]["U2"].as<String>();

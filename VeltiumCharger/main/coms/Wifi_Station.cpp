@@ -487,8 +487,8 @@ void Eth_Loop(){
                     SendToPSOC5(0, BLOQUEO_CARGA);
 				}
 
-				Counter.read();
-				Counter.parse();
+				//Counter.read();
+				//Counter.parse();
 				uint8 buffer_contador[7] = {0}; 
 
 				buffer_contador[0] = ContadorExt.ContadorConectado;
