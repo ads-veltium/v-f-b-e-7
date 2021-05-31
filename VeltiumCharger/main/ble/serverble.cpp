@@ -546,7 +546,7 @@ BLEAdvertising *pAdvertising EXT_RAM_ATTR;
 
 void changeAdvName( uint8_t * name ){
 	ble_svc_gap_device_name_set(std::string((char*)name).c_str());
-	BLE_SERVER.setMTU(512);
+
 	pAdvertising = pServer->getAdvertising();
 	pAdvertising->stop();
 

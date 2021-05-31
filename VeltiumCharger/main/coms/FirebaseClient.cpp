@@ -294,7 +294,7 @@ bool WriteFirebaseHistoric(char* buffer){
 
     free(record_buffer);
   
-    if(ConnectionState == IDLE){
+    while(ConnectionState != IDLE){
       String Path = "/records/";
       Escritura.clear();
 
@@ -733,7 +733,6 @@ void Firebase_Conn_Task(void *args){
       if(ts_app_req < 1){//connection refused o autenticacion terminada, comprobar respuesta
         String ResponseString = Lectura["error"];
         if(strcmp(ResponseString.c_str(),"Auth token is expired") == 0){
-            Serial.println("Autorizacion expirada, solicitando una nueva");
             if(Database->LogIn()){
               break;
             }
@@ -755,7 +754,6 @@ void Firebase_Conn_Task(void *args){
         if(!memcmp(Status.HPT_status, "A1",2) || !memcmp(Status.HPT_status, "0V",2)){
           UpdateCheckTimeout=0;
           if(!memcmp(Params.Fw_Update_mode, "AA",2)){
-            Serial.println("Comprobando firmware nuevo");
             ConnectionState = UPDATING;
             break;
           }
@@ -776,7 +774,6 @@ void Firebase_Conn_Task(void *args){
         Status.last_ts_app_req= ts_app_req;
         ConfigFirebase.ClientConnected  = true;
         xStarted = xTaskGetTickCount();
-        Serial.println("User connected!");
         ConnectionState = WRITTING_STATUS;
         NextState = WRITTING_COMS;
         break;
@@ -931,20 +928,23 @@ void Firebase_Conn_Task(void *args){
       }
       break;
     }
-    if(LastStatus!= ConnectionState){
-      Serial.printf("Maquina de estados de Firebase de % i a %i \n", LastStatus, ConnectionState);
-      LastStatus= ConnectionState;
-    }
-    
     if(ConnectionState!=DISCONNECTING){
       delay(ConfigFirebase.ClientConnected ? 500:5000);
     }
 
+    #ifdef DEBUG
+    if(LastStatus!= ConnectionState){
+      Serial.printf("Maquina de estados de Firebase de % i a %i \n", LastStatus, ConnectionState);
+      LastStatus= ConnectionState;
+    }
+
     //chivatos de la ram
+    
     if(ESP.getFreePsram() < 2000000 || ESP.getFreeHeap() < 20000){
         Serial.println(ESP.getFreePsram());
         Serial.println(ESP.getFreeHeap());
     }
+    #endif
   }
 }
 

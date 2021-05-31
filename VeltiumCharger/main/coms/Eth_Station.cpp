@@ -115,6 +115,7 @@ void BuscarContador_Task(void *args){
             }
             Serial.println("Nada, seguimos buscando");
             if(!Params.Tipo_Sensor){
+                Coms.ETH.Wifi_Perm = true;
                 break;
             }
             NextOne = true;

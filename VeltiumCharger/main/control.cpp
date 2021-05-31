@@ -232,7 +232,9 @@ void controlTask(void *arg)
 						if(AuthTimer !=0){
 							uint32_t Transcurrido = pdTICKS_TO_MS(xTaskGetTickCount()-AuthTimer);
 							if(Transcurrido > 10000 && !authSuccess){
+								#ifdef DEBUG
 								printf("Auth request fallada, me desconecto!!\n");
+								#endif
 								AuthTimer=0;
 								deviceBleDisconnect = true;
 							}
@@ -287,27 +289,37 @@ void controlTask(void *arg)
 #ifdef CONNECTED
 							if (Comands.start){
 								SendToPSOC5(1, CHARGING_BLE_MANUAL_START_CHAR_HANDLE);   
+								#ifdef DEBUG
 								Serial.println("Sending START");         
+								#endif
 							}
 
 							else if (Comands.stop){
 								SendToPSOC5(1, CHARGING_BLE_MANUAL_STOP_CHAR_HANDLE);
+								#ifdef DEBUG
 								Serial.println("Sending STOP");
+								#endif
 							}
 
 							else if (Comands.Newdata){
+								#ifdef DEBUG
 								printf("Enviando corriente %i\n", Comands.desired_current);
+								#endif
 								SendToPSOC5(Comands.desired_current, MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
 							}
 							else if (Comands.reset){
+								#ifdef DEBUG
 								Serial.println("Reiniciando por comando externo! No preocuparse");
+								#endif
 								MAIN_RESET_Write(0);						
 								ESP.restart();
 							}	
 #endif
 						}
 						if(++TimeoutMainDisconnect>30000){
+							#ifdef DEBUG
 							Serial.println("Main reset detected");
+							#endif
 							MAIN_RESET_Write(0);						
 							ESP.restart();
 						}
@@ -557,8 +569,9 @@ void procesar_bloque(uint16 tipo_bloque){
 				//Hilo piloto
 				if((memcmp(&buffer_rx_local[1], status_hpt_anterior, 2) != 0)){
 					dispositivo_inicializado = 2;
-
-					Serial.printf("%c %c \n",buffer_rx_local[1],buffer_rx_local[2]);
+					#ifdef DEBUG
+					Serial.printf("%c %c \n",buffer_rx_local[1],buffer_rx_local[2]);.
+					#endif
 					memcpy(status_hpt_anterior, &buffer_rx_local[1], 2);
 					modifyCharacteristic(&buffer_rx_local[1], 2, STATUS_HPT_STATUS_CHAR_HANDLE);
 					if(serverbleGetConnected()){
@@ -684,8 +697,10 @@ void procesar_bloque(uint16 tipo_bloque){
 
 		case MEASURES_INSTALATION_CURRENT_LIMIT_CHAR_HANDLE:{
 			modifyCharacteristic(buffer_rx_local, 1, MEASURES_INSTALATION_CURRENT_LIMIT_CHAR_HANDLE);
+			#ifdef DEBUG
 			Serial.println("Instalation current limit Changed to" );
 			Serial.print(buffer_rx_local[0]);
+			#endif
 			#ifdef CONNECTED
 				Params.inst_current_limit = buffer_rx_local[0];
 			#endif
@@ -695,8 +710,10 @@ void procesar_bloque(uint16 tipo_bloque){
 		case MEASURES_CURRENT_COMMAND_CHAR_HANDLE:{
 			Comands.desired_current = buffer_rx_local[0];
 			Comands.Newdata = false;
+			#ifdef DEBUG
 			Serial.println("Current command received");
 			Serial.println(Comands.desired_current);
+			#endif
 			modifyCharacteristic(buffer_rx_local, 1, MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
 		}
 		break;
@@ -723,14 +740,18 @@ void procesar_bloque(uint16 tipo_bloque){
 
 		case CHARGING_BLE_MANUAL_START_CHAR_HANDLE:{
 			Comands.start=0;
+			#ifdef DEBUG
 			Serial.println("Start recibido");
+			#endif
 			modifyCharacteristic(buffer_rx_local, 1, CHARGING_BLE_MANUAL_START_CHAR_HANDLE);
 		}
 		break;
 
 		case CHARGING_BLE_MANUAL_STOP_CHAR_HANDLE:{
 			Comands.stop=0;
+			#ifdef DEBUG
 			Serial.println("Stop recibido");
+			#endif
 			modifyCharacteristic(buffer_rx_local, 1, CHARGING_BLE_MANUAL_STOP_CHAR_HANDLE);
 		}
 		break;
@@ -780,7 +801,9 @@ void procesar_bloque(uint16 tipo_bloque){
 		break;
 		
 		case ENERGY_RECORD_RECORD_CHAR_HANDLE:{
+			#ifdef DEBUG
 			Serial.println("Total record received");
+			#endif
 			memcpy(record_buffer,buffer_rx_local,20);
 
 			int j = 20;
@@ -826,7 +849,9 @@ void procesar_bloque(uint16 tipo_bloque){
 		break;
 		
 		case RECORDING_REC_LAST_CHAR_HANDLE:{
+			#ifdef DEBUG
 			printf("Me ha llegado una nueva recarga! %i\n", (buffer_rx_local[0] + buffer_rx_local[1]*0x100));
+			#endif
 			LastRecord = (buffer_rx_local[0] + buffer_rx_local[1]*0x100);
 			modifyCharacteristic(buffer_rx_local, 2, RECORDING_REC_LAST_CHAR_HANDLE);
 		} 
@@ -839,7 +864,9 @@ void procesar_bloque(uint16 tipo_bloque){
 		
 		case RECORDING_REC_LAPS_CHAR_HANDLE:{
 			uint8_t buffer[2];
+			#ifdef DEBUG
 			printf("Me ha llegado una nueva vuelta! %i\n", (buffer_rx_local[0] + buffer_rx_local[1]*0x100));
+			#endif
 
 			buffer[0] = (uint8)(LastRecord & 0x00FF);
 			buffer[1] = (uint8)((LastRecord >> 8) & 0x00FF);
@@ -852,7 +879,9 @@ void procesar_bloque(uint16 tipo_bloque){
 		
 		case CONFIGURACION_AUTENTICATION_MODES_CHAR_HANDLE:{
 			modifyCharacteristic(buffer_rx_local, 2, CONFIGURACION_AUTENTICATION_MODES_CHAR_HANDLE);
+			#ifdef DEBUG
 			Serial.printf("Nueva autenticacion recibida! %c %c \n", buffer_rx_local[0],buffer_rx_local[1]);
+			#endif
 			#ifdef CONNECTED
 				memcpy(Params.autentication_mode,buffer_rx_local,2);
 			#endif
@@ -861,8 +890,10 @@ void procesar_bloque(uint16 tipo_bloque){
 		
 		case DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_CHAR_HANDLE:{
 			modifyCharacteristic(buffer_rx_local, 2, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_CHAR_HANDLE);
+			#ifdef DEBUG
 			Serial.println("Potencia contratada cambiada a: ");
 			Serial.print(buffer_rx_local[0]+buffer_rx_local[1]*100);
+			#endif
 
 			#ifdef CONNECTED
 				Params.potencia_contratada=buffer_rx_local[0]+buffer_rx_local[1]*100;
@@ -910,9 +941,11 @@ void procesar_bloque(uint16 tipo_bloque){
 				}
 
 				if(!Params.Tipo_Sensor){
-					if(!Coms.ETH.Auto){
+					if(!Coms.ETH.Auto && Coms.ETH.DHCP){
 						Coms.ETH.Auto = true;
 						Coms.ETH.DHCP = false;
+
+						SendToPSOC5(0,COMS_CONFIGURATION_ETH_ON);
 						SendToPSOC5(Coms.ETH.Auto,COMS_CONFIGURATION_ETH_AUTO);
 					}
 				}
@@ -925,8 +958,10 @@ void procesar_bloque(uint16 tipo_bloque){
 #ifdef CONNECTED
 		case COMS_CONFIGURATION_WIFI_ON:{
 			Coms.Wifi.ON    =  buffer_rx_local[0];
+			#ifdef DEBUG
 			Serial.print("WIFI ON:");
 			Serial.println(Coms.Wifi.ON);
+			#endif
 			modifyCharacteristic(buffer_rx_local , 1, COMS_CONFIGURATION_WIFI_ON);
 		} 
 		break;
@@ -934,16 +969,20 @@ void procesar_bloque(uint16 tipo_bloque){
 		case COMS_CONFIGURATION_ETH_ON:{
 			
 			Coms.ETH.ON     =  Params.Tipo_Sensor ? true : buffer_rx_local[0];
+			#ifdef DEBUG
 			Serial.print("ETH ON:");
 			Serial.println(Coms.ETH.ON);
+			#endif
 			modifyCharacteristic(buffer_rx_local,  1, COMS_CONFIGURATION_ETH_ON);
 		} 
 		break;
 
 		case COMS_CONFIGURATION_ETH_AUTO:{
 			Coms.ETH.Auto    =  buffer_rx_local[0];
+			#ifdef DEBUG
 			Serial.print("ETH Auto :");
 			Serial.println(Coms.ETH.Auto);
+			#endif
 		} 
 		break;
 		
@@ -951,7 +990,9 @@ void procesar_bloque(uint16 tipo_bloque){
 
 		case COMS_FW_UPDATEMODE_CHAR_HANDLE:{
 			memcpy(Params.Fw_Update_mode,buffer_rx_local,2);
+			#ifdef DEBUG
 			Serial.printf("Nuevo fw_update:%c %c \n", buffer_rx_local[0],buffer_rx_local[1]);
+			#endif
 		} 
 		break;
 		
@@ -1179,8 +1220,9 @@ void deviceConnectInd ( void ){
 	//vTaskDelay(pdMS_TO_TICKS(250));
 	modifyCharacteristic(authChallengeQuery, 8, AUTENTICACION_MATRIX_CHAR_HANDLE);
 
-
+	#ifdef DEBUG
 	Serial.println("Sending authentication");
+	#endif
 	vTaskDelay(pdMS_TO_TICKS(500));
 	AuthTimer = xTaskGetTickCount();
 }
@@ -1210,7 +1252,9 @@ uint8_t setAuthToken ( uint8_t *data, int len ){
 		if(!memcmp(authChallengeReply, data, 8) || !memcmp(deviceSerNum, initialSerNum, 10))
 		{
 			AuthTimer=0;
+			#ifdef DEBUG
 			printf("authSuccess\r\n");
+			#endif
 			
 			serverbleSetConnected(true);
 			buffer_tx_local[0] = HEADER_TX;
@@ -1260,7 +1304,9 @@ int Convert_To_Epoch(uint8* data){
  * **********************************************/
 void UpdateTask(void *arg){
 	UpdateStatus.InstalandoArchivo = true;
+	#ifdef DEBUG
 	Serial.println("\nComenzando actualizacion del PSOC5!!");
+	#endif
 	
 	int Nlinea =0;
 	uint8_t err = 0;

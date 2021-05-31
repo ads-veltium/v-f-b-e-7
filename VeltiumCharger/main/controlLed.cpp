@@ -29,6 +29,7 @@ uint16 cnt_parpadeo=TIME_PARPADEO;
 bool subiendo    = 1;
 uint8 Fadecolor = 0;
 uint8 _LED_COLOR=VERDE;
+uint8 luminosidad_Actual=85;
 
 
 //Encender un solo led (Y apagar el resto)
@@ -88,7 +89,6 @@ void initLeds ( void )
  * ************************/
 //
 void Kit (uint8_t color){
-
 	if(subiendo){
 		LedPointer++;
 		if(LedPointer==6){
@@ -101,16 +101,28 @@ void Kit (uint8_t color){
 			subiendo = true;
 		}
 	}
-	changeOne(10,color,LedPointer-4);
-	changeOne(25,color,LedPointer-3);
-	changeOne(50,color,LedPointer-2);
-	changeOne(75,color,LedPointer-1);
-	changeOne(luminosidad,color,LedPointer);
-	changeOne(75,color,LedPointer+1);
-	changeOne(50,color,LedPointer+2);
-	changeOne(25,color,LedPointer+3);
-	changeOne(10,color,LedPointer+4);
-	
+
+	uint8_t s = color == BLANCO ? 0:255;
+
+	if(LedPointer-4 >= 0)
+		leds[LedPointer-4].setHSV(color, s,25);
+	if(LedPointer-3 >= 0)
+		leds[LedPointer-3].setHSV(color, s,65);
+	if(LedPointer-3 >= 0)
+		leds[LedPointer-2].setHSV(color, s,125);
+	if(LedPointer-1 >= 0)
+		leds[LedPointer-1].setHSV(color, s,195);
+	leds[LedPointer].setHSV(color, s,255);
+	if(LedPointer+1 <= 6)
+		leds[LedPointer+1].setHSV(color, s,195);
+	if(LedPointer+2 <= 6)
+		leds[LedPointer+2].setHSV(color, s,125);
+	if(LedPointer+3 <= 6)
+		leds[LedPointer+3].setHSV(color, s,65);
+	if(LedPointer+4 <= 6)
+		leds[LedPointer+4].setHSV(color, s,25);
+	FastLED.show();
+	luminosidad_Actual=85;
 }
 
 //Efecto de ola
@@ -141,6 +153,7 @@ void OLA(uint8 color){
 	}
 
 	changeOne(luminosidad,color,LedPointer);
+	luminosidad_Actual=85;
 }
 
 //
@@ -159,7 +172,7 @@ void Fade(uint8 color){
 		}
 	}
 	displayAll(luminosidad,color);
-
+	luminosidad_Actual=85;
 }
 
 void Parpadeo(uint8 color){
@@ -177,7 +190,7 @@ void Parpadeo(uint8 color){
 			displayAll(100, ROJO);
 		}
 	}
-
+	luminosidad_Actual=85;
 }
 
 void FadeDoble(uint8 color1, uint8 color2){
@@ -201,6 +214,7 @@ void FadeDoble(uint8 color1, uint8 color2){
 		}
 	}
 	displayAll(luminosidad,Fadecolor);
+	luminosidad_Actual=85;
 
 }
 
@@ -235,7 +249,6 @@ void TransicionAverde(){
 	}
 	
 }
-
 void Reset_Values(){
 	
 	luminosidad = 90;
@@ -247,8 +260,9 @@ void Reset_Values(){
 	Fadecolor =0;
 }
 
+
 void LedControl_Task(void *arg){
-	uint8 luminosidad_Actual=90;
+	
 	uint16 Delay= 20;
 	bool LastBle=0;
 	initLeds();
@@ -287,7 +301,7 @@ void LedControl_Task(void *arg){
 		//Buscando Medidor
 		else if(Params.Tipo_Sensor && !ContadorExt.ContadorConectado){
 			Kit(VERDE);
-			delay(75);
+			Delay=75;
 		}
 #endif
 		else{

@@ -1,5 +1,4 @@
 #include "contador.h"
-#include "cJSON.h"
 #ifdef CONNECTED
 
 extern carac_Status Status;
@@ -46,9 +45,8 @@ bool Contador::read(){
         return false;
     }
 
-    cJSON *mensaje_Json = cJSON_Parse(CounterClient.ObtenerRespuesta().c_str());
-    
-    cJSON_free(mensaje_Json);
+    Measurements.clear();
+    deserializeJson(Measurements,CounterClient.ObtenerRespuesta());
 
     return true;
 }
@@ -57,12 +55,12 @@ void Contador::parse(){
     //Podemos medir lo que nos salga, pero de momento solo queremos intensidades
     String medida;
 
-    /*medida = Measurements["measurements"]["I1"].as<String>();
+    medida = Measurements["measurements"]["I1"].as<String>();
     ContadorExt.DomesticCurrentA = medida.toFloat() *100;
     medida = Measurements["measurements"]["I2"].as<String>();
     ContadorExt.DomesticCurrentB = medida.toFloat() *100;
     medida = Measurements["measurements"]["I3"].as<String>();
-    ContadorExt.DomesticCurrentC = medida.toFloat() *100;*/
+    ContadorExt.DomesticCurrentC = medida.toFloat() *100;
 
     /*medida = Measurements["measurements"]["U1"].as<String>();
     Status.Measures.instant_voltage = medida.toFloat() *100;
