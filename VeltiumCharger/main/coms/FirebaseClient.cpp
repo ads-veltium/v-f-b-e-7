@@ -291,7 +291,6 @@ bool WriteFirebaseHistoric(char* buffer){
         size+=2;
       }				
     }
-
     
   
     String Encoded = base64::encode(record_buffer,(size_t)size);
@@ -318,6 +317,11 @@ bool WriteFirebaseHistoric(char* buffer){
 
       if(Database->Send_Command(Path+buf,&Escritura,UPDATE)){
         return true;
+      }
+      else{
+        printf("Fallo en el envio del registro!\n");
+        Database->Send_Command(Path+buf,&Escritura,UPDATE);
+        return false;
       }
     
 

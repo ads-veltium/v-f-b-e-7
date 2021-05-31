@@ -22,7 +22,6 @@ void Contador::find(){
 void Contador::begin(String Host){
     CounterUrl = "http://";
     CounterUrl+=Host+"/get_command?command=get_measurements";
-    Serial.println(CounterUrl);
 
     CounterClient.set_url(CounterUrl);
     CounterClient.begin();

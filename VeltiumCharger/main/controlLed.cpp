@@ -10,6 +10,7 @@ extern carac_Update_Status UpdateStatus;
 extern carac_Status  Status;
 extern carac_Params	  Params;
 extern uint8 dispositivo_inicializado;
+extern carac_Coms Coms;
 
 #ifdef USE_COMS
 	extern carac_Contador   ContadorExt;
@@ -299,7 +300,7 @@ void LedControl_Task(void *arg){
 
 #ifdef USE_COMS
 		//Buscando Medidor
-		else if(Params.Tipo_Sensor && !ContadorExt.ContadorConectado){
+		else if(Params.Tipo_Sensor && !ContadorExt.ContadorConectado && Coms.ETH.ON){
 			Kit(VERDE);
 			Delay=75;
 		}

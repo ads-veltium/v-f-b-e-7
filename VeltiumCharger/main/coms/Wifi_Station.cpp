@@ -61,6 +61,13 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
                      #ifdef DEBUG_WIFI
                     Serial.println("Intentado demasiadas veces, desconectando");
                     #endif
+                    esp_wifi_restore(); //Borrar las credenciales
+                    if(Coms.Provisioning ||Coms.StartSmartconfig ){
+                        MAIN_RESET_Write(0);
+                        ESP.restart();
+                    }  
+                    
+
                     stop_wifi();
                     if(Coms.StartSmartconfig){
                         Coms.StartSmartconfig = 0;
@@ -68,6 +75,7 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
                     }
                     else if(Coms.StartProvisioning){
                         Coms.StartProvisioning = 0;
+
                         wifi_prov_mgr_deinit();
                     }
                     Coms.Wifi.ON = false;
@@ -155,6 +163,9 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
                 Serial.printf( "smartconfig over\n");
                 #endif
                 esp_smartconfig_stop();
+                delay(10000);
+                MAIN_RESET_Write(0);
+                ESP.restart();
             break;
          }
     }
@@ -179,7 +190,7 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
             }
             case WIFI_PROV_CRED_FAIL: {
                 wifi_prov_sta_fail_reason_t *reason = (wifi_prov_sta_fail_reason_t *)event_data;
-                 #ifdef DEBUG_WIFI
+                #ifdef DEBUG_WIFI
                 Serial.printf( "Provisioning failed!\n\tReason : %s"
                          "\n\tPlease reset to factory and retry provisioning\n",
                          (*reason == WIFI_PROV_STA_AUTH_ERROR) ?
@@ -195,6 +206,10 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
                 Coms.Wifi.ON = true;
                 SendToPSOC5(Coms.Wifi.ON,COMS_CONFIGURATION_WIFI_ON);
                 Coms.Provisioning = false;
+                wifi_prov_mgr_stop_provisioning();
+                delay(10000);
+                MAIN_RESET_Write(0);
+                ESP.restart();
                 break;
             case WIFI_PROV_END:
                 #ifdef DEBUG_WIFI
@@ -206,7 +221,6 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
                     MAIN_RESET_Write(0);
                     ESP.restart();
                 }   
-;
                 break;
             default:
                 break;
@@ -215,6 +229,11 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
 }
 
 void stop_wifi(void){
+    if(Coms.Provisioning){
+        wifi_prov_mgr_stop_provisioning();
+        wifi_prov_mgr_deinit();
+    }
+
     #ifdef DEBUG_WIFI
     Serial.println("Stoping wifi");
     #endif
@@ -432,7 +451,7 @@ void Eth_Loop(){
         case CONECTADO:
             //Buscar el contador
             if(Params.Tipo_Sensor && !finding){
-                if(GetStateTime(xStart) > 60000){
+                if(GetStateTime(xStart) > 80000){
                     xTaskCreate( BuscarContador_Task, "BuscarContador", 4096*4, &finding, 5, NULL); 
                     finding = true;
                 }

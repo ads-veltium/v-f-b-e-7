@@ -570,7 +570,7 @@ void procesar_bloque(uint16 tipo_bloque){
 				if((memcmp(&buffer_rx_local[1], status_hpt_anterior, 2) != 0)){
 					dispositivo_inicializado = 2;
 					#ifdef DEBUG
-					Serial.printf("%c %c \n",buffer_rx_local[1],buffer_rx_local[2]);.
+					Serial.printf("%c %c \n",buffer_rx_local[1],buffer_rx_local[2]);
 					#endif
 					memcpy(status_hpt_anterior, &buffer_rx_local[1], 2);
 					modifyCharacteristic(&buffer_rx_local[1], 2, STATUS_HPT_STATUS_CHAR_HANDLE);

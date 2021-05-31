@@ -125,16 +125,20 @@ void BuscarContador_Task(void *args){
     
     Cliente.end();
     
-    #ifdef DEVELOPMENT
+
         if(!ContadorExt.ContadorConectado){
+    #ifdef DEVELOPMENT
             Serial.println("No he encontrado ningun medidor");
+     #endif
             *finding = false;
         }
         else{
+    #ifdef DEVELOPMENT
             printf("He encontrado un cargador!!!\n");
+    #endif
             Coms.ETH.Wifi_Perm = true;
         }
-    #endif
+   
     vTaskDelete(NULL);
 }
 
@@ -176,6 +180,8 @@ static void eth_event_handler(void *arg, esp_event_base_t event_base, int32_t ev
                 break;
             case ETHERNET_EVENT_STOP:
                 Serial.println( "Ethernet Stopped");
+                ContadorExt.ContadorConectado = false;
+                Coms.ETH.Wifi_Perm = true;
                 eth_connected = false;
                 break;
             case ETHERNET_EVENT_DISCONNECTED:

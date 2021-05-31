@@ -664,36 +664,39 @@ void serverbleTask(void *arg)
 {
 	while (1)
 	{
+		#ifdef DEBUG_BLE
 		if (deviceBleConnected && !oldDeviceBleConnected) {
 			printf("connected----\r\n");
-			printf("MTUUU %i \n",pServer->getPeerInfo(0).getMTU());
-			//pServer->getAdvertising().
 		}
+		#endif
 
 		// disconnecting
 		if (!deviceBleConnected && oldDeviceBleConnected) {
-			printf(" disconnecting \r\n");
-			pServer->stopAdvertising();
+			#ifdef DEBUG_BLE
+				printf(" disconnecting \r\n");
+			#endif
+			changeAdvName(device_ID);
 			
-			while(!pServer->getAdvertising()->isAdvertising()){
-				delay(100);
-				//pServer->startAdvertising(); // restart advertising
-				changeAdvName(device_ID);
-			}
-			printf("start advertising again\r\n");
-			
+			#ifdef DEBUG_BLE
+				printf("start advertising again\r\n");
+			#endif
+
 			UpdateStatus.DescargandoArchivo=0;
 			oldDeviceBleConnected = deviceBleConnected;
 		}
 		// connecting
 		if (deviceBleConnected && !oldDeviceBleConnected) {
-			printf(" connecting \r\n");
+			#ifdef DEBUG_BLE
+				printf(" connecting \r\n");
+			#endif
 			// do stuff here on connecting
 			oldDeviceBleConnected = deviceBleConnected;
 		}
 
 		if(deviceBleDisconnect){
-			printf("desconectandome del intruso!!!\n");
+			#ifdef DEBUG_BLE
+				printf("desconectandome del intruso!!!\n");
+			#endif
 			pServer->disconnect(Conn_Handle);
 			deviceBleDisconnect= false;
 		}
