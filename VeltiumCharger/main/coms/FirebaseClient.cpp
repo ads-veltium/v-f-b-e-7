@@ -64,7 +64,12 @@ uint8_t getfirebaseClientStatus(){
 bool WriteFirebaseStatus(String Path){
 
   Escritura.clear();
-  Escritura["hpt"]              = String(Status.HPT_status).substring(0,2);
+  if(memcmp(&Status.HPT_status[0],"F",1) && memcmp(&Status.HPT_status[0],"E",1) ){
+    Escritura["hpt"]              = String(Status.HPT_status).substring(0,2);
+  }
+  else{
+    Escritura["hpt"]              = String(Status.HPT_status).substring(0,1);
+  }
   Escritura["icp"]              = Status.ICP_status;
   Escritura["dc_leak"]          = Status.DC_Leack_status;
   Escritura["conn_lock_stat"]   = Status.Con_Lock;
@@ -272,7 +277,7 @@ bool WriteFirebaseHistoric(char* buffer){
         if(PotLeida > 0 && PotLeida < 5500 && !end){
           record_buffer[i]   = buffer[j];
           record_buffer[i+1]   = buffer[j+1];
-          printf("%i \n", PotLeida);
+
           size+=2;
         }
         else{
@@ -290,11 +295,14 @@ bool WriteFirebaseHistoric(char* buffer){
     
   
     String Encoded = base64::encode(record_buffer,(size_t)size);
-    printf("Encoded buffer: %s\n", Encoded.c_str());
 
     free(record_buffer);
-  
+
     while(ConnectionState != IDLE){
+      delay(20);
+    }
+  
+    
       String Path = "/records/";
       Escritura.clear();
 
@@ -307,11 +315,11 @@ bool WriteFirebaseHistoric(char* buffer){
 
       char buf[10];
       ltoa(ConectionTS, buf, 10); 
-      printf("Escribiendo historico\n");
+
       if(Database->Send_Command(Path+buf,&Escritura,UPDATE)){
         return true;
       }
-    }
+    
 
   return true;
 }
