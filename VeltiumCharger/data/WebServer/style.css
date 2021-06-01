@@ -143,7 +143,10 @@ body {
   /* Create three equal columns that floats next to each other */
 .column {
   float: left;
-  width: 33.33%;
+  /* Para tres comunicaciones */
+  /*width: 33.33%;*/
+  /* Para Wifi y Ethernet*/
+  width: 50%;
   height: 360px;
 }
 
