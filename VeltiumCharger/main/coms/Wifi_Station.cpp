@@ -39,7 +39,7 @@ void close_udp();
 
 
 static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data){
-    Serial.printf("Evento de wifi %s %i\n", event_base, event_id );
+
     if (event_base == WIFI_EVENT){
         switch(event_id){
             case WIFI_EVENT_STA_START:{
@@ -52,11 +52,22 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
                 Coms.Wifi.Internet = false;
                 if(!Coms.StartSmartconfig && ! Coms.StartProvisioning){
                     esp_wifi_connect();
+                    #ifdef DEBUG_WIFI
                     Serial.println("Reconectando...");
+                    #endif
                 }
 
                 if(++Reintentos>=7 ){
+                     #ifdef DEBUG_WIFI
                     Serial.println("Intentado demasiadas veces, desconectando");
+                    #endif
+                    esp_wifi_restore(); //Borrar las credenciales
+                    if(Coms.Provisioning ||Coms.StartSmartconfig ){
+                        MAIN_RESET_Write(0);
+                        ESP.restart();
+                    }  
+                    
+
                     stop_wifi();
                     if(Coms.StartSmartconfig){
                         Coms.StartSmartconfig = 0;
@@ -64,6 +75,7 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
                     }
                     else if(Coms.StartProvisioning){
                         Coms.StartProvisioning = 0;
+
                         wifi_prov_mgr_deinit();
                     }
                     Coms.Wifi.ON = false;
@@ -80,8 +92,10 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
     else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP){
         ip_event_got_ip_t *event = (ip_event_got_ip_t *) event_data;
         const esp_netif_ip_info_t *ip_info = &event->ip_info;
+         #ifdef DEBUG_WIFI
         Serial.println( "Wifi got IP Address\n");
         Serial.printf( "Wifi: %d %d %d %d\n",IP2STR(&ip_info->ip));
+        #endif
 
         Coms.Wifi.IP.addr = ip_info->ip.addr;
         /*Coms.Wifi.IP[0] =ip4_addr1(&ip_info->ip);
@@ -112,13 +126,9 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
          switch(event_id){
             case SC_EVENT_SCAN_DONE:
                 Reintentos = 0;
-                Serial.printf( "Scan done\n");
-            break;
-            case SC_EVENT_FOUND_CHANNEL:
-                 Serial.printf( "Found channel\n");
+
             break;
             case SC_EVENT_GOT_SSID_PSWD:{
-                Serial.printf( "Got SSID and password\n");
 
                 smartconfig_event_got_ssid_pswd_t *evt = (smartconfig_event_got_ssid_pswd_t *)event_data;
                 wifi_config_t wifi_config;
@@ -135,63 +145,82 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
 
                 memcpy(ssid, evt->ssid, sizeof(evt->ssid));
                 memcpy(password, evt->password, sizeof(evt->password));
+                 #ifdef DEBUG_WIFI
                 Serial.printf( "SSID:%s\n", ssid);
                 Serial.printf( "PASSWORD:%s\n", password);
+                #endif
 
                 ESP_ERROR_CHECK( esp_wifi_disconnect() );
 
                 ESP_ERROR_CHECK( esp_wifi_set_config(WIFI_IF_STA, &wifi_config) );
                 ESP_ERROR_CHECK( esp_wifi_connect() );
-                Serial.println("Pass recibido");
             
             break;}
 
             case SC_EVENT_SEND_ACK_DONE:
                 ESP_ERROR_CHECK(esp_event_handler_unregister(SC_EVENT, ESP_EVENT_ANY_ID, &event_handler));
+                 #ifdef DEBUG_WIFI
                 Serial.printf( "smartconfig over\n");
+                #endif
                 esp_smartconfig_stop();
+                delay(10000);
+                MAIN_RESET_Write(0);
+                ESP.restart();
             break;
          }
     }
     else if(event_base == WIFI_PROV_EVENT){
         switch (event_id) {
             case WIFI_PROV_START:
+                #ifdef DEBUG_WIFI
                 Serial.println( "Provisioning started");
+                #endif
                 Reintentos = 0;
                 Coms.Provisioning = true;
                 break;
             case WIFI_PROV_CRED_RECV: {
                 wifi_sta_config_t *wifi_sta_cfg = (wifi_sta_config_t *)event_data;
+                #ifdef DEBUG_WIFI
                 Serial.printf( "Received Wi-Fi credentials"
                          "\n\tSSID     : %s\n\tPassword : %s\n",
                          (const char *) wifi_sta_cfg->ssid,
                          (const char *) wifi_sta_cfg->password);
+                #endif
                 break;
             }
             case WIFI_PROV_CRED_FAIL: {
                 wifi_prov_sta_fail_reason_t *reason = (wifi_prov_sta_fail_reason_t *)event_data;
+                #ifdef DEBUG_WIFI
                 Serial.printf( "Provisioning failed!\n\tReason : %s"
                          "\n\tPlease reset to factory and retry provisioning\n",
                          (*reason == WIFI_PROV_STA_AUTH_ERROR) ?
                          "Wi-Fi station authentication failed" : "Wi-Fi access-point not found");
+                #endif
                 esp_wifi_connect();
                 break;
             }
             case WIFI_PROV_CRED_SUCCESS:
+                #ifdef DEBUG_WIFI
                 Serial.printf("Provisioning successful\n");
+                #endif
                 Coms.Wifi.ON = true;
                 SendToPSOC5(Coms.Wifi.ON,COMS_CONFIGURATION_WIFI_ON);
                 Coms.Provisioning = false;
+                wifi_prov_mgr_stop_provisioning();
+                delay(10000);
+                MAIN_RESET_Write(0);
+                ESP.restart();
                 break;
             case WIFI_PROV_END:
+                #ifdef DEBUG_WIFI
                 Serial.printf("Provisioning service deinit\n");
+                #endif
                 ESP_ERROR_CHECK(esp_event_handler_unregister(WIFI_PROV_EVENT, ESP_EVENT_ANY_ID, &event_handler));
                 wifi_prov_mgr_deinit();
                 if(!Coms.Provisioning){
                     MAIN_RESET_Write(0);
                     ESP.restart();
                 }   
-;
                 break;
             default:
                 break;
@@ -200,7 +229,14 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
 }
 
 void stop_wifi(void){
+    if(Coms.Provisioning){
+        wifi_prov_mgr_stop_provisioning();
+        wifi_prov_mgr_deinit();
+    }
+
+    #ifdef DEBUG_WIFI
     Serial.println("Stoping wifi");
+    #endif
     Reintentos = 0;
     esp_wifi_disconnect();
     esp_err_t err = esp_wifi_stop();
@@ -234,9 +270,12 @@ void initialise_smartconfig(void){
 
     ESP_ERROR_CHECK( esp_wifi_set_mode(WIFI_MODE_STA) );
     esp_err_t err = (esp_wifi_start());
+
+    #ifdef DEBUG_WIFI
     if(err != ESP_OK){
         Serial.printf("Error de wifi start de smartconfig %i \n", err);
     }
+    #endif
 
     delay(100);
     esp_smartconfig_set_type(SC_TYPE_ESPTOUCH);
@@ -396,7 +435,7 @@ void Eth_Loop(){
             }
             //si tenemos configurado un medidor, y a los 30 segundos no tenemos conexion a internet, activamos el DHCP
             else if(Params.Tipo_Sensor){
-                if(GetStateTime(xStart) > 30000){
+                if(GetStateTime(xStart) > 10000){
                     #ifdef DEBUG_ETH
                     Serial.println("Tengo un cargador conectado y no tengo internet, activo DHCP");
                     #endif
@@ -412,7 +451,7 @@ void Eth_Loop(){
         case CONECTADO:
             //Buscar el contador
             if(Params.Tipo_Sensor && !finding){
-                if(GetStateTime(xStart) > 60000){
+                if(GetStateTime(xStart) > 80000){
                     xTaskCreate( BuscarContador_Task, "BuscarContador", 4096*4, &finding, 5, NULL); 
                     finding = true;
                 }
@@ -423,7 +462,7 @@ void Eth_Loop(){
             //Arrancar los grupos
             else if(!ChargingGroup.Conected && Coms.ETH.conectado){
                 if(ChargingGroup.Params.GroupActive){
-                    if(GetStateTime(xConnect) > 30000){
+                    if(ConnectionState == IDLE){
                         if(ChargingGroup.StartClient){
                             coap_start_client();
                         }
@@ -510,8 +549,6 @@ void Eth_Loop(){
                 Counter.Inicializado = false;
                 Counter.end();
                 finding = false;
-                //Si habiamos activado el dhcp, lo desactivamos
-                
             }
 
         break;
@@ -564,14 +601,12 @@ void Eth_Loop(){
         break;
     }
 
-    #ifdef DEVELOPMENT
     #ifdef DEBUG_ETH
     if(LastStatus!= Coms.ETH.State){
       
       Serial.printf("Maquina de estados de ETH de % i a %i \n", LastStatus, Coms.ETH.State);
       LastStatus= Coms.ETH.State;
     }
-    #endif
     #endif
 }
 
@@ -599,7 +634,9 @@ void ComsTask(void *args){
             //Arranque del provisioning
             if(Coms.StartProvisioning || Coms.StartSmartconfig){
                 ConfigFirebase.InternetConection=0;
+                #ifdef DEBUG_WIFI
                 Serial.println("Starting provisioning sistem");
+                #endif
                 Coms.Wifi.ON = true;
                 if(ServidorArrancado){
                     StopServer();

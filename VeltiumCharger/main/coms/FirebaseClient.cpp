@@ -64,7 +64,12 @@ uint8_t getfirebaseClientStatus(){
 bool WriteFirebaseStatus(String Path){
 
   Escritura.clear();
-  Escritura["hpt"]              = String(Status.HPT_status).substring(0,2);
+  if(memcmp(&Status.HPT_status[0],"F",1) && memcmp(&Status.HPT_status[0],"E",1) ){
+    Escritura["hpt"]              = String(Status.HPT_status).substring(0,2);
+  }
+  else{
+    Escritura["hpt"]              = String(Status.HPT_status).substring(0,1);
+  }
   Escritura["icp"]              = Status.ICP_status;
   Escritura["dc_leak"]          = Status.DC_Leack_status;
   Escritura["conn_lock_stat"]   = Status.Con_Lock;
@@ -272,7 +277,7 @@ bool WriteFirebaseHistoric(char* buffer){
         if(PotLeida > 0 && PotLeida < 5500 && !end){
           record_buffer[i]   = buffer[j];
           record_buffer[i+1]   = buffer[j+1];
-          printf("%i \n", PotLeida);
+
           size+=2;
         }
         else{
@@ -286,15 +291,17 @@ bool WriteFirebaseHistoric(char* buffer){
         size+=2;
       }				
     }
-
     
   
     String Encoded = base64::encode(record_buffer,(size_t)size);
-    printf("Encoded buffer: %s\n", Encoded.c_str());
 
     free(record_buffer);
+
+    while(ConnectionState != IDLE){
+      delay(20);
+    }
   
-    if(ConnectionState == IDLE){
+    
       String Path = "/records/";
       Escritura.clear();
 
@@ -307,11 +314,16 @@ bool WriteFirebaseHistoric(char* buffer){
 
       char buf[10];
       ltoa(ConectionTS, buf, 10); 
-      printf("Escribiendo historico\n");
+
       if(Database->Send_Command(Path+buf,&Escritura,UPDATE)){
         return true;
       }
-    }
+      else{
+        printf("Fallo en el envio del registro!\n");
+        Database->Send_Command(Path+buf,&Escritura,UPDATE);
+        return false;
+      }
+    
 
   return true;
 }
@@ -733,7 +745,6 @@ void Firebase_Conn_Task(void *args){
       if(ts_app_req < 1){//connection refused o autenticacion terminada, comprobar respuesta
         String ResponseString = Lectura["error"];
         if(strcmp(ResponseString.c_str(),"Auth token is expired") == 0){
-            Serial.println("Autorizacion expirada, solicitando una nueva");
             if(Database->LogIn()){
               break;
             }
@@ -755,7 +766,6 @@ void Firebase_Conn_Task(void *args){
         if(!memcmp(Status.HPT_status, "A1",2) || !memcmp(Status.HPT_status, "0V",2)){
           UpdateCheckTimeout=0;
           if(!memcmp(Params.Fw_Update_mode, "AA",2)){
-            Serial.println("Comprobando firmware nuevo");
             ConnectionState = UPDATING;
             break;
           }
@@ -776,7 +786,6 @@ void Firebase_Conn_Task(void *args){
         Status.last_ts_app_req= ts_app_req;
         ConfigFirebase.ClientConnected  = true;
         xStarted = xTaskGetTickCount();
-        Serial.println("User connected!");
         ConnectionState = WRITTING_STATUS;
         NextState = WRITTING_COMS;
         break;
@@ -931,20 +940,23 @@ void Firebase_Conn_Task(void *args){
       }
       break;
     }
-    if(LastStatus!= ConnectionState){
-      Serial.printf("Maquina de estados de Firebase de % i a %i \n", LastStatus, ConnectionState);
-      LastStatus= ConnectionState;
-    }
-    
     if(ConnectionState!=DISCONNECTING){
       delay(ConfigFirebase.ClientConnected ? 500:5000);
     }
 
+    #ifdef DEBUG
+    if(LastStatus!= ConnectionState){
+      Serial.printf("Maquina de estados de Firebase de % i a %i \n", LastStatus, ConnectionState);
+      LastStatus= ConnectionState;
+    }
+
     //chivatos de la ram
+    
     if(ESP.getFreePsram() < 2000000 || ESP.getFreeHeap() < 20000){
         Serial.println(ESP.getFreePsram());
         Serial.println(ESP.getFreeHeap());
     }
+    #endif
   }
 }
 

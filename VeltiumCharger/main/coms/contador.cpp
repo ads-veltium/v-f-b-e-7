@@ -1,5 +1,4 @@
 #include "contador.h"
-
 #ifdef CONNECTED
 
 extern carac_Status Status;
@@ -7,6 +6,7 @@ extern carac_Coms Coms;
 extern carac_Contador   ContadorExt;
 
 Cliente_HTTP CounterClient("192.168.1.1", 1000);
+
 
 //Contador de Iskra
 /*********** Clase Contador ************/
@@ -22,7 +22,6 @@ void Contador::find(){
 void Contador::begin(String Host){
     CounterUrl = "http://";
     CounterUrl+=Host+"/get_command?command=get_measurements";
-    Serial.println(CounterUrl);
 
     CounterClient.set_url(CounterUrl);
     CounterClient.begin();
@@ -62,10 +61,10 @@ void Contador::parse(){
     medida = Measurements["measurements"]["I3"].as<String>();
     ContadorExt.DomesticCurrentC = medida.toFloat() *100;
 
-    medida = Measurements["measurements"]["U1"].as<String>();
+    /*medida = Measurements["measurements"]["U1"].as<String>();
     Status.Measures.instant_voltage = medida.toFloat() *100;
     Serial.println(Status.Measures.instant_voltage);
-    /*medida = Measurements["measurements"]["P1"].as<String>();
+    medida = Measurements["measurements"]["P1"].as<String>();
     Status.Measures.active_power = medida.toFloat() *100;
 
     medida = Measurements["measurements"]["U2"].as<String>();

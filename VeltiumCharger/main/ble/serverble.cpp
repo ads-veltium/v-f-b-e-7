@@ -12,6 +12,7 @@ static StackType_t xBLEStack[4096*2] EXT_RAM_ATTR;
 File UpdateFile;
 uint8_t  UpdateType  = 0;
 uint16_t Conn_Handle = 0;
+extern uint8 device_ID[16];
 
 NimBLEDevice BLE_SERVER EXT_RAM_ATTR;
 
@@ -566,7 +567,7 @@ void changeAdvName( uint8_t * name ){
 	pAdvertising->setMinPreferred(6);
 	pAdvertising->addServiceUUID(BLEUUID((uint16_t)0xCD01));
 	pAdvertising->start();
-
+	
 	return;
 }
 
@@ -663,33 +664,39 @@ void serverbleTask(void *arg)
 {
 	while (1)
 	{
+		#ifdef DEBUG_BLE
 		if (deviceBleConnected && !oldDeviceBleConnected) {
 			printf("connected----\r\n");
 		}
+		#endif
 
 		// disconnecting
 		if (!deviceBleConnected && oldDeviceBleConnected) {
-			printf(" disconnecting \r\n");
-			pServer->stopAdvertising();
+			#ifdef DEBUG_BLE
+				printf(" disconnecting \r\n");
+			#endif
+			changeAdvName(device_ID);
 			
-			while(!pServer->getAdvertising()->isAdvertising()){
-				delay(100);
-				pServer->startAdvertising(); // restart advertising
-			}
-			printf("start advertising again\r\n");
-			
+			#ifdef DEBUG_BLE
+				printf("start advertising again\r\n");
+			#endif
+
 			UpdateStatus.DescargandoArchivo=0;
 			oldDeviceBleConnected = deviceBleConnected;
 		}
 		// connecting
 		if (deviceBleConnected && !oldDeviceBleConnected) {
-			printf(" connecting \r\n");
+			#ifdef DEBUG_BLE
+				printf(" connecting \r\n");
+			#endif
 			// do stuff here on connecting
 			oldDeviceBleConnected = deviceBleConnected;
 		}
 
 		if(deviceBleDisconnect){
-			printf("desconectandome del intruso!!!\n");
+			#ifdef DEBUG_BLE
+				printf("desconectandome del intruso!!!\n");
+			#endif
 			pServer->disconnect(Conn_Handle);
 			deviceBleDisconnect= false;
 		}

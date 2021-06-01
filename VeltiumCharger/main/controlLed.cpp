@@ -10,6 +10,7 @@ extern carac_Update_Status UpdateStatus;
 extern carac_Status  Status;
 extern carac_Params	  Params;
 extern uint8 dispositivo_inicializado;
+extern carac_Coms Coms;
 
 #ifdef USE_COMS
 	extern carac_Contador   ContadorExt;
@@ -29,6 +30,7 @@ uint16 cnt_parpadeo=TIME_PARPADEO;
 bool subiendo    = 1;
 uint8 Fadecolor = 0;
 uint8 _LED_COLOR=VERDE;
+uint8 luminosidad_Actual=85;
 
 
 //Encender un solo led (Y apagar el resto)
@@ -87,17 +89,41 @@ void initLeds ( void )
  *   Efectos de los leds
  * ************************/
 //
-void Kit (void){
-	
-	for (int j = 0; j < 7; j++){
-		displayOne(100,ROJO,j);
-		vTaskDelay(pdMS_TO_TICKS(50));
+void Kit (uint8_t color){
+	if(subiendo){
+		LedPointer++;
+		if(LedPointer==6){
+			subiendo = false;
+		}
 	}
-	for (int j = 6; j >= 0; j--){
-		displayOne(100,ROJO,j);
-		vTaskDelay(pdMS_TO_TICKS(50));
-	
+	else{
+		LedPointer--;
+		if(LedPointer==0){
+			subiendo = true;
+		}
 	}
+
+	uint8_t s = color == BLANCO ? 0:255;
+
+	if(LedPointer-4 >= 0)
+		leds[LedPointer-4].setHSV(color, s,25);
+	if(LedPointer-3 >= 0)
+		leds[LedPointer-3].setHSV(color, s,65);
+	if(LedPointer-3 >= 0)
+		leds[LedPointer-2].setHSV(color, s,125);
+	if(LedPointer-1 >= 0)
+		leds[LedPointer-1].setHSV(color, s,195);
+	leds[LedPointer].setHSV(color, s,255);
+	if(LedPointer+1 <= 6)
+		leds[LedPointer+1].setHSV(color, s,195);
+	if(LedPointer+2 <= 6)
+		leds[LedPointer+2].setHSV(color, s,125);
+	if(LedPointer+3 <= 6)
+		leds[LedPointer+3].setHSV(color, s,65);
+	if(LedPointer+4 <= 6)
+		leds[LedPointer+4].setHSV(color, s,25);
+	FastLED.show();
+	luminosidad_Actual=85;
 }
 
 //Efecto de ola
@@ -128,6 +154,7 @@ void OLA(uint8 color){
 	}
 
 	changeOne(luminosidad,color,LedPointer);
+	luminosidad_Actual=85;
 }
 
 //
@@ -146,7 +173,7 @@ void Fade(uint8 color){
 		}
 	}
 	displayAll(luminosidad,color);
-
+	luminosidad_Actual=85;
 }
 
 void Parpadeo(uint8 color){
@@ -164,7 +191,7 @@ void Parpadeo(uint8 color){
 			displayAll(100, ROJO);
 		}
 	}
-
+	luminosidad_Actual=85;
 }
 
 void FadeDoble(uint8 color1, uint8 color2){
@@ -188,6 +215,7 @@ void FadeDoble(uint8 color1, uint8 color2){
 		}
 	}
 	displayAll(luminosidad,Fadecolor);
+	luminosidad_Actual=85;
 
 }
 
@@ -235,7 +263,7 @@ void Reset_Values(){
 
 
 void LedControl_Task(void *arg){
-	uint8 luminosidad_Actual=90;
+	
 	uint16 Delay= 20;
 	bool LastBle=0;
 	initLeds();
@@ -272,16 +300,9 @@ void LedControl_Task(void *arg){
 
 #ifdef USE_COMS
 		//Buscando Medidor
-		else if(Params.Tipo_Sensor && !ContadorExt.ContadorConectado){
-			for (int j = 0; j < 7; j++){
-				displayOne(90,VERDE,j);
-				delay(100);
-			}
-			delay(100);
-			for (int j = 6; j >= 0; j--){
-				displayOne(90,VERDE,j);
-				delay(100);
-			}
+		else if(Params.Tipo_Sensor && !ContadorExt.ContadorConectado && Coms.ETH.ON){
+			Kit(VERDE);
+			Delay=75;
 		}
 #endif
 		else{
