@@ -22,7 +22,7 @@
     <a href="status">Status</a>
     <a href="ajustes">Ajustes</a>
     <div class="topnav-right">
-      <a href="javascript:void(0);" onclick="cerrar(this);" id="19">Cerrar sesion</a>
+      <a href="javascript:void(0);" onclick="cerrar(this);" id="19">Cerrar sesi&oacuten</a>
     </div>
     <a href="javascript:void(0);" class="icon" onclick="myFunction()">
       <i class="fa fa-bars"></i>
@@ -38,21 +38,25 @@
         <div class="centro">
             
             <table>
-            
               <tr>
                 <td><span class="dht-labels">On:</span>  </td>
                 <td><span>%WON%</span></td>
               </tr>
+            
               <tr>
+            
                 <td><span class="dht-labels">SSID:</span>  </td>
+            <!--
                 <td><input style = "text-align:center;" name="w_ap" placeholder="%SSID%" type="text"></input></td>
+            -->
+            <td>%SSID%</td>
               </tr>
+            <!--
               <tr>
                 <td><span class="dht-labels">Contrase&ntildea:</span></td>
                 <td><input class="contrasena" style = "text-align:center;" name="w_pass" placeholder="Password" type="password"></input></td>
               </tr>
-              </tr>
-              
+            -->
             </table>
         </div>
       </div>
@@ -63,18 +67,25 @@
         <div class="centro">
             
             <table>
+              
               <tr>
                 <td><span class="dht-labels">On:</span>  </td>
                 <td><span>%EON%</span></td>
               </tr>
+              <!--
               <tr>
                 <td><span class="dht-labels">Auto:</span>  </td>
                 <td><span>%EAUTO%</span></td>
               </tr>
+              -->
               <tr>
                 <td><span class="dht-labels">IP:</span> </td>
+                <!--
                 <td><input style = "text-align:center;" name="ip1" type="text" minlength="7" maxlength="15" size="15" pattern="^((\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.){3}(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])$" placeholder="%IP%"></td>
+                -->
+                <td>%IP%</td>
               </tr>
+              <!--
               <tr>
                 <td><span class="dht-labels">Gateway:</span> </td>
                 <td><input style = "text-align:center;" name="gateway" type="text" minlength="7" maxlength="15" size="15" pattern="^((\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.){3}(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])$" placeholder="%GATEWAY%"></td>
@@ -84,10 +95,12 @@
                 <td><input style = "text-align:center;"name="mask" type="text" minlength="7" maxlength="15" size="15" pattern="^((\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.){3}(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])$" placeholder="%MASK%"></td>
               </tr>
               </tr>
+              -->
             </table>
         </div>
       </div>
     </div>
+    <!--
     <div class="column">
       <div class="container">
         <h4>GSM</h4>
@@ -110,11 +123,13 @@
         </div>
       </div>
     </div>
+    -->
   </div>
 
     <div class="container">
     <input class="boton" type="submit" value="Guardar" onclick = "guardacomms(this)">
     </div>
+
   </form>
     <script>
 function cerrar(element){

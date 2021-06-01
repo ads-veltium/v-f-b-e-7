@@ -304,7 +304,7 @@ String processor(const String& var){
 		
 		buttons += "<label class=\"button\"><input class=\"btn1"+outputStateCurve(Desact1,Desact2)+"\" type=\"button\" value=\"Desactivado\" onclick=\"Startbutton(this)\" id=\"8\"></label>";
 		buttons += "<label class=\"button\"><input class=\"btn1"+outputStateCurve(Curve1,Curve2)+"\"type=\"button\" value=\"Curve\" onclick=\"Startbutton(this)\" id=\"9\"></label>";
-        buttons += "<label class=\"button\"><input class=\"btn1"+outputStateCurve(Medidor1,Medidor2)+"\" type=\"button\" value=\"Medidor trifasico\" onclick=\"Startbutton(this)\" id=\"10\"></label>";
+        buttons += "<label class=\"button\"><input class=\"btn1"+outputStateCurve(Medidor1,Medidor2)+"\" type=\"button\" value=\"Medidor\" onclick=\"Startbutton(this)\" id=\"10\"></label>";
         return buttons;
     }
     else if (var == "UBCDP")
@@ -373,7 +373,6 @@ void InitServer(void) {
     }else{
         password = flash;
     }
-
     });
 
     server.on("/veltium-logo-big", HTTP_GET_A, [](AsyncWebServerRequest *request){
@@ -670,7 +669,7 @@ void InitServer(void) {
     });
 
     server.on("/voltaje", HTTP_GET_A, [](AsyncWebServerRequest *request){
-        request->send_P(200, "text/plain", String(Status.Measures.instant_voltage).c_str());
+        request->send_P(200, "text/plain", String(Status.Measures.instant_voltage/10).c_str());
     });
 
     server.on("/potencia", HTTP_GET_A, [](AsyncWebServerRequest *request){
