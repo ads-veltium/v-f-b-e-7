@@ -82,7 +82,7 @@ uint16 inst_current_anterior = 0x0000;
 uint16 cnt_diferencia = 1;
 uint8 HPT_estados[9][3] = {"0V", "A1", "A2", "B1", "B2", "C1", "C2", "E1", "F1"};
 
-uint8 version_firmware[11] = {"VBLE2_0510"};	
+uint8 version_firmware[11] = {"VBLE2_0500"};	
 uint8 PSOC5_version_firmware[11] ;		
 
 uint8 systemStarted = 0;
@@ -392,6 +392,11 @@ void startSystem(void){
 		UpdateStatus.ESP_Act_Ver = ParseFirmwareVersion((char *)(version_firmware));
 		UpdateStatus.PSOC5_Act_Ver = ParseFirmwareVersion((char *)(PSOC5_version_firmware));
 
+		//compatibilidad con versiones anteriores de firmwware
+		if(UpdateStatus.PSOC5_Act_Ver <= 510){
+			dispositivo_inicializado = 2;
+		}
+
 		Coms.StartConnection = true;
 	#endif
 
@@ -482,7 +487,7 @@ void procesar_bloque(uint16 tipo_bloque){
 
 	switch(tipo_bloque){
 		case BLOQUE_INICIALIZACION:
-			if (!systemStarted && buffer_rx_local[239]==0x36) {
+			if (!systemStarted && (buffer_rx_local[239]==0x36 || buffer_rx_local[238]==0x36)) { //Compatibilidad con 509
 				memcpy(device_ID, buffer_rx_local, 11);
 				changeAdvName(device_ID);
 				modifyCharacteristic(device_ID, 11, VCD_NAME_USERS_CHARGER_DEVICE_ID_CHAR_HANDLE);
