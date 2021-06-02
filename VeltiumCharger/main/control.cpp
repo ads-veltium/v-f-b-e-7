@@ -82,7 +82,7 @@ uint16 inst_current_anterior = 0x0000;
 uint16 cnt_diferencia = 1;
 uint8 HPT_estados[9][3] = {"0V", "A1", "A2", "B1", "B2", "C1", "C2", "E1", "F1"};
 
-uint8 version_firmware[11] = {"VBLE2_0500"};	
+uint8 version_firmware[11] = {"VBLE2_0511"};	
 uint8 PSOC5_version_firmware[11] ;		
 
 uint8 systemStarted = 0;
@@ -514,9 +514,7 @@ void procesar_bloque(uint16 tipo_bloque){
 				modifyCharacteristic(&buffer_rx_local[231], 1, LED_LUMIN_COLOR_LUMINOSITY_LEVEL_CHAR_HANDLE);
 				modifyCharacteristic(&buffer_rx_local[232], 1, DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE);
 				modifyCharacteristic(&buffer_rx_local[233], 1, MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
-				modifyCharacteristic(&buffer_rx_local[234], 2, COMS_FW_UPDATEMODE_CHAR_HANDLE);
-				modifyCharacteristic(&buffer_rx_local[236], 1, COMS_CONFIGURATION_WIFI_ON);
-				modifyCharacteristic(&buffer_rx_local[237], 1, COMS_CONFIGURATION_ETH_ON);						
+				modifyCharacteristic(&buffer_rx_local[234], 2, COMS_FW_UPDATEMODE_CHAR_HANDLE);					
 
 				#ifdef CONNECTED
 					/************************ Set firebase Params **********************/
@@ -537,6 +535,10 @@ void procesar_bloque(uint16 tipo_bloque){
 					Coms.ETH.Auto = buffer_rx_local[240];
 					Coms.Wifi.ON = buffer_rx_local[236];
 					Coms.ETH.ON = buffer_rx_local[237];	
+					modifyCharacteristic(&buffer_rx_local[236], 1, COMS_CONFIGURATION_WIFI_ON);
+					if(Coms.ETH.Auto && !Params.Tipo_Sensor){
+						modifyCharacteristic(&buffer_rx_local[237], 1, COMS_CONFIGURATION_ETH_ON);	
+					}
 
 				#endif
 
@@ -593,7 +595,7 @@ void procesar_bloque(uint16 tipo_bloque){
 
 					//Si sale de C2 bloquear la siguiente carga
 					if(memcmp(&buffer_rx_local[1],"C2",2) && memcmp(&buffer_rx_local[1],"B2",2)){
-						Bloqueo_de_carga = true;
+						Bloqueo_de_carga = Params.Tipo_Sensor;
 						SendToPSOC5(Bloqueo_de_carga, BLOQUEO_CARGA);
 					}
 #endif
@@ -1339,6 +1341,7 @@ void UpdateTask(void *arg){
 			Serial.println("Imposible abrir");
 		}
 	}
+	Serial.println("Tamaño del archivo!");
 	Serial.println(file.size());
 	if(file){
 		//Leer la primera linea y obtener los datos del chip
@@ -1352,7 +1355,6 @@ void UpdateTask(void *arg){
 		file.seek(PRIMERA_FILA,SeekSet);
 
 		err = CyBtldr_StartBootloadOperation(&serialLocal ,siliconID, siliconRev ,&blVer);
-		Serial.println(err);
 		
 		while(1){
 			delay(1);

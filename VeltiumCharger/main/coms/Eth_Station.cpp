@@ -98,7 +98,9 @@ void BuscarContador_Task(void *args){
                 char url[100] = "http://";
                 strcat(url, ip);
                 strcat(url, "/get_command?command=get_measurements");
+                #ifdef DEBUG_ETH
                 printf("Probando a ver si es de verdad\n");
+                #endif
                 for(uint8_t i=0; i <=5;i++){
                     if(Cliente.Send_Command(url,LEER)) {
                         String respuesta = Cliente.ObtenerRespuesta();               
@@ -113,7 +115,9 @@ void BuscarContador_Task(void *args){
                     break;
                 }
             }
+            #ifdef DEBUG_ETH
             Serial.println("Nada, seguimos buscando");
+            #endif
             if(!Params.Tipo_Sensor){
                 Coms.ETH.Wifi_Perm = true;
                 break;
@@ -127,13 +131,13 @@ void BuscarContador_Task(void *args){
     
 
         if(!ContadorExt.ContadorConectado){
-    #ifdef DEVELOPMENT
+    #ifdef DEBUG_ETH
             Serial.println("No he encontrado ningun medidor");
      #endif
             *finding = false;
         }
         else{
-    #ifdef DEVELOPMENT
+    #ifdef DEBUG_ETH
             printf("He encontrado un cargador!!!\n");
     #endif
             Coms.ETH.Wifi_Perm = true;
@@ -171,21 +175,29 @@ static void eth_event_handler(void *arg, esp_event_base_t event_base, int32_t ev
                 else if(phy->link1)Coms.ETH.Puerto = 1;
                 else if(phy->link2)Coms.ETH.Puerto = 2;
 
+                #ifdef DEBUG_ETH
                 Serial.printf( "Ethernet Link Up: %u \n", Coms.ETH.Puerto);
+                #endif
                 eth_link_up    = true;
 
               break;
             case ETHERNET_EVENT_START:
+                #ifdef DEBUG_ETH
                 Serial.println( "Ethernet Started");
+                #endif
                 break;
             case ETHERNET_EVENT_STOP:
+                #ifdef DEBUG_ETH
                 Serial.println( "Ethernet Stopped");
+                #endif
                 ContadorExt.ContadorConectado = false;
                 Coms.ETH.Wifi_Perm = true;
                 eth_connected = false;
                 break;
             case ETHERNET_EVENT_DISCONNECTED:
+                #ifdef DEBUG_ETH
                 Serial.println( "Ethernet Link Down");
+                #endif
                 eth_connected = false;
                 eth_link_up = false;
                 Coms.ETH.conectado = false;
@@ -203,7 +215,7 @@ static void eth_event_handler(void *arg, esp_event_base_t event_base, int32_t ev
             ip_event_got_ip_t *event = (ip_event_got_ip_t *) event_data;
             const esp_netif_ip_info_t *ip_info = &event->ip_info;
 
-            #ifdef DEVELOPMENT
+            #ifdef DEBUG_ETH
                 Serial.printf( "ETHIP: %d %d %d %d\n",IP2STR(&ip_info->ip));
             #endif
             
@@ -225,7 +237,7 @@ static void eth_event_handler(void *arg, esp_event_base_t event_base, int32_t ev
 void initialize_ethernet(void){  
 
     esp_netif_config_t cfg = ESP_NETIF_DEFAULT_ETH();
-    #ifdef DEVELOPMENT
+    #ifdef DEBUG_ETH
     Serial.println("Arrancando ethernet");
     #endif
 
@@ -237,7 +249,9 @@ void initialize_ethernet(void){
     }
 
     if(Coms.ETH.DHCP){
-        Serial.println("Arrancando servidor dhcp!");
+        #ifdef DEBUG_ETH
+            Serial.println("Arrancando servidor dhcp!");
+        #endif
         esp_netif_inherent_config_t config;
         config = *cfg.base;
         config.flags = (esp_netif_flags_t)(ESP_NETIF_DHCP_SERVER | ESP_NETIF_FLAG_AUTOUP);
@@ -273,12 +287,14 @@ void initialize_ethernet(void){
         eth_connected = true;
         
         uint8_t ip_Array[4] = { ip4_addr1(&Coms.ETH.IP),ip4_addr2(&Coms.ETH.IP),ip4_addr3(&Coms.ETH.IP),ip4_addr4(&Coms.ETH.IP)};
-        modifyCharacteristic(&ip_Array[0], 4, COMS_CONFIGURATION_LAN_IP);
+        
     }   
     
     //Si fijamos una IP estatica:
     else if(!Coms.ETH.Auto && Coms.ETH.IP.addr != IPADDR_ANY){
-        Serial.println("Arrancando con IP estatica!");
+        #ifdef DEBUG_ETH
+            Serial.println("Arrancando con IP estatica!");
+        #endif
         eth_netif = esp_netif_new(&cfg);
         ESP_ERROR_CHECK(esp_netif_dhcpc_stop(eth_netif));
         esp_netif_ip_info_t  info;
@@ -289,10 +305,15 @@ void initialize_ethernet(void){
 	    ESP_ERROR_CHECK(esp_netif_set_ip_info(eth_netif, &info));  
         esp_eth_set_default_handlers(eth_netif);
         eth_connected = true;
+        uint8_t ip_Array[4] = { ip4_addr1(&Coms.ETH.IP),ip4_addr2(&Coms.ETH.IP),ip4_addr3(&Coms.ETH.IP),ip4_addr4(&Coms.ETH.IP)};
+        modifyCharacteristic(&ip_Array[0], 4, COMS_CONFIGURATION_LAN_IP);
+        modifyCharacteristic((uint8_t*)Coms.ETH.ON, 1, COMS_CONFIGURATION_ETH_ON);	
     }
     //Configuracion automatica
     else{
-        Serial.println("Arrancando en automatico");
+        #ifdef DEBUG_ETH
+            Serial.println("Arrancando en automatico");
+        #endif
         eth_netif = esp_netif_new(&cfg);
         esp_eth_set_default_handlers(eth_netif);
     }

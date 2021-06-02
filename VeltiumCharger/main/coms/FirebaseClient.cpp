@@ -522,46 +522,20 @@ bool ReadFirebaseControl(String Path){
  *****************************************************/
 bool CheckForUpdate(){
   bool update= false;
+
+#ifdef DEVELOPMENT
   //Check Permisions
-  UpdateStatus.BetaPermission = Database->checkPermisions();
+  UpdateStatus.BetaPermission = true;//Database->checkPermisions();
   //Check Beta Firmware
-  if(UpdateStatus.BetaPermission){
-    if(Database->Send_Command("/prod/fw/beta/",&Lectura, READ_FW)){
-      String PSOC5_Ver   = Lectura["VELT2"]["verstr"].as<String>();
-      uint16 VELT_int_Version=ParseFirmwareVersion(PSOC5_Ver);
 
-      if(VELT_int_Version>UpdateStatus.PSOC5_Act_Ver){
-        Serial.print("Actualizando PSOC5 a version beta");
-        Serial.println(PSOC5_Ver);
-        UpdateStatus.PSOC5_UpdateAvailable= true;
-        UpdateStatus.PSOC_url = Lectura["VELT2"]["url"].as<String>();
-        update = true;
-      }    
-
-      String ESP_Ver   = Lectura["VBLE2"]["verstr"].as<String>();
-      uint16 ESP_int_Version=ParseFirmwareVersion(ESP_Ver);
-
-      if(ESP_int_Version>UpdateStatus.ESP_Act_Ver){
-        Serial.print("Actualizando ESP32 a version beta");
-        Serial.println(ESP_Ver);
-        UpdateStatus.ESP_UpdateAvailable= true;
-        UpdateStatus.ESP_url = Lectura["VBLE2"]["url"].as<String>();
-        update = true;
-      }  
-    }
-  }
-  
-
-  //Check Normal Firmware
-  if(Database->Send_Command("/prod/fw/prod/",&Lectura, READ_FW)){
+  if(Database->Send_Command("/prod/fw/beta/",&Lectura, READ_FW)){
     String PSOC5_Ver   = Lectura["VELT2"]["verstr"].as<String>();
-    Serial.println(PSOC5_Ver);
-    Serial.println(UpdateStatus.PSOC5_Act_Ver);
     uint16 VELT_int_Version=ParseFirmwareVersion(PSOC5_Ver);
 
+    Serial.println(PSOC5_Ver);
+    Serial.println(VELT_int_Version);
+
     if(VELT_int_Version>UpdateStatus.PSOC5_Act_Ver){
-      Serial.print("Actualizando PSOC5 a version ");
-      Serial.println(PSOC5_Ver);
       UpdateStatus.PSOC5_UpdateAvailable= true;
       UpdateStatus.PSOC_url = Lectura["VELT2"]["url"].as<String>();
       update = true;
@@ -571,13 +545,35 @@ bool CheckForUpdate(){
     uint16 ESP_int_Version=ParseFirmwareVersion(ESP_Ver);
 
     if(ESP_int_Version>UpdateStatus.ESP_Act_Ver){
-      Serial.print("Actualizando ESP32 a version ");
-      Serial.println(ESP_Ver);
       UpdateStatus.ESP_UpdateAvailable= true;
       UpdateStatus.ESP_url = Lectura["VBLE2"]["url"].as<String>();
       update = true;
     }  
   }
+  
+#endif
+  
+  //Check Normal Firmware
+  if(Database->Send_Command("/prod/fw/prod/",&Lectura, READ_FW)){
+    String PSOC5_Ver   = Lectura["VELT2"]["verstr"].as<String>();
+    uint16 VELT_int_Version=ParseFirmwareVersion(PSOC5_Ver);
+
+    if(VELT_int_Version>UpdateStatus.PSOC5_Act_Ver){
+      UpdateStatus.PSOC5_UpdateAvailable= true;
+      UpdateStatus.PSOC_url = Lectura["VELT2"]["url"].as<String>();
+      update = true;
+    }    
+
+    String ESP_Ver   = Lectura["VBLE2"]["verstr"].as<String>();
+    uint16 ESP_int_Version=ParseFirmwareVersion(ESP_Ver);
+
+    if(ESP_int_Version>UpdateStatus.ESP_Act_Ver){
+      UpdateStatus.ESP_UpdateAvailable= true;
+      UpdateStatus.ESP_url = Lectura["VBLE2"]["url"].as<String>();
+      update = true;
+    }  
+  }
+
   return update;
 }
 
@@ -587,15 +583,22 @@ void DownloadFileTask(void *args){
   File UpdateFile;
   String FileName;
   String url;
+
   //Si descargamos actualizacion para el PSOC5, debemos crear el archivo en el SPIFFS
   if(UpdateStatus.PSOC5_UpdateAvailable){
     url=UpdateStatus.PSOC_url;
-    SPIFFS.begin(0,"/spiffs",1,"PSOC5");
-    FileName="/FreeRTOS_V6.cyacd";
-    if(SPIFFS.exists(FileName)){
+    SPIFFS.end();
+    if(!SPIFFS.begin(1,"/spiffs",1,"PSOC5")){
+      SPIFFS.end();					
+      SPIFFS.begin(1,"/spiffs",1,"PSOC5");
+    }
+    if(SPIFFS.exists("/FreeRTOS_V6.cyacd")){
       vTaskDelay(pdMS_TO_TICKS(50));
       SPIFFS.format();
     }
+
+    FileName="/FreeRTOS_V6.cyacd";
+
     vTaskDelay(pdMS_TO_TICKS(50));
     UpdateFile = SPIFFS.open(FileName, FILE_WRITE);
   }
@@ -622,7 +625,6 @@ void DownloadFileTask(void *args){
       };
     }
 
-    Serial.println("Descargando firmware...");
     while (DownloadClient.connected() &&(len > 0 || len == -1)){
       size_t size = stream->available();
       if (size){
@@ -647,7 +649,6 @@ void DownloadFileTask(void *args){
 
   if(UpdateStatus.ESP_UpdateAvailable && !UpdateStatus.PSOC5_UpdateAvailable){
     if(Update.end()){	
-      Serial.println("Micro Actualizado!"); 
       //reboot
       MAIN_RESET_Write(0);
       ESP.restart();
@@ -659,7 +660,6 @@ void DownloadFileTask(void *args){
   DownloadClient.end(); 
   delete stream;
 
-  Serial.println("Firmware de PSOC5 descargado!");
   UpdateFile.close();
   setMainFwUpdateActive(1);
 
