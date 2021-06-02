@@ -482,6 +482,7 @@ void Eth_Loop(){
 
             //Apagar el eth
             if(!Coms.ETH.ON && (ConnectionState == IDLE || ConnectionState == DISCONNECTED)){  
+
                 //Si lo queremos reinicializar para ponerle una ip estatica o quitarsela
                 if(Coms.ETH.restart || Coms.ETH.DHCP){
 #ifdef USE_GROUPS
@@ -494,6 +495,7 @@ void Eth_Loop(){
                     kill_ethernet();
                     Coms.ETH.State = KILLING;
                     Coms.ETH.restart = false;
+                    break;
                 }
                 else{
 #ifdef USE_GROUPS
@@ -505,6 +507,7 @@ void Eth_Loop(){
 #endif
                     stop_ethernet();
                     Coms.ETH.State = DISCONNECTING;
+                    break;
                 }                
             }
 
@@ -518,6 +521,7 @@ void Eth_Loop(){
                     ChargingGroup.StopOrder = true;
                 }
 #endif
+                break;
             }
             //Lectura del contador
 			if(ContadorExt.ContadorConectado && Params.Tipo_Sensor){
@@ -576,17 +580,22 @@ void Eth_Loop(){
         case KILLING:        
             if(!eth_connected && !eth_connecting){
                 Coms.ETH.Internet = false;
-                if(!Coms.ETH.ON){
-                    Coms.ETH.State = APAGADO;
-                    break;
-                }
+                Coms.ETH.DHCP = false; 
 
                 if(ContadorExt.ContadorConectado){
                     ContadorExt.ContadorConectado = false;
                     Counter.end();
                 }
-                Coms.ETH.DHCP = false; 
+
+                if(!Coms.ETH.ON){
+                    Coms.ETH.State = APAGADO;
+                    break;
+                }              
+                
                 Coms.ETH.Wifi_Perm = false;
+                while(ConnectionState !=IDLE && ConnectionState!=DISCONNECTED){
+                    delay(100);
+                }
                 stop_wifi();
                 Coms.ETH.State = CONNECTING;
                 initialize_ethernet();         

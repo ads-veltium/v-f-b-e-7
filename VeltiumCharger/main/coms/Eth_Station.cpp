@@ -101,7 +101,7 @@ void BuscarContador_Task(void *args){
                 #ifdef DEBUG_ETH
                 printf("Probando a ver si es de verdad\n");
                 #endif
-                for(uint8_t i=0; i <=5;i++){
+                for(uint8_t i=0; i <=2;i++){
                     if(Cliente.Send_Command(url,LEER)) {
                         String respuesta = Cliente.ObtenerRespuesta();               
                         if(respuesta.indexOf("IE38MD")>-1){

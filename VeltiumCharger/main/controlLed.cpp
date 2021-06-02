@@ -313,7 +313,7 @@ void LedControl_Task(void *arg){
 				if(!memcmp(Status.HPT_status, "C", 1 )) { //Cargando		
 					Delay=50;
 					if(Status.Measures.instant_current>600){
-						Delay = map(Status.Measures.instant_current, 600, 35000, 50, 5);
+						Delay = map(Status.Measures.instant_current, 600, 3500, 40, 5);
 					}
 					Fade(HUE_BLUE);
 				}
