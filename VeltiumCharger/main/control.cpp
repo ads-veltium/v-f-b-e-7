@@ -950,7 +950,7 @@ void procesar_bloque(uint16 tipo_bloque){
 				if(!Params.Tipo_Sensor){
 					if(!Coms.ETH.Auto && Coms.ETH.DHCP){
 						Coms.ETH.Auto = true;
-						Coms.ETH.DHCP = false;
+						
 
 						SendToPSOC5(0,COMS_CONFIGURATION_ETH_ON);
 						SendToPSOC5(Coms.ETH.Auto,COMS_CONFIGURATION_ETH_AUTO);

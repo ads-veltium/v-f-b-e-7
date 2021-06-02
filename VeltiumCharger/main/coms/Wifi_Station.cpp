@@ -483,7 +483,7 @@ void Eth_Loop(){
             //Apagar el eth
             if(!Coms.ETH.ON && (ConnectionState == IDLE || ConnectionState == DISCONNECTED)){  
                 //Si lo queremos reinicializar para ponerle una ip estatica o quitarsela
-                if(Coms.ETH.restart){
+                if(Coms.ETH.restart || Coms.ETH.DHCP){
 #ifdef USE_GROUPS
                     if(ChargingGroup.Conected){
                         ChargingGroup.Params.GroupActive = false;
@@ -585,7 +585,7 @@ void Eth_Loop(){
                     ContadorExt.ContadorConectado = false;
                     Counter.end();
                 }
-
+                Coms.ETH.DHCP = false; 
                 Coms.ETH.Wifi_Perm = false;
                 stop_wifi();
                 Coms.ETH.State = CONNECTING;
