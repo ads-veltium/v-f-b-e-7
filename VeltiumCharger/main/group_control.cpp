@@ -66,16 +66,12 @@ carac_charger New_Data(char* Data, int Data_size){
     if(cJSON_HasObjectItem(mensaje_Json,"device_id")){
       memcpy(Cargador.name,cJSON_GetObjectItem(mensaje_Json,"device_id")->valuestring,9);
     }
-    if(cJSON_HasObjectItem(mensaje_Json,"fase")){
-      Cargador.Fase = cJSON_GetObjectItem(mensaje_Json,"fase")->valueint;
-    }
     if(cJSON_HasObjectItem(mensaje_Json,"current")){
       Cargador.Current = cJSON_GetObjectItem(mensaje_Json,"current")->valueint;
     }
     if(cJSON_HasObjectItem(mensaje_Json,"Perm")){
       Cargador.Baimena = cJSON_GetObjectItem(mensaje_Json,"Perm")->valueint;
     }
-
     //Datos para los trifasicos
     if(cJSON_HasObjectItem(mensaje_Json,"currentB")){
       Cargador.CurrentB = cJSON_GetObjectItem(mensaje_Json,"currentB")->valueint;
@@ -90,11 +86,14 @@ carac_charger New_Data(char* Data, int Data_size){
     //Buscar el equipo en el grupo total
     uint8_t index = check_in_group(Cargador.name,&ChargingGroup.group_chargers);                  
     if(index < 255){
-        Cargador.Conected = true;
-        Cargador.Consigna = ChargingGroup.group_chargers.charger_table[index].Consigna;
-        ChargingGroup.group_chargers.charger_table[index] = Cargador;
+        ChargingGroup.group_chargers.charger_table[index].Conected = true;
+        ChargingGroup.group_chargers.charger_table[index].Baimena = Cargador.Baimena;
+        ChargingGroup.group_chargers.charger_table[index].Current = Cargador.Current;
+        ChargingGroup.group_chargers.charger_table[index].CurrentB = Cargador.CurrentB;
+        ChargingGroup.group_chargers.charger_table[index].CurrentC = Cargador.CurrentC;
+        memcpy(ChargingGroup.group_chargers.charger_table[index].HPT, Cargador.HPT,3);
         ChargingGroup.group_chargers.charger_table[index].Period = 0;
-        print_table(ChargingGroup.group_chargers, "Calculo de grupo");
+        Cargador = ChargingGroup.group_chargers.charger_table[index];
     }
 
     return Cargador;
@@ -303,7 +302,7 @@ void LimiteConsumo(void *p){
   Fases[2].numero = 3;
 
   while (1){
-
+    
     switch(ControlGrupoState){
       //Estado reposo, no hay nadie cargando
       case REPOSO:
@@ -377,27 +376,29 @@ void LimiteConsumo(void *p){
         for(int i = 0; i < ChargingGroup.group_chargers.size; i++){
           Suma_Consignas += ChargingGroup.group_chargers.charger_table[i].Consigna; 
 
-          if(ChargingGroup.group_chargers.charger_table[i].Fase ==1){
+          if(ChargingGroup.group_chargers.charger_table[i].Fase == 1){
             Suma_Consignas1 += ChargingGroup.group_chargers.charger_table[i].Consigna;
           }
 
-          if(ChargingGroup.group_chargers.charger_table[i].Fase ==2){
+          if(ChargingGroup.group_chargers.charger_table[i].Fase == 2){
             Suma_Consignas2 += ChargingGroup.group_chargers.charger_table[i].Consigna;
           }
 
-          if(ChargingGroup.group_chargers.charger_table[i].Fase ==3){
+          if(ChargingGroup.group_chargers.charger_table[i].Fase == 3){
             Suma_Consignas3 += ChargingGroup.group_chargers.charger_table[i].Consigna;
           }
         }
 
         printf("Sumas de las consgnas %i %i %i %i \n", Suma_Consignas1, Suma_Consignas2, Suma_Consignas3, Suma_Consignas);
 
-
+        print_table(ChargingGroup.group_chargers, "Calculo de grupo");
         ControlGrupoState = EQUILIBRADO;
       break;
       }
 
       case EQUILIBRADO:{
+        cls();
+        print_table(ChargingGroup.group_chargers, "Grupo en equilibrado");
         //Calculo general
         Calculo_General();
 
@@ -419,13 +420,13 @@ void LimiteConsumo(void *p){
             printf("Corriente disponible fase 2 %f \n", Fases[1].corriente_disponible);
             printf("Corriente disponible fase 3 %f \n", Fases[2].corriente_disponible);
 
-
             //Compruebo si entraria en el grupo con la corriente general
             if(ChargingGroup.Params.potencia_max / (Conex+1) > 6){
+              printf("Entra en el grupo!\n");
               //Compruebo si entraria en la fase 
               if(ChargingGroup.Params.inst_max / (Fases[ChargingGroup.group_chargers.charger_table[i].Fase-1].conex +1) > 6){
                 //TODO: Añadir circuito!!!
-                printf("Entra en el grupo!\n");
+                printf("Entra en la fase!\n");
                 memcpy(ChargingGroup.group_chargers.charger_table[i].HPT, "C2", 2);
                 ControlGrupoState = CALCULO;
                 break;
@@ -437,26 +438,30 @@ void LimiteConsumo(void *p){
           }
         }
 
-        uint16_t transcurrido = pdTICKS_TO_MS (xTaskGetTickCount() -Delta_Timer);
+        uint16_t transcurrido = pdTICKS_TO_MS (xTaskGetTickCount() - Delta_Timer);
 
-        //Comprobar si alguno de los cargadores tiene corriente de sobra
-        for(int i = 0; i < ChargingGroup.group_chargers.size; i++){
-          if(!memcmp(ChargingGroup.group_chargers.charger_table[i].HPT,"C2",2)){
-            uint16_t Delta_cargador = ChargingGroup.group_chargers.charger_table[i].Consigna - ChargingGroup.group_chargers.charger_table[i].Current / 100;
+        //Comprobar si alguno de los cargadores tiene corriente de sobra (delta) solo si hay mas de uno
+        if(Conex >1){
+          for(int i = 0; i < ChargingGroup.group_chargers.size; i++){
+            if(!memcmp(ChargingGroup.group_chargers.charger_table[i].HPT,"C2",2)){
+              uint16_t Delta_cargador = ChargingGroup.group_chargers.charger_table[i].Consigna - ChargingGroup.group_chargers.charger_table[i].Current / 100;
+              
+              if(Delta_cargador > 2){
+                printf("Transcurrido %i \n", transcurrido);
+                ChargingGroup.group_chargers.charger_table[i].Delta_timer = ChargingGroup.group_chargers.charger_table[i].Delta_timer + transcurrido;
+                printf("Transcurrido %i \n", ChargingGroup.group_chargers.charger_table[i].Delta_timer);
+              }
+              else{
+                ChargingGroup.group_chargers.charger_table[i].Delta_timer = 0;
+              }
 
-            if(Delta_cargador > 2){
-              ChargingGroup.group_chargers.charger_table[i].Delta_timer += transcurrido;
+              //Si transcurre un minuto sin alcanzar la consigna
+              if(ChargingGroup.group_chargers.charger_table[i].Delta_timer > 60000){
+                ChargingGroup.group_chargers.charger_table[i].Delta = Delta_cargador;
+                ChargingGroup.group_chargers.charger_table[i].Delta_timer = 0;
+                ControlGrupoState = CALCULO;
+              } 
             }
-            else{
-              ChargingGroup.group_chargers.charger_table[i].Delta_timer = 0;
-            }
-
-            //Si transcurre un minuto sin alcanzar la consigna
-            if(ChargingGroup.group_chargers.charger_table[i].Delta_timer > 60000){
-              ChargingGroup.group_chargers.charger_table[i].Delta = Delta_cargador;
-              ChargingGroup.group_chargers.charger_table[i].Delta_timer = 0;
-              ControlGrupoState = CALCULO;
-            } 
           }
         }
         Delta_Timer = xTaskGetTickCount();
@@ -476,7 +481,7 @@ void LimiteConsumo(void *p){
       Estado_Anterior = ControlGrupoState;
     }
   #endif
-    delay(1000);
+    delay(500);
   }
 }
 
@@ -510,6 +515,13 @@ void Calculo_General(){
               Conex_Delta ++;
             }
         }
+        else if(!memcmp(ChargingGroup.group_chargers.charger_table[i].HPT,"A1",2) || !memcmp(ChargingGroup.group_chargers.charger_table[i].HPT,"0V",2)){
+            ChargingGroup.group_chargers.charger_table[i].Current = 0;
+            ChargingGroup.group_chargers.charger_table[i].Delta = 0;
+            ChargingGroup.group_chargers.charger_table[i].Delta_timer = 0;
+            ChargingGroup.group_chargers.charger_table[i].CurrentB = 0;
+            ChargingGroup.group_chargers.charger_table[i].CurrentC = 0;
+        }
         total_pc += ChargingGroup.group_chargers.charger_table[i].Current;
     }   
 
@@ -533,7 +545,7 @@ void Calculo_General(){
     printf("Total consigna of phase %i %i %i\n",Fases[0].consigna_total, Fases[1].consigna_total, Fases[2].consigna_total); 
     printf("Total conex of phase %i %i %i\n",Fases[0].conex, Fases[1].conex, Fases[2].conex); 
     printf("Total conex %i\n",Conex); 
-    printf("Total PC and Delta %i \n\n",Consumo_total);    
+    printf("Consumo total %i \n\n",Consumo_total);    
 #endif
 }
 

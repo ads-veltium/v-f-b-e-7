@@ -595,7 +595,12 @@ void procesar_bloque(uint16 tipo_bloque){
 
 					//Si sale de C2 bloquear la siguiente carga
 					if(memcmp(&buffer_rx_local[1],"C2",2) && memcmp(&buffer_rx_local[1],"B2",2)){
-						Bloqueo_de_carga = Params.Tipo_Sensor;
+						Bloqueo_de_carga = false;
+						if(Params.Tipo_Sensor || ChargingGroup.Params.GroupActive){
+							Bloqueo_de_carga = true;
+							ChargingGroup.ChargPerm = false;
+							ChargingGroup.AskPerm = false;
+						}						
 						SendToPSOC5(Bloqueo_de_carga, BLOQUEO_CARGA);
 					}
 #endif

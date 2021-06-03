@@ -872,7 +872,6 @@ void Send_Data(){
   Datos_Json = cJSON_CreateObject();
 
   cJSON_AddStringToObject(Datos_Json, "device_id", ConfigFirebase.Device_Id);
-  cJSON_AddNumberToObject(Datos_Json, "fase", Params.Fase);
   cJSON_AddNumberToObject(Datos_Json, "current", Status.Measures.instant_current);
 
   //si es trifasico, enviar informacion de todas las fases

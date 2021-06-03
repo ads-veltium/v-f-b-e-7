@@ -8,8 +8,8 @@
 
 #define USE_COMS                   //Comentar para no utilzar las comunicaciones [ Veltium lite Zero]
 
-//#define DEVELOPMENT				   //Comentar para pasar firmware a produccion ( Cambio de base de datos y quitar debugs)
-//#define USE_GROUPS			   //Comentar para no utilizar los grupos de potencia
+#define DEVELOPMENT				   //Comentar para pasar firmware a produccion ( Cambio de base de datos y quitar debugs)
+#define USE_GROUPS			   //Comentar para no utilizar los grupos de potencia
 
 #ifdef DEVELOPMENT
 	#define DEBUG				   //Activar los distintos debugs
@@ -19,7 +19,7 @@
 			#define DEBUG_GROUPS       //Activar el debug de los grupos
 		#endif
 
-		#define DEBUG_BLE		   //Activar el debug del ble
+		//#define DEBUG_BLE		   //Activar el debug del ble
 
 		#ifdef USE_COMS	
 			#define DEBUG_WIFI		   //Activar el debug del wifi

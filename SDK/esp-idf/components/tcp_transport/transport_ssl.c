@@ -183,7 +183,9 @@ static int ssl_destroy(esp_transport_handle_t t)
 {
     transport_ssl_t *ssl = esp_transport_get_context_data(t);
     esp_transport_close(t);
-    free(ssl);
+    if(ssl != NULL){
+        free(ssl);
+    }
     return 0;
 }
 
