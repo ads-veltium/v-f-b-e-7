@@ -14,18 +14,22 @@ extern carac_Update_Status          UpdateStatus;
 extern carac_Params                 Params;
 extern carac_Coms                   Coms;
 
+
+
 #ifdef USE_GROUPS
 extern carac_group                  ChargingGroup;
+extern carac_circuito               Circuitos[MAX_GROUP_SIZE];
+extern carac_charger                charger_table[ MAX_GROUP_SIZE];
 #endif
 
 extern uint8_t ConnectionState;
 
 
 void DownloadTask(void *arg);
-void store_group_in_mem(carac_chargers* group);
+void store_group_in_mem(carac_charger* group, uint8_t size);
 void coap_put( char* Topic, char* Message);
-bool add_to_group(const char* ID, IPAddress IP, carac_chargers* group);
-uint8_t check_in_group(const char* ID, carac_chargers* group);
+bool add_to_group(const char* ID, IPAddress IP, carac_charger* group, uint8_t *size);
+uint8_t check_in_group(const char* ID, carac_charger* group, uint8_t size);
 
 
 uint16 ParseFirmwareVersion(String Texto){
@@ -349,6 +353,18 @@ bool ReadFirebaseGroups(String Path){
 
       ChargingGroup.SendNewParams = true;
       delay(250);
+
+      //Leer los circuitos del grupo
+      Lectura.clear();
+      if(Database->Send_Command(Path+"/circuits",&Lectura, LEER, true)){ 
+        JsonObject root = Lectura.as<JsonObject>();
+        ChargingGroup.Circuit_number = 0;
+        for (JsonPair kv : root) {  
+          Circuitos[ChargingGroup.Circuit_number].numero = atoi(kv.key().c_str());
+          Circuitos[ChargingGroup.Circuit_number].limite_corriente = Lectura[kv.key().c_str()]["i_max"].as<uint8_t>();
+        }
+      }
+
       
       if(ChargingGroup.Params.GroupActive){
         //Leer los equipos del grupo
@@ -357,44 +373,44 @@ bool ReadFirebaseGroups(String Path){
           JsonObject root = Lectura.as<JsonObject>();
 
           //crear una copia temporal para almacenar los que están cargando
-          carac_chargers temp_chargers;
+          carac_charger temp_chargers[MAX_GROUP_SIZE];
+          uint8_t temp_chargers_size =0;
 
-          for(uint8_t i=0; i<ChargingGroup.group_chargers.size;i++){    
-            if(!memcmp(ChargingGroup.group_chargers.charger_table[i].HPT, "C2",2)){
-                memcpy(temp_chargers.charger_table[temp_chargers.size].name,ChargingGroup.group_chargers.charger_table[i].name,9);
-                temp_chargers.charger_table[temp_chargers.size].Current = ChargingGroup.group_chargers.charger_table[i].Current;
-                temp_chargers.charger_table[temp_chargers.size].CurrentB = ChargingGroup.group_chargers.charger_table[i].CurrentB;
-                temp_chargers.charger_table[temp_chargers.size].CurrentC = ChargingGroup.group_chargers.charger_table[i].CurrentC;
+          for(uint8_t i=0; i<ChargingGroup.Charger_number;i++){    
+            if(!memcmp(charger_table[i].HPT, "C2",2)){
+                memcpy(temp_chargers[temp_chargers_size].name,charger_table[i].name,9);
+                temp_chargers[temp_chargers_size].Current = charger_table[i].Current;
+                temp_chargers[temp_chargers_size].CurrentB = charger_table[i].CurrentB;
+                temp_chargers[temp_chargers_size].CurrentC = charger_table[i].CurrentC;
 
-                temp_chargers.charger_table[temp_chargers.size].Delta = ChargingGroup.group_chargers.charger_table[i].Delta;
-                temp_chargers.charger_table[temp_chargers.size].Consigna = ChargingGroup.group_chargers.charger_table[i].Consigna;
-                temp_chargers.charger_table[temp_chargers.size].Delta_timer = ChargingGroup.group_chargers.charger_table[i].Delta_timer;
-                temp_chargers.size ++;
+                temp_chargers[temp_chargers_size].Delta = charger_table[i].Delta;
+                temp_chargers[temp_chargers_size].Consigna = charger_table[i].Consigna;
+                temp_chargers[temp_chargers_size].Delta_timer = charger_table[i].Delta_timer;
+                temp_chargers_size ++;
             }
           }
 
 
-          ChargingGroup.group_chargers.size = 0;
+          ChargingGroup.Charger_number = 0;
           //int index =0;
           for (JsonPair kv : root) {
-            add_to_group(kv.key().c_str(),IPADDR_ANY, &ChargingGroup.group_chargers);
-            ChargingGroup.group_chargers.charger_table[ChargingGroup.group_chargers.size-1].Fase = Lectura[kv.key().c_str()]["phase"].as<uint8_t>();
+            add_to_group(kv.key().c_str(),IPADDR_ANY, charger_table, &ChargingGroup.Charger_number);
+            charger_table[ChargingGroup.Charger_number-1].Fase = Lectura[kv.key().c_str()]["phase"].as<uint8_t>();
+            charger_table[ChargingGroup.Charger_number-1].Circuito = Lectura[kv.key().c_str()]["circuit"].as<uint8_t>();
 
-            uint8_t index =check_in_group(kv.key().c_str(), &temp_chargers);
+            uint8_t index =check_in_group(kv.key().c_str(), temp_chargers, temp_chargers_size);
             if(index != 255){
-              memcpy(ChargingGroup.group_chargers.charger_table[ChargingGroup.group_chargers.size-1].HPT,"C2",2);
-              ChargingGroup.group_chargers.charger_table[ChargingGroup.group_chargers.size-1].Current = temp_chargers.charger_table[index].Current;
-              ChargingGroup.group_chargers.charger_table[ChargingGroup.group_chargers.size-1].CurrentB = temp_chargers.charger_table[index].CurrentB;
-              ChargingGroup.group_chargers.charger_table[ChargingGroup.group_chargers.size-1].CurrentC = temp_chargers.charger_table[index].CurrentC;
-              ChargingGroup.group_chargers.charger_table[ChargingGroup.group_chargers.size-1].Delta = temp_chargers.charger_table[index].Delta;
-              ChargingGroup.group_chargers.charger_table[ChargingGroup.group_chargers.size-1].Consigna = temp_chargers.charger_table[index].Consigna;
-              ChargingGroup.group_chargers.charger_table[ChargingGroup.group_chargers.size-1].Delta_timer = temp_chargers.charger_table[index].Delta_timer;
+              memcpy(charger_table[ChargingGroup.Charger_number-1].HPT,"C2",2);
+              charger_table[ChargingGroup.Charger_number-1].Current = temp_chargers[index].Current;
+              charger_table[ChargingGroup.Charger_number-1].CurrentB = temp_chargers[index].CurrentB;
+              charger_table[ChargingGroup.Charger_number-1].CurrentC = temp_chargers[index].CurrentC;
+              charger_table[ChargingGroup.Charger_number-1].Delta = temp_chargers[index].Delta;
+              charger_table[ChargingGroup.Charger_number-1].Consigna = temp_chargers[index].Consigna;
+              charger_table[ChargingGroup.Charger_number-1].Delta_timer = temp_chargers[index].Delta_timer;
             }
-
-
           }
-          /*ChargingGroup.group_chargers.size = index;*/
-          store_group_in_mem(&ChargingGroup.group_chargers);
+          /*ChargingGroup.Charger_number = index;*/
+          store_group_in_mem(charger_table, ChargingGroup.Charger_number);
 
           ChargingGroup.SendNewGroup = true;
         }

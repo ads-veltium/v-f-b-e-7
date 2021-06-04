@@ -33,7 +33,9 @@ extern carac_Firebase_Configuration ConfigFirebase;
 extern carac_Status Status;
 extern carac_Params Params;
 extern carac_group  ChargingGroup;
+extern carac_charger charger_table[MAX_GROUP_SIZE];
 extern carac_Comands  Comands ;
+extern carac_circuito               Circuitos[MAX_GROUP_SIZE];
 
 static StackType_t xServerStack [4096*4]     EXT_RAM_ATTR;
 static StackType_t xLimitStack [4096*4]     EXT_RAM_ATTR;
@@ -57,6 +59,7 @@ coap_resource_t *PARAMS   EXT_RAM_ATTR;
 coap_resource_t *CONTROL  EXT_RAM_ATTR;
 coap_resource_t *CHARGERS EXT_RAM_ATTR; 
 coap_resource_t *TXANDA   EXT_RAM_ATTR; 
+coap_resource_t *CIRCUITS   EXT_RAM_ATTR; 
 
 const static char *TAG = "CoAP";
 uint8_t Esperando_datos =0;
@@ -72,12 +75,12 @@ bool hello_verification = false;
  * **************************/
 IPAddress get_IP(const char* ID);
 String Encipher(String input);
-uint8_t check_in_group(const char* ID, carac_chargers* group);
+uint8_t check_in_group(const char* ID, carac_charger* group, uint8_t size);
 
-bool add_to_group(const char* ID, IPAddress IP, carac_chargers* group);
-bool remove_from_group(const char* ID ,carac_chargers* group);
+bool add_to_group(const char* ID, IPAddress IP, carac_charger* group, uint8_t *size);
+bool remove_from_group(const char* ID ,carac_charger* group, uint8_t *size);
 
-void store_group_in_mem(carac_chargers* group);
+void store_group_in_mem(carac_charger* group, uint8_t size);
 void broadcast_a_grupo(char* Mensaje, uint16_t size);
 void send_to(IPAddress IP,  char* Mensaje);
 
@@ -87,6 +90,8 @@ void send_to(IPAddress IP,  char* Mensaje);
 void Send_Params();
 void Send_Data();
 void Send_Chargers();
+void Send_Circuits();
+
 String get_passwd();
 void coap_put( char* Topic, char* Message);
 void coap_get( char* Topic);
@@ -95,20 +100,31 @@ void MasterPanicTask(void *args);
 static void
 hnd_get(coap_context_t *ctx, coap_resource_t *resource,coap_session_t *session,coap_pdu_t *request, coap_binary_t *token,coap_string_t *query, coap_pdu_t *response){    
     char buffer[500];
+    uint8_t buffer2[100];
     
     if(!memcmp(resource->uri_path->s, "CHARGERS", resource->uri_path->length)){
         itoa(GROUP_CHARGERS, buffer, 10);
         
-        if(ChargingGroup.group_chargers.size< 10){
-            sprintf(&buffer[1],"0%i",(char)ChargingGroup.group_chargers.size);
+        if(ChargingGroup.Charger_number< 10){
+            sprintf(&buffer[1],"0%i",(char)ChargingGroup.Charger_number);
         }
         else{
-            sprintf(&buffer[1],"%i",(char)ChargingGroup.group_chargers.size);
+            sprintf(&buffer[1],"%i",(char)ChargingGroup.Charger_number);
         }
         
-        for(uint8_t i=0;i< ChargingGroup.group_chargers.size;i++){
-            memcpy(&buffer[3+(i*9)],ChargingGroup.group_chargers.charger_table[i].name,8);   
-            itoa(ChargingGroup.group_chargers.charger_table[i].Fase,&buffer[11+(i*9)],10);
+        for(uint8_t i=0;i< ChargingGroup.Charger_number;i++){
+            memcpy(&buffer[3+(i*9)],charger_table[i].name,8);   
+            itoa(charger_table[i].Fase,&buffer[11+(i*9)],10);
+        }
+    }
+    else if(!memcmp(resource->uri_path->s, "CIRCUITS", resource->uri_path->length)){
+        
+        buffer2[0] = GROUP_CIRCUITS;
+
+        buffer2[1] = ChargingGroup.Circuit_number;
+        
+        for(uint8_t i=0;i< ChargingGroup.Circuit_number;i++){ 
+            buffer2[i+2] = Circuitos[i].limite_corriente;
         }
     }
     else if(!memcmp(resource->uri_path->s, "PARAMS", resource->uri_path->length)){
@@ -153,6 +169,9 @@ hnd_get(coap_context_t *ctx, coap_resource_t *resource,coap_session_t *session,c
     response->code = COAP_RESPONSE_CODE(205);
     if(strlen((char*)buffer) >0){
         coap_add_data_blocked_response(resource, session, request, response, token,COAP_MEDIATYPE_APPLICATION_JSON, 2,(size_t)strlen((char*)buffer),(const u_char*)buffer);
+    }
+    else{
+        coap_add_data_blocked_response(resource, session, request, response, token,COAP_MEDIATYPE_APPLICATION_JSON, 2,(size_t)ChargingGroup.Circuit_number + 2, buffer2);
     }
 }
 
@@ -241,13 +260,16 @@ message_handler(coap_context_t *ctx, coap_session_t *session,coap_pdu_t *sent, c
                         case TURNO:
                             char turno[2];
                             memcpy(turno, &data[1],2);
-                            if(!memcmp(ChargingGroup.group_chargers.charger_table[atoi(turno)].name,ConfigFirebase.Device_Id, 8)){
+                            if(!memcmp(charger_table[atoi(turno)].name,ConfigFirebase.Device_Id, 8)){
                                 Send_Data();
                             }
-                            
                             break;
                         case CURRENT_COMMAND:
                             New_Current(&data[1],  data_len-1);
+                            break;
+                        
+                        case GROUP_CIRCUITS:
+                            New_Circuit(&data[1],  data_len-1);
                             break;
 
                         default:
@@ -283,6 +305,10 @@ static void hnd_espressif_put(coap_context_t *ctx,coap_resource_t *resource,coap
     else if(!memcmp(resource->uri_path->s, "CONTROL", resource->uri_path->length)){
         New_Control(data,  size);
         memcpy(LastControl, data, size);
+        coap_resource_notify_observers(resource, NULL);
+    }
+    else if(!memcmp(resource->uri_path->s, "CIRCUITS", resource->uri_path->length)){
+        New_Circuit(data,  size);
         coap_resource_notify_observers(resource, NULL);
     }
     else if(!memcmp(resource->uri_path->s, "DATA", resource->uri_path->length)){
@@ -569,11 +595,14 @@ static void coap_client(void *p){
         Subscribe("CHARGERS");
         Subscribe("TXANDA");
         Subscribe("CONTROL");
+        Subscribe("CIRCUITS");
 
         //Tras autenticarnos solicitamos los cargadores del grupo y los parametros
         coap_get("CHARGERS");
         POLL(100);
         coap_get("PARAMS");
+        POLL(100);
+        coap_get("CIRCUITS");
         POLL(100);
         
         //Bucle del grupo
@@ -591,6 +620,12 @@ static void coap_client(void *p){
             else if(ChargingGroup.SendNewGroup){
                 Send_Chargers();
                 ChargingGroup.SendNewGroup = false;
+            }
+
+            //Enviar los circuitos de nuestro grupo
+            else if(ChargingGroup.SendNewCircuits){
+                Send_Circuits();
+                ChargingGroup.SendNewCircuits = false;
             }
             
             if(/*FallosEnvio > 10 || */pdTICKS_TO_MS(xTaskGetTickCount()- xMasterTimer) > 60000){
@@ -659,11 +694,12 @@ static void coap_server(void *p){
     coap_set_log_level(LOG_EMERG);
     #endif
 
-    DATA = NULL;
-    PARAMS  = NULL;
+    DATA     = NULL;
+    PARAMS   = NULL;
     CONTROL  = NULL;
-    CHARGERS  = NULL; 
-    TXANDA = NULL;
+    CHARGERS = NULL; 
+    TXANDA   = NULL;
+    CIRCUITS = NULL;
 
     while (1) {
         coap_endpoint_t *ep = NULL;
@@ -714,13 +750,18 @@ static void coap_server(void *p){
         Txanda_Name.length = sizeof("TXANDA")-1;
         Txanda_Name.s = reinterpret_cast<const uint8_t *>("TXANDA");
 
+        coap_str_const_t Circuitos_Name;
+        Circuitos_Name.length = sizeof("CIRCUITS")-1;
+        Circuitos_Name.s = reinterpret_cast<const uint8_t *>("CIRCUITS");
+
         DATA     = coap_resource_init(&Data_Name, COAP_RESOURCE_FLAGS_RELEASE_URI);
         PARAMS   = coap_resource_init(&Params_Name, COAP_RESOURCE_FLAGS_RELEASE_URI);
         CONTROL  = coap_resource_init(&Control_Name, COAP_RESOURCE_FLAGS_RELEASE_URI);
         CHARGERS = coap_resource_init(&Chargers_Name, COAP_RESOURCE_FLAGS_RELEASE_URI);
         TXANDA   = coap_resource_init(&Txanda_Name, COAP_RESOURCE_FLAGS_RELEASE_URI);
+        CIRCUITS   = coap_resource_init(&Circuitos_Name, COAP_RESOURCE_FLAGS_RELEASE_URI);
 
-        if (!DATA || !PARAMS || !CONTROL || !CHARGERS || !TXANDA) {
+        if (!DATA || !PARAMS || !CONTROL || !CHARGERS || !TXANDA || !CIRCUITS) {
             ESP_LOGE(TAG, "coap_resource_init() failed");
             goto clean_up;
         }
@@ -732,12 +773,14 @@ static void coap_server(void *p){
         coap_register_handler(CONTROL, COAP_REQUEST_PUT, hnd_espressif_put);
         coap_register_handler(CHARGERS, COAP_REQUEST_PUT, hnd_espressif_put);
         coap_register_handler(TXANDA, COAP_REQUEST_PUT, hnd_espressif_put);
+        coap_register_handler(CIRCUITS, COAP_REQUEST_PUT, hnd_espressif_put);
 
         coap_register_handler(PARAMS, COAP_REQUEST_GET, hnd_get);
         coap_register_handler(CHARGERS, COAP_REQUEST_GET, hnd_get);
         coap_register_handler(CONTROL, COAP_REQUEST_GET, hnd_get);
         coap_register_handler(DATA, COAP_REQUEST_GET, hnd_get);
         coap_register_handler(TXANDA, COAP_REQUEST_GET, hnd_get);
+        coap_register_handler(CIRCUITS, COAP_REQUEST_GET, hnd_get);
 
 
         /* We possibly want to Observe the GETs */
@@ -745,12 +788,14 @@ static void coap_server(void *p){
         coap_resource_set_get_observable(PARAMS, 1);
         coap_resource_set_get_observable(CONTROL, 1);
         coap_resource_set_get_observable(CHARGERS, 1);
+        coap_resource_set_get_observable(CIRCUITS, 1);
 
         coap_add_resource(ctx, DATA);
         coap_add_resource(ctx, PARAMS);
         coap_add_resource(ctx, CONTROL);
         coap_add_resource(ctx, TXANDA);
         coap_add_resource(ctx, CHARGERS);
+        coap_add_resource(ctx, CIRCUITS);
 
         int wait_ms = 250;
         TickType_t xStart = xTaskGetTickCount();
@@ -809,7 +854,7 @@ static void coap_server(void *p){
             //Pedir datos a los esclavos para que no envíen todos a la vez
             if(pdTICKS_TO_MS(xTaskGetTickCount() - xTimerTurno) >= 250){
                 turno++;        
-                if(turno == ChargingGroup.group_chargers.size){
+                if(turno == ChargingGroup.Charger_number){
                     turno=1;
                     Send_Data(); //Mandar mis datos
                 }
@@ -822,24 +867,24 @@ static void coap_server(void *p){
             int Transcurrido = pdTICKS_TO_MS(xTaskGetTickCount() - xStart);
             if(Transcurrido > 15000){
                 xStart = xTaskGetTickCount();
-                for(uint8_t i=0 ;i<ChargingGroup.group_chargers.size;i++){
-                    ChargingGroup.group_chargers.charger_table[i].Period += Transcurrido;
+                for(uint8_t i=0 ;i<ChargingGroup.Charger_number;i++){
+                    charger_table[i].Period += Transcurrido;
                     //si un equipo lleva mucho sin contestar, lo intentamos despertar
-                    if(ChargingGroup.group_chargers.charger_table[i].Period >=30000){ 
-                        send_to(get_IP(ChargingGroup.group_chargers.charger_table[i].name), "Start client");
+                    if(charger_table[i].Period >=30000){ 
+                        send_to(get_IP(charger_table[i].name), "Start client");
                     }
                     
                     //si un equipo lleva muchisimo sin contestar, lo damos por muerto y lo eliminamos de la tabla
-                    if(ChargingGroup.group_chargers.charger_table[i].Period >=60000 && ChargingGroup.group_chargers.charger_table[i].Period <= 65000){
-                        if(memcmp(ChargingGroup.group_chargers.charger_table[i].name, ConfigFirebase.Device_Id,8)){
-                            memcpy(ChargingGroup.group_chargers.charger_table[i].HPT, "0V", 2);
-                            ChargingGroup.group_chargers.charger_table[i].Current     = 0;
-                            ChargingGroup.group_chargers.charger_table[i].CurrentB    = 0;
-                            ChargingGroup.group_chargers.charger_table[i].CurrentC    = 0;
-                            ChargingGroup.group_chargers.charger_table[i].Consigna    = 0;
-                            ChargingGroup.group_chargers.charger_table[i].Delta       = 0;
-                            ChargingGroup.group_chargers.charger_table[i].Delta_timer = 0;
-                            ChargingGroup.group_chargers.charger_table[i].Conected    = 0;
+                    if(charger_table[i].Period >=60000 && charger_table[i].Period <= 65000){
+                        if(memcmp(charger_table[i].name, ConfigFirebase.Device_Id,8)){
+                            memcpy(charger_table[i].HPT, "0V", 2);
+                            charger_table[i].Current     = 0;
+                            charger_table[i].CurrentB    = 0;
+                            charger_table[i].CurrentC    = 0;
+                            charger_table[i].Consigna    = 0;
+                            charger_table[i].Delta       = 0;
+                            charger_table[i].Delta_timer = 0;
+                            charger_table[i].Conected    = 0;
                         }
                     }
                 }
@@ -872,7 +917,7 @@ void Send_Data(){
   Datos_Json = cJSON_CreateObject();
 
   cJSON_AddStringToObject(Datos_Json, "device_id", ConfigFirebase.Device_Id);
-  cJSON_AddNumberToObject(Datos_Json, "current", Status.Measures.instant_current);
+  cJSON_AddNumberToObject(Datos_Json, "current", 600);//Status.Measures.instant_current);
 
   //si es trifasico, enviar informacion de todas las fases
   if(Status.Trifasico){
@@ -899,18 +944,61 @@ void Send_Data(){
 void Send_Chargers(){
   char buffer[500];
 
-  if(ChargingGroup.group_chargers.size< 10){
-      sprintf(buffer,"0%i",(char)ChargingGroup.group_chargers.size);
+  if(ChargingGroup.Charger_number< 10){
+      sprintf(buffer,"0%i",(char)ChargingGroup.Charger_number);
   }
   else{
-      sprintf(buffer,"%i",(char)ChargingGroup.group_chargers.size);
+      sprintf(buffer,"%i",(char)ChargingGroup.Charger_number);
   }
   
-  for(uint8_t i=0;i< ChargingGroup.group_chargers.size;i++){
-      memcpy(&buffer[2+(i*9)],ChargingGroup.group_chargers.charger_table[i].name,8);   
-      itoa(ChargingGroup.group_chargers.charger_table[i].Fase,&buffer[10+(i*9)],10);
+  for(uint8_t i=0;i< ChargingGroup.Charger_number;i++){
+      memcpy(&buffer[2+(i*9)],charger_table[i].name,8);   
+      itoa(charger_table[i].Fase,&buffer[10+(i*9)],10);
   }
   coap_put("CHARGERS", buffer);
+}
+
+//enviar circuitos
+void Send_Circuits(){
+    uint8_t buffer[100];
+
+    buffer[0] = ChargingGroup.Circuit_number;
+    
+    for(uint8_t i=0;i< ChargingGroup.Circuit_number;i++){ 
+        buffer[i+1] = Circuitos[i].limite_corriente;
+    }
+
+    coap_pdu_t *request = NULL;
+
+    if (optlist) {
+        coap_delete_optlist(optlist);
+        optlist = NULL;
+    }
+
+    if(ChargingGroup.Params.GroupMaster){
+        New_Circuit(buffer,  ChargingGroup.Circuit_number +1);
+        coap_resource_notify_observers(CIRCUITS, NULL);
+    }
+    else{
+        coap_insert_optlist(&optlist,coap_new_optlist(COAP_OPTION_URI_PATH,strlen("CIRCUITS"),(const uint8_t*)"CIRCUITS"));
+
+        request = coap_new_pdu(session);
+        if (!request) {
+            ESP_LOGE(TAG, "coap_new_pdu() failed");
+            return;
+        }
+        request->type = COAP_MESSAGE_CON;
+        request->tid = coap_new_message_id(session);
+        request->code = COAP_REQUEST_PUT;
+
+        coap_add_optlist_pdu(request, &optlist);
+
+        coap_add_data(request, ChargingGroup.Circuit_number + 1,buffer);
+
+        coap_send(session, request);
+
+        Esperando_datos =1;
+    }
 }
 
 //Enviar parametros
@@ -969,7 +1057,7 @@ void MasterPanicTask(void *args){
         if(pdTICKS_TO_MS(xTaskGetTickCount() - xStart) > delai){ //si pasan 30 segundos, elegir un nuevo maestro
             delai=500;           
 
-            if(!memcmp(ChargingGroup.group_chargers.charger_table[reintentos].name,ConfigFirebase.Device_Id,8)){
+            if(!memcmp(charger_table[reintentos].name,ConfigFirebase.Device_Id,8)){
                 ChargingGroup.Params.GroupActive = true;
                 ChargingGroup.Params.GroupMaster = true;
                 break;
@@ -977,9 +1065,9 @@ void MasterPanicTask(void *args){
             else{
                 xStart = xTaskGetTickCount();
                 reintentos++;
-                if(reintentos == ChargingGroup.group_chargers.size){
+                if(reintentos == ChargingGroup.Charger_number){
                     //Ultima opcion, mirar si yo era el maestro
-                    if(!memcmp(ChargingGroup.group_chargers.charger_table[0].name,ConfigFirebase.Device_Id,8)){
+                    if(!memcmp(charger_table[0].name,ConfigFirebase.Device_Id,8)){
                         ChargingGroup.Params.GroupActive = true;
                         ChargingGroup.Params.GroupMaster = true;
                     }
@@ -1039,14 +1127,14 @@ void coap_start_server(){
         broadcast_a_grupo("Start client", 12);
 
         //Ponerme el primero en el grupo para indicar que soy el maestro
-        if(ChargingGroup.group_chargers.size>0 && check_in_group(ConfigFirebase.Device_Id,&ChargingGroup.group_chargers ) != 255){
-            while(memcmp(ChargingGroup.group_chargers.charger_table[0].name,ConfigFirebase.Device_Id, 8)){
-                carac_charger OldMaster=ChargingGroup.group_chargers.charger_table[0];
-                remove_from_group(OldMaster.name, &ChargingGroup.group_chargers);
-                add_to_group(OldMaster.name, OldMaster.IP, &ChargingGroup.group_chargers);
-                ChargingGroup.group_chargers.charger_table[ChargingGroup.group_chargers.size-1].Fase=OldMaster.Fase;
+        if(ChargingGroup.Charger_number>0 && check_in_group(ConfigFirebase.Device_Id,charger_table, ChargingGroup.Charger_number ) != 255){
+            while(memcmp(charger_table[0].name,ConfigFirebase.Device_Id, 8)){
+                carac_charger OldMaster=charger_table[0];
+                remove_from_group(OldMaster.name, charger_table, &ChargingGroup.Charger_number);
+                add_to_group(OldMaster.name, OldMaster.IP, charger_table, &ChargingGroup.Charger_number);
+                charger_table[ChargingGroup.Charger_number-1].Fase=OldMaster.Fase;
             }
-            store_group_in_mem(&ChargingGroup.group_chargers);
+            store_group_in_mem(charger_table, ChargingGroup.Charger_number);
         }
         else{
             //Si el grupo está vacio o el cargador no está en el grupo,

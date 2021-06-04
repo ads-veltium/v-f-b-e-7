@@ -274,11 +274,6 @@ typedef struct{
 }carac_charger;
 
 typedef struct{
-    carac_charger charger_table[50];
-    uint8_t size = 0;
-}carac_chargers;
-
-typedef struct{
 	uint8_t GroupMaster = 0;
     uint8_t GroupActive = 0;
 	uint8_t inst_max    = 0;
@@ -290,20 +285,33 @@ typedef struct{
 }carac_group_params;
 
 typedef struct{
+    uint8_t numero = 0;
+    uint8_t limite_corriente = 32;
+	int corriente_total = 0;
+    int conex = 0;
+    int consigna_total = 0;
+	int corriente_sobrante = 0;
+    float corriente_disponible = 0;
+}carac_circuito;
+
+typedef struct{
 	bool AskPerm   = false;
 	bool SendNewParams = false;
 	bool SendNewGroup  = false;
+	bool SendNewCircuits  = false;
 	bool Conected	   = false;
 	bool StopOrder     = false;
 	bool DeleteOrder   = false;
 	bool StartClient   = false;
 	bool ChargPerm     = false;
 	bool Finding       = false;
+	uint8_t Circuit_number = 0;
+	uint8_t Charger_number = 0;
 
 	IPAddress MasterIP;
 
-	carac_chargers group_chargers;
 	carac_group_params Params;
+	carac_circuito circuitos[50];
 
 	char GroupId[10] = {'0'};
 	long long last_ts_app_req= 0;

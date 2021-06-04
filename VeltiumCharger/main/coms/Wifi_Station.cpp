@@ -31,6 +31,7 @@ void StopServer(void);
 
 #ifdef USE_GROUPS
 extern carac_group  ChargingGroup;
+
 void coap_start_server();
 void coap_start_client();
 void start_udp();

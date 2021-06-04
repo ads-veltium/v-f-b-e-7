@@ -10,18 +10,20 @@ extern carac_Status Status;
 extern carac_Comands Comands;
 extern carac_Firebase_Configuration ConfigFirebase;
 extern carac_group    ChargingGroup;
+extern carac_charger charger_table[MAX_GROUP_SIZE];
+extern carac_circuito Circuitos[MAX_GROUP_SIZE];
 
-bool add_to_group(const char* ID, IPAddress IP, carac_chargers* group);
-void remove_group(carac_chargers* group);
-uint8_t check_in_group(const char* ID, carac_chargers* group);
-void mqtt_publish(char* Topic, char* Data, size_t data_size, size_t topic_size);
-void store_group_in_mem(carac_chargers* group);
+bool add_to_group(const char* ID, IPAddress IP, carac_charger* group, uint8_t* size);
+void remove_group(carac_charger* group, uint8_t* size);
+uint8_t check_in_group(const char* ID, carac_charger* group, uint8_t size);
+void store_group_in_mem(carac_charger* group, uint8_t size);
 IPAddress get_IP(const char* ID);
 
 TickType_t xStart;
 TickType_t xStart1;
 
 static carac_fase Fases[3];
+
 
 int Delta_total;
 
@@ -84,16 +86,16 @@ carac_charger New_Data(char* Data, int Data_size){
 
     //Actualizacion del grupo total
     //Buscar el equipo en el grupo total
-    uint8_t index = check_in_group(Cargador.name,&ChargingGroup.group_chargers);                  
+    uint8_t index = check_in_group(Cargador.name, charger_table, ChargingGroup.Charger_number);                  
     if(index < 255){
-        ChargingGroup.group_chargers.charger_table[index].Conected = true;
-        ChargingGroup.group_chargers.charger_table[index].Baimena = Cargador.Baimena;
-        ChargingGroup.group_chargers.charger_table[index].Current = Cargador.Current;
-        ChargingGroup.group_chargers.charger_table[index].CurrentB = Cargador.CurrentB;
-        ChargingGroup.group_chargers.charger_table[index].CurrentC = Cargador.CurrentC;
-        memcpy(ChargingGroup.group_chargers.charger_table[index].HPT, Cargador.HPT,3);
-        ChargingGroup.group_chargers.charger_table[index].Period = 0;
-        Cargador = ChargingGroup.group_chargers.charger_table[index];
+        charger_table[index].Conected = true;
+        charger_table[index].Baimena = Cargador.Baimena;
+        charger_table[index].Current = Cargador.Current;
+        charger_table[index].CurrentB = Cargador.CurrentB;
+        charger_table[index].CurrentC = Cargador.CurrentC;
+        memcpy(charger_table[index].HPT, Cargador.HPT,3);
+        charger_table[index].Period = 0;
+        Cargador = charger_table[index];
     }
 
     return Cargador;
@@ -172,8 +174,8 @@ void New_Control(char* Data, int Data_size){
     ChargingGroup.DeleteOrder = false;
     ChargingGroup.StopOrder = true;
     
-    remove_group(&ChargingGroup.group_chargers);
-    store_group_in_mem(&ChargingGroup.group_chargers);
+    remove_group(charger_table, &ChargingGroup.Charger_number);
+    store_group_in_mem(charger_table,ChargingGroup.Charger_number);
 
     char buffer[7];
     memcpy(&buffer,&ChargingGroup.Params,7);
@@ -217,6 +219,21 @@ void New_Current(uint8_t* Buffer, int Data_size){
 
 }
 
+void New_Circuit(uint8_t* Buffer, int Data_size){
+  if(Data_size <=0){
+    return;
+  }
+
+  ChargingGroup.Circuit_number = Buffer[0];
+  printf("Nuevos circuitos recibidos\n");
+  for(uint8_t i=0; i<ChargingGroup.Circuit_number;i++){
+    Circuitos[i].limite_corriente = Buffer[i+1];
+    printf("%i ", Circuitos[i].limite_corriente);
+  }
+  printf("\n");
+  
+}
+
 void New_Group(uint8_t* Buffer, int Data_size){  
   if(Data_size <=0){
     return;
@@ -238,55 +255,56 @@ void New_Group(char* Data, int Data_size){
     uint8_t numero_de_cargadores = atoi(n);
 
     //crear una copia temporal para almacenar los que están cargando
-    carac_chargers temp_chargers;
+    carac_charger temp_chargers[MAX_GROUP_SIZE];
+    uint8_t temp_chargers_size = 0;
 
-    for(uint8_t i=0; i<ChargingGroup.group_chargers.size;i++){    
-      if(!memcmp(ChargingGroup.group_chargers.charger_table[i].HPT, "C2",2)){
-          memcpy(temp_chargers.charger_table[temp_chargers.size].name,ChargingGroup.group_chargers.charger_table[i].name,9);
-          temp_chargers.charger_table[temp_chargers.size].Current = ChargingGroup.group_chargers.charger_table[i].Current;
-          temp_chargers.charger_table[temp_chargers.size].CurrentB = ChargingGroup.group_chargers.charger_table[i].CurrentB;
-          temp_chargers.charger_table[temp_chargers.size].CurrentC = ChargingGroup.group_chargers.charger_table[i].CurrentC;
+    for(uint8_t i=0; i<ChargingGroup.Charger_number;i++){    
+      if(!memcmp(charger_table[i].HPT, "C2",2)){
+          memcpy(temp_chargers[temp_chargers_size].name,charger_table[i].name,9);
+          temp_chargers[temp_chargers_size].Current = charger_table[i].Current;
+          temp_chargers[temp_chargers_size].CurrentB = charger_table[i].CurrentB;
+          temp_chargers[temp_chargers_size].CurrentC = charger_table[i].CurrentC;
 
-          temp_chargers.charger_table[temp_chargers.size].Delta = ChargingGroup.group_chargers.charger_table[i].Delta;
-          temp_chargers.charger_table[temp_chargers.size].Consigna = ChargingGroup.group_chargers.charger_table[i].Consigna;
-          temp_chargers.charger_table[temp_chargers.size].Delta_timer = ChargingGroup.group_chargers.charger_table[i].Delta_timer;
+          temp_chargers[temp_chargers_size].Delta = charger_table[i].Delta;
+          temp_chargers[temp_chargers_size].Consigna = charger_table[i].Consigna;
+          temp_chargers[temp_chargers_size].Delta_timer = charger_table[i].Delta_timer;
           
           
-          temp_chargers.size ++;
+          temp_chargers_size ++;
       }
     }
 
-    ChargingGroup.group_chargers.size = 0;
+    ChargingGroup.Charger_number = 0;
 
     for(uint8_t i=0; i<numero_de_cargadores;i++){    
         for(uint8_t j =0; j< 8; j++){
             ID[j]=(char)Data[2+i*9+j];
         }
 
-        add_to_group(ID, get_IP(ID), &ChargingGroup.group_chargers);
+        add_to_group(ID, get_IP(ID), charger_table, &ChargingGroup.Charger_number);
 
-        ChargingGroup.group_chargers.charger_table[i].Fase = Data[10+i*9]-'0';
+        charger_table[i].Fase = Data[10+i*9]-'0';
 
-        uint8_t index =check_in_group(ID, &temp_chargers);
+        uint8_t index =check_in_group(ID, temp_chargers, temp_chargers_size);
         if(index != 255){
-          memcpy(ChargingGroup.group_chargers.charger_table[i].HPT,"C2",2);
-          ChargingGroup.group_chargers.charger_table[i].Current = temp_chargers.charger_table[index].Current;
-          ChargingGroup.group_chargers.charger_table[i].CurrentB = temp_chargers.charger_table[index].CurrentB;
-          ChargingGroup.group_chargers.charger_table[i].CurrentC = temp_chargers.charger_table[index].CurrentC;
-          ChargingGroup.group_chargers.charger_table[i].Delta = temp_chargers.charger_table[index].Delta;
-          ChargingGroup.group_chargers.charger_table[i].Consigna = temp_chargers.charger_table[index].Consigna;
-          ChargingGroup.group_chargers.charger_table[i].Delta_timer = temp_chargers.charger_table[index].Delta_timer;
+          memcpy(charger_table[i].HPT,"C2",2);
+          charger_table[i].Current = temp_chargers[index].Current;
+          charger_table[i].CurrentB = temp_chargers[index].CurrentB;
+          charger_table[i].CurrentC = temp_chargers[index].CurrentC;
+          charger_table[i].Delta = temp_chargers[index].Delta;
+          charger_table[i].Consigna = temp_chargers[index].Consigna;
+          charger_table[i].Delta_timer = temp_chargers[index].Delta_timer;
         }
         
 
         if(!memcmp(ID,ConfigFirebase.Device_Id,8)){
-            ChargingGroup.group_chargers.charger_table[i].Conected = true;
+            charger_table[i].Conected = true;
             Params.Fase =Data[10+i*9]-'0';
         }
     }
 
-    store_group_in_mem(&ChargingGroup.group_chargers);
-    print_table(ChargingGroup.group_chargers, "Grupo desde COAP");
+    store_group_in_mem(charger_table, ChargingGroup.Charger_number);
+    print_table(charger_table, "Grupo desde COAP",ChargingGroup.Charger_number);
 }
 
 void LimiteConsumo(void *p){
@@ -306,15 +324,13 @@ void LimiteConsumo(void *p){
     switch(ControlGrupoState){
       //Estado reposo, no hay nadie cargando
       case REPOSO:
-        for(int i = 0; i < ChargingGroup.group_chargers.size; i++){
-          if(!memcmp(ChargingGroup.group_chargers.charger_table[i].HPT, "B1", 2) && ChargingGroup.group_chargers.charger_table[i].Baimena){
-            printf("%s me esta pidiendo permiso! \n", ChargingGroup.group_chargers.charger_table[i].name);
-            printf("Se lo doy porque no hay nadie mas cargando\n");
-            memcpy(ChargingGroup.group_chargers.charger_table[i].HPT, "C2", 2);
+        for(int i = 0; i < ChargingGroup.Charger_number; i++){
+          if(!memcmp(charger_table[i].HPT, "B1", 2) && charger_table[i].Baimena){
+            memcpy(charger_table[i].HPT, "C2", 2);
             ControlGrupoState = CALCULO;
           }
           else{
-            ChargingGroup.group_chargers.charger_table[i].Consigna = 0;
+            charger_table[i].Consigna = 0;
           }
         }
           
@@ -329,76 +345,34 @@ void LimiteConsumo(void *p){
           break;
         }
         float Corriente_disponible_total = ChargingGroup.Params.potencia_max / Conex;
-        printf("Corriente_disponible_total %f \n", Corriente_disponible_total);
-        printf("Corriente disponible fase 1 %f \n", Fases[0].corriente_disponible);
-        printf("Corriente disponible fase 2 %f \n", Fases[1].corriente_disponible);
-        printf("Corriente disponible fase 3 %f \n", Fases[2].corriente_disponible);
 
-
-        //Repartir toda la potenica disponible viendo cual es la mas pequeña
-        for(int i = 0; i < ChargingGroup.group_chargers.size; i++){
-          if(!memcmp(ChargingGroup.group_chargers.charger_table[i].HPT,"C2",2)){
-            ChargingGroup.group_chargers.charger_table[i].Consigna = Fases[ChargingGroup.group_chargers.charger_table[i].Fase-1].corriente_disponible >= Corriente_disponible_total ? Corriente_disponible_total : Fases[ChargingGroup.group_chargers.charger_table[i].Fase-1].corriente_disponible;
-            ChargingGroup.group_chargers.charger_table[i].Consigna = ChargingGroup.group_chargers.charger_table[i].Consigna > 32 ? 32 : ChargingGroup.group_chargers.charger_table[i].Consigna;
+        //Repartir toda la potencia disponible viendo cual es la mas pequeña
+        for(int i = 0; i < ChargingGroup.Charger_number; i++){
+          if(!memcmp(charger_table[i].HPT,"C2",2)){
+            if(Fases[charger_table[i].Fase-1].corriente_disponible <= Corriente_disponible_total /*&& Fases[charger_table[i].Fase-1].corriente_disponible <= Circuitos[charger_table[i].Circuito-1].corriente_disponible*/)
+              charger_table[i].Consigna =  Fases[charger_table[i].Fase-1].corriente_disponible;
+            /*else if(Corriente_disponible_total <= Circuitos[charger_table[i].Circuito-1].corriente_disponible)
+              charger_table[i].Consigna = Corriente_disponible_total;*/
+            else
+              charger_table[i].Consigna = Corriente_disponible_total;
+            
+            
+            charger_table[i].Consigna = charger_table[i].Consigna > 32 ? 32 : charger_table[i].Consigna;
           }
         }
 
-        //Repartir la corriente sobrante
+        //Intentar repartir la corriente sobrante
         if(Delta_total > 0){
-          uint16_t Delta_disponible = 0;
-          
-          if(Conex_Delta >= Conex)
-            Delta_disponible = Delta_total / 1;
-          else
-            Delta_disponible = Delta_total / ( Conex - Conex_Delta);
-
-          for(int i = 0; i < ChargingGroup.group_chargers.size; i++){
-            if(!memcmp(ChargingGroup.group_chargers.charger_table[i].HPT,"C2",2)){
-              if(ChargingGroup.group_chargers.charger_table[i].Delta > 0){
-                ChargingGroup.group_chargers.charger_table[i].Consigna = ChargingGroup.group_chargers.charger_table[i].Current / 100;
-              }
-              else{
-                uint16_t current_limit = ChargingGroup.Params.inst_max > ChargingGroup.Params.potencia_max ? ChargingGroup.Params.potencia_max :  ChargingGroup.Params.inst_max;
-                if(ChargingGroup.group_chargers.charger_table[i].Consigna + Delta_disponible > current_limit){
-                  ChargingGroup.group_chargers.charger_table[i].Consigna = ChargingGroup.group_chargers.charger_table[i].Consigna +Delta_disponible > 32 ? 32 : ChargingGroup.group_chargers.charger_table[i].Consigna + Delta_disponible;
-                } 
-              }
-            }
-          }
+          Reparto_Delta();
         }
 
-        //Check 
-        int Suma_Consignas = 0;
-        int Suma_Consignas1 = 0;
-        int Suma_Consignas2 = 0;
-        int Suma_Consignas3 = 0;
-        
-        for(int i = 0; i < ChargingGroup.group_chargers.size; i++){
-          Suma_Consignas += ChargingGroup.group_chargers.charger_table[i].Consigna; 
-
-          if(ChargingGroup.group_chargers.charger_table[i].Fase == 1){
-            Suma_Consignas1 += ChargingGroup.group_chargers.charger_table[i].Consigna;
-          }
-
-          if(ChargingGroup.group_chargers.charger_table[i].Fase == 2){
-            Suma_Consignas2 += ChargingGroup.group_chargers.charger_table[i].Consigna;
-          }
-
-          if(ChargingGroup.group_chargers.charger_table[i].Fase == 3){
-            Suma_Consignas3 += ChargingGroup.group_chargers.charger_table[i].Consigna;
-          }
-        }
-
-        printf("Sumas de las consgnas %i %i %i %i \n", Suma_Consignas1, Suma_Consignas2, Suma_Consignas3, Suma_Consignas);
-
-        print_table(ChargingGroup.group_chargers, "Calculo de grupo");
         ControlGrupoState = EQUILIBRADO;
-      break;
+        break;
       }
 
       case EQUILIBRADO:{
         cls();
-        print_table(ChargingGroup.group_chargers, "Grupo en equilibrado");
+        print_table(charger_table, "Grupo en equilibrado", ChargingGroup.Charger_number);
         //Calculo general
         Calculo_General();
 
@@ -410,55 +384,82 @@ void LimiteConsumo(void *p){
         }
         LastConex = Conex;
 
+        //Comprobar si en algun momento nos estamos pasando de los limites
+        if(Consumo_total > ChargingGroup.Params.potencia_max){
+          ControlGrupoState = CALCULO;
+          break;
+        }
+
+        //Comprobar que no nos pasamos de los limites de las fases
+        for(uint8_t i =0; i < 3; i++){
+          if(Fases[i].corriente_total > ChargingGroup.Params.inst_max || Fases[i].consigna_total > ChargingGroup.Params.inst_max){
+            ControlGrupoState = CALCULO;
+            break;
+          }
+        }
+
+        //Comprobar que no nos pasamos de los limites de los circuitos
+        /*for(uint8_t i =0; i < ChargingGroup.Circuit_number; i++){
+          if(Circuitos[i].corriente_total > ChargingGroup.Params.inst_max || Circuitos[i].consigna_total > ChargingGroup.Params.inst_max){
+            ControlGrupoState = CALCULO;
+            break;
+          }
+        }*/
+
+        if(ControlGrupoState == CALCULO){
+          break;
+        }
+            
+
         //Comprobar si algun equipo quiere comenzar a cargar
-        for(int i = 0; i < ChargingGroup.group_chargers.size; i++){
-          if(!memcmp(ChargingGroup.group_chargers.charger_table[i].HPT, "B1", 2) && ChargingGroup.group_chargers.charger_table[i].Baimena){
-            printf("%s me esta pidiendo permiso! \n", ChargingGroup.group_chargers.charger_table[i].name);
-
-            printf("Corriente_disponible_total %f \n", (float)(ChargingGroup.Params.potencia_max / (Conex+1)));
-            printf("Corriente disponible fase 1 %f \n", Fases[0].corriente_disponible);
-            printf("Corriente disponible fase 2 %f \n", Fases[1].corriente_disponible);
-            printf("Corriente disponible fase 3 %f \n", Fases[2].corriente_disponible);
-
+        for(int i = 0; i < ChargingGroup.Charger_number; i++){
+          if(!memcmp(charger_table[i].HPT, "B1", 2) && charger_table[i].Baimena){
             //Compruebo si entraria en el grupo con la corriente general
-            if(ChargingGroup.Params.potencia_max / (Conex+1) > 6){
+            if(ChargingGroup.Params.potencia_max / (Conex+1) >= 6){
               printf("Entra en el grupo!\n");
               //Compruebo si entraria en la fase 
-              if(ChargingGroup.Params.inst_max / (Fases[ChargingGroup.group_chargers.charger_table[i].Fase-1].conex +1) > 6){
-                //TODO: Añadir circuito!!!
+              if(ChargingGroup.Params.inst_max / (Fases[charger_table[i].Fase-1].conex +1) > 6){
                 printf("Entra en la fase!\n");
-                memcpy(ChargingGroup.group_chargers.charger_table[i].HPT, "C2", 2);
-                ControlGrupoState = CALCULO;
-                break;
+                //Compruebo si entraria en el circuito
+                //if(ChargingGroup.Params.inst_max / (Circuitos[charger_table[i].Circuito-1].conex +1) > 6){
+                  printf("Entra en el circuito!\n");
+                  memcpy(charger_table[i].HPT, "C2", 2);
+                  ControlGrupoState = CALCULO;
+                //}
               }
             }
 
             printf("No hay sitio en el grupo!\n");
-            ChargingGroup.group_chargers.charger_table[i].Consigna = 0;
+            charger_table[i].Consigna = 0;
           }
         }
 
         uint16_t transcurrido = pdTICKS_TO_MS (xTaskGetTickCount() - Delta_Timer);
 
-        //Comprobar si alguno de los cargadores tiene corriente de sobra (delta) solo si hay mas de uno
+        //Comprobar si alguno de los cargadores tiene corriente de sobra (delta) solo si hay mas de uno cargando
+        //Si el equipo es trifasico, solo tenemos en cuenta la corriente de su fase principal
         if(Conex >1){
-          for(int i = 0; i < ChargingGroup.group_chargers.size; i++){
-            if(!memcmp(ChargingGroup.group_chargers.charger_table[i].HPT,"C2",2)){
-              uint16_t Delta_cargador = ChargingGroup.group_chargers.charger_table[i].Consigna - ChargingGroup.group_chargers.charger_table[i].Current / 100;
-              
+          for(int i = 0; i < ChargingGroup.Charger_number; i++){
+            if(!memcmp(charger_table[i].HPT,"C2",2)){
+              uint8 Delta_cargador = 0;
+
+              if(charger_table[i].Consigna > charger_table[i].Current / 100)
+                Delta_cargador = charger_table[i].Consigna - charger_table[i].Current / 100;
+              else
+                Delta_cargador = 0;
+
               if(Delta_cargador > 2){
-                printf("Transcurrido %i \n", transcurrido);
-                ChargingGroup.group_chargers.charger_table[i].Delta_timer = ChargingGroup.group_chargers.charger_table[i].Delta_timer + transcurrido;
-                printf("Transcurrido %i \n", ChargingGroup.group_chargers.charger_table[i].Delta_timer);
+                charger_table[i].Delta_timer = charger_table[i].Delta_timer + transcurrido;
               }
               else{
-                ChargingGroup.group_chargers.charger_table[i].Delta_timer = 0;
+                charger_table[i].Delta_timer = 0;
+                charger_table[i].Delta = 0;
               }
 
               //Si transcurre un minuto sin alcanzar la consigna
-              if(ChargingGroup.group_chargers.charger_table[i].Delta_timer > 60000){
-                ChargingGroup.group_chargers.charger_table[i].Delta = Delta_cargador;
-                ChargingGroup.group_chargers.charger_table[i].Delta_timer = 0;
+              if(charger_table[i].Delta_timer > 60000){
+                charger_table[i].Delta = Delta_cargador;
+                charger_table[i].Delta_timer = 0;
                 ControlGrupoState = CALCULO;
               } 
             }
@@ -499,43 +500,107 @@ void Calculo_General(){
         Fases[i].consigna_total  = 0;
     }
 
-    for(int i = 0; i < ChargingGroup.group_chargers.size; i++){
+    for(uint8_t i =0; i < ChargingGroup.Circuit_number; i++){
+        Circuitos[i].conex = 0;
+        Circuitos[i].corriente_total = 0;
+        Circuitos[i].consigna_total  = 0;
+    }
+
+    for(int i = 0; i < ChargingGroup.Charger_number; i++){
 
         //Datos por Grupo
-        if(!memcmp(ChargingGroup.group_chargers.charger_table[i].HPT,"C2",2)){
+        if(!memcmp(charger_table[i].HPT,"C2",2)){
             Conex++;
+            uint8_t faseA, faseB = 0, faseC = 0;
+            faseA =charger_table[i].Fase -1;
+
             //Datos por fase
-            Fases[ChargingGroup.group_chargers.charger_table[i].Fase-1].conex++;
-            Fases[ChargingGroup.group_chargers.charger_table[i].Fase-1].corriente_total += ChargingGroup.group_chargers.charger_table[i].Current;
-            Fases[ChargingGroup.group_chargers.charger_table[i].Fase-1].consigna_total += ChargingGroup.group_chargers.charger_table[i].Consigna;
+            Fases[faseA].conex++;
+            Fases[faseA].corriente_total += charger_table[i].Current;
+            Fases[faseA].consigna_total += charger_table[i].Consigna;
+            
+            //Si es trifasico, los datos deben ir a todas las fases
+            if(charger_table[i].CurrentB > 0 || charger_table[i].CurrentC > 0){
+              switch(faseA){
+                case 0:
+                  faseB = 1;
+                  faseC = 2;
+                  break;
+
+                case 1:
+                  faseB = 2;
+                  faseC = 0;
+                  break;
+
+                case 2:
+                  faseB = 0;
+                  faseC = 1;
+                  break;
+              }
+              
+              if(charger_table[i].CurrentB > 0 ){
+                Fases[faseB].conex++;
+                Fases[faseB].corriente_total += charger_table[i].CurrentB;
+                Fases[faseB].consigna_total += charger_table[i].Consigna;
+              }
+              if(charger_table[i].CurrentC > 0 ){
+                Fases[faseC].conex++;
+                Fases[faseC].corriente_total += charger_table[i].CurrentC;
+                Fases[faseC].consigna_total += charger_table[i].Consigna;
+              }
+            }
+
+            //si no es trifasico, actualizamos circuitos
+            else{
+              //Datos por circuito
+              Circuitos[charger_table[i].Circuito-1].conex++;
+              Circuitos[charger_table[i].Circuito-1].corriente_total += charger_table[i].Current;
+              Circuitos[charger_table[i].Circuito-1].consigna_total += charger_table[i].Consigna;
+            }
 
             //Comprobar si alguno tiene corriente de sobra
-            if(ChargingGroup.group_chargers.charger_table[i].Delta > 0){
-              Delta_total += ChargingGroup.group_chargers.charger_table[i].Delta;
+            if(charger_table[i].Delta > 0){
+              Delta_total += charger_table[i].Delta;
               Conex_Delta ++;
             }
         }
-        else if(!memcmp(ChargingGroup.group_chargers.charger_table[i].HPT,"A1",2) || !memcmp(ChargingGroup.group_chargers.charger_table[i].HPT,"0V",2)){
-            ChargingGroup.group_chargers.charger_table[i].Current = 0;
-            ChargingGroup.group_chargers.charger_table[i].Delta = 0;
-            ChargingGroup.group_chargers.charger_table[i].Delta_timer = 0;
-            ChargingGroup.group_chargers.charger_table[i].CurrentB = 0;
-            ChargingGroup.group_chargers.charger_table[i].CurrentC = 0;
+
+        //A los que no estan cargando les reseteamos los valores
+        else if(!memcmp(charger_table[i].HPT,"A1",2) || !memcmp(charger_table[i].HPT,"0V",2)){
+            charger_table[i].Current = 0;
+            charger_table[i].Delta = 0;
+            charger_table[i].Delta_timer = 0;
+            charger_table[i].CurrentB = 0;
+            charger_table[i].CurrentC = 0;
         }
-        total_pc += ChargingGroup.group_chargers.charger_table[i].Current;
+        total_pc += charger_table[i].Current;
     }   
 
 
+    //corrientes por fase
     for(uint8_t i =0; i < 3; i++){
       Fases[i].corriente_total /= 100;
-
-      //Ver corriente disponible en fase
+      //Calcular la corriente disponible en cada fase
       if(Fases[i].conex > 0){
         Fases[i].corriente_disponible = ChargingGroup.Params.inst_max / Fases[i].conex;
       }
       else{
         Fases[i].corriente_disponible = ChargingGroup.Params.inst_max;
       }
+      Fases[i].corriente_sobrante = ChargingGroup.Params.inst_max - Fases[i].consigna_total;
+    }
+
+    //Corrientes por circuito
+    for(uint8_t i =0; i < ChargingGroup.Circuit_number; i++){
+      Circuitos[i].corriente_total /= 100;
+      //Calcular la corriente disponible en cada circuito
+      if(Circuitos[i].conex > 0){
+        Circuitos[i].corriente_disponible = Circuitos[i].limite_corriente / Circuitos[i].conex;
+      }
+      else{
+        Circuitos[i].corriente_disponible = Circuitos[i].limite_corriente;
+      }
+      Circuitos[i].corriente_sobrante = Circuitos[i].consigna_total - Circuitos[i].consigna_total;
     }
 
     Consumo_total = total_pc/100;
@@ -544,9 +609,80 @@ void Calculo_General(){
     printf("\n\nTotal PC of phase %i %i %i\n",Fases[0].corriente_total, Fases[1].corriente_total, Fases[2].corriente_total); 
     printf("Total consigna of phase %i %i %i\n",Fases[0].consigna_total, Fases[1].consigna_total, Fases[2].consigna_total); 
     printf("Total conex of phase %i %i %i\n",Fases[0].conex, Fases[1].conex, Fases[2].conex); 
+    printf("Corriente disponible fases %f %f %f\n",Fases[0].corriente_disponible, Fases[1].corriente_disponible, Fases[2].corriente_disponible); 
     printf("Total conex %i\n",Conex); 
     printf("Consumo total %i \n\n",Consumo_total);    
 #endif
+}
+
+void Reparto_Delta(){
+
+  //Ajustamos las consignas de los que les sobra corriente
+  for(int i = 0; i < ChargingGroup.Charger_number; i++){
+      if(!memcmp(charger_table[i].HPT,"C2",2)){
+
+        //Al que le sobra la corriente le ajustamos su consigna:
+        if(charger_table[i].Delta > 0){
+          charger_table[i].Consigna = charger_table[i].Current / 100;
+          if(charger_table[i].Consigna <6)
+            charger_table[i].Consigna =6;
+        }
+      }
+  }
+
+  //Recalculamos limites
+  Calculo_General();
+
+  //Mientras tengamos delta a repartir:
+  uint8_t i = 0;
+  uint8_t Last_Delta = Delta_total;
+  while(Delta_total > 0){
+    if(!memcmp(charger_table[i].HPT,"C2",2) && charger_table[i].Delta == 0){
+      //Equipo monofásico
+      if(charger_table[i].CurrentB == 0 && charger_table[i].CurrentC == 0){
+        //Comprobar si la fase de este cargador me permite ampliar
+        if(Fases[charger_table[i].Fase-1].corriente_sobrante - 1 > 0){
+          //comprobar que el circuito me permite añadir carga
+          //if(Circuitos[charger_table[i].Circuito-1].corriente_sobrante - 1 > 0){
+            Fases[charger_table[i].Fase-1].corriente_sobrante --;
+            //Circuitos[charger_table[i].Circuito-1].corriente_sobrante --;
+            Delta_total --;
+            charger_table[i].Consigna ++;
+          //}
+        }
+      }
+
+      //Equipo trifásico
+      else {
+        //Comprobar si tengo tres amperios para repartir
+        if(Delta_total >= 3){
+          //Comprobar si las tres fases me permiten ampliar
+          if(Fases[0].corriente_sobrante - 1 > 0){
+            if(Fases[1].corriente_sobrante - 1 > 0){
+              if(Fases[2].corriente_sobrante - 1 > 0){
+                Fases[0].corriente_sobrante --;
+                Fases[1].corriente_sobrante --;
+                Fases[2].corriente_sobrante --;
+                Delta_total -= 3;
+                charger_table[i].Consigna ++;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    i = i+1 >= ChargingGroup.Charger_number ? 0 : i+1; 
+
+    delay(10);
+    if(i==0){
+      //Si tras dar la vuelta a todo el grupo no he recolocado nada de corriente, es que nadie quiere mas
+      if(Last_Delta == Delta_total){
+        break;
+      }
+      Last_Delta = Delta_total;
+    }
+  }
 }
 
 #endif

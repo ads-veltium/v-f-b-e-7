@@ -19,12 +19,12 @@ void cls(){
 #endif
 }
 
-void print_table(carac_chargers table, char* table_name = "Grupo de cargadores"){
+void print_table(carac_charger *table, char* table_name = "Grupo de cargadores", uint8_t size = 0){
 #ifdef DEBUG_GROUPS
     printf("=============== %s ===================\n", table_name);
     printf("      ID     Fase   HPT   I      CONS   D    DT     CONEX\n");
-    for(int i=0; i< table.size;i++){     //comprobar si el cargador ya está almacenado
-        printf("   %s    %i    %s  %i   %i   %i   %i    %i\n", table.charger_table[i].name,table.charger_table[i].Fase,table.charger_table[i].HPT,table.charger_table[i].Current, table.charger_table[i].Consigna, table.charger_table[i].Delta,  table.charger_table[i].Delta_timer, table.charger_table[i].Conected);
+    for(int i=0; i< size;i++){     //comprobar si el cargador ya está almacenado
+        printf("   %s    %i    %s  %i   %i   %i   %i    %i\n", table[i].name,table[i].Fase,table[i].HPT,table[i].Current, table[i].Consigna, table[i].Delta,  table[i].Delta_timer, table[i].Conected);
     }
     printf("Memoria interna disponible: %i\n", esp_get_free_internal_heap_size());
     printf("Memoria total disponible:   %i\n", esp_get_free_heap_size());

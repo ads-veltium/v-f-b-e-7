@@ -86,7 +86,9 @@
 //  70 Group_operations             1 W    uint8       CD40 XXXX 00BD                   
 //  71 Group_params                 1 RW   uint8       CD40 XXXX 00BF                   
 //  72 Circuits                    51 RW   uint8_array CD40 XXXX 00C1                   
-//  73 Potencia_Contratada2         2 RW   uint16      CD20 XXXX 00C3                   
+//  73 Potencia_Contratada2         2 RW   uint16      CD20 XXXX 00C3     
+//  74 Pais                         2 RW   uint16      CD20 XXXX 00C3     
+//  75 Calendario                   2 RW   uint16      CD20 XXXX 00C3                   
 
 // table with 74 bytes
 static uint8_t table_handle_for_idx[1+RCS_MAX_IDX] = {

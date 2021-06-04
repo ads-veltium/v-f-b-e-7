@@ -32,9 +32,12 @@ carac_Params   Params        EXT_RAM_ATTR;
 carac_Coms     Coms          EXT_RAM_ATTR;
 carac_Contador ContadorExt   EXT_RAM_ATTR;
 carac_Firebase_Configuration ConfigFirebase EXT_RAM_ATTR;
+carac_circuito Circuitos[MAX_GROUP_SIZE] EXT_RAM_ATTR;
 
 #ifdef USE_GROUPS
 carac_group    ChargingGroup EXT_RAM_ATTR;
+carac_charger charger_table[50] EXT_RAM_ATTR;
+
 #endif
 #endif
 
@@ -101,9 +104,9 @@ void broadcast_a_grupo(char* Mensaje, uint16_t size);
 
 
 #ifdef CONNECTED
-uint8_t check_in_group(const char* ID, carac_chargers* group);
-bool remove_from_group(const char* ID ,carac_chargers* group);
-bool add_to_group(const char* ID, IPAddress IP, carac_chargers* group);
+uint8_t check_in_group(const char* ID, carac_charger* group,uint8_t size);
+bool remove_from_group(const char* ID ,carac_charger* group, uint8_t *size);
+bool add_to_group(const char* ID, IPAddress IP, carac_charger* group, uint8_t *size);
 IPAddress get_IP(const char* ID);
 #endif
 
@@ -1027,17 +1030,17 @@ void procesar_bloque(uint16 tipo_bloque){
             char n[2];
             char ID[8];
             memcpy(n,buffer_rx_local,2);
-            ChargingGroup.group_chargers.size=0;
+            ChargingGroup.Charger_number=0;
             uint8_t limit = atoi(n) > 25? 25: atoi(n);
 			
             for(uint8_t i=0; i<limit;i++){    
                 for(uint8_t j =0; j< 8; j++){
                     ID[j]=(char)buffer_rx_local[2+i*9+j];
                 }
-                add_to_group(ID, get_IP(ID), &ChargingGroup.group_chargers);
-                ChargingGroup.group_chargers.charger_table[i].Fase = buffer_rx_local[10+i*9]-'0';
+                add_to_group(ID, get_IP(ID), charger_table, &ChargingGroup.Charger_number);
+                charger_table[i].Fase = buffer_rx_local[10+i*9]-'0';
                 if(!memcmp(ID,ConfigFirebase.Device_Id,8)){
-                    ChargingGroup.group_chargers.charger_table[i].Conected = true;
+                    charger_table[i].Conected = true;
                     Params.Fase =buffer_rx_local[10+i*9]-'0';
                 }
             }
@@ -1049,7 +1052,7 @@ void procesar_bloque(uint16 tipo_bloque){
 
             //si llega un grupo en el que no estoy, significa que me han sacado de el
             //cierro el coap y borro el grupo
-            if(check_in_group(ConfigFirebase.Device_Id,&ChargingGroup.group_chargers ) == 255){
+            if(check_in_group(ConfigFirebase.Device_Id,charger_table,ChargingGroup.Charger_number ) == 255){
                 if(ChargingGroup.Conected){
                     ChargingGroup.DeleteOrder = true;
                 }
@@ -1057,13 +1060,13 @@ void procesar_bloque(uint16 tipo_bloque){
 
             //Ponerme el primero en el grupo para indicar que soy el maestro
             if(ChargingGroup.Params.GroupMaster){
-                if(memcmp(ChargingGroup.group_chargers.charger_table[0].name,ConfigFirebase.Device_Id, 8)){
-                    if(ChargingGroup.group_chargers.size > 0 && check_in_group(ConfigFirebase.Device_Id,&ChargingGroup.group_chargers ) != 255){
-                        while(memcmp(ChargingGroup.group_chargers.charger_table[0].name,ConfigFirebase.Device_Id, 8)){
-                            carac_charger OldMaster=ChargingGroup.group_chargers.charger_table[0];
-                            remove_from_group(OldMaster.name, &ChargingGroup.group_chargers);
-                            add_to_group(OldMaster.name, OldMaster.IP, &ChargingGroup.group_chargers);
-                            ChargingGroup.group_chargers.charger_table[ChargingGroup.group_chargers.size-1].Fase=OldMaster.Fase;
+                if(memcmp(charger_table[0].name,ConfigFirebase.Device_Id, 8)){
+                    if(ChargingGroup.Charger_number > 0 && check_in_group(ConfigFirebase.Device_Id,charger_table,ChargingGroup.Charger_number ) != 255){
+                        while(memcmp(charger_table[0].name,ConfigFirebase.Device_Id, 8)){
+                            carac_charger OldMaster=charger_table[0];
+                            remove_from_group(OldMaster.name, charger_table, &ChargingGroup.Charger_number);
+                            add_to_group(OldMaster.name, OldMaster.IP, charger_table,  &ChargingGroup.Charger_number);
+                            charger_table[ChargingGroup.Charger_number-1].Fase=OldMaster.Fase;
                         }
                         ChargingGroup.SendNewGroup = true;
                     }
@@ -1071,7 +1074,7 @@ void procesar_bloque(uint16 tipo_bloque){
                 //si soy el maestro, avisar a los nuevos de que son parte de mi grupo
                 broadcast_a_grupo("Satrt client", 12);
             }
-            print_table(ChargingGroup.group_chargers, "Grupo desde PSOC");
+            print_table(charger_table, "Grupo desde PSOC", ChargingGroup.Charger_number);
         }
         break;
 
@@ -1086,8 +1089,8 @@ void procesar_bloque(uint16 tipo_bloque){
                 for(uint8_t j =0; j< 8; j++){
                     ID[j]=(char)buffer_rx_local[2+i*9+j];
                 }
-                add_to_group(ID, get_IP(ID), &ChargingGroup.group_chargers);
-                ChargingGroup.group_chargers.charger_table[ChargingGroup.group_chargers.size-1].Fase = buffer_rx_local[10+i*9]-'0';
+                add_to_group(ID, get_IP(ID), charger_table,  &ChargingGroup.Charger_number);
+                charger_table[ChargingGroup.Charger_number-1].Fase = buffer_rx_local[10+i*9]-'0';
 
                 if(!memcmp(ID,ConfigFirebase.Device_Id,8)){
                     Params.Fase =buffer_rx_local[10+i*9]-'0';
@@ -1097,7 +1100,7 @@ void procesar_bloque(uint16 tipo_bloque){
 
             //si llega un grupo en el que no estoy, significa que me han sacado de el
             //cierro el coap y borro el grupo
-            if(check_in_group(ConfigFirebase.Device_Id,&ChargingGroup.group_chargers ) == 255){
+            if(check_in_group(ConfigFirebase.Device_Id,charger_table, ChargingGroup.Charger_number ) == 255){
                 if(ChargingGroup.Conected){
 					printf("!No estoy en el grupo!!!\n");
                     ChargingGroup.DeleteOrder = true;
@@ -1106,13 +1109,13 @@ void procesar_bloque(uint16 tipo_bloque){
 
             //Ponerme el primero en el grupo para indicar que soy el maestro
             if(ChargingGroup.Params.GroupMaster){
-                if(memcmp(ChargingGroup.group_chargers.charger_table[0].name,ConfigFirebase.Device_Id, 8)){
-                    if(ChargingGroup.group_chargers.size > 0 && check_in_group(ConfigFirebase.Device_Id,&ChargingGroup.group_chargers ) != 255){
-                        while(memcmp(ChargingGroup.group_chargers.charger_table[0].name,ConfigFirebase.Device_Id, 8)){
-                            carac_charger OldMaster=ChargingGroup.group_chargers.charger_table[0];
-                            remove_from_group(OldMaster.name, &ChargingGroup.group_chargers);
-                            add_to_group(OldMaster.name, OldMaster.IP, &ChargingGroup.group_chargers);
-                            ChargingGroup.group_chargers.charger_table[ChargingGroup.group_chargers.size-1].Fase=OldMaster.Fase;
+                if(memcmp(charger_table[0].name,ConfigFirebase.Device_Id, 8)){
+                    if(ChargingGroup.Charger_number > 0 && check_in_group(ConfigFirebase.Device_Id,charger_table,ChargingGroup.Charger_number ) != 255){
+                        while(memcmp(charger_table[0].name,ConfigFirebase.Device_Id, 8)){
+                            carac_charger OldMaster=charger_table[0];
+                            remove_from_group(OldMaster.name, charger_table, &ChargingGroup.Charger_number);
+                            add_to_group(OldMaster.name, OldMaster.IP, charger_table, &ChargingGroup.Charger_number);
+                            charger_table[ChargingGroup.Charger_number-1].Fase=OldMaster.Fase;
                         }
                         ChargingGroup.SendNewGroup = true;
                     }
@@ -1120,7 +1123,7 @@ void procesar_bloque(uint16 tipo_bloque){
                 //si soy el maestro, avisar a los nuevos de que son parte de mi grupo
                 broadcast_a_grupo("Satrt client", 12);
             }
-            print_table(ChargingGroup.group_chargers, "Grupo desde PSOC");
+            print_table(charger_table, "Grupo desde PSOC", ChargingGroup.Charger_number);
 			break;
         }
 
