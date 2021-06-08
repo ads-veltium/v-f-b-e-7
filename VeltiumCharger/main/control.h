@@ -19,7 +19,7 @@
 			#define DEBUG_GROUPS       //Activar el debug de los grupos
 		#endif
 
-		//#define DEBUG_BLE		   //Activar el debug del ble
+		#define DEBUG_BLE		   //Activar el debug del ble
 
 		#ifdef USE_COMS	
 			#define DEBUG_WIFI		   //Activar el debug del wifi

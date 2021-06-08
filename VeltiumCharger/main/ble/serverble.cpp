@@ -12,7 +12,9 @@ static StackType_t xBLEStack[4096*2] EXT_RAM_ATTR;
 File UpdateFile;
 uint8_t  UpdateType  = 0;
 uint16_t Conn_Handle = 0;
+uint8 RaspberryTest[6] ={139,96,111,50,166,220};
 extern uint8 device_ID[16];
+extern uint8 authChallengeReply[8] ;
 
 NimBLEDevice BLE_SERVER EXT_RAM_ATTR;
 
@@ -193,13 +195,22 @@ class serverCallbacks: public BLEServerCallbacks
 {
 	void onConnect(BLEServer* pServer, ble_gap_conn_desc *desc) 
 	{
-		deviceConnectInd();		
+			
+		
+		if(!memcmp(desc->peer_id_addr.val, RaspberryTest,6)){
+			Serial.println("Es la raspberry!!!");
+			setAuthToken(authChallengeReply, 8);
+		}
+		else{
+			deviceConnectInd();	
+		}
 		Conn_Handle = desc->conn_handle;
 
 	};
 
 	void onDisconnect(BLEServer* pServer) 
 	{
+		Serial.println("Se me han desconectado");
 		deviceBleConnected = false;
 		deviceDisconnectInd();
 		buffer_tx[0] = HEADER_TX;
