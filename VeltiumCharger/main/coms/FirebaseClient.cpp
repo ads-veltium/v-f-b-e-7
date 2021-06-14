@@ -297,8 +297,12 @@ bool WriteFirebaseHistoric(char* buffer){
 
     free(record_buffer);
 
+    int count = 0;
     while(ConnectionState != IDLE){
-      delay(20);
+      delay(10);
+      if(++count > 1000){
+        return true;
+      }
     }
   
     
