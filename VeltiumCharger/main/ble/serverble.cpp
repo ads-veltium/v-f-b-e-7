@@ -15,7 +15,8 @@ uint16_t Conn_Handle = 0;
 uint8 RaspberryTest[6] ={139,96,111,50,166,220};
 extern uint8 device_ID[16];
 extern uint8 authChallengeReply[8] ;
-
+extern bool Testing;
+extern carac_group ChargingGroup;
 NimBLEDevice BLE_SERVER EXT_RAM_ATTR;
 
 extern carac_Update_Status 			UpdateStatus;
@@ -127,11 +128,6 @@ void serverbleNotCharacteristic ( uint8_t *data, int len, uint16_t handle )
 		pbleCharacteristics[BLE_CHA_NET_GROUP]->notify();
 		return;
 	}
-	if (handle == CHARGING_GROUP_BLE_CHARGING_GROUP) {
-		pbleCharacteristics[BLE_CHA_CHARGING_GROUP]->setValue(data, len);
-		pbleCharacteristics[BLE_CHA_CHARGING_GROUP]->notify();
-		return;
-	}
 #endif
 	if (handle == FWUPDATE_BIRD_DATA_PSEUDO_CHAR_HANDLE) {
 		pbleCharacteristics[BLE_CHA_FW_DATA]->setValue(data, len);
@@ -198,10 +194,11 @@ class serverCallbacks: public BLEServerCallbacks
 			
 		
 		if(!memcmp(desc->peer_id_addr.val, RaspberryTest,6)){
-			Serial.println("Es la raspberry!!!");
+			Testing = true;
 			setAuthToken(authChallengeReply, 8);
 		}
 		else{
+			Testing = false;
 			deviceConnectInd();	
 		}
 		Conn_Handle = desc->conn_handle;
@@ -210,7 +207,7 @@ class serverCallbacks: public BLEServerCallbacks
 
 	void onDisconnect(BLEServer* pServer) 
 	{
-		Serial.println("Se me han desconectado");
+		Testing = false;
 		deviceBleConnected = false;
 		deviceDisconnectInd();
 		buffer_tx[0] = HEADER_TX;
@@ -319,6 +316,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 			#ifdef DEBUG_BLE
 			Serial.printf("Received omnibus write request for selector %u\n", selector);
 			Serial.printf("Received omnibus write request for handle   %u\n", handle);
+
 			#endif
 
 			// special cases
@@ -336,6 +334,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 					return;
 				}
 			}
+			/*
 			if (handle == TEST_RCD_PE_TEST_RESULT_CHAR_HANDLE) {
 				// mechanics: write 0 to result, write launch, wait, read result
 				updateCharacteristic((uint8_t*)&rxValue[0], 1, TEST_RCD_PE_TEST_RESULT_CHAR_HANDLE);
@@ -345,6 +344,8 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 				updateCharacteristic((uint8_t*)&rxValue[0], 1, TEST_RCD_PE_TEST_RESULT_CHAR_HANDLE);
 				return;
 			}
+			*/
+			
 			if (handle == FWUPDATE_BIRD_PROLOG_PSEUDO_CHAR_HANDLE) {
 				// prolog
 				String Signature;
@@ -464,6 +465,22 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 			else if(handle == COMS_CONFIGURATION_WIFI_ON){
 				SendToPSOC5(payload[0],COMS_CONFIGURATION_WIFI_ON);
 			}
+			else if (handle == GROUPS_PARAMS) {
+				SendToPSOC5((char*)payload,7,GROUPS_PARAMS);
+				if(ChargingGroup.Params.GroupActive){
+					ChargingGroup.SendNewParams = true;
+				}
+				return;
+			}
+			else if (handle == GROUPS_CIRCUITS) {
+				updateCharacteristic((uint8_t*)&rxValue[0], 1, GROUPS_CIRCUITS);
+				return;
+			}
+			else if (handle == GROUPS_OPERATIONS) {
+				printf("Orden desde el PSOC5 para los grupos!\n");
+				return;
+			}
+			
 #endif			
 			// if we are here, we are authenticated.
 			// send payload downstream.
@@ -543,10 +560,8 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 
 			return;
 		}
-
 	}
-
-	//private int8_t processOmnibusSpecialCases()
+	
 };
 
 

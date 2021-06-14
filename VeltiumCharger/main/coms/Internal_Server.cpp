@@ -368,6 +368,10 @@ void InitServer(void) {
     }
     String vcd(ConfigFirebase.Device_Id);
     
+    printf("%s\n", password.c_str());
+    Serial.println(password);
+    Serial.printf("longitud %i \n", longitud_pwd);
+
     if(longitud_pwd==255){
         password = vcd;
     }else{

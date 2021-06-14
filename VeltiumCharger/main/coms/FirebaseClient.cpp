@@ -301,8 +301,13 @@ bool WriteFirebaseHistoric(char* buffer){
 
     free(record_buffer);
 
+    int count = 0;
     while(ConnectionState != IDLE){
       delay(20);
+      if(++count > 5){
+        printf("No se ha podido conectar con firebase\n");
+        return true;
+      }
     }
   
     

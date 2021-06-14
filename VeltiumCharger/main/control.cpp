@@ -36,7 +36,7 @@ carac_circuito Circuitos[MAX_GROUP_SIZE] EXT_RAM_ATTR;
 
 #ifdef USE_GROUPS
 carac_group    ChargingGroup EXT_RAM_ATTR;
-carac_charger charger_table[50] EXT_RAM_ATTR;
+carac_charger  charger_table[50] EXT_RAM_ATTR;
 
 #endif
 #endif
@@ -91,6 +91,7 @@ uint8 PSOC5_version_firmware[11] ;
 uint8 systemStarted = 0;
 uint8 Record_Num =4;
 uint8 Bloqueo_de_carga = 1;
+bool Testing = false;
 int TimeoutMainDisconnect = 0;
 extern bool deviceBleDisconnect;
 void startSystem(void);
@@ -852,12 +853,15 @@ void procesar_bloque(uint16 tipo_bloque){
 				}				
 			}
 
+			
 #ifdef CONNECTED
 			//Si no estamos conectados por ble
-
-			if(!serverbleGetConnected()){
-				WriteFirebaseHistoric((char*)buffer_rx_local);
+			if(Coms.ETH.ON || Coms.Wifi.ON){
+				if(!serverbleGetConnected() || Testing){
+					WriteFirebaseHistoric((char*)buffer_rx_local);
+				}
 			}
+			
 #endif
 			modifyCharacteristic(record_buffer, 512, ENERGY_RECORD_RECORD_CHAR_HANDLE);
 		} 
@@ -1138,8 +1142,23 @@ void procesar_bloque(uint16 tipo_bloque){
 			Serial.printf("Group contract power %i \n", ChargingGroup.Params.ContractPower);
 			Serial.printf("Group inst_max %i \n", ChargingGroup.Params.inst_max);
 			Serial.printf("Group CDP %i \n", ChargingGroup.Params.CDP);	
-			#endif	
+			#endif
+	
 			break;
+		}
+
+		case GROUPS_CIRCUITS:{
+			int numero_circuitos = buffer_rx_local[0];
+			#ifdef DEBUG_GROUPS
+				Serial.printf("Me han llegado nuevos circuitos! %i \n", numero_circuitos);
+			#endif
+			
+			for(int i=0;i< numero_circuitos;i++){
+				Circuitos[ChargingGroup.Circuit_number].numero = i+1;
+            	Circuitos[ChargingGroup.Circuit_number].limite_corriente = buffer_rx_local[i+1];
+			}
+			break;
+			
 		}
 #endif
 
