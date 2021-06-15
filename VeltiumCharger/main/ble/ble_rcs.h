@@ -18,7 +18,7 @@ extern "C" {
 #define RCS_MAX_IDX 75
 #define RCS_NUM_IDX (1+RCS_MAX_IDX)
 
-#define RCS_MAX_HANDLE 0x00C7
+#define RCS_MAX_HANDLE 0x00D9
 
 #define RCS_CHR_OMNIBUS_SIZE 64
 

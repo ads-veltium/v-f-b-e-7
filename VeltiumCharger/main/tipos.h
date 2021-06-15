@@ -311,7 +311,6 @@ typedef struct{
 	IPAddress MasterIP;
 
 	carac_group_params Params;
-	carac_circuito circuitos[50];
 
 	char GroupId[10] = {'0'};
 	long long last_ts_app_req= 0;

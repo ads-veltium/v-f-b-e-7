@@ -611,8 +611,8 @@ void InitServer(void) {
     server.on("/powercont", HTTP_GET_A, [](AsyncWebServerRequest *request){
          if(Autenticado==true){
             uint8_t data = request->getParam(POT_CONT)->value().toInt();
-
-            SendToPSOC5(data, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_CHAR_HANDLE);
+            
+            SendToPSOC5(data, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_P1_DECL_HANDLE);
             
             request->send(SPIFFS, "/parameters.html",String(), false, processor);
          }else{

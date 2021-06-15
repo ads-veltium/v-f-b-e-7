@@ -287,6 +287,8 @@ void initialize_ethernet(void){
         eth_connected = true;
         
         uint8_t ip_Array[4] = { ip4_addr1(&Coms.ETH.IP),ip4_addr2(&Coms.ETH.IP),ip4_addr3(&Coms.ETH.IP),ip4_addr4(&Coms.ETH.IP)};
+        modifyCharacteristic(&ip_Array[0], 4, COMS_CONFIGURATION_LAN_IP);
+        modifyCharacteristic((uint8_t*)Coms.ETH.ON, 1, COMS_CONFIGURATION_ETH_ON);	
         
     }   
     

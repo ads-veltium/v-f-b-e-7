@@ -67,7 +67,6 @@ uint8_t check_in_group(const char* ID, carac_charger* group, uint8_t size){
     return 255;
 }
 
-
 //Eliminar un cargador de un grupo
 bool remove_from_group(const char* ID ,carac_charger* group, uint8_t* size){
     for(int j=0;j <*size;j++){

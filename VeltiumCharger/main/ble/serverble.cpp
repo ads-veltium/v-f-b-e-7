@@ -18,9 +18,13 @@ extern uint8 authChallengeReply[8] ;
 extern bool Testing;
 extern carac_group ChargingGroup;
 NimBLEDevice BLE_SERVER EXT_RAM_ATTR;
-
+extern carac_charger net_group[MAX_GROUP_SIZE];
+extern uint8_t net_group_size;
 extern carac_Update_Status 			UpdateStatus;
 extern carac_Comands                Comands;
+extern carac_charger charger_table[MAX_GROUP_SIZE];
+extern carac_circuito Circuitos[MAX_GROUP_SIZE];
+
 #ifdef CONNECTED
 	extern carac_Coms					Coms;
 	extern carac_Firebase_Configuration ConfigFirebase;
@@ -55,7 +59,6 @@ TaskHandle_t hdServerble = NULL;
 // actually
 //uint8 *buffer_tx=(uint8 *)ps_calloc(300,sizeof(uint8)); EXT_RAM_ATTR
 uint8 buffer_tx[500] EXT_RAM_ATTR;
-
 
 BLEService *pbleServices[NUMBER_OF_SERVICES];
 //BLEService *pbleServices = (BLEService*) ps_malloc(sizeof(BLEService)*NUMBER_OF_SERVICES);
@@ -157,12 +160,12 @@ void serverbleSetCharacteristic ( uint8_t *data, int len, uint16_t handle )
 		return;
 	}
 
-	if (handle == MEASURES_INST_CURRENTB_CHAR_HANDLE) {
-		pbleCharacteristics[BLE_CHA_INSB_CURR]->setValue(data, len);
+	if (handle == CHARGING_GROUP_BLE_NET_DEVICES) {
+		pbleCharacteristics[BLE_CHA_NET_GROUP]->setValue(data, len);
 		return;
 	}
-	if (handle == MEASURES_INST_CURRENTC_CHAR_HANDLE) {
-		pbleCharacteristics[BLE_CHA_INSC_CURR]->setValue(data, len);
+	if (handle == CHARGING_GROUP_BLE_CHARGING_GROUP) {
+		pbleCharacteristics[BLE_CHA_CHARGING_GROUP]->setValue(data, len);
 		return;
 	}
 #endif
@@ -466,18 +469,102 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 				SendToPSOC5(payload[0],COMS_CONFIGURATION_WIFI_ON);
 			}
 			else if (handle == GROUPS_PARAMS) {
-				SendToPSOC5((char*)payload,7,GROUPS_PARAMS);
-				if(ChargingGroup.Params.GroupActive){
-					ChargingGroup.SendNewParams = true;
-				}
+				uint8_t sendBuffer[7];
+				sendBuffer[0] = ChargingGroup.Params.GroupMaster;
+				memcpy(&sendBuffer[1], payload,6);
+				
+				buffer_tx[0] = HEADER_TX;
+				buffer_tx[1] = (uint8)(handle >> 8);
+				buffer_tx[2] = (uint8)(handle);
+				buffer_tx[3] = 7;
+				memcpy(&buffer_tx[4], sendBuffer, 7);
+				controlSendToSerialLocal(buffer_tx, 7 + 4);
+
+				delay(100);
+				ChargingGroup.SendNewParams = true;
 				return;
 			}
 			else if (handle == GROUPS_CIRCUITS) {
-				updateCharacteristic((uint8_t*)&rxValue[0], 1, GROUPS_CIRCUITS);
+				uint8_t circuit_number = payload[0];
+				size = circuit_number +1;
+				buffer_tx[0] = HEADER_TX;
+				buffer_tx[1] = (uint8)(handle >> 8);
+				buffer_tx[2] = (uint8)(handle);
+				buffer_tx[3] = circuit_number +1;
+				memcpy(&buffer_tx[4], payload, size);
+				controlSendToSerialLocal(buffer_tx, size + 4);
+				delay(100);
+				ChargingGroup.SendNewCircuits = true;
 				return;
 			}
 			else if (handle == GROUPS_OPERATIONS) {
-				printf("Orden desde el PSOC5 para los grupos!\n");
+				uint8_t operation = payload[0];
+				switch(operation){
+					//Creacion
+					case 1:
+						printf("Tengo que crear un grupo!\n");
+						//Actualizar net devices
+						uint8_t net_buffer[452];
+						net_buffer[0] = net_group_size;
+						for(int i =0;i< net_group_size; i++){
+							memcpy(&net_buffer[i*9+1], net_group[i].name,8);
+							net_buffer[i*9+9]=0;
+						}
+						serverbleNotCharacteristic(net_buffer,net_group_size*9 +1, CHARGING_GROUP_BLE_NET_DEVICES);
+					break;
+
+					//modificacion
+					case 2:
+						printf("Tengo que modificar el grupo!\n");
+						//Actualizar net devices
+						uint8_t group_buffer[452];
+						group_buffer[0] = net_group_size;
+						for(int i =0;i< net_group_size; i++){
+							memcpy(&group_buffer[i*9+1], net_group[i].name,8);
+							group_buffer[i*9+9]=0;
+						}
+						serverbleNotCharacteristic(group_buffer,net_group_size*9 +1, CHARGING_GROUP_BLE_NET_DEVICES);
+
+						//Actualizar group_devices
+						group_buffer[0] = ChargingGroup.Charger_number;
+						for(int i =0;i< ChargingGroup.Charger_number; i++){
+							memcpy(&group_buffer[i*9+1], charger_table[i].name,8);
+							group_buffer[i*9+9]=(charger_table[i].Circuito << 2) + charger_table[i].Fase;
+						}
+						serverbleSetCharacteristic(group_buffer,7 ,CHARGING_GROUP_BLE_CHARGING_GROUP);
+
+						//Actualizar params
+						group_buffer[0] = ChargingGroup.Params.GroupActive;
+						group_buffer[1] = ChargingGroup.Params.inst_max;
+						group_buffer[2] = ChargingGroup.Params.CDP;
+						group_buffer[3] = ChargingGroup.Params.ContractPower;
+						group_buffer[4] = ChargingGroup.Params.UserID;
+						group_buffer[5] = ChargingGroup.Params.potencia_max;
+						serverbleSetCharacteristic(group_buffer,6 ,GROUPS_PARAMS);
+
+						//Actualizar circuits
+						group_buffer[0] = ChargingGroup.Circuit_number;
+						for(uint8_t i=0;i< ChargingGroup.Circuit_number;i++){ 
+							group_buffer[i+1] = Circuitos[i].limite_corriente;
+						}
+						serverbleSetCharacteristic(group_buffer,ChargingGroup.Circuit_number +1 ,GROUPS_CIRCUITS);
+					break;
+
+					//borrado
+					case 3:
+						printf("Tengo que borrar el grupo!\n");
+						ChargingGroup.DeleteOrder = true;
+					break;
+
+					//lectura
+					case 4:
+						printf("Tengo que leer el grupo!\n");
+					break;
+
+					default:
+						printf("Me ha llegado una operacion de grupo rara %i\n", operation);
+					break;
+				}
 				return;
 			}
 			
@@ -560,8 +647,24 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 
 			return;
 		}
-	}
 	
+		if ( pCharacteristic->getUUID().equals(blefields[RCS_CHARGING_GROUP].uuid) ){
+			printf("Nuevo grupo recibido desde el BLE!\n ");
+			uint8 numero_cargadores = data[0];
+
+			uint16_t size = numero_cargadores * 9 +1;
+			
+			buffer_tx[0] = HEADER_TX;
+			buffer_tx[1] = (uint8)(CHARGING_GROUP_BLE_CHARGING_GROUP >> 8);
+			buffer_tx[2] = (uint8)(CHARGING_GROUP_BLE_CHARGING_GROUP);
+			buffer_tx[3] = size;
+			memcpy(&buffer_tx[4], data, size);
+			controlSendToSerialLocal(buffer_tx, size + 4);
+
+			delay(100);
+			ChargingGroup.SendNewGroup = true;
+		}
+	}
 };
 
 
