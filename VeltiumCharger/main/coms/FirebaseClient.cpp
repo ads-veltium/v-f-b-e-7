@@ -303,36 +303,40 @@ bool WriteFirebaseHistoric(char* buffer){
 
     int count = 0;
     while(ConnectionState != IDLE){
-      delay(20);
-      if(++count > 5){
-        printf("No se ha podido conectar con firebase\n");
+      delay(10);
+      if(++count > 1000){
         return true;
       }
     }
+
+    ConnectionState = 11;
   
+    printf("Escribiendo record en firebase\n");
+    String Path = "/records/";
+    Escritura.clear();
+
+    Escritura["act"] = Encoded;
+    Escritura["con"] = ConectionTS;
+    Escritura["dis"] = DisconTs;
+    Escritura["rea"] = "";
+    Escritura["sta"] = StartTs;
+    Escritura["usr"] = buffer[0] + buffer[1]*0x100;
+
+    char buf[10];
+    ltoa(ConectionTS, buf, 10); 
     
-      String Path = "/records/";
-      Escritura.clear();
+    if(Database->Send_Command(Path+buf,&Escritura,UPDATE)){
+      ConnectionState = IDLE;
+      return true;
+    }
+    else{
+      printf("Fallo en el envio del registro!\n");
+      Database->Send_Command(Path+buf,&Escritura,UPDATE);
+      ConnectionState = IDLE;
+      return false;
+    }
+    ConnectionState = IDLE;
 
-      Escritura["act"] = Encoded;
-      Escritura["con"] = ConectionTS;
-      Escritura["dis"] = DisconTs;
-      Escritura["rea"] = "";
-      Escritura["sta"] = StartTs;
-      Escritura["usr"] = buffer[0] + buffer[1]*0x100;
-
-      char buf[10];
-      ltoa(ConectionTS, buf, 10); 
-
-      if(Database->Send_Command(Path+buf,&Escritura,UPDATE)){
-        return true;
-      }
-      else{
-        printf("Fallo en el envio del registro!\n");
-        Database->Send_Command(Path+buf,&Escritura,UPDATE);
-        return false;
-      }
-    
 
   return true;
 }
@@ -542,7 +546,7 @@ bool ReadFirebaseControl(String Path){
  *              Sistema de Actualización
  *****************************************************/
 bool CheckForUpdate(){
-  bool update= false;
+  bool update = false;
 
 #ifdef DEVELOPMENT
   //Check Permisions
@@ -953,6 +957,9 @@ void Firebase_Conn_Task(void *args){
     case DISCONNECTING:
       Database->end();
       ConnectionState=DISCONNECTED;
+      break;
+
+    case 11:
       break;
     default:
       while(1){

@@ -22,8 +22,8 @@
 		#define DEBUG_BLE		   //Activar el debug del ble
 
 		#ifdef USE_COMS	
-			#define DEBUG_WIFI		   //Activar el debug del wifi
-			#define DEBUG_ETH		   //Activar el debug del ETH
+			#define DEBUG_WIFI	   //Activar el debug del wifi
+			#define DEBUG_ETH	   //Activar el debug del ETH
 		#endif
 	#endif
 #endif

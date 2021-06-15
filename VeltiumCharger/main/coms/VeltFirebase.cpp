@@ -91,8 +91,12 @@ bool Real_Time_Database::LogIn(void){
     if (esp_http_client_perform(*Auth_client) != ESP_OK) {
         return false;
     }
-    while(!FinishReading && ++Timeout <30){
+    while(!FinishReading ){
         delay(50);
+        Timeout ++;
+        if(Timeout > 30){
+            return false;
+        }
     }
 
     if(Timeout >= 30 ){
@@ -127,8 +131,12 @@ bool Real_Time_Database::checkPermisions(void){
         return false;
     }
 
-    while(!FinishReading && ++Timeout <30){
+    while(!FinishReading ){
         delay(50);
+        Timeout ++;
+        if(Timeout > 30){
+            return false;
+        }
     }
 
     if(Timeout >= 30){
@@ -206,7 +214,8 @@ bool Real_Time_Database::Send_Command(String path, JsonDocument *doc, uint8_t Co
     }
     
     esp_http_client_set_url(RTDB_client, Write_url.c_str());
-
+    Serial.println(Write_url.c_str());
+    Serial.println(SerializedData.c_str());
     switch(Command){
         case ESCRIBIR:        
             esp_http_client_set_method(RTDB_client, HTTP_METHOD_POST);
@@ -248,8 +257,12 @@ bool Real_Time_Database::Send_Command(String path, JsonDocument *doc, uint8_t Co
         return true;
     }
 
-    while(!FinishReading && ++Timeout <30 ){
+    while(!FinishReading ){
         delay(50);
+        Timeout ++;
+        if(Timeout > 30){
+            return false;
+        }
     }
 
     if(Timeout >= 30){
@@ -292,8 +305,12 @@ long long  Real_Time_Database::Get_Timestamp(String path, JsonDocument *respuest
         return 1;
     }
 
-    while(!FinishReading && ++Timeout <30 ){
+    while(!FinishReading ){
         delay(50);
+        Timeout ++;
+        if(Timeout > 30){
+            return false;
+        }
     }
 
     if(Timeout >= 30){
@@ -422,8 +439,12 @@ bool Cliente_HTTP::Send_Command(String url, uint8_t Command){
         return true;
     }
 
-    while(!_lectura_finalizada && ++tiempo_lectura <60 ){
+    while(!_lectura_finalizada ){
         delay(50);
+        tiempo_lectura ++;
+        if(tiempo_lectura > 60){
+            return false;
+        }
     }
 
     if(tiempo_lectura >= 60){

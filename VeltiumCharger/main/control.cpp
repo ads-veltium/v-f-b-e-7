@@ -85,7 +85,7 @@ uint16 inst_current_anterior = 0x0000;
 uint16 cnt_diferencia = 1;
 uint8 HPT_estados[9][3] = {"0V", "A1", "A2", "B1", "B2", "C1", "C2", "E1", "F1"};
 
-uint8 version_firmware[11] = {"VBLE2_0510"};	
+uint8 version_firmware[11] = {"VBLE2_0512"};	
 uint8 PSOC5_version_firmware[11] ;		
 
 uint8 systemStarted = 0;
@@ -858,12 +858,15 @@ void procesar_bloque(uint16 tipo_bloque){
 			
 #ifdef CONNECTED
 			//Si no estamos conectados por ble
-			if(Coms.ETH.ON || Coms.Wifi.ON){
-				if(!serverbleGetConnected() || Testing){
-					WriteFirebaseHistoric((char*)buffer_rx_local);
+			
+			if(ConfigFirebase.InternetConection){
+				if(Coms.ETH.ON || Coms.Wifi.ON){
+					if(!serverbleGetConnected()){
+						WriteFirebaseHistoric((char*)buffer_rx_local);
+					}	
 				}
 			}
-			
+
 #endif
 			modifyCharacteristic(record_buffer, 512, ENERGY_RECORD_RECORD_CHAR_HANDLE);
 		} 

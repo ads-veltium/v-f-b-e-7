@@ -40,7 +40,9 @@ void close_udp();
 
 
 static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data){
-
+    #ifdef DEBUG_WIFI
+    printf("Evento de wifi %i \n", event_id);
+    #endif
     if (event_base == WIFI_EVENT){
         switch(event_id){
             case WIFI_EVENT_STA_START:{
@@ -63,7 +65,7 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
                     Serial.println("Intentado demasiadas veces, desconectando");
                     #endif
                     esp_wifi_restore(); //Borrar las credenciales
-                    if(Coms.Provisioning ||Coms.StartSmartconfig ){
+                    if(Coms.Provisioning || Coms.StartSmartconfig ){
                         MAIN_RESET_Write(0);
                         ESP.restart();
                     }  
@@ -164,6 +166,8 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
                 Serial.printf( "smartconfig over\n");
                 #endif
                 esp_smartconfig_stop();
+                Coms.Wifi.ON = true;
+                SendToPSOC5(Coms.Wifi.ON,COMS_CONFIGURATION_WIFI_ON);
                 delay(10000);
                 MAIN_RESET_Write(0);
                 ESP.restart();
