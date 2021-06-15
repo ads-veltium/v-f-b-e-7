@@ -307,7 +307,6 @@ bool WriteFirebaseHistoric(char* buffer){
 
     ConnectionState = 11;
   
-    printf("Escribiendo record en firebase\n");
     String Path = "/records/";
     Escritura.clear();
 
@@ -479,7 +478,6 @@ bool ReadFirebaseParams(String Path){
       }     
       
       if(memcmp(Params.Fw_Update_mode, Lectura["fw_auto"].as<String>().c_str(),2)!=0){
-        Serial.println("Nuevo modo de autenticacion detectado!");
         memcpy(Params.Fw_Update_mode, Lectura["fw_auto"].as<String>().c_str(),2);
         SendToPSOC5(Params.Fw_Update_mode, 2, COMS_FW_UPDATEMODE_CHAR_HANDLE);
       }
