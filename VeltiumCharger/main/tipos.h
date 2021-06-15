@@ -622,8 +622,8 @@ typedef struct{
 #define DOMESTIC_CONSUMPTION_FCT_CHAR_HANDLE                   (0x009Cu) /* Handle of FCT characteristic */
 #define DOMESTIC_CONSUMPTION_FS_DECL_HANDLE   				   (0x009Du) /* Handle of FS characteristic declaration */
 #define DOMESTIC_CONSUMPTION_FS_CHAR_HANDLE   				   (0x009Eu) /* Handle of FS characteristic */
-#define DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_DECL_HANDLE   (0x009Fu) /* Handle of Potencia_Contratada characteristic declaration */
-#define DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_CHAR_HANDLE   (0x00A0u) /* Handle of Potencia_Contratada characteristic */
+#define DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_P1_DECL_HANDLE   (0x009Fu) /* Handle of Potencia_Contratada characteristic declaration */
+#define DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_P1_CHAR_HANDLE   (0x00A0u) /* Handle of Potencia_Contratada characteristic */
 #define DOMESTIC_CONSUMPTION_DPC_MODE_DECL_HANDLE              (0x00A1u) /* Handle of Dpc_Mode characteristic declaration */
 #define DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE              (0x00A2u) /* Handle of Dpc_Mode characteristic */
 
@@ -651,7 +651,7 @@ typedef struct{
 #define GROUPS_PARAMS		 		 	   (0x00BFu)
 #define GROUPS_CIRCUITS					   (0x00C1u)
 
-#define DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA2_CHAR_HANDLE (0x00C3u)
+#define DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_P2_CHAR_HANDLE (0x00C3u)
 
 #define MEASURES_INST_CURRENTB_CHAR_HANDLE (0x00C5u)
 #define MEASURES_INST_CURRENTC_CHAR_HANDLE (0x00C7u)
@@ -665,6 +665,9 @@ typedef struct{
 
 #define CHARGING_GROUP_BLE_NET_DEVICES	   (0x00D3u)
 #define CHARGING_GROUP_BLE_CHARGING_GROUP  (0x00D5u)
+
+#define TIME_DATE_COUNTRY_CHAR_HANDLE		(0x00D7u)
+#define TIME_DATE_CALENDAR_CHAR_HANDLE		(0x00D9u)
 
 #endif
 

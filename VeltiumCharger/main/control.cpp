@@ -514,11 +514,13 @@ void procesar_bloque(uint16 tipo_bloque){
 
 				modifyCharacteristic(&buffer_rx_local[212], 2, CONFIGURACION_AUTENTICATION_MODES_CHAR_HANDLE);
 				memcpy(deviceSerNum, &buffer_rx_local[219], 10);			
-				modifyCharacteristic(&buffer_rx_local[229], 2, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_CHAR_HANDLE);
+				modifyCharacteristic(&buffer_rx_local[229], 2, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_P1_CHAR_HANDLE);
 				modifyCharacteristic(&buffer_rx_local[231], 1, LED_LUMIN_COLOR_LUMINOSITY_LEVEL_CHAR_HANDLE);
 				modifyCharacteristic(&buffer_rx_local[232], 1, DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE);
 				modifyCharacteristic(&buffer_rx_local[233], 1, MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
-				modifyCharacteristic(&buffer_rx_local[234], 2, COMS_FW_UPDATEMODE_CHAR_HANDLE);					
+				modifyCharacteristic(&buffer_rx_local[234], 2, COMS_FW_UPDATEMODE_CHAR_HANDLE);		
+				modifyCharacteristic(&buffer_rx_local[241], 2, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_P2_CHAR_HANDLE);
+				modifyCharacteristic(&buffer_rx_local[243], 2, TIME_DATE_COUNTRY_CHAR_HANDLE);			
 
 				#ifdef CONNECTED
 					/************************ Set firebase Params **********************/
@@ -907,19 +909,42 @@ void procesar_bloque(uint16 tipo_bloque){
 		} 
 		break;
 		
-		case DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_CHAR_HANDLE:{
-			modifyCharacteristic(buffer_rx_local, 2, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_CHAR_HANDLE);
+		case DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_P1_CHAR_HANDLE:{
+			modifyCharacteristic(buffer_rx_local, 2, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_P1_CHAR_HANDLE);
 			#ifdef DEBUG
-			Serial.println("Potencia contratada cambiada a: ");
+			Serial.println("Potencia contratada 1 cambiada a: ");
 			Serial.print(buffer_rx_local[0]+buffer_rx_local[1]*100);
 			#endif
 
-			#ifdef CONNECTED
-				Params.potencia_contratada=buffer_rx_local[0]+buffer_rx_local[1]*100;
+			//#ifdef CONNECTED
+			//	Params.potencia_contratada=buffer_rx_local[0]+buffer_rx_local[1]*100;
+			//#endif
+		}
+		break;
+
+		case DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_P2_CHAR_HANDLE:{
+			modifyCharacteristic(buffer_rx_local, 2, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_P2_CHAR_HANDLE);
+			#ifdef DEBUG
+			Serial.println("Potencia contratada 2 cambiada a: ");
+			Serial.print(buffer_rx_local[0]+buffer_rx_local[1]*100);
 			#endif
-		} 
+
+			//#ifdef CONNECTED
+			//	Params.potencia_contratada=buffer_rx_local[0]+buffer_rx_local[1]*100;
+			//#endif
+		}
+		break;
+
+		case TIME_DATE_COUNTRY_CHAR_HANDLE:{
+			modifyCharacteristic(buffer_rx_local, 2, TIME_DATE_COUNTRY_CHAR_HANDLE);
+		}
 		break;
 		
+		case TIME_DATE_CALENDAR_CHAR_HANDLE:{
+			modifyCharacteristic(buffer_rx_local, 41, TIME_DATE_CALENDAR_CHAR_HANDLE);
+		}
+		break;
+
 		case ERROR_STATUS_ERROR_CODE_CHAR_HANDLE:{
 			modifyCharacteristic(buffer_rx_local, 1, ERROR_STATUS_ERROR_CODE_CHAR_HANDLE);
 
