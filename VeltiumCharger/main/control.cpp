@@ -224,7 +224,11 @@ void controlTask(void *arg)
 						buffer_tx_local[1] = (uint8)(BLOQUE_STATUS >> 8);
 						buffer_tx_local[2] = (uint8)BLOQUE_STATUS;
 						buffer_tx_local[3] = 2;
+						#ifdef USE_COMS
 						buffer_tx_local[4] = serverbleGetConnected() || ConfigFirebase.ClientConnected;
+						#else
+						buffer_tx_local[4] = serverbleGetConnected();
+						#endif
 						buffer_tx_local[5] = dispositivo_inicializado;
 						serialLocal.write(buffer_tx_local, 6);
 						estado_actual = ESTADO_NORMAL;
@@ -247,9 +251,11 @@ void controlTask(void *arg)
 					    if(serverbleGetConnected()){
 							Iface_Con = BLE;
 						}
+						#ifdef USE_COMS
 						else if(ConfigFirebase.ClientConnected){
 							Iface_Con = COMS;
 						}
+						#endif
 
 						if(old_inicializado != dispositivo_inicializado){
 							cnt_timeout_tx = TIMEOUT_TX_BLOQUE2 ;
@@ -287,6 +293,7 @@ void controlTask(void *arg)
 							LastUserCon = serverbleGetConnected() ;
 						}
 
+						#ifdef USE_COMS
 						else if(Iface_Con == COMS && LastUserCon != ConfigFirebase.ClientConnected){
 							cnt_timeout_tx = TIMEOUT_TX_BLOQUE2 ;
 							buffer_tx_local[0] = HEADER_TX;
@@ -298,7 +305,7 @@ void controlTask(void *arg)
 							serialLocal.write(buffer_tx_local, 6);
 							LastUserCon = ConfigFirebase.ClientConnected;
 						}
-						 
+						#endif
 
 						if(cnt_timeout_tx == 0)
 						{
@@ -1503,8 +1510,6 @@ uint32 GetStateTime(TickType_t xStart){
 	return (pdTICKS_TO_MS(xTaskGetTickCount() - xStart));
 }
 
-
-#ifdef CONNECTED
 /***************************************************
  *         Enviar nuevos valores al PSOC5
 ***************************************************/
@@ -1529,6 +1534,4 @@ void SendToPSOC5(char *data, uint16 len, uint16 attrHandle){
   memcpy(&buffer_tx_local[4],data,len);
   controlSendToSerialLocal(buffer_tx_local, len+4);
 }
-
-#endif
 

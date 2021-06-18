@@ -16,16 +16,16 @@ uint8 RaspberryTest[6] ={139,96,111,50,166,220};
 extern uint8 device_ID[16];
 extern uint8 authChallengeReply[8] ;
 extern bool Testing;
-extern carac_group ChargingGroup;
 NimBLEDevice BLE_SERVER EXT_RAM_ATTR;
-extern carac_charger net_group[MAX_GROUP_SIZE];
-extern uint8_t net_group_size;
 extern carac_Update_Status 			UpdateStatus;
 extern carac_Comands                Comands;
-extern carac_charger charger_table[MAX_GROUP_SIZE];
-extern carac_circuito Circuitos[MAX_GROUP_SIZE];
 
 #ifdef CONNECTED
+	extern carac_group ChargingGroup;
+	extern carac_charger net_group[MAX_GROUP_SIZE];
+	extern uint8_t net_group_size;
+	extern carac_charger charger_table[MAX_GROUP_SIZE];
+	extern carac_circuito Circuitos[MAX_GROUP_SIZE];
 	extern carac_Coms					Coms;
 	extern carac_Firebase_Configuration ConfigFirebase;
 #endif
@@ -647,7 +647,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 
 			return;
 		}
-	
+#ifdef CONNECTED
 		if ( pCharacteristic->getUUID().equals(blefields[RCS_CHARGING_GROUP].uuid) ){
 			printf("Nuevo grupo recibido desde el BLE!\n ");
 			uint8 numero_cargadores = data[0];
@@ -664,6 +664,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 			delay(100);
 			ChargingGroup.SendNewGroup = true;
 		}
+#endif
 	}
 };
 
