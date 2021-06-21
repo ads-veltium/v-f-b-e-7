@@ -6,12 +6,12 @@
 
 /*********** Configuracion del build**************/
 
-#define USE_COMS                   //Comentar para no utilzar las comunicaciones [ Veltium lite Zero]
+//#define USE_COMS                   //Comentar para no utilzar las comunicaciones [ Veltium lite Zero]
 
 //#define DEVELOPMENT				   //Comentar para pasar firmware a produccion ( Cambio de base de datos y quitar debugs)
 //#define USE_GROUPS			   //Comentar para no utilizar los grupos de potencia
 
-#ifdef DEVELOPMENT
+//#ifdef DEVELOPMENT
 	#define DEBUG				   //Activar los distintos debugs
 	#ifdef DEBUG 
 
@@ -26,7 +26,7 @@
 			#define DEBUG_ETH	   //Activar el debug del ETH
 		#endif
 	#endif
-#endif
+//#endif
 
 /*********** Fin configuracion build**************/
 #include "Arduino.h"
