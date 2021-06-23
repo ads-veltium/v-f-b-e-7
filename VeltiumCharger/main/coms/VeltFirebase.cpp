@@ -214,8 +214,7 @@ bool Real_Time_Database::Send_Command(String path, JsonDocument *doc, uint8_t Co
     }
     
     esp_http_client_set_url(RTDB_client, Write_url.c_str());
-    Serial.println(Write_url.c_str());
-    Serial.println(SerializedData.c_str());
+
     switch(Command){
         case ESCRIBIR:        
             esp_http_client_set_method(RTDB_client, HTTP_METHOD_POST);

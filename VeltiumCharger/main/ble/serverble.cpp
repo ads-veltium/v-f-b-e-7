@@ -432,7 +432,12 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 			    if(UpdateType == VBLE_UPDATE){
 					#ifndef UPDATE_COMPRESSED
 						if(Update.end()){	
+							#ifdef CONNECTED
 							Comands.reset = true;
+							#else
+							MAIN_RESET_Write(0);						
+							ESP.restart();
+							#endif
 						}
 					#else 
 						Serial.println("Decompressing");

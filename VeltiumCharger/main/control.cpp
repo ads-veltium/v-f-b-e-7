@@ -88,7 +88,7 @@ uint8 HPT_estados[9][3] = {"0V", "A1", "A2", "B1", "B2", "C1", "C2", "E1", "F1"}
 #ifdef USE_COMS
 uint8 version_firmware[11] = {"VBLE2_0512"};	
 #else
-uint8 version_firmware[11] = {"VBLE0_0512"};
+uint8 version_firmware[11] = {"VBLE0_0512"};	
 #endif
 uint8 PSOC5_version_firmware[11] ;		
 
@@ -255,12 +255,11 @@ void controlTask(void *arg)
 					    if(serverbleGetConnected()){
 							Iface_Con = BLE;
 						}
-						#ifdef USE_COMS
+#ifdef USE_COMS
 						else if(ConfigFirebase.ClientConnected){
 							Iface_Con = COMS;
 						}
-						#endif
-
+#endif
 						if(old_inicializado != dispositivo_inicializado){
 							cnt_timeout_tx = TIMEOUT_TX_BLOQUE2 ;
 							buffer_tx_local[0] = HEADER_TX;
@@ -296,8 +295,7 @@ void controlTask(void *arg)
 							serialLocal.write(buffer_tx_local, 6);
 							LastUserCon = serverbleGetConnected() ;
 						}
-
-						#ifdef USE_COMS
+#ifdef USE_COMS
 						else if(Iface_Con == COMS && LastUserCon != ConfigFirebase.ClientConnected){
 							cnt_timeout_tx = TIMEOUT_TX_BLOQUE2 ;
 							buffer_tx_local[0] = HEADER_TX;
@@ -309,8 +307,7 @@ void controlTask(void *arg)
 							serialLocal.write(buffer_tx_local, 6);
 							LastUserCon = ConfigFirebase.ClientConnected;
 						}
-						#endif
-
+#endif
 						if(cnt_timeout_tx == 0)
 						{
 #ifdef CONNECTED
@@ -988,8 +985,8 @@ void procesar_bloque(uint16 tipo_bloque){
 		
 		case DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE:{
 			modifyCharacteristic(buffer_rx_local, 1, DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE);
-			#ifdef CONNECTED
-				Params.CDP				  = buffer_rx_local[0];
+			Params.CDP				  = buffer_rx_local[0];
+			#ifdef CONNECTED			
 				if((buffer_rx_local[0] >> 1) && 0x01){
 					if(!Params.Tipo_Sensor){
 						Params.Tipo_Sensor    = (buffer_rx_local[0]  >> 4);
@@ -1019,8 +1016,9 @@ void procesar_bloque(uint16 tipo_bloque){
 						SendToPSOC5(Coms.ETH.Auto,COMS_CONFIGURATION_ETH_AUTO);
 					}
 				}
-				
-				Serial.printf("New CDP %i %i \n", Params.CDP, Params.Tipo_Sensor);
+			#endif
+			#ifdef DEBUG_BLE
+			Serial.printf("New CDP %i %i \n", Params.CDP, Params.Tipo_Sensor);
 			#endif
 		} 
 		break;
