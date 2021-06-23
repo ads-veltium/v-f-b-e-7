@@ -12,6 +12,7 @@ extern carac_Firebase_Configuration ConfigFirebase;
 extern carac_group    ChargingGroup;
 extern carac_charger charger_table[MAX_GROUP_SIZE];
 extern carac_circuito Circuitos[MAX_GROUP_SIZE];
+extern carac_Contador   ContadorExt;
 
 bool add_to_group(const char* ID, IPAddress IP, carac_charger* group, uint8_t* size);
 void remove_group(carac_charger* group, uint8_t* size);
@@ -604,6 +605,8 @@ void Calculo_General(){
     }
 
     Consumo_total = total_pc/100;
+
+    //if(ChargingGroup.Params.CDP && )
 
 #ifdef DEBUG_GROUPS
     printf("\n\nTotal PC of phase %i %i %i\n",Fases[0].corriente_total, Fases[1].corriente_total, Fases[2].corriente_total); 

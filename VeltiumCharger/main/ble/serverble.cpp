@@ -370,7 +370,9 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 				if(strstr (signature,"VBLE")){
 					UpdateType= VBLE_UPDATE;
 					#ifndef UPDATE_COMPRESSED
-						Serial.println("Updating VBLE");			
+						#ifdef DEBUG_BLE
+						Serial.println("Updating VBLE");
+						#endif			
 						if(!Update.begin(fileSize)){
 							Serial.println("File too big");
 							Update.end();
@@ -387,7 +389,9 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 					#endif
 				}
 				else if(strstr (signature,"VELT")){
+					#ifdef DEBUG_BLE
 					Serial.println("Updating VELT");
+					#endif
 					UpdateType= VELT_UPDATE;
 					SPIFFS.end();
 					if(!SPIFFS.begin(1,"/spiffs",1,"PSOC5")){

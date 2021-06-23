@@ -439,7 +439,7 @@ void Eth_Loop(){
                 Coms.ETH.State = DISCONNECTING;                
             }
             //si tenemos configurado un medidor, y a los 30 segundos no tenemos conexion a internet, activamos el DHCP
-            else if(Params.Tipo_Sensor){
+            else if(Params.Tipo_Sensor || (ChargingGroup.Params.CDP >> 4)){
                 if(GetStateTime(xStart) > 10000){
                     #ifdef DEBUG_ETH
                     Serial.println("Tengo un cargador conectado y no tengo internet, activo DHCP");
@@ -455,7 +455,7 @@ void Eth_Loop(){
 
         case CONECTADO:
             //Buscar el contador
-            if(Params.Tipo_Sensor && !finding){
+            if((Params.Tipo_Sensor || ChargingGroup.Params.CDP >>4) && !finding){
                 if(GetStateTime(xStart) > 80000){
                     xTaskCreate( BuscarContador_Task, "BuscarContador", 4096*4, &finding, 5, NULL); 
                     finding = true;
@@ -529,7 +529,7 @@ void Eth_Loop(){
                 break;
             }
             //Lectura del contador
-			if(ContadorExt.ContadorConectado && Params.Tipo_Sensor){
+			if(ContadorExt.ContadorConectado && (Params.Tipo_Sensor || ChargingGroup.Params.CDP >> 4)){
 				if(!Counter.Inicializado){
 					Counter.begin(ContadorExt.ContadorIp);
                     SendToPSOC5(0, BLOQUEO_CARGA);
@@ -538,22 +538,25 @@ void Eth_Loop(){
 				Counter.read();
 				Counter.parse();
 				uint8 buffer_contador[7] = {0}; 
+                
+                if (Params.Tipo_Sensor){
+                    buffer_contador[0] = ContadorExt.ContadorConectado;
+                    buffer_contador[1] = (uint8)(ContadorExt.DomesticCurrentA& 0x00FF);
+                    buffer_contador[2] = (uint8)((ContadorExt.DomesticCurrentA >> 8) & 0x00FF);
 
-				buffer_contador[0] = ContadorExt.ContadorConectado;
-				buffer_contador[1] = (uint8)(ContadorExt.DomesticCurrentA& 0x00FF);
-				buffer_contador[2] = (uint8)((ContadorExt.DomesticCurrentA >> 8) & 0x00FF);
+                    if(Status.Trifasico){
+                        buffer_contador[3] = (uint8)(ContadorExt.DomesticCurrentB & 0x00FF);
+                        buffer_contador[4] = (uint8)((ContadorExt.DomesticCurrentB >> 8) & 0x00FF);
 
-				if(Status.Trifasico){
-					buffer_contador[3] = (uint8)(ContadorExt.DomesticCurrentB & 0x00FF);
-					buffer_contador[4] = (uint8)((ContadorExt.DomesticCurrentB >> 8) & 0x00FF);
+                        buffer_contador[5] = (uint8)(ContadorExt.DomesticCurrentC & 0x00FF);
+                        buffer_contador[6] = (uint8)((ContadorExt.DomesticCurrentC >> 8) & 0x00FF);
+                    }
 
-					buffer_contador[5] = (uint8)(ContadorExt.DomesticCurrentC & 0x00FF);
-					buffer_contador[6] = (uint8)((ContadorExt.DomesticCurrentC >> 8) & 0x00FF);
-				}
+                    SendToPSOC5((char*)buffer_contador,7,MEASURES_EXTERNAL_COUNTER);
+                }
 
-				SendToPSOC5((char*)buffer_contador,7,MEASURES_EXTERNAL_COUNTER);
 			}
-            else if(ContadorExt.ContadorConectado && !Params.Tipo_Sensor){
+            else if(ContadorExt.ContadorConectado && !Params.Tipo_Sensor && !(ChargingGroup.Params.CDP >> 4)){
                 ContadorExt.ContadorConectado = false;
                 Counter.Inicializado = false;
                 Counter.end();

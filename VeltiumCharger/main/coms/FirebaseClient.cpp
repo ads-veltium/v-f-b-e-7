@@ -132,7 +132,8 @@ bool WriteFirebaseParams(String Path){
   Escritura.clear();
   Escritura["auth_mode"]           = String(Params.autentication_mode).substring(0,2);
   Escritura["inst_curr_limit"]      = Params.inst_current_limit;
-  Escritura["contract_power"]      = Params.potencia_contratada;
+  Escritura["contract_power1"]      = Params.potencia_contratada1;
+  Escritura["contract_power2"]      = Params.potencia_contratada2;
   //Escritura["dps_placement"]       = Params.Ubicacion_Sensor;
   //Escritura["dpc_on"]              = Params.CDP_On;
   Escritura["dpc" ]                = Params.CDP;

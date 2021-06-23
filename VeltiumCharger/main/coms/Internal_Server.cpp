@@ -222,7 +222,7 @@ String processor(const String& var){
 	}
     else if (var == "POWER")
 	{
-		return String(Params.potencia_contratada);
+		return String(Params.potencia_contratada1);
 	}
     else if (var == "SSID")
 	{
@@ -693,7 +693,7 @@ void InitServer(void) {
     });
     
     server.on("/power", HTTP_GET_A, [](AsyncWebServerRequest *request){
-        request->send_P(200, "text/plain", String(Params.potencia_contratada).c_str());
+        request->send_P(200, "text/plain", String(Params.potencia_contratada1).c_str());
     });
 
     server.on("/ssid", HTTP_GET_A, [](AsyncWebServerRequest *request){

@@ -154,7 +154,8 @@ typedef struct{
 	uint8  Fase = 1;
 	uint8  CDP;
 	uint8  inst_current_limit;
-	uint16 potencia_contratada;
+	uint16 potencia_contratada1;
+	uint16 potencia_contratada2;
 
 	long long last_ts_app_req= 0;
 } carac_Params;

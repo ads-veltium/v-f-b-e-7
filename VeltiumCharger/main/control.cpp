@@ -88,7 +88,7 @@ uint8 HPT_estados[9][3] = {"0V", "A1", "A2", "B1", "B2", "C1", "C2", "E1", "F1"}
 #ifdef USE_COMS
 uint8 version_firmware[11] = {"VBLE2_0512"};	
 #else
-uint8 version_firmware[11] = {"VBLE0_0512"};	
+uint8 version_firmware[11] = {"VBLE0_0511"};	
 #endif
 uint8 PSOC5_version_firmware[11] ;		
 
@@ -546,7 +546,8 @@ void procesar_bloque(uint16 tipo_bloque){
 					/************************ Set firebase Params **********************/
 					memcpy(Params.autentication_mode, &buffer_rx_local[212],2);
 					Params.inst_current_limit = buffer_rx_local[11];
-					Params.potencia_contratada=buffer_rx_local[229]+buffer_rx_local[230]*0x100;
+					Params.potencia_contratada1 = buffer_rx_local[229]+buffer_rx_local[230]*0x100;
+					Params.potencia_contratada2 = buffer_rx_local[241]+buffer_rx_local[242]*0x100;
 					Params.CDP 	  =  buffer_rx_local[232];
 					
 					if((buffer_rx_local[232] >> 1) && 0x01){
@@ -939,9 +940,9 @@ void procesar_bloque(uint16 tipo_bloque){
 			Serial.print(buffer_rx_local[0]+buffer_rx_local[1]*100);
 			#endif
 
-			//#ifdef CONNECTED
-			//	Params.potencia_contratada=buffer_rx_local[0]+buffer_rx_local[1]*100;
-			//#endif
+			#ifdef CONNECTED
+				Params.potencia_contratada1=buffer_rx_local[0]+buffer_rx_local[1]*100;
+			#endif
 		}
 		break;
 
@@ -952,9 +953,9 @@ void procesar_bloque(uint16 tipo_bloque){
 			Serial.print(buffer_rx_local[0]+buffer_rx_local[1]*100);
 			#endif
 
-			//#ifdef CONNECTED
-			//	Params.potencia_contratada=buffer_rx_local[0]+buffer_rx_local[1]*100;
-			//#endif
+			#ifdef CONNECTED
+				Params.potencia_contratada2=buffer_rx_local[0]+buffer_rx_local[1]*100;
+			#endif
 		}
 		break;
 
