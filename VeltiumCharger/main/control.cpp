@@ -268,8 +268,19 @@ void controlTask(void *arg)
 							LastUserCon = serverbleGetConnected();
 							old_inicializado = dispositivo_inicializado;
 						}
+						if(Testing){
+							cnt_timeout_tx = TIMEOUT_TX_BLOQUE2 ;
+							buffer_tx_local[0] = HEADER_TX;
+							buffer_tx_local[1] = (uint8)(BLOQUE_STATUS >> 8);
+							buffer_tx_local[2] = (uint8)BLOQUE_STATUS;
+							buffer_tx_local[3] = 2;
+							buffer_tx_local[4] = 1; 
+							buffer_tx_local[5] = 4;
+							serialLocal.write(buffer_tx_local, 6);
+							LastUserCon = 1 ;
+						}
 
-						if(Iface_Con == BLE && LastUserCon != serverbleGetConnected()){
+						else if(Iface_Con == BLE && LastUserCon != serverbleGetConnected()){
 							cnt_timeout_tx = TIMEOUT_TX_BLOQUE2 ;
 							buffer_tx_local[0] = HEADER_TX;
 							buffer_tx_local[1] = (uint8)(BLOQUE_STATUS >> 8);
