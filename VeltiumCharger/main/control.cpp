@@ -46,7 +46,7 @@ uint8 authChallengeReply[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 // DACO changed size by crash
 //uint8 authChallengeQuery[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};      //{0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF};
 uint8 authChallengeQuery[10] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};      //{0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF};
-
+uint8 Testing = false;
 TickType_t AuthTimer=0;
 uint8 contador_cent_segundos = 0, contador_cent_segundos_ant = 0;
 uint32 cont_seg = 0, cont_seg_ant = 0, cont_min_ant = 0, cont_min=0, cont_hour=0, cont_hour_ant=0;
@@ -85,7 +85,7 @@ uint8 HPT_estados[9][3] = {"0V", "A1", "A2", "B1", "B2", "C1", "C2", "E1", "F1"}
 #ifdef USE_COMS
 uint8 version_firmware[11] = {"VBLE2_0512"};	
 #else
-uint8 version_firmware[11] = {"VBLE0_0512"};	
+uint8 version_firmware[11] = {"VBLE0_0511"};	
 #endif
 uint8 PSOC5_version_firmware[11] ;		
 
