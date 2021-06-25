@@ -14,7 +14,8 @@ uint8_t  UpdateType  = 0;
 uint16_t Conn_Handle = 0;
 uint8 RaspberryTest[6] ={139,96,111,50,166,220};
 #ifdef DEVELOPMENT
-uint8 ESPTest[6] ={124,158,157,241,94,214};
+uint8 ESPTest[6] ={214,94,241,189,158,124};
+
 #endif
 extern uint8 authChallengeReply[8] ;
 extern uint8 device_ID[16];
@@ -197,11 +198,7 @@ class serverCallbacks: public BLEServerCallbacks
 {
 	void onConnect(BLEServer* pServer, ble_gap_conn_desc *desc) 
 	{
-		#ifdef DEVELOPMENT
-			for(int i =0;i<8;i++){
-				Serial.print(desc->peer_id_addr.val[i]);
-			}
-			
+		#ifdef DEVELOPMENT		
 			if(!memcmp(desc->peer_id_addr.val, ESPTest,6)){
 				Testing = true;
 				setAuthToken(authChallengeReply, 8);
