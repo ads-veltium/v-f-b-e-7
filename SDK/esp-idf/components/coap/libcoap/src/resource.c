@@ -430,7 +430,7 @@ coap_free_resource(coap_resource_t *resource) {
   LL_FOREACH_SAFE(resource->link_attr, attr, tmp) coap_delete_attr(attr);
 
   /* Either the application provided or libcoap copied - need to delete it */
-  coap_delete_str_const(resource->uri_path);
+//  coap_delete_str_const(resource->uri_path);
 
   /* free all elements from resource->subscribers */
   LL_FOREACH_SAFE( resource->subscribers, obs, otmp ) {

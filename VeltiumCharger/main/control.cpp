@@ -1085,7 +1085,7 @@ void procesar_bloque(uint16 tipo_bloque){
             memcpy(n,buffer_rx_local,2);
             ChargingGroup.Charger_number=0;
             uint8_t limit = atoi(n) > 25? 25: atoi(n);
-			
+
             for(uint8_t i=0; i<limit;i++){    
                 for(uint8_t j =0; j< 8; j++){
                     ID[j]=(char)buffer_rx_local[2+i*9+j];

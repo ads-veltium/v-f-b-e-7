@@ -1,5 +1,6 @@
 
 #include "../control.h"
+#include "../group_control.h"
 #include "ble_rcs.h"
 #include "ble_rcs_server.h"
 #include "services/gap/ble_svc_gap.h"
@@ -32,6 +33,7 @@ extern carac_Comands                Comands;
 	extern carac_circuito Circuitos[MAX_GROUP_SIZE];
 	extern carac_Coms					Coms;
 	extern carac_Firebase_Configuration ConfigFirebase;
+	void coap_put( char* Topic, char* Message);
 #endif
 
 /* milestone: one-liner for reporting memory usage */
@@ -496,6 +498,10 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 			else if (handle == GROUPS_PARAMS) {
 				uint8_t sendBuffer[7];
 				sendBuffer[0] = ChargingGroup.Params.GroupMaster;
+
+				if(ChargingGroup.Params.GroupActive && !payload[0]){
+					ChargingGroup.StopOrder = true;
+				}
 				memcpy(&sendBuffer[1], payload,6);
 				
 				buffer_tx[0] = HEADER_TX;
@@ -556,7 +562,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 							memcpy(&group_buffer[i*9+1], charger_table[i].name,8);
 							group_buffer[i*9+9]=(charger_table[i].Circuito << 2) + charger_table[i].Fase;
 						}
-						serverbleSetCharacteristic(group_buffer,7 ,CHARGING_GROUP_BLE_CHARGING_GROUP);
+						serverbleSetCharacteristic(group_buffer,ChargingGroup.Charger_number*9+1 ,CHARGING_GROUP_BLE_CHARGING_GROUP);
 
 						//Actualizar params
 						group_buffer[0] = ChargingGroup.Params.GroupActive;
@@ -577,8 +583,16 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 
 					//borrado
 					case 3:
-						printf("Tengo que borrar el grupo!\n");
-						ChargingGroup.DeleteOrder = true;
+						if(ChargingGroup.Conected){
+							char buffer[20];
+							memcpy(buffer,"Delete",6);
+							coap_put("CONTROL", buffer);
+						}
+						else{
+							New_Control("Delete", 7);
+						}
+										
+
 					break;
 
 					//lectura
@@ -674,20 +688,65 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 		}
 #ifdef CONNECTED
 		if ( pCharacteristic->getUUID().equals(blefields[RCS_CHARGING_GROUP].uuid) ){
-			printf("Nuevo grupo recibido desde el BLE!\n ");
-			uint8 numero_cargadores = data[0];
-
-			uint16_t size = numero_cargadores * 9 +1;
 			
-			buffer_tx[0] = HEADER_TX;
-			buffer_tx[1] = (uint8)(CHARGING_GROUP_BLE_CHARGING_GROUP >> 8);
-			buffer_tx[2] = (uint8)(CHARGING_GROUP_BLE_CHARGING_GROUP);
-			buffer_tx[3] = size;
-			memcpy(&buffer_tx[4], data, size);
-			controlSendToSerialLocal(buffer_tx, size + 4);
+			uint8 size = uint8(data[0]-48);
 
-			delay(100);
-			ChargingGroup.SendNewGroup = true;
+			char sendBuffer[252];
+			if(size< 10){
+				sprintf(&sendBuffer[0],"0%i",(char)size);
+			}
+
+			else{
+				sprintf(&sendBuffer[0],"%i",(char)size);
+			}
+
+			if(size>0){
+				if(size>25){
+					//Envio de la primera parte
+					for(uint8_t i = 0;i < 25; i++){
+						memcpy(&sendBuffer[2+(i*9)],&data[1+(i*9)],8);
+						itoa(data[9+(i*9)],&sendBuffer[10+(i*9)],10);
+					}
+
+					SendToPSOC5(sendBuffer,227,GROUPS_DEVICES_PART_1); 
+					delay(250);
+
+					//Envio de la segunda mitad
+					if(size - 25< 10){
+						sprintf(&sendBuffer[0],"0%i",(char)size-25);
+					}
+					else{
+						sprintf(&sendBuffer[0],"%i",(char)size-25);
+					}
+					for(uint8_t i=0;i<(size - 25);i++){
+						memcpy(&sendBuffer[2+(i*9)],&data[1+((i+25)*9)],8);
+						itoa(data[9+((i+25)*9)],&sendBuffer[10+(i*9)],10);
+					}
+
+					SendToPSOC5(sendBuffer,(size - 25)*9+2,GROUPS_DEVICES_PART_2); 
+
+				}
+				else{
+					//El grupo entra en una parte, asique solo mandamos una
+					for(uint8_t i=0;i<size;i++){
+						memcpy(&sendBuffer[2+(i*9)],&data[1+(i*9)],8);
+						itoa(data[9+(i*9)]-48,&sendBuffer[10+(i*9)],10);
+					}
+					SendToPSOC5(sendBuffer,size*9+2,GROUPS_DEVICES_PART_1); 
+					
+				}
+			}
+		else{
+			for(int i=0;i<=250;i++){
+				sendBuffer[i]=(char)0;
+			}
+			SendToPSOC5(sendBuffer,250,GROUPS_DEVICES_PART_1); 
+			SendToPSOC5(sendBuffer,250,GROUPS_DEVICES_PART_2); 
+			delay(250);
+		}
+		delay(250);
+		SendToPSOC5(0,SEND_GROUP_DATA);
+		delay(250);
 		}
 #endif
 	}

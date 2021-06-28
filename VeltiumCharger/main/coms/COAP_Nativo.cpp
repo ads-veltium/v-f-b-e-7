@@ -837,6 +837,7 @@ static void coap_server(void *p){
                 coap_put("CONTROL", buffer);*/
                 New_Control("Pause", 5);
                 ChargingGroup.StopOrder = false;
+                goto clean_up;
                 break;
             }
 
@@ -847,6 +848,7 @@ static void coap_server(void *p){
                 delay(250);*/
                 New_Control("Delete", 6);
                 ChargingGroup.DeleteOrder = false;
+                goto clean_up;
                 break;
             }
             
@@ -891,7 +893,10 @@ static void coap_server(void *p){
         }
     }
 clean_up:
-    coap_free_context(ctx);
+    if(ctx){
+        coap_free_context(ctx);
+    }
+    
     coap_cleanup();
 
     #ifdef DEBUG_GROUPS

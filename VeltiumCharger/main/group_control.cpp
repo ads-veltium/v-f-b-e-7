@@ -162,7 +162,7 @@ void New_Control(char* Data, int Data_size){
 
   if(!memcmp(Data,"Pause",5)){
     printf("Tengo que pausar el grupo\n");
-
+    ChargingGroup.StopOrder = true;
     char buffer[7];
     memcpy(&buffer,&ChargingGroup.Params,7);
     SendToPSOC5((char*)buffer,7,GROUPS_PARAMS); 
@@ -178,8 +178,7 @@ void New_Control(char* Data, int Data_size){
     remove_group(charger_table, &ChargingGroup.Charger_number);
     store_group_in_mem(charger_table,ChargingGroup.Charger_number);
 
-    char buffer[7];
-    memcpy(&buffer,&ChargingGroup.Params,7);
+    char buffer[7] = {0};
     SendToPSOC5((char*)buffer,7,GROUPS_PARAMS); 
   }
 }

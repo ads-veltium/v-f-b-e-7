@@ -41,7 +41,10 @@ coap_malloc_type(coap_memory_tag_t type, size_t size) {
 void
 coap_free_type(coap_memory_tag_t type, void *p) {
   (void)type;
-  free(p);
+  if(p){
+    free(p);
+  } 
+  
 }
 
 #else /* HAVE_MALLOC */
