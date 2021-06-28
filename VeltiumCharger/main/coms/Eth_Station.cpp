@@ -50,12 +50,15 @@ void BuscarContador_Task(void *args){
     Cliente.begin();
 
     while(!TopeSup || !TopeInf){
-        if(NextOne){
+        if(NextOne){    
             if(Sentido && !TopeInf){ //Pabajo
                 i = ip4_addr4(&Coms.ETH.IP) - inf > 1 ? ip4_addr4(&Coms.ETH.IP) - inf : 0;
                 if(i > 0 ){
                     inf++;
-                    Sentido = false;
+                    if(!TopeSup){
+                        Sentido = false;
+                    }
+                    
                 }
                 else{
                     TopeInf = true;
@@ -67,7 +70,9 @@ void BuscarContador_Task(void *args){
                 i = ip4_addr4(&Coms.ETH.IP) + Sup < 255 ? ip4_addr4(&Coms.ETH.IP) + Sup : 255;
                 if(i != 254 ){
                     Sup++;
-                    Sentido = true;
+                    if(!TopeInf){
+                        Sentido = true;
+                    }
                 }
                 else{
                     TopeSup = true;
@@ -101,7 +106,7 @@ void BuscarContador_Task(void *args){
                 #ifdef DEBUG_ETH
                 printf("Probando a ver si es de verdad\n");
                 #endif
-                for(uint8_t i=0; i <=2;i++){
+                for(uint8_t i=0; i <=1;i++){
                     if(Cliente.Send_Command(url,LEER)) {
                         String respuesta = Cliente.ObtenerRespuesta();               
                         if(respuesta.indexOf("IE38MD")>-1){
@@ -124,7 +129,7 @@ void BuscarContador_Task(void *args){
             }
             NextOne = true;
         }
-        delay(75);
+        delay(100);
     }
     
     Cliente.end();
@@ -286,7 +291,7 @@ void initialize_ethernet(void){
         esp_event_handler_register(ETH_EVENT, ETHERNET_EVENT_STOP, esp_netif_action_stop, eth_netif);
         eth_connected = true;
         
-        uint8_t ip_Array[4] = { ip4_addr1(&Coms.ETH.IP),ip4_addr2(&Coms.ETH.IP),ip4_addr3(&Coms.ETH.IP),ip4_addr4(&Coms.ETH.IP)};
+        //uint8_t ip_Array[4] = { ip4_addr1(&Coms.ETH.IP),ip4_addr2(&Coms.ETH.IP),ip4_addr3(&Coms.ETH.IP),ip4_addr4(&Coms.ETH.IP)};
 //        modifyCharacteristic(&ip_Array[0], 4, COMS_CONFIGURATION_LAN_IP);
   //      Coms.ETH.ON = 1;
 //        modifyCharacteristic((uint8_t*)Coms.ETH.ON, 1, COMS_CONFIGURATION_ETH_ON);	
