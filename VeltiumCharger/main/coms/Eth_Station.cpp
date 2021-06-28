@@ -50,12 +50,15 @@ void BuscarContador_Task(void *args){
     Cliente.begin();
 
     while(!TopeSup || !TopeInf){
-        if(NextOne){
+        if(NextOne){    
             if(Sentido && !TopeInf){ //Pabajo
                 i = ip4_addr4(&Coms.ETH.IP) - inf > 1 ? ip4_addr4(&Coms.ETH.IP) - inf : 0;
                 if(i > 0 ){
                     inf++;
-                    Sentido = false;
+                    if(!TopeSup){
+                        Sentido = false;
+                    }
+                    
                 }
                 else{
                     TopeInf = true;
@@ -67,7 +70,9 @@ void BuscarContador_Task(void *args){
                 i = ip4_addr4(&Coms.ETH.IP) + Sup < 255 ? ip4_addr4(&Coms.ETH.IP) + Sup : 255;
                 if(i != 254 ){
                     Sup++;
-                    Sentido = true;
+                    if(!TopeInf){
+                        Sentido = true;
+                    }
                 }
                 else{
                     TopeSup = true;

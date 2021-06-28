@@ -338,7 +338,7 @@ int  _leidos = 0;
 char *_respuesta_total = new char[1500];
 esp_err_t _generic_http_event_handle(esp_http_client_event_t *evt){
 
-    char *response = (char*)heap_caps_calloc(1,512, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT); 
+    char *response  = new char[512];
     switch(evt->event_id) {
         case HTTP_EVENT_ERROR:
             break;
@@ -355,7 +355,7 @@ esp_err_t _generic_http_event_handle(esp_http_client_event_t *evt){
             printf("%.*s", evt->data_len, (char*)evt->data);
             break;
         case HTTP_EVENT_ON_DATA:
-            if(evt->data_len>0){
+            if(evt->data_len>0 && evt->data_len<512){
                 esp_http_client_read(evt->client, response, evt->data_len);
                 memcpy(&_respuesta_total[_leidos],response,evt->data_len);
                 _leidos+=evt->data_len;
@@ -371,6 +371,7 @@ esp_err_t _generic_http_event_handle(esp_http_client_event_t *evt){
             break;
     }
     free(response);
+
     return ESP_OK;
 }
 void Cliente_HTTP::set_url(String url){
