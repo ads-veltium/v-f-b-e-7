@@ -58,7 +58,6 @@ void BuscarContador_Task(void *args){
                     if(!TopeSup){
                         Sentido = false;
                     }
-                    
                 }
                 else{
                     TopeInf = true;
