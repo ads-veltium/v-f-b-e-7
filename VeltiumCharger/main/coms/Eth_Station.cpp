@@ -87,7 +87,9 @@ void BuscarContador_Task(void *args){
         }
         else{            
             sprintf(ip,"%i.%i.%i.%i", ip4_addr1(&Coms.ETH.IP),ip4_addr2(&Coms.ETH.IP),ip4_addr3(&Coms.ETH.IP),i-1); 
-            printf("%s\n", ip);
+            #ifdef DEBUG_ETH
+                printf("%s\n", ip);
+            #endif
             ip_addr_t target;
             ipaddr_aton(ip,&target);
             uint8_t resultado = 0;
@@ -103,9 +105,9 @@ void BuscarContador_Task(void *args){
                 strcat(url, ip);
                 strcat(url, "/get_command?command=get_measurements");
                 #ifdef DEBUG_ETH
-                printf("Probando a ver si es de verdad\n");
+                    printf("Probando a ver si es de verdad\n");
                 #endif
-                for(uint8_t i=0; i <=2;i++){
+                for(uint8_t i=0; i <=1;i++){
                     if(Cliente.Send_Command(url,LEER)) {
                         String respuesta = Cliente.ObtenerRespuesta();               
                         if(respuesta.indexOf("IE38MD")>-1){
@@ -120,7 +122,7 @@ void BuscarContador_Task(void *args){
                 }
             }
             #ifdef DEBUG_ETH
-            Serial.println("Nada, seguimos buscando");
+                Serial.println("Nada, seguimos buscando");
             #endif
             if(!Params.Tipo_Sensor){
                 Coms.ETH.Wifi_Perm = true;

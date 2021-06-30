@@ -316,8 +316,8 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 			uint8_t* payload = data + 4;
 
 			#ifdef DEBUG_BLE
-			Serial.printf("Received omnibus write request for selector %u\n", selector);
-			Serial.printf("Received omnibus write request for handle   %u\n", handle);
+				Serial.printf("Received omnibus write request for selector %u\n", selector);
+				Serial.printf("Received omnibus write request for handle   %u\n", handle);
 			#endif
 
 			// special cases

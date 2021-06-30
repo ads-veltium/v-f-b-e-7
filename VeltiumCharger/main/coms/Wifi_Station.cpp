@@ -538,7 +538,13 @@ void Eth_Loop(){
 				Counter.parse();
 				uint8 buffer_contador[7] = {0}; 
 
-				buffer_contador[0] = ContadorExt.ContadorConectado;
+
+                buffer_contador[0] = ContadorExt.ContadorConectado;
+				buffer_contador[1] = (uint8)(ContadorExt.DomesticPower& 0x00FF);
+				buffer_contador[2] = (uint8)((ContadorExt.DomesticPower >> 8) & 0x00FF);
+
+                /* Sistema viejo de medidas por corriente 
+                buffer_contador[0] = ContadorExt.ContadorConectado;
 				buffer_contador[1] = (uint8)(ContadorExt.DomesticCurrentA& 0x00FF);
 				buffer_contador[2] = (uint8)((ContadorExt.DomesticCurrentA >> 8) & 0x00FF);
 
@@ -549,8 +555,9 @@ void Eth_Loop(){
 					buffer_contador[5] = (uint8)(ContadorExt.DomesticCurrentC & 0x00FF);
 					buffer_contador[6] = (uint8)((ContadorExt.DomesticCurrentC >> 8) & 0x00FF);
 				}
+                */
 
-				SendToPSOC5((char*)buffer_contador,7,MEASURES_EXTERNAL_COUNTER);
+				SendToPSOC5((char*)buffer_contador,3,MEASURES_EXTERNAL_COUNTER);
 			}
             else if(ContadorExt.ContadorConectado && !Params.Tipo_Sensor){
                 ContadorExt.ContadorConectado = false;

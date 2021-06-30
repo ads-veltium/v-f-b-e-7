@@ -442,12 +442,12 @@ bool Cliente_HTTP::Send_Command(String url, uint8_t Command){
     while(!_lectura_finalizada ){
         delay(50);
         tiempo_lectura ++;
-        if(tiempo_lectura > 60){
+        if(tiempo_lectura > 30){
             return false;
         }
     }
 
-    if(tiempo_lectura >= 60){
+    if(tiempo_lectura >= 30){
         return false;
     }
 
