@@ -64,7 +64,19 @@ void Contador::parse(){
 
     //Leer potencias 
     medida = Measurements["measurements"]["P0"].as<String>();
-    ContadorExt.DomesticPower = medida.toFloat();
+    Serial.println(medida);
+    
+    if(medida.indexOf("k W")>0){
+        ContadorExt.DomesticPower = medida.toFloat()*1000;
+    }
+    else{
+        ContadorExt.DomesticPower = medida.toFloat();
+        if(ContadorExt.DomesticPower > 60000){
+            ContadorExt.DomesticPower = 0;
+        }
+    }
+
+    Serial.println(ContadorExt.DomesticPower);
 
 
     /*medida = Measurements["measurements"]["U1"].as<String>();
