@@ -422,7 +422,8 @@ void Eth_Loop(){
         case CONNECTING:
             if(eth_connected){
                 Coms.ETH.State = CONECTADO;
-#ifdef USE_GROUPS          
+#ifdef USE_GROUPS
+                SendToPSOC5(0,SEND_GROUP_DATA);          
                 delay(1000);
                 start_udp();
 #endif
@@ -455,7 +456,7 @@ void Eth_Loop(){
             
         break;
 
-        case CONECTADO:
+        case CONECTADO:{
             //Buscar el contador
             if(Params.Tipo_Sensor && !finding){
                 if(GetStateTime(xStart) > 30000){
@@ -468,13 +469,17 @@ void Eth_Loop(){
 
             //Arrancar los grupos
             else if(!ChargingGroup.Conected && Coms.ETH.conectado){
+                printf("b\n");
                 if(ChargingGroup.Params.GroupActive){
+                    printf("c\n");
                     if(ConnectionState == IDLE){
+                        printf("d\n");
                         if(ChargingGroup.StartClient){
                             coap_start_client();
                         }
                         else{
                             if(ChargingGroup.Params.GroupMaster){
+                                printf("e\n");
                                 coap_start_server();
                             }
                             else if(GetStateTime(xConnect) > 60000){
@@ -541,29 +546,9 @@ void Eth_Loop(){
 				Counter.parse();
 				uint8 buffer_contador[7] = {0}; 
                 
-                if (Params.Tipo_Sensor){
-                    buffer_contador[0] = ContadorExt.ContadorConectado;
-                    buffer_contador[1] = (uint8)(ContadorExt.DomesticCurrentA& 0x00FF);
-                    buffer_contador[2] = (uint8)((ContadorExt.DomesticCurrentA >> 8) & 0x00FF);
-
-
                 buffer_contador[0] = ContadorExt.ContadorConectado;
-				buffer_contador[1] = (uint8)(ContadorExt.DomesticPower& 0x00FF);
-				buffer_contador[2] = (uint8)((ContadorExt.DomesticPower >> 8) & 0x00FF);
-
-                /* Sistema viejo de medidas por corriente 
-                buffer_contador[0] = ContadorExt.ContadorConectado;
-				buffer_contador[1] = (uint8)(ContadorExt.DomesticCurrentA& 0x00FF);
-				buffer_contador[2] = (uint8)((ContadorExt.DomesticCurrentA >> 8) & 0x00FF);
-
-                        buffer_contador[5] = (uint8)(ContadorExt.DomesticCurrentC & 0x00FF);
-                        buffer_contador[6] = (uint8)((ContadorExt.DomesticCurrentC >> 8) & 0x00FF);
-                    }
-
-					buffer_contador[5] = (uint8)(ContadorExt.DomesticCurrentC & 0x00FF);
-					buffer_contador[6] = (uint8)((ContadorExt.DomesticCurrentC >> 8) & 0x00FF);
-				}
-                */
+                buffer_contador[1] = (uint8)(ContadorExt.DomesticPower& 0x00FF);
+                buffer_contador[2] = (uint8)((ContadorExt.DomesticPower >> 8) & 0x00FF);
 
 				SendToPSOC5((char*)buffer_contador,3,MEASURES_EXTERNAL_COUNTER);
 			}
@@ -573,9 +558,9 @@ void Eth_Loop(){
                 Counter.end();
                 finding = false;
             }
-
+            }
         break;
-
+            
         case DISCONNECTING:
             if(!eth_connected && !eth_connecting){        
                 finding = false;
