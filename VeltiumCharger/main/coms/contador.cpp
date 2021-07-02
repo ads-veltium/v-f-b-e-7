@@ -64,7 +64,8 @@ void Contador::parse(){
 
     //Leer potencias 
     medida = Measurements["measurements"]["P0"].as<String>();
-    ContadorExt.DomesticPower = medida.toFloat() *100;
+    ContadorExt.DomesticPower = medida.toFloat();
+
 
     /*medida = Measurements["measurements"]["U1"].as<String>();
     Status.Measures.instant_voltage = medida.toFloat() *100;

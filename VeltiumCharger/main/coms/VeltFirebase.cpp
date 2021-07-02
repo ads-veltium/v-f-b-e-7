@@ -335,10 +335,10 @@ long long  Real_Time_Database::Get_Timestamp(String path, JsonDocument *respuest
 /********** Cliente http generico *************/
 bool _lectura_finalizada = false;
 int  _leidos = 0;
-char *_respuesta_total = new char[1500];
+char *_respuesta_total = new char[2048];
 esp_err_t _generic_http_event_handle(esp_http_client_event_t *evt){
 
-    char *response  = new char[512];
+    char *response  = new char[1024];
     switch(evt->event_id) {
         case HTTP_EVENT_ERROR:
             break;
@@ -346,7 +346,7 @@ esp_err_t _generic_http_event_handle(esp_http_client_event_t *evt){
             _lectura_finalizada = false;
             _leidos = 0;
             free(_respuesta_total);
-            _respuesta_total = new char[1500];
+            _respuesta_total = new char[2048];
             break;
         case HTTP_EVENT_HEADER_SENT:
             break;
@@ -355,7 +355,7 @@ esp_err_t _generic_http_event_handle(esp_http_client_event_t *evt){
             printf("%.*s", evt->data_len, (char*)evt->data);
             break;
         case HTTP_EVENT_ON_DATA:
-            if(evt->data_len>0 && evt->data_len<512){
+            if(evt->data_len>0 && evt->data_len<1024){
                 esp_http_client_read(evt->client, response, evt->data_len);
                 memcpy(&_respuesta_total[_leidos],response,evt->data_len);
                 _leidos+=evt->data_len;
@@ -442,12 +442,12 @@ bool Cliente_HTTP::Send_Command(String url, uint8_t Command){
     while(!_lectura_finalizada ){
         delay(50);
         tiempo_lectura ++;
-        if(tiempo_lectura > 30){
+        if(tiempo_lectura > 60){
             return false;
         }
     }
 
-    if(tiempo_lectura >= 30){
+    if(tiempo_lectura >= 60){
         return false;
     }
 

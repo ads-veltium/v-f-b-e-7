@@ -455,7 +455,7 @@ void Eth_Loop(){
         case CONECTADO:
             //Buscar el contador
             if(Params.Tipo_Sensor && !finding){
-                if(GetStateTime(xStart) > 80000){
+                if(GetStateTime(xStart) > 30000){
                     xTaskCreate( BuscarContador_Task, "BuscarContador", 4096*4, &finding, 5, NULL); 
                     finding = true;
                 }
