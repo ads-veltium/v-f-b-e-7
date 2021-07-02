@@ -246,7 +246,7 @@ void initialize_ethernet(void){
     #endif
 
     //servidor DHCP
-    if(!Coms.ETH.Auto && Params.Tipo_Sensor){
+    if(!Coms.ETH.Auto && (Params.Tipo_Sensor || ChargingGroup.Params.GroupMaster)){
         //si tenemos IP estatica y un medidor conectado, activamos el dhcp
         Coms.ETH.DHCP = true;
         SendToPSOC5(Coms.ETH.Auto,COMS_CONFIGURATION_ETH_AUTO);
@@ -290,10 +290,11 @@ void initialize_ethernet(void){
         esp_event_handler_register(ETH_EVENT, ETHERNET_EVENT_STOP, esp_netif_action_stop, eth_netif);
         eth_connected = true;
         
-        //uint8_t ip_Array[4] = { ip4_addr1(&Coms.ETH.IP),ip4_addr2(&Coms.ETH.IP),ip4_addr3(&Coms.ETH.IP),ip4_addr4(&Coms.ETH.IP)};
-//        modifyCharacteristic(&ip_Array[0], 4, COMS_CONFIGURATION_LAN_IP);
-  //      Coms.ETH.ON = 1;
-//        modifyCharacteristic((uint8_t*)Coms.ETH.ON, 1, COMS_CONFIGURATION_ETH_ON);	
+        uint8_t ip_Array[4] = { ip4_addr1(&Coms.ETH.IP),ip4_addr2(&Coms.ETH.IP),ip4_addr3(&Coms.ETH.IP),ip4_addr4(&Coms.ETH.IP)};
+        modifyCharacteristic(&ip_Array[0], 4, COMS_CONFIGURATION_LAN_IP);
+        Coms.ETH.ON = 1;
+        uint8_t  on =1;
+        modifyCharacteristic(&on, 1, COMS_CONFIGURATION_ETH_ON);	
         
     }   
     
@@ -314,7 +315,8 @@ void initialize_ethernet(void){
         eth_connected = true;
         uint8_t ip_Array[4] = { ip4_addr1(&Coms.ETH.IP),ip4_addr2(&Coms.ETH.IP),ip4_addr3(&Coms.ETH.IP),ip4_addr4(&Coms.ETH.IP)};
         modifyCharacteristic(&ip_Array[0], 4, COMS_CONFIGURATION_LAN_IP);
-        modifyCharacteristic((uint8_t*)Coms.ETH.ON, 1, COMS_CONFIGURATION_ETH_ON);	
+        uint8_t  on =1;
+        modifyCharacteristic(&on, 1, COMS_CONFIGURATION_ETH_ON);	
     }
     //Configuracion automatica
     else{
@@ -323,6 +325,8 @@ void initialize_ethernet(void){
         #endif
         eth_netif = esp_netif_new(&cfg);
         esp_eth_set_default_handlers(eth_netif);
+        uint8_t  on =1;
+        modifyCharacteristic(&on, 1, COMS_CONFIGURATION_ETH_ON);
     }
 
     ESP_ERROR_CHECK(esp_event_handler_register(ETH_EVENT, ESP_EVENT_ANY_ID, eth_event_handler, NULL));

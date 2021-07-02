@@ -414,13 +414,15 @@ void Eth_Loop(){
                 initialize_ethernet();
                 Coms.ETH.State = CONNECTING;
                 xStart = xTaskGetTickCount();
+#ifdef USE_GROUPS      
+                SendToPSOC5(0,SEND_GROUP_DATA);
+#endif
             }
         break;
         case CONNECTING:
             if(eth_connected){
                 Coms.ETH.State = CONECTADO;
-#ifdef USE_GROUPS
-                SendToPSOC5(0,SEND_GROUP_DATA);
+#ifdef USE_GROUPS          
                 delay(1000);
                 start_udp();
 #endif
@@ -438,11 +440,11 @@ void Eth_Loop(){
                 stop_ethernet();
                 Coms.ETH.State = DISCONNECTING;                
             }
-            //si tenemos configurado un medidor, y a los 30 segundos no tenemos conexion a internet, activamos el DHCP
-            else if(Params.Tipo_Sensor || (ChargingGroup.Params.CDP >> 4)){
-                if(GetStateTime(xStart) > 10000){
+            //si tenemos configurado un medidor o somos el maestro de un grupo, y a los 30 segundos no tenemos conexion a internet, activamos el DHCP
+            else if(Params.Tipo_Sensor || ChargingGroup.Params.GroupMaster){
+                if(GetStateTime(xStart) > 20000){
                     #ifdef DEBUG_ETH
-                    Serial.println("Tengo un cargador conectado y no tengo internet, activo DHCP");
+                        Serial.println("Tengo un medidor conectado y no tengo internet, o soy el maestro de un grupo sin salida a internet, activo DHCP");
                     #endif
                     kill_ethernet();
                     Coms.ETH.Auto = false;
