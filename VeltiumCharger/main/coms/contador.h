@@ -12,7 +12,7 @@
 class Contador{
     
     String CounterUrl= "http://";
-    StaticJsonDocument<2048> Measurements;
+    StaticJsonDocument<4096> Measurements;
   public:
     
     bool Inicializado = false;

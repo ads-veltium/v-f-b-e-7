@@ -216,7 +216,7 @@ typedef struct{
 	bool      ContadorConectado = false;
 
 	char      ContadorIp[15] ={"0"};
-	
+	uint16    DomesticPower;
 	uint16    DomesticCurrentA;
 	uint16    DomesticCurrentB;
 	uint16    DomesticCurrentC;

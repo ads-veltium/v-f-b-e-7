@@ -457,8 +457,8 @@ void Eth_Loop(){
 
         case CONECTADO:
             //Buscar el contador
-            if((Params.Tipo_Sensor || ChargingGroup.Params.CDP >>4) && !finding){
-                if(GetStateTime(xStart) > 80000){
+            if(Params.Tipo_Sensor && !finding){
+                if(GetStateTime(xStart) > 30000){
                     xTaskCreate( BuscarContador_Task, "BuscarContador", 4096*4, &finding, 5, NULL); 
                     finding = true;
                 }
@@ -546,17 +546,26 @@ void Eth_Loop(){
                     buffer_contador[1] = (uint8)(ContadorExt.DomesticCurrentA& 0x00FF);
                     buffer_contador[2] = (uint8)((ContadorExt.DomesticCurrentA >> 8) & 0x00FF);
 
-                    if(Status.Trifasico){
-                        buffer_contador[3] = (uint8)(ContadorExt.DomesticCurrentB & 0x00FF);
-                        buffer_contador[4] = (uint8)((ContadorExt.DomesticCurrentB >> 8) & 0x00FF);
+
+                buffer_contador[0] = ContadorExt.ContadorConectado;
+				buffer_contador[1] = (uint8)(ContadorExt.DomesticPower& 0x00FF);
+				buffer_contador[2] = (uint8)((ContadorExt.DomesticPower >> 8) & 0x00FF);
+
+                /* Sistema viejo de medidas por corriente 
+                buffer_contador[0] = ContadorExt.ContadorConectado;
+				buffer_contador[1] = (uint8)(ContadorExt.DomesticCurrentA& 0x00FF);
+				buffer_contador[2] = (uint8)((ContadorExt.DomesticCurrentA >> 8) & 0x00FF);
 
                         buffer_contador[5] = (uint8)(ContadorExt.DomesticCurrentC & 0x00FF);
                         buffer_contador[6] = (uint8)((ContadorExt.DomesticCurrentC >> 8) & 0x00FF);
                     }
 
-                    SendToPSOC5((char*)buffer_contador,7,MEASURES_EXTERNAL_COUNTER);
-                }
+					buffer_contador[5] = (uint8)(ContadorExt.DomesticCurrentC & 0x00FF);
+					buffer_contador[6] = (uint8)((ContadorExt.DomesticCurrentC >> 8) & 0x00FF);
+				}
+                */
 
+				SendToPSOC5((char*)buffer_contador,3,MEASURES_EXTERNAL_COUNTER);
 			}
             else if(ContadorExt.ContadorConectado && !Params.Tipo_Sensor && !(ChargingGroup.Params.CDP >> 4)){
                 ContadorExt.ContadorConectado = false;

@@ -334,7 +334,8 @@ void controlTask(void *arg)
 								#ifdef DEBUG
 								Serial.println("Reiniciando por comando externo! No preocuparse");
 								#endif
-								MAIN_RESET_Write(0);						
+								MAIN_RESET_Write(0);
+								delay(500);		
 								ESP.restart();
 							}	
 #endif
@@ -579,9 +580,9 @@ void procesar_bloque(uint16 tipo_bloque){
 
 		case BLOQUE_STATUS:
 #ifdef CONNECTED
-			if(buffer_rx_local[45]==0x36){
+			if(buffer_rx_local[45]==0x36 && systemStarted){
 #else
-			if(buffer_rx_local[25]==0x36){
+			if(buffer_rx_local[25]==0x36 && systemStarted){
 #endif
 				//Comprobar HPT
 				bool valido = false;
