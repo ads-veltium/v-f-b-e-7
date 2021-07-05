@@ -458,7 +458,7 @@ void Eth_Loop(){
 
         case CONECTADO:{
             //Buscar el contador
-            if(Params.Tipo_Sensor && !finding){
+            if((Params.Tipo_Sensor || ChargingGroup.Params.CDP >> 4) && !finding){
                 if(GetStateTime(xStart) > 30000){
                     xTaskCreate( BuscarContador_Task, "BuscarContador", 4096*4, &finding, 5, NULL); 
                     finding = true;
@@ -469,7 +469,6 @@ void Eth_Loop(){
 
             //Arrancar los grupos
             else if(!ChargingGroup.Conected && Coms.ETH.conectado){
-                printf("b\n");
                 if(ChargingGroup.Params.GroupActive){
                     printf("c\n");
                     if(ConnectionState == IDLE){
@@ -497,26 +496,22 @@ void Eth_Loop(){
 
                 //Si lo queremos reinicializar para ponerle una ip estatica o quitarsela
                 if(Coms.ETH.restart || Coms.ETH.DHCP){
-#ifdef USE_GROUPS
                     if(ChargingGroup.Conected){
                         ChargingGroup.Params.GroupActive = false;
                         ChargingGroup.StopOrder = true;   
                     }
                     close_udp();
-#endif
                     kill_ethernet();
                     Coms.ETH.State = KILLING;
                     Coms.ETH.restart = false;
                     break;
                 }
                 else{
-#ifdef USE_GROUPS
                     if(ChargingGroup.Conected){
                         ChargingGroup.Params.GroupActive = false;
                         ChargingGroup.StopOrder = true;
                     }
                     close_udp();
-#endif
                     stop_ethernet();
                     Coms.ETH.State = DISCONNECTING;
                     break;
@@ -526,15 +521,14 @@ void Eth_Loop(){
             //Desconexion del cable
             if(!eth_connected && !eth_link_up && (ConnectionState ==IDLE || ConnectionState==DISCONNECTED)){
                 Coms.ETH.State = DISCONNECTING;
-#ifdef USE_GROUPS
                 close_udp();
                 if(ChargingGroup.Conected){
                     ChargingGroup.Params.GroupActive = false;
                     ChargingGroup.StopOrder = true;
                 }
-#endif
                 break;
             }
+
             //Lectura del contador
 			if(ContadorExt.ContadorConectado && (Params.Tipo_Sensor || ChargingGroup.Params.CDP >> 4)){
 				if(!Counter.Inicializado){
@@ -544,14 +538,19 @@ void Eth_Loop(){
 
 				Counter.read();
 				Counter.parse();
-				uint8 buffer_contador[7] = {0}; 
-                
-                buffer_contador[0] = ContadorExt.ContadorConectado;
-                buffer_contador[1] = (uint8)(ContadorExt.DomesticPower& 0x00FF);
-                buffer_contador[2] = (uint8)((ContadorExt.DomesticPower >> 8) & 0x00FF);
 
-				SendToPSOC5((char*)buffer_contador,3,MEASURES_EXTERNAL_COUNTER);
+                if(Params.Tipo_Sensor){
+                    uint8 buffer_contador[7] = {0}; 
+                
+                    buffer_contador[0] = ContadorExt.ContadorConectado;
+                    buffer_contador[1] = (uint8)(ContadorExt.DomesticPower& 0x00FF);
+                    buffer_contador[2] = (uint8)((ContadorExt.DomesticPower >> 8) & 0x00FF);
+
+                    SendToPSOC5((char*)buffer_contador,3,MEASURES_EXTERNAL_COUNTER);
+                }
 			}
+
+            //Pausar lectura del contador
             else if(ContadorExt.ContadorConectado && !Params.Tipo_Sensor && !(ChargingGroup.Params.CDP >> 4)){
                 ContadorExt.ContadorConectado = false;
                 Counter.Inicializado = false;

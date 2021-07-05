@@ -1092,10 +1092,11 @@ void procesar_bloque(uint16 tipo_bloque){
                     ID[j]=(char)buffer_rx_local[2+i*9+j];
                 }
                 add_to_group(ID, get_IP(ID), charger_table, &ChargingGroup.Charger_number);
-                charger_table[i].Fase = buffer_rx_local[10+i*9]-'0';
+                charger_table[i].Fase = (buffer_rx_local[10+i*9]-'0') && 0x03;
+				charger_table[i].Circuito = (buffer_rx_local[10+i*9]-'0') >> 2;
                 if(!memcmp(ID,ConfigFirebase.Device_Id,8)){
                     charger_table[i].Conected = true;
-                    Params.Fase =buffer_rx_local[10+i*9]-'0';
+                    Params.Fase = (buffer_rx_local[10+i*9]-'0') && 0x03;
                 }
             }
 
@@ -1121,12 +1122,13 @@ void procesar_bloque(uint16 tipo_bloque){
                             remove_from_group(OldMaster.name, charger_table, &ChargingGroup.Charger_number);
                             add_to_group(OldMaster.name, OldMaster.IP, charger_table,  &ChargingGroup.Charger_number);
                             charger_table[ChargingGroup.Charger_number-1].Fase=OldMaster.Fase;
+							charger_table[ChargingGroup.Charger_number-1].Circuito =OldMaster.Circuito;
                         }
                         ChargingGroup.SendNewGroup = true;
                     }
                 }
                 //si soy el maestro, avisar a los nuevos de que son parte de mi grupo
-                broadcast_a_grupo("Satrt client", 12);
+                broadcast_a_grupo("Start client", 12);
             }
             print_table(charger_table, "Grupo desde PSOC", ChargingGroup.Charger_number);
         }
@@ -1144,10 +1146,11 @@ void procesar_bloque(uint16 tipo_bloque){
                     ID[j]=(char)buffer_rx_local[2+i*9+j];
                 }
                 add_to_group(ID, get_IP(ID), charger_table,  &ChargingGroup.Charger_number);
-                charger_table[ChargingGroup.Charger_number-1].Fase = buffer_rx_local[10+i*9]-'0';
+                charger_table[i].Fase = (buffer_rx_local[10+i*9]-'0') && 0x03;
+				charger_table[i].Circuito = (buffer_rx_local[10+i*9]-'0') >> 2;
 
                 if(!memcmp(ID,ConfigFirebase.Device_Id,8)){
-                    Params.Fase =buffer_rx_local[10+i*9]-'0';
+                    Params.Fase = (buffer_rx_local[10+i*9]-'0') && 0x03;
                 }
 
             }
@@ -1169,13 +1172,14 @@ void procesar_bloque(uint16 tipo_bloque){
                             carac_charger OldMaster=charger_table[0];
                             remove_from_group(OldMaster.name, charger_table, &ChargingGroup.Charger_number);
                             add_to_group(OldMaster.name, OldMaster.IP, charger_table, &ChargingGroup.Charger_number);
-                            charger_table[ChargingGroup.Charger_number-1].Fase=OldMaster.Fase;
+                            charger_table[ChargingGroup.Charger_number-1].Fase = OldMaster.Fase;
+							charger_table[ChargingGroup.Charger_number-1].Circuito = OldMaster.Circuito;
                         }
                         ChargingGroup.SendNewGroup = true;
                     }
                 }
                 //si soy el maestro, avisar a los nuevos de que son parte de mi grupo
-                broadcast_a_grupo("Satrt client", 12);
+                broadcast_a_grupo("Start client", 12);
             }
             print_table(charger_table, "Grupo desde PSOC", ChargingGroup.Charger_number);
 			break;
@@ -1183,7 +1187,7 @@ void procesar_bloque(uint16 tipo_bloque){
 
 
 		case GROUPS_PARAMS:{
-			memcpy(&ChargingGroup.Params,buffer_rx_local, 7);
+			memcpy(&ChargingGroup.Params,buffer_rx_local, 8);
 
 			#ifdef DEBUG_GROUPS
 			Serial.printf("Group active %i \n", ChargingGroup.Params.GroupActive);

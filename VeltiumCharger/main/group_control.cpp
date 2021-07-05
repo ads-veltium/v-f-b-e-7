@@ -27,7 +27,7 @@ static carac_fase Fases[3];
 
 
 int Delta_total;
-
+float Corriente_disponible_total = 0;
 uint8_t Consumo_total = 0;
 uint8_t Conex_Delta;
 uint8_t Conex;
@@ -283,7 +283,8 @@ void New_Group(char* Data, int Data_size){
 
         add_to_group(ID, get_IP(ID), charger_table, &ChargingGroup.Charger_number);
 
-        charger_table[i].Fase = Data[10+i*9]-'0';
+        charger_table[i].Fase = (Data[10+i*9]-'0')&& 0x03;
+        charger_table[i].Circuito = (Data[10+i*9]-'0') >> 0x02;
 
         uint8_t index =check_in_group(ID, temp_chargers, temp_chargers_size);
         if(index != 255){
@@ -299,7 +300,7 @@ void New_Group(char* Data, int Data_size){
 
         if(!memcmp(ID,ConfigFirebase.Device_Id,8)){
             charger_table[i].Conected = true;
-            Params.Fase =Data[10+i*9]-'0';
+            Params.Fase = (Data[10+i*9]-'0')&& 0x03;
         }
     }
 
@@ -344,7 +345,7 @@ void LimiteConsumo(void *p){
         if(Conex <= 0){
           break;
         }
-        float Corriente_disponible_total = ChargingGroup.Params.potencia_max / Conex;
+
 
         //Repartir toda la potencia disponible viendo cual es la mas pequeña
         for(int i = 0; i < ChargingGroup.Charger_number; i++){
@@ -518,6 +519,7 @@ void Calculo_General(){
             Fases[faseA].conex++;
             Fases[faseA].corriente_total += charger_table[i].Current;
             Fases[faseA].consigna_total += charger_table[i].Consigna;
+            total_pc += charger_table[i].Current;
             
             //Si es trifasico, los datos deben ir a todas las fases
             if(charger_table[i].CurrentB > 0 || charger_table[i].CurrentC > 0){
@@ -542,11 +544,13 @@ void Calculo_General(){
                 Fases[faseB].conex++;
                 Fases[faseB].corriente_total += charger_table[i].CurrentB;
                 Fases[faseB].consigna_total += charger_table[i].Consigna;
+                total_pc += charger_table[i].CurrentB;
               }
               if(charger_table[i].CurrentC > 0 ){
                 Fases[faseC].conex++;
                 Fases[faseC].corriente_total += charger_table[i].CurrentC;
                 Fases[faseC].consigna_total += charger_table[i].Consigna;
+                total_pc += charger_table[i].CurrentC;
               }
             }
 
@@ -573,7 +577,7 @@ void Calculo_General(){
             charger_table[i].CurrentB = 0;
             charger_table[i].CurrentC = 0;
         }
-        total_pc += charger_table[i].Current;
+       
     }   
 
 
@@ -605,7 +609,28 @@ void Calculo_General(){
 
     Consumo_total = total_pc/100;
 
-    //if(ChargingGroup.Params.CDP && )
+    Corriente_disponible_total = ChargingGroup.Params.potencia_max / Conex;
+
+    if(ChargingGroup.Params.CDP && ContadorExt.ContadorConectado){
+      float Corriente_CDP__sobra = 0;
+
+      //Comprobar primero cuanta potencia nos sobra
+      if(((ChargingGroup.Params.CDP>> 2) & 0x03) == 1){ //Medida domestica
+          Corriente_CDP__sobra = (ChargingGroup.Params.ContractPower - ContadorExt.DomesticPower)/230;
+      }
+
+      else if(((ChargingGroup.Params.CDP >> 2) & 0x03) == 2){ //Medida total 
+          Corriente_CDP__sobra = (ChargingGroup.Params.ContractPower - ContadorExt.DomesticPower)/230 - Consumo_total;
+      }
+
+      //Establecer el limite disponible
+      uint16_t Corriente_limite_cdp = Consumo_total + Corriente_CDP__sobra;
+
+      //Ver si nos pasamos
+      if(Corriente_limite_cdp < Consumo_total || Corriente_disponible_total > Corriente_limite_cdp){ //Estamos por encima del limite
+          Corriente_disponible_total = Corriente_limite_cdp;
+      }
+    }
 
 #ifdef DEBUG_GROUPS
     printf("\n\nTotal PC of phase %i %i %i\n",Fases[0].corriente_total, Fases[1].corriente_total, Fases[2].corriente_total); 

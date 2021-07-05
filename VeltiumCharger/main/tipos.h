@@ -279,7 +279,7 @@ typedef struct{
     uint8_t GroupActive = 0;
 	uint8_t inst_max    = 0;
 	uint8_t CDP         = 0;
-	uint8_t ContractPower = 0;
+	uint16_t ContractPower = 0;
 	uint8_t UserID      = 0;
 	uint8_t potencia_max = 0;	
 

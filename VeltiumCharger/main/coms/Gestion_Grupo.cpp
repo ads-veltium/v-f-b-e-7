@@ -102,7 +102,7 @@ void store_group_in_mem(carac_charger* group, uint8_t size){
             //Envio de la primera parte
             for(uint8_t i = 0;i < 25; i++){
                 memcpy(&sendBuffer[2+(i*9)],group[i].name,8);
-                itoa(group[i].Fase,&sendBuffer[10+(i*9)],10);
+                itoa((charger_table[i].Circuito << 2) + charger_table[i].Fase,&sendBuffer[10+(i*9)],10);
             }
 
             SendToPSOC5(sendBuffer,227,GROUPS_DEVICES_PART_1); 
@@ -117,7 +117,7 @@ void store_group_in_mem(carac_charger* group, uint8_t size){
             }
             for(uint8_t i=0;i<(size - 25);i++){
                 memcpy(&sendBuffer[2+(i*9)],group[i+25].name,8);
-                itoa(group[i+25].Fase,&sendBuffer[10+(i*9)],10);
+                itoa((charger_table[i].Circuito << 2) + charger_table[i].Fase,&sendBuffer[10+(i*9)],10);
             }
 
             SendToPSOC5(sendBuffer,(size - 25)*9+2,GROUPS_DEVICES_PART_2); 
@@ -128,7 +128,7 @@ void store_group_in_mem(carac_charger* group, uint8_t size){
             //El grupo entra en una parte, asique solo mandamos una
             for(uint8_t i=0;i<size;i++){
                 memcpy(&sendBuffer[2+(i*9)],group[i].name,8);
-                itoa(group[i].Fase,&sendBuffer[10+(i*9)],10);
+                itoa((charger_table[i].Circuito << 2) + charger_table[i].Fase,&sendBuffer[10+(i*9)],10);
             }
             SendToPSOC5(sendBuffer,ChargingGroup.Charger_number*9+2,GROUPS_DEVICES_PART_1); 
         }
@@ -160,6 +160,7 @@ void store_group_in_mem(carac_charger* group, uint8_t size){
                     remove_from_group(OldMaster.name, charger_table,  &ChargingGroup.Charger_number);
                     add_to_group(OldMaster.name, OldMaster.IP, charger_table, &ChargingGroup.Charger_number);
                     charger_table[ChargingGroup.Charger_number-1].Fase=OldMaster.Fase;
+					charger_table[ChargingGroup.Charger_number-1].Circuito =OldMaster.Circuito;
                     charger_table[ChargingGroup.Charger_number-1] = OldMaster;
                 }
                 ChargingGroup.SendNewGroup = true;
@@ -177,7 +178,8 @@ void remove_group(carac_charger* group, uint8_t* size){
     if(*size > 0){
         for(int j=0;j < *size;j++){
             charger_table[j].IP = INADDR_NONE;       
-            charger_table[j].Fase = 1;       
+            charger_table[j].Fase = 1; 
+            charger_table[j].Circuito = 0;       
             memset(charger_table[j].name,0,9);
         }
         *size = 0;

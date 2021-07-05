@@ -28,8 +28,9 @@ extern uint8_t ConnectionState;
 void DownloadTask(void *arg);
 void store_group_in_mem(carac_charger* group, uint8_t size);
 void coap_put( char* Topic, char* Message);
-bool add_to_group(const char* ID, IPAddress IP, carac_chargers* group);
-uint8_t check_in_group(const char* ID, carac_chargers* group);
+bool add_to_group(const char* ID, IPAddress IP, carac_charger* group, uint8_t *size);
+uint8_t check_in_group(const char* ID, carac_charger* group, uint8_t size);
+
 bool askForPermission = false;
 
 uint16 ParseFirmwareVersion(String Texto){

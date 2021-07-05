@@ -114,7 +114,7 @@ hnd_get(coap_context_t *ctx, coap_resource_t *resource,coap_session_t *session,c
         
         for(uint8_t i=0;i< ChargingGroup.Charger_number;i++){
             memcpy(&buffer[3+(i*9)],charger_table[i].name,8);   
-            itoa(charger_table[i].Fase,&buffer[11+(i*9)],10);
+            itoa(((charger_table[i].Circuito << 2) + charger_table[i].Fase),&buffer[11+(i*9)],10);
         }
     }
     else if(!memcmp(resource->uri_path->s, "CIRCUITS", resource->uri_path->length)){
@@ -957,7 +957,7 @@ void Send_Chargers(){
   
   for(uint8_t i=0;i< ChargingGroup.Charger_number;i++){
       memcpy(&buffer[2+(i*9)],charger_table[i].name,8);   
-      itoa(charger_table[i].Fase,&buffer[10+(i*9)],10);
+      itoa((charger_table[i].Circuito << 2) + charger_table[i].Fase,&buffer[10+(i*9)],10);
   }
   coap_put("CHARGERS", buffer);
 }
@@ -1137,6 +1137,7 @@ void coap_start_server(){
                 remove_from_group(OldMaster.name, charger_table, &ChargingGroup.Charger_number);
                 add_to_group(OldMaster.name, OldMaster.IP, charger_table, &ChargingGroup.Charger_number);
                 charger_table[ChargingGroup.Charger_number-1].Fase=OldMaster.Fase;
+				charger_table[ChargingGroup.Charger_number-1].Circuito =OldMaster.Circuito;
             }
             store_group_in_mem(charger_table, ChargingGroup.Charger_number);
         }
