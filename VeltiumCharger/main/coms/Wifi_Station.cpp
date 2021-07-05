@@ -443,7 +443,7 @@ void Eth_Loop(){
             }
             //si tenemos configurado un medidor o somos el maestro de un grupo, y a los 30 segundos no tenemos conexion a internet, activamos el DHCP
             else if(Params.Tipo_Sensor || ChargingGroup.Params.GroupMaster){
-                if(GetStateTime(xStart) > 20000){
+                if(GetStateTime(xStart) > 30000){
                     #ifdef DEBUG_ETH
                         Serial.println("Tengo un medidor conectado y no tengo internet, o soy el maestro de un grupo sin salida a internet, activo DHCP");
                     #endif

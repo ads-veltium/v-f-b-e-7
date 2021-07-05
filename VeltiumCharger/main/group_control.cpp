@@ -357,7 +357,6 @@ void LimiteConsumo(void *p){
             else
               charger_table[i].Consigna = Corriente_disponible_total;
             
-            
             charger_table[i].Consigna = charger_table[i].Consigna > 32 ? 32 : charger_table[i].Consigna;
           }
         }
@@ -375,7 +374,10 @@ void LimiteConsumo(void *p){
         cls();
         print_table(charger_table, "Grupo en equilibrado", ChargingGroup.Charger_number);
         //Calculo general
-        Calculo_General();
+        if(Calculo_General()){
+          ControlGrupoState = CALCULO;
+          break;
+        }
 
         //Comprobar si ha cambiado el numero de equipos (Alguien se desconecta)
         if(LastConex != Conex){
@@ -400,12 +402,12 @@ void LimiteConsumo(void *p){
         }
 
         //Comprobar que no nos pasamos de los limites de los circuitos
-        /*for(uint8_t i =0; i < ChargingGroup.Circuit_number; i++){
+        for(uint8_t i =0; i < ChargingGroup.Circuit_number; i++){
           if(Circuitos[i].corriente_total > ChargingGroup.Params.inst_max || Circuitos[i].consigna_total > ChargingGroup.Params.inst_max){
             ControlGrupoState = CALCULO;
             break;
           }
-        }*/
+        }
 
         if(ControlGrupoState == CALCULO){
           break;
@@ -422,11 +424,11 @@ void LimiteConsumo(void *p){
               if(ChargingGroup.Params.inst_max / (Fases[charger_table[i].Fase-1].conex +1) > 6){
                 printf("Entra en la fase!\n");
                 //Compruebo si entraria en el circuito
-                //if(ChargingGroup.Params.inst_max / (Circuitos[charger_table[i].Circuito-1].conex +1) > 6){
+                if(ChargingGroup.Params.inst_max / (Circuitos[charger_table[i].Circuito-1].conex +1) > 6){
                   printf("Entra en el circuito!\n");
                   memcpy(charger_table[i].HPT, "C2", 2);
                   ControlGrupoState = CALCULO;
-                //}
+                }
               }
             }
 
@@ -487,7 +489,7 @@ void LimiteConsumo(void *p){
   }
 }
 
-void Calculo_General(){
+bool Calculo_General(){
     Conex=0;
     Consumo_total = 0;
     Delta_total = 0;
@@ -627,8 +629,9 @@ void Calculo_General(){
       uint16_t Corriente_limite_cdp = Consumo_total + Corriente_CDP__sobra;
 
       //Ver si nos pasamos
-      if(Corriente_limite_cdp < Consumo_total || Corriente_disponible_total > Corriente_limite_cdp){ //Estamos por encima del limite
-          Corriente_disponible_total = Corriente_limite_cdp;
+      if(Corriente_limite_cdp < Consumo_total || ChargingGroup.Params.potencia_max > Corriente_limite_cdp){ //Estamos por encima del limite
+          Corriente_disponible_total = Corriente_limite_cdp / Conex;
+          return 1;
       }
     }
 
@@ -640,6 +643,7 @@ void Calculo_General(){
     printf("Total conex %i\n",Conex); 
     printf("Consumo total %i \n\n",Consumo_total);    
 #endif
+    return 0;
 }
 
 void Reparto_Delta(){

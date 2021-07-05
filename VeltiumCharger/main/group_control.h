@@ -23,7 +23,7 @@ void New_Params(char* Data, int Data_size);
 void New_Group(char* Data, int Data_size);
 void New_Control(char* Data, int Data_size);
 
-void Calculo_General();
+bool Calculo_General();
 void Reparto_Delta();
 void LimiteConsumo(void *p);
 
