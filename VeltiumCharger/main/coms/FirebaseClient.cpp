@@ -28,9 +28,9 @@ extern uint8_t ConnectionState;
 void DownloadTask(void *arg);
 void store_group_in_mem(carac_charger* group, uint8_t size);
 void coap_put( char* Topic, char* Message);
-bool add_to_group(const char* ID, IPAddress IP, carac_charger* group, uint8_t *size);
-uint8_t check_in_group(const char* ID, carac_charger* group, uint8_t size);
-
+bool add_to_group(const char* ID, IPAddress IP, carac_chargers* group);
+uint8_t check_in_group(const char* ID, carac_chargers* group);
+bool askForPermission = false;
 
 uint16 ParseFirmwareVersion(String Texto){
   String sub = Texto.substring(6, 10); 
@@ -303,6 +303,7 @@ bool WriteFirebaseHistoric(char* buffer){
     free(record_buffer);
 
     int count = 0;
+    askForPermission = true;
     while(ConnectionState != IDLE){
       delay(10);
       if(++count > 1000){
@@ -808,10 +809,13 @@ void Firebase_Conn_Task(void *args){
       
       if(ts_app_req > Status.last_ts_app_req){
         Status.last_ts_app_req= ts_app_req;
-        ConfigFirebase.ClientConnected  = true;
         xStarted = xTaskGetTickCount();
-        ConnectionState = WRITTING_STATUS;
-        NextState = WRITTING_COMS;
+        if(!ConfigFirebase.ClientConnected){        
+          ConnectionState = WRITTING_STATUS;
+          NextState = WRITTING_COMS;
+        }
+        ConfigFirebase.ClientConnected  = true;
+
         break;
       }
  
@@ -879,7 +883,12 @@ void Firebase_Conn_Task(void *args){
 
     case WRITTING_STATUS:
       Error_Count+=!WriteFirebaseStatus("/status");
-      ConnectionState=IDLE;
+      if(askForPermission){
+        askForPermission = false;
+        ConnectionState = IDLE;
+        break;
+      }
+      ConnectionState = NextState ==0 ? READING_CONTROL : NextState;
       break;
 
     case WRITTING_COMS:
@@ -899,7 +908,7 @@ void Firebase_Conn_Task(void *args){
     /*********************** READING states **********************/
     case READING_CONTROL:
       Error_Count+=!ReadFirebaseControl("/control");
-      ConnectionState=IDLE;
+      ConnectionState = NextState ==0 ? IDLE : NextState;
       break;
 
     case READING_PARAMS:
@@ -968,7 +977,7 @@ void Firebase_Conn_Task(void *args){
       break;
     }
     if(ConnectionState!=DISCONNECTING){
-      delay(ConfigFirebase.ClientConnected ? 500:5000);
+      delay(ConfigFirebase.ClientConnected ? 250:5000);
     }
 
     #ifdef DEBUG
