@@ -213,6 +213,12 @@ void New_Current(uint8_t* Buffer, int Data_size){
 
   cJSON_Delete(mensaje_Json);
 
+  if(desired_current == 0 && !ChargingGroup.ChargPerm && !memcmp(Status.HPT_status,"C2",2)){
+    Serial.printf("Debo detener la carga!!!!\n");
+    SendToPSOC5(1, CHARGING_BLE_MANUAL_STOP_CHAR_HANDLE);
+    SendToPSOC5(desired_current,MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
+  }
+
   if(desired_current!=Comands.desired_current &&  (!memcmp(Status.HPT_status,"C2",2) || ChargingGroup.ChargPerm)){
       SendToPSOC5(desired_current,MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
   }
@@ -328,6 +334,7 @@ void LimiteConsumo(void *p){
         for(int i = 0; i < ChargingGroup.Charger_number; i++){
           if(!memcmp(charger_table[i].HPT, "B1", 2) && charger_table[i].Baimena){
             memcpy(charger_table[i].HPT, "C2", 2);
+            charger_table[i].order =1;
             ControlGrupoState = CALCULO;
           }
           else{
@@ -427,6 +434,15 @@ void LimiteConsumo(void *p){
                 if(ChargingGroup.Params.inst_max / (Circuitos[charger_table[i].Circuito-1].conex +1) > 6){
                   printf("Entra en el circuito!\n");
                   memcpy(charger_table[i].HPT, "C2", 2);
+
+                  //Asignar el orden de carga
+                  uint8_t last_order = 0;
+                  for(int j = 0; j < ChargingGroup.Charger_number; j++){
+                    if(!memcmp(charger_table[j].HPT,"C2",2)){
+                      last_order = last_order < charger_table[j].order ? charger_table[j].order: last_order;
+                    }
+                  }
+                  charger_table[i].order = last_order + 1;
                   ControlGrupoState = CALCULO;
                 }
               }
@@ -578,6 +594,7 @@ bool Calculo_General(){
             charger_table[i].Delta_timer = 0;
             charger_table[i].CurrentB = 0;
             charger_table[i].CurrentC = 0;
+            charger_table[i].order = 0;
         }
        
     }   
@@ -610,8 +627,11 @@ bool Calculo_General(){
     }
 
     Consumo_total = total_pc/100;
+    uint16_t corriente_a_repartir = 0;
+    bool recalcular = false;
+    corriente_a_repartir = ChargingGroup.Params.potencia_max;
 
-    Corriente_disponible_total = ChargingGroup.Params.potencia_max / Conex;
+    Corriente_disponible_total = corriente_a_repartir / Conex;
 
     if(ChargingGroup.Params.CDP && ContadorExt.ContadorConectado){
       float Corriente_CDP__sobra = 0;
@@ -630,10 +650,37 @@ bool Calculo_General(){
 
       //Ver si nos pasamos
       if(Corriente_limite_cdp < Consumo_total || ChargingGroup.Params.potencia_max > Corriente_limite_cdp){ //Estamos por encima del limite
-          Corriente_disponible_total = Corriente_limite_cdp / Conex;
-          return 1;
+          corriente_a_repartir =  Corriente_limite_cdp;
+          Corriente_disponible_total = corriente_a_repartir / Conex;
+          recalcular = true;
       }
     }
+
+    //Si tenemos un limite menor que 6A para cada coche, debemos expulsar al ultimo que haya entrado
+    while(Corriente_disponible_total < 6){
+      //Buscar el último que ha empezado a cargar
+      uint8_t last_index = 0;
+      uint8_t last_order = 0;
+      for(int j = 0; j < ChargingGroup.Charger_number; j++){
+        if(!memcmp(charger_table[j].HPT,"C2",2)){
+          if(last_order < charger_table[j].order ){
+              last_order = charger_table[j].order;
+              last_index = j;
+          }
+        }
+      }
+      charger_table[last_index].Consigna = 0;
+      charger_table[last_index].Baimena = 0;
+      memcpy(charger_table[last_index].HPT,"B1",2);
+      charger_table[last_index].Current = 0;
+      charger_table[last_index].Delta = 0;
+      charger_table[last_index].Delta_timer = 0;
+      charger_table[last_index].CurrentB = 0;
+      charger_table[last_index].CurrentC = 0;
+      Conex--;
+      Corriente_disponible_total = corriente_a_repartir / Conex;
+    }
+
 
 #ifdef DEBUG_GROUPS
     printf("\n\nTotal PC of phase %i %i %i\n",Fases[0].corriente_total, Fases[1].corriente_total, Fases[2].corriente_total); 
@@ -643,7 +690,7 @@ bool Calculo_General(){
     printf("Total conex %i\n",Conex); 
     printf("Consumo total %i \n\n",Consumo_total);    
 #endif
-    return 0;
+    return recalcular;
 }
 
 void Reparto_Delta(){

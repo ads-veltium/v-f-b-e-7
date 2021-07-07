@@ -260,11 +260,13 @@ typedef struct{
 	char      HPT[3];
 	uint8_t     Fase  = 1;
 	uint8_t  Circuito = 1;
+	uint8_t  order 	  = 0;
 	uint16_t Consigna = 0;
 	uint16_t Current  = 0;
 	uint16_t CurrentB = 0;
 	uint16_t CurrentC = 0;
 	uint16_t   Delta  = 0;
+
 
 
 	uint16_t Delta_timer = 0;
