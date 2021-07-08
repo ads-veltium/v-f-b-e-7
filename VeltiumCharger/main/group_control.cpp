@@ -130,11 +130,14 @@ void New_Params(char* Data, int Data_size){
   //Extraer los datos
   buffer[0] = (uint8_t) cJSON_GetObjectItem(mensaje_Json,"master")->valueint;
   buffer[1] = (uint8_t) cJSON_GetObjectItem(mensaje_Json,"active")->valueint;
-  buffer[2] = (uint8_t) cJSON_GetObjectItem(mensaje_Json,"inst_max")->valueint;
-  buffer[3]=  (uint8_t) cJSON_GetObjectItem(mensaje_Json,"cdp")->valueint;
-  buffer[4] = (uint8_t) cJSON_GetObjectItem(mensaje_Json,"contract")->valueint;
-  buffer[5] = (uint8_t) cJSON_GetObjectItem(mensaje_Json,"userID")->valueint;
-  buffer[6]=  (uint8_t) cJSON_GetObjectItem(mensaje_Json,"pot_max")->valueint;
+  buffer[2]=  (uint8_t) cJSON_GetObjectItem(mensaje_Json,"cdp")->valueint;
+  uint16_t Contratada = (uint16_t) cJSON_GetObjectItem(mensaje_Json,"contract")->valueint;
+  uint16_t Maxima = (uint8_t) cJSON_GetObjectItem(mensaje_Json,"pot_max")->valueint;
+  buffer[3] = (uint8_t) (Contratada  & 0x00FF);
+  buffer[4] = (uint8_t) ((Contratada >> 8)  & 0x00FF);
+  buffer[5] = (uint8_t) (Maxima  & 0x00FF);
+  buffer[6] = (uint8_t) ((Maxima >> 8)  & 0x00FF); 
+
 
   cJSON_Delete(mensaje_Json);
 
@@ -164,7 +167,15 @@ void New_Control(char* Data, int Data_size){
     printf("Tengo que pausar el grupo\n");
     ChargingGroup.StopOrder = true;
     char buffer[7];
-    memcpy(&buffer,&ChargingGroup.Params,7);
+
+    buffer[0] = ChargingGroup.Params.GroupMaster;
+    buffer[1] = ChargingGroup.Params.GroupActive;
+    buffer[2] =  ChargingGroup.Params.CDP;
+    buffer[3] = (uint8_t) (ChargingGroup.Params.ContractPower  & 0x00FF);
+    buffer[4] = (uint8_t) ((ChargingGroup.Params.ContractPower >> 8)  & 0x00FF);
+    buffer[5] = (uint8_t) (ChargingGroup.Params.potencia_max  & 0x00FF);
+    buffer[6] = (uint8_t) ((ChargingGroup.Params.potencia_max >> 8)  & 0x00FF); 
+
     SendToPSOC5((char*)buffer,7,GROUPS_PARAMS); 
 
   }
@@ -220,6 +231,7 @@ void New_Current(uint8_t* Buffer, int Data_size){
   }
 
   if(desired_current!=Comands.desired_current &&  (!memcmp(Status.HPT_status,"C2",2) || ChargingGroup.ChargPerm)){
+      Serial.printf("Nueva corriente recibida!!!!\n");
       SendToPSOC5(desired_current,MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
   }
 

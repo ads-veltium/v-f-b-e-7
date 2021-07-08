@@ -137,9 +137,7 @@ hnd_get(coap_context_t *ctx, coap_resource_t *resource,coap_session_t *session,c
         cJSON_AddNumberToObject(Params_Json, "contract", ChargingGroup.Params.ContractPower);
         cJSON_AddNumberToObject(Params_Json, "active", ChargingGroup.Params.GroupActive);
         cJSON_AddNumberToObject(Params_Json, "master", ChargingGroup.Params.GroupMaster);
-        cJSON_AddNumberToObject(Params_Json, "inst_max", ChargingGroup.Params.inst_max);
         cJSON_AddNumberToObject(Params_Json, "pot_max", ChargingGroup.Params.potencia_max);
-        cJSON_AddNumberToObject(Params_Json, "userID", ChargingGroup.Params.UserID);
 
         char *my_json_string = cJSON_Print(Params_Json);   
         cJSON_Delete(Params_Json); 
@@ -462,7 +460,11 @@ void coap_put( char* Topic, char* Message){
             
             ChargingGroup.ChargPerm = Cargador.Consigna > 0;
             
+            if( Cargador.Consigna == 0){
+                Cargador.Consigna = 2;
+            }
             if((uint8_t)Cargador.Consigna != Comands.desired_current){
+                printf("Enviando nueva consigna! %i %i\n", Cargador.Consigna, Comands.desired_current);
                 SendToPSOC5((uint8_t)Cargador.Consigna,MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
             }
 
@@ -1014,9 +1016,8 @@ void Send_Params(){
   cJSON_AddNumberToObject(Params_Json, "contract", ChargingGroup.Params.ContractPower);
   cJSON_AddNumberToObject(Params_Json, "active", ChargingGroup.Params.GroupActive);
   cJSON_AddNumberToObject(Params_Json, "master", ChargingGroup.Params.GroupMaster);
-  cJSON_AddNumberToObject(Params_Json, "inst_max", ChargingGroup.Params.inst_max);
   cJSON_AddNumberToObject(Params_Json, "pot_max", ChargingGroup.Params.potencia_max);
-  cJSON_AddNumberToObject(Params_Json, "userID", ChargingGroup.Params.UserID);
+
 
   char *my_json_string = cJSON_Print(Params_Json);   
   cJSON_Delete(Params_Json); 
@@ -1087,7 +1088,13 @@ void MasterPanicTask(void *args){
     printf("Fin tarea busqueda maestro\n");
     #endif
     char buffer[7];
-    memcpy(buffer, &ChargingGroup.Params,7);
+    buffer[0] = ChargingGroup.Params.GroupMaster;
+    buffer[1] = ChargingGroup.Params.GroupActive;
+    buffer[2] =  ChargingGroup.Params.CDP;
+    buffer[3] = (uint8_t) (ChargingGroup.Params.ContractPower  & 0x00FF);
+    buffer[4] = (uint8_t) ((ChargingGroup.Params.ContractPower >> 8)  & 0x00FF);
+    buffer[5] = (uint8_t) (ChargingGroup.Params.potencia_max  & 0x00FF);
+    buffer[6] = (uint8_t) ((ChargingGroup.Params.potencia_max >> 8)  & 0x00FF);
     SendToPSOC5((char*)buffer,7,GROUPS_PARAMS); 
     ChargingGroup.Finding = false;
     vTaskDelete(NULL);
@@ -1103,7 +1110,13 @@ void start_server(){
 void start_client(){
     ChargingGroup.Params.GroupMaster = 0;
     char buffer[7];
-    memcpy(buffer, &ChargingGroup.Params,7);
+    buffer[0] = ChargingGroup.Params.GroupMaster;
+    buffer[1] = ChargingGroup.Params.GroupActive;
+    buffer[2] =  ChargingGroup.Params.CDP;
+    buffer[3] = (uint8_t) (ChargingGroup.Params.ContractPower  & 0x00FF);
+    buffer[4] = (uint8_t) ((ChargingGroup.Params.ContractPower >> 8)  & 0x00FF);
+    buffer[5] = (uint8_t) (ChargingGroup.Params.potencia_max  & 0x00FF);
+    buffer[6] = (uint8_t) ((ChargingGroup.Params.potencia_max >> 8)  & 0x00FF);
     SendToPSOC5((char*)buffer,7,GROUPS_PARAMS); 
     if(xClientHandle == NULL){
         xClientHandle = xTaskCreateStatic(coap_client, "coap_client", 4096*4, NULL, 1, xClientStack,&xClientBuffer);
@@ -1127,10 +1140,9 @@ void coap_start_server(){
         }
     }
     if(ChargingGroup.Params.GroupMaster){
-        broadcast_a_grupo("Start client", 12);
-
         //Ponerme el primero en el grupo para indicar que soy el maestro
         if(ChargingGroup.Charger_number>0 && check_in_group(ConfigFirebase.Device_Id,charger_table, ChargingGroup.Charger_number ) != 255){
+            
             while(memcmp(charger_table[0].name,ConfigFirebase.Device_Id, 8)){
                 carac_charger OldMaster=charger_table[0];
                 remove_from_group(OldMaster.name, charger_table, &ChargingGroup.Charger_number);
@@ -1142,17 +1154,25 @@ void coap_start_server(){
         }
         else{
             //Si el grupo está vacio o el cargador no está en el grupo,
+            printf("No estoy enel grupo!!\n");
             ChargingGroup.Params.GroupMaster = false;
             ChargingGroup.Params.GroupActive = false;
             ChargingGroup.Conected = false;
             return;
         }
-        
+        broadcast_a_grupo("Start client", 12);
+
         ChargingGroup.MasterIP.fromString(String(ip4addr_ntoa(&Coms.ETH.IP)));
         start_server();
     }
     char buffer[7];
-    memcpy(buffer, &ChargingGroup.Params,7);
+    buffer[0] = ChargingGroup.Params.GroupMaster;
+    buffer[1] = ChargingGroup.Params.GroupActive;
+    buffer[2] =  ChargingGroup.Params.CDP;
+    buffer[3] = (uint8_t) (ChargingGroup.Params.ContractPower  & 0x00FF);
+    buffer[4] = (uint8_t) ((ChargingGroup.Params.ContractPower >> 8)  & 0x00FF);
+    buffer[5] = (uint8_t) (ChargingGroup.Params.potencia_max  & 0x00FF);
+    buffer[6] = (uint8_t) ((ChargingGroup.Params.potencia_max >> 8)  & 0x00FF);
     SendToPSOC5((char*)buffer,7,GROUPS_PARAMS); 
 }
 

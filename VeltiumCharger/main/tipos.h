@@ -135,7 +135,7 @@ typedef struct{
 	bool Con_Lock;
 	bool Trifasico = false;
 	uint8 error_code;
-
+	uint8 current_limit;
 	char HPT_status[2];
 	
 	caract_measures Measures;
@@ -288,7 +288,7 @@ typedef struct{
 	uint8_t CDP         = 0;
 	uint16_t ContractPower = 0;
 	uint8_t UserID      = 0;
-	uint8_t potencia_max = 0;	
+	uint16_t potencia_max = 0;	
 
 }carac_group_params;
 

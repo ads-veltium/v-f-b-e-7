@@ -640,6 +640,7 @@ void procesar_bloque(uint16 tipo_bloque){
 				modifyCharacteristic(&buffer_rx_local[9], 1, MEASURES_MAX_CURRENT_CABLE_CHAR_HANDLE);
 				modifyCharacteristic(&buffer_rx_local[10], 2, DOMESTIC_CONSUMPTION_DOMESTIC_CURRENT_CHAR_HANDLE);
 				modifyCharacteristic(&buffer_rx_local[12], 1, DOMESTIC_CONSUMPTION_REAL_CURRENT_LIMIT_CHAR_HANDLE);
+				Status.current_limit = buffer_rx_local[12];
 				modifyCharacteristic(&buffer_rx_local[13], 1, ERROR_STATUS_ERROR_CODE_CHAR_HANDLE);	
 
 				//FaseA	
@@ -1221,17 +1222,24 @@ void procesar_bloque(uint16 tipo_bloque){
 
 
 		case GROUPS_PARAMS:{
-			memcpy(&ChargingGroup.Params,buffer_rx_local, 8);
+			ChargingGroup.Params.GroupMaster = buffer_rx_local[0];
+			ChargingGroup.Params.GroupActive = buffer_rx_local[1];
+			
+			ChargingGroup.Params.CDP = buffer_rx_local[2];
+			ChargingGroup.Params.ContractPower = buffer_rx_local[3] + buffer_rx_local[4] *0x100 ;
+			ChargingGroup.Params.potencia_max = buffer_rx_local[5] + buffer_rx_local[6] *0x100 ;
 
 			#ifdef DEBUG_GROUPS
 			Serial.printf("Group active %i \n", ChargingGroup.Params.GroupActive);
 			Serial.printf("Group master %i \n", ChargingGroup.Params.GroupMaster);
 			Serial.printf("Group potencia_max %i \n", ChargingGroup.Params.potencia_max);
 			Serial.printf("Group contract power %i \n", ChargingGroup.Params.ContractPower);
-			Serial.printf("Group inst_max %i \n", ChargingGroup.Params.inst_max);
 			Serial.printf("Group CDP %i \n", ChargingGroup.Params.CDP);	
 			#endif
-	
+			
+			if(serverbleGetConnected()){
+				ChargingGroup.SendNewParams = true;
+			}
 			break;
 		}
 

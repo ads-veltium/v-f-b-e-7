@@ -123,7 +123,7 @@ void BuscarContador_Task(void *args){
             #ifdef DEBUG_ETH
                 Serial.println("Nada, seguimos buscando");
             #endif
-            if(!Params.Tipo_Sensor){
+            if(!Params.Tipo_Sensor && !ChargingGroup.Params.CDP >> 4){
                 Coms.ETH.Wifi_Perm = true;
                 break;
             }

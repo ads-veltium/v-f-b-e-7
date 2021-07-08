@@ -459,7 +459,7 @@ void Eth_Loop(){
 
         case CONECTADO:{
             //Buscar el contador
-            if((Params.Tipo_Sensor || ChargingGroup.Params.CDP >> 4) && !finding){
+            if((Params.Tipo_Sensor || (ChargingGroup.Params.CDP >> 4 && ChargingGroup.Params.GroupMaster)) && !finding){
                 if(GetStateTime(xStart) > 30000){
                     xTaskCreate( BuscarContador_Task, "BuscarContador", 4096*4, &finding, 5, NULL); 
                     finding = true;
@@ -471,10 +471,9 @@ void Eth_Loop(){
             //Arrancar los grupos
             else if(!ChargingGroup.Conected && Coms.ETH.conectado){
                 if(ChargingGroup.Params.GroupActive){
-                    printf("c\n");
                     if(ConnectionState == IDLE){
-                        printf("d\n");
                         if(ChargingGroup.StartClient){
+                            printf("g\n");
                             coap_start_client();
                         }
                         else{
@@ -483,6 +482,7 @@ void Eth_Loop(){
                                 coap_start_server();
                             }
                             else if(GetStateTime(xConnect) > 60000){
+                                 printf("f\n");
                                 coap_start_server();
                             }
                         }

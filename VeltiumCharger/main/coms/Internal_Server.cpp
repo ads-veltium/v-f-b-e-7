@@ -29,7 +29,7 @@ const char* WIFI_PWD = "w_pass";
 const char* IP1 = "ip1";
 const char* GATEWAY = "Gateway";
 const char* MASK = "MASK";
-const char* APN = "apn";
+const char* Apn = "apn";
 const char* GSM_PWD = "m_pass";
 const char* CURR_COMAND = "curr_comand";
 const char* AUTH_MODE = "auth_mode";
@@ -491,7 +491,7 @@ void InitServer(void) {
     server.on("/get", HTTP_GET_A, [](AsyncWebServerRequest *request){
         if(Autenticado==true){
             Coms.GSM.ON = Gsm_On;
-            Coms.GSM.APN = request->getParam(APN)->value();
+            Coms.GSM.Apn = request->getParam(Apn)->value();
             Coms.GSM.Pass = request->getParam(GSM_PWD)->value();
                     
             //Hay que reiniciar ethernet si activamos una ip estatica

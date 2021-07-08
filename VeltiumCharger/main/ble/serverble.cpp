@@ -569,11 +569,12 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 
 						//Actualizar params
 						group_buffer[0] = ChargingGroup.Params.GroupActive;
-						group_buffer[1] = ChargingGroup.Params.inst_max;
-						group_buffer[2] = ChargingGroup.Params.CDP;
-						group_buffer[3] = ChargingGroup.Params.ContractPower;
-						group_buffer[4] = ChargingGroup.Params.UserID;
-						group_buffer[5] = ChargingGroup.Params.potencia_max;
+						group_buffer[1] = ChargingGroup.Params.CDP;
+						group_buffer[2] = (uint8)(ChargingGroup.Params.ContractPower & 0x00FF);
+						group_buffer[3] = (uint8)((ChargingGroup.Params.ContractPower >>8) & 0x00FF);
+						group_buffer[4] = (uint8)(ChargingGroup.Params.potencia_max & 0x00FF);
+						group_buffer[5] = (uint8)((ChargingGroup.Params.potencia_max >>8) & 0x00FF);
+
 						serverbleSetCharacteristic(group_buffer,6 ,GROUPS_PARAMS);
 
 						//Actualizar circuits
@@ -692,7 +693,8 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 #ifdef CONNECTED
 		if ( pCharacteristic->getUUID().equals(blefields[RCS_CHARGING_GROUP].uuid) ){
 			
-			uint8 size = uint8(data[0]-48);
+			uint8 size = uint8(data[0]);
+			printf("Me ha llegado un grupo con %i cargadores !\n", size);
 
 			char sendBuffer[252];
 			if(size< 10){

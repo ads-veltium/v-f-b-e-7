@@ -78,6 +78,7 @@ bool WriteFirebaseStatus(String Path){
   Escritura["icp"]              = Status.ICP_status;
   Escritura["dc_leak"]          = Status.DC_Leack_status;
   Escritura["conn_lock_stat"]   = Status.Con_Lock;
+  Escritura["real_current_limit"]   = Status.current_limit;
 
   //Medidas
   Escritura["max_current_cable"]                = Status.Measures.max_current_cable;
@@ -356,10 +357,9 @@ bool ReadFirebaseGroups(String Path){
       ChargingGroup.last_ts_app_req=ts_app_req;
     
       ChargingGroup.Params.GroupActive = Lectura["active"].as<uint8_t>();
-      ChargingGroup.Params.inst_max = Lectura["install_limit"].as<uint8_t>();
       ChargingGroup.Params.CDP = Lectura["cdp"].as<uint8_t>();
-      ChargingGroup.Params.ContractPower = Lectura["p_con"].as<uint8_t>();
-      ChargingGroup.Params.potencia_max = Lectura["p_max"].as<uint8_t>();
+      ChargingGroup.Params.ContractPower = Lectura["p_con"].as<uint16_t>();
+      ChargingGroup.Params.potencia_max = Lectura["p_max"].as<uint16_t>();
       ChargingGroup.DeleteOrder  = Lectura["delete"].as<bool>();
 
       ChargingGroup.SendNewParams = true;
