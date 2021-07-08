@@ -84,20 +84,24 @@
 //  68 Eth_ON                       1 RW   uint8       CD40 XXXX 00B9                   
 //  69 LAN_IP                       4 R    uint8_array CD40 XXXX 00BB                   
 //  70 Group_operations             1 W    uint8       CD40 XXXX 00BD                   
-//  71 Group_params                 1 RW   uint8       CD40 XXXX 00BF                   
+//  71 Group_params                 9 RW   uint8_array CD40 XXXX 00BF                   
 //  72 Circuits                    51 RW   uint8_array CD40 XXXX 00C1                   
 //  73 Potencia_Contratada2         2 RW   uint16      CD20 XXXX 00C3                   
+//  74 APN                         32 RW   uint8_array CD20 XXXX 00C5                   
+//  75 APN_User                    32 RW   uint8_array CD20 XXXX 00C7                   
+//  76 APN_Password                32 RW   uint8_array CD20 XXXX 00C9                   
+//  77 APN_Pin                      4 RW   uint8_array CD20 XXXX 00CB                   
 
-// table with 74 bytes
+// table with 78 bytes
 static uint8_t table_handle_for_idx[1+RCS_MAX_IDX] = {
     0,17,19,21,23,26,28,30,35,37,39,41,43,45,47,52,
     54,57,59,61,63,65,67,70,72,74,76,82,84,86,88,91,
     93,95,97,100,103,105,111,113,115,117,120,123,126,128,130,132,
     135,137,140,143,145,147,150,152,154,156,158,160,162,165,173,175,
-    177,179,181,183,185,187,189,191,193,195
+    177,179,181,183,185,187,189,191,193,195,197,199,201,203
 };
 
-// table with 196 bytes
+// table with 204 bytes
 static uint8_t table_idx_for_handle[1+RCS_MAX_HANDLE] = {
     0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
     0,1,0,2,0,3,0,4,0,0,5,0,6,0,7,0,
@@ -111,23 +115,24 @@ static uint8_t table_idx_for_handle[1+RCS_MAX_HANDLE] = {
     0,52,0,53,0,0,54,0,55,0,56,0,57,0,58,0,
     59,0,60,0,0,61,0,0,0,0,0,0,0,62,0,63,
     0,64,0,65,0,66,0,67,0,68,0,69,0,70,0,71,
-    0,72,0,73
+    0,72,0,73,0,74,0,75,0,76,0,77
 };
 
-// table with 74 bytes
+// table with 78 bytes
 static uint8_t table_size_for_idx[1+RCS_MAX_IDX] = {
     2,2,2,2,2,1,1,1,2,2,2,4,4,4,1,1,
     1,6,6,6,2,6,6,1,1,1,1,11,1,1,1,1,
     1,1,1,1,1,1,1,1,1,1,1,6,2,2,2,2,
     10,10,2,10,8,8,1,2,1,1,1,2,1,1,16,4,
-    1,16,16,1,1,4,1,1,51,2
+    1,16,16,1,1,4,1,9,51,2,32,32,32,4
 };
 
-// table with 74 bytes
+// table with 78 bytes
 static uint8_t table_type_for_idx[1+RCS_MAX_IDX] = {
     3,1,1,1,3,1,3,3,1,1,1,1,1,1,1,3,
     1,3,1,1,3,3,3,3,3,3,3,3,3,3,3,3,
     3,3,3,3,1,3,3,3,3,3,2,2,3,1,3,1,
     1,1,3,2,1,2,3,1,3,3,3,3,3,1,2,2,
-    3,1,1,2,3,1,2,3,3,3
+    3,1,1,2,3,1,2,3,3,3,3,3,3,3
 };
+

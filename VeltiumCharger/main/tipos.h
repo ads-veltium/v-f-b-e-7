@@ -61,6 +61,8 @@
 #define BLOQUE_STATUS			0xFFFE
 #define BLOQUE_DATE_TIME		0xFFFD
 #define BLOQUE_COMS				0xFFFC
+#define BLOQUE_CALENDAR         0xFFFB
+#define BLOQUE_APN              0xFFFA
 
 #define LED_MAXIMO_PWM      1200     // Sobre 1200 de periodo
 #define pdTICKS_TO_MS( xTicks )   ( ( uint32_t ) ( xTicks ) * 1000 / configTICK_RATE_HZ )
@@ -188,8 +190,11 @@ typedef struct{
 
 typedef struct{
 	bool ON;
-	String APN;
+	String Apn;
 	String Pass;
+	String User;
+	uint8_t Pin [4];
+
 	
 	uint32 ts_app_req;
 	uint32 ts_dev_ack;
@@ -657,6 +662,14 @@ typedef struct{
 
 #define CHARGING_GROUP_BLE_NET_DEVICES	   (0x00D3u)
 #define CHARGING_GROUP_BLE_CHARGING_GROUP  (0x00D5u)
+
+//Caracteristicas para el modem
+#define APN	   							   (0x00D6u)
+#define APN_USER  						   (0x00D7u)
+#define APN_PASSWORD	   				   (0x00D8u)
+#define SIM_PIN							   (0x00D9u)
+
+
 
 #endif
 

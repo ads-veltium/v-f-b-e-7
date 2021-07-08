@@ -413,6 +413,7 @@ void Eth_Loop(){
                 initialize_ethernet();
                 Coms.ETH.State = CONNECTING;
                 xStart = xTaskGetTickCount();
+                finding = false;
             }
         break;
         case CONNECTING:

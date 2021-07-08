@@ -1043,6 +1043,40 @@ void procesar_bloque(uint16 tipo_bloque){
 		} 
 		break;
 
+		case APN:{
+
+			Serial.println("Me ha llegado el apn");
+			Coms.GSM.ON=buffer_rx_local[0];
+			memcpy(&Coms.GSM.Apn[0], &buffer_rx_local[1], 30);
+			
+		} 
+		break;
+
+		case APN_USER:{
+
+			Serial.println("Me ha llegado el apn user");
+			memcpy(&Coms.GSM.User[0], buffer_rx_local, 30);
+			
+		} 
+		break;
+
+		case APN_PASSWORD:{
+
+			Serial.println("Me ha llegado el apn password");
+			Coms.GSM.ON=buffer_rx_local[0];
+			memcpy(&Coms.GSM.Pass[0], &buffer_rx_local[1], 30);
+			
+		} 
+		break;
+
+		case SIM_PIN:{
+
+			Serial.println("Me ha llegado el sim pin");
+			Coms.GSM.ON=buffer_rx_local[0];
+			memcpy(Coms.GSM.Pin, buffer_rx_local,4);
+		} 
+		break;
+
 #ifdef USE_GROUPS
 		case GROUPS_DEVICES_PART_1:{
             Serial.printf("Nuevo grupo recibido\n");
