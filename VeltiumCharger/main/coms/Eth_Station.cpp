@@ -203,10 +203,13 @@ static void eth_event_handler(void *arg, esp_event_base_t event_base, int32_t ev
                 #ifdef DEBUG_ETH
                 Serial.println( "Ethernet Link Down");
                 #endif
-                eth_connected = false;
-                eth_link_up = false;
-                Coms.ETH.conectado = false;
-                Coms.ETH.Internet = false;
+                if(Coms.ETH.Auto){
+                    eth_connected = false;
+                    eth_link_up = false;
+                    Coms.ETH.conectado = false;
+                    Coms.ETH.Internet = false;
+                }
+
 #ifdef USE_GROUPS
                 ChargingGroup.StopOrder = true;
 #endif

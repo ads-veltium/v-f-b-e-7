@@ -417,6 +417,7 @@ void Eth_Loop(){
 #ifdef USE_GROUPS      
                 SendToPSOC5(0,SEND_GROUP_DATA);
 #endif
+                finding = false;
             }
         break;
         case CONNECTING:
