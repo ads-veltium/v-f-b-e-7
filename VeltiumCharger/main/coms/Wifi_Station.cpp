@@ -415,7 +415,7 @@ void Eth_Loop(){
                 Coms.ETH.State = CONNECTING;
                 xStart = xTaskGetTickCount();
 #ifdef USE_GROUPS      
-                SendToPSOC5(0,SEND_GROUP_DATA);
+                SendToPSOC5(1,SEND_GROUP_DATA);
 #endif
                 finding = false;
             }
@@ -424,7 +424,8 @@ void Eth_Loop(){
             if(eth_connected){
                 Coms.ETH.State = CONECTADO;
 #ifdef USE_GROUPS
-                SendToPSOC5(0,SEND_GROUP_DATA);          
+                SendToPSOC5(2,SEND_GROUP_DATA);
+                SendToPSOC5(3,SEND_GROUP_DATA);          
                 delay(1000);
                 start_udp();
 #endif

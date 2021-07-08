@@ -354,17 +354,6 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 					return;
 				}
 			}
-			/*
-			if (handle == TEST_RCD_PE_TEST_RESULT_CHAR_HANDLE) {
-				// mechanics: write 0 to result, write launch, wait, read result
-				updateCharacteristic((uint8_t*)&rxValue[0], 1, TEST_RCD_PE_TEST_RESULT_CHAR_HANDLE);
-				return;
-			}
-			if (handle == TEST_MCB_TEST_RESULT_CHAR_INDEX) {
-				updateCharacteristic((uint8_t*)&rxValue[0], 1, TEST_RCD_PE_TEST_RESULT_CHAR_HANDLE);
-				return;
-			}
-			*/
 			
 			if (handle == FWUPDATE_BIRD_PROLOG_PSEUDO_CHAR_HANDLE) {
 				// prolog
@@ -750,7 +739,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 			delay(250);
 		}
 		delay(250);
-		SendToPSOC5(0,SEND_GROUP_DATA);
+		SendToPSOC5(2,SEND_GROUP_DATA);
 		delay(250);
 		}
 #endif

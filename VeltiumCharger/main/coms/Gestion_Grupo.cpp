@@ -173,6 +173,18 @@ void store_group_in_mem(carac_charger* group, uint8_t size){
     printf("Error al almacenar el grupo en la memoria\n");
 }
 
+void store_params_in_mem(){
+    char buffer[7];
+    buffer[0] = ChargingGroup.Params.GroupMaster;
+    buffer[1] = ChargingGroup.Params.GroupActive;
+    buffer[2] =  ChargingGroup.Params.CDP;
+    buffer[3] = (uint8_t) (ChargingGroup.Params.ContractPower  & 0x00FF);
+    buffer[4] = (uint8_t) ((ChargingGroup.Params.ContractPower >> 8)  & 0x00FF);
+    buffer[5] = (uint8_t) (ChargingGroup.Params.potencia_max  & 0x00FF);
+    buffer[6] = (uint8_t) ((ChargingGroup.Params.potencia_max >> 8)  & 0x00FF);
+    SendToPSOC5((char*)buffer,7,GROUPS_PARAMS); 
+}
+
 //Eliminar grupo
 void remove_group(carac_charger* group, uint8_t* size){
     if(*size > 0){

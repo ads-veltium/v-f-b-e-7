@@ -16,6 +16,7 @@ extern carac_Contador   ContadorExt;
 
 bool add_to_group(const char* ID, IPAddress IP, carac_charger* group, uint8_t* size);
 void remove_group(carac_charger* group, uint8_t* size);
+void store_params_in_mem();
 uint8_t check_in_group(const char* ID, carac_charger* group, uint8_t size);
 void store_group_in_mem(carac_charger* group, uint8_t size);
 IPAddress get_IP(const char* ID);
@@ -166,18 +167,8 @@ void New_Control(char* Data, int Data_size){
   if(!memcmp(Data,"Pause",5)){
     printf("Tengo que pausar el grupo\n");
     ChargingGroup.StopOrder = true;
-    char buffer[7];
-
-    buffer[0] = ChargingGroup.Params.GroupMaster;
-    buffer[1] = ChargingGroup.Params.GroupActive;
-    buffer[2] =  ChargingGroup.Params.CDP;
-    buffer[3] = (uint8_t) (ChargingGroup.Params.ContractPower  & 0x00FF);
-    buffer[4] = (uint8_t) ((ChargingGroup.Params.ContractPower >> 8)  & 0x00FF);
-    buffer[5] = (uint8_t) (ChargingGroup.Params.potencia_max  & 0x00FF);
-    buffer[6] = (uint8_t) ((ChargingGroup.Params.potencia_max >> 8)  & 0x00FF); 
-
-    SendToPSOC5((char*)buffer,7,GROUPS_PARAMS); 
-
+    ChargingGroup.Params.GroupActive = 0;
+    store_params_in_mem();
   }
   else if(!memcmp(Data,"Delete",6)){
     printf("Tengo que borrar el grupo\n");
@@ -643,54 +634,56 @@ bool Calculo_General(){
     bool recalcular = false;
     corriente_a_repartir = ChargingGroup.Params.potencia_max;
 
-    Corriente_disponible_total = corriente_a_repartir / Conex;
+    if(Conex > 0){
+      Corriente_disponible_total = corriente_a_repartir / Conex;
+    
+      if(ChargingGroup.Params.CDP && ContadorExt.ContadorConectado){
+        float Corriente_CDP__sobra = 0;
 
-    if(ChargingGroup.Params.CDP && ContadorExt.ContadorConectado){
-      float Corriente_CDP__sobra = 0;
+        //Comprobar primero cuanta potencia nos sobra
+        if(((ChargingGroup.Params.CDP>> 2) & 0x03) == 1){ //Medida domestica
+            Corriente_CDP__sobra = (ChargingGroup.Params.ContractPower - ContadorExt.DomesticPower)/230;
+        }
 
-      //Comprobar primero cuanta potencia nos sobra
-      if(((ChargingGroup.Params.CDP>> 2) & 0x03) == 1){ //Medida domestica
-          Corriente_CDP__sobra = (ChargingGroup.Params.ContractPower - ContadorExt.DomesticPower)/230;
-      }
+        else if(((ChargingGroup.Params.CDP >> 2) & 0x03) == 2){ //Medida total 
+            Corriente_CDP__sobra = (ChargingGroup.Params.ContractPower - ContadorExt.DomesticPower)/230 - Consumo_total;
+        }
 
-      else if(((ChargingGroup.Params.CDP >> 2) & 0x03) == 2){ //Medida total 
-          Corriente_CDP__sobra = (ChargingGroup.Params.ContractPower - ContadorExt.DomesticPower)/230 - Consumo_total;
-      }
+        //Establecer el limite disponible
+        uint16_t Corriente_limite_cdp = Consumo_total + Corriente_CDP__sobra;
 
-      //Establecer el limite disponible
-      uint16_t Corriente_limite_cdp = Consumo_total + Corriente_CDP__sobra;
-
-      //Ver si nos pasamos
-      if(Corriente_limite_cdp < Consumo_total || ChargingGroup.Params.potencia_max > Corriente_limite_cdp){ //Estamos por encima del limite
-          corriente_a_repartir =  Corriente_limite_cdp;
-          Corriente_disponible_total = corriente_a_repartir / Conex;
-          recalcular = true;
-      }
-    }
-
-    //Si tenemos un limite menor que 6A para cada coche, debemos expulsar al ultimo que haya entrado
-    while(Corriente_disponible_total < 6){
-      //Buscar el último que ha empezado a cargar
-      uint8_t last_index = 0;
-      uint8_t last_order = 0;
-      for(int j = 0; j < ChargingGroup.Charger_number; j++){
-        if(!memcmp(charger_table[j].HPT,"C2",2)){
-          if(last_order < charger_table[j].order ){
-              last_order = charger_table[j].order;
-              last_index = j;
-          }
+        //Ver si nos pasamos
+        if(Corriente_limite_cdp < Consumo_total || ChargingGroup.Params.potencia_max > Corriente_limite_cdp){ //Estamos por encima del limite
+            corriente_a_repartir =  Corriente_limite_cdp;
+            Corriente_disponible_total = corriente_a_repartir / Conex;
+            recalcular = true;
         }
       }
-      charger_table[last_index].Consigna = 0;
-      charger_table[last_index].Baimena = 0;
-      memcpy(charger_table[last_index].HPT,"B1",2);
-      charger_table[last_index].Current = 0;
-      charger_table[last_index].Delta = 0;
-      charger_table[last_index].Delta_timer = 0;
-      charger_table[last_index].CurrentB = 0;
-      charger_table[last_index].CurrentC = 0;
-      Conex--;
-      Corriente_disponible_total = corriente_a_repartir / Conex;
+
+      //Si tenemos un limite menor que 6A para cada coche, debemos expulsar al ultimo que haya entrado
+      while(Corriente_disponible_total < 6){
+        //Buscar el último que ha empezado a cargar
+        uint8_t last_index = 0;
+        uint8_t last_order = 0;
+        for(int j = 0; j < ChargingGroup.Charger_number; j++){
+          if(!memcmp(charger_table[j].HPT,"C2",2)){
+            if(last_order < charger_table[j].order ){
+                last_order = charger_table[j].order;
+                last_index = j;
+            }
+          }
+        }
+        charger_table[last_index].Consigna = 0;
+        charger_table[last_index].Baimena = 0;
+        memcpy(charger_table[last_index].HPT,"B1",2);
+        charger_table[last_index].Current = 0;
+        charger_table[last_index].Delta = 0;
+        charger_table[last_index].Delta_timer = 0;
+        charger_table[last_index].CurrentB = 0;
+        charger_table[last_index].CurrentC = 0;
+        Conex--;
+        Corriente_disponible_total = corriente_a_repartir / Conex;
+      }
     }
 
 
