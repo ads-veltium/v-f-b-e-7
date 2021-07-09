@@ -272,7 +272,7 @@ message_handler(coap_context_t *ctx, coap_session_t *session,coap_pdu_t *sent, c
                             break;
 
                         default:
-                            printf("Datos no esperados en coap message handler\n");
+                            printf("Datos no esperados en coap message handler %i \n", data[0]-'0');
                             break;
                     }
                 }
@@ -456,7 +456,7 @@ static void Subscribe(char* TOPIC){
 
 void coap_put( char* Topic, char* Message){
     if(ChargingGroup.Params.GroupMaster){
-        if(!memcmp(DATA->uri_path->s, Topic, DATA->uri_path->length)){    
+        if(!memcmp("DATA", Topic, 4)){    
             carac_charger Cargador = New_Data(Message,  strlen(Message));
             
             ChargingGroup.ChargPerm = Cargador.Consigna > 0;
@@ -470,7 +470,7 @@ void coap_put( char* Topic, char* Message){
             }
 
         }
-        else if(!memcmp(PARAMS->uri_path->s, Topic, PARAMS->uri_path->length)){
+        else if(!memcmp("PARAMS", Topic, 6)){
             New_Params(Message,  strlen(Message));
             coap_resource_notify_observers(PARAMS, NULL);
         }

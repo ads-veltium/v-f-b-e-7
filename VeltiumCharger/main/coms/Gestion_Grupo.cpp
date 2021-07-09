@@ -147,6 +147,7 @@ void store_group_in_mem(carac_charger* group, uint8_t size){
     if(check_in_group(ConfigFirebase.Device_Id,charger_table, ChargingGroup.Charger_number ) == 255){
         if(ChargingGroup.Conected){
             printf("¡No estoy en el grupo!!!\n");
+            print_table(charger_table,"No en grupo table", ChargingGroup.Charger_number);
             ChargingGroup.DeleteOrder = true;
         }
     }

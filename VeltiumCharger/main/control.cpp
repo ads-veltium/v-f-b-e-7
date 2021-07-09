@@ -1127,8 +1127,10 @@ void procesar_bloque(uint16 tipo_bloque){
                     ID[j]=(char)buffer_rx_local[2+i*9+j];
                 }
                 add_to_group(ID, get_IP(ID), charger_table, &ChargingGroup.Charger_number);
-                charger_table[i].Fase = (buffer_rx_local[10+i*9]-'0') && 0x03;
-				charger_table[i].Circuito = (buffer_rx_local[10+i*9]-'0') >> 2;
+				printf("Circuitos2 %i\n", buffer_rx_local[10+i*9]);
+				
+                charger_table[i].Fase = (buffer_rx_local[10+i*9]) && 0x03;
+				charger_table[i].Circuito = (buffer_rx_local[10+i*9]) >> 2;
                 if(!memcmp(ID,ConfigFirebase.Device_Id,8)){
                     charger_table[i].Conected = true;
                     Params.Fase = (buffer_rx_local[10+i*9]-'0') && 0x03;
@@ -1181,11 +1183,11 @@ void procesar_bloque(uint16 tipo_bloque){
                     ID[j]=(char)buffer_rx_local[2+i*9+j];
                 }
                 add_to_group(ID, get_IP(ID), charger_table,  &ChargingGroup.Charger_number);
-                charger_table[i].Fase = (buffer_rx_local[10+i*9]-'0') && 0x03;
+                charger_table[i].Fase = (buffer_rx_local[10+i*9]-'0') & 0x03;
 				charger_table[i].Circuito = (buffer_rx_local[10+i*9]-'0') >> 2;
 
                 if(!memcmp(ID,ConfigFirebase.Device_Id,8)){
-                    Params.Fase = (buffer_rx_local[10+i*9]-'0') && 0x03;
+                    Params.Fase = (buffer_rx_local[10+i*9]-'0') & 0x03;
                 }
 
             }
