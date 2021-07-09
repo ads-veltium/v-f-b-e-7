@@ -127,6 +127,7 @@ void modifyCharacteristic(uint8* data, uint16 len, uint16 attrHandle);
 int Convert_To_Epoch(uint8* data);
 void SendToPSOC5(uint8 data, uint16 attrHandle);
 void SendToPSOC5(char *data, uint16 len, uint16 attrHandle);
+void StartGSM();
 
 uint32 GetStateTime(TickType_t xStart);
 #endif // __CONTROL_MAIN
