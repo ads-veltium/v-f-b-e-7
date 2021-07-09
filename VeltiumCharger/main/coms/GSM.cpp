@@ -1,6 +1,46 @@
 #include "../control.h"
 
 
+#include <string.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/event_groups.h"
+#include "esp_system.h"
+#include "esp_wifi.h"
+#include "esp_event_loop.h"
+#include "esp_log.h"
+#include "nvs_flash.h"
+#include "freertos/semphr.h"
+
+#include "driver/uart.h"
+
+#include "netif/ppp/pppos.h"
+#include "netif/ppp/ppp.h"
+#include "lwip/err.h"
+#include "lwip/sockets.h"
+#include "lwip/sys.h"
+#include "lwip/netdb.h"
+#include "lwip/dns.h"
+#include "netif/ppp/pppapi.h"
+#include "lwip/apps/sntp.h"
+
+#include "mbedtls/platform.h"
+#include "mbedtls/net.h"
+#include "mbedtls/esp_debug.h"
+#include "mbedtls/ssl.h"
+#include "mbedtls/entropy.h"
+#include "mbedtls/ctr_drbg.h"
+#include "mbedtls/error.h"
+#include "mbedtls/certs.h"
+
+#include <esp_event.h>
+#include <esp_wifi.h>
+
+
+#include "cJSON.h"
+
+#include "libGSM.h"
+
 #define SerialAT Serial1
 
 
@@ -34,53 +74,8 @@ String SendAt(String command){
 	return inchar;
 }
 
-
-
 void StartGSM(){
-
-    delay(10000);
-	digitalWrite(GPIO_MODEM_PWR_EN, HIGH);
-
-
-	SerialAT.begin(115200, SERIAL_8N1, GPIO_UART1_RX_MODEM, GPIO_UART1_TX_MODEM);
-
-	delay(100);
-	
-	bool estado_red = 0;
-
-	//comprobar configuracion
-	SendAt("AT#REBOOT");
-
-	delay(300);
-
-    //Reinicar configuracion
-	SendAt("AT+CFUN=4");
-	SendAt("AT+CFUN=1");
-
-	String CIMI = SendAt("AT+CIMI").substring(11, 16);
-	
-	SendAt("AT+COPS=4,2,"+CIMI+",0");
-	SendAt("AT+COPS?");
-	
-
-    //Registrarnos en la red
-	while(!estado_red){
-		String response = SendAt("AT+CREG?");	
-		if(strlen(response.c_str()) > 10){
-			if(response.indexOf("+CREG: 0,1")>0){
-				estado_red = true;
-			}
-		}
-		
-	}	
-
-    //Conectarse al apn y obtener ip
-    Serial.println("registrado en la puta red!!!!!");	
-	SendAt("AT+CGDCONT=1,\"IP\",\"telefonica.es\"");
-	SendAt("AT#SGACT=1,1");
-	SendAt("AT+CGCONTRDP");
-	SendAt("AT#SD=1,0,80,\"www.telit.com\"");
-
-	Serial.println("Fin del script!!!!!");
+   
+	ppposInit();
 
 }
