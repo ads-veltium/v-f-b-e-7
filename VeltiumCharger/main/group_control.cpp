@@ -292,7 +292,7 @@ void New_Group(char* Data, int Data_size){
 
         add_to_group(ID, get_IP(ID), charger_table, &ChargingGroup.Charger_number);
 
-        charger_table[i].Fase = (Data[10+i*9]-'0')&& 0x03;
+        charger_table[i].Fase = (Data[10+i*9]-'0')& 0x03;
         charger_table[i].Circuito = (Data[10+i*9]-'0') >> 0x02;
 
         uint8_t index =check_in_group(ID, temp_chargers, temp_chargers_size);
@@ -309,7 +309,7 @@ void New_Group(char* Data, int Data_size){
 
         if(!memcmp(ID,ConfigFirebase.Device_Id,8)){
             charger_table[i].Conected = true;
-            Params.Fase = (Data[10+i*9]-'0')&& 0x03;
+            Params.Fase = (Data[10+i*9]-'0')& 0x03;
         }
     }
 

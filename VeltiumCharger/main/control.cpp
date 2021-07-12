@@ -1129,11 +1129,11 @@ void procesar_bloque(uint16 tipo_bloque){
                 add_to_group(ID, get_IP(ID), charger_table, &ChargingGroup.Charger_number);
 				printf("Circuitos2 %i\n", buffer_rx_local[10+i*9]);
 				
-                charger_table[i].Fase = (buffer_rx_local[10+i*9]) && 0x03;
+                charger_table[i].Fase = (buffer_rx_local[10+i*9]) & 0x03;
 				charger_table[i].Circuito = (buffer_rx_local[10+i*9]) >> 2;
                 if(!memcmp(ID,ConfigFirebase.Device_Id,8)){
                     charger_table[i].Conected = true;
-                    Params.Fase = (buffer_rx_local[10+i*9]-'0') && 0x03;
+                    Params.Fase = (buffer_rx_local[10+i*9]-'0') & 0x03;
                 }
             }
 
@@ -1239,9 +1239,6 @@ void procesar_bloque(uint16 tipo_bloque){
 			Serial.printf("Group CDP %i \n", ChargingGroup.Params.CDP);	
 			#endif
 			
-			if(serverbleGetConnected()){
-				ChargingGroup.SendNewParams = true;
-			}
 			break;
 		}
 

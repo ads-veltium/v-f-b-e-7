@@ -387,6 +387,8 @@ void coap_get( char* Topic){
 static bool Authenticate(){
     #ifdef DEBUG_GROUPS
     printf("Autenticandome contra el servidor!!!\n");
+    ChargingGroup.DeleteOrder = false;
+    ChargingGroup.StopOrder = false;
     #endif
 
     Esperando_datos=1;
@@ -476,8 +478,10 @@ void coap_put( char* Topic, char* Message){
         }
         else if(!memcmp(CONTROL->uri_path->s, Topic, CONTROL->uri_path->length)){
             memcpy(LastControl, Message, strlen(Message));
-            New_Control(Message,  strlen(Message));
             coap_resource_notify_observers(CONTROL, NULL);
+            delay(500);
+            New_Control(Message,  strlen(Message));
+            
         }
         else if(!memcmp(CHARGERS->uri_path->s, Topic, CHARGERS->uri_path->length)){
             New_Group(Message,  strlen(Message));

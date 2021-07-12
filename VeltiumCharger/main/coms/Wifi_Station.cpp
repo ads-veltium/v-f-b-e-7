@@ -474,16 +474,13 @@ void Eth_Loop(){
                 if(ChargingGroup.Params.GroupActive){
                     if(ConnectionState == IDLE){
                         if(ChargingGroup.StartClient){
-                            printf("g\n");
                             coap_start_client();
                         }
                         else{
                             if(ChargingGroup.Params.GroupMaster){
-                                printf("e\n");
                                 coap_start_server();
                             }
                             else if(GetStateTime(xConnect) > 60000){
-                                 printf("f\n");
                                 coap_start_server();
                             }
                         }
