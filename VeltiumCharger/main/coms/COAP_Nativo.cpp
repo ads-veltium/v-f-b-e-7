@@ -272,7 +272,7 @@ message_handler(coap_context_t *ctx, coap_session_t *session,coap_pdu_t *sent, c
                             break;
 
                         default:
-                            printf("Datos no esperados en coap message handler\n");
+                            printf("Datos no esperados en coap message handler %i \n", data[0]-'0');
                             break;
                     }
                 }
@@ -387,6 +387,8 @@ void coap_get( char* Topic){
 static bool Authenticate(){
     #ifdef DEBUG_GROUPS
     printf("Autenticandome contra el servidor!!!\n");
+    ChargingGroup.DeleteOrder = false;
+    ChargingGroup.StopOrder = false;
     #endif
 
     Esperando_datos=1;
@@ -456,7 +458,7 @@ static void Subscribe(char* TOPIC){
 
 void coap_put( char* Topic, char* Message){
     if(ChargingGroup.Params.GroupMaster){
-        if(!memcmp(DATA->uri_path->s, Topic, DATA->uri_path->length)){    
+        if(!memcmp("DATA", Topic, 4)){    
             carac_charger Cargador = New_Data(Message,  strlen(Message));
             
             ChargingGroup.ChargPerm = Cargador.Consigna > 0;
@@ -470,14 +472,16 @@ void coap_put( char* Topic, char* Message){
             }
 
         }
-        else if(!memcmp(PARAMS->uri_path->s, Topic, PARAMS->uri_path->length)){
+        else if(!memcmp("PARAMS", Topic, 6)){
             New_Params(Message,  strlen(Message));
             coap_resource_notify_observers(PARAMS, NULL);
         }
         else if(!memcmp(CONTROL->uri_path->s, Topic, CONTROL->uri_path->length)){
             memcpy(LastControl, Message, strlen(Message));
-            New_Control(Message,  strlen(Message));
             coap_resource_notify_observers(CONTROL, NULL);
+            delay(500);
+            New_Control(Message,  strlen(Message));
+            
         }
         else if(!memcmp(CHARGERS->uri_path->s, Topic, CHARGERS->uri_path->length)){
             New_Group(Message,  strlen(Message));

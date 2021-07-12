@@ -564,6 +564,10 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 						group_buffer[4] = (uint8)(ChargingGroup.Params.potencia_max & 0x00FF);
 						group_buffer[5] = (uint8)((ChargingGroup.Params.potencia_max >>8) & 0x00FF);
 
+						for(uint8_t i = 0;i < 6; i++){
+							printf("%i ", group_buffer[i]);
+						}
+
 						serverbleSetCharacteristic(group_buffer,6 ,GROUPS_PARAMS);
 
 						//Actualizar circuits
@@ -576,15 +580,17 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 
 					//borrado
 					case 3:
-						if(ChargingGroup.Conected){
+						printf("Me ha llegado la orden de borrado\n");
+						//TODO: Ver porque se reinicia al recibir la orden de borrado(Solo pasa a veces)
+						if(ChargingGroup.Conected ){
+							
 							char buffer[20];
 							memcpy(buffer,"Delete",6);
 							coap_put("CONTROL", buffer);
 						}
 						else{
 							New_Control("Delete", 7);
-						}
-										
+						}								
 
 					break;
 
@@ -724,23 +730,27 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 					//El grupo entra en una parte, asique solo mandamos una
 					for(uint8_t i=0;i<size;i++){
 						memcpy(&sendBuffer[2+(i*9)],&data[1+(i*9)],8);
-						itoa(data[9+(i*9)]-48,&sendBuffer[10+(i*9)],10);
+						sendBuffer[10+(i*9)] = (char)data[9+(i*9)];
+						//itoa(data[9+(i*9)]-48,&sendBuffer[10+(i*9)],10);
+						printf("Me ha llegado un grupo con %i cargadores !\n", data[9+(i*9)]);
+						printf("Me ha llegado un grupo con %c cargadores !\n", sendBuffer[10+(i*9)]);
 					}
 					SendToPSOC5(sendBuffer,size*9+2,GROUPS_DEVICES_PART_1); 
 					
 				}
 			}
-		else{
-			for(int i=0;i<=250;i++){
-				sendBuffer[i]=(char)0;
+			else{
+				for(int i=0;i<=250;i++){
+					sendBuffer[i]=(char)0;
+				}
+				SendToPSOC5(sendBuffer,250,GROUPS_DEVICES_PART_1); 
+				SendToPSOC5(sendBuffer,250,GROUPS_DEVICES_PART_2); 
+
 			}
-			SendToPSOC5(sendBuffer,250,GROUPS_DEVICES_PART_1); 
-			SendToPSOC5(sendBuffer,250,GROUPS_DEVICES_PART_2); 
 			delay(250);
-		}
-		delay(250);
-		SendToPSOC5(2,SEND_GROUP_DATA);
-		delay(250);
+			SendToPSOC5(2,SEND_GROUP_DATA);
+			delay(250);
+			ChargingGroup.SendNewGroup = true;
 		}
 #endif
 	}

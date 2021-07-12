@@ -132,6 +132,34 @@ void store_group_in_mem(carac_charger* group, uint8_t size){
             }
             SendToPSOC5(sendBuffer,ChargingGroup.Charger_number*9+2,GROUPS_DEVICES_PART_1); 
         }
+
+        //si llega un grupo en el que no estoy, significa que me han sacado de el
+        //cierro el coap y borro el grupo
+        if(check_in_group(ConfigFirebase.Device_Id,charger_table, ChargingGroup.Charger_number ) == 255){
+            if(ChargingGroup.Conected){
+                printf("¡No estoy en el grupo!!!\n");
+                print_table(charger_table,"No en grupo table", ChargingGroup.Charger_number);
+                ChargingGroup.DeleteOrder = true;
+            }
+        }
+        
+        //Ponerme el primero en el grupo para indicar que soy el maestro
+        if(ChargingGroup.Params.GroupMaster){
+            if(memcmp(charger_table[0].name,ConfigFirebase.Device_Id, 8)){
+                if(ChargingGroup.Charger_number > 0 && check_in_group(ConfigFirebase.Device_Id, charger_table,ChargingGroup.Charger_number ) != 255){
+                    while(memcmp(charger_table[0].name,ConfigFirebase.Device_Id, 8)){
+                        carac_charger OldMaster = charger_table[0];
+                        remove_from_group(OldMaster.name, charger_table,  &ChargingGroup.Charger_number);
+                        add_to_group(OldMaster.name, OldMaster.IP, charger_table, &ChargingGroup.Charger_number);
+                        charger_table[ChargingGroup.Charger_number-1].Fase=OldMaster.Fase;
+                        charger_table[ChargingGroup.Charger_number-1].Circuito =OldMaster.Circuito;
+                        charger_table[ChargingGroup.Charger_number-1] = OldMaster;
+                    }
+                    ChargingGroup.SendNewGroup = true;
+                }
+            }
+        }
+
     }
     else{
         for(int i=0;i<=250;i++){
@@ -141,36 +169,7 @@ void store_group_in_mem(carac_charger* group, uint8_t size){
         SendToPSOC5(sendBuffer,250,GROUPS_DEVICES_PART_2); 
         
     }
-
-    //si llega un grupo en el que no estoy, significa que me han sacado de el
-    //cierro el coap y borro el grupo
-    if(check_in_group(ConfigFirebase.Device_Id,charger_table, ChargingGroup.Charger_number ) == 255){
-        if(ChargingGroup.Conected){
-            printf("¡No estoy en el grupo!!!\n");
-            ChargingGroup.DeleteOrder = true;
-        }
-    }
-    
-    //Ponerme el primero en el grupo para indicar que soy el maestro
-    if(ChargingGroup.Params.GroupMaster){
-        if(memcmp(charger_table[0].name,ConfigFirebase.Device_Id, 8)){
-            if(ChargingGroup.Charger_number > 0 && check_in_group(ConfigFirebase.Device_Id, charger_table,ChargingGroup.Charger_number ) != 255){
-                while(memcmp(charger_table[0].name,ConfigFirebase.Device_Id, 8)){
-                    carac_charger OldMaster = charger_table[0];
-                    remove_from_group(OldMaster.name, charger_table,  &ChargingGroup.Charger_number);
-                    add_to_group(OldMaster.name, OldMaster.IP, charger_table, &ChargingGroup.Charger_number);
-                    charger_table[ChargingGroup.Charger_number-1].Fase=OldMaster.Fase;
-					charger_table[ChargingGroup.Charger_number-1].Circuito =OldMaster.Circuito;
-                    charger_table[ChargingGroup.Charger_number-1] = OldMaster;
-                }
-                ChargingGroup.SendNewGroup = true;
-            }
-        }
-    }
-
     return;
-    
-    printf("Error al almacenar el grupo en la memoria\n");
 }
 
 void store_params_in_mem(){
