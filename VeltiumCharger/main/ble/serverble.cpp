@@ -583,14 +583,14 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 						printf("Me ha llegado la orden de borrado\n");
 						//TODO: Ver porque se reinicia al recibir la orden de borrado(Solo pasa a veces)
 						if(ChargingGroup.Conected ){
+							
 							char buffer[20];
 							memcpy(buffer,"Delete",6);
 							coap_put("CONTROL", buffer);
 						}
 						else{
 							New_Control("Delete", 7);
-						}
-										
+						}								
 
 					break;
 
@@ -739,17 +739,18 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 					
 				}
 			}
-		else{
-			for(int i=0;i<=250;i++){
-				sendBuffer[i]=(char)0;
+			else{
+				for(int i=0;i<=250;i++){
+					sendBuffer[i]=(char)0;
+				}
+				SendToPSOC5(sendBuffer,250,GROUPS_DEVICES_PART_1); 
+				SendToPSOC5(sendBuffer,250,GROUPS_DEVICES_PART_2); 
+
 			}
-			SendToPSOC5(sendBuffer,250,GROUPS_DEVICES_PART_1); 
-			SendToPSOC5(sendBuffer,250,GROUPS_DEVICES_PART_2); 
 			delay(250);
-		}
-		delay(250);
-		SendToPSOC5(2,SEND_GROUP_DATA);
-		delay(250);
+			SendToPSOC5(2,SEND_GROUP_DATA);
+			delay(250);
+			ChargingGroup.SendNewGroup = true;
 		}
 #endif
 	}
