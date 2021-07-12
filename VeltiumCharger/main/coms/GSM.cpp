@@ -36,13 +36,13 @@
 #include <esp_event.h>
 #include <esp_wifi.h>
 
-
 #include "cJSON.h"
 
 #include "libGSM.h"
 
 #define SerialAT Serial1
 
+QueueHandle_t http_mutex;
 
 String SendAt(String command){
 	String inchar;
@@ -76,6 +76,14 @@ String SendAt(String command){
 
 void StartGSM(){
    
-	ppposInit();
+	http_mutex = xSemaphoreCreateMutex();
+
+	if (ppposInit() == 0) {
+		ESP_LOGE("PPPoS EXAMPLE", "ERROR: GSM not initialized, HALTED");
+		while (1) {
+			vTaskDelay(1000 / portTICK_RATE_MS);
+		}
+	}
+
 
 }
