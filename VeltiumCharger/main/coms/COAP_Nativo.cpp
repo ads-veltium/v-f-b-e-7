@@ -273,6 +273,7 @@ message_handler(coap_context_t *ctx, coap_session_t *session,coap_pdu_t *sent, c
 
                         default:
                             printf("Datos no esperados en coap message handler %i \n", data[0]-'0');
+                            printf("%s\n", data);
                             break;
                     }
                 }
@@ -298,13 +299,14 @@ static void hnd_espressif_put(coap_context_t *ctx,coap_resource_t *resource,coap
         coap_resource_notify_observers(resource, NULL);
     }
     else if(!memcmp(resource->uri_path->s, "PARAMS", resource->uri_path->length)){
-        New_Params(data, size);
         coap_resource_notify_observers(resource, NULL);
+        New_Params(data, size);
+        
     }
     else if(!memcmp(resource->uri_path->s, "CONTROL", resource->uri_path->length)){
+        coap_resource_notify_observers(resource, NULL);
         New_Control(data,  size);
         memcpy(LastControl, data, size);
-        coap_resource_notify_observers(resource, NULL);
     }
     else if(!memcmp(resource->uri_path->s, "CIRCUITS", resource->uri_path->length)){
         New_Circuit(data,  size);
@@ -476,14 +478,14 @@ void coap_put( char* Topic, char* Message){
             New_Params(Message,  strlen(Message));
             coap_resource_notify_observers(PARAMS, NULL);
         }
-        else if(!memcmp(CONTROL->uri_path->s, Topic, CONTROL->uri_path->length)){
+        else if(!memcmp("CONTROL", Topic, 7)){
             memcpy(LastControl, Message, strlen(Message));
             coap_resource_notify_observers(CONTROL, NULL);
-            delay(500);
+            delay(250);
             New_Control(Message,  strlen(Message));
             
         }
-        else if(!memcmp(CHARGERS->uri_path->s, Topic, CHARGERS->uri_path->length)){
+        else if(!memcmp("CHARGERS", Topic, 8)){
             New_Group(Message,  strlen(Message));
             coap_resource_notify_observers(CHARGERS, NULL);
         }
@@ -535,7 +537,7 @@ static void coap_client(void *p){
     #else
     coap_set_log_level(LOG_EMERG);
     #endif
-
+    ChargingGroup.Params.GroupMaster = false;
     while (1) {
         session = NULL;
         ctx     = NULL;
