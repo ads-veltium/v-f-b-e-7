@@ -575,7 +575,6 @@ void procesar_bloque(uint16 tipo_bloque){
 				cnt_timeout_inicio = TIMEOUT_INICIO;
 				PSOC_inicializado = 1;
 			}
-
 		break;
 
 		case BLOQUE_STATUS:
