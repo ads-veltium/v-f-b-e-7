@@ -665,23 +665,27 @@ typedef struct{
 
 #define MEASURES_INST_CURRENTB_CHAR_HANDLE (0x00C5u)
 #define MEASURES_INST_CURRENTC_CHAR_HANDLE (0x00C7u)
-#define MEASURES_EXTERNAL_COUNTER		   (0x00C9u)
-#define COMS_FW_UPDATEMODE_CHAR_HANDLE     (0x00CAu)
-#define GROUPS_DEVICES_PART_1 	  		   (0x00CCu)
-#define GROUPS_DEVICES_PART_2 	  		   (0x00CDu)
-
-#define SEND_GROUP_DATA		 		 	   (0x00CFu)
-#define BLOQUEO_CARGA                      (0x00D1u)
-
-#define CHARGING_GROUP_BLE_NET_DEVICES	   (0x00D3u)
-#define CHARGING_GROUP_BLE_CHARGING_GROUP  (0x00D5u)
-
 
 //Caracteristicas para el modem
-#define APN	   							   (0x00D6u)
-#define APN_USER  						   (0x00D7u)
-#define APN_PASSWORD	   				   (0x00D8u)
-#define SIM_PIN							   (0x00D9u)
+#define APN	   							   (0x00C9u)
+#define APN_USER  						   (0x00CBu)
+#define APN_PASSWORD	   				   (0x00CDu)
+#define APN_PIN							   (0x00CFu)
+#define APN_ON 							   (0x00D1u)
+
+#define MEASURES_EXTERNAL_COUNTER		   (0x00D3u)
+#define COMS_FW_UPDATEMODE_CHAR_HANDLE     (0x00D5u)
+#define GROUPS_DEVICES_PART_1 	  		   (0x00D7u)
+#define GROUPS_DEVICES_PART_2 	  		   (0x00D9u)
+
+#define SEND_GROUP_DATA		 		 	   (0x00DBu)
+#define BLOQUEO_CARGA                      (0x00DDu)
+
+#define CHARGING_GROUP_BLE_NET_DEVICES	   (0x00DFu)
+#define CHARGING_GROUP_BLE_CHARGING_GROUP  (0x00E1u)
+
+
+
 
 
 

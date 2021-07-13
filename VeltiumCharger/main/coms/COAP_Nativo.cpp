@@ -251,6 +251,7 @@ message_handler(coap_context_t *ctx, coap_session_t *session,coap_pdu_t *sent, c
                             New_Params(&data[1], data_len-1);
                             break;
                         case GROUP_CONTROL:
+                            printf("Nuevo control recibido %s\n", data);
                             New_Control(&data[1],  data_len-1);
                             break;
                         case GROUP_CHARGERS:
@@ -282,7 +283,6 @@ message_handler(coap_context_t *ctx, coap_session_t *session,coap_pdu_t *sent, c
     else{
         ESP_LOGE(TAG, "codigo de coap %i \n", COAP_RESPONSE_CLASS(received->code));
     } 
-
     Esperando_datos = 0;
 }
 
@@ -303,7 +303,6 @@ static void hnd_espressif_put(coap_context_t *ctx,coap_resource_t *resource,coap
         
     }
     else if(!memcmp(resource->uri_path->s, "CONTROL", resource->uri_path->length)){
-        printf("Notificando de parada!!\n");
 
         if(size <=0){
             return;
@@ -312,12 +311,23 @@ static void hnd_espressif_put(coap_context_t *ctx,coap_resource_t *resource,coap
         char* Data = (char*) calloc(size, '0');
         memcpy(Data, data, size);
 
-        memcpy(LastControl, Data, size);
-        coap_resource_notify_observers(CONTROL, NULL);
-        delay(1000);
-        New_Control(Data,  size);
+        if(strstr(Data,"Delete")){
+            memcpy(LastControl, "Delete", 6);
+            coap_resource_notify_observers(CONTROL, NULL);
+            New_Control(LastControl,  6);       
+        }
+        else if(strstr(Data,"Pause")){
+            memcpy(LastControl, "Pause", 5);
+            coap_resource_notify_observers(CONTROL, NULL); 
+            New_Control(LastControl,  5);      
+        }
+    
+
         free(Data);
-        
+
+        printf("%s\n", LastControl);
+              
+          
     }
     else if(!memcmp(resource->uri_path->s, "CIRCUITS", resource->uri_path->length)){
         New_Circuit(data,  size);
@@ -863,10 +873,10 @@ static void coap_server(void *p){
             }
 
             else if(ChargingGroup.DeleteOrder){
-                /*char buffer[20];
-                memcpy(buffer,"Delete",6);
-                coap_put("CONTROL", buffer);
-                delay(250);*/
+                //char buffer[20];
+				//memcpy(buffer,"Delete",6);
+				/*coap_put("CONTROL", "Delete");
+                delay(500);*/
                 New_Control("Delete", 6);
                 ChargingGroup.DeleteOrder = false;
                 goto clean_up;

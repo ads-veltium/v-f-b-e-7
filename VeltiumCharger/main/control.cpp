@@ -508,7 +508,6 @@ void proceso_recepcion(void)
 
 void procesar_bloque(uint16 tipo_bloque){
 	static int LastRecord =0;
-
 	switch(tipo_bloque){
 		case BLOQUE_INICIALIZACION:
 			if (!systemStarted && (buffer_rx_local[239]==0x36 || buffer_rx_local[238]==0x36)) { //Compatibilidad con 509
@@ -574,6 +573,9 @@ void procesar_bloque(uint16 tipo_bloque){
 
 				cnt_timeout_inicio = TIMEOUT_INICIO;
 				PSOC_inicializado = 1;
+
+				SendToPSOC5(1,BLOQUE_APN);
+				delay(500);
 			}
 		break;
 
@@ -1079,10 +1081,11 @@ void procesar_bloque(uint16 tipo_bloque){
 		break;
 
 		case APN:{
-
 			Serial.println("Me ha llegado el apn");
 			Coms.GSM.ON=buffer_rx_local[0];
 			memcpy(&Coms.GSM.Apn[0], &buffer_rx_local[1], 30);
+			modifyCharacteristic(buffer_rx_local,  1, APN_ON);
+			modifyCharacteristic(&buffer_rx_local[1],  30, APN);
 			
 		} 
 		break;
@@ -1091,6 +1094,7 @@ void procesar_bloque(uint16 tipo_bloque){
 
 			Serial.println("Me ha llegado el apn user");
 			memcpy(&Coms.GSM.User[0], buffer_rx_local, 30);
+			modifyCharacteristic(buffer_rx_local,  30, APN_USER);
 			
 		} 
 		break;
@@ -1098,17 +1102,17 @@ void procesar_bloque(uint16 tipo_bloque){
 		case APN_PASSWORD:{
 
 			Serial.println("Me ha llegado el apn password");
-			Coms.GSM.ON=buffer_rx_local[0];
-			memcpy(&Coms.GSM.Pass[0], &buffer_rx_local[1], 30);
+			memcpy(&Coms.GSM.Pass[0], buffer_rx_local, 30);
+			modifyCharacteristic(buffer_rx_local,  30, APN_PASSWORD);
 			
 		} 
 		break;
 
-		case SIM_PIN:{
+		case APN_PIN:{
 
 			Serial.println("Me ha llegado el sim pin");
-			Coms.GSM.ON=buffer_rx_local[0];
 			memcpy(Coms.GSM.Pin, buffer_rx_local,4);
+			modifyCharacteristic(buffer_rx_local,  4, APN_PIN);
 		} 
 		break;
 

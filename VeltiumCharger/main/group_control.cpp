@@ -16,6 +16,7 @@ extern carac_Contador   ContadorExt;
 
 bool add_to_group(const char* ID, IPAddress IP, carac_charger* group, uint8_t* size);
 void remove_group(carac_charger* group, uint8_t* size);
+void coap_put( char* Topic, char* Message);
 void store_params_in_mem();
 uint8_t check_in_group(const char* ID, carac_charger* group, uint8_t size);
 void store_group_in_mem(carac_charger* group, uint8_t size);
@@ -171,9 +172,13 @@ void New_Control(char* Data, int Data_size){
     store_params_in_mem();
   }
   else if(!memcmp(Data,"Delete",6)){
+    
     printf("Tengo que borrar el grupo\n");
-    ChargingGroup.Params.GroupActive = 0;
-    ChargingGroup.Params.GroupMaster = 0;
+    ChargingGroup.Params.GroupActive   = 0;
+    ChargingGroup.Params.GroupMaster   = 0;
+    ChargingGroup.Params.ContractPower = 0;
+    ChargingGroup.Params.CDP = 0;
+    ChargingGroup.Params.potencia_max  = 0;
     ChargingGroup.DeleteOrder = false;
     ChargingGroup.StopOrder   = true;
     
