@@ -251,7 +251,6 @@ message_handler(coap_context_t *ctx, coap_session_t *session,coap_pdu_t *sent, c
                             New_Params(&data[1], data_len-1);
                             break;
                         case GROUP_CONTROL:
-                            printf("Nuevo control recibido %s\n", data);
                             New_Control(&data[1],  data_len-1);
                             break;
                         case GROUP_CHARGERS:
@@ -314,11 +313,13 @@ static void hnd_espressif_put(coap_context_t *ctx,coap_resource_t *resource,coap
         if(strstr(Data,"Delete")){
             memcpy(LastControl, "Delete", 6);
             coap_resource_notify_observers(CONTROL, NULL);
+            delay(1000);
             New_Control(LastControl,  6);       
         }
         else if(strstr(Data,"Pause")){
             memcpy(LastControl, "Pause", 5);
             coap_resource_notify_observers(CONTROL, NULL); 
+            delay(1000);
             New_Control(LastControl,  5);      
         }
     
@@ -627,10 +628,10 @@ static void coap_client(void *p){
         Subscribe("CIRCUITS");
 
         //Tras autenticarnos solicitamos los cargadores del grupo y los parametros
-        coap_get("CHARGERS");
+        /*coap_get("CHARGERS");
         POLL(100);
         coap_get("PARAMS");
-        POLL(100);
+        POLL(100);*/
         coap_get("CIRCUITS");
         POLL(100);
         

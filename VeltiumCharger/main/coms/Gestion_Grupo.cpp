@@ -316,6 +316,18 @@ void start_udp(){
                         ChargingGroup.MasterIP =packet.remoteIP();
                     }
                 }
+                else if(!memcmp(Desencriptado.c_str(), "Delete", 6)){
+                    if(ChargingGroup.Conected && !ChargingGroup.Params.GroupMaster){
+                        Serial.println("el maestro me pide que borre el grupo!");
+                        ChargingGroup.DeleteOrder = true;
+                    }
+                }
+                else if(!memcmp(Desencriptado.c_str(), "Pause", 5)){
+                    if(ChargingGroup.Conected && !ChargingGroup.Params.GroupMaster){
+                        Serial.println("el maestro me pide que pause el grupo!");
+                        ChargingGroup.StopOrder = true;
+                    }
+                }
             }            
         });
     }

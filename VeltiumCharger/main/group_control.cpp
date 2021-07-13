@@ -20,6 +20,7 @@ void coap_put( char* Topic, char* Message);
 void store_params_in_mem();
 uint8_t check_in_group(const char* ID, carac_charger* group, uint8_t size);
 void store_group_in_mem(carac_charger* group, uint8_t size);
+void broadcast_a_grupo(char* Mensaje, uint16_t size);
 IPAddress get_IP(const char* ID);
 
 TickType_t xStart;
@@ -167,6 +168,9 @@ void New_Control(char* Data, int Data_size){
 
   if(!memcmp(Data,"Pause",5)){
     printf("Tengo que pausar el grupo\n");
+    if(ChargingGroup.Params.GroupMaster){
+      broadcast_a_grupo("Pause", 6);
+    }
     ChargingGroup.StopOrder = true;
     ChargingGroup.Params.GroupActive = 0;
     store_params_in_mem();
@@ -174,6 +178,10 @@ void New_Control(char* Data, int Data_size){
   else if(!memcmp(Data,"Delete",6)){
     
     printf("Tengo que borrar el grupo\n");
+    if(ChargingGroup.Params.GroupMaster){
+      broadcast_a_grupo("Delete", 6);
+    }
+    
     ChargingGroup.Params.GroupActive   = 0;
     ChargingGroup.Params.GroupMaster   = 0;
     ChargingGroup.Params.ContractPower = 0;
