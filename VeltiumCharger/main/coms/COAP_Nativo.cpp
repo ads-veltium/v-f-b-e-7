@@ -302,9 +302,10 @@ static void hnd_espressif_put(coap_context_t *ctx,coap_resource_t *resource,coap
         coap_resource_notify_observers(resource, NULL);
     }
     else if(!memcmp(resource->uri_path->s, "CONTROL", resource->uri_path->length)){
+        coap_resource_notify_observers(resource, NULL);
         New_Control(data,  size);
         memcpy(LastControl, data, size);
-        coap_resource_notify_observers(resource, NULL);
+        
     }
     else if(!memcmp(resource->uri_path->s, "CIRCUITS", resource->uri_path->length)){
         New_Circuit(data,  size);
@@ -479,7 +480,7 @@ void coap_put( char* Topic, char* Message){
         else if(!memcmp(CONTROL->uri_path->s, Topic, CONTROL->uri_path->length)){
             memcpy(LastControl, Message, strlen(Message));
             coap_resource_notify_observers(CONTROL, NULL);
-            delay(500);
+            delay(250);
             New_Control(Message,  strlen(Message));
             
         }
@@ -707,6 +708,7 @@ static void coap_server(void *p){
     TXANDA   = NULL;
     CIRCUITS = NULL;
 
+    memcpy(LastControl, "NOTHING",7);
     while (1) {
         coap_endpoint_t *ep = NULL;
 

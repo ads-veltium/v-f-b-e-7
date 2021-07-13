@@ -370,7 +370,11 @@ esp_err_t _generic_http_event_handle(esp_http_client_event_t *evt){
             //esp_http_client_cleanup(evt->client);
             break;
     }
-    free(response);
+    if(response != NULL){
+        free(response);
+        response = NULL;
+    }
+    
 
     return ESP_OK;
 }
