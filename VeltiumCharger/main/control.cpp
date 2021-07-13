@@ -574,8 +574,6 @@ void procesar_bloque(uint16 tipo_bloque){
 				cnt_timeout_inicio = TIMEOUT_INICIO;
 				PSOC_inicializado = 1;
 
-				SendToPSOC5(1,BLOQUE_APN);
-				delay(500);
 			}
 		break;
 
@@ -603,7 +601,12 @@ void procesar_bloque(uint16 tipo_bloque){
 
 				//Hilo piloto
 				if((memcmp(&buffer_rx_local[1], status_hpt_anterior, 2) != 0)){
-					dispositivo_inicializado = 2;
+					if(dispositivo_inicializado !=2){
+						SendToPSOC5(1,BLOQUE_APN);
+						delay(150);
+						dispositivo_inicializado = 2;
+					}
+					
 					#ifdef DEBUG
 					Serial.printf("%c %c \n",buffer_rx_local[1],buffer_rx_local[2]);
 					#endif
