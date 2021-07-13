@@ -720,6 +720,7 @@ static void coap_server(void *p){
     TXANDA   = NULL;
     CIRCUITS = NULL;
 
+    memcpy(LastControl, "NOTHING",7);
     while (1) {
         coap_endpoint_t *ep = NULL;
 
