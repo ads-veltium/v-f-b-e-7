@@ -169,7 +169,7 @@ void New_Control(char* Data, int Data_size){
   if(!memcmp(Data,"Pause",5)){
     printf("Tengo que pausar el grupo\n");
     if(ChargingGroup.Params.GroupMaster){
-      broadcast_a_grupo("Pause", 6);
+      broadcast_a_grupo("Geldituzazu taldea", 18);
     }
     ChargingGroup.StopOrder = true;
     ChargingGroup.Params.GroupActive = 0;
@@ -179,7 +179,7 @@ void New_Control(char* Data, int Data_size){
     
     printf("Tengo que borrar el grupo\n");
     if(ChargingGroup.Params.GroupMaster){
-      broadcast_a_grupo("Delete", 6);
+      broadcast_a_grupo("Ezabatu taldea", 14);
     }
     
     ChargingGroup.Params.GroupActive   = 0;

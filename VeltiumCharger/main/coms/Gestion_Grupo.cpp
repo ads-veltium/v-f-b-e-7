@@ -316,13 +316,13 @@ void start_udp(){
                         ChargingGroup.MasterIP =packet.remoteIP();
                     }
                 }
-                else if(!memcmp(Desencriptado.c_str(), "Delete", 6)){
+                else if(!memcmp(Desencriptado.c_str(), "Ezabatu taldea", 14)){
                     if(ChargingGroup.Conected && !ChargingGroup.Params.GroupMaster){
                         Serial.println("el maestro me pide que borre el grupo!");
                         ChargingGroup.DeleteOrder = true;
                     }
                 }
-                else if(!memcmp(Desencriptado.c_str(), "Pause", 5)){
+                else if(!memcmp(Desencriptado.c_str(), "Geldituzazu taldea", 18)){
                     if(ChargingGroup.Conected && !ChargingGroup.Params.GroupMaster){
                         Serial.println("el maestro me pide que pause el grupo!");
                         ChargingGroup.StopOrder = true;
