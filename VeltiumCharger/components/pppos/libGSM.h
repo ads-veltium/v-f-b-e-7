@@ -4,6 +4,9 @@
 */
 
 
+
+
+
 #ifndef _LIBGSM_H_
 #define _LIBGSM_H_
 
@@ -12,7 +15,9 @@
 #define GSM_STATE_IDLE			89
 #define GSM_STATE_FIRSTINIT		98
 
-
+#ifdef __cplusplus
+extern "C" {
+#endif // __cplusplus
 typedef struct
 {
 	int		idx;
@@ -108,5 +113,7 @@ void smsRead(SMS_Messages *SMSmesg, int sort);
  */
 int smsDelete(int idx);
 
-
+#ifdef __cplusplus
+}
+#endif // __cplusplus
 #endif

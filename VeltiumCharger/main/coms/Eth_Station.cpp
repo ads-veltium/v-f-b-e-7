@@ -301,7 +301,7 @@ void initialize_ethernet(void){
         modifyCharacteristic(&on, 1, COMS_CONFIGURATION_ETH_ON);	
         
     }   
-    
+    /*
     //Si fijamos una IP estatica:
     else if(!Coms.ETH.Auto && Coms.ETH.IP.addr != IPADDR_ANY){
         #ifdef DEBUG_ETH
@@ -321,7 +321,7 @@ void initialize_ethernet(void){
         modifyCharacteristic(&ip_Array[0], 4, COMS_CONFIGURATION_LAN_IP);
         uint8_t  on =1;
         modifyCharacteristic(&on, 1, COMS_CONFIGURATION_ETH_ON);	
-    }
+    }*/
     //Configuracion automatica
     else{
         #ifdef DEBUG_ETH

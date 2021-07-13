@@ -575,7 +575,6 @@ void procesar_bloque(uint16 tipo_bloque){
 				cnt_timeout_inicio = TIMEOUT_INICIO;
 				PSOC_inicializado = 1;
 			}
-
 		break;
 
 		case BLOQUE_STATUS:
@@ -1146,6 +1145,8 @@ void procesar_bloque(uint16 tipo_bloque){
             //cierro el coap y borro el grupo
             if(check_in_group(ConfigFirebase.Device_Id,charger_table,ChargingGroup.Charger_number ) == 255){
                 if(ChargingGroup.Conected){
+					printf("No estoy en el grupo control.cpp1\n");
+					print_table(charger_table,"No en grupo table 1", ChargingGroup.Charger_number);
                     ChargingGroup.DeleteOrder = true;
                 }
             }

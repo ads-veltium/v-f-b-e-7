@@ -522,7 +522,10 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 					//Creacion
 					case 1:
 						printf("Tengo que crear un grupo!\n");
-						ChargingGroup.Params.GroupMaster = true;
+						if(!ChargingGroup.Conected){
+							ChargingGroup.Params.GroupMaster = true;
+						}
+						
 
 						//Actualizar net devices
 						uint8_t net_buffer[452];
