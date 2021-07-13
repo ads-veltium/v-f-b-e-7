@@ -835,6 +835,8 @@ coap_resource_set_dirty(coap_resource_t *r, const coap_string_t *query) {
 
 int
 coap_resource_notify_observers(coap_resource_t *r, const coap_string_t *query) {
+  if(!r || r==NULL)
+    return 0;
   if (!r->observable)
     return 0;
   if (query) {

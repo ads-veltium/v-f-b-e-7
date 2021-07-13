@@ -175,7 +175,7 @@ void New_Control(char* Data, int Data_size){
     ChargingGroup.Params.GroupActive = 0;
     ChargingGroup.Params.GroupMaster = 0;
     ChargingGroup.DeleteOrder = false;
-    ChargingGroup.StopOrder = true;
+    ChargingGroup.StopOrder   = true;
     
     remove_group(charger_table, &ChargingGroup.Charger_number);
     store_group_in_mem(charger_table,ChargingGroup.Charger_number);
