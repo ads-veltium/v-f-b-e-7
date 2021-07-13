@@ -542,6 +542,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 					//modificacion
 					case 2:
 						printf("Tengo que modificar el grupo!\n");
+						
 						//Actualizar net devices
 						uint8_t group_buffer[452];
 						group_buffer[0] = net_group_size;
@@ -708,7 +709,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 					//Envio de la primera parte
 					for(uint8_t i = 0;i < 25; i++){
 						memcpy(&sendBuffer[2+(i*9)],&data[1+(i*9)],8);
-						itoa(data[9+(i*9)],&sendBuffer[10+(i*9)],10);
+						sendBuffer[10+(i*9)] = (char)data[9+(i*9)];
 					}
 
 					SendToPSOC5(sendBuffer,227,GROUPS_DEVICES_PART_1); 
@@ -723,7 +724,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 					}
 					for(uint8_t i=0;i<(size - 25);i++){
 						memcpy(&sendBuffer[2+(i*9)],&data[1+((i+25)*9)],8);
-						itoa(data[9+((i+25)*9)],&sendBuffer[10+(i*9)],10);
+						sendBuffer[10+(i*9)] = (char)data[9+((i+25)*9)];
 					}
 
 					SendToPSOC5(sendBuffer,(size - 25)*9+2,GROUPS_DEVICES_PART_2); 
@@ -734,9 +735,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 					for(uint8_t i=0;i<size;i++){
 						memcpy(&sendBuffer[2+(i*9)],&data[1+(i*9)],8);
 						sendBuffer[10+(i*9)] = (char)data[9+(i*9)];
-						//itoa(data[9+(i*9)]-48,&sendBuffer[10+(i*9)],10);
-						printf("Me ha llegado un grupo con %i cargadores !\n", data[9+(i*9)]);
-						printf("Me ha llegado un grupo con %c cargadores !\n", sendBuffer[10+(i*9)]);
+
 					}
 					SendToPSOC5(sendBuffer,size*9+2,GROUPS_DEVICES_PART_1); 
 					

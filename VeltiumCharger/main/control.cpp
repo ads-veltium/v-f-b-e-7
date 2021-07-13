@@ -1127,16 +1127,21 @@ void procesar_bloque(uint16 tipo_bloque){
             memcpy(n,buffer_rx_local,2);
             ChargingGroup.Charger_number=0;
             uint8_t limit = atoi(n) > 25? 25: atoi(n);
-
+			
             for(uint8_t i=0; i<limit;i++){    
                 for(uint8_t j =0; j< 8; j++){
                     ID[j]=(char)buffer_rx_local[2+i*9+j];
                 }
                 add_to_group(ID, get_IP(ID), charger_table, &ChargingGroup.Charger_number);
-				printf("Circuitos2 %i\n", buffer_rx_local[10+i*9]);
+
+				
 				
                 charger_table[i].Fase = (buffer_rx_local[10+i*9]) & 0x03;
 				charger_table[i].Circuito = (buffer_rx_local[10+i*9]) >> 2;
+
+				printf("Circuitos %i\n", charger_table[i].Fase);
+				printf("Circuitos %i\n", charger_table[i].Circuito);
+				
                 if(!memcmp(ID,ConfigFirebase.Device_Id,8)){
                     charger_table[i].Conected = true;
                     Params.Fase = (buffer_rx_local[10+i*9]-'0') & 0x03;
