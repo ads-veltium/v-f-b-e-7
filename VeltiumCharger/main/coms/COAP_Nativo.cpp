@@ -272,7 +272,7 @@ message_handler(coap_context_t *ctx, coap_session_t *session,coap_pdu_t *sent, c
                             break;
 
                         default:
-
+                            printf("Pueden esto ser circuitos? %s!\n", data);
                             break;
                     }
                 }

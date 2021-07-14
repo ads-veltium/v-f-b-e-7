@@ -245,10 +245,15 @@ void New_Circuit(uint8_t* Buffer, int Data_size){
     return;
   }
 
-  ChargingGroup.Circuit_number = Buffer[0];
+  
+  char size_char[2];
+  memcpy(size_char,Buffer,2);
+  uint8_t size = atoi(size_char);
+  ChargingGroup.Circuit_number = size;
+
   printf("Nuevos circuitos recibidos\n");
   for(uint8_t i=0; i<ChargingGroup.Circuit_number;i++){
-    Circuitos[i].limite_corriente = Buffer[i+1];
+    Circuitos[i].limite_corriente = Buffer[i+2]-'0';
     printf("%i ", Circuitos[i].limite_corriente);
   }
   printf("\n");
