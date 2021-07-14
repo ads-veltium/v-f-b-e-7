@@ -644,6 +644,9 @@ static void coap_client(void *p){
             if( ChargingGroup.SendNewParams){
                 Send_Params();
                 ChargingGroup.SendNewParams = false;
+                if(!ChargingGroup.Params.GroupActive){
+                    ChargingGroup.StopOrder = true;
+                }
             }
 
             //Enviar los cargadores de nuestro grupo

@@ -193,8 +193,7 @@ void New_Control(char* Data, int Data_size){
     remove_group(charger_table, &ChargingGroup.Charger_number);
     store_group_in_mem(charger_table,ChargingGroup.Charger_number);
 
-    char buffer[7] = {0};
-    SendToPSOC5((char*)buffer,7,GROUPS_PARAMS); 
+    store_params_in_mem();
   }
 }
 
