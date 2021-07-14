@@ -252,9 +252,9 @@ void New_Circuit(uint8_t* Buffer, int Data_size){
 
   uint8_t buffer[size+1];
 
-  printf("Nuevos circuitos recibidos\n");
+  buffer[0]=size;
   for(uint8_t i=0; i<size;i++){
-    buffer[i+1] = Buffer[i+2]-'0';
+    buffer[i+1] = Buffer[i+2];
   }
 
   SendToPSOC5((char*)buffer,size+1,GROUPS_CIRCUITS); 
