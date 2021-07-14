@@ -271,7 +271,6 @@ message_handler(coap_context_t *ctx, coap_session_t *session,coap_pdu_t *sent, c
                             break;
                         
                         case GROUP_CIRCUITS:
-                            printf("Me han llegado nuecos circuitos\n");
                             New_Circuit(&data[1],  data_len-1);
                             break;
 
@@ -639,9 +638,9 @@ static void coap_client(void *p){
         /*coap_get("CHARGERS");
         POLL(100);
         coap_get("PARAMS");
-        POLL(100);*/
-        coap_get("CIRCUITS");
         POLL(100);
+        coap_get("CIRCUITS");
+        POLL(100);*/
         
         //Bucle del grupo
         xMasterTimer = xTaskGetTickCount();

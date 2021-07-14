@@ -578,10 +578,8 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 
 						//Actualizar circuits
 						group_buffer[0] = ChargingGroup.Circuit_number;
-						printf("Enviando nuevos circuitos%i \n", group_buffer[0]);
 						for(uint8_t i=0;i< ChargingGroup.Circuit_number;i++){ 
 							group_buffer[i+1] = Circuitos[i].limite_corriente;
-							printf("Enviando nuevos circuitos%i \n", group_buffer[i+1]);
 						}
 						serverbleSetCharacteristic(group_buffer,ChargingGroup.Circuit_number +1 ,GROUPS_CIRCUITS);
 					break;

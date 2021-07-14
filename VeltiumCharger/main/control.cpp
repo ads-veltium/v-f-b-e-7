@@ -1269,9 +1269,7 @@ void procesar_bloque(uint16 tipo_bloque){
 			ChargingGroup.Circuit_number = numero_circuitos;
 			for(int i=0;i< numero_circuitos;i++){
 				Circuitos[i].numero = i+1;
-            	Circuitos[i].limite_corriente = buffer_rx_local[i+1];
-				Serial.printf("Me han llegado nuevos circuitos! %i %i\n", Circuitos[i].numero, Circuitos[i].limite_corriente);
-				
+            	Circuitos[i].limite_corriente = buffer_rx_local[i+1];				
 			}
 			break;
 			

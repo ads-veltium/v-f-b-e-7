@@ -244,20 +244,20 @@ void New_Circuit(uint8_t* Buffer, int Data_size){
   if(Data_size <=0){
     return;
   }
-
+  
   
   char size_char[2];
   memcpy(size_char,Buffer,2);
   uint8_t size = atoi(size_char);
-  ChargingGroup.Circuit_number = size;
+
+  uint8_t buffer[size+1];
 
   printf("Nuevos circuitos recibidos\n");
-  for(uint8_t i=0; i<ChargingGroup.Circuit_number;i++){
-    Circuitos[i].limite_corriente = Buffer[i+2]-'0';
-    printf("%i ", Circuitos[i].limite_corriente);
+  for(uint8_t i=0; i<size;i++){
+    buffer[i+1] = Buffer[i+2]-'0';
   }
-  printf("\n");
-  
+
+  SendToPSOC5((char*)buffer,size+1,GROUPS_CIRCUITS); 
 }
 
 void New_Group(uint8_t* Buffer, int Data_size){  
