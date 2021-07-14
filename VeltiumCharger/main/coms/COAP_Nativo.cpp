@@ -101,7 +101,6 @@ void MasterPanicTask(void *args);
 static void
 hnd_get(coap_context_t *ctx, coap_resource_t *resource,coap_session_t *session,coap_pdu_t *request, coap_binary_t *token,coap_string_t *query, coap_pdu_t *response){    
     char buffer[500];
-    uint8_t buffer2[100];
     
     if(!memcmp(resource->uri_path->s, "CHARGERS", resource->uri_path->length)){
         itoa(GROUP_CHARGERS, buffer, 10);
@@ -120,13 +119,19 @@ hnd_get(coap_context_t *ctx, coap_resource_t *resource,coap_session_t *session,c
     }
     else if(!memcmp(resource->uri_path->s, "CIRCUITS", resource->uri_path->length)){
         
-        buffer2[0] = GROUP_CIRCUITS;
+        itoa(GROUP_CIRCUITS, buffer, 10);
 
-        buffer2[1] = ChargingGroup.Circuit_number;
-        
-        for(uint8_t i=0;i< ChargingGroup.Circuit_number;i++){ 
-            buffer2[i+2] = Circuitos[i].limite_corriente;
+        if(ChargingGroup.Circuit_number< 10){
+            sprintf(&buffer[1],"0%i",(char)ChargingGroup.Circuit_number);
         }
+        else{
+            sprintf(&buffer[1],"%i",(char)ChargingGroup.Circuit_number);
+        }
+
+        for(uint8_t i=0;i< ChargingGroup.Circuit_number;i++){ 
+            itoa(Circuitos[i].limite_corriente,  &buffer[i+3], 10);
+        }
+        printf("Enviando circuitos a todos los cargadores!\n");
     }
     else if(!memcmp(resource->uri_path->s, "PARAMS", resource->uri_path->length)){
         
@@ -169,9 +174,7 @@ hnd_get(coap_context_t *ctx, coap_resource_t *resource,coap_session_t *session,c
     if(strlen((char*)buffer) >0){
         coap_add_data_blocked_response(resource, session, request, response, token,COAP_MEDIATYPE_APPLICATION_JSON, 2,(size_t)strlen((char*)buffer),(const u_char*)buffer);
     }
-    else{
-        coap_add_data_blocked_response(resource, session, request, response, token,COAP_MEDIATYPE_APPLICATION_JSON, 2,(size_t)ChargingGroup.Circuit_number + 2, buffer2);
-    }
+
 }
 
 static void 
@@ -268,6 +271,7 @@ message_handler(coap_context_t *ctx, coap_session_t *session,coap_pdu_t *sent, c
                             break;
                         
                         case GROUP_CIRCUITS:
+                            printf("Me han llegado nuecos circuitos\n");
                             New_Circuit(&data[1],  data_len-1);
                             break;
 
@@ -510,6 +514,10 @@ void coap_put( char* Topic, char* Message){
         else if(!memcmp("CHARGERS", Topic, 8)){
             New_Group(Message,  strlen(Message));
             coap_resource_notify_observers(CHARGERS, NULL);
+        }
+        else if(!memcmp("CIRCUITS", Topic, 8)){
+            New_Circuit((uint8_t*) Message,  strlen(Message));
+            coap_resource_notify_observers(CIRCUITS, NULL);
         }
     }
     else{
