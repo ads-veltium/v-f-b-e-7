@@ -209,7 +209,7 @@ void New_Current(uint8_t* Buffer, int Data_size){
 
   free(Data);
 
-  //compribar que el Json está bien
+  //comprobar que el Json está bien
   if(!cJSON_HasObjectItem(mensaje_Json,"DC")){
     return;
   }
@@ -228,7 +228,7 @@ void New_Current(uint8_t* Buffer, int Data_size){
   cJSON_Delete(mensaje_Json);
 
   if(desired_current == 0 && !ChargingGroup.ChargPerm && !memcmp(Status.HPT_status,"C2",2)){
-    Serial.printf("Debo detener la carga!!!!\n");
+    Serial.printf("Debo detener la carga!!!! %i %i\n", desired_current, ChargingGroup.ChargPerm);
     SendToPSOC5(1, CHARGING_BLE_MANUAL_STOP_CHAR_HANDLE);
     SendToPSOC5(desired_current,MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
   }

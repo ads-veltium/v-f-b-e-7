@@ -493,6 +493,7 @@ void coap_put( char* Topic, char* Message){
             if( Cargador.Consigna == 0){
                 Cargador.Consigna = 2;
             }
+
             if((uint8_t)Cargador.Consigna != Comands.desired_current){
                 printf("Enviando nueva consigna! %i %i\n", Cargador.Consigna, Comands.desired_current);
                 SendToPSOC5((uint8_t)Cargador.Consigna,MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
@@ -973,7 +974,9 @@ void Send_Data(){
 
   if(ChargingGroup.AskPerm){
       cJSON_AddNumberToObject(Datos_Json, "Perm",1);
-      printf("Pidiendo permiso al maestro \n");
+  }
+  else{
+      cJSON_AddNumberToObject(Datos_Json, "Perm",0);
   }
 
   char *my_json_string = cJSON_Print(Datos_Json);   
@@ -1005,45 +1008,20 @@ void Send_Chargers(){
 
 //enviar circuitos
 void Send_Circuits(){
-    uint8_t buffer[100];
+    char buffer[500];
 
-    buffer[0] = ChargingGroup.Circuit_number;
-    
-    for(uint8_t i=0;i< ChargingGroup.Circuit_number;i++){ 
-        buffer[i+1] = Circuitos[i].limite_corriente;
-    }
-
-    coap_pdu_t *request = NULL;
-
-    if (optlist) {
-        coap_delete_optlist(optlist);
-        optlist = NULL;
-    }
-
-    if(ChargingGroup.Params.GroupMaster){
-        New_Circuit(buffer,  ChargingGroup.Circuit_number +1);
-        coap_resource_notify_observers(CIRCUITS, NULL);
+    if(ChargingGroup.Circuit_number< 10){
+        sprintf(buffer,"0%i",(char)ChargingGroup.Circuit_number);
     }
     else{
-        coap_insert_optlist(&optlist,coap_new_optlist(COAP_OPTION_URI_PATH,strlen("CIRCUITS"),(const uint8_t*)"CIRCUITS"));
-
-        request = coap_new_pdu(session);
-        if (!request) {
-            ESP_LOGE(TAG, "coap_new_pdu() failed");
-            return;
-        }
-        request->type = COAP_MESSAGE_CON;
-        request->tid = coap_new_message_id(session);
-        request->code = COAP_REQUEST_PUT;
-
-        coap_add_optlist_pdu(request, &optlist);
-
-        coap_add_data(request, ChargingGroup.Circuit_number + 1,buffer);
-
-        coap_send(session, request);
-
-        Esperando_datos =1;
+        sprintf(buffer,"%i",(char)ChargingGroup.Circuit_number);
     }
+    
+    for(uint8_t i=0;i< ChargingGroup.Circuit_number;i++){ 
+        buffer[i+3] = (char)Circuitos[i].limite_corriente;
+    }
+
+   coap_put("CIRCUITS", buffer);
 }
 
 //Enviar parametros
