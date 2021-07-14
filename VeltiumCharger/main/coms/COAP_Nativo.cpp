@@ -129,7 +129,7 @@ hnd_get(coap_context_t *ctx, coap_resource_t *resource,coap_session_t *session,c
         }
 
         for(uint8_t i=0;i< ChargingGroup.Circuit_number;i++){ 
-            itoa(Circuitos[i].limite_corriente,  &buffer[i+3], 10);
+            buffer[i+3] = (char)Circuitos[i].limite_corriente;
         }
         printf("Enviando circuitos a todos los cargadores!\n");
     }
