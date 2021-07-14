@@ -479,16 +479,18 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 			}
 			else if(handle == COMS_CONFIGURATION_ETH_ON){
 				SendToPSOC5(payload[0],COMS_CONFIGURATION_ETH_ON);
+				return;
 			}
 			else if(handle == COMS_CONFIGURATION_WIFI_ON){
 				SendToPSOC5(payload[0],COMS_CONFIGURATION_WIFI_ON);
+				return;
 			}
 			else if (handle == GROUPS_PARAMS) {
 				uint8_t sendBuffer[7];
 				sendBuffer[0] = ChargingGroup.Params.GroupMaster;
 
 				if(ChargingGroup.Params.GroupActive && !payload[0]){
-					ChargingGroup.StopOrder = true;
+					ChargingGroup.SendNewParams = true;
 				}
 				memcpy(&sendBuffer[1], payload,6);
 				
