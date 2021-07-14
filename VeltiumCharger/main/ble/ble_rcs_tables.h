@@ -84,8 +84,8 @@
 //  68 Eth_ON                       1 RW   uint8       CD40 XXXX 00B9                   
 //  69 LAN_IP                       4 R    uint8_array CD40 XXXX 00BB                   
 //  70 Group_operations             1 W    uint8       CD40 XXXX 00BD                   
-//  71 Group_params                 9 RW   uint8_array CD40 XXXX 00BF                   
-//  72 Circuits                    51 RW   uint8_array CD40 XXXX 00C1                   
+//  71 Group_params                 6 RW   uint8_array CD40 XXXX 00BF                   
+//  72 Circuits                    41 RW   uint8_array CD40 XXXX 00C1                   
 //  73 Potencia_Contratada2         2 RW   uint16      CD20 XXXX 00C3                   
 //  74 Pais                         2 RW   uint8_array CD20 XXXX 00C5                   
 //  75 Calendario                  41 RW   uint8_array CD20 XXXX 00C7                   
@@ -129,7 +129,7 @@ static uint8_t table_size_for_idx[1+RCS_MAX_IDX] = {
     1,6,6,6,2,6,6,1,1,1,1,11,1,1,1,1,
     1,1,1,1,1,1,1,1,1,1,1,6,2,2,2,2,
     10,10,2,10,8,8,1,2,1,1,1,2,1,1,16,4,
-    1,16,16,1,1,4,1,9,51,2,2,41,32,32,32,4,
+    1,16,16,1,1,4,1,6,41,2,2,41,32,32,32,4,
     1
 };
 
