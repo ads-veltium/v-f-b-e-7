@@ -1267,7 +1267,6 @@ void procesar_bloque(uint16 tipo_bloque){
 		case GROUPS_CIRCUITS:{
 			int numero_circuitos = buffer_rx_local[0];
 			ChargingGroup.Circuit_number = numero_circuitos;
-			printf("Corriente del circuito %s\n", buffer_rx_local);
 			for(int i=0;i< numero_circuitos;i++){
 				Circuitos[i].numero = i+1;
             	Circuitos[i].limite_corriente = buffer_rx_local[i+1];	

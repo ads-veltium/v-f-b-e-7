@@ -334,6 +334,7 @@ static void hnd_espressif_put(coap_context_t *ctx,coap_resource_t *resource,coap
           
     }
     else if(!memcmp(resource->uri_path->s, "CIRCUITS", resource->uri_path->length)){
+        printf("nuevo scircuitos recibidos %s\n", data);
         New_Circuit(data,  size);
         coap_resource_notify_observers(resource, NULL);
     }
@@ -963,7 +964,14 @@ void Send_Data(){
   Datos_Json = cJSON_CreateObject();
 
   cJSON_AddStringToObject(Datos_Json, "device_id", ConfigFirebase.Device_Id);
-  cJSON_AddNumberToObject(Datos_Json, "current", 600);//Status.Measures.instant_current);
+  //TODOJ: Cambiar esto!!!
+  if(!memcmp("C", Status.HPT_status, 1)){
+      cJSON_AddNumberToObject(Datos_Json, "current", 600);
+  }
+  else{
+      cJSON_AddNumberToObject(Datos_Json, "current", Status.Measures.instant_current);
+  }
+  //Status.Measures.instant_current);
 
   //si es trifasico, enviar informacion de todas las fases
   if(Status.Trifasico){
