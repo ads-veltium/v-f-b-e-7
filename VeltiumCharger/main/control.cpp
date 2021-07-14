@@ -1141,7 +1141,7 @@ void procesar_bloque(uint16 tipo_bloque){
 
 				printf("Circuitos %i\n", charger_table[i].Fase);
 				printf("Circuitos %i\n", charger_table[i].Circuito);
-				
+
                 if(!memcmp(ID,ConfigFirebase.Device_Id,8)){
                     charger_table[i].Conected = true;
                     Params.Fase = (buffer_rx_local[10+i*9]-'0') & 0x03;
@@ -1238,11 +1238,17 @@ void procesar_bloque(uint16 tipo_bloque){
 
 		case GROUPS_PARAMS:{
 			ChargingGroup.Params.GroupMaster = buffer_rx_local[0];
+
+			if(ChargingGroup.Params.GroupActive && !buffer_rx_local[1]){
+				ChargingGroup.StopOrder = true;
+			}
 			ChargingGroup.Params.GroupActive = buffer_rx_local[1];
 			
 			ChargingGroup.Params.CDP = buffer_rx_local[2];
 			ChargingGroup.Params.ContractPower = buffer_rx_local[3] + buffer_rx_local[4] *0x100 ;
 			ChargingGroup.Params.potencia_max = buffer_rx_local[5] + buffer_rx_local[6] *0x100 ;
+
+			
 
 			#ifdef DEBUG_GROUPS
 			Serial.printf("Group active %i \n", ChargingGroup.Params.GroupActive);
@@ -1257,13 +1263,12 @@ void procesar_bloque(uint16 tipo_bloque){
 
 		case GROUPS_CIRCUITS:{
 			int numero_circuitos = buffer_rx_local[0];
-			#ifdef DEBUG_GROUPS
-				Serial.printf("Me han llegado nuevos circuitos! %i \n", numero_circuitos);
-			#endif
-			
+			ChargingGroup.Circuit_number = numero_circuitos;
 			for(int i=0;i< numero_circuitos;i++){
-				Circuitos[ChargingGroup.Circuit_number].numero = i+1;
-            	Circuitos[ChargingGroup.Circuit_number].limite_corriente = buffer_rx_local[i+1];
+				Circuitos[i].numero = i+1;
+            	Circuitos[i].limite_corriente = buffer_rx_local[i+1];
+				Serial.printf("Me han llegado nuevos circuitos! %i %i\n", Circuitos[i].numero, Circuitos[i].limite_corriente);
+				
 			}
 			break;
 			
