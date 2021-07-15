@@ -977,7 +977,6 @@ void Send_Data(){
   cJSON_AddStringToObject(Datos_Json, "HPT", Status.HPT_status);
 
   if(ChargingGroup.AskPerm){
-      printf("Pidiendo permiso!!!\n");
       cJSON_AddNumberToObject(Datos_Json, "Perm",1);
   }
   else{
