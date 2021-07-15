@@ -348,8 +348,13 @@ static void hnd_espressif_put(coap_context_t *ctx,coap_resource_t *resource,coap
         cJSON_AddStringToObject(COMMAND_Json, "N", Cargador.name);
         cJSON_AddNumberToObject(COMMAND_Json, "DC", Cargador.Consigna);
         
-        if(Cargador.Consigna > 0){
-            cJSON_AddNumberToObject(COMMAND_Json, "P", 1);
+        if(Cargador.Consigna > 0 && memcmp(Cargador.HPT, "C1",2)){
+            if(!memcmp(Cargador.HPT, "B1",2) && ! Cargador.Baimena){
+                cJSON_AddNumberToObject(COMMAND_Json, "P", 0);
+            }
+            else{
+                cJSON_AddNumberToObject(COMMAND_Json, "P", 1);
+            }
         }
         else{
             cJSON_AddNumberToObject(COMMAND_Json, "P", 0);

@@ -298,7 +298,8 @@ void initialize_ethernet(void){
         modifyCharacteristic(&ip_Array[0], 4, COMS_CONFIGURATION_LAN_IP);
         Coms.ETH.ON = 1;
         uint8_t  on =1;
-        modifyCharacteristic(&on, 1, COMS_CONFIGURATION_ETH_ON);	
+        modifyCharacteristic(&on, 1, COMS_CONFIGURATION_ETH_ON);
+        Coms.ETH.conectado = true;	
         
     }   
     /*
