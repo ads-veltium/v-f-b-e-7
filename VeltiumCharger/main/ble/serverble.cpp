@@ -522,7 +522,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 				uint8_t operation = payload[0];
 				switch(operation){
 					//Creacion
-					case 1:{
+					case 1:
 						printf("Tengo que crear un grupo!\n");
 						if(!ChargingGroup.Conected){
 							ChargingGroup.Params.GroupMaster = true;
@@ -533,24 +533,23 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 						uint8_t net_buffer[452];
 						net_buffer[0] = net_group_size +1;
 						memcpy(&net_buffer[1], ConfigFirebase.Device_Id, 8);
-						net_buffer[9] = net_group_size +1;
+						net_buffer[9] = 0;
 						for(int i =0;i< net_group_size; i++){
 							memcpy(&net_buffer[i*9+10], net_group[i].name,8);
 							net_buffer[i*9+18]=0;
 						}
 						serverbleNotCharacteristic(net_buffer,net_group_size*9 +10, CHARGING_GROUP_BLE_NET_DEVICES);
-					}
 					break;
 
 					//modificacion
-					case 2:{
+					case 2:
 						printf("Tengo que modificar el grupo!\n");
 						
 						//Actualizar net devices
 						uint8_t group_buffer[452];
 						group_buffer[0] = net_group_size +1;
 						memcpy(&group_buffer[1], ConfigFirebase.Device_Id, 8);
-						group_buffer[9] = net_group_size +1;
+						group_buffer[9] = 0;
 						for(int i =0;i< net_group_size; i++){
 							memcpy(&group_buffer[i*9+10], net_group[i].name,8);
 							group_buffer[i*9+18]=0;
@@ -585,7 +584,6 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 							group_buffer[i+1] = Circuitos[i].limite_corriente;
 						}
 						serverbleSetCharacteristic(group_buffer,ChargingGroup.Circuit_number +1 ,GROUPS_CIRCUITS);
-					}
 					break;
 
 					//borrado
