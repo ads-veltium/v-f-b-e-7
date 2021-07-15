@@ -268,11 +268,12 @@ void start_udp(){
                     uint8_t net_buffer[452];
                     net_buffer[0] = net_group_size +1;
                     memcpy(&net_buffer[1], ConfigFirebase.Device_Id, 8);
+                    net_buffer[9] = net_group_size +1;
                     for(int i =0;i< net_group_size; i++){
-                        memcpy(&net_buffer[i*9+9], net_group[i].name,8);
+                        memcpy(&net_buffer[i*9+10], net_group[i].name,8);
                         net_buffer[i*9+18]=0;
                     }
-                    serverbleNotCharacteristic(net_buffer,net_group_size*9 +9, CHARGING_GROUP_BLE_NET_DEVICES);
+                    serverbleNotCharacteristic(net_buffer,net_group_size*9 +10, CHARGING_GROUP_BLE_NET_DEVICES);
                 } 
 
                 //Si el cargador está en el grupo de carga, le decimos que es un esclavo

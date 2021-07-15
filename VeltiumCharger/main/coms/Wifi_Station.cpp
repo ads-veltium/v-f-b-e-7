@@ -235,6 +235,15 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
 }
 
 void stop_wifi(void){
+    ConfigFirebase.InternetConection = false;
+    #ifdef DEBUG_WIFI
+    Serial.println("Esperando a que firebase se desconecte!");
+    #endif
+
+    while(ConnectionState != DISCONNECTED){
+        delay(100);
+    }
+
     if(Coms.Provisioning){
         wifi_prov_mgr_stop_provisioning();
         wifi_prov_mgr_deinit();
