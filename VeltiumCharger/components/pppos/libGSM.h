@@ -93,25 +93,10 @@ int gsm_RFOff();
 int gsm_RFOn();
 
 /*
- * Send SMS
- *
- * Params:
- *   smsnum:	Pointer to phone number in international format (+<counry_code><gsm number>)
- *      msg:	Pointer to message text
+ * Turn Off Gsm 
  */
-//==================================
-int smsSend(char *smsnum, char *msg);
-
-/*
- * Read all SMS messages to 'SMS_Messages' structure
- */
-//============================================
-void smsRead(SMS_Messages *SMSmesg, int sort);
-
-/*
- * Delete the message at GSM message index 'idx'
- */
-int smsDelete(int idx);
+//=============
+void apagarModem();
 
 #ifdef __cplusplus
 }

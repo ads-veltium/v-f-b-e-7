@@ -425,7 +425,7 @@ void startSystem(void){
 
 		Coms.StartConnection = true;
 	#endif
-
+	
 }
 
 void proceso_recepcion(void)

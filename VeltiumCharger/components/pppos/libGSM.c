@@ -106,7 +106,7 @@ static GSM_Cmd cmd_RFOf =
 	.cmdSize = sizeof("ATCFUN=4\r\n")-1,
 	.cmdResponseOnOk = GSM_OK_Str,
 	.timeoutMs = 4000,
-	.delayMs = 1000,
+	.delayMs = 400,
 	.skip = 0,
 };
 
@@ -116,15 +116,15 @@ static GSM_Cmd cmd_RFOn =
 	.cmdSize = sizeof("ATCFUN=1\r\n")-1,
 	.cmdResponseOnOk = GSM_OK_Str,
 	.timeoutMs = 4000,
-	.delayMs = 1000,
+	.delayMs = 400,
 	.skip = 0,
 };
 
 
 static GSM_Cmd cmd_Net =
 {
-	.cmd = "AT+WS46=30\r\n",
-	.cmdSize = sizeof("AT+WS46=30\r\n")-1,
+	.cmd = "AT+WS46=28\r\n",
+	.cmdSize = sizeof("AT+WS46=28\r\n")-1,
 	.cmdResponseOnOk = GSM_OK_Str,
 	.timeoutMs = 4000,
 	.delayMs = 1000,
@@ -143,11 +143,21 @@ static GSM_Cmd cmd_EchoOff =
 
 static GSM_Cmd cmd_Pin =
 {
+	.cmd = "AT+CPIN=5337\r\n",
+	.cmdSize = sizeof("AT+CPIN=5337\r\n")-1,
+	.cmdResponseOnOk = GSM_OK_Str,
+	.timeoutMs = 5000,
+	.delayMs = 400,
+	.skip = 0,
+};
+
+static GSM_Cmd cmd_Pin_1 =
+{
 	.cmd = "AT+CPIN?\r\n",
 	.cmdSize = sizeof("AT+CPIN?\r\n")-1,
 	.cmdResponseOnOk = "CPIN: READY",
 	.timeoutMs = 5000,
-	.delayMs = 0,
+	.delayMs = 400,
 	.skip = 0,
 };
 
@@ -177,7 +187,7 @@ static GSM_Cmd cmd_ShDw =
 	.cmdSize = sizeof("AT#SHDN\r\n")-1,
 	.cmdResponseOnOk = GSM_OK_Str,
 	.timeoutMs = 3000,
-	.delayMs = 2000,
+	.delayMs = 3000,
 	.skip = 0,
 };
 
@@ -193,21 +203,11 @@ static GSM_Cmd cmd_Cimi_2 =
 
 static GSM_Cmd cmd_Con =
 {
-	.cmd = "AT+CGDCONT=1,\"IP\",\"telefonica.es\"\r\n",
-	.cmdSize = sizeof("AT+CGDCONT=1,\"IP\",\"telefonica.es\"\r\n")-1,
+	.cmd = "AT+CGDCONT=1,\"IP\",\"orangeworld\"\r\n",
+	.cmdSize = sizeof("AT+CGDCONT=1,\"IP\",\"orangeworld.es\"\r\n")-1,
 	.cmdResponseOnOk = GSM_OK_Str,
 	.timeoutMs = 3000,
 	.delayMs = 2000,
-	.skip = 0,
-};
-
-static GSM_Cmd cmd_Soc =
-{
-	.cmd = "AT#SCFG=1,1,300,90,600,50\r\n",
-	.cmdSize = sizeof("AT#SCFG=1,1,300,90,600,50\r\n")-1,
-	.cmdResponseOnOk = "SGACT:",
-	.timeoutMs = 6000,
-	.delayMs = 1000,
 	.skip = 0,
 };
 
@@ -227,7 +227,7 @@ static GSM_Cmd cmd_Reg=
 	.cmdSize = sizeof("AT+CREG?\r\n")-1,
 	.cmdResponseOnOk = "+CREG: 0,1",
 	.timeoutMs = 8000,
-	.delayMs = 4000,
+	.delayMs = 400,
 	.skip = 0,
 };
 
@@ -236,9 +236,9 @@ static GSM_Cmd cmd_Cereg =
 {
 	.cmd = "AT+CEREG?\r\n",
 	.cmdSize = sizeof("AT+CEREG?\r\n")-1,
-	.cmdResponseOnOk = "+CEREG: 0,5",
+	.cmdResponseOnOk = "+CEREG: 0,1",
 	.timeoutMs = 8000,
-	.delayMs = 4000,
+	.delayMs = 400,
 	.skip = 0,
 };
 
@@ -248,7 +248,7 @@ static GSM_Cmd cmd_APN =
 	.cmdSize = 0,
 	.cmdResponseOnOk = GSM_OK_Str,
 	.timeoutMs = 8000,
-	.delayMs = 0,
+	.delayMs = 400,
 	.skip = 0,
 };
 
@@ -263,17 +263,14 @@ static GSM_Cmd cmd_Connect_0 =
 };
 
 static GSM_Cmd cmd_Connect =
-{
-	//.cmd = "AT#PPPCFG=1\r\n",
-	//.cmdSize = sizeof("AT#PPPCFG=1r\n")-1,
-	
+{	
 	//.cmd = "AT+CGDATA=\"PPP\",1\r\n",
 	//.cmdSize = sizeof("AT+CGDATA=\"PPP\",1\r\n")-1,
 	.cmd = "ATD*99***1#\r\n",
 	.cmdSize = sizeof("ATD*99***1#\r\n")-1,
 	.cmdResponseOnOk = "CONNECT",
-	.timeoutMs = 3000,
-	.delayMs = 1000,
+	.timeoutMs = 4000,
+	.delayMs = 400,
 	.skip = 0,
 };
 
@@ -283,19 +280,24 @@ static GSM_Cmd cmd_Connect_2 =
 	.cmdSize = sizeof("AT+CGCONTRDP\r\n")-1,
 	.cmdResponseOnOk = GSM_OK_Str,
 	.timeoutMs = 6000,
-	.delayMs = 1000,
+	.delayMs = 400,
 	.skip = 0,
 };
 
 static GSM_Cmd *GSM_Init[] =
 {
 	//********* LTE 4G **********
-	/*
 		&cmd_AT,
-
-		&cmd_Cereg,
+		
 		&cmd_RFOn,
+		//&cmd_Net,
+		&cmd_Pin,
+		&cmd_Pin_1,
+		&cmd_Cereg,
+		
+		
 		&cmd_APN,
+		//&cmd_Con,
 
 		&cmd_Cereg,
 
@@ -304,23 +306,24 @@ static GSM_Cmd *GSM_Init[] =
 		&cmd_Cereg,
 		
 		&cmd_Connect_2,
-		&cmd_Connect_0,
-	*/
+		&cmd_Connect,
+	
 
 	//********* 2G **********
-	//&cmd_ShDw,
+	/*
 	&cmd_AT,
-	//&cmd_Net,
-	//&cmd_ShDw,
+
 	&cmd_RFOn,
 	&cmd_Reg,
 	&cmd_Reg,
 	&cmd_Reg,
 	&cmd_Reg,
 	&cmd_APN,
-	//&cmd_Connect_0,
 	&cmd_Connect_2,
 	&cmd_Connect,
+	*/
+	//&cmd_Net,
+	//&cmd_ShDw,
 };
 
 #define GSM_InitCmdsSize  (sizeof(GSM_Init)/sizeof(GSM_Cmd *))
@@ -336,11 +339,14 @@ static void ppp_status_cb(ppp_pcb *pcb, int err_code, void *ctx)
 	switch(err_code) {
 		case PPPERR_NONE: {
 			
-			ESP_LOGI(TAG,"status_cb: Connected");
+			ESP_LOGE(TAG,"status_cb: Connected");
 			#if PPP_IPV4_SUPPORT
-			ESP_LOGI(TAG,"   ipaddr    = %s", ipaddr_ntoa(&pppif->ip_addr));
-			ESP_LOGI(TAG,"   gateway   = %s", ipaddr_ntoa(&pppif->gw));
-			ESP_LOGI(TAG,"   netmask   = %s", ipaddr_ntoa(&pppif->netmask));
+			ESP_LOGE(TAG,"   ipaddr    = %s", ipaddr_ntoa(&pppif->ip_addr));
+			ESP_LOGE(TAG,"   gateway   = %s", ipaddr_ntoa(&pppif->gw));
+			ESP_LOGE
+			
+			
+			(TAG,"   netmask   = %s", ipaddr_ntoa(&pppif->netmask));
 			#endif
 
 			#if PPP_IPV6_SUPPORT
@@ -465,7 +471,7 @@ static void infoCommand(char *cmd, int cmdSize, char *info)
 		else buf[i] = cmd[i];
 		if (buf[i] == '\0') break;
 	}
-	ESP_LOGI(TAG,"%s [%s]", info, buf);
+	ESP_LOGE(TAG,"%s [%s]", info, buf);
 }
 
 //----------------------------------------------------------------------------------------------------------------------
@@ -510,6 +516,8 @@ static int atCmd_waitResponse(char * cmd, char *resp, char * resp1, int cmdSize,
 
     // ** Wait for and check the response
 	idx = 0;
+	
+
 	while(1)
 	{
 		memset(data, 0, 256);
@@ -527,9 +535,9 @@ static int atCmd_waitResponse(char * cmd, char *resp, char * resp1, int cmdSize,
 		else {
 			if (tot > 0) {
 				// Check the response
-				if ((strstr(sresp, resp) != NULL) || (strstr(resp, "SGACT:") != NULL)) {
+				if ((strstr(sresp, resp) != NULL)) {
 					#if GSM_DEBUG
-					ESP_LOGI(TAG,"AT RESPONSE: [%s]", sresp);
+					ESP_LOGE(TAG,"AT RESPONSE: [%s]", sresp);
 					#endif
 					break;
 				}
@@ -537,7 +545,7 @@ static int atCmd_waitResponse(char * cmd, char *resp, char * resp1, int cmdSize,
 					if (resp1 != NULL) {
 						if (strstr(sresp, resp1) != NULL) {
 							#if GSM_DEBUG
-							ESP_LOGI(TAG,"AT RESPONSE (1): [%s]", sresp);
+							ESP_LOGE(TAG,"AT RESPONSE (1): [%s]", sresp);
 							#endif
 							res = 2;
 							break;
@@ -545,7 +553,7 @@ static int atCmd_waitResponse(char * cmd, char *resp, char * resp1, int cmdSize,
 					}
 					// no match
 					#if GSM_DEBUG
-					ESP_LOGI(TAG,"AT BAD RESPONSE: [%s]", sresp);
+					ESP_LOGE(TAG,"AT BAD RESPONSE: [%s]", sresp);
 					#endif
 					res = 0;
 					break;
@@ -633,9 +641,13 @@ static void pppos_client_task()
 {
 
 	gpio_set_direction(2, GPIO_MODE_OUTPUT);
-	gpio_set_level(2, 0);
-	vTaskDelay(100 / portTICK_PERIOD_MS);
 	gpio_set_level(2, 1);
+	vTaskDelay(1000 / portTICK_PERIOD_MS);
+	gpio_set_level(2, 0);
+	vTaskDelay(500 / portTICK_PERIOD_MS);
+	gpio_set_level(2, 1);
+	vTaskDelay(1000 / portTICK_PERIOD_MS);
+	gpio_set_level(2, 0);
 	    
 	xSemaphoreTake(pppos_mutex, PPPOSMUTEX_TIMEOUT);
 	pppos_task_started = 1;
@@ -654,7 +666,7 @@ static void pppos_client_task()
 	if (gpio_set_direction(UART_GPIO_RX, GPIO_MODE_INPUT)) goto exit;
 	if (gpio_set_pull_mode(UART_GPIO_RX, GPIO_PULLUP_ONLY)) goto exit;
 
-	char PPP_ApnATReq[sizeof("telefonica.es")+24];
+	char PPP_ApnATReq[sizeof("orangeworld")+24];
 	
 	uart_config_t uart_config = {
 			.baud_rate = UART_BDRATE,
@@ -671,7 +683,7 @@ static void pppos_client_task()
 	if (uart_driver_install(uart_num, BUF_SIZE * 2, BUF_SIZE * 2, 0, NULL, 0)) goto exit;
 
 	// Set APN from config
-	sprintf(PPP_ApnATReq, "AT+CGDCONT=1,\"IP\",\"%s\"\r\n", "telefonica.es");
+	sprintf(PPP_ApnATReq, "AT+CGDCONT=1,\"IP\",\"%s\"\r\n", "orangeworld");
 	cmd_APN.cmd = PPP_ApnATReq;
 	cmd_APN.cmdSize = strlen(PPP_ApnATReq);
 
@@ -711,14 +723,14 @@ static void pppos_client_task()
 					GSM_Init[gsmCmdIter]->timeoutMs, NULL, 0) == 0)
 			{
 				// * No response or not as expected, start from first initialization command
+				
 				#if GSM_DEBUG
-				ESP_LOGW(TAG,"Wrong response, restarting...");
+				ESP_LOGE(TAG,"Wrong response, restarting...");
 				#endif
 
 				nfail++;
-				if (nfail > 20) goto exit;
-
-				vTaskDelay(3000 / portTICK_PERIOD_MS);
+				if (nfail > 6) goto exit;
+				vTaskDelay(1000 / portTICK_PERIOD_MS);
 				gsmCmdIter = 0;
 				continue;
 			}
@@ -733,7 +745,7 @@ static void pppos_client_task()
 		#if GSM_DEBUG
 		ESP_LOGI(TAG,"GSM initialized.");
 		#endif
-		ESP_LOGI(TAG,"GSM Inicializado correctamente.");
+		ESP_LOGE(TAG,"GSM Inicializado correctamente.");
 
 		xSemaphoreTake(pppos_mutex, PPPOSMUTEX_TIMEOUT);
 		if (gsm_status == GSM_STATE_FIRSTINIT) {
@@ -772,7 +784,7 @@ static void pppos_client_task()
 				xSemaphoreGive(pppos_mutex);
 				#if GSM_DEBUG
 				printf("\r\n");
-				ESP_LOGI(TAG, "Disconnect requested.");
+				ESP_LOGE(TAG, "Disconnect requested.");
 				#endif
 
 				pppapi_close(ppp, 0);
@@ -799,10 +811,14 @@ static void pppos_client_task()
 				_disconnect(rfoff); // Disconnect GSM if still connected
 
 				#if GSM_DEBUG
-				ESP_LOGI(TAG, "Disconnected.");
+				ESP_LOGE(TAG, "Disconnected.");
 				#endif
 
 				gsmCmdIter = 0;
+				/*pppapi_close(ppp, 0);
+				gpio_set_level(2, 0);
+				vTaskDelay(200 / portTICK_PERIOD_MS);
+				gpio_set_level(2, 1);*/
 				enableAllInitCmd();
 				xSemaphoreTake(pppos_mutex, PPPOSMUTEX_TIMEOUT);
 				gsm_status = GSM_STATE_IDLE;
@@ -821,7 +837,7 @@ static void pppos_client_task()
 				}
 				#if GSM_DEBUG
 				printf("\r\n");
-				ESP_LOGI(TAG, "Reconnect requested.");
+				ESP_LOGE(TAG, "Reconnect requested.");
 				#endif
 				break;
 			}
@@ -834,9 +850,9 @@ static void pppos_client_task()
 				ESP_LOGE(TAG, "Disconnected, trying again...");
 				#endif
 				pppapi_close(ppp, 0);
-				gpio_set_level(2, 0);
-				vTaskDelay(500 / portTICK_PERIOD_MS);
-				gpio_set_level(2, 1);
+				/*gpio_set_level(2, 0);
+				vTaskDelay(200 / portTICK_PERIOD_MS);
+				gpio_set_level(2, 1);*/
 				enableAllInitCmd();
 				gsmCmdIter = 0;
 				gsm_status = GSM_STATE_IDLE;
@@ -868,8 +884,10 @@ exit:
 	xSemaphoreGive(pppos_mutex);
 	#if GSM_DEBUG
 	ESP_LOGE(TAG, "PPPoS TASK TERMINATED");
+	//ESP_LOGE(TAG, "TASK STARTED: %i",pppos_task_started);
 	#endif
 	vTaskDelete(NULL);
+	//ppposDisconnect(1,0);
 }
 
 //=============
@@ -890,7 +908,7 @@ int ppposInit()
 			tcpip_adapter_initialized = 1;
 		}
 		xTaskCreate(&pppos_client_task, "pppos_client_task", PPPOS_CLIENT_STACK_SIZE, NULL, 10, NULL);
-		while (task_s == 0) {
+		while (task_s == 0) { 
 			vTaskDelay(10 / portTICK_RATE_MS);
 			xSemaphoreTake(pppos_mutex, PPPOSMUTEX_TIMEOUT);
 			task_s = pppos_task_started;
@@ -1022,3 +1040,10 @@ int gsm_RFOn()
 	return 1;
 }
 
+//===================
+void apagarModem()
+{
+	gpio_set_level(2, 0);
+	//vTaskDelay(12000 / portTICK_PERIOD_MS);
+	//gpio_set_level(2, 1);
+}

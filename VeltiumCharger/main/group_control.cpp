@@ -96,7 +96,7 @@ carac_charger New_Data(char* Data, int Data_size){
         charger_table[index].Baimena = Cargador.Baimena;
 
         if(Cargador.Baimena){
-          printf("ME están pidiendo permiso\n");
+          printf("Me están pidiendo permiso\n");
         }
         
         //si está pidiendo permiso, no actualizamos su hpt ni sus corrientes
