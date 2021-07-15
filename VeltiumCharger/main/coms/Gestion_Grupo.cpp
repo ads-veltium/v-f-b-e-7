@@ -259,6 +259,10 @@ void start_udp(){
                 }
 
                 if(check_in_group(Desencriptado.c_str(), net_group, net_group_size) == 255){
+                    if(packet.remoteIP()[0] == 0 && packet.remoteIP()[1] == 0 && packet.remoteIP()[2] == 0 && packet.remoteIP()[3] == 0 ){
+                        printf("Me ha llegao una ip vacía\n");
+                        udp.broadcast(Encipher(String(ConfigFirebase.Device_Id)).c_str());
+                    }
                     #ifdef DEBUG_GROUPS
                     Serial.printf("El cargador VCD%s con ip %s se ha añadido a la lista de red\n", Desencriptado.c_str(), packet.remoteIP().toString().c_str());  
                     #endif

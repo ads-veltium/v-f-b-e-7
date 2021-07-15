@@ -1150,8 +1150,11 @@ void procesar_bloque(uint16 tipo_bloque){
                 charger_table[i].Fase = (buffer_rx_local[10+i*9]) & 0x03;
 				charger_table[i].Circuito = (buffer_rx_local[10+i*9]) >> 2;
 
-				printf("Circuitos %i\n", charger_table[i].Fase);
-				printf("Circuitos %i\n", charger_table[i].Circuito);
+				printf("Fase %i\n", charger_table[i].Fase);
+				printf("Circuito %i\n", charger_table[i].Circuito);
+				if(charger_table[i].Circuito ==0){
+					printf("%s\n", buffer_rx_local);
+				}
 
                 if(!memcmp(ID,ConfigFirebase.Device_Id,8)){
                     charger_table[i].Conected = true;

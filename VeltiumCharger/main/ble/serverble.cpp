@@ -544,6 +544,9 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 					//modificacion
 					case 2:
 						printf("Tengo que modificar el grupo!\n");
+						if(!ChargingGroup.Conected){
+							ChargingGroup.Params.GroupMaster = true;
+						}
 						
 						//Actualizar net devices
 						uint8_t group_buffer[452];

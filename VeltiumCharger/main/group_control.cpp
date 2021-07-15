@@ -307,6 +307,8 @@ void New_Group(char* Data, int Data_size){
           temp_chargers[temp_chargers_size].Delta = charger_table[i].Delta;
           temp_chargers[temp_chargers_size].Consigna = charger_table[i].Consigna;
           temp_chargers[temp_chargers_size].Delta_timer = charger_table[i].Delta_timer;
+          temp_chargers[temp_chargers_size].Fase = charger_table[i].Fase;
+          temp_chargers[temp_chargers_size].Circuito = charger_table[i].Circuito;
           
           temp_chargers_size ++;
     }
@@ -332,6 +334,8 @@ void New_Group(char* Data, int Data_size){
           charger_table[i].Delta = temp_chargers[index].Delta;
           charger_table[i].Consigna = temp_chargers[index].Consigna;
           charger_table[i].Delta_timer = temp_chargers[index].Delta_timer;
+          charger_table[i].Fase = temp_chargers[index].Fase;
+          charger_table[i].Circuito = temp_chargers[index].Circuito;
         }
         
 
