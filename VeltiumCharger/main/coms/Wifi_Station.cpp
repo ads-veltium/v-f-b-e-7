@@ -472,6 +472,9 @@ void Eth_Loop(){
         break;
 
         case CONECTADO:{
+            if(ChargingGroup.Params.GroupActive){
+                Coms.ETH.Wifi_Perm = true;
+            }
             //Buscar el contador
             if((Params.Tipo_Sensor || (ChargingGroup.Params.CDP >> 4 && ChargingGroup.Params.GroupMaster && ChargingGroup.Conected)) && !finding){
                 if(GetStateTime(xStart) > 30000){
