@@ -327,7 +327,7 @@ static void hnd_espressif_put(coap_context_t *ctx,coap_resource_t *resource,coap
         free(Data);             
     }
     else if(!memcmp(resource->uri_path->s, "CIRCUITS", resource->uri_path->length)){
-        New_Circuit(data,  size);
+        New_Circuit((uint8_t*)data,  size);
         coap_resource_notify_observers(resource, NULL);
     }
     else if(!memcmp(resource->uri_path->s, "DATA", resource->uri_path->length)){
@@ -869,6 +869,11 @@ static void coap_server(void *p){
                 Send_Chargers();
                 ChargingGroup.SendNewGroup = false;
             }
+            //Enviar los circuitos de nuestro grupo
+            else if(ChargingGroup.SendNewCircuits){
+                Send_Circuits();
+                ChargingGroup.SendNewCircuits = false;
+            }
 
             //Esto son ordenes internas, por lo que no las enviamos al resto
             else if(ChargingGroup.StopOrder){
@@ -1022,7 +1027,7 @@ void Send_Circuits(){
     }
     
     for(uint8_t i=0;i< ChargingGroup.Circuit_number;i++){ 
-        buffer[i+3] = (char)Circuitos[i].limite_corriente;
+        buffer[i+2] = (char)Circuitos[i].limite_corriente;
     }
 
    coap_put("CIRCUITS", buffer);
