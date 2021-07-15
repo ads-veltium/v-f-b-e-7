@@ -2,6 +2,7 @@
 #define WIFI_STATION_H
 
 #include "Eth_Station.h"
+#include "GSM_Station.h"
 #include "../control.h"
 #include "FirebaseClient.h"
 

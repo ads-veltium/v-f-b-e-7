@@ -195,7 +195,7 @@ typedef struct{
 	String Pass;
 	String User;
 	uint8_t Pin [4];
-
+	bool Internet = false;
 	
 	uint32 ts_app_req;
 	uint32 ts_dev_ack;

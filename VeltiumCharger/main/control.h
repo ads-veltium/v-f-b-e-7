@@ -8,7 +8,7 @@
 
 #define USE_COMS                   //Comentar para no utilzar las comunicaciones [ Veltium lite Zero]
 
-#define DEVELOPMENT				   //Comentar para pasar firmware a produccion ( Cambio de base de datos y quitar debugs)
+//#define DEVELOPMENT				   //Comentar para pasar firmware a produccion ( Cambio de base de datos y quitar debugs)
 #define USE_GROUPS			   //Comentar para no utilizar los grupos de potencia
 
 //#ifdef DEVELOPMENT
@@ -128,6 +128,7 @@ int Convert_To_Epoch(uint8* data);
 void SendToPSOC5(uint8 data, uint16 attrHandle);
 void SendToPSOC5(char *data, uint16 len, uint16 attrHandle);
 void StartGSM();
+void shutdownGSM();
 
 uint32 GetStateTime(TickType_t xStart);
 #endif // __CONTROL_MAIN
