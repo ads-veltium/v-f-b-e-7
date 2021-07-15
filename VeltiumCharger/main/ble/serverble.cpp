@@ -533,7 +533,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 						uint8_t net_buffer[452];
 						net_buffer[0] = net_group_size +1;
 						memcpy(&net_buffer[1], ConfigFirebase.Device_Id, 8);
-						net_buffer[9] = net_group_size +1;
+						net_buffer[9] = 0;
 						for(int i =0;i< net_group_size; i++){
 							memcpy(&net_buffer[i*9+10], net_group[i].name,8);
 							net_buffer[i*9+18]=0;
@@ -544,15 +544,20 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 					//modificacion
 					case 2:
 						printf("Tengo que modificar el grupo!\n");
+						if(!ChargingGroup.Conected){
+							ChargingGroup.Params.GroupMaster = true;
+						}
 						
 						//Actualizar net devices
 						uint8_t group_buffer[452];
-						group_buffer[0] = net_group_size;
+						group_buffer[0] = net_group_size +1;
+						memcpy(&group_buffer[1], ConfigFirebase.Device_Id, 8);
+						group_buffer[9] = 0;
 						for(int i =0;i< net_group_size; i++){
-							memcpy(&group_buffer[i*9+1], net_group[i].name,8);
-							group_buffer[i*9+9]=0;
+							memcpy(&group_buffer[i*9+10], net_group[i].name,8);
+							group_buffer[i*9+18]=0;
 						}
-						serverbleNotCharacteristic(group_buffer,net_group_size*9 +1, CHARGING_GROUP_BLE_NET_DEVICES);
+						serverbleNotCharacteristic(group_buffer,net_group_size*9 +10, CHARGING_GROUP_BLE_NET_DEVICES);
 
 						//Actualizar group_devices
 						group_buffer[0] = ChargingGroup.Charger_number;

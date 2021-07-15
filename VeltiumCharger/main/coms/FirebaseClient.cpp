@@ -980,6 +980,7 @@ void Firebase_Conn_Task(void *args){
     if(ConnectionState!=DISCONNECTING){
       delay(ConfigFirebase.ClientConnected ? 250:5000);
     }
+    
 
     #ifdef DEBUG
     if(LastStatus!= ConnectionState){

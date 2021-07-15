@@ -259,20 +259,25 @@ void start_udp(){
                 }
 
                 if(check_in_group(Desencriptado.c_str(), net_group, net_group_size) == 255){
+                    if(packet.remoteIP()[0] == 0 && packet.remoteIP()[1] == 0 && packet.remoteIP()[2] == 0 && packet.remoteIP()[3] == 0 ){
+                        printf("Me ha llegao una ip vacía\n");
+                        udp.broadcast(Encipher(String(ConfigFirebase.Device_Id)).c_str());
+                    }
                     #ifdef DEBUG_GROUPS
                     Serial.printf("El cargador VCD%s con ip %s se ha añadido a la lista de red\n", Desencriptado.c_str(), packet.remoteIP().toString().c_str());  
                     #endif
                     add_to_group(Desencriptado.c_str(), packet.remoteIP(), net_group, &net_group_size);
 
                     //Actualizar net devices
-                    uint8_t net_buffer[452];
-                    net_buffer[0] = net_group_size +1;
-                    memcpy(&net_buffer[1], ConfigFirebase.Device_Id, 8);
+                    uint8_t group_buffer[452];
+                    group_buffer[0] = net_group_size +1;
+                    memcpy(&group_buffer[1], ConfigFirebase.Device_Id, 8);
+                    group_buffer[9] = 0;
                     for(int i =0;i< net_group_size; i++){
-                        memcpy(&net_buffer[i*9+9], net_group[i].name,8);
-                        net_buffer[i*9+18]=0;
+                        memcpy(&group_buffer[i*9+10], net_group[i].name,8);
+                        group_buffer[i*9+18]=0;
                     }
-                    serverbleNotCharacteristic(net_buffer,net_group_size*9 +9, CHARGING_GROUP_BLE_NET_DEVICES);
+                    serverbleNotCharacteristic(group_buffer,net_group_size*9 +10, CHARGING_GROUP_BLE_NET_DEVICES);
                 } 
 
                 //Si el cargador está en el grupo de carga, le decimos que es un esclavo
@@ -290,6 +295,7 @@ void start_udp(){
             }
             else{
                 if(!memcmp(Desencriptado.c_str(), "Start client", 12)){
+                    printf("ME ha llegado start client!\n");
                     if(!ChargingGroup.Conected && !ChargingGroup.StartClient){
                         #ifdef DEBUG_GROUPS
                         printf("Soy parte de un grupo !!\n");

@@ -131,7 +131,6 @@ hnd_get(coap_context_t *ctx, coap_resource_t *resource,coap_session_t *session,c
         for(uint8_t i=0;i< ChargingGroup.Circuit_number;i++){ 
             buffer[i+3] = (char)Circuitos[i].limite_corriente;
         }
-        printf("Enviando circuitos a todos los cargadores!\n");
     }
     else if(!memcmp(resource->uri_path->s, "PARAMS", resource->uri_path->length)){
         
@@ -325,17 +324,10 @@ static void hnd_espressif_put(coap_context_t *ctx,coap_resource_t *resource,coap
             delay(1000);
             New_Control(LastControl,  5);      
         }
-    
-
-        free(Data);
-
-        printf("%s\n", LastControl);
-              
-          
+        free(Data);             
     }
     else if(!memcmp(resource->uri_path->s, "CIRCUITS", resource->uri_path->length)){
-        printf("nuevo scircuitos recibidos %s\n", data);
-        New_Circuit(data,  size);
+        New_Circuit((uint8_t*)data,  size);
         coap_resource_notify_observers(resource, NULL);
     }
     else if(!memcmp(resource->uri_path->s, "DATA", resource->uri_path->length)){
@@ -348,8 +340,13 @@ static void hnd_espressif_put(coap_context_t *ctx,coap_resource_t *resource,coap
         cJSON_AddStringToObject(COMMAND_Json, "N", Cargador.name);
         cJSON_AddNumberToObject(COMMAND_Json, "DC", Cargador.Consigna);
         
-        if(Cargador.Consigna > 0){
-            cJSON_AddNumberToObject(COMMAND_Json, "P", 1);
+        if(Cargador.Consigna > 0 && memcmp(Cargador.HPT, "C1",2)){
+            if(!memcmp(Cargador.HPT, "B1",2) && ! Cargador.Baimena){
+                cJSON_AddNumberToObject(COMMAND_Json, "P", 0);
+            }
+            else{
+                cJSON_AddNumberToObject(COMMAND_Json, "P", 1);
+            }
         }
         else{
             cJSON_AddNumberToObject(COMMAND_Json, "P", 0);
@@ -872,6 +869,11 @@ static void coap_server(void *p){
                 Send_Chargers();
                 ChargingGroup.SendNewGroup = false;
             }
+            //Enviar los circuitos de nuestro grupo
+            else if(ChargingGroup.SendNewCircuits){
+                Send_Circuits();
+                ChargingGroup.SendNewCircuits = false;
+            }
 
             //Esto son ordenes internas, por lo que no las enviamos al resto
             else if(ChargingGroup.StopOrder){
@@ -971,7 +973,6 @@ void Send_Data(){
   else{
       cJSON_AddNumberToObject(Datos_Json, "current", Status.Measures.instant_current);
   }
-  //Status.Measures.instant_current);
 
   //si es trifasico, enviar informacion de todas las fases
   if(Status.Trifasico){
@@ -1026,7 +1027,7 @@ void Send_Circuits(){
     }
     
     for(uint8_t i=0;i< ChargingGroup.Circuit_number;i++){ 
-        buffer[i+3] = (char)Circuitos[i].limite_corriente;
+        buffer[i+2] = (char)Circuitos[i].limite_corriente;
     }
 
    coap_put("CIRCUITS", buffer);
@@ -1172,7 +1173,7 @@ void coap_start_server(){
         }
         else{
             //Si el grupo está vacio o el cargador no está en el grupo,
-            printf("No estoy ene el grupo!!\n");
+            printf("No estoy en el grupo!!\n");
             ChargingGroup.Params.GroupMaster = false;
             ChargingGroup.Params.GroupActive = false;
             ChargingGroup.Conected = false;

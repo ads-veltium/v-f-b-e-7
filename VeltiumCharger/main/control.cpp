@@ -91,7 +91,7 @@ uint8 version_firmware[11] = {"VBLE0_0511"};
 
 
 uint8 PSOC5_version_firmware[11] ;		
-
+TickType_t Last_Block=0;
 uint8 systemStarted = 0;
 uint8 Record_Num =4;
 uint8 Bloqueo_de_carga = 1;
@@ -612,7 +612,7 @@ void procesar_bloque(uint16 tipo_bloque){
 					#ifdef DEBUG
 					Serial.printf("%c %c \n",buffer_rx_local[1],buffer_rx_local[2]);
 					#endif
-					memcpy(status_hpt_anterior, &buffer_rx_local[1], 2);
+					
 					modifyCharacteristic(&buffer_rx_local[1], 2, STATUS_HPT_STATUS_CHAR_HANDLE);
 					if(serverbleGetConnected()){
 						if(buffer_rx_local[1]!= 'E' && buffer_rx_local[1]!= 'F'){
@@ -629,7 +629,14 @@ void procesar_bloque(uint16 tipo_bloque){
 					//Si sale de C2 bloquear la siguiente carga
 					if(memcmp(&buffer_rx_local[1],"C2",2) && memcmp(&buffer_rx_local[1],"B2",2)){
 						Bloqueo_de_carga = false;
-						if(Params.Tipo_Sensor || ChargingGroup.Params.GroupActive){
+						if(Params.Tipo_Sensor || ChargingGroup.Conected){
+							if(!memcmp(status_hpt_anterior, "C1",2) || !memcmp(status_hpt_anterior, "C2",2) ){
+								Last_Block = xTaskGetTickCount();
+							}
+							else{
+								Last_Block = 0;
+							}
+						
 							Bloqueo_de_carga = true;
 							ChargingGroup.ChargPerm = false;
 							ChargingGroup.AskPerm = false;
@@ -637,6 +644,7 @@ void procesar_bloque(uint16 tipo_bloque){
 						SendToPSOC5(Bloqueo_de_carga, BLOQUEO_CARGA);
 					}
 #endif
+					memcpy(status_hpt_anterior, &buffer_rx_local[1], 2);
 				}
 
 				//Medidas
@@ -1144,8 +1152,11 @@ void procesar_bloque(uint16 tipo_bloque){
                 charger_table[i].Fase = (buffer_rx_local[10+i*9]) & 0x03;
 				charger_table[i].Circuito = (buffer_rx_local[10+i*9]) >> 2;
 
-				printf("Circuitos %i\n", charger_table[i].Fase);
-				printf("Circuitos %i\n", charger_table[i].Circuito);
+				printf("Fase %i\n", charger_table[i].Fase);
+				printf("Circuito %i\n", charger_table[i].Circuito);
+				if(charger_table[i].Circuito ==0){
+					printf("%s\n", buffer_rx_local);
+				}
 
                 if(!memcmp(ID,ConfigFirebase.Device_Id,8)){
                     charger_table[i].Conected = true;
@@ -1280,7 +1291,6 @@ void procesar_bloque(uint16 tipo_bloque){
 #endif
 
 		case BLOQUEO_CARGA:{
-
 			if(dispositivo_inicializado != 2){
 				Bloqueo_de_carga = true;
 			}
@@ -1293,10 +1303,11 @@ void procesar_bloque(uint16 tipo_bloque){
 					Bloqueo_de_carga = false;
 					ChargingGroup.AskPerm = false;
 				}
-				//Pedir permiso
-				else if(!ChargingGroup.AskPerm){
+				//Pedir permiso solo si estamos en B1 y si han pasado 15 segundos desde el ultimo bloqueo
+				else if(!ChargingGroup.AskPerm ){
 					ChargingGroup.AskPerm = true;
 				}
+				
 			}
 #endif
 			//Si tenemos un medidor conectado, asta que no nos conectemos a el no permitimos la carga
@@ -1311,6 +1322,8 @@ void procesar_bloque(uint16 tipo_bloque){
 				Bloqueo_de_carga = false;
 			}
 			SendToPSOC5(Bloqueo_de_carga, BLOQUEO_CARGA);
+
+			
 			break;
 		}
 #endif

@@ -41,7 +41,7 @@ void close_udp();
 
 static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data){
     #ifdef DEBUG_WIFI
-    printf("Evento de wifi %i \n", event_id);
+    printf("Evento de wifi %i %i \n", (int)event_base, event_id);
     #endif
     if (event_base == WIFI_EVENT){
         switch(event_id){
@@ -101,10 +101,6 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
         #endif
 
         Coms.Wifi.IP.addr = ip_info->ip.addr;
-        /*Coms.Wifi.IP[0] =ip4_addr1(&ip_info->ip);
-        Coms.Wifi.IP[1] =ip4_addr2(&ip_info->ip);
-        Coms.Wifi.IP[2] =ip4_addr3(&ip_info->ip);
-        Coms.Wifi.IP[3] =ip4_addr4(&ip_info->ip);*/
 
         wifi_config_t wifi_actual_config;
         esp_wifi_get_config(WIFI_IF_STA, &wifi_actual_config);
@@ -129,8 +125,12 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
          switch(event_id){
             case SC_EVENT_SCAN_DONE:
                 Reintentos = 0;
+                printf("Smartvonfig done\n");
 
             break;
+            case SC_EVENT_FOUND_CHANNEL:
+                printf("Smartvonfig found chanel\n");
+                break;
             case SC_EVENT_GOT_SSID_PSWD:{
 
                 smartconfig_event_got_ssid_pswd_t *evt = (smartconfig_event_got_ssid_pswd_t *)event_data;
@@ -234,6 +234,15 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
 }
 
 void stop_wifi(void){
+    ConfigFirebase.InternetConection = false;
+    #ifdef DEBUG_WIFI
+    Serial.println("Esperando a que firebase se desconecte!");
+    #endif
+
+    while(ConnectionState != DISCONNECTED){
+        delay(100);
+    }
+
     if(Coms.Provisioning){
         wifi_prov_mgr_stop_provisioning();
         wifi_prov_mgr_deinit();
@@ -264,6 +273,7 @@ void stop_wifi(void){
 }
 
 void initialise_smartconfig(void){
+    Serial.printf("Arrancando smartconfig! \n");
     stop_wifi();
     wifi_connecting = true;
     ESP_ERROR_CHECK(esp_event_handler_register(SC_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL));
@@ -286,6 +296,7 @@ void initialise_smartconfig(void){
     esp_smartconfig_set_type(SC_TYPE_ESPTOUCH);
     smartconfig_start_config_t cfg2 = SMARTCONFIG_START_CONFIG_DEFAULT();
     esp_smartconfig_start(&cfg2);
+    Serial.printf("Smartconfig arrancado! \n");
 }
 
 void initialise_provisioning(void){
@@ -433,6 +444,7 @@ void Eth_Loop(){
                 //Solo comprobamos la conexion a internet si no hemos activado el servidor dhcp
                 if(!Coms.ETH.DHCP){
                     if(ComprobarConexion()){
+                        ConnectionState = DISCONNECTED;
                         Coms.ETH.Internet = true;
                         Coms.Wifi.ON = false;
                     }
@@ -459,6 +471,9 @@ void Eth_Loop(){
         break;
 
         case CONECTADO:{
+            if(ChargingGroup.Params.GroupActive){
+                Coms.ETH.Wifi_Perm = true;
+            }
             //Buscar el contador
             if((Params.Tipo_Sensor || (ChargingGroup.Params.CDP >> 4 && ChargingGroup.Params.GroupMaster && ChargingGroup.Conected)) && !finding){
                 if(GetStateTime(xStart) > 30000){
@@ -470,9 +485,10 @@ void Eth_Loop(){
 #ifdef USE_GROUPS
 
             //Arrancar los grupos
+            
             else if(!ChargingGroup.Conected && Coms.ETH.conectado){
-                if(ChargingGroup.Params.GroupActive){
-                    if(ConnectionState == IDLE){
+                if(ChargingGroup.Params.GroupActive && GetStateTime(xConnect) > 5000 ){
+                    if(ConnectionState == IDLE || ConnectionState == DISCONNECTED){
                         if(ChargingGroup.StartClient){
                             coap_start_client();
                         }
@@ -649,6 +665,7 @@ void ComsTask(void *args){
                 Serial.println("Starting provisioning sistem");
                 #endif
                 Coms.Wifi.ON = true;
+                
                 if(ServidorArrancado){
                     StopServer();
                     ServidorArrancado = false;
@@ -665,7 +682,7 @@ void ComsTask(void *args){
                 else{
                     initialise_provisioning();
                 }
-
+                Coms.Wifi.restart = false;
                 Coms.StartProvisioning = false;
                 Coms.StartSmartconfig  = false;
             }
@@ -689,7 +706,7 @@ void ComsTask(void *args){
                 }                
             }
             else if((!Coms.Wifi.ON || Coms.Wifi.restart) && (wifi_connected || wifi_connecting)){
-                if(ConnectionState == IDLE ||ConnectionState == DISCONNECTED){
+                if(ConnectionState == IDLE || ConnectionState == DISCONNECTED){
                     stop_wifi();
                     Coms.Wifi.restart = false;
                 }
