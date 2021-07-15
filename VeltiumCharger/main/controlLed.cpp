@@ -304,6 +304,9 @@ void LedControl_Task(void *arg){
 			Kit(VERDE);
 			Delay=75;
 		}
+		else if(ChargingGroup.Conected){
+			displayAll(90,ROSA);	
+		}
 #endif
 		else{
 			

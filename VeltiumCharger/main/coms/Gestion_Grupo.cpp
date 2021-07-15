@@ -102,7 +102,7 @@ void store_group_in_mem(carac_charger* group, uint8_t size){
             //Envio de la primera parte
             for(uint8_t i = 0;i < 25; i++){
                 memcpy(&sendBuffer[2+(i*9)],group[i].name,8);
-                itoa((charger_table[i].Circuito << 2) + charger_table[i].Fase,&sendBuffer[10+(i*9)],10);
+                sendBuffer[10+(i*9)] = (char)((group[i].Circuito << 2) + group[i].Fase);
             }
 
             SendToPSOC5(sendBuffer,227,GROUPS_DEVICES_PART_1); 
@@ -117,7 +117,8 @@ void store_group_in_mem(carac_charger* group, uint8_t size){
             }
             for(uint8_t i=0;i<(size - 25);i++){
                 memcpy(&sendBuffer[2+(i*9)],group[i+25].name,8);
-                itoa((charger_table[i].Circuito << 2) + charger_table[i].Fase,&sendBuffer[10+(i*9)],10);
+                sendBuffer[10+(i*9)] = (char)((group[i+25].Circuito << 2) + group[i+25].Fase);
+                
             }
 
             SendToPSOC5(sendBuffer,(size - 25)*9+2,GROUPS_DEVICES_PART_2); 
@@ -128,7 +129,7 @@ void store_group_in_mem(carac_charger* group, uint8_t size){
             //El grupo entra en una parte, asique solo mandamos una
             for(uint8_t i=0;i<size;i++){
                 memcpy(&sendBuffer[2+(i*9)],group[i].name,8);
-                itoa((charger_table[i].Circuito << 2) + charger_table[i].Fase,&sendBuffer[10+(i*9)],10);
+                sendBuffer[10+(i*9)] = (char)((group[i].Circuito << 2) + group[i].Fase);
             }
             SendToPSOC5(sendBuffer,ChargingGroup.Charger_number*9+2,GROUPS_DEVICES_PART_1); 
         }
@@ -313,6 +314,18 @@ void start_udp(){
                         ChargingGroup.Params.GroupMaster = false;
                         ChargingGroup.Params.GroupActive = true;
                         ChargingGroup.MasterIP =packet.remoteIP();
+                    }
+                }
+                else if(!memcmp(Desencriptado.c_str(), "Ezabatu taldea", 14)){
+                    if(ChargingGroup.Conected && !ChargingGroup.Params.GroupMaster){
+                        Serial.println("el maestro me pide que borre el grupo!");
+                        ChargingGroup.DeleteOrder = true;
+                    }
+                }
+                else if(!memcmp(Desencriptado.c_str(), "Geldituzazu taldea", 18)){
+                    if(ChargingGroup.Conected && !ChargingGroup.Params.GroupMaster){
+                        Serial.println("el maestro me pide que pause el grupo!");
+                        ChargingGroup.StopOrder = true;
                     }
                 }
             }            

@@ -101,7 +101,6 @@ void MasterPanicTask(void *args);
 static void
 hnd_get(coap_context_t *ctx, coap_resource_t *resource,coap_session_t *session,coap_pdu_t *request, coap_binary_t *token,coap_string_t *query, coap_pdu_t *response){    
     char buffer[500];
-    uint8_t buffer2[100];
     
     if(!memcmp(resource->uri_path->s, "CHARGERS", resource->uri_path->length)){
         itoa(GROUP_CHARGERS, buffer, 10);
@@ -120,13 +119,19 @@ hnd_get(coap_context_t *ctx, coap_resource_t *resource,coap_session_t *session,c
     }
     else if(!memcmp(resource->uri_path->s, "CIRCUITS", resource->uri_path->length)){
         
-        buffer2[0] = GROUP_CIRCUITS;
+        itoa(GROUP_CIRCUITS, buffer, 10);
 
-        buffer2[1] = ChargingGroup.Circuit_number;
-        
-        for(uint8_t i=0;i< ChargingGroup.Circuit_number;i++){ 
-            buffer2[i+2] = Circuitos[i].limite_corriente;
+        if(ChargingGroup.Circuit_number< 10){
+            sprintf(&buffer[1],"0%i",(char)ChargingGroup.Circuit_number);
         }
+        else{
+            sprintf(&buffer[1],"%i",(char)ChargingGroup.Circuit_number);
+        }
+
+        for(uint8_t i=0;i< ChargingGroup.Circuit_number;i++){ 
+            buffer[i+3] = (char)Circuitos[i].limite_corriente;
+        }
+        printf("Enviando circuitos a todos los cargadores!\n");
     }
     else if(!memcmp(resource->uri_path->s, "PARAMS", resource->uri_path->length)){
         
@@ -169,9 +174,7 @@ hnd_get(coap_context_t *ctx, coap_resource_t *resource,coap_session_t *session,c
     if(strlen((char*)buffer) >0){
         coap_add_data_blocked_response(resource, session, request, response, token,COAP_MEDIATYPE_APPLICATION_JSON, 2,(size_t)strlen((char*)buffer),(const u_char*)buffer);
     }
-    else{
-        coap_add_data_blocked_response(resource, session, request, response, token,COAP_MEDIATYPE_APPLICATION_JSON, 2,(size_t)ChargingGroup.Circuit_number + 2, buffer2);
-    }
+
 }
 
 static void 
@@ -272,7 +275,7 @@ message_handler(coap_context_t *ctx, coap_session_t *session,coap_pdu_t *sent, c
                             break;
 
                         default:
-                            printf("Datos no esperados en coap message handler %i \n", data[0]-'0');
+                            printf("Pueden esto ser circuitos? %s!\n", data);
                             break;
                     }
                 }
@@ -282,7 +285,6 @@ message_handler(coap_context_t *ctx, coap_session_t *session,coap_pdu_t *sent, c
     else{
         ESP_LOGE(TAG, "codigo de coap %i \n", COAP_RESPONSE_CLASS(received->code));
     } 
-
     Esperando_datos = 0;
 }
 
@@ -298,15 +300,41 @@ static void hnd_espressif_put(coap_context_t *ctx,coap_resource_t *resource,coap
         coap_resource_notify_observers(resource, NULL);
     }
     else if(!memcmp(resource->uri_path->s, "PARAMS", resource->uri_path->length)){
-        New_Params(data, size);
         coap_resource_notify_observers(resource, NULL);
+        New_Params(data, size);
+        
     }
     else if(!memcmp(resource->uri_path->s, "CONTROL", resource->uri_path->length)){
-        New_Control(data,  size);
-        memcpy(LastControl, data, size);
-        coap_resource_notify_observers(resource, NULL);
+
+        if(size <=0){
+            return;
+        }
+
+        char* Data = (char*) calloc(size, '0');
+        memcpy(Data, data, size);
+
+        if(strstr(Data,"Delete")){
+            memcpy(LastControl, "Delete", 6);
+            coap_resource_notify_observers(CONTROL, NULL);
+            delay(1000);
+            New_Control(LastControl,  6);       
+        }
+        else if(strstr(Data,"Pause")){
+            memcpy(LastControl, "Pause", 5);
+            coap_resource_notify_observers(CONTROL, NULL); 
+            delay(1000);
+            New_Control(LastControl,  5);      
+        }
+    
+
+        free(Data);
+
+        printf("%s\n", LastControl);
+              
+          
     }
     else if(!memcmp(resource->uri_path->s, "CIRCUITS", resource->uri_path->length)){
+        printf("nuevo scircuitos recibidos %s\n", data);
         New_Circuit(data,  size);
         coap_resource_notify_observers(resource, NULL);
     }
@@ -466,6 +494,7 @@ void coap_put( char* Topic, char* Message){
             if( Cargador.Consigna == 0){
                 Cargador.Consigna = 2;
             }
+
             if((uint8_t)Cargador.Consigna != Comands.desired_current){
                 printf("Enviando nueva consigna! %i %i\n", Cargador.Consigna, Comands.desired_current);
                 SendToPSOC5((uint8_t)Cargador.Consigna,MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
@@ -476,16 +505,20 @@ void coap_put( char* Topic, char* Message){
             New_Params(Message,  strlen(Message));
             coap_resource_notify_observers(PARAMS, NULL);
         }
-        else if(!memcmp(CONTROL->uri_path->s, Topic, CONTROL->uri_path->length)){
+        else if(!memcmp("CONTROL", Topic, 7)){
             memcpy(LastControl, Message, strlen(Message));
             coap_resource_notify_observers(CONTROL, NULL);
-            delay(500);
+            delay(1000);
             New_Control(Message,  strlen(Message));
             
         }
-        else if(!memcmp(CHARGERS->uri_path->s, Topic, CHARGERS->uri_path->length)){
+        else if(!memcmp("CHARGERS", Topic, 8)){
             New_Group(Message,  strlen(Message));
             coap_resource_notify_observers(CHARGERS, NULL);
+        }
+        else if(!memcmp("CIRCUITS", Topic, 8)){
+            New_Circuit((uint8_t*) Message,  strlen(Message));
+            coap_resource_notify_observers(CIRCUITS, NULL);
         }
     }
     else{
@@ -535,7 +568,7 @@ static void coap_client(void *p){
     #else
     coap_set_log_level(LOG_EMERG);
     #endif
-
+    ChargingGroup.Params.GroupMaster = false;
     while (1) {
         session = NULL;
         ctx     = NULL;
@@ -604,12 +637,12 @@ static void coap_client(void *p){
         Subscribe("CIRCUITS");
 
         //Tras autenticarnos solicitamos los cargadores del grupo y los parametros
-        coap_get("CHARGERS");
+        /*coap_get("CHARGERS");
         POLL(100);
         coap_get("PARAMS");
         POLL(100);
         coap_get("CIRCUITS");
-        POLL(100);
+        POLL(100);*/
         
         //Bucle del grupo
         xMasterTimer = xTaskGetTickCount();
@@ -620,6 +653,9 @@ static void coap_client(void *p){
             if( ChargingGroup.SendNewParams){
                 Send_Params();
                 ChargingGroup.SendNewParams = false;
+                if(!ChargingGroup.Params.GroupActive){
+                    ChargingGroup.StopOrder = true;
+                }
             }
 
             //Enviar los cargadores de nuestro grupo
@@ -707,6 +743,7 @@ static void coap_server(void *p){
     TXANDA   = NULL;
     CIRCUITS = NULL;
 
+    memcpy(LastControl, "NOTHING",7);
     while (1) {
         coap_endpoint_t *ep = NULL;
 
@@ -849,10 +886,10 @@ static void coap_server(void *p){
             }
 
             else if(ChargingGroup.DeleteOrder){
-                /*char buffer[20];
-                memcpy(buffer,"Delete",6);
-                coap_put("CONTROL", buffer);
-                delay(250);*/
+                //char buffer[20];
+				//memcpy(buffer,"Delete",6);
+				/*coap_put("CONTROL", "Delete");
+                delay(500);*/
                 New_Control("Delete", 6);
                 ChargingGroup.DeleteOrder = false;
                 goto clean_up;
@@ -900,7 +937,7 @@ static void coap_server(void *p){
         }
     }
 clean_up:
-    if(ctx){
+    if(ctx && ctx != NULL){
         coap_free_context(ctx);
     }
     
@@ -927,7 +964,14 @@ void Send_Data(){
   Datos_Json = cJSON_CreateObject();
 
   cJSON_AddStringToObject(Datos_Json, "device_id", ConfigFirebase.Device_Id);
-  cJSON_AddNumberToObject(Datos_Json, "current", 600);//Status.Measures.instant_current);
+  //TODOJ: Cambiar esto!!!
+  if(!memcmp("C", Status.HPT_status, 1)){
+      cJSON_AddNumberToObject(Datos_Json, "current", 600);
+  }
+  else{
+      cJSON_AddNumberToObject(Datos_Json, "current", Status.Measures.instant_current);
+  }
+  //Status.Measures.instant_current);
 
   //si es trifasico, enviar informacion de todas las fases
   if(Status.Trifasico){
@@ -938,7 +982,9 @@ void Send_Data(){
 
   if(ChargingGroup.AskPerm){
       cJSON_AddNumberToObject(Datos_Json, "Perm",1);
-      printf("Pidiendo permiso al maestro \n");
+  }
+  else{
+      cJSON_AddNumberToObject(Datos_Json, "Perm",0);
   }
 
   char *my_json_string = cJSON_Print(Datos_Json);   
@@ -970,45 +1016,20 @@ void Send_Chargers(){
 
 //enviar circuitos
 void Send_Circuits(){
-    uint8_t buffer[100];
+    char buffer[500];
 
-    buffer[0] = ChargingGroup.Circuit_number;
-    
-    for(uint8_t i=0;i< ChargingGroup.Circuit_number;i++){ 
-        buffer[i+1] = Circuitos[i].limite_corriente;
-    }
-
-    coap_pdu_t *request = NULL;
-
-    if (optlist) {
-        coap_delete_optlist(optlist);
-        optlist = NULL;
-    }
-
-    if(ChargingGroup.Params.GroupMaster){
-        New_Circuit(buffer,  ChargingGroup.Circuit_number +1);
-        coap_resource_notify_observers(CIRCUITS, NULL);
+    if(ChargingGroup.Circuit_number< 10){
+        sprintf(buffer,"0%i",(char)ChargingGroup.Circuit_number);
     }
     else{
-        coap_insert_optlist(&optlist,coap_new_optlist(COAP_OPTION_URI_PATH,strlen("CIRCUITS"),(const uint8_t*)"CIRCUITS"));
-
-        request = coap_new_pdu(session);
-        if (!request) {
-            ESP_LOGE(TAG, "coap_new_pdu() failed");
-            return;
-        }
-        request->type = COAP_MESSAGE_CON;
-        request->tid = coap_new_message_id(session);
-        request->code = COAP_REQUEST_PUT;
-
-        coap_add_optlist_pdu(request, &optlist);
-
-        coap_add_data(request, ChargingGroup.Circuit_number + 1,buffer);
-
-        coap_send(session, request);
-
-        Esperando_datos =1;
+        sprintf(buffer,"%i",(char)ChargingGroup.Circuit_number);
     }
+    
+    for(uint8_t i=0;i< ChargingGroup.Circuit_number;i++){ 
+        buffer[i+3] = (char)Circuitos[i].limite_corriente;
+    }
+
+   coap_put("CIRCUITS", buffer);
 }
 
 //Enviar parametros

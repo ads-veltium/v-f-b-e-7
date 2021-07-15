@@ -461,7 +461,7 @@ void Eth_Loop(){
 
         case CONECTADO:{
             //Buscar el contador
-            if((Params.Tipo_Sensor || (ChargingGroup.Params.CDP >> 4 && ChargingGroup.Params.GroupMaster)) && !finding){
+            if((Params.Tipo_Sensor || (ChargingGroup.Params.CDP >> 4 && ChargingGroup.Params.GroupMaster && ChargingGroup.Conected)) && !finding){
                 if(GetStateTime(xStart) > 30000){
                     xTaskCreate( BuscarContador_Task, "BuscarContador", 4096*4, &finding, 5, NULL); 
                     finding = true;
@@ -530,7 +530,7 @@ void Eth_Loop(){
             }
 
             //Lectura del contador
-			if(ContadorExt.ContadorConectado && (Params.Tipo_Sensor || ChargingGroup.Params.CDP >> 4)){
+			if(ContadorExt.ContadorConectado && (Params.Tipo_Sensor || (ChargingGroup.Params.CDP >> 4 && ChargingGroup.Params.GroupMaster && ChargingGroup.Conected))){
 				if(!Counter.Inicializado){
 					Counter.begin(ContadorExt.ContadorIp);
                     SendToPSOC5(0, BLOQUEO_CARGA);
@@ -643,7 +643,7 @@ void ComsTask(void *args){
     while (1){
         if(Coms.StartConnection){
             Eth_Loop();
-            StartGSM();
+            //StartGSM();
             //Arranque del provisioning
             if(Coms.StartProvisioning || Coms.StartSmartconfig){
                 ConfigFirebase.InternetConection=0;

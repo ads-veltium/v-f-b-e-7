@@ -85,10 +85,12 @@ uint16 cnt_diferencia = 1;
 uint8 HPT_estados[9][3] = {"0V", "A1", "A2", "B1", "B2", "C1", "C2", "E1", "F1"};
 
 #ifdef USE_COMS
-uint8 version_firmware[11] = {"VBLE2_0501"};	
+uint8 version_firmware[11] = {"VBLE2_0515"};	
 #else
 uint8 version_firmware[11] = {"VBLE0_0511"};	
 #endif
+
+
 uint8 PSOC5_version_firmware[11] ;		
 
 uint8 systemStarted = 0;
@@ -508,7 +510,6 @@ void proceso_recepcion(void)
 
 void procesar_bloque(uint16 tipo_bloque){
 	static int LastRecord =0;
-
 	switch(tipo_bloque){
 		case BLOQUE_INICIALIZACION:
 			if (!systemStarted && (buffer_rx_local[239]==0x36 || buffer_rx_local[238]==0x36)) { //Compatibilidad con 509
@@ -526,6 +527,7 @@ void procesar_bloque(uint16 tipo_bloque){
 				modifyCharacteristic(&buffer_rx_local[196], 1, VCD_NAME_USERS_USER_INDEX_CHAR_HANDLE);
 				modifyCharacteristic(&buffer_rx_local[197], 10, VERSIONES_VERSION_FIRMWARE_CHAR_HANDLE);
 				memcpy(PSOC5_version_firmware, &buffer_rx_local[197],10);
+
 				modifyCharacteristic(version_firmware, 10, VERSIONES_VERSION_FIRM_BLE_CHAR_HANDLE);
 
 				modifyCharacteristic(&buffer_rx_local[207], 2, RECORDING_REC_CAPACITY_CHAR_HANDLE);
@@ -574,6 +576,7 @@ void procesar_bloque(uint16 tipo_bloque){
 
 				cnt_timeout_inicio = TIMEOUT_INICIO;
 				PSOC_inicializado = 1;
+
 			}
 		break;
 
@@ -601,7 +604,12 @@ void procesar_bloque(uint16 tipo_bloque){
 
 				//Hilo piloto
 				if((memcmp(&buffer_rx_local[1], status_hpt_anterior, 2) != 0)){
-					dispositivo_inicializado = 2;
+					if(dispositivo_inicializado !=2){
+						SendToPSOC5(1,BLOQUE_APN);
+						delay(150);
+						dispositivo_inicializado = 2;
+					}
+					
 					#ifdef DEBUG
 					Serial.printf("%c %c \n",buffer_rx_local[1],buffer_rx_local[2]);
 					#endif
@@ -1079,10 +1087,11 @@ void procesar_bloque(uint16 tipo_bloque){
 		break;
 
 		case APN:{
-
 			Serial.println("Me ha llegado el apn");
 			Coms.GSM.ON=buffer_rx_local[0];
 			memcpy(&Coms.GSM.Apn[0], &buffer_rx_local[1], 30);
+			modifyCharacteristic(buffer_rx_local,  1, APN_ON);
+			modifyCharacteristic(&buffer_rx_local[1],  30, APN);
 			
 		} 
 		break;
@@ -1091,6 +1100,7 @@ void procesar_bloque(uint16 tipo_bloque){
 
 			Serial.println("Me ha llegado el apn user");
 			memcpy(&Coms.GSM.User[0], buffer_rx_local, 30);
+			modifyCharacteristic(buffer_rx_local,  30, APN_USER);
 			
 		} 
 		break;
@@ -1098,17 +1108,17 @@ void procesar_bloque(uint16 tipo_bloque){
 		case APN_PASSWORD:{
 
 			Serial.println("Me ha llegado el apn password");
-			Coms.GSM.ON=buffer_rx_local[0];
-			memcpy(&Coms.GSM.Pass[0], &buffer_rx_local[1], 30);
+			memcpy(&Coms.GSM.Pass[0], buffer_rx_local, 30);
+			modifyCharacteristic(buffer_rx_local,  30, APN_PASSWORD);
 			
 		} 
 		break;
 
-		case SIM_PIN:{
+		case APN_PIN:{
 
 			Serial.println("Me ha llegado el sim pin");
-			Coms.GSM.ON=buffer_rx_local[0];
 			memcpy(Coms.GSM.Pin, buffer_rx_local,4);
+			modifyCharacteristic(buffer_rx_local,  4, APN_PIN);
 		} 
 		break;
 
@@ -1120,16 +1130,21 @@ void procesar_bloque(uint16 tipo_bloque){
             memcpy(n,buffer_rx_local,2);
             ChargingGroup.Charger_number=0;
             uint8_t limit = atoi(n) > 25? 25: atoi(n);
-
+			
             for(uint8_t i=0; i<limit;i++){    
                 for(uint8_t j =0; j< 8; j++){
                     ID[j]=(char)buffer_rx_local[2+i*9+j];
                 }
                 add_to_group(ID, get_IP(ID), charger_table, &ChargingGroup.Charger_number);
-				printf("Circuitos2 %i\n", buffer_rx_local[10+i*9]);
+
+				
 				
                 charger_table[i].Fase = (buffer_rx_local[10+i*9]) & 0x03;
 				charger_table[i].Circuito = (buffer_rx_local[10+i*9]) >> 2;
+
+				printf("Circuitos %i\n", charger_table[i].Fase);
+				printf("Circuitos %i\n", charger_table[i].Circuito);
+
                 if(!memcmp(ID,ConfigFirebase.Device_Id,8)){
                     charger_table[i].Conected = true;
                     Params.Fase = (buffer_rx_local[10+i*9]-'0') & 0x03;
@@ -1145,6 +1160,8 @@ void procesar_bloque(uint16 tipo_bloque){
             //cierro el coap y borro el grupo
             if(check_in_group(ConfigFirebase.Device_Id,charger_table,ChargingGroup.Charger_number ) == 255){
                 if(ChargingGroup.Conected){
+					printf("No estoy en el grupo control.cpp1\n");
+					print_table(charger_table,"No en grupo table 1", ChargingGroup.Charger_number);
                     ChargingGroup.DeleteOrder = true;
                 }
             }
@@ -1224,11 +1241,17 @@ void procesar_bloque(uint16 tipo_bloque){
 
 		case GROUPS_PARAMS:{
 			ChargingGroup.Params.GroupMaster = buffer_rx_local[0];
+
+			if(ChargingGroup.Params.GroupActive && !buffer_rx_local[1]){
+				ChargingGroup.StopOrder = true;
+			}
 			ChargingGroup.Params.GroupActive = buffer_rx_local[1];
 			
 			ChargingGroup.Params.CDP = buffer_rx_local[2];
 			ChargingGroup.Params.ContractPower = buffer_rx_local[3] + buffer_rx_local[4] *0x100 ;
 			ChargingGroup.Params.potencia_max = buffer_rx_local[5] + buffer_rx_local[6] *0x100 ;
+
+			
 
 			#ifdef DEBUG_GROUPS
 			Serial.printf("Group active %i \n", ChargingGroup.Params.GroupActive);
@@ -1243,13 +1266,11 @@ void procesar_bloque(uint16 tipo_bloque){
 
 		case GROUPS_CIRCUITS:{
 			int numero_circuitos = buffer_rx_local[0];
-			#ifdef DEBUG_GROUPS
-				Serial.printf("Me han llegado nuevos circuitos! %i \n", numero_circuitos);
-			#endif
-			
+			ChargingGroup.Circuit_number = numero_circuitos;
 			for(int i=0;i< numero_circuitos;i++){
-				Circuitos[ChargingGroup.Circuit_number].numero = i+1;
-            	Circuitos[ChargingGroup.Circuit_number].limite_corriente = buffer_rx_local[i+1];
+				Circuitos[i].numero = i+1;
+            	Circuitos[i].limite_corriente = buffer_rx_local[i+1];	
+				printf("Corriente del circuito %i\n", Circuitos[i].limite_corriente);			
 			}
 			break;
 			
@@ -1542,7 +1563,9 @@ void UpdateCompressedTask(void *arg){
 #endif
 
 void controlInit(void){
-
+	#ifdef DEVELOPMENT
+		version_firmware[6] = 'B';
+	#endif
 	//Freertos estatico
 	xTaskCreateStatic(LedControl_Task,"TASK LEDS",4096*2,NULL,PRIORIDAD_LEDS,xLEDStack,&xLEDBuffer); 
 	xTaskCreateStatic(controlTask,"TASK CONTROL",4096*6,NULL,PRIORIDAD_CONTROL,xControlStack,&xControlBuffer); 
