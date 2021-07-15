@@ -252,7 +252,7 @@ void start_udp(){
 
             String Desencriptado;
             Desencriptado = Decipher(String(buffer));
-
+            printf("Algo ma llegaoo!!!!!\n");
             if(size<=8){
                 if(packet.isBroadcast()){                   
                     packet.print(Encipher(String(ConfigFirebase.Device_Id)).c_str());
@@ -262,6 +262,7 @@ void start_udp(){
                     if(packet.remoteIP()[0] == 0 && packet.remoteIP()[1] == 0 && packet.remoteIP()[2] == 0 && packet.remoteIP()[3] == 0 ){
                         printf("Me ha llegao una ip vacía\n");
                         udp.broadcast(Encipher(String(ConfigFirebase.Device_Id)).c_str());
+                        return;
                     }
                     #ifdef DEBUG_GROUPS
                     Serial.printf("El cargador VCD%s con ip %s se ha añadido a la lista de red\n", Desencriptado.c_str(), packet.remoteIP().toString().c_str());  
@@ -337,13 +338,16 @@ void start_udp(){
             }            
         });
     }
-
+    
     //Avisar al resto de equipos de que estamos aqui!
     udp.broadcast(Encipher(String(ConfigFirebase.Device_Id)).c_str());
 }
 
 void close_udp(){
+    remove_group(net_group,&net_group_size);
+    net_group_size = 0;
     udp.close();
+    udp_arrancado = false;
 }
 
 #endif

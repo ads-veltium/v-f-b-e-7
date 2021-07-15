@@ -207,7 +207,6 @@ static void eth_event_handler(void *arg, esp_event_base_t event_base, int32_t ev
                     eth_connected = false;
                     eth_link_up = false;
                     Coms.ETH.conectado = false;
-                    Coms.ETH.Internet = false;
                 }
 
 #ifdef USE_GROUPS
@@ -235,7 +234,6 @@ static void eth_event_handler(void *arg, esp_event_base_t event_base, int32_t ev
             eth_connected = true;
             eth_connecting = false;
 
-            //Si el ethernet tiene conexion a internet, deasactivamos el wifi
             delay(5000);
             Coms.ETH.conectado = true;
         }
@@ -332,6 +330,8 @@ void initialize_ethernet(void){
         esp_eth_set_default_handlers(eth_netif);
         uint8_t  on =1;
         modifyCharacteristic(&on, 1, COMS_CONFIGURATION_ETH_ON);
+        Coms.ETH.Auto = 1;
+        SendToPSOC5(Coms.ETH.Auto, COMS_CONFIGURATION_ETH_AUTO);
     }
 
     ESP_ERROR_CHECK(esp_event_handler_register(ETH_EVENT, ESP_EVENT_ANY_ID, eth_event_handler, NULL));
