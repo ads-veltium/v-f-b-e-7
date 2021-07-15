@@ -240,6 +240,7 @@ void New_Current(uint8_t* Buffer, int Data_size){
   uint8_t desired_current = (uint8_t) cJSON_GetObjectItem(mensaje_Json,"DC")->valueint;
   if(cJSON_HasObjectItem(mensaje_Json,"P")){
     ChargingGroup.ChargPerm = (bool) cJSON_GetObjectItem(mensaje_Json,"P")->valueint;
+    Serial.println(ChargingGroup.ChargPerm);
   }
 
   cJSON_Delete(mensaje_Json);

@@ -471,8 +471,8 @@ void Eth_Loop(){
 
             //Arrancar los grupos
             else if(!ChargingGroup.Conected && Coms.ETH.conectado){
-                if(ChargingGroup.Params.GroupActive){
-                    if(ConnectionState == IDLE){
+                if(ChargingGroup.Params.GroupActive && GetStateTime(xConnect) > 5000){
+                    if(ConnectionState == IDLE || ConnectionState == DISCONNECTED){
                         if(ChargingGroup.StartClient){
                             coap_start_client();
                         }

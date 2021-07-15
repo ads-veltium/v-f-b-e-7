@@ -92,7 +92,7 @@ uint8 version_firmware[11] = {"VBLE0_0511"};
 
 
 uint8 PSOC5_version_firmware[11] ;		
-
+TickType_t Last_Block=0;
 uint8 systemStarted = 0;
 uint8 Record_Num =4;
 uint8 Bloqueo_de_carga = 1;
@@ -630,7 +630,9 @@ void procesar_bloque(uint16 tipo_bloque){
 					//Si sale de C2 bloquear la siguiente carga
 					if(memcmp(&buffer_rx_local[1],"C2",2) && memcmp(&buffer_rx_local[1],"B2",2)){
 						Bloqueo_de_carga = false;
-						if(Params.Tipo_Sensor || ChargingGroup.Params.GroupActive){
+						if(Params.Tipo_Sensor || ChargingGroup.Conected){
+							Last_Block = xTaskGetTickCount();
+							printf("Bloqueando carga!\n");
 							Bloqueo_de_carga = true;
 							ChargingGroup.ChargPerm = false;
 							ChargingGroup.AskPerm = false;
@@ -1291,8 +1293,8 @@ void procesar_bloque(uint16 tipo_bloque){
 					Bloqueo_de_carga = false;
 					ChargingGroup.AskPerm = false;
 				}
-				//Pedir permiso
-				else if(!ChargingGroup.AskPerm){
+				//Pedir permiso solo si estamos en B1 y si han pasado 5 segundos desde el ultimo bloqueo
+				else if(!ChargingGroup.AskPerm  && !memcmp(Status.HPT_status, "B1", 2) && pdTICKS_TO_MS(xTaskGetTickCount()-Last_Block)< 5000){
 					ChargingGroup.AskPerm = true;
 				}
 			}
@@ -1308,7 +1310,16 @@ void procesar_bloque(uint16 tipo_bloque){
 			else{
 				Bloqueo_de_carga = false;
 			}
+
+			if(!Bloqueo_de_carga){
+				if(pdTICKS_TO_MS(xTaskGetTickCount()-Last_Block)< 5000){
+					Bloqueo_de_carga = true;
+				}
+			}
+
 			SendToPSOC5(Bloqueo_de_carga, BLOQUEO_CARGA);
+
+			
 			break;
 		}
 #endif
