@@ -13,14 +13,19 @@
 #include "esp_system.h"
 #include "esp_log.h"
 
+#include "Arduino.h"
 #include "driver/uart.h"
-#include "driver/gpio.h"
+//#include "driver/gpio.h"
 #include "tcpip_adapter.h"
 #include "netif/ppp/pppos.h"
 #include "netif/ppp/ppp.h"
 #include "netif/ppp/pppapi.h"
+#include "../../../main/control.h"
 
 #include "libGSM.h"
+
+
+extern carac_Coms  Coms;
 
 // === GSM configuration that you can set via 'make menuconfig'. ===
 #define UART_GPIO_TX 32
@@ -46,8 +51,6 @@ static uint8_t gsm_rfOff = 0;
 
 // local variables
 static QueueHandle_t pppos_mutex = NULL;
-const char *PPP_User = "telefonica";
-const char *PPP_Pass = "telefonica";
 static int uart_num = UART_NUM_1;
 
 static uint8_t tcpip_adapter_initialized = 0;
@@ -204,7 +207,7 @@ static GSM_Cmd cmd_Cimi_2 =
 static GSM_Cmd cmd_Con =
 {
 	.cmd = "AT+CGDCONT=1,\"IP\",\"orangeworld\"\r\n",
-	.cmdSize = sizeof("AT+CGDCONT=1,\"IP\",\"orangeworld.es\"\r\n")-1,
+	.cmdSize = sizeof("AT+CGDCONT=1,\"IP\",\"orangeworld\"\r\n")-1,
 	.cmdResponseOnOk = GSM_OK_Str,
 	.timeoutMs = 3000,
 	.delayMs = 2000,
@@ -500,14 +503,14 @@ static int atCmd_waitResponse(char * cmd, char *resp, char * resp1, int cmdSize,
 		len = uart_read_bytes(uart_num, (uint8_t*)data, 256, timeout / portTICK_RATE_MS);
 		while (len > 0) {
 			if ((tot+len) >= size) {
-				char *ptemp = realloc(pbuf, size+512);
+				char *ptemp = (char*)realloc(pbuf, size+512);
 				if (ptemp == NULL) return 0;
 				size += 512;
 				pbuf = ptemp;
 			}
 			memcpy(pbuf+tot, data, len);
 			tot += len;
-			response[tot] = '\0';
+			response[tot] = "\0";
 			len = uart_read_bytes(uart_num, (uint8_t*)data, 256, 100 / portTICK_RATE_MS);
 		}
 		*response = pbuf;
@@ -637,22 +640,31 @@ static void enableAllInitCmd()
  * Handles GSM initialization, disconnects and GSM modem responses
  */
 //-----------------------------
-static void pppos_client_task()
+static void pppos_client_task(void *args)
 {
 
-	gpio_set_direction(2, GPIO_MODE_OUTPUT);
-	gpio_set_level(2, 1);
+	gpio_set_direction((gpio_num_t)2, GPIO_MODE_OUTPUT);
+	gpio_set_level((gpio_num_t)2, 1);
 	vTaskDelay(1000 / portTICK_PERIOD_MS);
-	gpio_set_level(2, 0);
+	gpio_set_level((gpio_num_t)2, 0);
 	vTaskDelay(500 / portTICK_PERIOD_MS);
-	gpio_set_level(2, 1);
+	gpio_set_level((gpio_num_t)2, 1);
 	vTaskDelay(1000 / portTICK_PERIOD_MS);
-	gpio_set_level(2, 0);
+	gpio_set_level((gpio_num_t)2, 0);
 	    
 	xSemaphoreTake(pppos_mutex, PPPOSMUTEX_TIMEOUT);
 	pppos_task_started = 1;
 	xSemaphoreGive(pppos_mutex);
 
+	uart_config_t uart_config = {
+			.baud_rate = UART_BDRATE,
+			.data_bits = UART_DATA_8_BITS,
+			.parity = UART_PARITY_DISABLE,
+			.stop_bits = UART_STOP_BITS_1,
+			.flow_ctrl = UART_HW_FLOWCTRL_DISABLE
+	};
+	int size = Coms.GSM.Apn.length();
+	char PPP_ApnATReq[size+24];
     // Allocate receive buffer
     char* data = (char*) malloc(BUF_SIZE);
     if (data == NULL) {
@@ -662,19 +674,15 @@ static void pppos_client_task()
     	goto exit;
     }
 
-    if (gpio_set_direction(UART_GPIO_TX, GPIO_MODE_OUTPUT)) goto exit;
-	if (gpio_set_direction(UART_GPIO_RX, GPIO_MODE_INPUT)) goto exit;
-	if (gpio_set_pull_mode(UART_GPIO_RX, GPIO_PULLUP_ONLY)) goto exit;
 
-	char PPP_ApnATReq[sizeof("orangeworld")+24];
+
+    if (gpio_set_direction((gpio_num_t)UART_GPIO_TX, GPIO_MODE_OUTPUT)) goto exit;
+	if (gpio_set_direction((gpio_num_t)UART_GPIO_RX, GPIO_MODE_INPUT)) goto exit;
+	if (gpio_set_pull_mode((gpio_num_t)UART_GPIO_RX, GPIO_PULLUP_ONLY)) goto exit;
+
 	
-	uart_config_t uart_config = {
-			.baud_rate = UART_BDRATE,
-			.data_bits = UART_DATA_8_BITS,
-			.parity = UART_PARITY_DISABLE,
-			.stop_bits = UART_STOP_BITS_1,
-			.flow_ctrl = UART_HW_FLOWCTRL_DISABLE
-	};
+	
+
 
 	//Configure UART1 parameters
 	if (uart_param_config(uart_num, &uart_config)) goto exit;
@@ -683,7 +691,7 @@ static void pppos_client_task()
 	if (uart_driver_install(uart_num, BUF_SIZE * 2, BUF_SIZE * 2, 0, NULL, 0)) goto exit;
 
 	// Set APN from config
-	sprintf(PPP_ApnATReq, "AT+CGDCONT=1,\"IP\",\"%s\"\r\n", "orangeworld");
+	sprintf(PPP_ApnATReq, "AT+CGDCONT=1,\"IP\",\"%s\"\r\n",Coms.GSM.Apn.c_str());
 	cmd_APN.cmd = PPP_ApnATReq;
 	cmd_APN.cmdSize = strlen(PPP_ApnATReq);
 
@@ -729,7 +737,7 @@ static void pppos_client_task()
 				#endif
 
 				nfail++;
-				if (nfail > 6) goto exit;
+				if (nfail > 20) goto exit;
 				vTaskDelay(1000 / portTICK_PERIOD_MS);
 				gsmCmdIter = 0;
 				continue;
@@ -765,7 +773,7 @@ static void pppos_client_task()
 		else xSemaphoreGive(pppos_mutex);
 
 		pppapi_set_default(ppp);
-		pppapi_set_auth(ppp, PPPAUTHTYPE_PAP, PPP_User, PPP_Pass);
+		pppapi_set_auth(ppp, PPPAUTHTYPE_PAP, Coms.GSM.User.c_str(), Coms.GSM.Pass.c_str());
 		//pppapi_set_auth(ppp, PPPAUTHTYPE_NONE, PPP_User, PPP_Pass);
 
 		xSemaphoreTake(pppos_mutex, PPPOSMUTEX_TIMEOUT);
@@ -893,6 +901,7 @@ exit:
 //=============
 int ppposInit()
 {
+	int prueba=0;
 	if (pppos_mutex != NULL) xSemaphoreTake(pppos_mutex, PPPOSMUTEX_TIMEOUT);
 	do_pppos_connect = 1;
 	int gstat = 0;
@@ -907,7 +916,7 @@ int ppposInit()
 			tcpip_adapter_init();
 			tcpip_adapter_initialized = 1;
 		}
-		xTaskCreate(&pppos_client_task, "pppos_client_task", PPPOS_CLIENT_STACK_SIZE, NULL, 10, NULL);
+		xTaskCreate(pppos_client_task, "pppos_client_task", PPPOS_CLIENT_STACK_SIZE, NULL, 10, NULL);
 		while (task_s == 0) { 
 			vTaskDelay(10 / portTICK_RATE_MS);
 			xSemaphoreTake(pppos_mutex, PPPOSMUTEX_TIMEOUT);
@@ -1043,7 +1052,7 @@ int gsm_RFOn()
 //===================
 void apagarModem()
 {
-	gpio_set_level(2, 0);
+	gpio_set_level((gpio_num_t)2, 0);
 	//vTaskDelay(12000 / portTICK_PERIOD_MS);
 	//gpio_set_level(2, 1);
 }

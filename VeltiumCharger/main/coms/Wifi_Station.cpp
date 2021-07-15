@@ -10,7 +10,6 @@ extern carac_Status Status;
 extern carac_Contador   ContadorExt;
 extern carac_Params Params;
 
-
 //Contador trifasico
 Contador Counter   EXT_RAM_ATTR;
 
@@ -687,7 +686,6 @@ void ComsTask(void *args){
     while (1){
         if(Coms.StartConnection){
             Eth_Loop();
-            //StartGSM();
             //Arranque del provisioning
             if(Coms.StartProvisioning || Coms.StartSmartconfig){
                 ConfigFirebase.InternetConection=0;
@@ -716,15 +714,12 @@ void ComsTask(void *args){
                 Coms.StartProvisioning = false;
                 Coms.StartSmartconfig  = false;
             }
-            //Serial.println("Estoy aqui 0");
             //Comprobar si hemos perdido todas las conexiones
             if(!Coms.ETH.Internet && !Coms.Wifi.Internet && !Coms.GSM.Internet){
                 ConfigFirebase.InternetConection=false;
-                //Serial.println("Estoy aqui 1");
             }
             else{
                 ConfigFirebase.InternetConection=true;
-                //Serial.println("Estoy aqui 2");
             }
 
             //Encendido de las interfaces        
