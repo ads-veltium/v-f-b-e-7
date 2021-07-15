@@ -732,9 +732,9 @@ bool Calculo_General(){
     printf("\n\nTotal PC of phase %i %i %i\n",Fases[0].corriente_total, Fases[1].corriente_total, Fases[2].corriente_total); 
     printf("Total consigna of phase %i %i %i\n",Fases[0].consigna_total, Fases[1].consigna_total, Fases[2].consigna_total); 
     printf("Total conex of phase %i %i %i\n",Fases[0].conex, Fases[1].conex, Fases[2].conex); 
-    printf("Total conex of circuit %i %i \n",Circuitos[0].conex, Circuitos[1].conex); 
+    printf("Total conex of circuit %i %i %i\n",Circuitos[0].conex, Circuitos[1].conex, Circuitos[2].conex); 
     printf("Corriente disponible fases %f %f %f\n",Fases[0].corriente_disponible, Fases[1].corriente_disponible, Fases[2].corriente_disponible); 
-    printf("Corriente disponible circuitos %f %f \n",Circuitos[0].corriente_disponible, Circuitos[1].corriente_disponible); 
+    printf("Corriente disponible circuitos %f %f %f\n",Circuitos[0].corriente_disponible, Circuitos[1].corriente_disponible, Circuitos[2].corriente_disponible); 
     printf("Total conex %i\n",Conex); 
     printf("Consumo total %i \n\n",Consumo_total); 
 

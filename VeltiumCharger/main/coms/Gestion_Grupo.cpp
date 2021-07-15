@@ -291,6 +291,7 @@ void start_udp(){
             }
             else{
                 if(!memcmp(Desencriptado.c_str(), "Start client", 12)){
+                    printf("ME ha llegado start client!\n");
                     if(!ChargingGroup.Conected && !ChargingGroup.StartClient){
                         #ifdef DEBUG_GROUPS
                         printf("Soy parte de un grupo !!\n");
