@@ -131,7 +131,6 @@ hnd_get(coap_context_t *ctx, coap_resource_t *resource,coap_session_t *session,c
         for(uint8_t i=0;i< ChargingGroup.Circuit_number;i++){ 
             buffer[i+3] = (char)Circuitos[i].limite_corriente;
         }
-        printf("Enviando circuitos a todos los cargadores!\n");
     }
     else if(!memcmp(resource->uri_path->s, "PARAMS", resource->uri_path->length)){
         
@@ -325,16 +324,9 @@ static void hnd_espressif_put(coap_context_t *ctx,coap_resource_t *resource,coap
             delay(1000);
             New_Control(LastControl,  5);      
         }
-    
-
-        free(Data);
-
-        printf("%s\n", LastControl);
-              
-          
+        free(Data);             
     }
     else if(!memcmp(resource->uri_path->s, "CIRCUITS", resource->uri_path->length)){
-        printf("nuevo scircuitos recibidos %s\n", data);
         New_Circuit(data,  size);
         coap_resource_notify_observers(resource, NULL);
     }
@@ -976,7 +968,6 @@ void Send_Data(){
   else{
       cJSON_AddNumberToObject(Datos_Json, "current", Status.Measures.instant_current);
   }
-  //Status.Measures.instant_current);
 
   //si es trifasico, enviar informacion de todas las fases
   if(Status.Trifasico){
@@ -986,6 +977,7 @@ void Send_Data(){
   cJSON_AddStringToObject(Datos_Json, "HPT", Status.HPT_status);
 
   if(ChargingGroup.AskPerm){
+      printf("Pidiendo permiso!!!\n");
       cJSON_AddNumberToObject(Datos_Json, "Perm",1);
   }
   else{
@@ -1177,7 +1169,7 @@ void coap_start_server(){
         }
         else{
             //Si el grupo está vacio o el cargador no está en el grupo,
-            printf("No estoy ene el grupo!!\n");
+            printf("No estoy en el grupo!!\n");
             ChargingGroup.Params.GroupMaster = false;
             ChargingGroup.Params.GroupActive = false;
             ChargingGroup.Conected = false;

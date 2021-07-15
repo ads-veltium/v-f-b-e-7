@@ -613,7 +613,7 @@ void procesar_bloque(uint16 tipo_bloque){
 					#ifdef DEBUG
 					Serial.printf("%c %c \n",buffer_rx_local[1],buffer_rx_local[2]);
 					#endif
-					memcpy(status_hpt_anterior, &buffer_rx_local[1], 2);
+					
 					modifyCharacteristic(&buffer_rx_local[1], 2, STATUS_HPT_STATUS_CHAR_HANDLE);
 					if(serverbleGetConnected()){
 						if(buffer_rx_local[1]!= 'E' && buffer_rx_local[1]!= 'F'){
@@ -631,8 +631,13 @@ void procesar_bloque(uint16 tipo_bloque){
 					if(memcmp(&buffer_rx_local[1],"C2",2) && memcmp(&buffer_rx_local[1],"B2",2)){
 						Bloqueo_de_carga = false;
 						if(Params.Tipo_Sensor || ChargingGroup.Conected){
-							Last_Block = xTaskGetTickCount();
-							printf("Bloqueando carga!\n");
+							if(!memcmp(status_hpt_anterior, "C1",2) || !memcmp(status_hpt_anterior, "C2",2) ){
+								Last_Block = xTaskGetTickCount();
+							}
+							else{
+								Last_Block = 0;
+							}
+						
 							Bloqueo_de_carga = true;
 							ChargingGroup.ChargPerm = false;
 							ChargingGroup.AskPerm = false;
@@ -640,6 +645,7 @@ void procesar_bloque(uint16 tipo_bloque){
 						SendToPSOC5(Bloqueo_de_carga, BLOQUEO_CARGA);
 					}
 #endif
+					memcpy(status_hpt_anterior, &buffer_rx_local[1], 2);
 				}
 
 				//Medidas
@@ -1280,7 +1286,6 @@ void procesar_bloque(uint16 tipo_bloque){
 #endif
 
 		case BLOQUEO_CARGA:{
-
 			if(dispositivo_inicializado != 2){
 				Bloqueo_de_carga = true;
 			}
@@ -1293,10 +1298,11 @@ void procesar_bloque(uint16 tipo_bloque){
 					Bloqueo_de_carga = false;
 					ChargingGroup.AskPerm = false;
 				}
-				//Pedir permiso solo si estamos en B1 y si han pasado 5 segundos desde el ultimo bloqueo
-				else if(!ChargingGroup.AskPerm  && !memcmp(Status.HPT_status, "B1", 2) && pdTICKS_TO_MS(xTaskGetTickCount()-Last_Block)< 5000){
+				//Pedir permiso solo si estamos en B1 y si han pasado 15 segundos desde el ultimo bloqueo
+				else if(!ChargingGroup.AskPerm ){
 					ChargingGroup.AskPerm = true;
 				}
+				
 			}
 #endif
 			//Si tenemos un medidor conectado, asta que no nos conectemos a el no permitimos la carga
@@ -1310,13 +1316,6 @@ void procesar_bloque(uint16 tipo_bloque){
 			else{
 				Bloqueo_de_carga = false;
 			}
-
-			if(!Bloqueo_de_carga){
-				if(pdTICKS_TO_MS(xTaskGetTickCount()-Last_Block)< 5000){
-					Bloqueo_de_carga = true;
-				}
-			}
-
 			SendToPSOC5(Bloqueo_de_carga, BLOQUEO_CARGA);
 
 			
