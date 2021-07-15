@@ -43,7 +43,9 @@
 
 static const char *TIME_TAG = "[SNTP]";
 
+extern carac_Firebase_Configuration ConfigFirebase;
 extern carac_Coms  Coms;
+extern uint8_t ConnectionState;
 
 bool gsm_connected   = false;
 
@@ -90,6 +92,17 @@ void StartGSM(){
 	gsm_connected   = true;
 	//probarConexionGSM();
 
+}
+
+
+void FinishGSM(){
+	ppposDisconnect(0, 1);
+	apagarModem();
+
+	gsm_connected = false;
+	Coms.GSM.Internet = false;
+	ConnectionState = DISCONNECTED;
+	ConfigFirebase.InternetConection=false;
 }
 
 void shutdownGSM(){
@@ -151,9 +164,6 @@ void probarConexionGSM(){
 		break;
 	}
 
-	// ==== Create PPPoS tasks ====
-    //xTaskCreate(&http_get_task, "http_get_task", 4096, NULL, 5, NULL);
-    //xTaskCreate(&https_get_task, "https_get_task", 16384, NULL, 4, NULL);
     while(1)
 	{
 		vTaskDelay(1000 / portTICK_RATE_MS);

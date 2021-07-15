@@ -41,7 +41,6 @@ carac_charger  charger_table[50] EXT_RAM_ATTR;
 #endif
 #endif
 
-
 /* VARIABLES BLE */
 uint8 device_ID[16] = {"VCD17010001"};
 uint8 deviceSerNum[10] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};     //{0x00, 0x00, 0x00, 0x00, 0x0B, 0xCD, 0x17, 0x01, 0x00, 0x05};
@@ -187,7 +186,7 @@ void controlTask(void *arg)
 	modifyCharacteristic(authChallengeQuery, 8, AUTENTICACION_MATRIX_CHAR_HANDLE);
 
 	MAIN_RESET_Write(1);        // Permito el arranque del micro principal
-	
+
 	while(1)
 	{
 		// Eventos 10 mS
@@ -938,6 +937,7 @@ void procesar_bloque(uint16 tipo_bloque){
 			#ifdef CONNECTED
 				memcpy(Params.autentication_mode,buffer_rx_local,2);
 			#endif
+		
 		} 
 		break;
 		
@@ -951,6 +951,7 @@ void procesar_bloque(uint16 tipo_bloque){
 			#ifdef CONNECTED
 				Params.potencia_contratada1=buffer_rx_local[0]+buffer_rx_local[1]*100;
 			#endif
+		
 		}
 		break;
 
@@ -964,6 +965,7 @@ void procesar_bloque(uint16 tipo_bloque){
 			#ifdef CONNECTED
 				Params.potencia_contratada2=buffer_rx_local[0]+buffer_rx_local[1]*100;
 			#endif
+
 		}
 		break;
 

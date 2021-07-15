@@ -15,9 +15,7 @@
 #define GSM_STATE_IDLE			89
 #define GSM_STATE_FIRSTINIT		98
 
-#ifdef __cplusplus
-extern "C" {
-#endif // __cplusplus
+
 typedef struct
 {
 	int		idx;
@@ -98,7 +96,4 @@ int gsm_RFOn();
 //=============
 void apagarModem();
 
-#ifdef __cplusplus
-}
-#endif // __cplusplus
 #endif
