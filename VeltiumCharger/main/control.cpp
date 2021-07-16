@@ -945,7 +945,7 @@ void procesar_bloque(uint16 tipo_bloque){
 			#ifdef CONNECTED
 				memcpy(Params.autentication_mode,buffer_rx_local,2);
 			#endif
-		
+			StartGSM();
 		} 
 		break;
 		
@@ -959,7 +959,7 @@ void procesar_bloque(uint16 tipo_bloque){
 			#ifdef CONNECTED
 				Params.potencia_contratada1=buffer_rx_local[0]+buffer_rx_local[1]*100;
 			#endif
-		
+			FinishGSM();
 		}
 		break;
 
