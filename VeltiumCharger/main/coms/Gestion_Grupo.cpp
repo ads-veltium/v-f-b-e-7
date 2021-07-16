@@ -252,7 +252,6 @@ void start_udp(){
 
             String Desencriptado;
             Desencriptado = Decipher(String(buffer));
-            printf("Algo ma llegaoo!!!!!\n");
             if(size<=8){
                 if(packet.isBroadcast()){                   
                     packet.print(Encipher(String(ConfigFirebase.Device_Id)).c_str());
@@ -260,7 +259,6 @@ void start_udp(){
 
                 if(check_in_group(Desencriptado.c_str(), net_group, net_group_size) == 255){
                     if(packet.remoteIP()[0] == 0 && packet.remoteIP()[1] == 0 && packet.remoteIP()[2] == 0 && packet.remoteIP()[3] == 0 ){
-                        printf("Me ha llegao una ip vacía\n");
                         udp.broadcast(Encipher(String(ConfigFirebase.Device_Id)).c_str());
                         return;
                     }
