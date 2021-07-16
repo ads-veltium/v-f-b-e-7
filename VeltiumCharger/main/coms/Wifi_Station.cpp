@@ -240,7 +240,8 @@ void stop_wifi(void){
     Serial.println("Esperando a que firebase se desconecte!");
     #endif
 
-    while(ConnectionState != DISCONNECTED){
+    uint8_t timeout = 0;
+    while(ConnectionState != DISCONNECTED && ++timeout < 50){
         delay(100);
     }
 
@@ -420,6 +421,8 @@ void Eth_Loop(){
     static TickType_t xConnect = 0;
     static bool finding = false;
     static uint8_t LastStatus = APAGADO;
+    static uint8_t escape =0;
+    static  bool wifi_last =false;
     switch (Coms.ETH.State){
         case APAGADO:
             if(Coms.ETH.ON){
@@ -434,22 +437,36 @@ void Eth_Loop(){
         break;
         case CONNECTING:
             if(eth_connected){
-                Coms.ETH.State = CONECTADO;
-#ifdef USE_GROUPS
-                SendToPSOC5(2,SEND_GROUP_DATA);
-                SendToPSOC5(3,SEND_GROUP_DATA);          
-                delay(1000);
-                start_udp();
-#endif
-                xConnect = xTaskGetTickCount();
                 //Solo comprobamos la conexion a internet si no hemos activado el servidor dhcp
                 if(!Coms.ETH.DHCP){
+                    if(Coms.Wifi.ON){
+                        wifi_last = true;
+                    }
+                    Coms.Wifi.ON = false;
+                    
+                    if ((wifi_connected || wifi_connecting) && ++escape < 20){
+                        break;
+                    }
                     if(ComprobarConexion()){
                         ConnectionState = DISCONNECTED;
                         Coms.ETH.Internet = true;
-                        Coms.Wifi.ON = false;
+                    }
+                    else{
+                        Coms.Wifi.ON = wifi_last;
+                        Coms.ETH.Internet = false;
+                        Coms.ETH.Wifi_Perm = true;
                     }
                 }
+                #ifdef USE_GROUPS
+                    SendToPSOC5(2,SEND_GROUP_DATA);
+                    SendToPSOC5(3,SEND_GROUP_DATA);          
+                    delay(5000);
+                    start_udp();
+                #endif
+                escape =0;
+                wifi_last = false;
+                Coms.ETH.State = CONECTADO;
+                xConnect = xTaskGetTickCount();
             }
 
             else if(!Coms.ETH.ON){
@@ -486,7 +503,6 @@ void Eth_Loop(){
 #ifdef USE_GROUPS
 
             //Arrancar los grupos
-            
             else if(!ChargingGroup.Conected && Coms.ETH.conectado){
                 if(ChargingGroup.Params.GroupActive && GetStateTime(xConnect) > 5000 ){
                     if(ConnectionState == IDLE || ConnectionState == DISCONNECTED){
@@ -535,12 +551,40 @@ void Eth_Loop(){
             }
 
             //Desconexion del cable
-            if(!eth_connected && !eth_link_up && (ConnectionState ==IDLE || ConnectionState==DISCONNECTED)){
-                Coms.ETH.State = DISCONNECTING;
-                close_udp();
-                if(ChargingGroup.Conected){
-                    ChargingGroup.Params.GroupActive = false;
-                    ChargingGroup.StopOrder = true;
+            if(!eth_connected && !eth_link_up){
+                printf("Me han desconectado el cable!\n");
+                if(Coms.ETH.Internet){
+                    Coms.ETH.Internet = false;
+                    ConfigFirebase.InternetConection = false;
+                    #ifdef DEBUG_WIFI
+                    Serial.println("Esperando a que firebase se desconecte!");
+                    #endif
+                    uint8_t timeout = 0;
+                    while(ConnectionState != DISCONNECTED && ++timeout < 50){ // 5 segundos
+                        delay(100);
+                    }
+
+                    Coms.ETH.State = DISCONNECTING;
+                    close_udp();
+                    if(ChargingGroup.Conected){
+                        ChargingGroup.Params.GroupActive = false;
+                        ChargingGroup.StopOrder = true;
+                    }
+                    if(Coms.Wifi.ON && Coms.Wifi.Internet){
+                        Coms.Wifi.restart = true;
+                    }
+
+                }
+                else{
+                    Coms.ETH.State = DISCONNECTING;
+                    close_udp();
+                    if(ChargingGroup.Conected){
+                        ChargingGroup.Params.GroupActive = false;
+                        ChargingGroup.StopOrder = true;
+                    }
+                    if(Coms.Wifi.ON && Coms.Wifi.Internet){
+                        Coms.Wifi.restart = true;
+                    }
                 }
                 break;
             }
@@ -695,7 +739,8 @@ void ComsTask(void *args){
                 ConfigFirebase.InternetConection=true;
             }
 
-            //Encendido de las interfaces        
+            //Encendido de las interfaces 
+            printf("%i %i %i %i %i \n", Coms.Wifi.ON , wifi_connected, wifi_connecting, Coms.ETH.Internet, Coms.ETH.Wifi_Perm );       
             if(Coms.Wifi.ON && !wifi_connected && !wifi_connecting){
                 if(Coms.ETH.ON){
                     if(!Coms.ETH.Internet && Coms.ETH.Wifi_Perm){
@@ -706,12 +751,10 @@ void ComsTask(void *args){
                     start_wifi();
                 }                
             }
-            else if((!Coms.Wifi.ON || Coms.Wifi.restart) && (wifi_connected || wifi_connecting)){
-                if(ConnectionState == IDLE || ConnectionState == DISCONNECTED){
-                    stop_wifi();
-                    Coms.Wifi.restart = false;
-                }
 
+            else if((!Coms.Wifi.ON || Coms.Wifi.restart) && (wifi_connected || wifi_connecting)){
+                stop_wifi();
+                Coms.Wifi.restart = false;
             }
             if((eth_connected || wifi_connected || gsm_connected) && !ServidorArrancado){
 
