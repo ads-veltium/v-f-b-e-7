@@ -239,7 +239,8 @@ void stop_wifi(void){
     Serial.println("Esperando a que firebase se desconecte!");
     #endif
 
-    while(ConnectionState != DISCONNECTED){
+    uint8_t timeout = 0;
+    while(ConnectionState != DISCONNECTED && ++timeout < 50){
         delay(100);
     }
 
@@ -419,6 +420,8 @@ void Eth_Loop(){
     static TickType_t xConnect = 0;
     static bool finding = false;
     static uint8_t LastStatus = APAGADO;
+    static uint8_t escape =0;
+    static  bool wifi_last =false;
     switch (Coms.ETH.State){
         case APAGADO:
             if(Coms.ETH.ON){
@@ -433,14 +436,24 @@ void Eth_Loop(){
         break;
         case CONNECTING:
             if(eth_connected){
-                Coms.ETH.State = CONECTADO;
-                xConnect = xTaskGetTickCount();
                 //Solo comprobamos la conexion a internet si no hemos activado el servidor dhcp
                 if(!Coms.ETH.DHCP){
+                    if(Coms.Wifi.ON){
+                        wifi_last = true;
+                    }
+                    Coms.Wifi.ON = false;
+                    
+                    if ((wifi_connected || wifi_connecting) && ++escape < 20){
+                        break;
+                    }
                     if(ComprobarConexion()){
                         ConnectionState = DISCONNECTED;
                         Coms.ETH.Internet = true;
-                        Coms.Wifi.ON = false;
+                    }
+                    else{
+                        Coms.Wifi.ON = wifi_last;
+                        Coms.ETH.Internet = false;
+                        Coms.ETH.Wifi_Perm = true;
                     }
                 }
                 #ifdef USE_GROUPS
@@ -449,6 +462,10 @@ void Eth_Loop(){
                     delay(5000);
                     start_udp();
                 #endif
+                escape =0;
+                wifi_last = false;
+                Coms.ETH.State = CONECTADO;
+                xConnect = xTaskGetTickCount();
             }
 
             else if(!Coms.ETH.ON){
@@ -542,7 +559,7 @@ void Eth_Loop(){
                     Serial.println("Esperando a que firebase se desconecte!");
                     #endif
                     uint8_t timeout = 0;
-                    while(ConnectionState != DISCONNECTED && ++timeout > 50){ // 5 segundos
+                    while(ConnectionState != DISCONNECTED && ++timeout < 50){ // 5 segundos
                         delay(100);
                     }
 
@@ -568,7 +585,6 @@ void Eth_Loop(){
                         Coms.Wifi.restart = true;
                     }
                 }
-
                 break;
             }
 
@@ -722,7 +738,8 @@ void ComsTask(void *args){
                 ConfigFirebase.InternetConection=true;
             }
 
-            //Encendido de las interfaces        
+            //Encendido de las interfaces 
+            printf("%i %i %i %i %i \n", Coms.Wifi.ON , wifi_connected, wifi_connecting, Coms.ETH.Internet, Coms.ETH.Wifi_Perm );       
             if(Coms.Wifi.ON && !wifi_connected && !wifi_connecting){
                 if(Coms.ETH.ON){
                     if(!Coms.ETH.Internet && Coms.ETH.Wifi_Perm){
@@ -733,6 +750,7 @@ void ComsTask(void *args){
                     start_wifi();
                 }                
             }
+
             else if((!Coms.Wifi.ON || Coms.Wifi.restart) && (wifi_connected || wifi_connecting)){
                 stop_wifi();
                 Coms.Wifi.restart = false;
