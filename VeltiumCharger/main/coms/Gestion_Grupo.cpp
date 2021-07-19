@@ -257,27 +257,32 @@ void start_udp(){
                     packet.print(Encipher(String(ConfigFirebase.Device_Id)).c_str());
                 }
 
-                if(check_in_group(Desencriptado.c_str(), net_group, net_group_size) == 255){
-                    if(packet.remoteIP()[0] == 0 && packet.remoteIP()[1] == 0 && packet.remoteIP()[2] == 0 && packet.remoteIP()[3] == 0 ){
-                        udp.broadcast(Encipher(String(ConfigFirebase.Device_Id)).c_str());
-                        return;
-                    }
-                    #ifdef DEBUG_GROUPS
-                    Serial.printf("El cargador VCD%s con ip %s se ha añadido a la lista de red\n", Desencriptado.c_str(), packet.remoteIP().toString().c_str());  
-                    #endif
-                    add_to_group(Desencriptado.c_str(), packet.remoteIP(), net_group, &net_group_size);
+                uint8 index = check_in_group(Desencriptado.c_str(), net_group, net_group_size);
+                
+                if (index != 255){
+                    remove_from_group(Desencriptado.c_str(),net_group, &net_group_size);
+                }
 
-                    //Actualizar net devices
-                    uint8_t group_buffer[452];
-                    group_buffer[0] = net_group_size +1;
-                    memcpy(&group_buffer[1], ConfigFirebase.Device_Id, 8);
-                    group_buffer[9] = 0;
-                    for(int i =0;i< net_group_size; i++){
-                        memcpy(&group_buffer[i*9+10], net_group[i].name,8);
-                        group_buffer[i*9+18]=0;
-                    }
-                    serverbleNotCharacteristic(group_buffer,net_group_size*9 +10, CHARGING_GROUP_BLE_NET_DEVICES);
-                } 
+                if(packet.remoteIP()[0] == 0 && packet.remoteIP()[1] == 0 && packet.remoteIP()[2] == 0 && packet.remoteIP()[3] == 0 ){
+                    udp.broadcast(Encipher(String(ConfigFirebase.Device_Id)).c_str());
+                    return;
+                }
+                #ifdef DEBUG_GROUPS
+                Serial.printf("El cargador VCD%s con ip %s se ha añadido a la lista de red\n", Desencriptado.c_str(), packet.remoteIP().toString().c_str());  
+                #endif
+                add_to_group(Desencriptado.c_str(), packet.remoteIP(), net_group, &net_group_size);
+
+                //Actualizar net devices
+                uint8_t group_buffer[452];
+                group_buffer[0] = net_group_size +1;
+                memcpy(&group_buffer[1], ConfigFirebase.Device_Id, 8);
+                group_buffer[9] = 0;
+                for(int i =0;i< net_group_size; i++){
+                    memcpy(&group_buffer[i*9+10], net_group[i].name,8);
+                    group_buffer[i*9+18]=0;
+                }
+                serverbleNotCharacteristic(group_buffer,net_group_size*9 +10, CHARGING_GROUP_BLE_NET_DEVICES);
+                
 
                 //Si el cargador está en el grupo de carga, le decimos que es un esclavo
                 if(ChargingGroup.Params.GroupMaster && ChargingGroup.Conected){
