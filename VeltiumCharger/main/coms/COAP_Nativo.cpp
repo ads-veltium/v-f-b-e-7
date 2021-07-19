@@ -721,6 +721,7 @@ clean_up:
 }
 
 static void coap_server(void *p){
+    ChargingGroup.NewData = false;
     ChargingGroup.Conected = true;
     ChargingGroup.StopOrder = false;
     ctx = NULL;

@@ -304,6 +304,7 @@ typedef struct{
 
 typedef struct{
 	bool AskPerm   = false;
+	bool NewData   = false;
 	bool SendNewParams = false;
 	bool SendNewGroup  = false;
 	bool SendNewCircuits  = false;

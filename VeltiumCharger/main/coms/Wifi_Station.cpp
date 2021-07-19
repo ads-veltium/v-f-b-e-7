@@ -476,7 +476,7 @@ void Eth_Loop(){
             else if(Params.Tipo_Sensor || ChargingGroup.Params.GroupMaster){
                 if(GetStateTime(xStart) > 30000){
                     #ifdef DEBUG_ETH
-                        Serial.println("Tengo un medidor conectado y no tengo internet, o soy el maestro de un grupo sin salida a internet, activo DHCP");
+                        Serial.println("Activo DHCP");
                     #endif
                     kill_ethernet();
                     Coms.ETH.Auto = false;
@@ -739,7 +739,6 @@ void ComsTask(void *args){
             }
 
             //Encendido de las interfaces 
-            printf("%i %i %i %i %i \n", Coms.Wifi.ON , wifi_connected, wifi_connecting, Coms.ETH.Internet, Coms.ETH.Wifi_Perm );       
             if(Coms.Wifi.ON && !wifi_connected && !wifi_connecting){
                 if(Coms.ETH.ON){
                     if(!Coms.ETH.Internet && Coms.ETH.Wifi_Perm){

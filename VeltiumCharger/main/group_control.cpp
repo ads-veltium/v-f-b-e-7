@@ -133,7 +133,7 @@ void New_Params(uint8_t* Buffer, int Data_size){
 
 //Funcion para recibir nuevos parametros de carga para el grupo
 void New_Params(char* Data, int Data_size){    
-
+  ChargingGroup.NewData = true;
   uint8_t buffer[7];
 
   cJSON *mensaje_Json = cJSON_Parse(Data);
@@ -288,6 +288,7 @@ void New_Group(uint8_t* Buffer, int Data_size){
 
 //Funcion para recibir un nuevo grupo de cargadores
 void New_Group(char* Data, int Data_size){
+    ChargingGroup.NewData = true;
     char ID[8];
     char n[2];
     memcpy(n,Data,2);
@@ -334,8 +335,8 @@ void New_Group(char* Data, int Data_size){
           charger_table[i].Delta = temp_chargers[index].Delta;
           charger_table[i].Consigna = temp_chargers[index].Consigna;
           charger_table[i].Delta_timer = temp_chargers[index].Delta_timer;
-          charger_table[i].Fase = temp_chargers[index].Fase;
-          charger_table[i].Circuito = temp_chargers[index].Circuito;
+          //charger_table[i].Fase = temp_chargers[index].Fase;
+          //charger_table[i].Circuito = temp_chargers[index].Circuito;
         }
         
 
@@ -420,7 +421,8 @@ void LimiteConsumo(void *p){
         print_table(charger_table, "Grupo en equilibrado", ChargingGroup.Charger_number);
 
         //Calculo general
-        if(Calculo_General()){
+        if(Calculo_General() || ChargingGroup.NewData){
+          ChargingGroup.NewData = false;
           ControlGrupoState = CALCULO;
           break;
         }
@@ -434,7 +436,7 @@ void LimiteConsumo(void *p){
         LastConex = Conex;
 
         //Comprobar si en algun momento nos estamos pasando de los limites
-        if(Consumo_total > ChargingGroup.Params.potencia_max){
+        if(Consumo_total > ChargingGroup.Params.potencia_max *100/230){
           ControlGrupoState = CALCULO;
           break;
         }
@@ -464,7 +466,7 @@ void LimiteConsumo(void *p){
         for(int i = 0; i < ChargingGroup.Charger_number; i++){
           if(!memcmp(charger_table[i].HPT, "B1", 2) && charger_table[i].Baimena){
             //Compruebo si entraria en el grupo con la corriente general
-            if(ChargingGroup.Params.potencia_max / (Conex+1) >= 6){
+            if((ChargingGroup.Params.potencia_max *100/230) / (Conex+1) >= 6){
               printf("Entra en el grupo!\n");
               //Compruebo si entraria en la fase 
               Params.inst_current_limit = 32;
@@ -670,7 +672,7 @@ bool Calculo_General(){
     Consumo_total = total_pc/100;
     uint16_t corriente_a_repartir = 0;
     bool recalcular = false;
-    corriente_a_repartir = ChargingGroup.Params.potencia_max;
+    corriente_a_repartir = ChargingGroup.Params.potencia_max *100/230;
 
     if(Conex > 0){
       
@@ -692,7 +694,7 @@ bool Calculo_General(){
         uint16_t Corriente_limite_cdp = Consumo_total + Corriente_CDP__sobra;
 
         //Ver si nos pasamos
-        if(Corriente_limite_cdp < Consumo_total || ChargingGroup.Params.potencia_max > Corriente_limite_cdp){ //Estamos por encima del limite
+        if(Corriente_limite_cdp < Consumo_total || (ChargingGroup.Params.potencia_max *100/230) > Corriente_limite_cdp){ //Estamos por encima del limite
             corriente_a_repartir =  Corriente_limite_cdp;
             Corriente_disponible_total = corriente_a_repartir / Conex;
             recalcular = true;
@@ -740,6 +742,7 @@ bool Calculo_General(){
     printf("Corriente disponible fases %f %f %f\n",Fases[0].corriente_disponible, Fases[1].corriente_disponible, Fases[2].corriente_disponible); 
     printf("Corriente disponible circuitos %f %f %f\n",Circuitos[0].corriente_disponible, Circuitos[1].corriente_disponible, Circuitos[2].corriente_disponible); 
     printf("Total conex %i\n",Conex); 
+    printf("Total Current %i\n",ChargingGroup.Params.potencia_max *100/230); 
     printf("Consumo total %i \n\n",Consumo_total); 
 
      
