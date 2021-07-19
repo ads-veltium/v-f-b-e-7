@@ -950,7 +950,7 @@ void procesar_bloque(uint16 tipo_bloque){
 				memcpy(Params.autentication_mode,buffer_rx_local,2);
 			#endif
 			//StartGSM();
-			ppposInit();
+			//ppposInit();
 		} 
 		break;
 		
@@ -965,8 +965,8 @@ void procesar_bloque(uint16 tipo_bloque){
 				Params.potencia_contratada1=buffer_rx_local[0]+buffer_rx_local[1]*100;
 			#endif
 			//FinishGSM();
-			ppposDisconnect(0, 1);
-			apagarModem();
+			//ppposDisconnect(0, 1);
+			//apagarModem();
 		}
 		break;
 
