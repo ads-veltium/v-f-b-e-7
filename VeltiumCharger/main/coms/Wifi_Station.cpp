@@ -418,6 +418,7 @@ void start_wifi(void)
 
 void Eth_Loop(){
     static TickType_t xStart = 0;
+    static TickType_t xCheckConn = 0;
     static TickType_t xConnect = 0;
     static bool finding = false;
     static uint8_t LastStatus = APAGADO;
@@ -452,6 +453,7 @@ void Eth_Loop(){
                         Coms.ETH.Internet = true;
                     }
                     else{
+                        xCheckConn = xTaskGetTickCount();
                         Coms.Wifi.ON = wifi_last;
                         Coms.ETH.Internet = false;
                         Coms.ETH.Wifi_Perm = true;
@@ -477,7 +479,7 @@ void Eth_Loop(){
             else if(Params.Tipo_Sensor || ChargingGroup.Params.GroupMaster){
                 if(GetStateTime(xStart) > 30000){
                     #ifdef DEBUG_ETH
-                        Serial.println("Tengo un medidor conectado y no tengo internet, o soy el maestro de un grupo sin salida a internet, activo DHCP");
+                        Serial.println("Activo DHCP");
                     #endif
                     kill_ethernet();
                     Coms.ETH.Auto = false;
@@ -489,6 +491,15 @@ void Eth_Loop(){
         break;
 
         case CONECTADO:{
+            // Recomprobar si tenemos conexion a firebase
+            if(!!Coms.ETH.Internet && !ConfigFirebase.InternetConection && GetStateTime(xCheckConn) > 60000){
+                xCheckConn = xTaskGetTickCount();
+                if(ComprobarConexion()){
+                    ConnectionState = DISCONNECTED;
+                    Coms.ETH.Internet = true;
+                }
+            }
+            
             if(ChargingGroup.Params.GroupActive){
                 Coms.ETH.Wifi_Perm = true;
             }
@@ -751,8 +762,7 @@ void ComsTask(void *args){
                 ConfigFirebase.InternetConection=true;
             }
 
-            //Encendido de las interfaces 
-            //printf("%i %i %i %i %i \n", Coms.Wifi.ON , wifi_connected, wifi_connecting, Coms.ETH.Internet, Coms.ETH.Wifi_Perm );       
+            //Encendido de las interfaces     
             if(Coms.Wifi.ON && !wifi_connected && !wifi_connecting){
                 if(Coms.ETH.ON){
                     if(!Coms.ETH.Internet && Coms.ETH.Wifi_Perm){
@@ -769,8 +779,10 @@ void ComsTask(void *args){
                 Coms.Wifi.restart = false;
             }
             if((eth_connected || wifi_connected || gsm_connected) && !ServidorArrancado){
-                InitServer();
-                ServidorArrancado = true;
+                if(!wifi_connecting){
+                    InitServer();
+                    ServidorArrancado = true;
+                }
             }
         }
         delay(500);

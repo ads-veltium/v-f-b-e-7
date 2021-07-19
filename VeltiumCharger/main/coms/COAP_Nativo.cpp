@@ -667,7 +667,7 @@ static void coap_client(void *p){
                 ChargingGroup.SendNewCircuits = false;
             }
             
-            if(/*FallosEnvio > 10 || */pdTICKS_TO_MS(xTaskGetTickCount()- xMasterTimer) > 60000){
+            if(/*FallosEnvio > 10 || */pdTICKS_TO_MS(xTaskGetTickCount()- xMasterTimer) > 70000){
                 #ifdef DEBUG_GROUPS
                 printf("Servidor desconectado !\n");
                 #endif
@@ -721,6 +721,7 @@ clean_up:
 }
 
 static void coap_server(void *p){
+    ChargingGroup.NewData = false;
     ChargingGroup.Conected = true;
     ChargingGroup.StopOrder = false;
     ctx = NULL;
