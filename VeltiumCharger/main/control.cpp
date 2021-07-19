@@ -335,6 +335,7 @@ void controlTask(void *arg)
 								#ifdef DEBUG
 								Serial.println("Reiniciando por comando externo! No preocuparse");
 								#endif
+								//FinishGSM();
 								MAIN_RESET_Write(0);
 								delay(500);		
 								ESP.restart();
@@ -345,6 +346,7 @@ void controlTask(void *arg)
 							#ifdef DEBUG
 							Serial.println("Main reset detected");
 							#endif
+							//FinishGSM();
 							MAIN_RESET_Write(0);						
 							ESP.restart();
 						}
@@ -896,7 +898,7 @@ void procesar_bloque(uint16 tipo_bloque){
 			//Si no estamos conectados por ble
 			
 			if(ConfigFirebase.InternetConection){
-				if(Coms.ETH.ON || Coms.Wifi.ON){
+				if(Coms.ETH.ON || Coms.Wifi.ON || Coms.GSM.ON){
 					if(!serverbleGetConnected()){
 						WriteFirebaseHistoric((char*)buffer_rx_local);
 					}	
@@ -945,7 +947,8 @@ void procesar_bloque(uint16 tipo_bloque){
 			#ifdef CONNECTED
 				memcpy(Params.autentication_mode,buffer_rx_local,2);
 			#endif
-			
+			//StartGSM();
+			ppposInit();
 		} 
 		break;
 		
@@ -959,7 +962,9 @@ void procesar_bloque(uint16 tipo_bloque){
 			#ifdef CONNECTED
 				Params.potencia_contratada1=buffer_rx_local[0]+buffer_rx_local[1]*100;
 			#endif
-		
+			//FinishGSM();
+			ppposDisconnect(0, 1);
+			apagarModem();
 		}
 		break;
 

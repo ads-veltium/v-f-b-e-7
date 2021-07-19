@@ -720,6 +720,11 @@ void ComsTask(void *args){
                     Coms.ETH.ON = false;
                     kill_ethernet();
                 }
+                if(gsm_connected){
+                    Coms.GSM.ON = false;
+                    ppposDisconnect(0, 1);
+                    apagarModem();
+                }
                 delay(100);
                 if(Coms.StartSmartconfig){
                     initialise_smartconfig();
@@ -731,6 +736,13 @@ void ComsTask(void *args){
                 Coms.StartProvisioning = false;
                 Coms.StartSmartconfig  = false;
             }
+            if(Coms.GSM.ON && !gsm_connected){
+                if(wifi_connected || wifi_connecting){
+                     Coms.Wifi.ON = false;
+                    stop_wifi();
+                }
+                ppposInit();
+            }
             //Comprobar si hemos perdido todas las conexiones
             if(!Coms.ETH.Internet && !Coms.Wifi.Internet && !Coms.GSM.Internet){
                 ConfigFirebase.InternetConection=false;
@@ -740,7 +752,7 @@ void ComsTask(void *args){
             }
 
             //Encendido de las interfaces 
-            printf("%i %i %i %i %i \n", Coms.Wifi.ON , wifi_connected, wifi_connecting, Coms.ETH.Internet, Coms.ETH.Wifi_Perm );       
+            //printf("%i %i %i %i %i \n", Coms.Wifi.ON , wifi_connected, wifi_connecting, Coms.ETH.Internet, Coms.ETH.Wifi_Perm );       
             if(Coms.Wifi.ON && !wifi_connected && !wifi_connecting){
                 if(Coms.ETH.ON){
                     if(!Coms.ETH.Internet && Coms.ETH.Wifi_Perm){
@@ -757,7 +769,6 @@ void ComsTask(void *args){
                 Coms.Wifi.restart = false;
             }
             if((eth_connected || wifi_connected || gsm_connected) && !ServidorArrancado){
-
                 InitServer();
                 ServidorArrancado = true;
             }

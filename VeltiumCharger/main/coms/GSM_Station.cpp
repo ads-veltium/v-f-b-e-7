@@ -43,11 +43,9 @@
 
 static const char *TIME_TAG = "[SNTP]";
 
-bool gsm_connected = false;
-
-extern carac_Firebase_Configuration ConfigFirebase;
 extern carac_Coms  Coms;
-extern uint8_t ConnectionState;
+
+bool gsm_connected=false;
 
 QueueHandle_t http_mutex;
 
@@ -83,26 +81,17 @@ String SendAt(String command){
 
 void StartGSM(){
 	Coms.GSM.Internet = false;
-	gsm_connected   = false;
+	//gsm_connected   = false;
 	if (ppposInit() == 0) {
 		ESP_LOGE("PPPoS EXAMPLE", "ERROR: GSM not initialized, HALTED");
 		//ppposDisconnect(0, 1);
 	}
-	Coms.GSM.Internet = true;
-	gsm_connected   = true;
-	//probarConexionGSM();
-
 }
 
 
 void FinishGSM(){
 	ppposDisconnect(0, 1);
 	apagarModem();
-
-	gsm_connected = false;
-	Coms.GSM.Internet = false;
-	ConnectionState = DISCONNECTED;
-	ConfigFirebase.InternetConection=false;
 }
 
 void shutdownGSM(){
