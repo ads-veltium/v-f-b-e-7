@@ -1,4 +1,5 @@
 #include "Wifi_Station.h"
+#include "../control.h"
 
 #ifdef CONNECTED
 esp_netif_t *sta_netif;

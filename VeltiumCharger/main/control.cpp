@@ -947,7 +947,7 @@ void procesar_bloque(uint16 tipo_bloque){
 			#ifdef CONNECTED
 				memcpy(Params.autentication_mode,buffer_rx_local,2);
 			#endif
-		
+			
 		} 
 		break;
 		
