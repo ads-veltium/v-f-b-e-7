@@ -258,7 +258,7 @@ void start_udp(){
                 }
 
                 uint8 index = check_in_group(Desencriptado.c_str(), net_group, net_group_size);
-                
+
                 if (index != 255){
                     remove_from_group(Desencriptado.c_str(),net_group, &net_group_size);
                 }
@@ -282,6 +282,7 @@ void start_udp(){
                     group_buffer[i*9+18]=0;
                 }
                 serverbleNotCharacteristic(group_buffer,net_group_size*9 +10, CHARGING_GROUP_BLE_NET_DEVICES);
+                print_table(net_group, "Net group", net_group_size);
                 
 
                 //Si el cargador está en el grupo de carga, le decimos que es un esclavo

@@ -418,6 +418,7 @@ void start_wifi(void)
 
 void Eth_Loop(){
     static TickType_t xStart = 0;
+    static TickType_t xCheckConn = 0;
     static TickType_t xConnect = 0;
     static bool finding = false;
     static uint8_t LastStatus = APAGADO;
@@ -452,6 +453,7 @@ void Eth_Loop(){
                         Coms.ETH.Internet = true;
                     }
                     else{
+                        xCheckConn = xTaskGetTickCount();
                         Coms.Wifi.ON = wifi_last;
                         Coms.ETH.Internet = false;
                         Coms.ETH.Wifi_Perm = true;
@@ -489,6 +491,15 @@ void Eth_Loop(){
         break;
 
         case CONECTADO:{
+            // Recomprobar si tenemos conexion a firebase
+            if(!!Coms.ETH.Internet && !ConfigFirebase.InternetConection && GetStateTime(xCheckConn) > 60000){
+                xCheckConn = xTaskGetTickCount();
+                if(ComprobarConexion()){
+                    ConnectionState = DISCONNECTED;
+                    Coms.ETH.Internet = true;
+                }
+            }
+            
             if(ChargingGroup.Params.GroupActive){
                 Coms.ETH.Wifi_Perm = true;
             }
