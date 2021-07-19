@@ -756,9 +756,10 @@ void ComsTask(void *args){
                 Coms.Wifi.restart = false;
             }
             if((eth_connected || wifi_connected || gsm_connected) && !ServidorArrancado){
-
-                InitServer();
-                ServidorArrancado = true;
+                if(!wifi_connecting){
+                    InitServer();
+                    ServidorArrancado = true;
+                }
             }
         }
         delay(500);
