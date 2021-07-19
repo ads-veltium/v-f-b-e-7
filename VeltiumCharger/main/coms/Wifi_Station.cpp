@@ -739,7 +739,7 @@ void ComsTask(void *args){
                 ConfigFirebase.InternetConection=true;
             }
 
-            //Encendido de las interfaces 
+            //Encendido de las interfaces     
             if(Coms.Wifi.ON && !wifi_connected && !wifi_connecting){
                 if(Coms.ETH.ON){
                     if(!Coms.ETH.Internet && Coms.ETH.Wifi_Perm){

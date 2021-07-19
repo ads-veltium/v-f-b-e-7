@@ -242,7 +242,8 @@ void New_Current(uint8_t* Buffer, int Data_size){
 
   if(desired_current == 0 && !ChargingGroup.ChargPerm && !memcmp(Status.HPT_status,"C2",2)){
     Serial.printf("Debo detener la carga!!!! %i %i\n", desired_current, ChargingGroup.ChargPerm);
-    SendToPSOC5(1, CHARGING_BLE_MANUAL_STOP_CHAR_HANDLE);
+    
+    SendToPSOC5(1, BLOQUEO_CARGA);
     SendToPSOC5(desired_current,MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
   }
 
