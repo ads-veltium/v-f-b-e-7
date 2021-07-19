@@ -43,11 +43,11 @@
 
 static const char *TIME_TAG = "[SNTP]";
 
+bool gsm_connected = false;
+
 extern carac_Firebase_Configuration ConfigFirebase;
 extern carac_Coms  Coms;
 extern uint8_t ConnectionState;
-
-bool gsm_connected   = false;
 
 QueueHandle_t http_mutex;
 

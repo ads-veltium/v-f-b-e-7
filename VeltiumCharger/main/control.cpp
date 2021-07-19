@@ -37,6 +37,8 @@ carac_circuito Circuitos[MAX_GROUP_SIZE] EXT_RAM_ATTR;
 #ifdef USE_GROUPS
 carac_group    ChargingGroup EXT_RAM_ATTR;
 carac_charger  charger_table[50] EXT_RAM_ATTR;
+carac_charger temp_chargers[MAX_GROUP_SIZE] EXT_RAM_ATTR;
+uint8_t 		temp_chargers_size EXT_RAM_ATTR;
 
 #endif
 #endif
@@ -945,7 +947,7 @@ void procesar_bloque(uint16 tipo_bloque){
 			#ifdef CONNECTED
 				memcpy(Params.autentication_mode,buffer_rx_local,2);
 			#endif
-		
+			
 		} 
 		break;
 		
@@ -1134,7 +1136,26 @@ void procesar_bloque(uint16 tipo_bloque){
 
 #ifdef USE_GROUPS
 		case GROUPS_DEVICES_PART_1:{
-            Serial.printf("Nuevo grupo recibido\n");
+			ChargingGroup.NewData = true;
+			temp_chargers_size = 0;
+			//Almacenado temporal del grupo
+			for(uint8_t i=0; i<ChargingGroup.Charger_number;i++){    
+				memcpy(temp_chargers[temp_chargers_size].name,charger_table[i].name,9);
+				memcpy(temp_chargers[temp_chargers_size].HPT,charger_table[i].HPT,2);
+				temp_chargers[temp_chargers_size].Current = charger_table[i].Current;
+				temp_chargers[temp_chargers_size].CurrentB = charger_table[i].CurrentB;
+				temp_chargers[temp_chargers_size].CurrentC = charger_table[i].CurrentC;
+
+				temp_chargers[temp_chargers_size].Delta = charger_table[i].Delta;
+				temp_chargers[temp_chargers_size].Consigna = charger_table[i].Consigna;
+				temp_chargers[temp_chargers_size].Delta_timer = charger_table[i].Delta_timer;
+				temp_chargers[temp_chargers_size].Fase = charger_table[i].Fase;
+				temp_chargers[temp_chargers_size].Circuito = charger_table[i].Circuito;
+				
+				temp_chargers_size ++;
+			}
+	
+			//Obtencion del grupo recibido desde el psoc
             char n[2];
             char ID[8];
             memcpy(n,buffer_rx_local,2);
@@ -1147,15 +1168,18 @@ void procesar_bloque(uint16 tipo_bloque){
                 }
                 add_to_group(ID, get_IP(ID), charger_table, &ChargingGroup.Charger_number);
 
-				
-				
                 charger_table[i].Fase = (buffer_rx_local[10+i*9]) & 0x03;
 				charger_table[i].Circuito = (buffer_rx_local[10+i*9]) >> 2;
 
-				printf("Fase %i\n", charger_table[i].Fase);
-				printf("Circuito %i\n", charger_table[i].Circuito);
-				if(charger_table[i].Circuito ==0){
-					printf("%s\n", buffer_rx_local);
+				uint8_t index =check_in_group(ID, temp_chargers, temp_chargers_size);
+				if(index != 255){
+					memcpy(charger_table[i].HPT,temp_chargers[index].HPT,2);
+					charger_table[i].Current = temp_chargers[index].Current;
+					charger_table[i].CurrentB = temp_chargers[index].CurrentB;
+					charger_table[i].CurrentC = temp_chargers[index].CurrentC;
+					charger_table[i].Delta = temp_chargers[index].Delta;
+					charger_table[i].Consigna = temp_chargers[index].Consigna;
+					charger_table[i].Delta_timer = temp_chargers[index].Delta_timer;
 				}
 
                 if(!memcmp(ID,ConfigFirebase.Device_Id,8)){
@@ -1189,6 +1213,13 @@ void procesar_bloque(uint16 tipo_bloque){
                             add_to_group(OldMaster.name, OldMaster.IP, charger_table,  &ChargingGroup.Charger_number);
                             charger_table[ChargingGroup.Charger_number-1].Fase=OldMaster.Fase;
 							charger_table[ChargingGroup.Charger_number-1].Circuito =OldMaster.Circuito;
+							charger_table[ChargingGroup.Charger_number-1].Current = OldMaster.Current;
+							charger_table[ChargingGroup.Charger_number-1].CurrentB = OldMaster.CurrentB;
+							charger_table[ChargingGroup.Charger_number-1].CurrentC = OldMaster.CurrentC;
+							charger_table[ChargingGroup.Charger_number-1].Consigna = OldMaster.Consigna;
+							charger_table[ChargingGroup.Charger_number-1].Delta = OldMaster.Delta;
+							charger_table[ChargingGroup.Charger_number-1].Delta_timer = OldMaster.Delta_timer;
+							memcpy(charger_table[ChargingGroup.Charger_number-1].HPT, OldMaster.HPT, 2);
                         }
                         ChargingGroup.SendNewGroup = true;
                     }
@@ -1215,6 +1246,17 @@ void procesar_bloque(uint16 tipo_bloque){
                 charger_table[i].Fase = (buffer_rx_local[10+i*9]-'0') & 0x03;
 				charger_table[i].Circuito = (buffer_rx_local[10+i*9]-'0') >> 2;
 
+				uint8_t index =check_in_group(ID, temp_chargers, temp_chargers_size);
+				if(index != 255){
+					memcpy(charger_table[i].HPT,temp_chargers[index].HPT,2);
+					charger_table[i].Current = temp_chargers[index].Current;
+					charger_table[i].CurrentB = temp_chargers[index].CurrentB;
+					charger_table[i].CurrentC = temp_chargers[index].CurrentC;
+					charger_table[i].Delta = temp_chargers[index].Delta;
+					charger_table[i].Consigna = temp_chargers[index].Consigna;
+					charger_table[i].Delta_timer = temp_chargers[index].Delta_timer;
+				}
+
                 if(!memcmp(ID,ConfigFirebase.Device_Id,8)){
                     Params.Fase = (buffer_rx_local[10+i*9]-'0') & 0x03;
                 }
@@ -1237,9 +1279,16 @@ void procesar_bloque(uint16 tipo_bloque){
                         while(memcmp(charger_table[0].name,ConfigFirebase.Device_Id, 8)){
                             carac_charger OldMaster=charger_table[0];
                             remove_from_group(OldMaster.name, charger_table, &ChargingGroup.Charger_number);
-                            add_to_group(OldMaster.name, OldMaster.IP, charger_table, &ChargingGroup.Charger_number);
-                            charger_table[ChargingGroup.Charger_number-1].Fase = OldMaster.Fase;
-							charger_table[ChargingGroup.Charger_number-1].Circuito = OldMaster.Circuito;
+                            add_to_group(OldMaster.name, OldMaster.IP, charger_table,  &ChargingGroup.Charger_number);
+                            charger_table[ChargingGroup.Charger_number-1].Fase=OldMaster.Fase;
+							charger_table[ChargingGroup.Charger_number-1].Circuito =OldMaster.Circuito;
+							charger_table[ChargingGroup.Charger_number-1].Current = OldMaster.Current;
+							charger_table[ChargingGroup.Charger_number-1].CurrentB = OldMaster.CurrentB;
+							charger_table[ChargingGroup.Charger_number-1].CurrentC = OldMaster.CurrentC;
+							charger_table[ChargingGroup.Charger_number-1].Consigna = OldMaster.Consigna;
+							charger_table[ChargingGroup.Charger_number-1].Delta = OldMaster.Delta;
+							charger_table[ChargingGroup.Charger_number-1].Delta_timer = OldMaster.Delta_timer;
+							memcpy(charger_table[ChargingGroup.Charger_number-1].HPT, OldMaster.HPT, 2);
                         }
                         ChargingGroup.SendNewGroup = true;
                     }
@@ -1253,6 +1302,7 @@ void procesar_bloque(uint16 tipo_bloque){
 
 
 		case GROUPS_PARAMS:{
+			ChargingGroup.NewData = true;
 			ChargingGroup.Params.GroupMaster = buffer_rx_local[0];
 
 			if(ChargingGroup.Params.GroupActive && !buffer_rx_local[1]){
@@ -1278,6 +1328,7 @@ void procesar_bloque(uint16 tipo_bloque){
 		}
 
 		case GROUPS_CIRCUITS:{
+			ChargingGroup.NewData = true;
 			int numero_circuitos = buffer_rx_local[0];
 			ChargingGroup.Circuit_number = numero_circuitos;
 			for(int i=0;i< numero_circuitos;i++){

@@ -1,4 +1,5 @@
 #include "Wifi_Station.h"
+#include "../control.h"
 
 #ifdef CONNECTED
 esp_netif_t *sta_netif;
@@ -476,7 +477,7 @@ void Eth_Loop(){
             else if(Params.Tipo_Sensor || ChargingGroup.Params.GroupMaster){
                 if(GetStateTime(xStart) > 30000){
                     #ifdef DEBUG_ETH
-                        Serial.println("Tengo un medidor conectado y no tengo internet, o soy el maestro de un grupo sin salida a internet, activo DHCP");
+                        Serial.println("Activo DHCP");
                     #endif
                     kill_ethernet();
                     Coms.ETH.Auto = false;
