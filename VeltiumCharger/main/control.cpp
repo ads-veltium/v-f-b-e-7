@@ -1333,6 +1333,9 @@ void procesar_bloque(uint16 tipo_bloque){
 			ChargingGroup.Circuit_number = numero_circuitos;
 			for(int i=0;i< numero_circuitos;i++){
 				Circuitos[i].numero = i+1;
+				Circuitos[i].Fases[0].numero = 1;
+				Circuitos[i].Fases[1].numero = 2;
+				Circuitos[i].Fases[2].numero = 3;
             	Circuitos[i].limite_corriente = buffer_rx_local[i+1];	
 				printf("Corriente del circuito %i\n", Circuitos[i].limite_corriente);			
 			}

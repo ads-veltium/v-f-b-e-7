@@ -27,15 +27,6 @@ bool Calculo_General();
 void Reparto_Delta();
 void LimiteConsumo(void *p);
 
-typedef struct{
-    uint8_t numero = 0;
-	int corriente_total = 0;
-    int conex = 0;
-    int consigna_total = 0;
-    int corriente_sobrante = 0;
-    float corriente_disponible = 0;
-
-}carac_fase;
 
 
 

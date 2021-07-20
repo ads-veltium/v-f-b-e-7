@@ -273,7 +273,6 @@ typedef struct{
 	uint16_t   Delta  = 0;
 
 
-
 	uint16_t Delta_timer = 0;
 	TickType_t Period = 0;
 	bool Conected = false;
@@ -294,7 +293,19 @@ typedef struct{
 
 typedef struct{
     uint8_t numero = 0;
+	int corriente_total = 0;
+    int conex = 0;
+    int consigna_total = 0;
+    int corriente_sobrante = 0;
+    float corriente_disponible = 0;
+
+}carac_fase;
+
+
+typedef struct{
+    uint8_t numero = 0;
     uint8_t limite_corriente = 32;
+	carac_fase Fases[3];
 	int corriente_total = 0;
     int conex = 0;
     int consigna_total = 0;
