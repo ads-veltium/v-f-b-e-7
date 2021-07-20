@@ -26,6 +26,9 @@
 
 
 extern carac_Coms  Coms;
+extern bool gsm_connected;
+extern uint8_t ConnectionState;
+extern carac_Firebase_Configuration ConfigFirebase;
 
 // === GSM configuration that you can set via 'make menuconfig'. ===
 #define UART_GPIO_TX 32
@@ -221,6 +224,8 @@ static void ppp_status_cb(ppp_pcb *pcb, int err_code, void *ctx)
 			
 			xSemaphoreTake(pppos_mutex, PPPOSMUTEX_TIMEOUT);
 			gsm_status = GSM_STATE_CONNECTED;
+			gsm_connected = true;
+			Coms.GSM.Internet = true;
 			xSemaphoreGive(pppos_mutex);
 			break;
 		}
@@ -255,6 +260,10 @@ static void ppp_status_cb(ppp_pcb *pcb, int err_code, void *ctx)
 			
 			xSemaphoreTake(pppos_mutex, PPPOSMUTEX_TIMEOUT);
 			gsm_status = GSM_STATE_DISCONNECTED;
+			gsm_connected = false;
+			Coms.GSM.Internet = false;
+			ConnectionState = DISCONNECTED;
+			ConfigFirebase.InternetConection=false;
 			xSemaphoreGive(pppos_mutex);
 			break;
 		}
@@ -264,6 +273,10 @@ static void ppp_status_cb(ppp_pcb *pcb, int err_code, void *ctx)
 			
 			xSemaphoreTake(pppos_mutex, PPPOSMUTEX_TIMEOUT);
 			gsm_status = GSM_STATE_DISCONNECTED;
+			gsm_connected = false;
+			Coms.GSM.Internet = false;
+			ConnectionState = DISCONNECTED;
+			ConfigFirebase.InternetConection=false;
 			xSemaphoreGive(pppos_mutex);
 			break;
 		}
@@ -540,7 +553,7 @@ static void pppos_client_task(void *args)
 	//int size = Coms.GSM.Apn.length();
 	//char PPP_ApnATReq[size+24];
 
-	char PPP_ApnATReq[sizeof("orangeworld")+24];
+	char PPP_ApnATReq[sizeof("telefonica.es")+24];
     // Allocate receive buffer
     char* data = (char*) malloc(BUF_SIZE);
     if (data == NULL) {
@@ -568,7 +581,7 @@ static void pppos_client_task(void *args)
 
 	// Set APN from config
 	//sprintf(PPP_ApnATReq, "AT+CGDCONT=1,\"IP\",\"%s\"\r\n",Coms.GSM.Apn.c_str());
-	sprintf(PPP_ApnATReq, "AT+CGDCONT=1,\"IP\",\"%s\"\r\n","orangeworld");
+	sprintf(PPP_ApnATReq, "AT+CGDCONT=1,\"IP\",\"%s\"\r\n","telefonica.es");
 	cmd_APN.cmd = PPP_ApnATReq;
 	cmd_APN.cmdSize = strlen(PPP_ApnATReq);
 

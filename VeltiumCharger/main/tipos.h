@@ -197,6 +197,7 @@ typedef struct{
 	uint8_t Pin [4];
 	bool Internet = false;
 	
+	uint8_t   State;
 	uint32 ts_app_req;
 	uint32 ts_dev_ack;
 }carac_MODEM;
