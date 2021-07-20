@@ -495,7 +495,7 @@ void coap_put( char* Topic, char* Message){
 
             //TODOJ: Cambiar lo de corriente d
             if((uint8_t)Cargador.Consigna != Comands.desired_current){
-                corrienteDeseada = Cargador.Consigna * 100;
+                //corrienteDeseada = Cargador.Consigna * 100;
                 printf("Enviando nueva consigna! %i %i\n", Cargador.Consigna, Comands.desired_current);
                 SendToPSOC5((uint8_t)Cargador.Consigna,MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
             }
@@ -970,13 +970,14 @@ void Send_Data(){
   Datos_Json = cJSON_CreateObject();
 
   cJSON_AddStringToObject(Datos_Json, "device_id", ConfigFirebase.Device_Id);
+  cJSON_AddNumberToObject(Datos_Json, "current", Status.Measures.instant_current);
   //TODOJ: Cambiar esto!!!
-  if(!memcmp("C", Status.HPT_status, 1)){
+  /*if(!memcmp("C", Status.HPT_status, 1)){
       cJSON_AddNumberToObject(Datos_Json, "current", corrienteDeseada);
   }
   else{
       cJSON_AddNumberToObject(Datos_Json, "current", Status.Measures.instant_current);
-  }
+  }*/
 
   //si es trifasico, enviar informacion de todas las fases
   if(Status.Trifasico){
