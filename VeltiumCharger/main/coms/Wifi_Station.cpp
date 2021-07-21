@@ -752,7 +752,7 @@ void ComsTask(void *args){
                      Coms.Wifi.ON = false;
                     stop_wifi();
                 }
-                ppposInit();
+                //ppposInit();
             }
             //Comprobar si hemos perdido todas las conexiones
             if(!Coms.ETH.Internet && !Coms.Wifi.Internet && !Coms.GSM.Internet){
@@ -779,8 +779,8 @@ void ComsTask(void *args){
                 Coms.Wifi.restart = false;
             }
             if((eth_connected || wifi_connected || gsm_connected) && !ServidorArrancado){
-                if(!wifi_connecting){
-                    InitServer();
+                if(!wifi_connecting ){
+                    //InitServer();
                     ServidorArrancado = true;
                 }
             }

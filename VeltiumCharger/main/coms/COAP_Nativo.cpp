@@ -670,7 +670,7 @@ static void coap_client(void *p){
                 ChargingGroup.SendNewCircuits = false;
             }
             
-            if(/*FallosEnvio > 10 || */pdTICKS_TO_MS(xTaskGetTickCount()- xMasterTimer) > 70000){
+            if(/*FallosEnvio > 10 || */pdTICKS_TO_MS(xTaskGetTickCount()- xMasterTimer) > 180000){
                 #ifdef DEBUG_GROUPS
                 printf("Servidor desconectado !\n");
                 #endif

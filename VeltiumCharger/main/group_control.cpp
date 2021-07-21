@@ -31,6 +31,7 @@ float Corriente_disponible_total = 0;
 uint8_t Consumo_total = 0;
 uint8_t Conex_Delta;
 uint8_t Conex;
+uint8_t Conex_Con_tri =0;
 
 void Calculo_Consigna(carac_charger* Cargador);
 void input_values(carac_charger Cargador);
@@ -246,6 +247,7 @@ void New_Current(uint8_t* Buffer, int Data_size){
 
   if(desired_current!=Comands.desired_current &&  (!memcmp(Status.HPT_status,"C2",2) || ChargingGroup.ChargPerm)){
       Serial.printf("Nueva corriente recibida!!!!\n");
+      
       SendToPSOC5(desired_current,MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
   }
 
@@ -363,10 +365,17 @@ void LimiteConsumo(void *p){
         for(int i = 0; i < ChargingGroup.Charger_number; i++){
           if(!memcmp(charger_table[i].HPT, "B1", 2) && charger_table[i].Baimena){
             //cls();
-            print_table(charger_table, "Grupo en reposo", ChargingGroup.Charger_number);
-            memcpy(charger_table[i].HPT, "C2", 2);
-            charger_table[i].order =1;
-            ControlGrupoState = CALCULO;
+            float reparto = (ChargingGroup.Params.potencia_max *100/230);
+            if(charger_table[i].trifasico){
+              reparto = (ChargingGroup.Params.potencia_max *100/230) / 3;
+            }
+            
+            if(reparto >= 6){
+              print_table(charger_table, "Grupo en reposo", ChargingGroup.Charger_number);
+              memcpy(charger_table[i].HPT, "C2", 2);
+              charger_table[i].order =1;
+              ControlGrupoState = CALCULO;
+            }
           }
           else{
             charger_table[i].Consigna = 0;
@@ -396,6 +405,23 @@ void LimiteConsumo(void *p){
               charger_table[i].Consigna = Corriente_disponible_total;
             
             charger_table[i].Consigna = charger_table[i].Consigna > 32 ? 32 : charger_table[i].Consigna;
+
+            //Si es trifasico, tenemos que tener en cuenta tres potencias mas
+            if(charger_table[i].CurrentB > 250 || charger_table[i].CurrentC>250){
+              if(charger_table[i].Consigna < 6){
+                charger_table[i].Consigna = 0;
+                charger_table[i].Baimena = 0;
+                memcpy(charger_table[i].HPT,"B1",2);
+                charger_table[i].Current = 0;
+                charger_table[i].Delta = 0;
+                charger_table[i].Delta_timer = 0;
+                charger_table[i].CurrentB = 0;
+                charger_table[i].CurrentC = 0;
+                charger_table[i].trifasico =1;
+                Conex--;
+                Conex_Con_tri -=3;
+              }
+            }
           }
         }
 
@@ -409,7 +435,7 @@ void LimiteConsumo(void *p){
       }
 
       case EQUILIBRADO:{
-        //cls();
+        // cls();
         print_table(charger_table, "Grupo en equilibrado", ChargingGroup.Charger_number);
 
         //Calculo general
@@ -452,7 +478,32 @@ void LimiteConsumo(void *p){
         for(int i = 0; i < ChargingGroup.Charger_number; i++){
           if(!memcmp(charger_table[i].HPT, "B1", 2) && charger_table[i].Baimena){
             //Compruebo si entraria en el grupo con la corriente general
-            if((ChargingGroup.Params.potencia_max *100/230) / (Conex+1) >= 6){
+            if(charger_table[i].trifasico ){ //Si el equipo estaba detectado como trifasico, debemos tener en cuenta el triple de corriente
+              float reparto = (ChargingGroup.Params.potencia_max *100/230) / (Conex_Con_tri+3);
+              if(reparto >= 6){
+                printf("Entra en el grupo!\n");
+                //Compruebo si entraria en el circuito           
+                if(Circuitos[charger_table[i].Circuito-1].limite_corriente / (Circuitos[charger_table[i].Circuito-1].Fases[0].conex +1 )> 6){
+                  if(Circuitos[charger_table[i].Circuito-1].limite_corriente / (Circuitos[charger_table[i].Circuito-1].Fases[1].conex +1 )> 6){
+                    if(Circuitos[charger_table[i].Circuito-1].limite_corriente / (Circuitos[charger_table[i].Circuito-1].Fases[2].conex +1 )> 6){
+                        printf("Entra en el circuito!\n");
+                        memcpy(charger_table[i].HPT, "C2", 2);
+                        //Asignar el orden de carga
+                        uint8_t last_order = 0;
+                        for(int j = 0; j < ChargingGroup.Charger_number; j++){
+                          if(!memcmp(charger_table[j].HPT,"C2",2) || !memcmp(charger_table[j].HPT,"B2",2)){
+                            last_order = last_order < charger_table[j].order ? charger_table[j].order: last_order;
+                          }
+                        }
+                        charger_table[i].order = last_order + 1;
+                        ControlGrupoState = CALCULO;
+                        break;
+                    }
+                  }
+                }
+              }
+            }
+            else if((ChargingGroup.Params.potencia_max *100/230) / (Conex_Con_tri+1) >= 6){
               printf("Entra en el grupo!\n");
               //Compruebo si entraria en el circuito           
                if(Circuitos[charger_table[i].Circuito-1].limite_corriente / (Circuitos[charger_table[i].Circuito-1].Fases[charger_table[i].Fase-1].conex +1 )> 6){
@@ -530,10 +581,13 @@ void LimiteConsumo(void *p){
 
 bool Calculo_General(){
     Conex=0;
+    Conex_Con_tri = 0;
     Consumo_total = 0;
     Delta_total = 0;
     Conex_Delta = 0;
     uint16_t total_pc =0;
+    uint16_t total_consigna=0;
+    static uint16_t recalc_count =0;
 
     //Resetear valores
     for(uint8_t i =0; i < ChargingGroup.Circuit_number; i++){
@@ -556,17 +610,22 @@ bool Calculo_General(){
         //Datos por Grupo
         if(!memcmp(charger_table[i].HPT,"C2",2) || !memcmp(charger_table[i].HPT,"C1",2) || !memcmp(charger_table[i].HPT,"B2",2)){
             Conex++;
+            Conex_Con_tri++;
             uint8_t faseA, faseB = 0, faseC = 0;
             faseA =charger_table[i].Fase -1;
 
             //Datos por fase
-            Circuitos[charger_table[i].Fase-1].Fases[faseA].conex++;
-            Circuitos[charger_table[i].Fase-1].Fases[faseA].corriente_total += charger_table[i].Current;
-            Circuitos[charger_table[i].Fase-1].Fases[faseA].consigna_total += charger_table[i].Consigna;
+            Circuitos[charger_table[i].Circuito-1].Fases[faseA].conex++;
+            Circuitos[charger_table[i].Circuito-1].Fases[faseA].corriente_total += charger_table[i].Current;
+            Circuitos[charger_table[i].Circuito-1].Fases[faseA].consigna_total += charger_table[i].Consigna;
+            total_consigna += charger_table[i].Consigna;
             total_pc += charger_table[i].Current;
             
             //Si es trifasico, los datos deben ir a todas las fases
-            if(charger_table[i].CurrentB > 0 || charger_table[i].CurrentC > 0){
+            if(charger_table[i].CurrentB > 250 || charger_table[i].CurrentC > 250){
+              charger_table[i].trifasico =1;
+              total_consigna += charger_table[i].Consigna *2;
+              Conex_Con_tri+=2;
               switch(faseA){
                 case 0:
                   faseB = 1;
@@ -585,27 +644,18 @@ bool Calculo_General(){
               }
               
               if(charger_table[i].CurrentB > 0 ){
-                Circuitos[charger_table[i].Fase-1].Fases[faseB].conex++;
-                Circuitos[charger_table[i].Fase-1].Fases[faseB].corriente_total += charger_table[i].CurrentB;
-                Circuitos[charger_table[i].Fase-1].Fases[faseB].consigna_total += charger_table[i].Consigna;
+                Circuitos[charger_table[i].Circuito-1].Fases[faseB].conex++;
+                Circuitos[charger_table[i].Circuito-1].Fases[faseB].corriente_total += charger_table[i].CurrentB;
+                Circuitos[charger_table[i].Circuito-1].Fases[faseB].consigna_total += charger_table[i].Consigna ;
                 total_pc += charger_table[i].CurrentB;
               }
               if(charger_table[i].CurrentC > 0 ){
-                Circuitos[charger_table[i].Fase-1].Fases[faseC].conex++;
-                Circuitos[charger_table[i].Fase-1].Fases[faseC].corriente_total += charger_table[i].CurrentC;
-                Circuitos[charger_table[i].Fase-1].Fases[faseC].consigna_total += charger_table[i].Consigna;
+                Circuitos[charger_table[i].Circuito-1].Fases[faseC].conex++;
+                Circuitos[charger_table[i].Circuito-1].Fases[faseC].corriente_total += charger_table[i].CurrentC;
+                Circuitos[charger_table[i].Circuito-1].Fases[faseC].consigna_total += charger_table[i].Consigna ;
                 total_pc += charger_table[i].CurrentC;
               }
             }
-
-            //si no es trifasico, actualizamos circuitos
-            else{
-              //Datos por circuito
-              Circuitos[charger_table[i].Circuito-1].conex++;
-              Circuitos[charger_table[i].Circuito-1].corriente_total += charger_table[i].Current;
-              Circuitos[charger_table[i].Circuito-1].consigna_total += charger_table[i].Consigna;
-            }
-
             //Comprobar si alguno tiene corriente de sobra
             if(charger_table[i].Delta > 0){
               Delta_total += charger_table[i].Delta;
@@ -621,6 +671,7 @@ bool Calculo_General(){
             charger_table[i].CurrentB = 0;
             charger_table[i].CurrentC = 0;
             charger_table[i].order = 0;
+            charger_table[i].trifasico =0;
         }
        
     }   
@@ -642,13 +693,14 @@ bool Calculo_General(){
     }
 
     Consumo_total = total_pc/100;
+    
     uint16_t corriente_a_repartir = 0;
     bool recalcular = false;
     corriente_a_repartir = ChargingGroup.Params.potencia_max *100/230;
 
-    if(Conex > 0){
+    if(Conex_Con_tri > 0){
       
-      Corriente_disponible_total = corriente_a_repartir / Conex;
+      Corriente_disponible_total = corriente_a_repartir / Conex_Con_tri;
     
       if(ChargingGroup.Params.CDP >> 4 && ContadorExt.ContadorConectado){
         float Corriente_CDP__sobra = 0;
@@ -668,7 +720,7 @@ bool Calculo_General(){
         //Ver si nos pasamos
         if(Corriente_limite_cdp < Consumo_total || (ChargingGroup.Params.potencia_max *100/230) > Corriente_limite_cdp){ //Estamos por encima del limite
             corriente_a_repartir =  Corriente_limite_cdp;
-            Corriente_disponible_total = corriente_a_repartir / Conex;
+            Corriente_disponible_total = corriente_a_repartir / Conex_Con_tri;
             recalcular = true;
         }
   
@@ -701,19 +753,43 @@ bool Calculo_General(){
         charger_table[last_index].CurrentB = 0;
         charger_table[last_index].CurrentC = 0;
         Conex--;
-        Corriente_disponible_total = corriente_a_repartir / Conex;
+        Conex_Con_tri --;
+        if(charger_table[last_index].trifasico){
+          Conex_Con_tri -=2;
+        }
+        if(Conex_Con_tri > 0){
+          Corriente_disponible_total = corriente_a_repartir / Conex_Con_tri;
+        }
+        else{
+          break;
+        }
       }
+    }
+
+    if((ChargingGroup.Params.potencia_max *100/230-total_consigna) > 5 && ChargingGroup.Params.potencia_max *100/230 - Consumo_total < 15) {
+      if(++recalc_count > 100){
+        recalcular = true;
+        recalc_count = 0;
+      }
+      
     }
 
 
 #ifdef DEBUG_GROUPS
-    printf("\n\nTotal PC of phase of circuit 0 %i %i %i\n",Circuitos[0].Fases[0].corriente_total, Circuitos[0].Fases[1].corriente_total, Circuitos[0].Fases[2].corriente_total); 
+    printf("\n\nNumero de circitos %i\n", ChargingGroup.Circuit_number);
+    printf("Total PC of phase of circuit 0 %i %i %i\n",Circuitos[0].Fases[0].corriente_total, Circuitos[0].Fases[1].corriente_total, Circuitos[0].Fases[2].corriente_total); 
+    printf("Total PC of phase of circuit 1 %i %i %i\n",Circuitos[1].Fases[0].corriente_total, Circuitos[1].Fases[1].corriente_total, Circuitos[1].Fases[2].corriente_total); 
     printf("Total consigna of phase %i %i %i\n",Circuitos[0].Fases[0].consigna_total, Circuitos[0].Fases[1].consigna_total, Circuitos[0].Fases[2].consigna_total); 
+    printf("Total consigna of phase of circuit 1 %i %i %i\n",Circuitos[1].Fases[0].consigna_total, Circuitos[1].Fases[1].consigna_total, Circuitos[1].Fases[2].consigna_total); 
     printf("Total conex of phase %i %i %i\n",Circuitos[0].Fases[0].conex, Circuitos[0].Fases[1].conex, Circuitos[0].Fases[2].conex); 
-    printf("Corriente disponible fases %f %f %f\n",Circuitos[0].Fases[0].corriente_disponible, Circuitos[0].Fases[1].corriente_disponible, Circuitos[0].Fases[2].corriente_disponible);  
+    printf("Total conex of phase %i %i %i\n",Circuitos[1].Fases[0].conex, Circuitos[1].Fases[1].conex, Circuitos[1].Fases[2].conex); 
+    printf("Enviando consigna en circuito 0 %f %f %f\n",Circuitos[0].Fases[0].corriente_disponible, Circuitos[0].Fases[1].corriente_disponible, Circuitos[0].Fases[2].corriente_disponible);  
+    printf("Enviando consigna en circuito 0 %f %f %f\n",Circuitos[1].Fases[0].corriente_disponible, Circuitos[1].Fases[1].corriente_disponible, Circuitos[1].Fases[2].corriente_disponible);
     printf("Total conex %i\n",Conex); 
+    printf("Total tri_conex %i\n",Conex_Con_tri); 
     printf("Total Current %i\n",ChargingGroup.Params.potencia_max *100/230); 
     printf("Consumo total %i \n\n",Consumo_total); 
+    printf("Consigna total %i \n\n",total_consigna); 
 
      
 #endif
