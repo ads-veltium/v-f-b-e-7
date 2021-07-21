@@ -492,6 +492,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 				if(ChargingGroup.Params.GroupActive && !payload[0]){
 					ChargingGroup.SendNewParams = true;
 				}
+				printf("%s\n", payload);
 				memcpy(&sendBuffer[1], payload,6);
 				
 				buffer_tx[0] = HEADER_TX;
