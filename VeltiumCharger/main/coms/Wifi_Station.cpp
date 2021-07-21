@@ -780,7 +780,7 @@ void ComsTask(void *args){
             }
             if((eth_connected || wifi_connected || gsm_connected) && !ServidorArrancado){
                 if(!wifi_connecting ){
-                    //InitServer();
+                    InitServer();
                     ServidorArrancado = true;
                 }
             }

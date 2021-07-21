@@ -66,8 +66,8 @@ void BuscarContador_Task(void *args){
                 }
             }
             else if(!Sentido && !TopeSup){ //Parriba
-                i = ip4_addr4(&Coms.ETH.IP) + Sup < 255 ? ip4_addr4(&Coms.ETH.IP) + Sup : 255;
-                if(i != 254 ){
+                i = ip4_addr4(&Coms.ETH.IP) + Sup < 253 ? ip4_addr4(&Coms.ETH.IP) + Sup : 253;
+                if(i != 253 ){
                     Sup++;
                     if(!TopeInf){
                         Sentido = true;

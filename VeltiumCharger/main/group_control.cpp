@@ -335,8 +335,6 @@ void New_Group(char* Data, int Data_size){
           charger_table[i].Delta = temp_chargers[index].Delta;
           charger_table[i].Consigna = temp_chargers[index].Consigna;
           charger_table[i].Delta_timer = temp_chargers[index].Delta_timer;
-          //charger_table[i].Fase = temp_chargers[index].Fase;
-          //charger_table[i].Circuito = temp_chargers[index].Circuito;
         }
         
 
@@ -354,31 +352,33 @@ void LimiteConsumo(void *p){
   static uint8_t ControlGrupoState = REPOSO;
   static uint8_t LastConex = 0;
 
-
   TickType_t Delta_Timer = xTaskGetTickCount();
+  TickType_t Start_Timer = xTaskGetTickCount();
 
   while (1){
     
     switch(ControlGrupoState){
       //Estado reposo, no hay nadie cargando
       case REPOSO:
-        for(int i = 0; i < ChargingGroup.Charger_number; i++){
-          if(!memcmp(charger_table[i].HPT, "B1", 2) && charger_table[i].Baimena){
-            //cls();
-            float reparto = (ChargingGroup.Params.potencia_max *100/230);
-            if(charger_table[i].trifasico){
-              reparto = (ChargingGroup.Params.potencia_max *100/230) / 3;
+        if(pdTICKS_TO_MS(xTaskGetTickCount() - Start_Timer) > 50000){
+          for(int i = 0; i < ChargingGroup.Charger_number; i++){
+            if(!memcmp(charger_table[i].HPT, "B1", 2) && charger_table[i].Baimena){
+              //cls();
+              float reparto = (ChargingGroup.Params.potencia_max *100/230);
+              if(charger_table[i].trifasico){
+                reparto = (ChargingGroup.Params.potencia_max *100/230) / 3;
+              }
+              
+              if(reparto >= 6){
+                print_table(charger_table, "Grupo en reposo", ChargingGroup.Charger_number);
+                memcpy(charger_table[i].HPT, "C2", 2);
+                charger_table[i].order =1;
+                ControlGrupoState = CALCULO;
+              }
             }
-            
-            if(reparto >= 6){
-              print_table(charger_table, "Grupo en reposo", ChargingGroup.Charger_number);
-              memcpy(charger_table[i].HPT, "C2", 2);
-              charger_table[i].order =1;
-              ControlGrupoState = CALCULO;
+            else{
+              charger_table[i].Consigna = 0;
             }
-          }
-          else{
-            charger_table[i].Consigna = 0;
           }
         }
           
