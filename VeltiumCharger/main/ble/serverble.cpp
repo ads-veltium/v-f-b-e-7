@@ -576,10 +576,6 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 						group_buffer[4] = (uint8)(ChargingGroup.Params.potencia_max & 0x00FF);
 						group_buffer[5] = (uint8)((ChargingGroup.Params.potencia_max >>8) & 0x00FF);
 
-						for(uint8_t i = 0;i < 6; i++){
-							printf("%i ", group_buffer[i]);
-						}
-
 						serverbleSetCharacteristic(group_buffer,6 ,GROUPS_PARAMS);
 
 						//Actualizar circuits

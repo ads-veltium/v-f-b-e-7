@@ -647,7 +647,7 @@ static void coap_client(void *p){
         //Bucle del grupo
         xMasterTimer = xTaskGetTickCount();
         while(1){
-            coap_run_once(ctx, 250);
+            coap_run_once(ctx, 100);
             
             //Enviar nuevos parametros para el grupo
             if( ChargingGroup.SendNewParams){

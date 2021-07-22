@@ -75,6 +75,9 @@ carac_charger New_Data(char* Data, int Data_size){
     }
     if(cJSON_HasObjectItem(mensaje_Json,"Perm")){
       Cargador.Baimena = cJSON_GetObjectItem(mensaje_Json,"Perm")->valueint;
+      if(Cargador.Baimena){
+        printf("Pidiendo permiso al maestro!\n");
+      }
     }
     //Datos para los trifasicos
     if(cJSON_HasObjectItem(mensaje_Json,"currentB")){
@@ -387,7 +390,6 @@ void LimiteConsumo(void *p){
 
       case CALCULO:{
         //cls();
-        print_table(charger_table, "Grupo en calculo", ChargingGroup.Charger_number);
         //Calculo general
         Calculo_General();
 
@@ -436,7 +438,7 @@ void LimiteConsumo(void *p){
       }
 
       case EQUILIBRADO:{
-        // cls();
+        cls();
         print_table(charger_table, "Grupo en equilibrado", ChargingGroup.Charger_number);
 
         //Calculo general
@@ -681,10 +683,10 @@ bool Calculo_General(){
     //corrientes por fase
     for(uint8_t j =0; j < ChargingGroup.Circuit_number; j++){
       for(uint8_t i =0; i < 3; i++){
-        Circuitos[j].Fases[i].corriente_total /= 100;
+        ceil(Circuitos[j].Fases[i].corriente_total /= 100);
         //Calcular la corriente disponible en cada fase
         if(Circuitos[j].Fases[i].conex > 0){
-          Circuitos[j].Fases[i].corriente_disponible = Circuitos[j].limite_corriente/ Circuitos[j].Fases[i].conex;
+          Circuitos[j].Fases[i].corriente_disponible = floor(Circuitos[j].limite_corriente/ Circuitos[j].Fases[i].conex);
         }
         else{
           Circuitos[j].Fases[i].corriente_disponible = Circuitos[j].limite_corriente;
@@ -693,43 +695,50 @@ bool Calculo_General(){
       }
     }
 
-    Consumo_total = total_pc/100;
+    Consumo_total = ceil(total_pc/100);
     
     uint16_t corriente_a_repartir = 0;
     bool recalcular = false;
-    corriente_a_repartir = ChargingGroup.Params.potencia_max *100/230;
+    corriente_a_repartir = floor(ChargingGroup.Params.potencia_max *100/230);
 
     if(Conex_Con_tri > 0){
       
-      Corriente_disponible_total = corriente_a_repartir / Conex_Con_tri;
+      Corriente_disponible_total = floor(corriente_a_repartir / Conex_Con_tri);
     
       if(ChargingGroup.Params.CDP >> 4 && ContadorExt.ContadorConectado){
         float Corriente_CDP__sobra = 0;
 
         //Comprobar primero cuanta potencia nos sobra
         if(((ChargingGroup.Params.CDP>> 2) & 0x03) == 1){ //Medida domestica
-            Corriente_CDP__sobra = (ChargingGroup.Params.ContractPower - ContadorExt.DomesticPower)/230;
+            if(ChargingGroup.Params.ContractPower*100 > ContadorExt.DomesticPower){
+              Corriente_CDP__sobra = floor((ChargingGroup.Params.ContractPower*100 - ContadorExt.DomesticPower)/230);
+            }
+            else{
+              Corriente_CDP__sobra = 0;
+            }
         }
 
         else if(((ChargingGroup.Params.CDP >> 2) & 0x03) == 2){ //Medida total 
-            Corriente_CDP__sobra = (ChargingGroup.Params.ContractPower - ContadorExt.DomesticPower)/230 - Consumo_total;
+            if(ChargingGroup.Params.ContractPower*100 > ContadorExt.DomesticPower){
+              Corriente_CDP__sobra = floor((ChargingGroup.Params.ContractPower*100 - ContadorExt.DomesticPower)/230) - Consumo_total;
+            }
+            else{
+              Corriente_CDP__sobra = 0;
+            }
         }
 
         //Establecer el limite disponible
-        uint16_t Corriente_limite_cdp = Consumo_total + Corriente_CDP__sobra;
+        uint16_t Corriente_limite_cdp = Corriente_CDP__sobra;
 
         //Ver si nos pasamos
-        if(Corriente_limite_cdp < Consumo_total || (ChargingGroup.Params.potencia_max *100/230) > Corriente_limite_cdp){ //Estamos por encima del limite
+        if(Corriente_limite_cdp < Consumo_total || floor(ChargingGroup.Params.potencia_max *100/230) > Corriente_limite_cdp){ //Estamos por encima del limite
             corriente_a_repartir =  Corriente_limite_cdp;
-            Corriente_disponible_total = corriente_a_repartir / Conex_Con_tri;
+            Corriente_disponible_total = floor(corriente_a_repartir / Conex_Con_tri);
             recalcular = true;
         }
-  
-          printf("Recalcular %i \n\n",recalcular);
-          printf("Corriente_limite_cdp %i \n\n",Corriente_limite_cdp);
-          printf("Corriente_CDP__sobra %f \n\n",Corriente_CDP__sobra);
-        
-
+          printf("Recalcular %i \n",recalcular);
+          printf("Corriente_limite_cdp %i \n",Corriente_limite_cdp);
+          printf("Corriente_CDP__sobra %f \n",Corriente_CDP__sobra);
       }
 
       //Si tenemos un limite menor que 6A para cada coche, debemos expulsar al ultimo que haya entrado
@@ -759,7 +768,7 @@ bool Calculo_General(){
           Conex_Con_tri -=2;
         }
         if(Conex_Con_tri > 0){
-          Corriente_disponible_total = corriente_a_repartir / Conex_Con_tri;
+          Corriente_disponible_total = floor(corriente_a_repartir / Conex_Con_tri);
         }
         else{
           break;
@@ -767,8 +776,8 @@ bool Calculo_General(){
       }
     }
 
-    if((ChargingGroup.Params.potencia_max *100/230-total_consigna) > 5 && ChargingGroup.Params.potencia_max *100/230 - Consumo_total < 15) {
-      if(++recalc_count > 100){
+    if((ChargingGroup.Params.potencia_max *100/230-total_consigna) > 5) {
+      if(++recalc_count > 25){
         recalcular = true;
         recalc_count = 0;
       }
@@ -777,20 +786,10 @@ bool Calculo_General(){
 
 
 #ifdef DEBUG_GROUPS
-    printf("\n\nNumero de circitos %i\n", ChargingGroup.Circuit_number);
-    printf("Total PC of phase of circuit 0 %i %i %i\n",Circuitos[0].Fases[0].corriente_total, Circuitos[0].Fases[1].corriente_total, Circuitos[0].Fases[2].corriente_total); 
-    printf("Total PC of phase of circuit 1 %i %i %i\n",Circuitos[1].Fases[0].corriente_total, Circuitos[1].Fases[1].corriente_total, Circuitos[1].Fases[2].corriente_total); 
-    printf("Total consigna of phase %i %i %i\n",Circuitos[0].Fases[0].consigna_total, Circuitos[0].Fases[1].consigna_total, Circuitos[0].Fases[2].consigna_total); 
-    printf("Total consigna of phase of circuit 1 %i %i %i\n",Circuitos[1].Fases[0].consigna_total, Circuitos[1].Fases[1].consigna_total, Circuitos[1].Fases[2].consigna_total); 
-    printf("Total conex of phase %i %i %i\n",Circuitos[0].Fases[0].conex, Circuitos[0].Fases[1].conex, Circuitos[0].Fases[2].conex); 
-    printf("Total conex of phase %i %i %i\n",Circuitos[1].Fases[0].conex, Circuitos[1].Fases[1].conex, Circuitos[1].Fases[2].conex); 
-    printf("Enviando consigna en circuito 0 %f %f %f\n",Circuitos[0].Fases[0].corriente_disponible, Circuitos[0].Fases[1].corriente_disponible, Circuitos[0].Fases[2].corriente_disponible);  
-    printf("Enviando consigna en circuito 0 %f %f %f\n",Circuitos[1].Fases[0].corriente_disponible, Circuitos[1].Fases[1].corriente_disponible, Circuitos[1].Fases[2].corriente_disponible);
-    printf("Total conex %i\n",Conex); 
-    printf("Total tri_conex %i\n",Conex_Con_tri); 
-    printf("Total Current %i\n",ChargingGroup.Params.potencia_max *100/230); 
+    printf("Total Current %f\n",floor(ChargingGroup.Params.potencia_max *100/230)); 
     printf("Consumo total %i \n\n",Consumo_total); 
     printf("Consigna total %i \n\n",total_consigna); 
+    printf("Corriente_disponible_total %f \n\n",Corriente_disponible_total); 
 
      
 #endif
