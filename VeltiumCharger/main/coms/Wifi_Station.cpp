@@ -749,7 +749,7 @@ void ComsTask(void *args){
             }
             if(Coms.GSM.ON && !gsm_connected){
                 if(wifi_connected || wifi_connecting){
-                     Coms.Wifi.ON = false;
+                    Coms.Wifi.ON = false;
                     stop_wifi();
                 }
                 //ppposInit();
