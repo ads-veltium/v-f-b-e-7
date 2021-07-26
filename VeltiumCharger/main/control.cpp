@@ -1104,9 +1104,10 @@ void procesar_bloque(uint16 tipo_bloque){
 		break;
 
 		case APN:{
-			Serial.println("Me ha llegado el apn");
 			Coms.GSM.ON=buffer_rx_local[0];
 			memcpy(&Coms.GSM.Apn[0], &buffer_rx_local[1], 30);
+			Serial.println(Coms.GSM.Apn);
+			printf("Me ha llegado el apn %s\n", Coms.GSM.Apn.c_str());
 			modifyCharacteristic(buffer_rx_local,  1, APN_ON);
 			modifyCharacteristic(&buffer_rx_local[1],  30, APN);
 			
@@ -1114,9 +1115,10 @@ void procesar_bloque(uint16 tipo_bloque){
 		break;
 
 		case APN_USER:{
-
-			Serial.println("Me ha llegado el apn user");
+			
 			memcpy(&Coms.GSM.User[0], buffer_rx_local, 30);
+			Serial.println(Coms.GSM.User);
+			printf("Me ha llegado el apn user %s\n", Coms.GSM.User.c_str());
 			modifyCharacteristic(buffer_rx_local,  30, APN_USER);
 			
 		} 
@@ -1124,8 +1126,10 @@ void procesar_bloque(uint16 tipo_bloque){
 
 		case APN_PASSWORD:{
 
-			Serial.println("Me ha llegado el apn password");
+
 			memcpy(&Coms.GSM.Pass[0], buffer_rx_local, 30);
+			Serial.println(Coms.GSM.Pass);
+			printf("Me ha llegado el apn pass %s\n", Coms.GSM.Pass.c_str());
 			modifyCharacteristic(buffer_rx_local,  30, APN_PASSWORD);
 			
 		} 
@@ -1133,8 +1137,8 @@ void procesar_bloque(uint16 tipo_bloque){
 
 		case APN_PIN:{
 
-			Serial.println("Me ha llegado el sim pin");
 			memcpy(Coms.GSM.Pin, buffer_rx_local,4);
+			printf("Me ha llegado el apn pin %s\n", Coms.GSM.Pin);
 			modifyCharacteristic(buffer_rx_local,  4, APN_PIN);
 		} 
 		break;

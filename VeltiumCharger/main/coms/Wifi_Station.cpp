@@ -731,11 +731,14 @@ void ComsTask(void *args){
                     Coms.ETH.ON = false;
                     kill_ethernet();
                 }
-                if(gsm_connected){
-                    Coms.GSM.ON = false;
-                    ppposDisconnect(0, 1);
-                    apagarModem();
+                if(Coms.GSM.ON){
+                    if(gsm_connected){
+                        Coms.GSM.ON = false;
+                        ppposDisconnect(0, 1);
+                        apagarModem();
+                    }
                 }
+
                 delay(100);
                 if(Coms.StartSmartconfig){
                     initialise_smartconfig();

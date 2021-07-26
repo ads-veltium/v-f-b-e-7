@@ -95,8 +95,9 @@ void BuscarContador_Task(void *args){
             uint8_t resultado = 0;
             initialize_ping(target, &resultado);
 
-            while(resultado == TRABAJANDO){
-                delay(5);
+            uint8_t timeout = 0;
+            while(resultado == TRABAJANDO && ++timeout < 20){
+                delay(15);
             }
             end_ping();
 

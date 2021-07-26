@@ -167,7 +167,7 @@ bool WriteFirebaseComs(String Path){
 
   #ifdef USE_GSM
     Comms_Json.set("modem/apn",Coms.GSM.APN);
-    Comms_Json.set("modem/passwd",Coms.GSM.Pass);
+    Comms_Json.set("modem/pass",Coms.GSM.Pass);
   #endif
   
   if(Database->Send_Command(Path,&Escritura,UPDATE)){     

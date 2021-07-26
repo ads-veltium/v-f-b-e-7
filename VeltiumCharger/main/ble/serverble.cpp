@@ -339,6 +339,12 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 				Serial.printf("Received omnibus write request for handle   %u\n", handle);
 			#endif
 
+				/*
+				for(int i =0;i < size;i++){
+					printf("%i \n", payload[i]);
+				}
+				*/
+			
 			// special cases
 			if (handle == AUTENTICACION_TOKEN_CHAR_HANDLE) {
 				setAuthToken(payload, size);
