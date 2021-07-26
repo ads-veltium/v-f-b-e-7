@@ -6,6 +6,7 @@
 bool FinishReading = false;
 int  Readed = 0;
 char *TotalResponse = new char[1500];
+extern carac_Firebase_Configuration ConfigFirebase;
 
 esp_err_t _http_event_handle(esp_http_client_event_t *evt){
 
@@ -405,58 +406,65 @@ String Cliente_HTTP::ObtenerRespuesta(){
 
 bool Cliente_HTTP::Send_Command(String url, uint8_t Command){   
     uint8_t tiempo_lectura =0;
-    esp_http_client_set_url(_client, url.c_str());
 
 
-    switch(Command){
-        case ESCRIBIR:        
-            esp_http_client_set_method(_client, HTTP_METHOD_POST);
-            //esp_http_client_set_post_field(_client, SerializedData.c_str(), SerializedData.length());
-            break;
-        case UPDATE:
-            esp_http_client_set_method(_client, HTTP_METHOD_PATCH);
-            //esp_http_client_set_post_field(_client, SerializedData.c_str(), SerializedData.length());
-            break;
-        case TIMESTAMP:     
-            esp_http_client_set_method(_client, HTTP_METHOD_PUT);
-            esp_http_client_set_post_field(_client, "{\".sv\": \"timestamp\"}", strlen("{\".sv\": \"timestamp\"}"));
-            break;
-        case LEER:
-            esp_http_client_set_method(_client, HTTP_METHOD_GET);
-            break;
+    if(ConfigFirebase.InternetConection){
+        esp_http_client_set_url(_client, url.c_str());
+        
+        switch(Command){
+            case ESCRIBIR:        
+                esp_http_client_set_method(_client, HTTP_METHOD_POST);
+                //esp_http_client_set_post_field(_client, SerializedData.c_str(), SerializedData.length());
+                break;
+            case UPDATE:
+                esp_http_client_set_method(_client, HTTP_METHOD_PATCH);
+                //esp_http_client_set_post_field(_client, SerializedData.c_str(), SerializedData.length());
+                break;
+            case TIMESTAMP:     
+                esp_http_client_set_method(_client, HTTP_METHOD_PUT);
+                esp_http_client_set_post_field(_client, "{\".sv\": \"timestamp\"}", strlen("{\".sv\": \"timestamp\"}"));
+                break;
+            case LEER:
+                esp_http_client_set_method(_client, HTTP_METHOD_GET);
+                break;
 
-        default:
-            Serial.println("Accion no implementada!");
-            return false;
-            break;
-    }
-    int err = esp_http_client_perform(_client);
-    if (err != ESP_OK ) {
-        Serial.printf("HTTP request failed: %s\n", esp_err_to_name(err));
-        return false;
-    }
+            default:
+                Serial.println("Accion no implementada!");
+                return false;
+                break;
+        }
 
-    if(Command < 5){
-        _lectura_finalizada = false;
-        _leidos = 0;
-        return true;
-    }
-
-    while(!_lectura_finalizada ){
-        delay(50);
-        tiempo_lectura ++;
-        if(tiempo_lectura > 30){
+        int err = esp_http_client_perform(_client);
+        if (err != ESP_OK ) {
+            Serial.printf("HTTP request failed: %s\n", esp_err_to_name(err));
             return false;
         }
+
+        if(Command < 5){
+            _lectura_finalizada = false;
+            _leidos = 0;
+            return true;
+        }
+
+        while(!_lectura_finalizada ){
+            delay(50);
+            tiempo_lectura ++;
+            if(tiempo_lectura > 30){
+                return false;
+            }
+        }
+
+        if(tiempo_lectura >= 30){
+            return false;
+        }
+
+        _lectura_finalizada = false;
+        _leidos = 0;
+
+        return true;
     }
+    return false;
+    
 
-    if(tiempo_lectura >= 30){
-        return false;
-    }
-
-    _lectura_finalizada = false;
-    _leidos = 0;
-
-    return true;
 }
 #endif
