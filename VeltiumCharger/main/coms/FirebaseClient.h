@@ -16,6 +16,7 @@
 #define CONNECTING        5
 #define CONECTADO        10
 #define IDLE             20
+#define USER_CONNECTED   21
 #define READING_CONTROL  25
 #define READING_PARAMS   26
 #define READING_COMS     27

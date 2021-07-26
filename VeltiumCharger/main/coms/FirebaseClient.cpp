@@ -512,6 +512,23 @@ bool ReadFirebaseParams(String Path){
   return true;
 }
 
+bool ReadFirebasePath(String Path){
+  
+    Lectura.clear();
+    if(Database->Send_Command(Path,&Lectura, LEER)){
+      if(Lectura != NULL){
+        serializeJson(Lectura,Serial);
+      }
+      else{
+        return false;
+      }
+      
+    }
+    else return false;  
+
+  return true;
+}
+
 bool ReadFirebaseControl(String Path){
   
   long long ts_app_req=Database->Get_Timestamp(Path+"/ts_app_req",&Lectura);
@@ -707,8 +724,9 @@ void Firebase_Conn_Task(void *args){
   long long ts_app_req =0;
   TickType_t xStarted = 0, xElapsed = 0; 
   int UpdateCheckTimeout=0;
-
+  uint8_t delayeando = 0;
   while(1){
+    delayeando = 0;
     if(!ConfigFirebase.InternetConection && ConnectionState!= DISCONNECTED){
       ConnectionState=DISCONNECTING;
     }
@@ -722,6 +740,7 @@ void Firebase_Conn_Task(void *args){
         Error_Count=0;
         Base_Path="prod/devices/";
         ConnectionState=CONNECTING;
+        delayeando = 10;
       }
       break;
     }
@@ -731,23 +750,40 @@ void Firebase_Conn_Task(void *args){
         ConfigFirebase.FirebaseConnected=1;
         Base_Path += (char *)ConfigFirebase.Device_Db_ID;
         ConnectionState=CONECTADO;
+        delayeando = 10;
       }
       break;
     
     case CONECTADO:
+      delayeando = 10;
       //Inicializar los timeouts
-#ifdef USE_GROUPS
-      ChargingGroup.last_ts_app_req = Database->Get_Timestamp("123456789/ts_app_req",&Lectura, true);
-      ChargingGroup.last_ts_app_req = Database->Get_Timestamp("123456789/ts_app_req",&Lectura, true);
-#else
       Params.last_ts_app_req  = Database->Get_Timestamp("/params/ts_app_req",&Lectura);
-#endif
       Params.last_ts_app_req  = Database->Get_Timestamp("/params/ts_app_req",&Lectura);
       Comands.last_ts_app_req = Database->Get_Timestamp("/control/ts_app_req",&Lectura);
       Coms.last_ts_app_req    = Database->Get_Timestamp("/coms/ts_app_req",&Lectura);
       Status.last_ts_app_req  = Database->Get_Timestamp("/status/ts_app_req",&Lectura);
       
       Error_Count+=!WriteFirebaseFW("/fw/current");
+
+      if(ChargingGroup.Params.GroupActive){
+        //comprobar si han borrado el grupo mientras estabamos desconectados
+        if(!ReadFirebasePath("/groupId")){
+          #ifdef DEBUG_GROUPS
+          printf("Han borrado el grupo mientras estaba descoenctado!\n");
+          #endif
+          ChargingGroup.Params.GroupActive = false;
+          ChargingGroup.Params.GroupMaster = false;
+        }
+      }
+
+      //Comprobar si hay firmware nuevo
+#ifndef DEVELOPMENT
+        if(!memcmp(Params.Fw_Update_mode, "AA",2)){
+          ConnectionState = UPDATING;
+          break;
+        }
+#endif
+      
       ConnectionState=IDLE;
       break;
 
@@ -797,6 +833,34 @@ void Firebase_Conn_Task(void *args){
           }
         }
       }
+      
+      if(ts_app_req > Status.last_ts_app_req){
+        Status.last_ts_app_req= ts_app_req;
+        xStarted = xTaskGetTickCount();
+        Error_Count+=!WriteFirebaseStatus("/status");
+        if(askForPermission){
+          askForPermission = false;
+          ConnectionState = IDLE;
+          break;
+        }
+        if(!ConfigFirebase.ClientConnected){  
+          Error_Count+=!WriteFirebaseComs("/coms");   
+          delayeando = 10;   
+          ConnectionState = USER_CONNECTED;
+          ConfigFirebase.ClientConnected  = true;
+        }
+        break;
+      }
+       
+      break;
+
+    /*********************** Usuario conectado **********************/
+    case USER_CONNECTED:
+      if(serverbleGetConnected()){
+        ConfigFirebase.ClientConnected = false;
+        ConnectionState = IDLE;
+        break;
+      }
 
       //Comprobar actualizaciones manualmente
       else if(Comands.fw_update){
@@ -808,72 +872,99 @@ void Firebase_Conn_Task(void *args){
         }
       }
       
+       //comprobar si hay usuarios observando:    
+      ts_app_req=Database->Get_Timestamp("/status/ts_app_req",&Lectura);
+      if(ts_app_req < 1){//connection refused o autenticacion terminada, comprobar respuesta
+        String ResponseString = Lectura["error"];
+        if(strcmp(ResponseString.c_str(),"Auth token is expired") == 0){
+            if(Database->LogIn()){
+              break;
+            }
+            ConnectionState=DISCONNECTING;
+        }
+        else{
+          if(++null_count>=3){
+              ConnectionState=DISCONNECTING;
+          }
+        }
+        break; 
+      }
+      else{
+        null_count=0;
+      }
+
       if(ts_app_req > Status.last_ts_app_req){
         Status.last_ts_app_req= ts_app_req;
         xStarted = xTaskGetTickCount();
+        Error_Count+=!WriteFirebaseStatus("/status");
+        if(askForPermission){
+          askForPermission = false;
+          ConnectionState = IDLE;
+          break;
+        }
         if(!ConfigFirebase.ClientConnected){        
-          ConnectionState = WRITTING_STATUS;
-          NextState = WRITTING_COMS;
+          Error_Count+=!WriteFirebaseComs("/coms");
         }
         ConfigFirebase.ClientConnected  = true;
-
         break;
       }
- 
-      if(ConfigFirebase.ClientConnected){
-        xElapsed=xTaskGetTickCount()-xStarted;
-        if(pdTICKS_TO_MS(xElapsed)>60000){
-          ConfigFirebase.ClientConnected  = false;
-        }
-        if(NextState!=0){
-          ConnectionState = NextState;
-          NextState = 0;
+
+      //Si pasan 35 segundos sin actualizar el status, lo damos por desconectado
+      xElapsed=xTaskGetTickCount()-xStarted;
+      if(pdTICKS_TO_MS(xElapsed)>35000){
+        ConfigFirebase.ClientConnected  = false;
+        ConnectionState = IDLE;
+        break;
+      }
+
+      
+      if(ConfigFirebase.WriteStatus){
+        ConfigFirebase.WriteStatus=false;
+        Error_Count+=!WriteFirebaseStatus("/status");
+        if(askForPermission){
+          askForPermission = false;
+          ConnectionState = IDLE;
           break;
         }
+        break;
+      }
 
-        else if(ConfigFirebase.WriteStatus){
-          ConfigFirebase.WriteStatus=false;
-          ConnectionState = WRITTING_STATUS;
+      else if(ConfigFirebase.WriteParams){
+        ConfigFirebase.WriteParams=false;
+        Error_Count+=!WriteFirebaseParams("/params");
+        break;
+      }
+
+      else if(ConfigFirebase.WriteControl){
+        ConfigFirebase.WriteControl=0;
+        Error_Count+=!WriteFirebaseControl("/control");
+        break;
+      }
+      else if(ConfigFirebase.WriteTime){
+        ConfigFirebase.WriteTime=0;
+        Error_Count+=!WriteFirebaseTimes("/status/times");
+        break;
+      }
+      else if(++Params_Coms_Timeout>=5){
+        Error_Count+=!ReadFirebaseParams("/params");
+        Params_Coms_Timeout = 0;
+        break; 
+      }
+
+      //Comprobar actualizaciones manuales
+      else if(Comands.fw_update){
+        if(!memcmp(Status.HPT_status, "A1",2) || !memcmp(Status.HPT_status, "0V",2) ){
+          UpdateCheckTimeout=0;
+          Comands.fw_update=0;
+          ConnectionState = UPDATING;
           break;
         }
-
-        else if(ConfigFirebase.WriteParams){
-          ConfigFirebase.WriteParams=false;
-          ConnectionState = WRITTING_PARAMS;
-          break;
-        }
-
-        else if(ConfigFirebase.WriteControl){
-          ConfigFirebase.WriteControl=0;
-          ConnectionState = WRITTING_CONTROL;
-          break;
-        }
-        else if(ConfigFirebase.WriteTime){
-          ConfigFirebase.WriteTime=0;
-          ConnectionState = WRITTING_TIMES;
-          break;
-        }
-        else if(++Params_Coms_Timeout>=5){
-          ConnectionState = READING_PARAMS;
-          Params_Coms_Timeout = 0;
-          break; 
-        }
-
-        //Comprobar actualizaciones manuales
-        else if(Comands.fw_update){
-          if(!memcmp(Status.HPT_status, "A1",2) || !memcmp(Status.HPT_status, "0V",2) ){
-            UpdateCheckTimeout=0;
-            Comands.fw_update=0;
-            ConnectionState = UPDATING;
-            break;
-          }
-        }
-        
-
-        //Mientras hay un cliente conectado y nada que hacer, miramos control
-        ConnectionState=READING_CONTROL;
       }
       
+
+      //Mientras hay un cliente conectado y nada que hacer, miramos control
+      Error_Count+=!ReadFirebaseControl("/control");
+
       break;
 
     /*********************** WRITTING states **********************/
@@ -909,15 +1000,12 @@ void Firebase_Conn_Task(void *args){
     /*********************** READING states **********************/
     case READING_CONTROL:
       Error_Count+=!ReadFirebaseControl("/control");
-      ConnectionState = NextState ==0 ? IDLE : NextState;
+      ConnectionState = NextState == 0 ? IDLE : NextState;
       break;
 
     case READING_PARAMS:
       Error_Count+=!ReadFirebaseParams("/params");
       ConnectionState=IDLE;
-#ifdef USE_GROUPS
-      NextState=READING_GROUP;
-#endif
       break;
     
     //Está preparado pero nunca lee las comunicaciones de firebase
@@ -937,6 +1025,7 @@ void Firebase_Conn_Task(void *args){
 
     /*********************** UPDATING states **********************/
     case UPDATING:
+      delayeando = 10;
       Serial.println("Comprobando firmware nuevo");
       if(CheckForUpdate()){
         xTaskCreate(DownloadFileTask,"DOWNLOAD FILE", 4096*2, NULL, 1,NULL);
@@ -959,6 +1048,7 @@ void Firebase_Conn_Task(void *args){
         xTaskCreate(DownloadFileTask,"DOWNLOAD FILE", 4096*2, NULL, 1,NULL);
         ConnectionState=DOWNLOADING;
       }
+     
       //Do nothing
       break;
 
@@ -966,6 +1056,7 @@ void Firebase_Conn_Task(void *args){
     case DISCONNECTING:
       Database->end();
       ConnectionState=DISCONNECTED;
+      delayeando = 10;
       break;
 
     case 11:
@@ -977,8 +1068,11 @@ void Firebase_Conn_Task(void *args){
       }
       break;
     }
-    if(ConnectionState!=DISCONNECTING){
-      delay(ConfigFirebase.ClientConnected ? 250:5000);
+    if(ConnectionState!=DISCONNECTING && delayeando == 0){
+      delay(ConfigFirebase.ClientConnected ? 150:5000);
+    }
+    else{
+      delay(delayeando);
     }
     
 
@@ -989,7 +1083,6 @@ void Firebase_Conn_Task(void *args){
     }
 
     //chivatos de la ram
-    
     if(ESP.getFreePsram() < 2000000 || ESP.getFreeHeap() < 20000){
         Serial.println(ESP.getFreePsram());
         Serial.println(ESP.getFreeHeap());

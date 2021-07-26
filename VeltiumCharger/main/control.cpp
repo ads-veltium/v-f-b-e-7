@@ -86,7 +86,7 @@ uint16 cnt_diferencia = 1;
 uint8 HPT_estados[9][3] = {"0V", "A1", "A2", "B1", "B2", "C1", "C2", "E1", "F1"};
 
 #ifdef USE_COMS
-uint8 version_firmware[11] = {"VBLE2_0510"};	
+uint8 version_firmware[11] = {"VBLE2_0514"};	
 #else
 uint8 version_firmware[11] = {"VBLE0_0511"};	
 #endif
@@ -1380,6 +1380,7 @@ void procesar_bloque(uint16 tipo_bloque){
 			else{
 				Bloqueo_de_carga = false;
 			}
+			printf("Me piden carga! %i \n", Bloqueo_de_carga);
 			SendToPSOC5(Bloqueo_de_carga, BLOQUEO_CARGA);
 
 			
