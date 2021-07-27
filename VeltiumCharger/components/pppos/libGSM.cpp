@@ -580,8 +580,8 @@ static void pppos_client_task(void *args)
 	if (uart_driver_install(uart_num, BUF_SIZE * 2, BUF_SIZE * 2, 0, NULL, 0)) goto exit;
 
 	// Set APN from config
-	//sprintf(PPP_ApnATReq, "AT+CGDCONT=1,\"IP\",\"%s\"\r\n",Coms.GSM.Apn.c_str());
-	sprintf(PPP_ApnATReq, "AT+CGDCONT=1,\"IP\",\"%s\"\r\n","telefonica.es");
+	sprintf(PPP_ApnATReq, "AT+CGDCONT=1,\"IP\",\"%s\"\r\n",Coms.GSM.Apn.c_str());
+	//sprintf(PPP_ApnATReq, "AT+CGDCONT=1,\"IP\",\"%s\"\r\n","telefonica.es");
 	cmd_APN.cmd = PPP_ApnATReq;
 	cmd_APN.cmdSize = strlen(PPP_ApnATReq);
 
@@ -695,8 +695,8 @@ static void pppos_client_task(void *args)
 		else xSemaphoreGive(pppos_mutex);
 
 		pppapi_set_default(ppp);
-		//pppapi_set_auth(ppp, PPPAUTHTYPE_PAP, Coms.GSM.User.c_str(), Coms.GSM.Pass.c_str());
-		pppapi_set_auth(ppp, PPPAUTHTYPE_PAP, "telefonica", "telefonica");
+		pppapi_set_auth(ppp, PPPAUTHTYPE_PAP, Coms.GSM.User.c_str(), Coms.GSM.Pass.c_str());
+		//pppapi_set_auth(ppp, PPPAUTHTYPE_PAP, "telefonica", "telefonica");
 		//pppapi_set_auth(ppp, PPPAUTHTYPE_NONE, PPP_User, PPP_Pass);
 
 		xSemaphoreTake(pppos_mutex, PPPOSMUTEX_TIMEOUT);

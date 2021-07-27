@@ -714,7 +714,7 @@ void ComsTask(void *args){
     ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &event_handler, NULL)); 
     while (1){
         if(Coms.StartConnection){
-            Eth_Loop();
+            Eth_Loop();     
             //Arranque del provisioning
             if(Coms.StartProvisioning || Coms.StartSmartconfig){
                 ConfigFirebase.InternetConection=0;
@@ -756,6 +756,7 @@ void ComsTask(void *args){
                     Coms.Wifi.ON = false;
                     stop_wifi();
                 }
+                StartGSM();
                 //ppposInit();
             }
             //Comprobar si hemos perdido todas las conexiones
@@ -782,7 +783,7 @@ void ComsTask(void *args){
                 stop_wifi();
                 Coms.Wifi.restart = false;
             }
-            if((eth_connected || wifi_connected || gsm_connected) && !ServidorArrancado){
+            if((eth_connected || wifi_connected) && !ServidorArrancado){
                 if(!wifi_connecting ){
                     InitServer();
                     ServidorArrancado = true;
