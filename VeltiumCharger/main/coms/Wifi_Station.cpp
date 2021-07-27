@@ -126,7 +126,7 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
          switch(event_id){
             case SC_EVENT_SCAN_DONE:
                 Reintentos = 0;
-                printf("Smartvonfig done\n");
+                printf("Escaneo hecho\n");
 
             break;
             case SC_EVENT_FOUND_CHANNEL:

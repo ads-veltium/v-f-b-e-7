@@ -1124,7 +1124,10 @@ void procesar_bloque(uint16 tipo_bloque){
 			Coms.GSM.Pass = (char*) buffer_rx_local;
 			printf("Me ha llegado el apn pass %s\n", Coms.GSM.Pass.c_str());
 			modifyCharacteristic((uint8_t*)buffer_rx_local,  30, APN_PASSWORD);
-			
+			if(Coms.GSM.temp_on){
+				Coms.GSM.ON = true;
+				printf("GSM On  %i\n", Coms.GSM.ON);
+			}
 		} 
 		break;
 
@@ -1134,9 +1137,7 @@ void procesar_bloque(uint16 tipo_bloque){
 			printf("Me ha llegado el apn pin %s\n", Coms.GSM.Pin);
 			printf("%s \n", buffer_rx_local);
 			modifyCharacteristic(buffer_rx_local,  4, APN_PIN);
-			if(Coms.GSM.temp_on){
-				Coms.GSM.ON = true;
-			}
+			
 		} 
 		break;
 
@@ -1144,8 +1145,9 @@ void procesar_bloque(uint16 tipo_bloque){
 			Coms.GSM.temp_on = buffer_rx_local[0];	
 			if(!Coms.GSM.temp_on){
 				Coms.GSM.ON = false;
+				printf("GSM On  %i\n", Coms.GSM.ON);
 			}
-			printf("GSM On  %i\n", Coms.GSM.ON);
+			
 			modifyCharacteristic(buffer_rx_local,  1, APN_ON);
 		} 
 		break;

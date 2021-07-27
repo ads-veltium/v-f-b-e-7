@@ -58,7 +58,7 @@ typedef struct {
 } smartconfig_start_config_t;
 
 #define SMARTCONFIG_START_CONFIG_DEFAULT() { \
-    .enable_log = false \
+    .enable_log = true \
 };
 
 /**
