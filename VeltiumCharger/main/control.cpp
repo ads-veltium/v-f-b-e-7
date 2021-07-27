@@ -1104,11 +1104,14 @@ void procesar_bloque(uint16 tipo_bloque){
 		break;
 
 		case APN:{
+			if(strlen(Coms.GSM.Apn.c_str()) > 2 && Coms.GSM.ON){
+				Coms.GSM.reboot = true;
+				printf("Haciendo un reboot del gsm!!\n");
+			}
+
 			Coms.GSM.Apn = (char*) buffer_rx_local;
 			printf("Me ha llegado el apn %s\n", Coms.GSM.Apn.c_str());
 			modifyCharacteristic((uint8_t*)buffer_rx_local, 30, APN);
-
-			
 		} 
 		break;
 
@@ -1142,8 +1145,15 @@ void procesar_bloque(uint16 tipo_bloque){
 		break;
 
 		case APN_ON:{
-			Coms.GSM.temp_on = buffer_rx_local[0];	
-			if(!Coms.GSM.temp_on){
+			Coms.GSM.temp_on = buffer_rx_local[0];
+			printf("Me ha llegado el apn on %i\n", Coms.GSM.temp_on);	
+			printf("%i \n", strlen(Coms.GSM.Apn.c_str()));
+
+			if(strlen(Coms.GSM.Apn.c_str() ) > 2 && Coms.GSM.temp_on){
+				Coms.GSM.ON = true;
+				printf("GSM On  %i\n", Coms.GSM.ON);
+			}
+			else if(!Coms.GSM.temp_on){
 				Coms.GSM.ON = false;
 				printf("GSM On  %i\n", Coms.GSM.ON);
 			}
