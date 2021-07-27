@@ -735,8 +735,7 @@ void ComsTask(void *args){
                 if(Coms.GSM.ON){
                     if(gsm_connected){
                         Coms.GSM.ON = false;
-                        ppposDisconnect(0, 1);
-                        apagarModem();
+                        FinishGSM();
                     }
                 }
 
@@ -757,7 +756,17 @@ void ComsTask(void *args){
                     stop_wifi();
                 }
                 StartGSM();
-                //ppposInit();
+            }
+            if(gsm_connected){
+                if(!Coms.GSM.ON){
+                    FinishGSM();
+                }
+                if(Coms.GSM.reboot){
+                    FinishGSM();
+                    delay(2000);
+                    StartGSM();
+                    Coms.GSM.reboot=false;
+                }
             }
             //Comprobar si hemos perdido todas las conexiones
             if(!Coms.ETH.Internet && !Coms.Wifi.Internet && !Coms.GSM.Internet){

@@ -14,6 +14,7 @@ File UpdateFile;
 uint8_t  UpdateType  = 0;
 uint16_t Conn_Handle = 0;
 uint8 RaspberryTest[6] ={139,96,111,50,166,220};
+extern uint8 dispositivo_inicializado;
 #ifdef DEVELOPMENT
 uint8 ESPTest[6] ={214,94,241,189,158,124};
 
@@ -274,8 +275,12 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 			// size of payload to be written to omnibus characteristic
 			uint8_t  pldsize = rcs_get_size(selector);
 
+			if(dispositivo_inicializado != 2){
+				return;
+			}
 			#ifdef DEBUG_BLE
-			Serial.printf("Receive read request for selector %u\n", selector);
+				Serial.printf("Receive read request for selector %u\n", selector);
+			
 			#endif
 			// prepare packet to be written to characteristic:
 			// header with 2 bytes selector little endian, 2 bytes payload size little endian

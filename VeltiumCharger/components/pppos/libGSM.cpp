@@ -26,7 +26,7 @@
 
 
 extern carac_Coms  Coms;
-extern bool gsm_connected;
+bool gsm_connected=false;
 extern uint8_t ConnectionState;
 extern carac_Firebase_Configuration ConfigFirebase;
 
@@ -35,7 +35,7 @@ extern carac_Firebase_Configuration ConfigFirebase;
 #define UART_GPIO_RX 35
 #define UART_BDRATE 115200
 
-#define GSM_DEBUG 1
+#define GSM_DEBUG 0
 
 #define BUF_SIZE (1024)
 #define GSM_OK_Str "OK"
@@ -207,21 +207,24 @@ static void ppp_status_cb(ppp_pcb *pcb, int err_code, void *ctx)
 
 	switch(err_code) {
 		case PPPERR_NONE: {
-			
-			ESP_LOGE(TAG,"status_cb: Connected");
-			#if PPP_IPV4_SUPPORT
-			ESP_LOGE(TAG,"   ipaddr    = %s", ipaddr_ntoa(&pppif->ip_addr));
-			ESP_LOGE(TAG,"   gateway   = %s", ipaddr_ntoa(&pppif->gw));
-			ESP_LOGE
-			
-			
-			(TAG,"   netmask   = %s", ipaddr_ntoa(&pppif->netmask));
-			#endif
+			#if GSM_DEBUG
+				ESP_LOGE(TAG,"status_cb: Connected");
+				#if PPP_IPV4_SUPPORT
+				ESP_LOGE(TAG,"   ipaddr    = %s", ipaddr_ntoa(&pppif->ip_addr));
+				ESP_LOGE(TAG,"   gateway   = %s", ipaddr_ntoa(&pppif->gw));
+				ESP_LOGE
+				
+				
+				(TAG,"   netmask   = %s", ipaddr_ntoa(&pppif->netmask));
+				#endif
 
-			#if PPP_IPV6_SUPPORT
-			ESP_LOGI(TAG,"   ip6addr   = %s", ip6addr_ntoa(netif_ip6_addr(pppif, 0)));
+				#if PPP_IPV6_SUPPORT
+				ESP_LOGI(TAG,"   ip6addr   = %s", ip6addr_ntoa(netif_ip6_addr(pppif, 0)));
+				#endif
 			#endif
-			
+			#ifdef DEBUG
+			Serial.printf("Conectado por GSM!! IP: %s\n", ipaddr_ntoa(&pppif->ip_addr));
+			#endif		
 			xSemaphoreTake(pppos_mutex, PPPOSMUTEX_TIMEOUT);
 			gsm_status = GSM_STATE_CONNECTED;
 			gsm_connected = true;
@@ -563,15 +566,9 @@ static void pppos_client_task(void *args)
     	goto exit;
     }
 
-
-
     if (gpio_set_direction((gpio_num_t)UART_GPIO_TX, GPIO_MODE_OUTPUT)) goto exit;
 	if (gpio_set_direction((gpio_num_t)UART_GPIO_RX, GPIO_MODE_INPUT)) goto exit;
 	if (gpio_set_pull_mode((gpio_num_t)UART_GPIO_RX, GPIO_PULLUP_ONLY)) goto exit;
-
-	
-	
-
 
 	//Configure UART1 parameters
 	if (uart_param_config(uart_num, &uart_config)) goto exit;
@@ -596,7 +593,10 @@ static void pppos_client_task(void *args)
 	enableAllInitCmd();
 	while(1)
 	{
-		ESP_LOGI(TAG,"Inicialización de GSM en marcha...");
+		#ifdef DEBUG
+		Serial.printf("Inicialización de GSM en marcha en red LTE...\n");
+		#endif
+
 		#if GSM_DEBUG
 		ESP_LOGI(TAG,"GSM initialization start");
 		#endif
@@ -624,10 +624,15 @@ static void pppos_client_task(void *args)
 					GSM_Init[gsmCmdIter]->timeoutMs, NULL, 0) == 0)
 			{
 				// * No response or not as expected, start from first initialization command
-				if(gsmCmdIter==2){
+				if(gsmCmdIter==2 && ){
 					atCmd_waitResponse("AT+CPIN=5337\r\n", GSM_OK_Str, NULL, sizeof("AT+CPIN=5337\r\n")-1, 5000, NULL, 0);
 				}
 				if(gsmCmdIter==4 && nfail==20){
+					
+					#ifdef DEBUG
+					Serial.printf("Cambiando a red GPRS...\n");
+					#endif
+
 					//atCmd_waitResponse("AT+CPIN=5337\r\n", GSM_OK_Str, NULL, sizeof("AT+CPIN=5337\r\n")-1, 5000, NULL, 0);
 					atCmd_waitResponse("AT+WS46=30\r\n", GSM_OK_Str, NULL, sizeof("AT+WS46=30\r\n")-1, 5000, NULL, 0);
 					atCmd_waitResponse("AT+CFUN=4\r\n", GSM_OK_Str, NULL, 11, 10000, NULL, 0);
@@ -675,8 +680,11 @@ static void pppos_client_task(void *args)
 		#if GSM_DEBUG
 		ESP_LOGI(TAG,"GSM initialized.");
 		#endif
-		ESP_LOGE(TAG,"GSM Inicializado correctamente.");
-
+		
+		#ifdef DEBUG
+		Serial.printf("GSM Inicializado correctamente.\n");
+		#endif
+		
 		xSemaphoreTake(pppos_mutex, PPPOSMUTEX_TIMEOUT);
 		if (gsm_status == GSM_STATE_FIRSTINIT) {
 			xSemaphoreGive(pppos_mutex);
@@ -717,6 +725,10 @@ static void pppos_client_task(void *args)
 				printf("\r\n");
 				ESP_LOGE(TAG, "Disconnect requested.");
 				#endif
+				
+				#ifdef DEBUG
+				Serial.printf("Desconexión GSM solicitada\n");
+				#endif	
 
 				pppapi_close(ppp, 0);
 				int gstat = 1;
@@ -743,6 +755,10 @@ static void pppos_client_task(void *args)
 
 				#if GSM_DEBUG
 				ESP_LOGE(TAG, "Disconnected.");
+				#endif
+				
+				#ifdef DEBUG
+				Serial.printf("GSM desconectado\n");
 				#endif
 
 				gsmCmdIter = 0;
@@ -973,9 +989,18 @@ int gsm_RFOn()
 }
 
 //===================
-void apagarModem()
-{
+void StartGSM(){
+	Coms.GSM.Internet = false;
+	if (ppposInit() == 0) {
+		ESP_LOGE("PPPoS EXAMPLE", "ERROR: GSM not initialized, HALTED");
+	}
+}
+
+//===================
+void FinishGSM(){
+	ppposDisconnect(0, 1);
 	gpio_set_level((gpio_num_t)2, 0);
-	//vTaskDelay(12000 / portTICK_PERIOD_MS);
-	//gpio_set_level(2, 1);
+	#ifdef DEBUG
+	Serial.printf("Modem apagado\n");
+	#endif
 }

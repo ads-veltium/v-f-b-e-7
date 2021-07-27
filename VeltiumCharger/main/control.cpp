@@ -610,6 +610,7 @@ void procesar_bloque(uint16 tipo_bloque){
 					if(dispositivo_inicializado !=2){
 						SendToPSOC5(1,BLOQUE_APN);
 						delay(150);
+						//SendToPSOC5(1,BLOQUE_APN);
 						dispositivo_inicializado = 2;
 					}
 					
@@ -949,8 +950,6 @@ void procesar_bloque(uint16 tipo_bloque){
 			#ifdef CONNECTED
 				memcpy(Params.autentication_mode,buffer_rx_local,2);
 			#endif
-			//StartGSM();
-			//ppposInit();
 		} 
 		break;
 		
@@ -964,9 +963,6 @@ void procesar_bloque(uint16 tipo_bloque){
 			#ifdef CONNECTED
 				Params.potencia_contratada1=buffer_rx_local[0]+buffer_rx_local[1]*100;
 			#endif
-			//FinishGSM();
-			//ppposDisconnect(0, 1);
-			//apagarModem();
 		}
 		break;
 
@@ -1441,36 +1437,39 @@ int controlSendToSerialLocal ( uint8_t * data, int len ){
 }
 
 void deviceConnectInd ( void ){
-	int random = 0;
-	const void* outputvec1;
-	// This event is received when device is connected over GATT level 
+	if(dispositivo_inicializado == 2){
+		int random = 0;
+		const void* outputvec1;
+		// This event is received when device is connected over GATT level 
 
-	srand(aut_semilla);
-	random = rand();
-	authChallengeQuery[7] = (uint8)(random >> 8);
-	authChallengeQuery[6] = (uint8)random;
-	random = rand();
-	authChallengeQuery[5] = (uint8)(random >> 8);
-	authChallengeQuery[4] = (uint8)random;
-	random = rand();
-	authChallengeQuery[3] = (uint8)(random >> 8);
-	authChallengeQuery[2] = (uint8)random;
-	random = rand();
-	authChallengeQuery[1] = (uint8)(random >> 8);
-	authChallengeQuery[0] = (uint8)random;
+		srand(aut_semilla);
+		random = rand();
+		authChallengeQuery[7] = (uint8)(random >> 8);
+		authChallengeQuery[6] = (uint8)random;
+		random = rand();
+		authChallengeQuery[5] = (uint8)(random >> 8);
+		authChallengeQuery[4] = (uint8)random;
+		random = rand();
+		authChallengeQuery[3] = (uint8)(random >> 8);
+		authChallengeQuery[2] = (uint8)random;
+		random = rand();
+		authChallengeQuery[1] = (uint8)(random >> 8);
+		authChallengeQuery[0] = (uint8)random;
 
-	outputvec1 = dev_auth_challenge(authChallengeQuery);
+		outputvec1 = dev_auth_challenge(authChallengeQuery);
 
-	memcpy(authChallengeReply, outputvec1, 8);
+		memcpy(authChallengeReply, outputvec1, 8);
 
-	//Delay para dar tiempo a conectar
-	//vTaskDelay(pdMS_TO_TICKS(250));
-	modifyCharacteristic(authChallengeQuery, 8, AUTENTICACION_MATRIX_CHAR_HANDLE);
+		//Delay para dar tiempo a conectar
+		//vTaskDelay(pdMS_TO_TICKS(250));
+		modifyCharacteristic(authChallengeQuery, 8, AUTENTICACION_MATRIX_CHAR_HANDLE);
 
-	#ifdef DEBUG
-	Serial.println("Sending authentication");
-	#endif
-	vTaskDelay(pdMS_TO_TICKS(500));
+		#ifdef DEBUG
+		Serial.println("Sending authentication");
+		#endif
+		vTaskDelay(pdMS_TO_TICKS(500));
+		AuthTimer = xTaskGetTickCount();
+	}
 	AuthTimer = xTaskGetTickCount();
 }
 

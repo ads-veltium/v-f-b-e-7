@@ -94,7 +94,12 @@ int gsm_RFOn();
  * Turn Off Gsm 
  */
 //=============
-void apagarModem();
+void FinishGSM();
 
+/*
+ * Turn Off Gsm 
+ */
+//=============
+void StartGSM();
 
 #endif
