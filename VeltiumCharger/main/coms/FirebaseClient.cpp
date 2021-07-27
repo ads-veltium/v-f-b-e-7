@@ -724,7 +724,7 @@ void Firebase_Conn_Task(void *args){
   long long ts_app_req =0;
   TickType_t xStarted = 0, xElapsed = 0; 
   int UpdateCheckTimeout=0;
-  uint8_t delayeando = 0;
+  int  delayeando = 0;
   while(1){
     delayeando = 0;
     if(!ConfigFirebase.InternetConection && ConnectionState!= DISCONNECTED){
