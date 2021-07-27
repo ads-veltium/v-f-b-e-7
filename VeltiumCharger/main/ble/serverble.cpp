@@ -185,6 +185,7 @@ void serverbleSetCharacteristic ( uint8_t *data, int len, uint16_t handle )
 	}
 	// set characteristic value using selector mechanism
 	rcs_server_set_chr_value(handle, data, len);
+
 }
 
 void serverbleSetConnected(bool value){
@@ -274,7 +275,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 			uint8_t  pldsize = rcs_get_size(selector);
 
 			#ifdef DEBUG_BLE
-			Serial.printf("Received write request for selector %u\n", selector);
+			Serial.printf("Receive read request for selector %u\n", selector);
 			#endif
 			// prepare packet to be written to characteristic:
 			// header with 2 bytes selector little endian, 2 bytes payload size little endian
@@ -288,6 +289,8 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 
 			// this flag will be set to 1 if we are not allowed to read (not authenticated)
 			uint8_t force_read_dummy_data = 0;
+
+			
 
 			// check authentication
 			if (!authorizedOK())
@@ -335,15 +338,8 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 			uint8_t* payload = data + 4;
 
 			#ifdef DEBUG_BLE
-				Serial.printf("Received omnibus write request for selector %u\n", selector);
-				Serial.printf("Received omnibus write request for handle   %u\n", handle);
-			#endif
-
-				/*
-				for(int i =0;i < size;i++){
-					printf("%i \n", payload[i]);
-				}
-				*/
+				Serial.printf("Received write request for selector %u\n", selector);
+			#endif				
 			
 			// special cases
 			if (handle == AUTENTICACION_TOKEN_CHAR_HANDLE) {

@@ -1104,33 +1104,26 @@ void procesar_bloque(uint16 tipo_bloque){
 		break;
 
 		case APN:{
-			Coms.GSM.ON=buffer_rx_local[0];
-			memcpy(&Coms.GSM.Apn[0], &buffer_rx_local[1], 30);
-			Serial.println(Coms.GSM.Apn);
+			Coms.GSM.Apn = (char*) buffer_rx_local;
 			printf("Me ha llegado el apn %s\n", Coms.GSM.Apn.c_str());
-			modifyCharacteristic(buffer_rx_local,  1, APN_ON);
-			modifyCharacteristic(&buffer_rx_local[1],  30, APN);
+			modifyCharacteristic((uint8_t*)buffer_rx_local, 30, APN);
+
 			
 		} 
 		break;
 
 		case APN_USER:{
-			
-			memcpy(&Coms.GSM.User[0], buffer_rx_local, 30);
-			Serial.println(Coms.GSM.User);
+			Coms.GSM.User = (char*) buffer_rx_local;
 			printf("Me ha llegado el apn user %s\n", Coms.GSM.User.c_str());
-			modifyCharacteristic(buffer_rx_local,  30, APN_USER);
+			modifyCharacteristic((uint8_t*)buffer_rx_local,  30, APN_USER);
 			
 		} 
 		break;
 
 		case APN_PASSWORD:{
-
-
-			memcpy(&Coms.GSM.Pass[0], buffer_rx_local, 30);
-			Serial.println(Coms.GSM.Pass);
+			Coms.GSM.Pass = (char*) buffer_rx_local;
 			printf("Me ha llegado el apn pass %s\n", Coms.GSM.Pass.c_str());
-			modifyCharacteristic(buffer_rx_local,  30, APN_PASSWORD);
+			modifyCharacteristic((uint8_t*)buffer_rx_local,  30, APN_PASSWORD);
 			
 		} 
 		break;
@@ -1139,7 +1132,21 @@ void procesar_bloque(uint16 tipo_bloque){
 
 			memcpy(Coms.GSM.Pin, buffer_rx_local,4);
 			printf("Me ha llegado el apn pin %s\n", Coms.GSM.Pin);
+			printf("%s \n", buffer_rx_local);
 			modifyCharacteristic(buffer_rx_local,  4, APN_PIN);
+			if(Coms.GSM.temp_on){
+				Coms.GSM.ON = true;
+			}
+		} 
+		break;
+
+		case APN_ON:{
+			Coms.GSM.temp_on = buffer_rx_local[0];	
+			if(!Coms.GSM.temp_on){
+				Coms.GSM.ON = false;
+			}
+			printf("GSM On  %i\n", Coms.GSM.ON);
+			modifyCharacteristic(buffer_rx_local,  1, APN_ON);
 		} 
 		break;
 
@@ -1642,9 +1649,6 @@ void UpdateCompressedTask(void *arg){
 #endif
 
 void controlInit(void){
-	#ifdef DEVELOPMENT
-		version_firmware[6] = 'B';
-	#endif
 	//Freertos estatico
 	xTaskCreateStatic(LedControl_Task,"TASK LEDS",4096*2,NULL,PRIORIDAD_LEDS,xLEDStack,&xLEDBuffer); 
 	xTaskCreateStatic(controlTask,"TASK CONTROL",4096*6,NULL,PRIORIDAD_CONTROL,xControlStack,&xControlBuffer); 

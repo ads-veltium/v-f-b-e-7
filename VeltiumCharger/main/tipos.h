@@ -191,6 +191,7 @@ typedef struct{
 
 typedef struct{
 	bool ON;
+	bool temp_on;
 	String Apn;
 	String Pass;
 	String User;
