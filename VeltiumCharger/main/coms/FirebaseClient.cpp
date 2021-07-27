@@ -730,6 +730,22 @@ void Firebase_Conn_Task(void *args){
     if(!ConfigFirebase.InternetConection && ConnectionState!= DISCONNECTED){
       ConnectionState=DISCONNECTING;
     }
+
+    //Si estamos conectados a través de gsm y tenemos muchos errores, significa que hemos perdido la cobertura
+    //Y debemos reiniciar el modem
+    if(Coms.GSM.ON && Coms.GSM.Internet && Error_Count >= 20){
+      Coms.GSM.reboot = true;
+      Coms.GSM.Internet = false;
+      Error_Count = 0;
+      if(ConnectionState > CONNECTING){
+        ConnectionState=DISCONNECTING;
+      }
+      else{
+        ConnectionState=DISCONNECTED;
+        delayeando = 10000;
+      }
+    }
+
     switch (ConnectionState){
     //Comprobar estado de la red
     case DISCONNECTED:{
@@ -751,6 +767,9 @@ void Firebase_Conn_Task(void *args){
         Base_Path += (char *)ConfigFirebase.Device_Db_ID;
         ConnectionState=CONECTADO;
         delayeando = 10;
+      }
+      else{
+        Error_Count++;
       }
       break;
     
