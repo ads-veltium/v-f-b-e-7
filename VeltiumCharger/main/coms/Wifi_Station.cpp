@@ -241,7 +241,7 @@ void stop_wifi(void){
     #endif
 
     uint8_t timeout = 0;
-    while(ConnectionState != DISCONNECTED && ++timeout < 50){
+    while(ConnectionState != DISCONNECTED && ++timeout < 80){
         delay(100);
     }
 
@@ -571,7 +571,7 @@ void Eth_Loop(){
                     Serial.println("Esperando a que firebase se desconecte!");
                     #endif
                     uint8_t timeout = 0;
-                    while(ConnectionState != DISCONNECTED && ++timeout < 50){ // 5 segundos
+                    while(ConnectionState != DISCONNECTED && ++timeout < 80){ // 5 segundos
                         delay(100);
                     }
 
@@ -667,7 +667,8 @@ void Eth_Loop(){
                 }              
                 
                 Coms.ETH.Wifi_Perm = false;
-                while(ConnectionState !=IDLE && ConnectionState!=DISCONNECTED){
+                uint8_t timeout = 0;
+                while(ConnectionState !=IDLE && ConnectionState!=DISCONNECTED && ++timeout < 80){
                     delay(100);
                 }
                 stop_wifi();

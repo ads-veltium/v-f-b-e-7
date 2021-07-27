@@ -386,7 +386,7 @@ void Cliente_HTTP::begin(){
     
     esp_http_client_config_t config = {
         .url = _url.c_str(),
-        .timeout_ms = 5000,
+        .timeout_ms = 2500,
         .event_handler = _generic_http_event_handle,
         .buffer_size_tx = 2048,
         .is_async = false,
