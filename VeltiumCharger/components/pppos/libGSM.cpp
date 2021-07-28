@@ -29,13 +29,14 @@ extern carac_Coms  Coms;
 bool gsm_connected=false;
 extern uint8_t ConnectionState;
 extern carac_Firebase_Configuration ConfigFirebase;
+bool gsm_inicializando=false;
 
 // === GSM configuration that you can set via 'make menuconfig'. ===
 #define UART_GPIO_TX 32
 #define UART_GPIO_RX 35
 #define UART_BDRATE 115200
 
-#define GSM_DEBUG 0
+#define GSM_DEBUG 1
 
 #define BUF_SIZE (1024)
 #define GSM_OK_Str "OK"
@@ -186,7 +187,7 @@ static GSM_Cmd *GSM_Init[] =
 		
 		&cmd_RFOn,
 		&cmd_Pin_1,
-		
+		//&cmd_Reg,
 		&cmd_APN,
 
 		&cmd_Cereg,
@@ -230,6 +231,7 @@ static void ppp_status_cb(ppp_pcb *pcb, int err_code, void *ctx)
 			gsm_connected = true;
 			Coms.GSM.Internet = true;
 			xSemaphoreGive(pppos_mutex);
+			gsm_inicializando=false;
 			break;
 		}
 		case PPPERR_PARAM: {
@@ -267,6 +269,7 @@ static void ppp_status_cb(ppp_pcb *pcb, int err_code, void *ctx)
 			Coms.GSM.Internet = false;
 			ConnectionState = DISCONNECTED;
 			ConfigFirebase.InternetConection=false;
+			gsm_inicializando=false;
 			xSemaphoreGive(pppos_mutex);
 			break;
 		}
@@ -280,6 +283,7 @@ static void ppp_status_cb(ppp_pcb *pcb, int err_code, void *ctx)
 			Coms.GSM.Internet = false;
 			ConnectionState = DISCONNECTED;
 			ConfigFirebase.InternetConection=false;
+			gsm_inicializando=false;
 			xSemaphoreGive(pppos_mutex);
 			break;
 		}
@@ -467,6 +471,13 @@ static void _disconnect(uint8_t rfOff)
 		vTaskDelay(100 / portTICK_PERIOD_MS);
 		atCmd_waitResponse("AT+WS46=28\r\n", GSM_OK_Str, NULL, sizeof("AT+WS46=28\r\n")-1, 5000, NULL, 0);
 		atCmd_waitResponse("AT+WS46?\r\n", GSM_OK_Str, NULL, sizeof("AT+WS46?\r\n")-1, 5000, NULL, 0);
+		atCmd_waitResponse("AT#SHDN\r\n", GSM_OK_Str, NULL, sizeof("AT#SHDN\r\n")-1, 10000, NULL, 0);
+		vTaskDelay(500 / portTICK_PERIOD_MS);
+		gpio_set_level((gpio_num_t)2, 1);
+		vTaskDelay(500 / portTICK_PERIOD_MS);
+		gpio_set_level((gpio_num_t)2, 0);
+		vTaskDelay(500 / portTICK_PERIOD_MS);
+		gpio_set_level((gpio_num_t)2, 1);
 		vTaskDelay(100 / portTICK_PERIOD_MS);
 		if (rfOff) {
 			cmd_Reg.timeoutMs = 10000;
@@ -565,7 +576,7 @@ static void pppos_client_task(void *args)
 		#endif
     	goto exit;
     }
-
+/*
     if (gpio_set_direction((gpio_num_t)UART_GPIO_TX, GPIO_MODE_OUTPUT)) goto exit;
 	if (gpio_set_direction((gpio_num_t)UART_GPIO_RX, GPIO_MODE_INPUT)) goto exit;
 	if (gpio_set_pull_mode((gpio_num_t)UART_GPIO_RX, GPIO_PULLUP_ONLY)) goto exit;
@@ -575,6 +586,17 @@ static void pppos_client_task(void *args)
 	//Set UART1 pins(TX, RX, RTS, CTS)
 	if (uart_set_pin(uart_num, UART_GPIO_TX, UART_GPIO_RX, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE)) goto exit;
 	if (uart_driver_install(uart_num, BUF_SIZE * 2, BUF_SIZE * 2, 0, NULL, 0)) goto exit;
+*/
+
+	gpio_set_direction((gpio_num_t)UART_GPIO_TX, GPIO_MODE_OUTPUT);
+	gpio_set_direction((gpio_num_t)UART_GPIO_RX, GPIO_MODE_INPUT);
+	gpio_set_pull_mode((gpio_num_t)UART_GPIO_RX, GPIO_PULLUP_ONLY);
+
+	//Configure UART1 parameters
+	uart_param_config(uart_num, &uart_config);
+	//Set UART1 pins(TX, RX, RTS, CTS)
+	uart_set_pin(uart_num, UART_GPIO_TX, UART_GPIO_RX, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
+	uart_driver_install(uart_num, BUF_SIZE * 2, BUF_SIZE * 2, 0, NULL, 0);
 
 	// Set APN from config
 	sprintf(PPP_ApnATReq, "AT+CGDCONT=1,\"IP\",\"%s\"\r\n",Coms.GSM.Apn.c_str());
@@ -624,7 +646,7 @@ static void pppos_client_task(void *args)
 					GSM_Init[gsmCmdIter]->timeoutMs, NULL, 0) == 0)
 			{
 				// * No response or not as expected, start from first initialization command
-				if(gsmCmdIter==2 && ){
+				if(gsmCmdIter==2){
 					atCmd_waitResponse("AT+CPIN=5337\r\n", GSM_OK_Str, NULL, sizeof("AT+CPIN=5337\r\n")-1, 5000, NULL, 0);
 				}
 				if(gsmCmdIter==4 && nfail==20){
@@ -634,13 +656,39 @@ static void pppos_client_task(void *args)
 					#endif
 
 					//atCmd_waitResponse("AT+CPIN=5337\r\n", GSM_OK_Str, NULL, sizeof("AT+CPIN=5337\r\n")-1, 5000, NULL, 0);
-					atCmd_waitResponse("AT+WS46=30\r\n", GSM_OK_Str, NULL, sizeof("AT+WS46=30\r\n")-1, 5000, NULL, 0);
+					atCmd_waitResponse("AT+WS46=12\r\n", GSM_OK_Str, NULL, sizeof("AT+WS46=12\r\n")-1, 5000, NULL, 0);
+					atCmd_waitResponse("AT+WS46?\r\n", GSM_OK_Str, NULL, sizeof("AT+WS46?\r\n")-1, 5000, NULL, 0);
+					atCmd_waitResponse("AT#SHDN\r\n", GSM_OK_Str, NULL, sizeof("AT#SHDN\r\n")-1, 10000, NULL, 0);
+					gpio_set_level((gpio_num_t)2, 0);
+					vTaskDelay(500 / portTICK_PERIOD_MS);
+					gpio_set_level((gpio_num_t)2, 1);
+					vTaskDelay(500 / portTICK_PERIOD_MS);
+					gpio_set_level((gpio_num_t)2, 0);
+					vTaskDelay(500 / portTICK_PERIOD_MS);
+					gpio_set_level((gpio_num_t)2, 1);
+					vTaskDelay(500 / portTICK_PERIOD_MS);
+					atCmd_waitResponse(GSM_Init[0]->cmd,
+					GSM_Init[0]->cmdResponseOnOk, NULL,
+					GSM_Init[0]->cmdSize,
+					GSM_Init[0]->timeoutMs, NULL, 0);
+					//atCmd_waitResponse("AT+CFUN=4\r\n", GSM_OK_Str, NULL, 11, 10000, NULL, 0);
+					//atCmd_waitResponse("AT+CFUN=4\r\n", GSM_OK_Str, NULL, 11, 10000, NULL, 0);
+					//atCmd_waitResponse("AT+CFUN=1\r\n", GSM_OK_Str, NULL, 11, 10000, NULL, 0);
+					atCmd_waitResponse("AT+CREG?\r\n", "+CREG: 0,1", NULL, sizeof("AT+CREG?\r\n")-1, 10000, NULL, 0);
+					//atCmd_waitResponse("AT#SHDN\r\n", GSM_OK_Str, NULL, sizeof("AT#SHDN\r\n")-1, 10000, NULL, 0);
 					atCmd_waitResponse("AT+CFUN=4\r\n", GSM_OK_Str, NULL, 11, 10000, NULL, 0);
 					atCmd_waitResponse("AT+CFUN=1\r\n", GSM_OK_Str, NULL, 11, 10000, NULL, 0);
+
+					/*atCmd_waitResponse(GSM_Init[3]->cmd,
+					GSM_Init[3]->cmdResponseOnOk, NULL,
+					GSM_Init[3]->cmdSize,
+					GSM_Init[3]->timeoutMs, NULL, 0);*/
+
 					while(atCmd_waitResponse("AT+CREG?\r\n", "+CREG: 0,1", NULL, sizeof("AT+CREG?\r\n")-1, 10000, NULL, 0)==0){
-						atCmd_waitResponse("AT+CREG?\r\n", "+CREG: 0,1", NULL, sizeof("AT+CREG?\r\n")-1, 10000, NULL, 0);
-						vTaskDelay(100 / portTICK_PERIOD_MS);
+						//atCmd_waitResponse("AT+CREG?\r\n", "+CREG: 0,1", NULL, sizeof("AT+CREG?\r\n")-1, 10000, NULL, 0);
+						vTaskDelay(400 / portTICK_PERIOD_MS);
 						if (nfail_gprs > 60) goto exit;
+						if(!Coms.GSM.ON) goto exit;
 						nfail_gprs++;
 					}
 				
@@ -662,7 +710,7 @@ static void pppos_client_task(void *args)
 				#endif
 
 				nfail++;
-				
+				if(!Coms.GSM.ON) goto exit;
 				if (nfail > 40) goto exit;
 				vTaskDelay(250 / portTICK_PERIOD_MS);
 				if(redgprs==false){
@@ -725,7 +773,6 @@ static void pppos_client_task(void *args)
 				printf("\r\n");
 				ESP_LOGE(TAG, "Disconnect requested.");
 				#endif
-				
 				#ifdef DEBUG
 				Serial.printf("Desconexión GSM solicitada\n");
 				#endif	
@@ -833,13 +880,17 @@ exit:
 	ESP_LOGE(TAG, "PPPoS TASK TERMINATED");
 	//ESP_LOGE(TAG, "TASK STARTED: %i",pppos_task_started);
 	#endif
+	#ifdef DEBUG
+	Serial.printf("Tarea GSM acabada!!\n");
+	#endif
+	gsm_inicializando=false;
 	vTaskDelete(NULL);
-	//ppposDisconnect(1,0);
 }
 
 //=============
 int ppposInit()
 {
+	gsm_inicializando=true;
 	int prueba=0;
 	if (pppos_mutex != NULL) xSemaphoreTake(pppos_mutex, PPPOSMUTEX_TIMEOUT);
 	do_pppos_connect = 1;
@@ -991,8 +1042,10 @@ int gsm_RFOn()
 //===================
 void StartGSM(){
 	Coms.GSM.Internet = false;
-	if (ppposInit() == 0) {
-		ESP_LOGE("PPPoS EXAMPLE", "ERROR: GSM not initialized, HALTED");
+	while (!gsm_inicializando && Coms.GSM.ON)
+	{
+		ppposInit();
+		delay(1000);
 	}
 }
 

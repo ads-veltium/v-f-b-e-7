@@ -768,6 +768,13 @@ void ComsTask(void *args){
                     Coms.GSM.reboot=false;
                 }
             }
+            if(Coms.ETH.Internet){
+                if(gsm_connected){
+                    FinishGSM();
+                    Coms.GSM.ON = false;
+                }
+                Coms.GSM.ON = false;
+            }
             //Comprobar si hemos perdido todas las conexiones
             if(!Coms.ETH.Internet && !Coms.Wifi.Internet && !Coms.GSM.Internet){
                 ConfigFirebase.InternetConection=false;

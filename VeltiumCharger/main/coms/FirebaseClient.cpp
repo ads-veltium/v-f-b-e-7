@@ -840,6 +840,7 @@ void Firebase_Conn_Task(void *args){
       }
       else{
         null_count=0;
+        Error_Count=0;
       }
 
       //Comprobar actualizaciones automaticas
@@ -867,6 +868,7 @@ void Firebase_Conn_Task(void *args){
           delayeando = 10;   
           ConnectionState = USER_CONNECTED;
           ConfigFirebase.ClientConnected  = true;
+          Error_Count=0;
         }
         break;
       }

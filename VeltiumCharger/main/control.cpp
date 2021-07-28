@@ -1145,11 +1145,12 @@ void procesar_bloque(uint16 tipo_bloque){
 			printf("Me ha llegado el apn on %i\n", Coms.GSM.temp_on);	
 			printf("%i \n", strlen(Coms.GSM.Apn.c_str()));
 
-			if(strlen(Coms.GSM.Apn.c_str() ) > 2 && Coms.GSM.temp_on){
+			/*if(strlen(Coms.GSM.Apn.c_str() ) > 2 && Coms.GSM.temp_on){
 				Coms.GSM.ON = true;
 				printf("GSM On  %i\n", Coms.GSM.ON);
 			}
-			else if(!Coms.GSM.temp_on){
+			else */
+			if(!Coms.GSM.temp_on){
 				Coms.GSM.ON = false;
 				printf("GSM On  %i\n", Coms.GSM.ON);
 			}
