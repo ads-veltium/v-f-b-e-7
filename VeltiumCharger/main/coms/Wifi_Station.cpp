@@ -672,8 +672,12 @@ void Eth_Loop(){
                     delay(100);
                 }
                 stop_wifi();
+                
                 Coms.GSM.ON = false;
+                uint8_t  on =0;
+                modifyCharacteristic(&on,  1, APN_ON);
                 Coms.ETH.State = CONNECTING;
+                
                 initialize_ethernet();         
                 xStart = xTaskGetTickCount();
             }
@@ -737,6 +741,8 @@ void ComsTask(void *args){
                     if(gsm_connected){
                         Coms.GSM.ON = false;
                         FinishGSM();
+                        uint8_t  on =0;
+                        modifyCharacteristic(&on,  1, APN_ON);
                     }
                 }
 
