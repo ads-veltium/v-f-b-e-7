@@ -476,7 +476,7 @@ void Eth_Loop(){
                 Coms.ETH.State = DISCONNECTING;                
             }
             //si tenemos configurado un medidor o somos el maestro de un grupo, y a los 30 segundos no tenemos conexion a internet, activamos el DHCP
-            else if(Params.Tipo_Sensor || ChargingGroup.Params.GroupMaster){
+            else if(Params.Tipo_Sensor || (ChargingGroup.Params.GroupMaster && ChargingGroup.Params.GroupActive)){
                 if(GetStateTime(xStart) > 30000){
                     #ifdef DEBUG_ETH
                         Serial.println("Activo DHCP");
@@ -672,6 +672,7 @@ void Eth_Loop(){
                     delay(100);
                 }
                 stop_wifi();
+                Coms.GSM.ON = false;
                 Coms.ETH.State = CONNECTING;
                 initialize_ethernet();         
                 xStart = xTaskGetTickCount();
@@ -750,29 +751,8 @@ void ComsTask(void *args){
                 Coms.StartProvisioning = false;
                 Coms.StartSmartconfig  = false;
             }
-            if(Coms.GSM.ON && !gsm_connected){
-                if(wifi_connected || wifi_connecting){
-                    Coms.Wifi.ON = false;
-                    stop_wifi();
-                }
-                StartGSM();
-            }
-            if(gsm_connected){
-                if(!Coms.GSM.ON){
-                    FinishGSM();
-                }
-                if(Coms.GSM.reboot){
-                    FinishGSM();
-                    delay(2000);
-                    StartGSM();
-                    Coms.GSM.reboot=false;
-                }
-            }
+
             if(Coms.ETH.Internet){
-                if(gsm_connected){
-                    FinishGSM();
-                    Coms.GSM.ON = false;
-                }
                 Coms.GSM.ON = false;
             }
             //Comprobar si hemos perdido todas las conexiones
@@ -781,6 +761,33 @@ void ComsTask(void *args){
             }
             else{
                 ConfigFirebase.InternetConection=true;
+            }
+
+            //Encendido de las interfaces GSM     
+            if(Coms.GSM.ON){
+                if(!gsm_connected){
+                    if(Coms.ETH.ON){
+                        if(!Coms.ETH.Internet && Coms.ETH.Wifi_Perm && !Coms.Wifi.ON){
+                            StartGSM();                     
+                        }
+                    }
+                    else if(!Coms.Wifi.ON){
+                        StartGSM();  
+                        }
+                }
+                else{
+                    if(Coms.GSM.reboot){
+                        FinishGSM();
+                        delay(2000);
+                        StartGSM();
+                        Coms.GSM.reboot=false;
+                    }
+                }                
+            }
+            else{
+                if(gsm_connected){
+                    FinishGSM();
+                }
             }
 
             //Encendido de las interfaces     

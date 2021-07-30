@@ -421,7 +421,7 @@ static int atCmd_waitResponse(char * cmd, char *resp, char * resp1, int cmdSize,
 		else {
 			if (tot > 0) {
 				// Check the response
-				if ((strstr(sresp, resp) != NULL)) {
+				if ((strstr(sresp, resp) != NULL) || (strstr(sresp, "+CEREG: 0,5") != NULL) || (strstr(sresp, "+CREG: 0,5") != NULL)) {
 					#if GSM_DEBUG
 					ESP_LOGE(TAG,"AT RESPONSE: [%s]", sresp);
 					#endif
@@ -576,17 +576,6 @@ static void pppos_client_task(void *args)
 		#endif
     	goto exit;
     }
-/*
-    if (gpio_set_direction((gpio_num_t)UART_GPIO_TX, GPIO_MODE_OUTPUT)) goto exit;
-	if (gpio_set_direction((gpio_num_t)UART_GPIO_RX, GPIO_MODE_INPUT)) goto exit;
-	if (gpio_set_pull_mode((gpio_num_t)UART_GPIO_RX, GPIO_PULLUP_ONLY)) goto exit;
-
-	//Configure UART1 parameters
-	if (uart_param_config(uart_num, &uart_config)) goto exit;
-	//Set UART1 pins(TX, RX, RTS, CTS)
-	if (uart_set_pin(uart_num, UART_GPIO_TX, UART_GPIO_RX, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE)) goto exit;
-	if (uart_driver_install(uart_num, BUF_SIZE * 2, BUF_SIZE * 2, 0, NULL, 0)) goto exit;
-*/
 
 	gpio_set_direction((gpio_num_t)UART_GPIO_TX, GPIO_MODE_OUTPUT);
 	gpio_set_direction((gpio_num_t)UART_GPIO_RX, GPIO_MODE_INPUT);
@@ -600,7 +589,7 @@ static void pppos_client_task(void *args)
 
 	// Set APN from config
 	sprintf(PPP_ApnATReq, "AT+CGDCONT=1,\"IP\",\"%s\"\r\n",Coms.GSM.Apn.c_str());
-	//sprintf(PPP_ApnATReq, "AT+CGDCONT=1,\"IP\",\"%s\"\r\n","telefonica.es");
+	
 	cmd_APN.cmd = PPP_ApnATReq;
 	cmd_APN.cmdSize = strlen(PPP_ApnATReq);
 
@@ -655,7 +644,6 @@ static void pppos_client_task(void *args)
 					Serial.printf("Cambiando a red GPRS...\n");
 					#endif
 
-					//atCmd_waitResponse("AT+CPIN=5337\r\n", GSM_OK_Str, NULL, sizeof("AT+CPIN=5337\r\n")-1, 5000, NULL, 0);
 					atCmd_waitResponse("AT+WS46=12\r\n", GSM_OK_Str, NULL, sizeof("AT+WS46=12\r\n")-1, 5000, NULL, 0);
 					atCmd_waitResponse("AT+WS46?\r\n", GSM_OK_Str, NULL, sizeof("AT+WS46?\r\n")-1, 5000, NULL, 0);
 					atCmd_waitResponse("AT#SHDN\r\n", GSM_OK_Str, NULL, sizeof("AT#SHDN\r\n")-1, 10000, NULL, 0);
@@ -671,21 +659,14 @@ static void pppos_client_task(void *args)
 					GSM_Init[0]->cmdResponseOnOk, NULL,
 					GSM_Init[0]->cmdSize,
 					GSM_Init[0]->timeoutMs, NULL, 0);
-					//atCmd_waitResponse("AT+CFUN=4\r\n", GSM_OK_Str, NULL, 11, 10000, NULL, 0);
-					//atCmd_waitResponse("AT+CFUN=4\r\n", GSM_OK_Str, NULL, 11, 10000, NULL, 0);
-					//atCmd_waitResponse("AT+CFUN=1\r\n", GSM_OK_Str, NULL, 11, 10000, NULL, 0);
+					
 					atCmd_waitResponse("AT+CREG?\r\n", "+CREG: 0,1", NULL, sizeof("AT+CREG?\r\n")-1, 10000, NULL, 0);
-					//atCmd_waitResponse("AT#SHDN\r\n", GSM_OK_Str, NULL, sizeof("AT#SHDN\r\n")-1, 10000, NULL, 0);
+
 					atCmd_waitResponse("AT+CFUN=4\r\n", GSM_OK_Str, NULL, 11, 10000, NULL, 0);
 					atCmd_waitResponse("AT+CFUN=1\r\n", GSM_OK_Str, NULL, 11, 10000, NULL, 0);
 
-					/*atCmd_waitResponse(GSM_Init[3]->cmd,
-					GSM_Init[3]->cmdResponseOnOk, NULL,
-					GSM_Init[3]->cmdSize,
-					GSM_Init[3]->timeoutMs, NULL, 0);*/
-
 					while(atCmd_waitResponse("AT+CREG?\r\n", "+CREG: 0,1", NULL, sizeof("AT+CREG?\r\n")-1, 10000, NULL, 0)==0){
-						//atCmd_waitResponse("AT+CREG?\r\n", "+CREG: 0,1", NULL, sizeof("AT+CREG?\r\n")-1, 10000, NULL, 0);
+						
 						vTaskDelay(400 / portTICK_PERIOD_MS);
 						if (nfail_gprs > 60) goto exit;
 						if(!Coms.GSM.ON) goto exit;
