@@ -566,6 +566,7 @@ void procesar_bloque(uint16 tipo_bloque){
 					Comands.desired_current = buffer_rx_local[233];
 					Coms.ETH.Auto = buffer_rx_local[240];
 					Coms.Wifi.ON = buffer_rx_local[236];
+					printf("Wifi%i\n",Coms.Wifi.ON );
 					Coms.ETH.ON = buffer_rx_local[237];	
 					modifyCharacteristic(&buffer_rx_local[236], 1, COMS_CONFIGURATION_WIFI_ON);
 					if(Coms.ETH.Auto && !Params.Tipo_Sensor){
@@ -1100,7 +1101,7 @@ void procesar_bloque(uint16 tipo_bloque){
 		break;
 
 		case APN:{
-			if(strlen(Coms.GSM.Apn.c_str()) > 2 && Coms.GSM.ON){
+			if( Coms.GSM.Apn != "NA" && Coms.GSM.ON){
 				Coms.GSM.reboot = true;
 				printf("Haciendo un reboot del gsm!!\n");
 			}
@@ -1142,19 +1143,15 @@ void procesar_bloque(uint16 tipo_bloque){
 
 		case APN_ON:{
 			Coms.GSM.temp_on = buffer_rx_local[0];
-			printf("Me ha llegado el apn on %i\n", Coms.GSM.temp_on);	
-			printf("%i \n", strlen(Coms.GSM.Apn.c_str()));
 
-			/*if(strlen(Coms.GSM.Apn.c_str() ) > 2 && Coms.GSM.temp_on){
+			if(Coms.GSM.Apn != "NA"  && Coms.GSM.temp_on){
 				Coms.GSM.ON = true;
 				printf("GSM On  %i\n", Coms.GSM.ON);
 			}
-			else */
-			if(!Coms.GSM.temp_on){
+			else if(!Coms.GSM.temp_on){
 				Coms.GSM.ON = false;
 				printf("GSM On  %i\n", Coms.GSM.ON);
 			}
-			
 			modifyCharacteristic(buffer_rx_local,  1, APN_ON);
 		} 
 		break;

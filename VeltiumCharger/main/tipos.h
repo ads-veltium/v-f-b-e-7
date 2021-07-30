@@ -193,7 +193,7 @@ typedef struct{
 	bool ON;
 	bool reboot;
 	bool temp_on;
-	String Apn;
+	String Apn = "NA";
 	String Pass;
 	String User;
 	uint8_t Pin [4];
