@@ -186,7 +186,7 @@ static GSM_Cmd *GSM_Init[] =
 		&cmd_AT,
 		
 		&cmd_RFOn,
-		&cmd_Pin_1,
+		//&cmd_Pin_1,
 		//&cmd_Reg,
 		&cmd_APN,
 
@@ -480,7 +480,7 @@ static void _disconnect(uint8_t rfOff)
 		gpio_set_level((gpio_num_t)2, 1);
 		vTaskDelay(100 / portTICK_PERIOD_MS);
 		if (rfOff) {
-			cmd_Reg.timeoutMs = 10000;
+			cmd_Reg.timeoutMs = 1000;
 			res = atCmd_waitResponse("AT+CFUN=4\r\n", GSM_OK_Str, NULL, 11, 10000, NULL, 0); // disable RF function
 		}
 		return;
@@ -635,10 +635,10 @@ static void pppos_client_task(void *args)
 					GSM_Init[gsmCmdIter]->timeoutMs, NULL, 0) == 0)
 			{
 				// * No response or not as expected, start from first initialization command
-				if(gsmCmdIter==2){
+				/*if(gsmCmdIter==2){
 					atCmd_waitResponse("AT+CPIN=5337\r\n", GSM_OK_Str, NULL, sizeof("AT+CPIN=5337\r\n")-1, 5000, NULL, 0);
-				}
-				if(gsmCmdIter==4 && nfail==20){
+				}*/
+				if(gsmCmdIter==3 && nfail==20){
 					
 					#ifdef DEBUG
 					Serial.printf("Cambiando a red GPRS...\n");
@@ -673,15 +673,15 @@ static void pppos_client_task(void *args)
 						nfail_gprs++;
 					}
 				
+					atCmd_waitResponse(GSM_Init[4]->cmd,
+					GSM_Init[4]->cmdResponseOnOk, NULL,
+					GSM_Init[4]->cmdSize,
+					GSM_Init[4]->timeoutMs, NULL, 0);
+
 					atCmd_waitResponse(GSM_Init[5]->cmd,
 					GSM_Init[5]->cmdResponseOnOk, NULL,
 					GSM_Init[5]->cmdSize,
 					GSM_Init[5]->timeoutMs, NULL, 0);
-
-					atCmd_waitResponse(GSM_Init[6]->cmd,
-					GSM_Init[6]->cmdResponseOnOk, NULL,
-					GSM_Init[6]->cmdSize,
-					GSM_Init[6]->timeoutMs, NULL, 0);
 
 					gsmCmdIter = GSM_InitCmdsSize;
 					redgprs=true;

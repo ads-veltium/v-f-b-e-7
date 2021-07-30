@@ -48,6 +48,7 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
     if (event_base == WIFI_EVENT){
         switch(event_id){
             case WIFI_EVENT_STA_START:{
+                Coms.GSM.ON=false;
                 Coms.Wifi.Internet = false;
                 esp_wifi_disconnect();
                 esp_wifi_connect();
@@ -678,8 +679,6 @@ void Eth_Loop(){
                 stop_wifi();
                 
                 Coms.GSM.ON = false;
-                uint8_t  on =0;
-                modifyCharacteristic(&on,  1, APN_ON);
                 Coms.ETH.State = CONNECTING;
                 
                 initialize_ethernet();         
@@ -726,6 +725,12 @@ void ComsTask(void *args){
             Eth_Loop();     
             //Arranque del provisioning
             if(Coms.StartProvisioning || Coms.StartSmartconfig){
+                if(Coms.GSM.ON){
+                    if(gsm_connected){
+                        Coms.GSM.ON = false;
+                        FinishGSM();
+                    }
+                }
                 ConfigFirebase.InternetConection=0;
                 #ifdef DEBUG_WIFI
                 Serial.println("Starting provisioning sistem");
@@ -740,14 +745,6 @@ void ComsTask(void *args){
                     Coms.ETH.State = KILLING;
                     Coms.ETH.ON = false;
                     kill_ethernet();
-                }
-                if(Coms.GSM.ON){
-                    if(gsm_connected){
-                        Coms.GSM.ON = false;
-                        FinishGSM();
-                        uint8_t  on =0;
-                        modifyCharacteristic(&on,  1, APN_ON);
-                    }
                 }
 
                 delay(100);
