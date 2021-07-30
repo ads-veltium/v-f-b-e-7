@@ -25,6 +25,7 @@ bool wifi_connected  = false;
 bool wifi_connecting = false;
 bool ServidorArrancado = false;
 static uint8 Reintentos = 0;
+bool SmartConfiguing= false;
 
 
 void InitServer(void);
@@ -66,18 +67,14 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
                     Serial.println("Intentado demasiadas veces, desconectando");
                     #endif
                     esp_wifi_restore(); //Borrar las credenciales
-                    if(Coms.Provisioning || Coms.StartSmartconfig ){
+                    if(Coms.Provisioning || SmartConfiguing){
                         MAIN_RESET_Write(0);
                         ESP.restart();
                     }  
                     
 
                     stop_wifi();
-                    if(Coms.StartSmartconfig){
-                        Coms.StartSmartconfig = 0;
-                        esp_smartconfig_stop();
-                    }
-                    else if(Coms.StartProvisioning){
+                    if(Coms.StartProvisioning){
                         Coms.StartProvisioning = 0;
 
                         wifi_prov_mgr_deinit();
@@ -116,6 +113,9 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
         Reintentos = 0;
         wifi_connected = true;
         wifi_connecting = false;
+        if(SmartConfiguing){
+            SendToPSOC5(Coms.Wifi.ON,COMS_CONFIGURATION_WIFI_ON);
+        }
         if(!Coms.Provisioning){
             delay(1000);
             Coms.Wifi.Internet = ComprobarConexion();
@@ -275,9 +275,13 @@ void stop_wifi(void){
 }
 
 void initialise_smartconfig(void){
+    if(SmartConfiguing){
+        esp_smartconfig_stop();
+    }
     Serial.printf("Arrancando smartconfig! \n");
     stop_wifi();
     wifi_connecting = true;
+    SmartConfiguing = true;
     ESP_ERROR_CHECK(esp_event_handler_register(SC_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL));
 
     sta_netif = esp_netif_create_default_wifi_sta();

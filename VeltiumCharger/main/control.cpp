@@ -566,6 +566,7 @@ void procesar_bloque(uint16 tipo_bloque){
 					Comands.desired_current = buffer_rx_local[233];
 					Coms.ETH.Auto = buffer_rx_local[240];
 					Coms.Wifi.ON = buffer_rx_local[236];
+					printf("Wifi%i\n",Coms.Wifi.ON );
 					Coms.ETH.ON = buffer_rx_local[237];	
 					modifyCharacteristic(&buffer_rx_local[236], 1, COMS_CONFIGURATION_WIFI_ON);
 					if(Coms.ETH.Auto && !Params.Tipo_Sensor){
@@ -1151,7 +1152,6 @@ void procesar_bloque(uint16 tipo_bloque){
 				Coms.GSM.ON = false;
 				printf("GSM On  %i\n", Coms.GSM.ON);
 			}
-			
 			modifyCharacteristic(buffer_rx_local,  1, APN_ON);
 		} 
 		break;
