@@ -783,7 +783,7 @@ void Firebase_Conn_Task(void *args){
       Status.last_ts_app_req  = Database->Get_Timestamp("/status/ts_app_req",&Lectura);
       
       Error_Count+=!WriteFirebaseFW("/fw/current");
-
+#ifdef USE_GROUPS
       if(ChargingGroup.Params.GroupActive){
         //comprobar si han borrado el grupo mientras estabamos desconectados
         if(!ReadFirebasePath("/groupId")){
@@ -794,6 +794,7 @@ void Firebase_Conn_Task(void *args){
           ChargingGroup.Params.GroupMaster = false;
         }
       }
+#endif
 
       //Comprobar si hay firmware nuevo
 #ifndef DEVELOPMENT

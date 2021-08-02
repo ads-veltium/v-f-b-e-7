@@ -124,7 +124,13 @@ void BuscarContador_Task(void *args){
             #ifdef DEBUG_ETH
                 Serial.println("Nada, seguimos buscando");
             #endif
+            #ifdef USE_GROUPS
             if(!Params.Tipo_Sensor && !ChargingGroup.Params.CDP >> 4){
+            #endif
+
+            #ifndef USE_GROUPS
+            if(!Params.Tipo_Sensor){
+            #endif
                 Coms.ETH.Wifi_Perm = true;
                 break;
             }
@@ -249,7 +255,13 @@ void initialize_ethernet(void){
     #endif
 
     //servidor DHCP
+    #ifdef USE_GROUPS
     if(!Coms.ETH.Auto && (Params.Tipo_Sensor || ChargingGroup.Params.GroupMaster)){
+    #endif
+
+    #ifndef USE_GROUPS
+    if(!Coms.ETH.Auto && (Params.Tipo_Sensor)){
+    #endif
         //si tenemos IP estatica y un medidor conectado, activamos el dhcp
         Coms.ETH.DHCP = true;
         SendToPSOC5(Coms.ETH.Auto,COMS_CONFIGURATION_ETH_AUTO);

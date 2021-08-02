@@ -14,7 +14,9 @@ extern carac_Coms Coms;
 
 #ifdef USE_COMS
 	extern carac_Contador   ContadorExt;
+	#ifdef USE_GROUPS
 	extern carac_group    ChargingGroup;
+	#endif
 #endif
 
 
@@ -304,9 +306,11 @@ void LedControl_Task(void *arg){
 			Kit(VERDE);
 			Delay=75;
 		}
+		#ifdef USE_GROUPS
 		else if(ChargingGroup.Conected){
 			displayAll(90,ROSA);	
 		}
+		#endif
 #endif
 		else{
 			

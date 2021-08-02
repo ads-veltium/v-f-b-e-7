@@ -481,7 +481,12 @@ void Eth_Loop(){
                 Coms.ETH.State = DISCONNECTING;                
             }
             //si tenemos configurado un medidor o somos el maestro de un grupo, y a los 30 segundos no tenemos conexion a internet, activamos el DHCP
+            #ifdef USE_GROUPS
             else if(Params.Tipo_Sensor || (ChargingGroup.Params.GroupMaster && ChargingGroup.Params.GroupActive)){
+            #endif
+            #ifndef USE_GROUPS
+            else if(Params.Tipo_Sensor){
+            #endif
                 if(GetStateTime(xStart) > 30000){
                     #ifdef DEBUG_ETH
                         Serial.println("Activo DHCP");
@@ -504,12 +509,19 @@ void Eth_Loop(){
                     Coms.ETH.Internet = true;
                 }
             }
-            
+#ifdef USE_GROUPS
             if(ChargingGroup.Params.GroupActive){
                 Coms.ETH.Wifi_Perm = true;
             }
+#endif
             //Buscar el contador
+            #ifdef USE_GROUPS
             if((Params.Tipo_Sensor || (ChargingGroup.Params.CDP >> 4 && ChargingGroup.Params.GroupMaster && ChargingGroup.Conected)) && !finding){
+            #endif
+
+            #ifndef USE_GROUPS
+            if(Params.Tipo_Sensor && !finding){
+            #endif
                 if(GetStateTime(xStart) > 30000){
                     xTaskCreate( BuscarContador_Task, "BuscarContador", 4096*4, &finding, 5, NULL); 
                     finding = true;
@@ -544,22 +556,28 @@ void Eth_Loop(){
 
                 //Si lo queremos reinicializar para ponerle una ip estatica o quitarsela
                 if(Coms.ETH.restart || Coms.ETH.DHCP){
+#ifdef USE_GROUPS
                     if(ChargingGroup.Conected){
                         ChargingGroup.Params.GroupActive = false;
                         ChargingGroup.StopOrder = true;   
                     }
                     close_udp();
+#endif
+                    
                     kill_ethernet();
                     Coms.ETH.State = KILLING;
                     Coms.ETH.restart = false;
                     break;
                 }
                 else{
+#ifdef USE_GROUPS
                     if(ChargingGroup.Conected){
                         ChargingGroup.Params.GroupActive = false;
                         ChargingGroup.StopOrder = true;
                     }
-                    close_udp();
+                     close_udp();
+#endif
+                   
                     stop_ethernet();
                     Coms.ETH.State = DISCONNECTING;
                     break;
@@ -581,11 +599,13 @@ void Eth_Loop(){
                     }
 
                     Coms.ETH.State = DISCONNECTING;
+#ifdef USE_GROUPS
                     close_udp();
                     if(ChargingGroup.Conected){
                         ChargingGroup.Params.GroupActive = false;
                         ChargingGroup.StopOrder = true;
                     }
+#endif
                     if(Coms.Wifi.ON && Coms.Wifi.Internet){
                         Coms.Wifi.restart = true;
                     }
@@ -593,11 +613,13 @@ void Eth_Loop(){
                 }
                 else{
                     Coms.ETH.State = DISCONNECTING;
+#ifdef USE_GROUPS
                     close_udp();
                     if(ChargingGroup.Conected){
                         ChargingGroup.Params.GroupActive = false;
                         ChargingGroup.StopOrder = true;
                     }
+#endif
                     if(Coms.Wifi.ON && Coms.Wifi.Internet){
                         Coms.Wifi.restart = true;
                     }
@@ -606,7 +628,13 @@ void Eth_Loop(){
             }
 
             //Lectura del contador
+#ifdef USE_GROUPS
 			if(ContadorExt.ContadorConectado && (Params.Tipo_Sensor || (ChargingGroup.Params.CDP >> 4 && ChargingGroup.Params.GroupMaster && ChargingGroup.Conected))){
+#endif
+
+#ifndef USE_GROUPS
+            if(ContadorExt.ContadorConectado && Params.Tipo_Sensor){
+#endif
 				if(!Counter.Inicializado){
 					Counter.begin(ContadorExt.ContadorIp);
                     SendToPSOC5(0, BLOQUEO_CARGA);
@@ -627,7 +655,13 @@ void Eth_Loop(){
 			}
 
             //Pausar lectura del contador
+#ifdef USE_GROUPS
             else if(ContadorExt.ContadorConectado && !Params.Tipo_Sensor && !(ChargingGroup.Params.CDP >> 4)){
+#endif
+
+#ifndef USE_GROUPS
+            else if(ContadorExt.ContadorConectado && !Params.Tipo_Sensor){
+#endif
                 ContadorExt.ContadorConectado = false;
                 Counter.Inicializado = false;
                 Counter.end();

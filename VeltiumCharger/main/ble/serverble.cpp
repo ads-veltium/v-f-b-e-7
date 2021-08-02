@@ -27,14 +27,17 @@ extern carac_Update_Status 			UpdateStatus;
 extern carac_Comands                Comands;
 
 #ifdef CONNECTED
-	extern carac_group ChargingGroup;
-	extern carac_charger net_group[MAX_GROUP_SIZE];
-	extern uint8_t net_group_size;
-	extern carac_charger charger_table[MAX_GROUP_SIZE];
-	extern carac_circuito Circuitos[MAX_GROUP_SIZE];
+	#ifdef USE_GROUPS
+		extern carac_group ChargingGroup;
+		extern carac_charger net_group[MAX_GROUP_SIZE];
+		extern uint8_t net_group_size;
+		extern carac_charger charger_table[MAX_GROUP_SIZE];
+		extern carac_circuito Circuitos[MAX_GROUP_SIZE];
+		void coap_put( char* Topic, char* Message);
+	#endif
 	extern carac_Coms					Coms;
 	extern carac_Firebase_Configuration ConfigFirebase;
-	void coap_put( char* Topic, char* Message);
+	
 #endif
 
 /* milestone: one-liner for reporting memory usage */
@@ -492,6 +495,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 				SendToPSOC5(payload[0],COMS_CONFIGURATION_WIFI_ON);
 				return;
 			}
+#ifdef USE_GROUPS
 			else if (handle == GROUPS_PARAMS) {
 				uint8_t sendBuffer[7];
 				sendBuffer[0] = ChargingGroup.Params.GroupMaster;
@@ -620,6 +624,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 				}
 				return;
 			}
+#endif
 			
 #endif			
 			// if we are here, we are authenticated.
@@ -700,7 +705,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 
 			return;
 		}
-#ifdef CONNECTED
+#ifdef USE_GROUPS 
 		if ( pCharacteristic->getUUID().equals(blefields[RCS_CHARGING_GROUP].uuid) ){
 			
 			uint8 size = uint8(data[0]);
