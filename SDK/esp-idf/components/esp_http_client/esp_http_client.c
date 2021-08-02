@@ -935,7 +935,7 @@ esp_err_t esp_http_client_perform(esp_http_client_handle_t client)
                     if (client->is_async && errno == EAGAIN) {
                         return ESP_ERR_HTTP_EAGAIN;
                     }
-                    return ESP_ERR_HTTP_FETCH_HEADER;
+                    //return ESP_ERR_HTTP_FETCH_HEADER;
                 }
                 /* falls through */
             case HTTP_STATE_RES_COMPLETE_HEADER:

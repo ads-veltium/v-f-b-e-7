@@ -808,10 +808,10 @@ void Firebase_Conn_Task(void *args){
       break;
 
     case IDLE:
-    
+      ConfigFirebase.ClientConnected = false;
       //No connection == Disconnect
       //Error_count > 10 == Disconnect
-      printf("ERROR count %i\n", Error_Count);
+
       if(!ConfigFirebase.InternetConection || Error_Count>10){
         ConnectionState=DISCONNECTING;
         break;

@@ -66,18 +66,36 @@ void BuscarContador_Task(void *args){
                 }
             }
             else if(!Sentido && !TopeSup){ //Parriba
-                i = ip4_addr4(&Coms.ETH.IP) + Sup < 253 ? ip4_addr4(&Coms.ETH.IP) + Sup : 253;
-                if(i != 253 ){
+                if(Coms.ETH.DHCP){
+                    i = ip4_addr4(&Coms.ETH.IP) + Sup < 65 ? ip4_addr4(&Coms.ETH.IP) + Sup : 65;
+                    if(i != 65 ){
                     Sup++;
                     if(!TopeInf){
                         Sentido = true;
+                        }
+                    }
+                    else{
+                        TopeSup = true;
+                        Sentido = true;
+                        continue;
                     }
                 }
                 else{
-                    TopeSup = true;
-                    Sentido = true;
-                    continue;
+                    i = ip4_addr4(&Coms.ETH.IP) + Sup < 253 ? ip4_addr4(&Coms.ETH.IP) + Sup : 253;
+                    if(i != 253 ){
+                    Sup++;
+                    if(!TopeInf){
+                        Sentido = true;
+                        }
+                    }
+                    else{
+                        TopeSup = true;
+                        Sentido = true;
+                        continue;
+                    }
                 }
+                
+                
             }
             if(i-1==-1){
                 break;
@@ -109,7 +127,8 @@ void BuscarContador_Task(void *args){
                     printf("Probando a ver si es de verdad\n");
                 #endif
                 if(Cliente.Send_Command(url,LEER)) {
-                    String respuesta = Cliente.ObtenerRespuesta();               
+                    String respuesta = Cliente.ObtenerRespuesta(); 
+                    Serial.println(respuesta);              
                     if(respuesta.indexOf("IE38MD")>-1){
                         strcpy(ContadorExt.ContadorIp,ip);
                         ContadorExt.ContadorConectado = true;
@@ -153,6 +172,10 @@ void BuscarContador_Task(void *args){
             printf("He encontrado un cargador!!!\n");
     #endif
             Coms.ETH.Wifi_Perm = true;
+            if(Coms.GSM.ON){
+                 StartGSM();
+            }
+           
         }
    
     vTaskDelete(NULL);
@@ -268,6 +291,9 @@ void initialize_ethernet(void){
     }
 
     if(Coms.ETH.DHCP){
+        if(Coms.GSM.ON){
+            FinishGSM();
+        }
         #ifdef DEBUG_ETH
             Serial.println("Arrancando servidor dhcp!");
         #endif
