@@ -711,8 +711,9 @@ void Eth_Loop(){
                     delay(100);
                 }
                 stop_wifi();
-                
-                Coms.GSM.ON = false;
+                if(Coms.GSM.ON){
+                    FinishGSM();
+                }
                 Coms.ETH.State = CONNECTING;
                 
                 initialize_ethernet();         

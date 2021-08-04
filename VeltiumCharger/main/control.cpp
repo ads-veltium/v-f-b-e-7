@@ -1179,14 +1179,7 @@ void procesar_bloque(uint16 tipo_bloque){
 				Coms.GSM.ON = false;
 				printf("GSM On  %i\n", Coms.GSM.ON);
 			}
-			if(Coms.GSM.Apn != "NA" ){
-				modifyCharacteristic(buffer_rx_local,  1, APN_ON);
-			}
-			else{
-				buffer_rx_local[0] = 0;
-				modifyCharacteristic(buffer_rx_local,  1, APN_ON);
-			}
-			
+			modifyCharacteristic(buffer_rx_local,  1, APN_ON);
 		} 
 		break;
 
@@ -1431,7 +1424,7 @@ void procesar_bloque(uint16 tipo_bloque){
 			else{
 				Bloqueo_de_carga = false;
 			}
-			printf("Me piden carga! %i \n", Bloqueo_de_carga);
+			//printf("Me piden carga! %i \n", Bloqueo_de_carga);
 			SendToPSOC5(Bloqueo_de_carga, BLOQUEO_CARGA);
 
 			
