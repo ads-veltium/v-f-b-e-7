@@ -308,7 +308,6 @@ long long  Real_Time_Database::Get_Timestamp(String path, JsonDocument *respuest
         delay(50);
         Timeout ++;
         if(Timeout > 30){
-            printf("Devolviendo data por timeout\n");
             return false;
         }
     }
@@ -328,7 +327,6 @@ long long  Real_Time_Database::Get_Timestamp(String path, JsonDocument *respuest
         respuesta->clear();
         deserializeJson(*respuesta,s);
     }
-    printf("Devolviendo data %llu\n", data1);
     return data1;
 }
 
