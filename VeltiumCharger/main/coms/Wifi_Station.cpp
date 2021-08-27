@@ -480,14 +480,14 @@ void Eth_Loop(){
                 stop_ethernet();
                 Coms.ETH.State = DISCONNECTING;                
             }
-            //si tenemos configurado un medidor o somos el maestro de un grupo, y a los 30 segundos no tenemos conexion a internet, activamos el DHCP
+            //si tenemos configurado un medidor o somos el maestro de un grupo, y a los 2 minutos no tenemos conexion a internet, activamos el DHCP
             #ifdef USE_GROUPS
             else if(Params.Tipo_Sensor || (ChargingGroup.Params.GroupMaster && ChargingGroup.Params.GroupActive)){
             #endif
             #ifndef USE_GROUPS
             else if(Params.Tipo_Sensor){
             #endif
-                if(GetStateTime(xStart) > 30000){
+                if(GetStateTime(xStart) > 120000){
                     #ifdef DEBUG_ETH
                         Serial.println("Activo DHCP");
                     #endif
@@ -629,11 +629,11 @@ void Eth_Loop(){
 
             //Lectura del contador
 #ifdef USE_GROUPS
-			if(ContadorExt.ContadorConectado && (Params.Tipo_Sensor || (ChargingGroup.Params.CDP >> 4 && ChargingGroup.Params.GroupMaster && ChargingGroup.Conected))){
+			if(ContadorExt.GatewayConectado && (Params.Tipo_Sensor || (ChargingGroup.Params.CDP >> 4 && ChargingGroup.Params.GroupMaster && ChargingGroup.Conected))){
 #endif
 
 #ifndef USE_GROUPS
-            if(ContadorExt.ContadorConectado && Params.Tipo_Sensor){
+            if(ContadorExt.GatewayConectado && Params.Tipo_Sensor){
 #endif
 				if(!Counter.Inicializado){
 					Counter.begin(ContadorExt.ContadorIp);
@@ -646,7 +646,7 @@ void Eth_Loop(){
                 if(Params.Tipo_Sensor){
                     uint8 buffer_contador[7] = {0}; 
                 
-                    buffer_contador[0] = ContadorExt.ContadorConectado;
+                    buffer_contador[0] = ContadorExt.GatewayConectado;
                     buffer_contador[1] = (uint8)(ContadorExt.DomesticPower& 0x00FF);
                     buffer_contador[2] = (uint8)((ContadorExt.DomesticPower >> 8) & 0x00FF);
 
@@ -656,13 +656,14 @@ void Eth_Loop(){
 
             //Pausar lectura del contador
 #ifdef USE_GROUPS
-            else if(ContadorExt.ContadorConectado && !Params.Tipo_Sensor && !(ChargingGroup.Params.CDP >> 4)){
+            else if(ContadorExt.GatewayConectado && !Params.Tipo_Sensor && !(ChargingGroup.Params.CDP >> 4)){
 #endif
 
 #ifndef USE_GROUPS
-            else if(ContadorExt.ContadorConectado && !Params.Tipo_Sensor){
+            else if(ContadorExt.GatewayConectado && !Params.Tipo_Sensor){
 #endif
-                ContadorExt.ContadorConectado = false;
+                ContadorExt.GatewayConectado = false;
+                ContadorExt.MeidorConectado = false;
                 Counter.Inicializado = false;
                 Counter.end();
                 finding = false;
@@ -673,8 +674,9 @@ void Eth_Loop(){
         case DISCONNECTING:
             if(!eth_connected && !eth_connecting){        
                 finding = false;
-                if(ContadorExt.ContadorConectado){
-                    ContadorExt.ContadorConectado = false;
+                if(ContadorExt.GatewayConectado){
+                    ContadorExt.GatewayConectado = false;
+                    ContadorExt.MeidorConectado = false;
                     Counter.end();
                 }
                 
@@ -695,8 +697,9 @@ void Eth_Loop(){
                 Coms.ETH.Internet = false;
                 Coms.ETH.DHCP = false; 
 
-                if(ContadorExt.ContadorConectado){
-                    ContadorExt.ContadorConectado = false;
+                if(ContadorExt.GatewayConectado){
+                    ContadorExt.GatewayConectado = false;
+                    ContadorExt.MeidorConectado = false;
                     Counter.end();
                 }
 

@@ -705,7 +705,7 @@ bool Calculo_General(){
       
       Corriente_disponible_total = floor(corriente_a_repartir / Conex_Con_tri);
     
-      if(ChargingGroup.Params.CDP >> 4 && ContadorExt.ContadorConectado){
+      if(ChargingGroup.Params.CDP >> 4 && ContadorExt.GatewayConectado){
         float Corriente_CDP__sobra = 0;
 
         //Comprobar primero cuanta potencia nos sobra

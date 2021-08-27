@@ -38,10 +38,12 @@ bool Contador::read(){
     if (!CounterClient.Send_Command(CounterUrl,LEER)) {
         #ifdef DEVELOPMENT
         Serial.printf("Counter reading error\n");
+        ContadorExt.ConexionPerdida = true;
+        ContadorExt.MeidorConectado = false;
         #endif
         return false;
     }
-
+    ContadorExt.ConexionPerdida = false;
     Measurements.clear();
     deserializeJson(Measurements,CounterClient.ObtenerRespuesta());
 
@@ -62,7 +64,9 @@ void Contador::parse(){
 
     //Leer potencias 
     medida = Measurements["measurements"]["P0"].as<String>();
-    Serial.println(medida);
+
+    ContadorExt.MeidorConectado = medida != "null";
+
     uint16_t medida_dom = 0;
     if(medida.indexOf("k W")>0){
         medida_dom = medida.toFloat()*1000;

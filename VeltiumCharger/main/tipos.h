@@ -221,8 +221,9 @@ typedef struct{
 
 typedef struct{
 	
-	bool      ContadorConectado = false;
-
+	bool      GatewayConectado = false;
+	bool      ConexionPerdida = false;
+	bool 	  MeidorConectado  = false;
 	char      ContadorIp[15] ={"0"};
 	uint16    DomesticPower;
 	uint16    DomesticCurrentA;

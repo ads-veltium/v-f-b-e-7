@@ -302,15 +302,31 @@ void LedControl_Task(void *arg){
 
 #ifdef USE_COMS
 		//Buscando Medidor
-		else if(Params.Tipo_Sensor && !ContadorExt.ContadorConectado && Coms.ETH.ON){
-			Kit(VERDE);
-			Delay=75;
+		else if(Params.Tipo_Sensor && Coms.ETH.ON && !ContadorExt.MeidorConectado){
+			if(ContadorExt.ConexionPerdida){
+				Kit(NARANJA_OSCURO);
+				Delay= 85;
+			}
+			//Buscando Gateway
+			else if(!ContadorExt.GatewayConectado){
+				if(Coms.ETH.Auto){
+					Kit(VERDE);
+				}
+				else{
+					Kit(ROSA);
+				}
+				Delay=85;
+			}	
+			//Gateway encontrado pero medidor no
+			else if(ContadorExt.GatewayConectado ){
+				FadeDoble(NARANJA_OSCURO, AMARILLO);
+				Delay=10;
+			}
+
+			
 		}
-		#ifdef USE_GROUPS
-		else if(ChargingGroup.Conected){
-			displayAll(90,ROSA);	
-		}
-		#endif
+
+
 #endif
 		else{
 			
@@ -365,7 +381,7 @@ void LedControl_Task(void *arg){
 				//Error instalacion
 				else if(Status.error_code == (uint8)0x40 || Status.error_code == (uint8)0x50){
 					Delay=10;
-					FadeDoble(HUE_YELLOW, ROJO);
+					FadeDoble(NARANJA_OSCURO, ROJO);
 				}
 			}
 

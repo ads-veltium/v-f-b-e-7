@@ -1415,7 +1415,7 @@ void procesar_bloque(uint16 tipo_bloque){
 #endif
 			//Si tenemos un medidor conectado, asta que no nos conectemos a el no permitimos la carga
 			else if(Params.Tipo_Sensor){
-				if(ContadorExt.ContadorConectado){
+				if(ContadorExt.MeidorConectado){
 					Bloqueo_de_carga = false;
 				}
 			}

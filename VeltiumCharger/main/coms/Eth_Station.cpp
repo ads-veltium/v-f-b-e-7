@@ -130,16 +130,19 @@ void BuscarContador_Task(void *args){
                     printf("Probando a ver si es de verdad\n");
                 #endif
                 if(Cliente.Send_Command(url,LEER)) {
-                    String respuesta = Cliente.ObtenerRespuesta(); 
-                    Serial.println(respuesta);              
-                    if(respuesta.indexOf("IE38MD")>-1){
+                    String respuesta = Cliente.ObtenerRespuesta();             
+                    if(respuesta.indexOf("get_measurements")>-1){
                         strcpy(ContadorExt.ContadorIp,ip);
-                        ContadorExt.ContadorConectado = true;
+                        ContadorExt.GatewayConectado = true;
+                        if(respuesta.indexOf("IE38MD")>-1){
+                            ContadorExt.MeidorConectado = true;
+                            printf("El gateway ve el medidor!");
+                        }
                         break;
                     }
                 }
                 
-                if(ContadorExt.ContadorConectado){
+                if(ContadorExt.GatewayConectado){
                     break;
                 }
             }
@@ -164,7 +167,7 @@ void BuscarContador_Task(void *args){
     Cliente.end();
     
 
-        if(!ContadorExt.ContadorConectado){
+        if(!ContadorExt.GatewayConectado){
     #ifdef DEBUG_ETH
             Serial.println("No he encontrado ningun medidor");
      #endif
@@ -172,7 +175,7 @@ void BuscarContador_Task(void *args){
         }
         else{
     #ifdef DEBUG_ETH
-            printf("He encontrado un cargador!!!\n");
+            printf("He encontrado un medidor!!!\n");
     #endif
         Coms.ETH.Wifi_Perm = true;
         Serial.println(Coms.GSM.ON);
@@ -229,7 +232,8 @@ static void eth_event_handler(void *arg, esp_event_base_t event_base, int32_t ev
                 #ifdef DEBUG_ETH
                 Serial.println( "Ethernet Stopped");
                 #endif
-                ContadorExt.ContadorConectado = false;
+                ContadorExt.GatewayConectado = false;
+                ContadorExt.MeidorConectado = false;
                 Coms.ETH.Wifi_Perm = true;
                 eth_connected = false;
                 break;
