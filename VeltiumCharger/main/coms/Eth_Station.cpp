@@ -43,6 +43,9 @@ void BuscarContador_Task(void *args){
     bool Sentido = 0;
     bool TopeInf = false;
     bool TopeSup = false;
+    if(ip4_addr1(&Coms.ETH.IP)==0&& ip4_addr2(&Coms.ETH.IP)&&ip4_addr3(&Coms.ETH.IP)){
+        return;
+    }
     i =ip4_addr4(&Coms.ETH.IP);
     bool NextOne =true;
 
@@ -66,18 +69,36 @@ void BuscarContador_Task(void *args){
                 }
             }
             else if(!Sentido && !TopeSup){ //Parriba
-                i = ip4_addr4(&Coms.ETH.IP) + Sup < 253 ? ip4_addr4(&Coms.ETH.IP) + Sup : 253;
-                if(i != 253 ){
+                if(Coms.ETH.DHCP){
+                    i = ip4_addr4(&Coms.ETH.IP) + Sup < 65 ? ip4_addr4(&Coms.ETH.IP) + Sup : 65;
+                    if(i != 65 ){
                     Sup++;
                     if(!TopeInf){
                         Sentido = true;
+                        }
+                    }
+                    else{
+                        TopeSup = true;
+                        Sentido = true;
+                        continue;
                     }
                 }
                 else{
-                    TopeSup = true;
-                    Sentido = true;
-                    continue;
+                    i = ip4_addr4(&Coms.ETH.IP) + Sup < 253 ? ip4_addr4(&Coms.ETH.IP) + Sup : 253;
+                    if(i != 253 ){
+                    Sup++;
+                    if(!TopeInf){
+                        Sentido = true;
+                        }
+                    }
+                    else{
+                        TopeSup = true;
+                        Sentido = true;
+                        continue;
+                    }
                 }
+                
+                
             }
             if(i-1==-1){
                 break;
@@ -109,7 +130,8 @@ void BuscarContador_Task(void *args){
                     printf("Probando a ver si es de verdad\n");
                 #endif
                 if(Cliente.Send_Command(url,LEER)) {
-                    String respuesta = Cliente.ObtenerRespuesta();               
+                    String respuesta = Cliente.ObtenerRespuesta(); 
+                    Serial.println(respuesta);              
                     if(respuesta.indexOf("IE38MD")>-1){
                         strcpy(ContadorExt.ContadorIp,ip);
                         ContadorExt.ContadorConectado = true;
@@ -152,8 +174,13 @@ void BuscarContador_Task(void *args){
     #ifdef DEBUG_ETH
             printf("He encontrado un cargador!!!\n");
     #endif
-            Coms.ETH.Wifi_Perm = true;
+        Coms.ETH.Wifi_Perm = true;
+        Serial.println(Coms.GSM.ON);
+        if(Coms.GSM.ON){
+            Coms.GSM.reboot=true;
         }
+        }
+           
    
     vTaskDelete(NULL);
 }
@@ -282,17 +309,9 @@ void initialize_ethernet(void){
 
         esp_netif_ip_info_t DHCP_Server_IP;
 
-        if(Coms.ETH.IP.addr == IPADDR_ANY || Coms.ETH.IP.addr == IPADDR_NONE){
-            IP4_ADDR(&DHCP_Server_IP.ip, 192, 168, 15, 22);
-   	        IP4_ADDR(&DHCP_Server_IP.gw, 192, 168, 15, 1);
-   	        IP4_ADDR(&DHCP_Server_IP.netmask, 255, 255, 255, 0);
-        }
-
-        else{
-            DHCP_Server_IP.ip.addr = Coms.ETH.IP.addr;
-   	        DHCP_Server_IP.gw.addr = Coms.ETH.Gateway.addr;
-   	        DHCP_Server_IP.netmask.addr = Coms.ETH.Mask.addr;
-        }
+        IP4_ADDR(&DHCP_Server_IP.ip, 192, 168, 15, 22);
+   	    IP4_ADDR(&DHCP_Server_IP.gw, 192, 168, 15, 1);
+   	    IP4_ADDR(&DHCP_Server_IP.netmask, 255, 255, 255, 0);
 
 
         Coms.ETH.IP.addr = DHCP_Server_IP.ip.addr;

@@ -385,7 +385,7 @@ void Cliente_HTTP::begin(){
     
     esp_http_client_config_t config = {
         .url = _url.c_str(),
-        .timeout_ms = 2500,
+        .timeout_ms = 5000,
         .event_handler = _generic_http_event_handle,
         .buffer_size_tx = 2048,
         .is_async = false,
@@ -407,7 +407,7 @@ bool Cliente_HTTP::Send_Command(String url, uint8_t Command){
     uint8_t tiempo_lectura =0;
 
 
-    if(ConfigFirebase.InternetConection){
+        Serial.println(url);
         esp_http_client_set_url(_client, url.c_str());
         
         switch(Command){
@@ -461,7 +461,7 @@ bool Cliente_HTTP::Send_Command(String url, uint8_t Command){
         _leidos = 0;
 
         return true;
-    }
+    
     return false;
     
 

@@ -86,7 +86,7 @@ uint16 cnt_diferencia = 1;
 uint8 HPT_estados[9][3] = {"0V", "A1", "A2", "B1", "B2", "C1", "C2", "E1", "F1"};
 
 #ifdef USE_COMS
-uint8 version_firmware[11] = {"VBLE2_0514"};	
+uint8 version_firmware[11] = {"VBLE2_0515"};	
 #else
 uint8 version_firmware[11] = {"VBLE0_0511"};	
 #endif
@@ -299,6 +299,7 @@ void controlTask(void *arg)
 						}
 #ifdef USE_COMS
 						else if(Iface_Con == COMS && LastUserCon != ConfigFirebase.ClientConnected){
+							printf("Enviando por firebase %i\n", ConfigFirebase.ClientConnected);
 							cnt_timeout_tx = TIMEOUT_TX_BLOQUE2 ;
 							buffer_tx_local[0] = HEADER_TX;
 							buffer_tx_local[1] = (uint8)(BLOQUE_STATUS >> 8);
@@ -1041,8 +1042,7 @@ void procesar_bloque(uint16 tipo_bloque){
 				if(!Params.Tipo_Sensor){
 					if(!Coms.ETH.Auto && Coms.ETH.DHCP){
 						Coms.ETH.Auto = true;
-						
-
+						Coms.ETH.ON = false;
 						SendToPSOC5(0,COMS_CONFIGURATION_ETH_ON);
 						SendToPSOC5(Coms.ETH.Auto,COMS_CONFIGURATION_ETH_AUTO);
 					}
@@ -1109,21 +1109,34 @@ void procesar_bloque(uint16 tipo_bloque){
 		break;
 
 		case APN:{
-			if( Coms.GSM.Apn != "NA" && Coms.GSM.ON){
+			if( memcmp(Coms.GSM.Apn.c_str(), "NA",2) && Coms.GSM.ON){
 				Coms.GSM.reboot = true;
 				printf("Haciendo un reboot del gsm!!\n");
 			}
 
 			Coms.GSM.Apn = (char*) buffer_rx_local;
 			printf("Me ha llegado el apn %s\n", Coms.GSM.Apn.c_str());
-			modifyCharacteristic((uint8_t*)buffer_rx_local, 30, APN);
+			if( memcmp(Coms.GSM.Apn.c_str(), "NA",2)){
+				modifyCharacteristic((uint8_t*)buffer_rx_local, 30, APN);
+			}
+			else{
+				buffer_rx_local[0]='\0';
+				modifyCharacteristic((uint8_t*)buffer_rx_local, 1, APN);
+			}
+			
 		} 
 		break;
 
 		case APN_USER:{
 			Coms.GSM.User = (char*) buffer_rx_local;
 			printf("Me ha llegado el apn user %s\n", Coms.GSM.User.c_str());
-			modifyCharacteristic((uint8_t*)buffer_rx_local,  30, APN_USER);
+			if( memcmp(Coms.GSM.Apn.c_str(), "NA",2)){
+				modifyCharacteristic((uint8_t*)buffer_rx_local, 30, APN_USER);
+			}
+			else{
+				buffer_rx_local[0]='\0';
+				modifyCharacteristic((uint8_t*)buffer_rx_local, 1, APN_USER);
+			}
 			
 		} 
 		break;
@@ -1131,10 +1144,16 @@ void procesar_bloque(uint16 tipo_bloque){
 		case APN_PASSWORD:{
 			Coms.GSM.Pass = (char*) buffer_rx_local;
 			printf("Me ha llegado el apn pass %s\n", Coms.GSM.Pass.c_str());
-			modifyCharacteristic((uint8_t*)buffer_rx_local,  30, APN_PASSWORD);
 			if(Coms.GSM.temp_on){
 				Coms.GSM.ON = true;
 				printf("GSM On  %i\n", Coms.GSM.ON);
+			}
+			if(memcmp(Coms.GSM.Apn.c_str(), "NA",2)){
+				modifyCharacteristic((uint8_t*)buffer_rx_local, 30, APN_PASSWORD);
+			}
+			else{
+				buffer_rx_local[0]='\0';
+				modifyCharacteristic((uint8_t*)buffer_rx_local, 1, APN_PASSWORD);
 			}
 		} 
 		break;
@@ -1405,7 +1424,7 @@ void procesar_bloque(uint16 tipo_bloque){
 			else{
 				Bloqueo_de_carga = false;
 			}
-			printf("Me piden carga! %i \n", Bloqueo_de_carga);
+			//printf("Me piden carga! %i \n", Bloqueo_de_carga);
 			SendToPSOC5(Bloqueo_de_carga, BLOQUEO_CARGA);
 
 			

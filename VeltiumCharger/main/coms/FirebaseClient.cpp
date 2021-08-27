@@ -808,7 +808,7 @@ void Firebase_Conn_Task(void *args){
       break;
 
     case IDLE:
-    
+      ConfigFirebase.ClientConnected = false;
       //No connection == Disconnect
       //Error_count > 10 == Disconnect
 
