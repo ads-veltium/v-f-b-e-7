@@ -178,7 +178,7 @@ void BuscarContador_Task(void *args){
             printf("He encontrado un medidor!!!\n");
     #endif
         Coms.ETH.Wifi_Perm = true;
-        Serial.println(Coms.GSM.ON);
+
         if(Coms.GSM.ON){
             Coms.GSM.reboot=true;
         }

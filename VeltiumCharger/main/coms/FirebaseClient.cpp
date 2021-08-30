@@ -14,6 +14,7 @@ extern carac_Update_Status          UpdateStatus;
 extern carac_Params                 Params;
 extern carac_Coms                   Coms;
 
+extern uint8 user_index;
 
 
 #ifdef USE_GROUPS
@@ -225,6 +226,24 @@ bool WriteFirebasegroups(String Path){
     return false;
 }
 
+bool ReiniciarMultiusuario(){
+    //Indicar que el cargador esta libre en firebase
+    printf("Reiniciando usuario!\n");
+    Escritura.clear();
+    Escritura["charg_user_id"] = 255;
+    Database->Send_Command("/params/user",&Escritura,UPDATE);
+    return true;
+}
+
+bool EscribirMultiusuario(){
+    //Indicar que el cargador esta libre en firebase
+     printf("Escribiendo usuario!\n");
+    Escritura.clear();
+    Escritura["charg_user_id"] = user_index;
+    Database->Send_Command("/params/user",&Escritura,UPDATE);
+    return true;
+}
+
 bool WriteFirebaseHistoric(char* buffer){
 
     struct tm t = {0};  // Initalize to all 0's
@@ -312,6 +331,7 @@ bool WriteFirebaseHistoric(char* buffer){
         return true;
       }
     }
+    
 
     ConnectionState = 11;
   
@@ -323,11 +343,13 @@ bool WriteFirebaseHistoric(char* buffer){
     Escritura["dis"] = DisconTs;
     Escritura["rea"] = "";
     Escritura["sta"] = StartTs;
-    Escritura["usr"] = buffer[0] + buffer[1]*0x100;
+    Escritura["usr"] = buffer[1] + buffer[0]*0x100;
 
     char buf[10];
     ltoa(ConectionTS, buf, 10); 
     
+    
+    //escribir el historico nuevo
     if(Database->Send_Command(Path+buf,&Escritura,UPDATE)){
       ConnectionState = IDLE;
       return true;
@@ -525,6 +547,23 @@ bool ReadFirebasePath(String Path){
       
     }
     else return false;  
+
+  return true;
+}
+
+bool ReadFirebaseUser(){
+
+  Lectura.clear();
+  if(Database->Send_Command("/params/user",&Lectura, LEER)){
+    uint8 index = Lectura["user_index"].as<uint8>();
+    uint8 type = Lectura["user_type"].as<uint8>();
+    SendToPSOC5(index,VCD_NAME_USERS_USER_INDEX_CHAR_HANDLE);
+    delay(10);
+    SendToPSOC5(type,VCD_NAME_USERS_USER_TYPE_CHAR_HANDLE);
+    delay(10);
+  }
+  else return false;  
+
 
   return true;
 }
@@ -816,7 +855,14 @@ void Firebase_Conn_Task(void *args){
         ConnectionState=DISCONNECTING;
         break;
       }
-
+      else if(ConfigFirebase.ResetUser){
+        ReiniciarMultiusuario();
+        ConfigFirebase.ResetUser = 0;
+      }
+      else if(ConfigFirebase.WriteUser){
+        EscribirMultiusuario();
+        ConfigFirebase.WriteUser = 0;
+      }
       //Si está conectado por ble no hace nada
       else if(serverbleGetConnected()){
         ConfigFirebase.ClientConnected = false;
@@ -866,7 +912,8 @@ void Firebase_Conn_Task(void *args){
           break;
         }
         if(!ConfigFirebase.ClientConnected){  
-          Error_Count+=!WriteFirebaseComs("/coms");   
+          Error_Count+=!WriteFirebaseComs("/coms"); 
+          ReadFirebaseUser();  
           delayeando = 10;   
           ConnectionState = USER_CONNECTED;
           ConfigFirebase.ClientConnected  = true;
@@ -874,6 +921,7 @@ void Firebase_Conn_Task(void *args){
         }
         break;
       }
+      
        
       break;
 
@@ -929,12 +977,12 @@ void Firebase_Conn_Task(void *args){
           Error_Count+=!WriteFirebaseComs("/coms");
         }
         ConfigFirebase.ClientConnected  = true;
-        break;
+        
       }
 
       //Si pasan 35 segundos sin actualizar el status, lo damos por desconectado
       xElapsed=xTaskGetTickCount()-xStarted;
-      if(pdTICKS_TO_MS(xElapsed)>35000){
+      if(pdTICKS_TO_MS(xElapsed)>45000){
         ConfigFirebase.ClientConnected  = false;
         ConnectionState = IDLE;
         break;
@@ -949,33 +997,41 @@ void Firebase_Conn_Task(void *args){
           ConnectionState = IDLE;
           break;
         }
-        break;
       }
 
-      else if(ConfigFirebase.WriteParams){
+      if(ConfigFirebase.WriteParams){
         ConfigFirebase.WriteParams=false;
         Error_Count+=!WriteFirebaseParams("/params");
-        break;
+        
       }
 
-      else if(ConfigFirebase.WriteControl){
+      if(ConfigFirebase.WriteControl){
         ConfigFirebase.WriteControl=0;
         Error_Count+=!WriteFirebaseControl("/control");
-        break;
+        
       }
-      else if(ConfigFirebase.WriteTime){
+      if(ConfigFirebase.WriteTime){
         ConfigFirebase.WriteTime=0;
         Error_Count+=!WriteFirebaseTimes("/status/times");
-        break;
+        
       }
-      else if(++Params_Coms_Timeout>=5){
+      if(++Params_Coms_Timeout>=5){
         Error_Count+=!ReadFirebaseParams("/params");
         Params_Coms_Timeout = 0;
-        break; 
+         
+      }
+      if(ConfigFirebase.ResetUser){
+        ReiniciarMultiusuario();
+        ConfigFirebase.ResetUser = 0;
+        
+      }
+      if(ConfigFirebase.WriteUser){
+        EscribirMultiusuario();
+        ConfigFirebase.WriteUser = 0;
       }
 
       //Comprobar actualizaciones manuales
-      else if(Comands.fw_update){
+      if(Comands.fw_update){
         if(!memcmp(Status.HPT_status, "A1",2) || !memcmp(Status.HPT_status, "0V",2) ){
           UpdateCheckTimeout=0;
           Comands.fw_update=0;

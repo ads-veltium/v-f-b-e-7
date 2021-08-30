@@ -239,6 +239,8 @@ typedef struct{
 	bool WriteStatus  = false;
 	bool WriteComs    = false;
 	bool WriteControl = false;
+	bool ResetUser    = false;
+	bool WriteUser    = false;
 	bool WriteTime    = false;
 
 	bool ReadControl  = false;

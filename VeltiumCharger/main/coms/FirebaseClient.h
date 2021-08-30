@@ -39,5 +39,6 @@ void Firebase_Conn_Task(void *args);
 uint8_t getfirebaseClientStatus();
 uint16  ParseFirmwareVersion(String Texto);
 bool WriteFirebaseHistoric(char* buffer);
+bool ReiniciarMultiusuario();
 
 #endif

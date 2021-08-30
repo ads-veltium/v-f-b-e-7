@@ -56,6 +56,7 @@ uint32 cont_seg = 0, cont_seg_ant = 0, cont_min_ant = 0, cont_min=0, cont_hour=0
 uint8 estado_inicial = 1;
 uint8 estado_actual = ESTADO_ARRANQUE;
 uint8 authSuccess = 0;
+uint8 user_index = 0;
 int aut_semilla = 0x0000;
 uint8 NextLine=0;
 uint8_t ConnectionState;
@@ -299,7 +300,6 @@ void controlTask(void *arg)
 						}
 #ifdef USE_COMS
 						else if(Iface_Con == COMS && LastUserCon != ConfigFirebase.ClientConnected){
-							printf("Enviando por firebase %i\n", ConfigFirebase.ClientConnected);
 							cnt_timeout_tx = TIMEOUT_TX_BLOQUE2 ;
 							buffer_tx_local[0] = HEADER_TX;
 							buffer_tx_local[1] = (uint8)(BLOQUE_STATUS >> 8);
@@ -609,10 +609,10 @@ void procesar_bloque(uint16 tipo_bloque){
 
 				//Hilo piloto
 				if((memcmp(&buffer_rx_local[1], status_hpt_anterior, 2) != 0)){
+					
 					if(dispositivo_inicializado !=2){
 						SendToPSOC5(1,BLOQUE_APN);
 						delay(150);
-						//SendToPSOC5(1,BLOQUE_APN);
 						dispositivo_inicializado = 2;
 					}
 					
@@ -632,6 +632,9 @@ void procesar_bloque(uint16 tipo_bloque){
 					}
 #ifdef CONNECTED
 					ConfigFirebase.WriteStatus = true;
+					if (!memcmp(&buffer_rx_local[1], "C2",2)){
+						ConfigFirebase.WriteUser = true;
+					}
 
 					//Si sale de C2 bloquear la siguiente carga
 					if(memcmp(&buffer_rx_local[1],"C2",2) && memcmp(&buffer_rx_local[1],"B2",2)){
@@ -839,12 +842,15 @@ void procesar_bloque(uint16 tipo_bloque){
 		case VCD_NAME_USERS_USER_TYPE_CHAR_HANDLE:{
 		
 			modifyCharacteristic(buffer_rx_local, 1, VCD_NAME_USERS_USER_TYPE_CHAR_HANDLE);
+			printf("Me ha llegado user type %i\n", buffer_rx_local[0]);
 		} 
 		break;
 		
 		case VCD_NAME_USERS_USER_INDEX_CHAR_HANDLE:{
 		
 			modifyCharacteristic(buffer_rx_local, 1, VCD_NAME_USERS_USER_INDEX_CHAR_HANDLE);
+			user_index = buffer_rx_local[0];
+			printf("Me ha llegado user index %i\n", buffer_rx_local[0]);
 		} 
 		break;
 		
@@ -912,6 +918,7 @@ void procesar_bloque(uint16 tipo_bloque){
 			
 			if(ConfigFirebase.InternetConection){
 				if(Coms.ETH.ON || Coms.Wifi.ON || Coms.GSM.ON){
+					ConfigFirebase.ResetUser = true;
 					if(!serverbleGetConnected()){
 						WriteFirebaseHistoric((char*)buffer_rx_local);
 					}	
