@@ -529,6 +529,8 @@ void procesar_bloque(uint16 tipo_bloque){
 				modifyCharacteristic(&buffer_rx_local[194], 1, VCD_NAME_USERS_USERS_NUMBER_CHAR_HANDLE);
 				modifyCharacteristic(&buffer_rx_local[195], 1, VCD_NAME_USERS_USER_TYPE_CHAR_HANDLE);
 				modifyCharacteristic(&buffer_rx_local[196], 1, VCD_NAME_USERS_USER_INDEX_CHAR_HANDLE);
+				user_index = buffer_rx_local[196];
+				printf("user_index inicio %i\n", user_index);
 				modifyCharacteristic(&buffer_rx_local[197], 10, VERSIONES_VERSION_FIRMWARE_CHAR_HANDLE);
 				memcpy(PSOC5_version_firmware, &buffer_rx_local[197],10);
 
@@ -607,6 +609,8 @@ void procesar_bloque(uint16 tipo_bloque){
 				//Leds
 				modifyCharacteristic(buffer_rx_local, 1, LED_LUMIN_COLOR_LUMINOSITY_LEVEL_CHAR_HANDLE);
 
+				//Pasar datos a Status
+				memcpy(Status.HPT_status, &buffer_rx_local[1], 2);
 				//Hilo piloto
 				if((memcmp(&buffer_rx_local[1], status_hpt_anterior, 2) != 0)){
 					
@@ -632,8 +636,9 @@ void procesar_bloque(uint16 tipo_bloque){
 					}
 #ifdef CONNECTED
 					ConfigFirebase.WriteStatus = true;
-					if (!memcmp(&buffer_rx_local[1], "C2",2)){
+					if (!memcmp(&buffer_rx_local[1], "C",1) || !memcmp(status_hpt_anterior, "B",1)){
 						ConfigFirebase.WriteUser = true;
+						ConfigFirebase.ResetUser = false;
 					}
 
 					//Si sale de C2 bloquear la siguiente carga
@@ -646,7 +651,7 @@ void procesar_bloque(uint16 tipo_bloque){
 #ifndef USE_GROUPS
 						if(Params.Tipo_Sensor){
 #endif
-							if(!memcmp(status_hpt_anterior, "C1",2) || !memcmp(status_hpt_anterior, "C2",2) ){
+							if(!memcmp(status_hpt_anterior, "C",1)){
 								Last_Block = xTaskGetTickCount();
 							}
 							else{
@@ -696,8 +701,7 @@ void procesar_bloque(uint16 tipo_bloque){
 				modifyCharacteristic(&buffer_rx_local[18], 2, MEASURES_ACTIVE_POWER_CHAR_HANDLE);
 				modifyCharacteristic(&buffer_rx_local[20], 4, MEASURES_ACTIVE_ENERGY_CHAR_HANDLE);
 				
-					//Pasar datos a Status
-					memcpy(Status.HPT_status, &buffer_rx_local[1], 2);
+					
 					Status.error_code = buffer_rx_local[13];
 					
 #ifdef CONNECTED					
@@ -918,7 +922,12 @@ void procesar_bloque(uint16 tipo_bloque){
 			
 			if(ConfigFirebase.InternetConection){
 				if(Coms.ETH.ON || Coms.Wifi.ON || Coms.GSM.ON){
-					ConfigFirebase.ResetUser = true;
+					if(!memcmp(Status.HPT_status, "A1",2) || !memcmp(Status.HPT_status, "A2",2) || !memcmp(Status.HPT_status, "0V",2)){
+						if(!ConfigFirebase.UserReseted){
+							ConfigFirebase.ResetUser = true;
+						}
+					}
+					
 					if(!serverbleGetConnected()){
 						WriteFirebaseHistoric((char*)buffer_rx_local);
 					}	

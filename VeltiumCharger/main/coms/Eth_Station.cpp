@@ -125,19 +125,15 @@ void BuscarContador_Task(void *args){
             if(resultado == PING_SUCCESS){           
                 char url[100] = "http://";
                 strcat(url, ip);
-                strcat(url, "/get_command?command=get_measurements");
+                //strcat(url, "/get_command?command=get_measurements");
                 #ifdef DEBUG_ETH
                     printf("Probando a ver si es de verdad\n");
                 #endif
                 if(Cliente.Send_Command(url,LEER)) {
-                    String respuesta = Cliente.ObtenerRespuesta();             
-                    if(respuesta.indexOf("get_measurements")>-1){
+                    String respuesta = Cliente.ObtenerRespuesta();          
+                    if(respuesta.indexOf("Iskra")>-1){
                         strcpy(ContadorExt.ContadorIp,ip);
                         ContadorExt.GatewayConectado = true;
-                        if(respuesta.indexOf("IE38MD")>-1){
-                            ContadorExt.MeidorConectado = true;
-                            printf("El gateway ve el medidor!");
-                        }
                         break;
                     }
                 }

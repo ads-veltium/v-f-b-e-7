@@ -240,6 +240,7 @@ typedef struct{
 	bool WriteComs    = false;
 	bool WriteControl = false;
 	bool ResetUser    = false;
+	bool UserReseted  = true;
 	bool WriteUser    = false;
 	bool WriteTime    = false;
 

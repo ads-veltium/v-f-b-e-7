@@ -32,7 +32,8 @@ void coap_put( char* Topic, char* Message);
 bool add_to_group(const char* ID, IPAddress IP, carac_charger* group, uint8_t *size);
 uint8_t check_in_group(const char* ID, carac_charger* group, uint8_t size);
 
-bool askForPermission = false;
+bool askForPermission = false ;
+bool givePermission = false;
 
 uint16 ParseFirmwareVersion(String Texto){
   String sub = Texto.substring(6, 10); 
@@ -230,7 +231,7 @@ bool ReiniciarMultiusuario(){
     //Indicar que el cargador esta libre en firebase
     printf("Reiniciando usuario!\n");
     Escritura.clear();
-    Escritura["charg_user_id"] = 255;
+    Escritura["charg_user_id"] = 0;
     Database->Send_Command("/params/user",&Escritura,UPDATE);
     return true;
 }
@@ -325,14 +326,15 @@ bool WriteFirebaseHistoric(char* buffer){
 
     int count = 0;
     askForPermission = true;
-    while(ConnectionState != IDLE){
+    
+    while(ConnectionState != IDLE && !givePermission){
       delay(10);
       if(++count > 1000){
         return true;
       }
     }
     
-
+    uint8 Lastconn = ConnectionState;
     ConnectionState = 11;
   
     String Path = "/records/";
@@ -351,16 +353,22 @@ bool WriteFirebaseHistoric(char* buffer){
     
     //escribir el historico nuevo
     if(Database->Send_Command(Path+buf,&Escritura,UPDATE)){
-      ConnectionState = IDLE;
+      ConnectionState = Lastconn;
+      askForPermission = false;
+      givePermission = false;
       return true;
     }
     else{
       printf("Fallo en el envio del registro!\n");
       Database->Send_Command(Path+buf,&Escritura,UPDATE);
-      ConnectionState = IDLE;
+      ConnectionState = Lastconn;
+      askForPermission = false;
+      givePermission = false;
       return false;
     }
-    ConnectionState = IDLE;
+    askForPermission = false;
+    givePermission = false;
+    ConnectionState = Lastconn;
 
 
   return true;
@@ -858,11 +866,12 @@ void Firebase_Conn_Task(void *args){
       else if(ConfigFirebase.ResetUser){
         ReiniciarMultiusuario();
         ConfigFirebase.ResetUser = 0;
+        ConfigFirebase.UserReseted = 1;
       }
-      else if(ConfigFirebase.WriteUser){
+      /*else if(ConfigFirebase.WriteUser){
         EscribirMultiusuario();
         ConfigFirebase.WriteUser = 0;
-      }
+      }*/
       //Si está conectado por ble no hace nada
       else if(serverbleGetConnected()){
         ConfigFirebase.ClientConnected = false;
@@ -906,11 +915,6 @@ void Firebase_Conn_Task(void *args){
         Status.last_ts_app_req= ts_app_req;
         xStarted = xTaskGetTickCount();
         Error_Count+=!WriteFirebaseStatus("/status");
-        if(askForPermission){
-          askForPermission = false;
-          ConnectionState = IDLE;
-          break;
-        }
         if(!ConfigFirebase.ClientConnected){  
           Error_Count+=!WriteFirebaseComs("/coms"); 
           ReadFirebaseUser();  
@@ -927,6 +931,11 @@ void Firebase_Conn_Task(void *args){
 
     /*********************** Usuario conectado **********************/
     case USER_CONNECTED:
+      if(askForPermission){
+        givePermission = true;
+        break;
+      }
+
       if(serverbleGetConnected()){
         ConfigFirebase.ClientConnected = false;
         ConnectionState = IDLE;
@@ -968,11 +977,6 @@ void Firebase_Conn_Task(void *args){
         Status.last_ts_app_req= ts_app_req;
         xStarted = xTaskGetTickCount();
         Error_Count+=!WriteFirebaseStatus("/status");
-        if(askForPermission){
-          askForPermission = false;
-          ConnectionState = IDLE;
-          break;
-        }
         if(!ConfigFirebase.ClientConnected){        
           Error_Count+=!WriteFirebaseComs("/coms");
         }
@@ -992,11 +996,6 @@ void Firebase_Conn_Task(void *args){
       if(ConfigFirebase.WriteStatus){
         ConfigFirebase.WriteStatus=false;
         Error_Count+=!WriteFirebaseStatus("/status");
-        if(askForPermission){
-          askForPermission = false;
-          ConnectionState = IDLE;
-          break;
-        }
       }
 
       if(ConfigFirebase.WriteParams){
@@ -1023,12 +1022,14 @@ void Firebase_Conn_Task(void *args){
       if(ConfigFirebase.ResetUser){
         ReiniciarMultiusuario();
         ConfigFirebase.ResetUser = 0;
+        ConfigFirebase.UserReseted = 1;
         
       }
-      if(ConfigFirebase.WriteUser){
+      /*if(ConfigFirebase.WriteUser){
         EscribirMultiusuario();
         ConfigFirebase.WriteUser = 0;
-      }
+      }*/
+      
 
       //Comprobar actualizaciones manuales
       if(Comands.fw_update){
