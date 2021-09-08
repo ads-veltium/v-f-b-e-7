@@ -549,7 +549,7 @@ void procesar_bloque(uint16 tipo_bloque){
 				modifyCharacteristic(&buffer_rx_local[241], 2, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_P2_CHAR_HANDLE);
 				modifyCharacteristic(&buffer_rx_local[243], 2, TIME_DATE_COUNTRY_CHAR_HANDLE);			
 
-				#ifdef CONNECTED
+				
 					/************************ Set firebase Params **********************/
 					memcpy(Params.autentication_mode, &buffer_rx_local[212],2);
 					Params.inst_current_limit = buffer_rx_local[11];
@@ -563,7 +563,8 @@ void procesar_bloque(uint16 tipo_bloque){
 					else{
 						Params.Tipo_Sensor    = 0;
 					}
-					
+
+				#ifdef CONNECTED	
 					memcpy(Params.Fw_Update_mode, &buffer_rx_local[234],2);
 					Comands.desired_current = buffer_rx_local[233];
 					Coms.ETH.Auto = buffer_rx_local[240];
@@ -590,7 +591,7 @@ void procesar_bloque(uint16 tipo_bloque){
 			if(buffer_rx_local[45]==0x36 && systemStarted){
 #else
 			if(buffer_rx_local[25]==0x36 && systemStarted){
-#endif
+#endif			
 				//Comprobar HPT
 				bool valido = false;
 				for(int i=0;i<9;i++){
