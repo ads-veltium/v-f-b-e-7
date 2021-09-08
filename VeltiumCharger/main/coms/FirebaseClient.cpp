@@ -94,13 +94,11 @@ bool WriteFirebaseStatus(String Path){
     Escritura["measures_phase_B/inst_current"]    = Status.MeasuresB.instant_current;
     Escritura["measures_phase_B/inst_voltage"]    = Status.MeasuresB.instant_voltage;
     Escritura["measures_phase_B/active_power"]    = Status.MeasuresB.active_power;
-    Escritura["measures_phase_B/home_current"]    = Status.MeasuresB.consumo_domestico; 
     Escritura["measures_phase_B/active_energy"]   = Status.MeasuresB.active_energy; 
 
     Escritura["measures_phase_C/inst_current"]    = Status.MeasuresC.instant_current;
     Escritura["measures_phase_C/inst_voltage"]    = Status.MeasuresC.instant_voltage;
     Escritura["measures_phase_C/active_power"]    = Status.MeasuresC.active_power;
-    Escritura["measures_phase_C/home_current"]    = Status.MeasuresC.consumo_domestico;  
     Escritura["measures_phase_C/active_energy"]   = Status.MeasuresC.active_energy;   
   }
   
@@ -994,11 +992,7 @@ void Firebase_Conn_Task(void *args){
         Status.last_ts_app_req= ts_app_req;
         xStarted = xTaskGetTickCount();
         Error_Count+=!WriteFirebaseStatus("/status");
-        if(!ConfigFirebase.ClientConnected){        
-          Error_Count+=!WriteFirebaseComs("/coms");
-        }
         ConfigFirebase.ClientConnected  = true;
-        
       }
 
       //Si pasan 35 segundos sin actualizar el status, lo damos por desconectado
