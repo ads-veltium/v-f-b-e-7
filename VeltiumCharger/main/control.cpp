@@ -530,7 +530,6 @@ void procesar_bloque(uint16 tipo_bloque){
 				modifyCharacteristic(&buffer_rx_local[195], 1, VCD_NAME_USERS_USER_TYPE_CHAR_HANDLE);
 				modifyCharacteristic(&buffer_rx_local[196], 1, VCD_NAME_USERS_USER_INDEX_CHAR_HANDLE);
 				user_index = buffer_rx_local[196];
-				printf("user_index inicio %i\n", user_index);
 				modifyCharacteristic(&buffer_rx_local[197], 10, VERSIONES_VERSION_FIRMWARE_CHAR_HANDLE);
 				memcpy(PSOC5_version_firmware, &buffer_rx_local[197],10);
 
@@ -569,7 +568,6 @@ void procesar_bloque(uint16 tipo_bloque){
 					Comands.desired_current = buffer_rx_local[233];
 					Coms.ETH.Auto = buffer_rx_local[240];
 					Coms.Wifi.ON = buffer_rx_local[236];
-					printf("Wifi%i\n",Coms.Wifi.ON );
 					Coms.ETH.ON = buffer_rx_local[237];	
 					modifyCharacteristic(&buffer_rx_local[236], 1, COMS_CONFIGURATION_WIFI_ON);
 					if(Coms.ETH.Auto && !Params.Tipo_Sensor){
@@ -621,7 +619,7 @@ void procesar_bloque(uint16 tipo_bloque){
 					}
 					
 					#ifdef DEBUG
-					Serial.printf("%c %c \n",buffer_rx_local[1],buffer_rx_local[2]);
+					Serial.printf("Hilo piloto de %c %c a %c %c\n",status_hpt_anterior[0], status_hpt_anterior[1], buffer_rx_local[1],buffer_rx_local[2]);
 					#endif
 					
 					modifyCharacteristic(&buffer_rx_local[1], 2, STATUS_HPT_STATUS_CHAR_HANDLE);
@@ -663,7 +661,8 @@ void procesar_bloque(uint16 tipo_bloque){
 							ChargingGroup.ChargPerm = false;
 							ChargingGroup.AskPerm = false;
 #endif
-						}						
+						}
+						printf("Enviando Bloqueo de carga1 %i \n", Bloqueo_de_carga);						
 						SendToPSOC5(Bloqueo_de_carga, BLOQUEO_CARGA);
 					}
 #endif
@@ -689,10 +688,10 @@ void procesar_bloque(uint16 tipo_bloque){
 					inst_current_anterior = Status.Measures.instant_current;
 					serverbleNotCharacteristic(&buffer_rx_local[14], 2, MEASURES_INST_CURRENT_CHAR_HANDLE); 
 #ifdef CONNECTED
-					if(Status.Trifasico){
+					//if(Status.Trifasico){
 						serverbleNotCharacteristic(&buffer_rx_local[24],2,MEASURES_INST_CURRENTB_CHAR_HANDLE);
 						serverbleNotCharacteristic(&buffer_rx_local[34],2,MEASURES_INST_CURRENTC_CHAR_HANDLE);
-					}
+					//}
 					ConfigFirebase.WriteStatus = true;
 #endif
 				}
@@ -1042,6 +1041,7 @@ void procesar_bloque(uint16 tipo_bloque){
 						if(Params.Tipo_Sensor){
 							Coms.ETH.ON = true;
 							Bloqueo_de_carga = 1;
+							printf("Enviando Bloqueo de carga2 %i \n", Bloqueo_de_carga);
 							SendToPSOC5(Bloqueo_de_carga,BLOQUEO_CARGA);
 							SendToPSOC5(1,COMS_CONFIGURATION_ETH_ON);
 						}
@@ -1440,7 +1440,7 @@ void procesar_bloque(uint16 tipo_bloque){
 			else{
 				Bloqueo_de_carga = false;
 			}
-			//printf("Me piden carga! %i \n", Bloqueo_de_carga);
+			printf("Enviando Bloqueo de carga3 %i \n", Bloqueo_de_carga);
 			SendToPSOC5(Bloqueo_de_carga, BLOQUEO_CARGA);
 
 			

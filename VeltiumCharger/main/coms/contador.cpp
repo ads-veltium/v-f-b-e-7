@@ -13,7 +13,7 @@ Cliente_HTTP CounterClient("192.168.1.1", 1000);
 
 //Buscar el contador
 void Contador::find(){
-    #ifdef DEVELOPMENT
+    #ifdef DEBUG_MEDIDOR
     Serial.println("Iniciando fase busqueda ");
     #endif
     xTaskCreate( BuscarContador_Task, "BuscarContador", 4096*4, NULL, 5, NULL);   
@@ -38,9 +38,9 @@ bool Contador::read(){
     if (!CounterClient.Send_Command(CounterUrl,LEER)) {
         #ifdef DEVELOPMENT
         Serial.printf("Counter reading error\n");
+        #endif
         ContadorExt.ConexionPerdida = true;
         ContadorExt.MeidorConectado = false;
-        #endif
         return false;
     }
     ContadorExt.ConexionPerdida = false;
@@ -79,7 +79,9 @@ void Contador::parse(){
     }
     ContadorExt.DomesticPower = medida_dom;
 
+    #ifdef DEBUG_MEDIDOR
     Serial.println(ContadorExt.DomesticPower);
+    #endif
 
 
     /*medida = Measurements["measurements"]["U1"].as<String>();

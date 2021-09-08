@@ -407,7 +407,6 @@ bool Cliente_HTTP::Send_Command(String url, uint8_t Command){
     uint8_t tiempo_lectura =0;
 
 
-        Serial.println(url);
         esp_http_client_set_url(_client, url.c_str());
         
         switch(Command){

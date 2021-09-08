@@ -91,6 +91,76 @@ void initLeds ( void )
  *   Efectos de los leds
  * ************************/
 //
+void OutWave( uint8_t color){
+	static uint8_t pointer = 0;
+	static bool down = true;
+
+	if(!down){
+		luminosidad+=3;
+		if(luminosidad >= 100){
+			pointer ++;
+			luminosidad = 0;
+			if (pointer >= 4){
+				luminosidad = 100;
+				pointer = 0;
+				down = true;
+			}
+		}
+		changeOne(luminosidad,color,3-pointer);
+		changeOne(luminosidad,color,3+pointer);
+	}
+	else{
+		luminosidad --;
+		displayAll(luminosidad,color);
+
+		if(luminosidad <= 2){
+			luminosidad = 0;
+			for (int j = 0; j < NUM_PIXELS; j++)
+			{
+				leds[j].setHSV(0,0,0);
+			}
+			FastLED.show();
+			down = false;
+		}
+	}
+	
+
+}
+
+void InWave( uint8_t color){
+	static uint8_t pointer = 4;
+	static bool down = true;
+
+	if(!down){
+		luminosidad+=2;
+		if(luminosidad >= 100){
+			pointer --;
+			luminosidad = 0;
+			if (pointer <= 0){
+				luminosidad = 100;
+				pointer = 4;
+				down = true;
+			}
+		}
+		changeOne(luminosidad,color,3-(pointer-1));
+		changeOne(luminosidad,color,3+(pointer-1));
+	}
+	else{
+		luminosidad -=4;
+		displayAll(luminosidad,color);
+
+		if(luminosidad <= 2){
+			luminosidad = 0;
+			for (int j = 0; j < NUM_PIXELS; j++)
+			{
+				leds[j].setHSV(0,0,0);
+			}
+			FastLED.show();
+			down = false;
+		}
+	}
+}
+
 void Kit (uint8_t color){
 	if(subiendo){
 		LedPointer++;
@@ -310,17 +380,17 @@ void LedControl_Task(void *arg){
 			//Buscando Gateway
 			else if(!ContadorExt.GatewayConectado){
 				if(Coms.ETH.Auto){
-					Kit(VERDE);
+					InWave(VERDE);
 				}
 				else{
-					Kit(ROSA);
+					OutWave(VERDE);
 				}
-				Delay=85;
+				Delay=7;
 			}	
 			//Gateway encontrado pero medidor no
 			else if(ContadorExt.GatewayConectado ){
-				FadeDoble(NARANJA_OSCURO, AMARILLO);
-				Delay=10;
+				Kit(VERDE);
+				Delay=85;
 			}
 
 			

@@ -9,7 +9,10 @@
 #define USE_COMS                   //Comentar para no utilzar las comunicaciones [ Veltium lite Zero]
 
 #define DEVELOPMENT				   //Comentar para pasar firmware a produccion ( Cambio de base de datos y quitar debugs)
+
+#ifdef USE_COMS
 #define USE_GROUPS			   //Comentar para no utilizar los grupos de potencia
+#endif
 
 #ifdef DEVELOPMENT
 	#define DEBUG				   //Activar los distintos debugs
@@ -24,6 +27,7 @@
 		#ifdef USE_COMS	
 			#define DEBUG_WIFI	   //Activar el debug del wifi
 			#define DEBUG_ETH	   //Activar el debug del ETH
+			//#define DEBUG_MEDIDOR  //Activar el debug del medidor
 		#endif
 	#endif
 #endif
@@ -33,8 +37,9 @@
 #include "tipos.h"
 
 #ifdef USE_COMS	
-	#define MAX_GROUP_SIZE 50
+	#define MAX_GROUP_SIZE 40
 	#include "coms/Wifi_Station.h"
+	#include "libGSM.h"
 	#ifndef CONNECTED
 		#define CONNECTED
 	#endif
@@ -55,7 +60,7 @@
 #include <math.h>
 #include "SPIFFS.h"
 #include "helpers.h"
-#include "libGSM.h"
+
 
 
 /*********** Pruebas tar.gz **************/
@@ -104,9 +109,33 @@
 //SISTEMA DE ACTUALIZACION
 #define VBLE_UPDATE    1
 #define VELT_UPDATE    2
+
 /*Direcciones del archivo*/
 #define PRIMERA_FILA 14
 #define TAMANO_FILA  527
+
+//Estados para la maquina de estados
+#define APAGADO          255
+#define DISCONNECTED      0
+#define DISCONNECTING     2
+#define STARTING          1
+#define CONNECTING        5
+#define CONECTADO        10
+#define IDLE             20
+#define USER_CONNECTED   21
+#define READING_CONTROL  25
+#define READING_PARAMS   26
+#define READING_COMS     27
+#define READING_GROUP    28
+#define WRITTING_CONTROL 35
+#define WRITTING_STATUS  36
+#define WRITTING_PARAMS  37
+#define WRITTING_COMS    38
+#define WRITTING_TIMES   39
+#define DOWNLOADING      55
+#define UPDATING         65
+#define INSTALLING       70
+#define KILLING          75
 
 void updateCharacteristic(uint8_t* data, uint16_t len, uint16_t attrHandle);
 void procesar_bloque(uint16 tipo_bloque);

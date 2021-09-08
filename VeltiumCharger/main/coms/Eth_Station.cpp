@@ -53,6 +53,7 @@ void BuscarContador_Task(void *args){
     Cliente.begin();
 
     while(!TopeSup || !TopeInf){
+
         if(NextOne){    
             if(Sentido && !TopeInf){ //Pabajo
                 i = ip4_addr4(&Coms.ETH.IP) - inf > 1 ? ip4_addr4(&Coms.ETH.IP) - inf : 0;
@@ -146,7 +147,7 @@ void BuscarContador_Task(void *args){
                 Serial.println("Nada, seguimos buscando");
             #endif
             #ifdef USE_GROUPS
-            if(!Params.Tipo_Sensor && !ChargingGroup.Params.CDP >> 4){
+            if(!Params.Tipo_Sensor && !(ChargingGroup.Params.CDP >> 4)){
             #endif
 
             #ifndef USE_GROUPS

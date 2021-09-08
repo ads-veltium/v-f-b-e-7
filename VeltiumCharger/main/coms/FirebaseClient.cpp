@@ -231,7 +231,9 @@ bool ReiniciarMultiusuario(){
     //Indicar que el cargador esta libre en firebase
     printf("Reiniciando usuario!\n");
     Escritura.clear();
-    Escritura["charg_user_id"] = 0;
+    Escritura["charg_user_id"] = 255;
+    Escritura["user_index"] = 255;
+    Escritura["user_type"] = 255;
     Database->Send_Command("/params/user",&Escritura,UPDATE);
     return true;
 }
@@ -521,15 +523,18 @@ bool ReadFirebaseParams(String Path){
       
       Params.last_ts_app_req=ts_app_req;
 
-      if(memcmp(Params.autentication_mode,Lectura["auth_mode"].as<String>().c_str(),2)){
-        memcpy(Params.autentication_mode, Lectura["auth_mode"].as<String>().c_str(),2);
-        SendToPSOC5(Params.autentication_mode,2,CONFIGURACION_AUTENTICATION_MODES_CHAR_HANDLE);
-      }     
-      
-      if(memcmp(Params.Fw_Update_mode, Lectura["fw_auto"].as<String>().c_str(),2)!=0){
-        memcpy(Params.Fw_Update_mode, Lectura["fw_auto"].as<String>().c_str(),2);
-        SendToPSOC5(Params.Fw_Update_mode, 2, COMS_FW_UPDATEMODE_CHAR_HANDLE);
+      if(Lectura["auth_mode"].as<String>()!="null"){
+        if(memcmp(Params.autentication_mode,Lectura["auth_mode"].as<String>().c_str(),2)){
+          memcpy(Params.autentication_mode, Lectura["auth_mode"].as<String>().c_str(),2);
+          SendToPSOC5(Params.autentication_mode,2,CONFIGURACION_AUTENTICATION_MODES_CHAR_HANDLE);
+        }     
+        
+        if(memcmp(Params.Fw_Update_mode, Lectura["fw_auto"].as<String>().c_str(),2)!=0){
+          memcpy(Params.Fw_Update_mode, Lectura["fw_auto"].as<String>().c_str(),2);
+          SendToPSOC5(Params.Fw_Update_mode, 2, COMS_FW_UPDATEMODE_CHAR_HANDLE);
+        }
       }
+
 
       
       if(!Database->Send_Command(Path+"/ts_dev_ack",&Lectura,TIMESTAMP)){
@@ -565,10 +570,14 @@ bool ReadFirebaseUser(){
   if(Database->Send_Command("/params/user",&Lectura, LEER)){
     uint8 index = Lectura["user_index"].as<uint8>();
     uint8 type = Lectura["user_type"].as<uint8>();
-    SendToPSOC5(index,VCD_NAME_USERS_USER_INDEX_CHAR_HANDLE);
-    delay(10);
-    SendToPSOC5(type,VCD_NAME_USERS_USER_TYPE_CHAR_HANDLE);
-    delay(10);
+    if(index!=255){
+      SendToPSOC5(index,VCD_NAME_USERS_USER_INDEX_CHAR_HANDLE);
+    }
+    
+    if(type!=255){
+      SendToPSOC5(type,VCD_NAME_USERS_USER_TYPE_CHAR_HANDLE);
+    }
+
   }
   else return false;  
 
@@ -582,24 +591,26 @@ bool ReadFirebaseControl(String Path){
   if(ts_app_req> Comands.last_ts_app_req){
     Lectura.clear();
     if(Database->Send_Command(Path,&Lectura, LEER)){
-    
-      Comands.last_ts_app_req = ts_app_req;
-      Comands.start           = Lectura["start"]     ? true : Comands.start;
-      Comands.stop            = Lectura["stop"]      ? true : Comands.stop;
-      Comands.reset           = Lectura["reset"]     ? true : Comands.reset;
+      
+      if( Lectura["desired_current"]!=0){
+        Comands.last_ts_app_req = ts_app_req;
+        Comands.start           = Lectura["start"]     ? true : Comands.start;
+        Comands.stop            = Lectura["stop"]      ? true : Comands.stop;
+        Comands.reset           = Lectura["reset"]     ? true : Comands.reset;
 
-      if(Comands.desired_current != Lectura["desired_current"] && !Comands.Newdata){   
-        Comands.desired_current = Lectura["desired_current"];
-        Comands.Newdata = true;
+        if(Comands.desired_current != Lectura["desired_current"] && !Comands.Newdata){   
+          Comands.desired_current = Lectura["desired_current"];
+          Comands.Newdata = true;
+        }
+              
+        Comands.fw_update       = Lectura["fw_update"] ? true : Comands.fw_update;
+        Comands.conn_lock       = Lectura["conn_lock"] ? true : Comands.conn_lock;
+
+        WriteFirebaseControl("/control");
+        if(!Database->Send_Command(Path+"/ts_dev_ack",&Lectura,TIMESTAMP)){
+            return false;
+        } 
       }
-            
-      Comands.fw_update       = Lectura["fw_update"] ? true : Comands.fw_update;
-      Comands.conn_lock       = Lectura["conn_lock"] ? true : Comands.conn_lock;
-
-      WriteFirebaseControl("/control");
-      if(!Database->Send_Command(Path+"/ts_dev_ack",&Lectura,TIMESTAMP)){
-          return false;
-      } 
     }
     else return false;  
   }
@@ -702,7 +713,6 @@ void DownloadFileTask(void *args){
   WiFiClient *stream = new WiFiClient();
   int total = 0;
   if(DownloadClient.GET()>0){
-    Serial.println(url);
     total = DownloadClient.getSize();
     int len = total;
     int written=0;
@@ -764,7 +774,7 @@ void DownloadFileTask(void *args){
 void Firebase_Conn_Task(void *args){
   ConnectionState =  DISCONNECTED;
   uint8_t  LastStatus = DISCONNECTED, NextState = 0;
-  uint8_t Error_Count = 0, null_count=0;
+  uint8_t Error_Count = 0, null_count=0, bloquedByBLE=0;
   //timeouts para leer parametros y coms (Para leer menos a menudo)
   uint8 Params_Coms_Timeout =0;
   String Base_Path;
@@ -864,7 +874,9 @@ void Firebase_Conn_Task(void *args){
         break;
       }
       else if(ConfigFirebase.ResetUser){
-        ReiniciarMultiusuario();
+        if(!serverbleGetConnected()){
+          ReiniciarMultiusuario();
+        }
         ConfigFirebase.ResetUser = 0;
         ConfigFirebase.UserReseted = 1;
       }
@@ -874,8 +886,13 @@ void Firebase_Conn_Task(void *args){
       }*/
       //Si está conectado por ble no hace nada
       else if(serverbleGetConnected()){
+        bloquedByBLE = 1;
         ConfigFirebase.ClientConnected = false;
         break;
+      }
+      else if(!serverbleGetConnected() && bloquedByBLE){
+        bloquedByBLE = 0;
+        Status.last_ts_app_req = Database->Get_Timestamp("/status/ts_app_req",&Lectura) + 20000;
       }
 
       //comprobar si hay usuarios observando:    
@@ -1025,11 +1042,7 @@ void Firebase_Conn_Task(void *args){
         ConfigFirebase.UserReseted = 1;
         
       }
-      /*if(ConfigFirebase.WriteUser){
-        EscribirMultiusuario();
-        ConfigFirebase.WriteUser = 0;
-      }*/
-      
+        
 
       //Comprobar actualizaciones manuales
       if(Comands.fw_update){
