@@ -890,7 +890,7 @@ void Firebase_Conn_Task(void *args){
       }
       else if(!serverbleGetConnected() && bloquedByBLE){
         bloquedByBLE = 0;
-        Status.last_ts_app_req = Database->Get_Timestamp("/status/ts_app_req",&Lectura) + 20000;
+        Status.last_ts_app_req = Database->Get_Timestamp("/status/ts_app_req",&Lectura) + 10000;
       }
 
       //comprobar si hay usuarios observando:    
