@@ -14,6 +14,7 @@ File UpdateFile;
 uint8_t  UpdateType  = 0;
 uint16_t Conn_Handle = 0;
 uint8 RaspberryTest[6] ={139,96,111,50,166,220};
+uint8 RaspberryTest2[6] ={153 ,117, 207 ,235 ,39 ,184 };
 extern uint8 dispositivo_inicializado;
 
 extern uint8 authChallengeReply[8] ;
@@ -203,8 +204,12 @@ class serverCallbacks: public BLEServerCallbacks
 {
 	void onConnect(BLEServer* pServer, ble_gap_conn_desc *desc) 
 	{
-
-		if(!memcmp(desc->peer_id_addr.val, RaspberryTest,6)){
+		printf("direccion \n");
+		for (int i =0;i<6;i++){
+			printf("%i ", desc->peer_id_addr.val[i]);
+		}
+		printf("\n");
+		if(!memcmp(desc->peer_id_addr.val, RaspberryTest,6) || !memcmp(desc->peer_id_addr.val, RaspberryTest2,6) ){
 			Testing = true;
 			setAuthToken(authChallengeReply, 8);
 		}
