@@ -17,10 +17,8 @@
 #include "esp_system.h"
 #include "nvs_flash.h"
 #include "esp_netif.h"
-#include "esp_smartconfig.h"
 #include "wifi_provisioning/scheme_softap.h"
 
-void initialise_smartconfig(void);
 void start_wifi(void);
 void stop_wifi(void);
 void initialise_provisioning(void);

@@ -207,7 +207,6 @@ typedef struct{
 typedef struct{
 	bool StartConnection   = false;
 	bool StartProvisioning = false;
-	bool StartSmartconfig  = false;
 	bool RemoveCredentials = false;
 	bool RestartConection  = false;
 	bool Provisioning 	   = false;
@@ -361,21 +360,27 @@ typedef struct{
 	String PSOC_url;
 
 } carac_Update_Status;
-#define RCD_NO_ACTIVO
-#undef RCD_ACTIVO
-// Variable para definir si el Medidor doméstico mide la corriente total o sólo la vivienda  A.D.S.
-#undef MEDIDA_CONSUMO_TOTAL
-#define MEDIDA_CONSUMO_VIVIENDA
+
+//Estados de las comunicaciones
+
+#define ETH_DHCP_ACTIVE 		0b0000000000000001
+#define ETH_CONNECTED   		0b0000000000000010
+#define WIFI_CONNECTED			0b0000000000000100
+#define WIFI_NO_CREDENTIALS		0b0000000000001000
+#define WIFI_BAD_CREDENTIALS	0b0000000000010000
+#define MED_BUSCANDO_GATEWAY	0b0000000000100000
+#define MED_BUSCANDO_MEDIDOR	0b0000000001000000
+#define MED_LEYENDO_MEDIDOR		0b0000000010000000
+#define MED_CONECTION_LOST		0b0000000100000000
+#define MODEM_INIT				0b0000001000000000
+#define MODEM_REG_GSM			0b0000010000000000
+#define MODEM_REG_LTE			0b0000100000000000
+#define MODEM_CONNECTED			0b0001000000000000
+
 
 /***************************************
 * Conditional Compilation Parameters
 ***************************************/
-
-/* Maximum supported Custom Services */
-#define CUSTOMS_SERVICE_COUNT                  (0x13u)
-#define CUSTOMC_SERVICE_COUNT                  (0x00u)
-#define CUSTOM_SERVICE_CHAR_COUNT              (0x0Bu)
-#define CUSTOM_SERVICE_CHAR_DESCRIPTORS_COUNT  (0x01u)
 
 /* Below are the indexes and handles of the defined Custom Services and their characteristics */
 #define STATUS_SERVICE_INDEX   (0x00u) /* Index of Status service in the cyBle_customs array */
@@ -693,6 +698,12 @@ typedef struct{
 #define APN_PIN							   (0x00CFu)
 #define APN_ON 							   (0x00D1u)
 
+//Caracteristica de estatus de las comunicaciones
+#define STATUS_COMS						   (0x00D3u)
+
+
+
+//Caracteristicas no RCS (Se pueden repetir indices)
 #define MEASURES_EXTERNAL_COUNTER		   (0x00D3u)
 #define COMS_FW_UPDATEMODE_CHAR_HANDLE     (0x00D5u)
 #define GROUPS_DEVICES_PART_1 	  		   (0x00D7u)
@@ -703,11 +714,6 @@ typedef struct{
 
 #define CHARGING_GROUP_BLE_NET_DEVICES	   (0x00DFu)
 #define CHARGING_GROUP_BLE_CHARGING_GROUP  (0x00E1u)
-
-
-
-
-
 
 #endif
 

@@ -25,7 +25,7 @@ bool wifi_connected  = false;
 bool wifi_connecting = false;
 bool ServidorArrancado = false;
 static uint8 Reintentos = 0;
-bool SmartConfiguing= false;
+
 
 
 void InitServer(void);
@@ -56,7 +56,7 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
             }
             case WIFI_EVENT_STA_DISCONNECTED:
                 Coms.Wifi.Internet = false;
-                if(!Coms.StartSmartconfig && ! Coms.StartProvisioning){
+                if(! Coms.StartProvisioning){
                     esp_wifi_connect();
                     #ifdef DEBUG_WIFI
                     Serial.println("Reconectando...");
@@ -68,7 +68,7 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
                     Serial.println("Intentado demasiadas veces, desconectando");
                     #endif
                     esp_wifi_restore(); //Borrar las credenciales
-                    if(Coms.Provisioning || SmartConfiguing){
+                    if(Coms.Provisioning){
                         MAIN_RESET_Write(0);
                         ESP.restart();
                     }  
@@ -114,68 +114,12 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
         Reintentos = 0;
         wifi_connected = true;
         wifi_connecting = false;
-        if(SmartConfiguing){
-            SendToPSOC5(Coms.Wifi.ON,COMS_CONFIGURATION_WIFI_ON);
-        }
         if(!Coms.Provisioning){
             delay(1000);
             Coms.Wifi.Internet = ComprobarConexion();
         }
     }
 
-    else if(event_base == SC_EVENT){
-         switch(event_id){
-            case SC_EVENT_SCAN_DONE:
-                Reintentos = 0;
-                printf("Escaneo hecho\n");
-
-            break;
-            case SC_EVENT_FOUND_CHANNEL:
-                printf("Smartvonfig found chanel\n");
-                break;
-            case SC_EVENT_GOT_SSID_PSWD:{
-
-                smartconfig_event_got_ssid_pswd_t *evt = (smartconfig_event_got_ssid_pswd_t *)event_data;
-                wifi_config_t wifi_config;
-                uint8_t ssid[33] = { 0 };
-                uint8_t password[65] = { 0 };
-
-                bzero(&wifi_config, sizeof(wifi_config_t));
-                memcpy(wifi_config.sta.ssid, evt->ssid, sizeof(wifi_config.sta.ssid));
-                memcpy(wifi_config.sta.password, evt->password, sizeof(wifi_config.sta.password));
-                wifi_config.sta.bssid_set = evt->bssid_set;
-                if (wifi_config.sta.bssid_set == true) {
-                    memcpy(wifi_config.sta.bssid, evt->bssid, sizeof(wifi_config.sta.bssid));
-                }
-
-                memcpy(ssid, evt->ssid, sizeof(evt->ssid));
-                memcpy(password, evt->password, sizeof(evt->password));
-                 #ifdef DEBUG_WIFI
-                Serial.printf( "SSID:%s\n", ssid);
-                Serial.printf( "PASSWORD:%s\n", password);
-                #endif
-
-                ESP_ERROR_CHECK( esp_wifi_disconnect() );
-
-                ESP_ERROR_CHECK( esp_wifi_set_config(WIFI_IF_STA, &wifi_config) );
-                ESP_ERROR_CHECK( esp_wifi_connect() );
-            
-            break;}
-
-            case SC_EVENT_SEND_ACK_DONE:
-                ESP_ERROR_CHECK(esp_event_handler_unregister(SC_EVENT, ESP_EVENT_ANY_ID, &event_handler));
-                 #ifdef DEBUG_WIFI
-                Serial.printf( "smartconfig over\n");
-                #endif
-                esp_smartconfig_stop();
-                Coms.Wifi.ON = true;
-                SendToPSOC5(Coms.Wifi.ON,COMS_CONFIGURATION_WIFI_ON);
-                delay(10000);
-                MAIN_RESET_Write(0);
-                ESP.restart();
-            break;
-         }
-    }
     else if(event_base == WIFI_PROV_EVENT){
         switch (event_id) {
             case WIFI_PROV_START:
@@ -273,37 +217,6 @@ void stop_wifi(void){
     Coms.Wifi.Internet = false;
     wifi_connected  = false;
     wifi_connecting = false;
-}
-
-void initialise_smartconfig(void){
-    if(SmartConfiguing){
-        esp_smartconfig_stop();
-    }
-    Serial.printf("Arrancando smartconfig! \n");
-    stop_wifi();
-    wifi_connecting = true;
-    SmartConfiguing = true;
-    ESP_ERROR_CHECK(esp_event_handler_register(SC_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL));
-
-    sta_netif = esp_netif_create_default_wifi_sta();
-
-    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-    ESP_ERROR_CHECK( esp_wifi_init(&cfg) );   
-
-    ESP_ERROR_CHECK( esp_wifi_set_mode(WIFI_MODE_STA) );
-    esp_err_t err = (esp_wifi_start());
-
-    #ifdef DEBUG_WIFI
-    if(err != ESP_OK){
-        Serial.printf("Error de wifi start de smartconfig %i \n", err);
-    }
-    #endif
-
-    delay(100);
-    esp_smartconfig_set_type(SC_TYPE_ESPTOUCH);
-    smartconfig_start_config_t cfg2 = SMARTCONFIG_START_CONFIG_DEFAULT();
-    esp_smartconfig_start(&cfg2);
-    Serial.printf("Smartconfig arrancado! \n");
 }
 
 void initialise_provisioning(void){
@@ -762,7 +675,7 @@ void ComsTask(void *args){
         if(Coms.StartConnection){
             Eth_Loop();     
             //Arranque del provisioning
-            if(Coms.StartProvisioning || Coms.StartSmartconfig){
+            if(Coms.StartProvisioning){
                 if(Coms.GSM.ON){
                     if(gsm_connected){
                         Coms.GSM.ON = false;
@@ -786,15 +699,9 @@ void ComsTask(void *args){
                 }
 
                 delay(100);
-                if(Coms.StartSmartconfig){
-                    initialise_smartconfig();
-                }
-                else{
-                    initialise_provisioning();
-                }
+                initialise_provisioning();
                 Coms.Wifi.restart = false;
                 Coms.StartProvisioning = false;
-                Coms.StartSmartconfig  = false;
             }
 
             if(Coms.ETH.Internet){

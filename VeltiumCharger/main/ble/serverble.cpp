@@ -469,12 +469,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 			}
 #ifdef CONNECTED
 			if(handle == COMS_CONFIGURATION_WIFI_START_PROV){
-				if(payload[0]==1){
-					Coms.StartProvisioning = true;
-				}
-				else if(payload[0]==2){
-					Coms.StartSmartconfig = true;
-				}
+				Coms.StartProvisioning = true;
 				return;
 			}
 			else if(handle == COMS_CONFIGURATION_ETH_ON){

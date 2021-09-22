@@ -1574,6 +1574,29 @@ void modifyCharacteristic(uint8* data, uint16 len, uint16 attrHandle){
 }
 
 /************************************************
+ * 		Actualizar el valor de status COMS
+ ************************************************/
+void Update_Status_Coms(uint16_t Code){
+	static uint16 Status_Coms = 0;
+
+#ifdef DEBUG
+	static uint16 Last_Status = 0;
+#endif
+
+	Status_Coms = Status_Coms & Code;
+	uint8 data[2];
+	data[0] = (uint8)(Status_Coms & 0x00FF);
+	data[1] = (uint8)((Status_Coms >> 8) & 0x00FF);
+	modifyCharacteristic((uint8_t*)data, 2, STATUS_COMS);
+
+#ifdef DEBUG
+	if(Last_Status != Status_Coms){
+		printf("Status coms cambia de %i a %i\n", Last_Status, Status_Coms);
+		Last_Status = Status_Coms;
+	}
+#endif
+}
+/************************************************
 		Convertir fecha a timestamp epoch
 ************************************************/
 int Convert_To_Epoch(uint8* data){
