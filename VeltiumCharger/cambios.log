@@ -1,0 +1,10 @@
+v5.16
+    - Eliminado Smartconfig
+    - Añadida gestión de grupos
+    - Añadido multiusuario
+    - Añadido guardar registro entre cargas
+    - Añadido Status de comunicaciones (Solo en el equipo)
+    - Reducido tamaño memoria en spiram
+    - Mejora en la visualizacion de la busqueda del modem (LEDS)
+    - Aumentado tiempo de inicio de busqueda modem(30 seg a 2minutos)
+    - Firebase Optimizado (5 seg deteccion conexion 150 miliseg durante conexion + añadido estado de conectado)
