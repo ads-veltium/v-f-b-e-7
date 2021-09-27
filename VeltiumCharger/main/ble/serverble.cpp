@@ -26,7 +26,7 @@ extern carac_Update_Status 			UpdateStatus;
 extern carac_Comands                Comands;
 
 #ifdef CONNECTED
-	#ifdef USE_GROUPS
+	#ifdef CONNECTED
 		extern carac_group ChargingGroup;
 		extern carac_charger net_group[MAX_GROUP_SIZE];
 		extern uint8_t net_group_size;
@@ -204,11 +204,6 @@ class serverCallbacks: public BLEServerCallbacks
 {
 	void onConnect(BLEServer* pServer, ble_gap_conn_desc *desc) 
 	{
-		printf("direccion \n");
-		for (int i =0;i<6;i++){
-			printf("%i ", desc->peer_id_addr.val[i]);
-		}
-		printf("\n");
 		if(!memcmp(desc->peer_id_addr.val, RaspberryTest,6) || !memcmp(desc->peer_id_addr.val, RaspberryTest2,6) ){
 			Testing = true;
 			setAuthToken(authChallengeReply, 8);
@@ -480,7 +475,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 				SendToPSOC5(payload[0],COMS_CONFIGURATION_WIFI_ON);
 				return;
 			}
-#ifdef USE_GROUPS
+#ifdef CONNECTED
 			else if (handle == GROUPS_PARAMS) {
 				uint8_t sendBuffer[7];
 				sendBuffer[0] = ChargingGroup.Params.GroupMaster;
@@ -690,7 +685,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 
 			return;
 		}
-#ifdef USE_GROUPS 
+#ifdef CONNECTED 
 		if ( pCharacteristic->getUUID().equals(blefields[RCS_CHARGING_GROUP].uuid) ){
 			
 			uint8 size = uint8(data[0]);

@@ -1,6 +1,6 @@
 #include "group_control.h"
 #include "control.h"
-#if (defined CONNECTED && defined USE_GROUPS)
+#if (defined CONNECTED && defined CONNECTED)
 #include <string.h>
 #include "helpers.h"
 #include "cJSON.h"

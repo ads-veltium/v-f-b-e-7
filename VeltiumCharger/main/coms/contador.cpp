@@ -41,6 +41,7 @@ bool Contador::read(){
         #endif
         ContadorExt.ConexionPerdida = true;
         ContadorExt.MeidorConectado = false;
+        Update_Status_Coms(MED_CONECTION_LOST);
         return false;
     }
     ContadorExt.ConexionPerdida = false;
@@ -53,7 +54,7 @@ bool Contador::read(){
 void Contador::parse(){
     //Podemos medir lo que nos salga, pero de momento solo queremos intensidades
     String medida;
-
+    static uint8_t old = 0;
     //Leer corrientes
     /*medida = Measurements["measurements"]["I1"].as<String>();
     ContadorExt.DomesticCurrentA = medida.toFloat() *100;
@@ -66,6 +67,10 @@ void Contador::parse(){
     medida = Measurements["measurements"]["P0"].as<String>();
 
     ContadorExt.MeidorConectado = medida != "null";
+    if(ContadorExt.MeidorConectado != old){
+        old = ContadorExt.MeidorConectado;
+        Update_Status_Coms(MED_LEYENDO_MEDIDOR);
+    }
 
     uint16_t medida_dom = 0;
     if(medida.indexOf("k W")>0){

@@ -17,7 +17,7 @@ extern carac_Coms                   Coms;
 extern uint8 user_index;
 
 
-#ifdef USE_GROUPS
+#ifdef CONNECTED
 extern carac_group                  ChargingGroup;
 extern carac_circuito               Circuitos[MAX_GROUP_SIZE];
 extern carac_charger                charger_table[ MAX_GROUP_SIZE];
@@ -376,7 +376,7 @@ bool WriteFirebaseHistoric(char* buffer){
 /***************************************************
   Funciones de lectura
 ***************************************************/
-#ifdef USE_GROUPS
+
 bool ReadFirebaseGroups(String Path){
 
   long long ts_app_req=Database->Get_Timestamp(Path+"/ts_app_req",&Lectura, true);
@@ -481,7 +481,6 @@ bool ReadFirebaseGroups(String Path){
   return true;
 
 }
-#endif
 
 bool ReadFirebaseComs(String Path){
 
@@ -584,14 +583,14 @@ bool ReadFirebaseUser(){
 }
 
 bool ReadFirebaseControl(String Path){
-  
+  static long long last_ts_app_req = 0;
   long long ts_app_req=Database->Get_Timestamp(Path+"/ts_app_req",&Lectura);
-  if(ts_app_req> Comands.last_ts_app_req){
+  if(ts_app_req> last_ts_app_req){
     Lectura.clear();
     if(Database->Send_Command(Path,&Lectura, LEER)){
       
       if( Lectura["desired_current"]!=0){
-        Comands.last_ts_app_req = ts_app_req;
+        last_ts_app_req = ts_app_req;
         Comands.start           = Lectura["start"]     ? true : Comands.start;
         Comands.stop            = Lectura["stop"]      ? true : Comands.stop;
         Comands.reset           = Lectura["reset"]     ? true : Comands.reset;
@@ -616,6 +615,10 @@ bool ReadFirebaseControl(String Path){
   return true;
 }
 
+bool ReadFirebaseSchedule(String Path){
+  
+  return true;
+}
 /*****************************************************
  *              Sistema de Actualización
  *****************************************************/
@@ -838,7 +841,7 @@ void Firebase_Conn_Task(void *args){
       Status.last_ts_app_req  = Database->Get_Timestamp("/status/ts_app_req",&Lectura);
       
       Error_Count+=!WriteFirebaseFW("/fw/current");
-#ifdef USE_GROUPS
+
       if(ChargingGroup.Params.GroupActive){
         //comprobar si han borrado el grupo mientras estabamos desconectados
         if(!ReadFirebasePath("/groupId")){
@@ -849,7 +852,7 @@ void Firebase_Conn_Task(void *args){
           ChargingGroup.Params.GroupMaster = false;
         }
       }
-#endif
+
 
       //Comprobar si hay firmware nuevo
 #ifndef DEVELOPMENT
@@ -1102,7 +1105,7 @@ void Firebase_Conn_Task(void *args){
       NextState=READING_PARAMS;
       break;
 
-#ifdef USE_GROUPS
+#ifdef CONNECTED
     case READING_GROUP:
       Error_Count+=!ReadFirebaseGroups("123456789");
       ConnectionState=IDLE;
@@ -1170,10 +1173,10 @@ void Firebase_Conn_Task(void *args){
     }
 
     //chivatos de la ram
-    if(ESP.getFreePsram() < 2000000 || ESP.getFreeHeap() < 20000){
+    //if(ESP.getFreePsram() < 2000000 || ESP.getFreeHeap() < 20000){
         Serial.println(ESP.getFreePsram());
         Serial.println(ESP.getFreeHeap());
-    }
+    //}
     #endif
   }
 }

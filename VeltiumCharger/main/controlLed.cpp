@@ -14,7 +14,7 @@ extern carac_Coms Coms;
 
 #ifdef USE_COMS
 	extern carac_Contador   ContadorExt;
-	#ifdef USE_GROUPS
+	#ifdef CONNECTED
 	extern carac_group    ChargingGroup;
 	#endif
 #endif

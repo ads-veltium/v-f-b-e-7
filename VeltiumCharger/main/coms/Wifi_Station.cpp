@@ -31,7 +31,7 @@ static uint8 Reintentos = 0;
 void InitServer(void);
 void StopServer(void);
 
-#ifdef USE_GROUPS
+#ifdef CONNECTED
 extern carac_group  ChargingGroup;
 
 void coap_start_server();
@@ -52,9 +52,12 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
                 Coms.Wifi.Internet = false;
                 esp_wifi_disconnect();
                 esp_wifi_connect();
+                Update_Status_Coms(0,WIFI_BLOCK);
+
             break;
             }
             case WIFI_EVENT_STA_DISCONNECTED:
+                Update_Status_Coms(0,WIFI_BLOCK);
                 Coms.Wifi.Internet = false;
                 if(! Coms.StartProvisioning){
                     esp_wifi_connect();
@@ -64,24 +67,22 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
                 }
 
                 if(++Reintentos>=7 ){
-                     #ifdef DEBUG_WIFI
+                    #ifdef DEBUG_WIFI
                     Serial.println("Intentado demasiadas veces, desconectando");
                     #endif
-                    esp_wifi_restore(); //Borrar las credenciales
-                    if(Coms.Provisioning){
+                    //esp_wifi_restore(); //Borrar las credenciales
+                    /*if(Coms.Provisioning){
                         MAIN_RESET_Write(0);
                         ESP.restart();
-                    }  
+                    }  */
                     
-
+                    Update_Status_Coms(WIFI_BAD_CREDENTIALS);
                     stop_wifi();
+                    Coms.Wifi.ON = 0;
                     if(Coms.StartProvisioning){
                         Coms.StartProvisioning = 0;
-
                         wifi_prov_mgr_deinit();
                     }
-                    Coms.Wifi.ON = false;
-                    SendToPSOC5(Coms.Wifi.ON,COMS_CONFIGURATION_WIFI_ON);
                 }
             break;
             case WIFI_EVENT_STA_CONNECTED:
@@ -94,9 +95,10 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
     else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP){
         ip_event_got_ip_t *event = (ip_event_got_ip_t *) event_data;
         const esp_netif_ip_info_t *ip_info = &event->ip_info;
-         #ifdef DEBUG_WIFI
-        Serial.println( "Wifi got IP Address\n");
-        Serial.printf( "Wifi: %d %d %d %d\n",IP2STR(&ip_info->ip));
+
+        #ifdef DEBUG_WIFI
+            Serial.println( "Wifi got IP Address\n");
+            Serial.printf( "Wifi: %d %d %d %d\n",IP2STR(&ip_info->ip));
         #endif
 
         Coms.Wifi.IP.addr = ip_info->ip.addr;
@@ -118,6 +120,7 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
             delay(1000);
             Coms.Wifi.Internet = ComprobarConexion();
         }
+        Update_Status_Coms(WIFI_CONNECTED);
     }
 
     else if(event_base == WIFI_PROV_EVENT){
@@ -147,6 +150,7 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
                          (*reason == WIFI_PROV_STA_AUTH_ERROR) ?
                          "Wi-Fi station authentication failed" : "Wi-Fi access-point not found");
                 #endif
+                Update_Status_Coms(WIFI_BAD_CREDENTIALS);
                 esp_wifi_connect();
                 break;
             }
@@ -154,13 +158,16 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
                 #ifdef DEBUG_WIFI
                 Serial.printf("Provisioning successful\n");
                 #endif
+                Update_Status_Coms(WIFI_CONNECTED);
                 Coms.Wifi.ON = true;
                 SendToPSOC5(Coms.Wifi.ON,COMS_CONFIGURATION_WIFI_ON);
                 Coms.Provisioning = false;
                 wifi_prov_mgr_stop_provisioning();
                 delay(10000);
+                /*
                 MAIN_RESET_Write(0);
                 ESP.restart();
+                */
                 break;
             case WIFI_PROV_END:
                 #ifdef DEBUG_WIFI
@@ -187,6 +194,7 @@ void stop_wifi(void){
 
     uint8_t timeout = 0;
     while(ConnectionState != DISCONNECTED && ++timeout < 80){
+        Serial.println(ConnectionState);
         delay(100);
     }
 
@@ -316,6 +324,7 @@ void start_wifi(void)
             #ifdef DEBUG_WIFI
             Serial.printf( "Sin credenciales almacenadas, pausando wifi\n");    
             #endif
+            Update_Status_Coms(WIFI_NO_CREDENTIALS);
             stop_wifi();
             wifi_prov_mgr_stop_provisioning();
             wifi_prov_mgr_deinit();
@@ -348,9 +357,7 @@ void Eth_Loop(){
                 initialize_ethernet();
                 Coms.ETH.State = CONNECTING;
                 xStart = xTaskGetTickCount();
-#ifdef USE_GROUPS      
                 SendToPSOC5(1,SEND_GROUP_DATA);
-#endif
                 finding = false;
             }
         break;
@@ -377,7 +384,7 @@ void Eth_Loop(){
                         Coms.ETH.Wifi_Perm = true;
                     }
                 }
-                #ifdef USE_GROUPS
+                #ifdef CONNECTED
                     SendToPSOC5(2,SEND_GROUP_DATA);
                     SendToPSOC5(3,SEND_GROUP_DATA);          
                     delay(5000);
@@ -394,10 +401,10 @@ void Eth_Loop(){
                 Coms.ETH.State = DISCONNECTING;                
             }
             //si tenemos configurado un medidor o somos el maestro de un grupo, y a los 2 minutos no tenemos conexion a internet, activamos el DHCP
-            #ifdef USE_GROUPS
+            #ifdef CONNECTED
             else if(Params.Tipo_Sensor || (ChargingGroup.Params.GroupMaster && ChargingGroup.Params.GroupActive)){
             #endif
-            #ifndef USE_GROUPS
+            #ifndef CONNECTED
             else if(Params.Tipo_Sensor){
             #endif
                 if(GetStateTime(xStart) > 120000){
@@ -422,17 +429,17 @@ void Eth_Loop(){
                     Coms.ETH.Internet = true;
                 }
             }
-#ifdef USE_GROUPS
+
             if(ChargingGroup.Params.GroupActive){
                 Coms.ETH.Wifi_Perm = true;
             }
-#endif
+
             //Buscar el contador
-            #ifdef USE_GROUPS
+            #ifdef CONNECTED
             if((Params.Tipo_Sensor || (ChargingGroup.Params.CDP >> 4 && ChargingGroup.Params.GroupMaster && ChargingGroup.Conected)) && !finding){
             #endif
 
-            #ifndef USE_GROUPS
+            #ifndef CONNECTED
             if(Params.Tipo_Sensor && !finding){
             #endif
                 if(GetStateTime(xStart) > 30000){
@@ -440,9 +447,6 @@ void Eth_Loop(){
                     finding = true;
                 }
             }
-
-#ifdef USE_GROUPS
-
             //Arrancar los grupos
             else if(!ChargingGroup.Conected && Coms.ETH.conectado){
                 if(ChargingGroup.Params.GroupActive && GetStateTime(xConnect) > 5000 ){
@@ -462,20 +466,19 @@ void Eth_Loop(){
                     }
                 }
             }
-#endif
+
 
             //Apagar el eth
             if(!Coms.ETH.ON && (ConnectionState == IDLE || ConnectionState == DISCONNECTED)){  
 
                 //Si lo queremos reinicializar para ponerle una ip estatica o quitarsela
                 if(Coms.ETH.restart || Coms.ETH.DHCP){
-#ifdef USE_GROUPS
                     if(ChargingGroup.Conected){
                         ChargingGroup.Params.GroupActive = false;
                         ChargingGroup.StopOrder = true;   
                     }
                     close_udp();
-#endif
+
                     
                     kill_ethernet();
                     Coms.ETH.State = KILLING;
@@ -483,13 +486,11 @@ void Eth_Loop(){
                     break;
                 }
                 else{
-#ifdef USE_GROUPS
                     if(ChargingGroup.Conected){
                         ChargingGroup.Params.GroupActive = false;
                         ChargingGroup.StopOrder = true;
                     }
-                     close_udp();
-#endif
+                    close_udp();
                    
                     stop_ethernet();
                     Coms.ETH.State = DISCONNECTING;
@@ -512,13 +513,12 @@ void Eth_Loop(){
                     }
 
                     Coms.ETH.State = DISCONNECTING;
-#ifdef USE_GROUPS
                     close_udp();
                     if(ChargingGroup.Conected){
                         ChargingGroup.Params.GroupActive = false;
                         ChargingGroup.StopOrder = true;
                     }
-#endif
+
                     if(Coms.Wifi.ON && Coms.Wifi.Internet){
                         Coms.Wifi.restart = true;
                     }
@@ -526,13 +526,13 @@ void Eth_Loop(){
                 }
                 else{
                     Coms.ETH.State = DISCONNECTING;
-#ifdef USE_GROUPS
+
                     close_udp();
                     if(ChargingGroup.Conected){
                         ChargingGroup.Params.GroupActive = false;
                         ChargingGroup.StopOrder = true;
                     }
-#endif
+
                     if(Coms.Wifi.ON && Coms.Wifi.Internet){
                         Coms.Wifi.restart = true;
                     }
@@ -541,13 +541,8 @@ void Eth_Loop(){
             }
 
             //Lectura del contador
-#ifdef USE_GROUPS
-			if(ContadorExt.GatewayConectado && (Params.Tipo_Sensor || (ChargingGroup.Params.CDP >> 4 && ChargingGroup.Params.GroupMaster && ChargingGroup.Conected))){
-#endif
 
-#ifndef USE_GROUPS
-            if(ContadorExt.GatewayConectado && Params.Tipo_Sensor){
-#endif
+			if(ContadorExt.GatewayConectado && (Params.Tipo_Sensor || (ChargingGroup.Params.CDP >> 4 && ChargingGroup.Params.GroupMaster && ChargingGroup.Conected))){
 				if(!Counter.Inicializado){
 					Counter.begin(ContadorExt.ContadorIp);
                     SendToPSOC5(0, BLOQUEO_CARGA);
@@ -568,18 +563,13 @@ void Eth_Loop(){
 			}
 
             //Pausar lectura del contador
-#ifdef USE_GROUPS
             else if(ContadorExt.GatewayConectado && !Params.Tipo_Sensor && !(ChargingGroup.Params.CDP >> 4)){
-#endif
-
-#ifndef USE_GROUPS
-            else if(ContadorExt.GatewayConectado && !Params.Tipo_Sensor){
-#endif
                 ContadorExt.GatewayConectado = false;
                 ContadorExt.MeidorConectado = false;
                 Counter.Inicializado = false;
                 Counter.end();
                 finding = false;
+                Update_Status_Coms(0,MED_BLOCK);
             }
             }
         break;
@@ -591,6 +581,7 @@ void Eth_Loop(){
                     ContadorExt.GatewayConectado = false;
                     ContadorExt.MeidorConectado = false;
                     Counter.end();
+                    Update_Status_Coms(0,MED_BLOCK);
                 }
                 
                 Coms.ETH.State = DISCONNECTED;
@@ -614,6 +605,7 @@ void Eth_Loop(){
                     ContadorExt.GatewayConectado = false;
                     ContadorExt.MeidorConectado = false;
                     Counter.end();
+                    Update_Status_Coms(0,MED_BLOCK);
                 }
 
                 if(!Coms.ETH.ON){

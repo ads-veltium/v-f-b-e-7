@@ -21,7 +21,7 @@ extern carac_Firebase_Configuration ConfigFirebase;
 extern carac_Contador   ContadorExt;
 extern carac_Params Params;
 
-#ifdef USE_GROUPS
+#ifdef CONNECTED
 extern carac_group  ChargingGroup;
 #endif
 
@@ -51,7 +51,7 @@ void BuscarContador_Task(void *args){
 
     Cliente_HTTP Cliente("http://192.168.1.1", 1000);
     Cliente.begin();
-
+    Update_Status_Coms(MED_BUSCANDO_GATEWAY);
     while(!TopeSup || !TopeInf){
 
         if(NextOne){    
@@ -97,9 +97,7 @@ void BuscarContador_Task(void *args){
                         Sentido = true;
                         continue;
                     }
-                }
-                
-                
+                }                
             }
             if(i-1==-1){
                 break;
@@ -126,15 +124,12 @@ void BuscarContador_Task(void *args){
             if(resultado == PING_SUCCESS){           
                 char url[100] = "http://";
                 strcat(url, ip);
-                //strcat(url, "/get_command?command=get_measurements");
-                #ifdef DEBUG_ETH
-                    printf("Probando a ver si es de verdad\n");
-                #endif
                 if(Cliente.Send_Command(url,LEER)) {
                     String respuesta = Cliente.ObtenerRespuesta();          
                     if(respuesta.indexOf("Iskra")>-1){
                         strcpy(ContadorExt.ContadorIp,ip);
                         ContadorExt.GatewayConectado = true;
+                        Update_Status_Coms(MED_BUSCANDO_MEDIDOR);
                         break;
                     }
                 }
@@ -143,16 +138,8 @@ void BuscarContador_Task(void *args){
                     break;
                 }
             }
-            #ifdef DEBUG_ETH
-                Serial.println("Nada, seguimos buscando");
-            #endif
-            #ifdef USE_GROUPS
-            if(!Params.Tipo_Sensor && !(ChargingGroup.Params.CDP >> 4)){
-            #endif
 
-            #ifndef USE_GROUPS
-            if(!Params.Tipo_Sensor){
-            #endif
+            if(!Params.Tipo_Sensor && !(ChargingGroup.Params.CDP >> 4)){
                 Coms.ETH.Wifi_Perm = true;
                 break;
             }
@@ -164,22 +151,16 @@ void BuscarContador_Task(void *args){
     Cliente.end();
     
 
-        if(!ContadorExt.GatewayConectado){
-    #ifdef DEBUG_ETH
-            Serial.println("No he encontrado ningun medidor");
-     #endif
-            *finding = false;
-        }
-        else{
-    #ifdef DEBUG_ETH
-            printf("He encontrado un medidor!!!\n");
-    #endif
+    if(!ContadorExt.GatewayConectado){
+        *finding = false;
+    }
+    else{
         Coms.ETH.Wifi_Perm = true;
-
         if(Coms.GSM.ON){
+            Update_Status_Coms(0,MODEM_BLOCK);
             Coms.GSM.reboot=true;
         }
-        }
+    }
            
    
     vTaskDelete(NULL);
@@ -217,6 +198,7 @@ static void eth_event_handler(void *arg, esp_event_base_t event_base, int32_t ev
                 #ifdef DEBUG_ETH
                 Serial.printf( "Ethernet Link Up: %u \n", Coms.ETH.Puerto);
                 #endif
+
                 eth_link_up    = true;
 
               break;
@@ -224,11 +206,14 @@ static void eth_event_handler(void *arg, esp_event_base_t event_base, int32_t ev
                 #ifdef DEBUG_ETH
                 Serial.println( "Ethernet Started");
                 #endif
+                Update_Status_Coms(0,ETH_BLOCK);
                 break;
             case ETHERNET_EVENT_STOP:
                 #ifdef DEBUG_ETH
                 Serial.println( "Ethernet Stopped");
                 #endif
+                Update_Status_Coms(0,ETH_BLOCK);
+                Update_Status_Coms(0,MED_BLOCK);
                 ContadorExt.GatewayConectado = false;
                 ContadorExt.MeidorConectado = false;
                 Coms.ETH.Wifi_Perm = true;
@@ -238,15 +223,14 @@ static void eth_event_handler(void *arg, esp_event_base_t event_base, int32_t ev
                 #ifdef DEBUG_ETH
                 Serial.println( "Ethernet Link Down");
                 #endif
+                Update_Status_Coms(0,ETH_BLOCK);
                 if(Coms.ETH.Auto){
                     eth_connected = false;
                     eth_link_up = false;
                     Coms.ETH.conectado = false;
                 }
-
-#ifdef USE_GROUPS
                 ChargingGroup.StopOrder = true;
-#endif
+
                 break;
             default:
                 break;
@@ -260,7 +244,8 @@ static void eth_event_handler(void *arg, esp_event_base_t event_base, int32_t ev
             #ifdef DEBUG_ETH
                 Serial.printf( "ETHIP: %d %d %d %d\n",IP2STR(&ip_info->ip));
             #endif
-            
+            Update_Status_Coms(ETH_CONNECTED);
+
             Coms.ETH.IP.addr = ip_info->ip.addr;
 
             uint8_t ip_Array[4] = { ip4_addr1(&Coms.ETH.IP),ip4_addr2(&Coms.ETH.IP),ip4_addr3(&Coms.ETH.IP),ip4_addr4(&Coms.ETH.IP)};
@@ -283,13 +268,7 @@ void initialize_ethernet(void){
     #endif
 
     //servidor DHCP
-    #ifdef USE_GROUPS
     if(!Coms.ETH.Auto && (Params.Tipo_Sensor || ChargingGroup.Params.GroupMaster)){
-    #endif
-
-    #ifndef USE_GROUPS
-    if(!Coms.ETH.Auto && (Params.Tipo_Sensor)){
-    #endif
         //si tenemos IP estatica y un medidor conectado, activamos el dhcp
         Coms.ETH.DHCP = true;
         SendToPSOC5(Coms.ETH.Auto,COMS_CONFIGURATION_ETH_AUTO);
@@ -299,6 +278,7 @@ void initialize_ethernet(void){
         #ifdef DEBUG_ETH
             Serial.println("Arrancando servidor dhcp!");
         #endif
+        Update_Status_Coms(ETH_DHCP_ACTIVE);
         esp_netif_inherent_config_t config;
         config = *cfg.base;
         config.flags = (esp_netif_flags_t)(ESP_NETIF_DHCP_SERVER | ESP_NETIF_FLAG_AUTOUP);

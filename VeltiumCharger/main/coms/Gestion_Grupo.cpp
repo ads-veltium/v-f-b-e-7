@@ -1,5 +1,5 @@
 #include "../control.h"
-#if (defined CONNECTED && defined USE_GROUPS)
+#if (defined CONNECTED && defined CONNECTED)
 
 #include "AsyncUDP.h"
 #include "cJSON.h"

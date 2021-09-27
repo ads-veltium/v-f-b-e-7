@@ -28,19 +28,17 @@ carac_Update_Status UpdateStatus EXT_RAM_ATTR;
 carac_Comands  Comands       EXT_RAM_ATTR;
 carac_Status   Status        EXT_RAM_ATTR;
 carac_Params   Params        EXT_RAM_ATTR;
+
 #ifdef CONNECTED
 carac_Coms     Coms          EXT_RAM_ATTR;
 carac_Contador ContadorExt   EXT_RAM_ATTR;
 carac_Firebase_Configuration ConfigFirebase EXT_RAM_ATTR;
 carac_circuito Circuitos[MAX_GROUP_SIZE] EXT_RAM_ATTR;
-
-#ifdef USE_GROUPS
 carac_group    ChargingGroup EXT_RAM_ATTR;
 carac_charger  charger_table[50] EXT_RAM_ATTR;
 carac_charger temp_chargers[MAX_GROUP_SIZE] EXT_RAM_ATTR;
 uint8_t 		temp_chargers_size EXT_RAM_ATTR;
 
-#endif
 #endif
 
 /* VARIABLES BLE */
@@ -644,10 +642,10 @@ void procesar_bloque(uint16 tipo_bloque){
 					if(memcmp(&buffer_rx_local[1],"C2",2) && memcmp(&buffer_rx_local[1],"B2",2)){
 						Bloqueo_de_carga = false;
 
-#ifdef USE_GROUPS
+#ifdef CONNECTED
 						if(Params.Tipo_Sensor || ChargingGroup.Conected){
 #endif
-#ifndef USE_GROUPS
+#ifndef CONNECTED
 						if(Params.Tipo_Sensor){
 #endif
 							if(!memcmp(status_hpt_anterior, "C",1)){
@@ -658,7 +656,7 @@ void procesar_bloque(uint16 tipo_bloque){
 							}
 						
 							Bloqueo_de_carga = true;
-#ifdef USE_GROUPS
+#ifdef CONNECTED
 							ChargingGroup.ChargPerm = false;
 							ChargingGroup.AskPerm = false;
 #endif
@@ -1040,6 +1038,7 @@ void procesar_bloque(uint16 tipo_bloque){
 						Params.Tipo_Sensor    = (buffer_rx_local[0]  >> 4);
 						//Bloquear la carga hasta que encontremos el medidor
 						if(Params.Tipo_Sensor){
+							Update_Status_Coms(0,MED_BUSCANDO_GATEWAY);
 							Coms.ETH.ON = true;
 							Bloqueo_de_carga = 1;
 							printf("Enviando Bloqueo de carga2 %i \n", Bloqueo_de_carga);
@@ -1063,6 +1062,7 @@ void procesar_bloque(uint16 tipo_bloque){
 						SendToPSOC5(0,COMS_CONFIGURATION_ETH_ON);
 						SendToPSOC5(Coms.ETH.Auto,COMS_CONFIGURATION_ETH_AUTO);
 					}
+					Update_Status_Coms(0,MED_BLOCK);
 				}
 			#endif
 			#ifdef DEBUG_BLE
@@ -1200,7 +1200,6 @@ void procesar_bloque(uint16 tipo_bloque){
 		} 
 		break;
 
-#ifdef USE_GROUPS
 		case GROUPS_DEVICES_PART_1:{
 			ChargingGroup.NewData = true;
 			temp_chargers_size = 0;
@@ -1408,14 +1407,12 @@ void procesar_bloque(uint16 tipo_bloque){
 			break;
 			
 		}
-#endif
+
 
 		case BLOQUEO_CARGA:{
 			if(dispositivo_inicializado != 2){
 				Bloqueo_de_carga = true;
 			}
-
-#ifdef USE_GROUPS
 
 			//si somos parte de un grupo, debemos pedir permiso al maestro
 			else if(ChargingGroup.Params.GroupActive || ChargingGroup.Finding ){
@@ -1429,7 +1426,7 @@ void procesar_bloque(uint16 tipo_bloque){
 				}
 				
 			}
-#endif
+
 			//Si tenemos un medidor conectado, asta que no nos conectemos a el no permitimos la carga
 			else if(Params.Tipo_Sensor){
 				if(ContadorExt.MeidorConectado){
@@ -1576,14 +1573,49 @@ void modifyCharacteristic(uint8* data, uint16 len, uint16 attrHandle){
 /************************************************
  * 		Actualizar el valor de status COMS
  ************************************************/
-void Update_Status_Coms(uint16_t Code){
+void Update_Status_Coms(uint16_t Code, uint8_t block){
 	static uint16 Status_Coms = 0;
 
 #ifdef DEBUG
 	static uint16 Last_Status = 0;
 #endif
 
-	Status_Coms = Status_Coms & Code;
+	if(Code > 0){
+		//Resetear los bits que estuvieran activos por cada bloque
+		if (Code <= ETH_CONNECTED){
+			Status_Coms &= 0b1111111111111100;
+		}
+		else if(Code <= WIFI_BAD_CREDENTIALS){
+			Status_Coms &= 0b1111111111100011;
+
+		}
+		else if(Code <= MED_CONECTION_LOST){
+			Status_Coms &= 0b1111111000011111;
+			
+		}
+		else if(Code <= MODEM_CONNECTED){
+			Status_Coms &= 0b1110000111111111;
+		}	
+		Status_Coms |= Code;
+	}
+	else{
+		switch (block){
+			case ETH_BLOCK:
+				Status_Coms &= ~0b1111111111111100;
+				break;
+			case WIFI_BLOCK:
+				Status_Coms &= ~0b1111111111100011;
+				break;
+			case MED_BLOCK:
+				Status_Coms &= ~0b1111111000011111;
+				break;
+			case MODEM_BLOCK:
+				Status_Coms &= ~0b1110000111111111;
+				break;
+		}
+	}
+	
+
 	uint8 data[2];
 	data[0] = (uint8)(Status_Coms & 0x00FF);
 	data[1] = (uint8)((Status_Coms >> 8) & 0x00FF);
@@ -1591,11 +1623,15 @@ void Update_Status_Coms(uint16_t Code){
 
 #ifdef DEBUG
 	if(Last_Status != Status_Coms){
-		printf("Status coms cambia de %i a %i\n", Last_Status, Status_Coms);
+		printf("m: "BYTE_TO_BINARY_PATTERN" "BYTE_TO_BINARY_PATTERN"\n",BYTE_TO_BINARY(Status_Coms>>8), BYTE_TO_BINARY(Status_Coms));
 		Last_Status = Status_Coms;
 	}
 #endif
 }
+
+
+
+
 /************************************************
 		Convertir fecha a timestamp epoch
 ************************************************/
@@ -1658,6 +1694,9 @@ void UpdateTask(void *arg){
 		//Reiniciar la lectura del archivo
 		file.seek(PRIMERA_FILA,SeekSet);
 
+		Serial.println(siliconID);
+		Serial.println(siliconRev);
+		siliconID = 772943977;
 		err = CyBtldr_StartBootloadOperation(&serialLocal ,siliconID, siliconRev ,&blVer);
 		
 		while(1){

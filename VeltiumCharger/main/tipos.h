@@ -377,6 +377,23 @@ typedef struct{
 #define MODEM_REG_LTE			0b0000100000000000
 #define MODEM_CONNECTED			0b0001000000000000
 
+#define ETH_BLOCK   0
+#define WIFI_BLOCK  1
+#define MED_BLOCK   2
+#define MODEM_BLOCK 3
+
+#define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
+#define BYTE_TO_BINARY(byte)  \
+  (byte & 0x80 ? '1' : '0'), \
+  (byte & 0x40 ? '1' : '0'), \
+  (byte & 0x20 ? '1' : '0'), \
+  (byte & 0x10 ? '1' : '0'), \
+  (byte & 0x08 ? '1' : '0'), \
+  (byte & 0x04 ? '1' : '0'), \
+  (byte & 0x02 ? '1' : '0'), \
+  (byte & 0x01 ? '1' : '0') 
+
+
 
 /***************************************
 * Conditional Compilation Parameters

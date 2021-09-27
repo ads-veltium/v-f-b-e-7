@@ -11,14 +11,14 @@
 #define DEVELOPMENT				   //Comentar para pasar firmware a produccion ( Cambio de base de datos y quitar debugs)
 
 #ifdef USE_COMS
-#define USE_GROUPS			   //Comentar para no utilizar los grupos de potencia
+#define CONNECTED			   //Comentar para no utilizar los grupos de potencia
 #endif
 
 #ifdef DEVELOPMENT
 	#define DEBUG				   //Activar los distintos debugs
 	#ifdef DEBUG 
 
-		#ifdef USE_GROUPS
+		#ifdef CONNECTED
 			#define DEBUG_GROUPS       //Activar el debug de los grupos
 		#endif
 
@@ -159,7 +159,7 @@ void SendToPSOC5(uint8 data, uint16 attrHandle);
 void SendToPSOC5(char *data, uint16 len, uint16 attrHandle);
 void StartGSM();
 void shutdownGSM();
-void Update_Status_Coms(uint16_t Code);
+void Update_Status_Coms(uint16_t Code,uint8_t block = 0);
 
 uint32 GetStateTime(TickType_t xStart);
 #endif // __CONTROL_MAIN

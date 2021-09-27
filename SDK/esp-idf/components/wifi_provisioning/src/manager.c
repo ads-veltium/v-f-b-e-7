@@ -283,6 +283,7 @@ static esp_err_t wifi_prov_mgr_start_service(const char *service_name, const cha
     }
 
     ret = scheme->set_config_service(prov_ctx->prov_scheme_config, service_name, service_key);
+
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to configure service");
         protocomm_delete(prov_ctx->pc);
@@ -565,7 +566,7 @@ static bool wifi_prov_mgr_stop_service(bool blocking)
     }
 
     if (!prov_ctx || prov_ctx->prov_state == WIFI_PROV_STATE_IDLE) {
-        ESP_LOGD(TAG, "Provisioning not running");
+        ESP_LOGE(TAG, "Provisioning not running");
         return false;
     }
 
@@ -582,7 +583,7 @@ static bool wifi_prov_mgr_stop_service(bool blocking)
         prov_ctx->wifi_connect_timer = NULL;
     }
 
-    ESP_LOGD(TAG, "Stopping provisioning");
+    ESP_LOGE(TAG, "Stopping provisioning");
     prov_ctx->prov_state = WIFI_PROV_STATE_STOPPING;
 
     /* Free proof of possession */
@@ -1079,13 +1080,13 @@ esp_err_t wifi_prov_mgr_get_wifi_disconnect_reason(wifi_prov_sta_fail_reason_t *
 static void debug_print_wifi_credentials(wifi_sta_config_t sta, const char* pretext)
 {
     size_t passlen = strlen((const char*) sta.password);
-    ESP_LOGD(TAG, "%s Wi-Fi SSID     : %.*s", pretext,
+    ESP_LOGI(TAG, "%s Wi-Fi SSID     : %.*s", pretext,
              strnlen((const char *) sta.ssid, sizeof(sta.ssid)), (const char *) sta.ssid);
 
     if (passlen) {
         /* Mask password partially if longer than 3, else mask it completely */
         memset(sta.password + (passlen > 3), '*', passlen - 2*(passlen > 3));
-        ESP_LOGD(TAG, "%s Wi-Fi Password : %s", pretext, (const char *) sta.password);
+        ESP_LOGI(TAG, "%s Wi-Fi Password : %s", pretext, (const char *) sta.password);
     }
 }
 
