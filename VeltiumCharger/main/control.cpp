@@ -687,10 +687,10 @@ void procesar_bloque(uint16 tipo_bloque){
 					inst_current_anterior = Status.Measures.instant_current;
 					serverbleNotCharacteristic(&buffer_rx_local[14], 2, MEASURES_INST_CURRENT_CHAR_HANDLE); 
 #ifdef CONNECTED
-					//if(Status.Trifasico){
+					if(Status.Trifasico){
 						serverbleNotCharacteristic(&buffer_rx_local[24],2,MEASURES_INST_CURRENTB_CHAR_HANDLE);
 						serverbleNotCharacteristic(&buffer_rx_local[34],2,MEASURES_INST_CURRENTC_CHAR_HANDLE);
-					//}
+					}
 					ConfigFirebase.WriteStatus = true;
 #endif
 				}
