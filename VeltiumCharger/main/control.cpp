@@ -565,7 +565,7 @@ void procesar_bloque(uint16 tipo_bloque){
 				#ifdef CONNECTED	
 					memcpy(Params.Fw_Update_mode, &buffer_rx_local[234],2);
 					Comands.desired_current = buffer_rx_local[233];
-					Coms.ETH.Auto = buffer_rx_local[240];
+					//Coms.ETH.Auto = buffer_rx_local[240];
 					Coms.Wifi.ON = buffer_rx_local[236];
 					Coms.ETH.ON = buffer_rx_local[237];	
 					modifyCharacteristic(&buffer_rx_local[236], 1, COMS_CONFIGURATION_WIFI_ON);
@@ -1173,7 +1173,6 @@ void procesar_bloque(uint16 tipo_bloque){
 				memset(buffer_rx_local, 0, sizeof buffer_rx_local);
 				//modifyCharacteristic((uint8_t*)buffer_rx_local, 1, APN_PASSWORD);
 			}
-
 		} 
 		break;
 
