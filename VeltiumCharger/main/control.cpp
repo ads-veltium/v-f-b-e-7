@@ -1164,16 +1164,16 @@ void procesar_bloque(uint16 tipo_bloque){
 
 			if(memcmp(Coms.GSM.Apn.c_str(), "NA",2)){
 				modifyCharacteristic((uint8_t*)buffer_rx_local, 30, APN_PASSWORD);
+				if(Coms.GSM.temp_on){
+					Coms.GSM.ON = true;
+					printf("GSM On  %i\n", Coms.GSM.ON);
+				}
 			}
 			else{
-				Coms.GSM.temp_on = false;
 				memset(buffer_rx_local, 0, sizeof buffer_rx_local);
 				//modifyCharacteristic((uint8_t*)buffer_rx_local, 1, APN_PASSWORD);
 			}
-			if(Coms.GSM.temp_on){
-				Coms.GSM.ON = true;
-				printf("GSM On  %i\n", Coms.GSM.ON);
-			}
+
 		} 
 		break;
 
