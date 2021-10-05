@@ -226,6 +226,7 @@ static void ppp_status_cb(ppp_pcb *pcb, int err_code, void *ctx)
 			#ifdef DEBUG
 			Serial.printf("Conectado por GSM!! IP: %s\n", ipaddr_ntoa(&pppif->ip_addr));
 			#endif		
+			Update_Status_Coms(MODEM_CONNECTED);
 			xSemaphoreTake(pppos_mutex, PPPOSMUTEX_TIMEOUT);
 			gsm_status = GSM_STATE_CONNECTED;
 			gsm_connected = true;
@@ -607,7 +608,7 @@ static void pppos_client_task(void *args)
 		#ifdef DEBUG
 		Serial.printf("Inicialización de GSM en marcha en red LTE...\n");
 		#endif
-
+		Update_Status_Coms(MODEM_INIT);
 		#if GSM_DEBUG
 		ESP_LOGI(TAG,"GSM initialization start");
 		#endif
@@ -634,12 +635,13 @@ static void pppos_client_task(void *args)
 					GSM_Init[gsmCmdIter]->cmdSize,
 					GSM_Init[gsmCmdIter]->timeoutMs, NULL, 0) == 0)
 			{
+				Update_Status_Coms(MODEM_REG_LTE);
 				// * No response or not as expected, start from first initialization command
 				/*if(gsmCmdIter==2){
 					atCmd_waitResponse("AT+CPIN=5337\r\n", GSM_OK_Str, NULL, sizeof("AT+CPIN=5337\r\n")-1, 5000, NULL, 0);
 				}*/
 				if(gsmCmdIter==3 && nfail==20){
-					
+					Update_Status_Coms(MODEM_REG_GSM);
 					#ifdef DEBUG
 					Serial.printf("Cambiando a red GPRS...\n");
 					#endif
@@ -1037,4 +1039,5 @@ void FinishGSM(){
 	#ifdef DEBUG
 	Serial.printf("Modem apagado\n");
 	#endif
+	Update_Status_Coms(0,MODEM_BLOCK);
 }
