@@ -535,6 +535,7 @@ static void _disconnect(uint8_t rfOff)
 			uart_write_bytes(uart_num, "+++", 3);
 		    uart_wait_tx_done(uart_num, 10 / portTICK_RATE_MS);
 			vTaskDelay(1000 / portTICK_PERIOD_MS);
+			Coms.GSM.ON = false;
 		}
 		vTaskDelay(100 / portTICK_PERIOD_MS);
 		res = atCmd_waitResponse("ATH\r\n", GSM_OK_Str, "NO CARRIER", 5, 3000, NULL, 0);
@@ -660,9 +661,6 @@ static void pppos_client_task(void *args)
 					GSM_Init[gsmCmdIter]->cmdSize,
 					GSM_Init[gsmCmdIter]->timeoutMs, NULL, 0) == 0)
 			{
-				if(gsmCmdIter==1 && nfail>10){
-					Coms.GSM.ON=false;
-				}
 				// * No response or not as expected, start from first initialization command
 				if(gsmCmdIter==4){
 					#ifdef DEBUG
