@@ -31,15 +31,20 @@ static uint8 Reintentos = 0;
 void InitServer(void);
 void StopServer(void);
 
-#ifdef CONNECTED
 extern carac_group  ChargingGroup;
 
 void coap_start_server();
 void coap_start_client();
 void start_udp();
 void close_udp();
-#endif
 
+/***********************HELPERS***********************************************/
+void wait_for_firebase_stop(uint8_t time){
+    ConfigFirebase.InternetConection = false;
+    while(ConnectionState != DISCONNECTED && --time > 0){
+        delay(100);
+    }
+}
 
 static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data){
     #ifdef DEBUG_WIFI
@@ -192,11 +197,7 @@ void stop_wifi(void){
     Serial.println("Esperando a que firebase se desconecte!");
     #endif
 
-    uint8_t timeout = 0;
-    while(ConnectionState != DISCONNECTED && ++timeout < 80){
-        Serial.println(ConnectionState);
-        delay(100);
-    }
+     wait_for_firebase_stop(50);
 
     if(Coms.Provisioning){
         wifi_prov_mgr_stop_provisioning();
@@ -351,9 +352,10 @@ void Eth_Loop(){
     static uint8_t LastStatus = APAGADO;
     static uint8_t escape =0;
     static  bool wifi_last =false;
+
     switch (Coms.ETH.State){
         case APAGADO:
-            if(Coms.ETH.ON){
+            if(Coms.ETH.ON || Coms.ETH.medidor ){
                 initialize_ethernet();
                 Coms.ETH.State = CONNECTING;
                 xStart = xTaskGetTickCount();
@@ -396,18 +398,13 @@ void Eth_Loop(){
                 xConnect = xTaskGetTickCount();
             }
 
-            else if(!Coms.ETH.ON){
+            else if(!Coms.ETH.ON && !Coms.ETH.medidor){
                 stop_ethernet();
                 Coms.ETH.State = DISCONNECTING;                
             }
-            //si tenemos configurado un medidor o somos el maestro de un grupo, y a los 2 minutos no tenemos conexion a internet, activamos el DHCP
-            #ifdef CONNECTED
-            else if(Params.Tipo_Sensor || (ChargingGroup.Params.GroupMaster && ChargingGroup.Params.GroupActive)){
-            #endif
-            #ifndef CONNECTED
-            else if(Params.Tipo_Sensor){
-            #endif
-                if(GetStateTime(xStart) > 120000){
+            //si somos el maestro de un grupo, y a los 2 minutos no tenemos conexion a internet, activamos el DHCP
+            else if((ChargingGroup.Params.GroupMaster && ChargingGroup.Params.GroupActive)){
+                if(GetStateTime(xStart) > 60000){
                     #ifdef DEBUG_ETH
                         Serial.println("Activo DHCP");
                     #endif
@@ -422,7 +419,7 @@ void Eth_Loop(){
 
         case CONECTADO:{
             // Recomprobar si tenemos conexion a firebase
-            if(!!Coms.ETH.Internet && !ConfigFirebase.InternetConection && GetStateTime(xCheckConn) > 60000){
+            if(Coms.ETH.ON && !Coms.ETH.Internet && !ConfigFirebase.InternetConection && GetStateTime(xCheckConn) > 60000){
                 xCheckConn = xTaskGetTickCount();
                 if(ComprobarConexion()){
                     ConnectionState = DISCONNECTED;
@@ -435,13 +432,7 @@ void Eth_Loop(){
             }
 
             //Buscar el contador
-            #ifdef CONNECTED
-            if((Params.Tipo_Sensor || (ChargingGroup.Params.CDP >> 4 && ChargingGroup.Params.GroupMaster && ChargingGroup.Conected)) && !finding){
-            #endif
-
-            #ifndef CONNECTED
-            if(Params.Tipo_Sensor && !finding){
-            #endif
+            if((Coms.ETH.medidor || (ChargingGroup.Params.CDP >> 4 && ChargingGroup.Params.GroupMaster && ChargingGroup.Conected)) && !finding){
                 if(GetStateTime(xStart) > 30000){
                     xTaskCreate( BuscarContador_Task, "BuscarContador", 4096*4, &finding, 5, NULL); 
                     finding = true;
@@ -450,7 +441,7 @@ void Eth_Loop(){
             //Arrancar los grupos
             else if(!ChargingGroup.Conected && Coms.ETH.conectado){
                 if(ChargingGroup.Params.GroupActive && GetStateTime(xConnect) > 5000 ){
-                    if(ConnectionState == IDLE || ConnectionState == DISCONNECTED){
+                    if(ConnectionState == IDLE || ConnectionState == DISCONNECTED){       //Esperar a que arranque firebase
                         if(ChargingGroup.StartClient){
                             coap_start_client();
                         }
@@ -469,33 +460,21 @@ void Eth_Loop(){
 
 
             //Apagar el eth
-            if(!Coms.ETH.ON && (ConnectionState == IDLE || ConnectionState == DISCONNECTED)){  
-
-                //Si lo queremos reinicializar para ponerle una ip estatica o quitarsela
-                if(Coms.ETH.restart || Coms.ETH.DHCP){
+            if((!Coms.ETH.ON && !Coms.ETH.medidor)|| Coms.ETH.restart){  
+                if(Coms.ETH.ON){
                     if(ChargingGroup.Conected){
                         ChargingGroup.Params.GroupActive = false;
                         ChargingGroup.StopOrder = true;   
                     }
-                    close_udp();
+                    close_udp();   
 
-                    
-                    kill_ethernet();
-                    Coms.ETH.State = KILLING;
-                    Coms.ETH.restart = false;
-                    break;
+                    wait_for_firebase_stop(50);
+
                 }
-                else{
-                    if(ChargingGroup.Conected){
-                        ChargingGroup.Params.GroupActive = false;
-                        ChargingGroup.StopOrder = true;
-                    }
-                    close_udp();
-                   
-                    stop_ethernet();
-                    Coms.ETH.State = DISCONNECTING;
-                    break;
-                }                
+                kill_ethernet();
+                Coms.ETH.State = KILLING;
+                Coms.ETH.restart = false;
+                break;               
             }
 
             //Desconexion del cable
@@ -503,14 +482,8 @@ void Eth_Loop(){
                 printf("Me han desconectado el cable!\n");
                 if(Coms.ETH.Internet){
                     Coms.ETH.Internet = false;
-                    ConfigFirebase.InternetConection = false;
-                    #ifdef DEBUG_WIFI
-                    Serial.println("Esperando a que firebase se desconecte!");
-                    #endif
-                    uint8_t timeout = 0;
-                    while(ConnectionState != DISCONNECTED && ++timeout < 80){ // 5 segundos
-                        delay(100);
-                    }
+
+                    wait_for_firebase_stop(50);
 
                     Coms.ETH.State = DISCONNECTING;
                     close_udp();
@@ -525,6 +498,8 @@ void Eth_Loop(){
 
                 }
                 else{
+                    eth_connecting = false;
+                    eth_connected = false;
                     Coms.ETH.State = DISCONNECTING;
 
                     close_udp();
@@ -541,7 +516,6 @@ void Eth_Loop(){
             }
 
             //Lectura del contador
-
 			if(ContadorExt.GatewayConectado && (Params.Tipo_Sensor || (ChargingGroup.Params.CDP >> 4 && ChargingGroup.Params.GroupMaster && ChargingGroup.Conected))){
 				if(!Counter.Inicializado){
 					Counter.begin(ContadorExt.ContadorIp);
@@ -590,7 +564,7 @@ void Eth_Loop(){
         break;
 
         case DISCONNECTED:
-            if(Coms.ETH.ON){
+            if(Coms.ETH.ON || Coms.ETH.medidor){
                 restart_ethernet();
                 Coms.ETH.State = CONNECTING;
                 xStart = xTaskGetTickCount();
@@ -608,16 +582,15 @@ void Eth_Loop(){
                     Update_Status_Coms(0,MED_BLOCK);
                 }
 
-                if(!Coms.ETH.ON){
+                if(!Coms.ETH.ON && ! Coms.ETH.medidor){
                     Coms.ETH.State = APAGADO;
                     break;
                 }              
                 
                 Coms.ETH.Wifi_Perm = false;
-                uint8_t timeout = 0;
-                while(ConnectionState !=IDLE && ConnectionState!=DISCONNECTED && ++timeout < 80){
-                    delay(100);
-                }
+
+                wait_for_firebase_stop(50);
+
                 stop_wifi();
                 if(Coms.GSM.ON){
                     FinishGSM();

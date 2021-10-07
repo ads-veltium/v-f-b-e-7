@@ -268,12 +268,11 @@ void initialize_ethernet(void){
     #endif
 
     //servidor DHCP
-    if(!Coms.ETH.Auto && (Params.Tipo_Sensor || ChargingGroup.Params.GroupMaster)){
+    if((!Coms.ETH.ON && Coms.ETH.medidor) || (ChargingGroup.Params.GroupMaster && !Coms.ETH.Auto)) {
         //si tenemos IP estatica y un medidor conectado, activamos el dhcp
         Coms.ETH.DHCP = true;
-        SendToPSOC5(Coms.ETH.Auto,COMS_CONFIGURATION_ETH_AUTO);
     }
-
+   
     if(Coms.ETH.DHCP){
         #ifdef DEBUG_ETH
             Serial.println("Arrancando servidor dhcp!");
@@ -307,9 +306,6 @@ void initialize_ethernet(void){
         
         uint8_t ip_Array[4] = { ip4_addr1(&Coms.ETH.IP),ip4_addr2(&Coms.ETH.IP),ip4_addr3(&Coms.ETH.IP),ip4_addr4(&Coms.ETH.IP)};
         modifyCharacteristic(&ip_Array[0], 4, COMS_CONFIGURATION_LAN_IP);
-        Coms.ETH.ON = 1;
-        uint8_t  on =1;
-        modifyCharacteristic(&on, 1, COMS_CONFIGURATION_ETH_ON);
         Coms.ETH.conectado = true;	
         
     }   
