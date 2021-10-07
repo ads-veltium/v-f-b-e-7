@@ -561,17 +561,19 @@ void procesar_bloque(uint16 tipo_bloque){
 					else{
 						Params.Tipo_Sensor    = 0;
 					}
+					if(Params.Tipo_Sensor){
+						Coms.ETH.medidor = true;
+						Update_Status_Coms(0,MED_BUSCANDO_GATEWAY);
+						Bloqueo_de_carga = 1;
+						SendToPSOC5(Bloqueo_de_carga,BLOQUEO_CARGA);
+					}
 
 				#ifdef CONNECTED	
 					memcpy(Params.Fw_Update_mode, &buffer_rx_local[234],2);
 					Comands.desired_current = buffer_rx_local[233];
-					//Coms.ETH.Auto = buffer_rx_local[240];
 					Coms.Wifi.ON = buffer_rx_local[236];
 					Coms.ETH.ON = buffer_rx_local[237];	
 					modifyCharacteristic(&buffer_rx_local[236], 1, COMS_CONFIGURATION_WIFI_ON);
-					if(Coms.ETH.Auto && !Params.Tipo_Sensor){
-						modifyCharacteristic(&buffer_rx_local[237], 1, COMS_CONFIGURATION_ETH_ON);	
-					}
 
 				#endif
 
@@ -1034,21 +1036,14 @@ void procesar_bloque(uint16 tipo_bloque){
 			Params.CDP				  = buffer_rx_local[0];
 			#ifdef CONNECTED			
 				if((buffer_rx_local[0] >> 1) && 0x01){
-					if(!Params.Tipo_Sensor){
-						Params.Tipo_Sensor    = (buffer_rx_local[0]  >> 4);
-						//Bloquear la carga hasta que encontremos el medidor
-						if(Params.Tipo_Sensor){
-							Update_Status_Coms(0,MED_BUSCANDO_GATEWAY);
-							Coms.ETH.ON = true;
-							Bloqueo_de_carga = 1;
-							printf("Enviando Bloqueo de carga2 %i \n", Bloqueo_de_carga);
-							SendToPSOC5(Bloqueo_de_carga,BLOQUEO_CARGA);
-							SendToPSOC5(1,COMS_CONFIGURATION_ETH_ON);
-						}
-						
-					}
-					else{
-						Params.Tipo_Sensor    = (buffer_rx_local[0]  >> 4);
+
+					Params.Tipo_Sensor    = (buffer_rx_local[0]  >> 4);
+					//Bloquear la carga hasta que encontremos el medidor
+					if(Params.Tipo_Sensor){
+						Coms.ETH.medidor = true;
+						Update_Status_Coms(0,MED_BUSCANDO_GATEWAY);
+						Bloqueo_de_carga = 1;
+						SendToPSOC5(Bloqueo_de_carga,BLOQUEO_CARGA);
 					}
 				}
 				else{
@@ -1056,12 +1051,7 @@ void procesar_bloque(uint16 tipo_bloque){
 				}
 
 				if(!Params.Tipo_Sensor){
-					if(!Coms.ETH.Auto && Coms.ETH.DHCP){
-						Coms.ETH.Auto = true;
-						Coms.ETH.ON = false;
-						SendToPSOC5(0,COMS_CONFIGURATION_ETH_ON);
-						SendToPSOC5(Coms.ETH.Auto,COMS_CONFIGURATION_ETH_AUTO);
-					}
+					Coms.ETH.medidor = false;
 					Update_Status_Coms(0,MED_BLOCK);
 				}
 			#endif
@@ -1083,12 +1073,20 @@ void procesar_bloque(uint16 tipo_bloque){
 		break;
 		
 		case COMS_CONFIGURATION_ETH_ON:{
+			if(Coms.ETH.medidor && !Coms.ETH.ON && buffer_rx_local[0]){
+				Coms.ETH.restart = true;
+			}
+			else if (Coms.ETH.medidor && Coms.ETH.ON && !buffer_rx_local[0]){
+				Coms.ETH.restart = true;
+			}
 			
-			Coms.ETH.ON     =  Params.Tipo_Sensor ? true : buffer_rx_local[0];
+			
+			Coms.ETH.ON  =  buffer_rx_local[0];
 			#ifdef DEBUG
 			Serial.print("ETH ON:");
 			Serial.println(Coms.ETH.ON);
 			#endif
+			
 			modifyCharacteristic(buffer_rx_local,  1, COMS_CONFIGURATION_ETH_ON);
 		} 
 		break;
@@ -1624,7 +1622,7 @@ void Update_Status_Coms(uint16_t Code, uint8_t block){
 
 #ifdef DEBUG
 	if(Last_Status != Status_Coms){
-		printf("m: "BYTE_TO_BINARY_PATTERN" "BYTE_TO_BINARY_PATTERN"\n",BYTE_TO_BINARY(Status_Coms>>8), BYTE_TO_BINARY(Status_Coms));
+		printf("m: "BYTE_TO_BINARY_PATTERN" "BYTE_TO_BINARY_PATTERN"\n",BYTE_TO_BINARY( Status_Coms >> 8), BYTE_TO_BINARY( Status_Coms ));
 		Last_Status = Status_Coms;
 	}
 #endif

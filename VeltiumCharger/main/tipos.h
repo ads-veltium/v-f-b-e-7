@@ -176,9 +176,11 @@ typedef struct{
 	bool ON;
 	bool Auto = 1;
 	bool DHCP = 0;
-	bool Internet = false;
+	bool Internet  = false;
 	bool Wifi_Perm = false;
-	bool restart = false;
+	bool restart   = false;
+	bool conectado = false;
+	bool medidor   = false;
 
 	ip4_addr_t IP;
 	ip4_addr_t Gateway;
@@ -186,7 +188,7 @@ typedef struct{
 
 	uint8_t   State;
 	uint8_t   Puerto;
-	bool 	conectado = false;
+	
 }carac_ETH;
 
 typedef struct{

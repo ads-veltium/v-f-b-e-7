@@ -372,7 +372,7 @@ void LedControl_Task(void *arg){
 
 #ifdef USE_COMS
 		//Buscando Medidor
-		else if(Params.Tipo_Sensor && Coms.ETH.ON && !ContadorExt.MeidorConectado){
+		else if(Params.Tipo_Sensor && !ContadorExt.MeidorConectado){
 			if(ContadorExt.ConexionPerdida){
 				Kit(NARANJA_OSCURO);
 				Delay= 85;
