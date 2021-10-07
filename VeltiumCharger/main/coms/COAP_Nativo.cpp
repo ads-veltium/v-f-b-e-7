@@ -502,7 +502,7 @@ void coap_put( char* Topic, char* Message){
 
         }
         else if(!memcmp("PARAMS", Topic, 6)){
-            //New_Params(Message,  strlen(Message));
+            New_Params(Message,  strlen(Message));
             coap_resource_notify_observers(PARAMS, NULL);
         }
         else if(!memcmp("CONTROL", Topic, 7)){

@@ -197,7 +197,7 @@ void stop_wifi(void){
     Serial.println("Esperando a que firebase se desconecte!");
     #endif
 
-     wait_for_firebase_stop(50);
+     wait_for_firebase_stop(100);
 
     if(Coms.Provisioning){
         wifi_prov_mgr_stop_provisioning();
@@ -468,7 +468,7 @@ void Eth_Loop(){
                     }
                     close_udp();   
 
-                    wait_for_firebase_stop(50);
+                    wait_for_firebase_stop(100);
 
                 }
                 kill_ethernet();
@@ -478,12 +478,12 @@ void Eth_Loop(){
             }
 
             //Desconexion del cable
-            if(!eth_connected && !eth_link_up){
+            if(!eth_connected && !eth_link_up && !Coms.ETH.medidor){
                 printf("Me han desconectado el cable!\n");
                 if(Coms.ETH.Internet){
                     Coms.ETH.Internet = false;
 
-                    wait_for_firebase_stop(50);
+                    wait_for_firebase_stop(100);
 
                     Coms.ETH.State = DISCONNECTING;
                     close_udp();
@@ -589,7 +589,7 @@ void Eth_Loop(){
                 
                 Coms.ETH.Wifi_Perm = false;
 
-                wait_for_firebase_stop(50);
+                wait_for_firebase_stop(100);
 
                 stop_wifi();
                 if(Coms.GSM.ON){
