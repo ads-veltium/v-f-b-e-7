@@ -109,16 +109,6 @@ static GSM_Cmd cmd_RFOn =
 
 static GSM_Cmd cmd_Pin =
 {
-	.cmd = "AT+CPIN=5337\r\n",
-	.cmdSize = sizeof("AT+CPIN=5337\r\n")-1,
-	.cmdResponseOnOk = GSM_OK_Str,
-	.timeoutMs = 5000,
-	.delayMs = 400,
-	.skip = 0,
-};
-
-static GSM_Cmd cmd_Pin_1 =
-{
 	.cmd = "AT+CPIN?\r\n",
 	.cmdSize = sizeof("AT+CPIN?\r\n")-1,
 	.cmdResponseOnOk = "CPIN: READY",
@@ -180,14 +170,49 @@ static GSM_Cmd cmd_Connect_2 =
 	.skip = 0,
 };
 
+static GSM_Cmd cmd_Sim =
+{
+	.cmd = "AT#SIMDET=2\r\n",
+	.cmdSize = sizeof("AT#SIMDET=2\r\n")-1,
+	.cmdResponseOnOk = GSM_OK_Str,
+	.timeoutMs = 6000,
+	.delayMs = 400,
+	.skip = 0,
+};
+
+static GSM_Cmd cmd_Gpio =
+{
+	.cmd = "AT#GPIO=1,0,11\r\n",
+	.cmdSize = sizeof("AT#GPIO=1,0,11\r\n")-1,
+	.cmdResponseOnOk = GSM_OK_Str,
+	.timeoutMs = 6000,
+	.delayMs = 400,
+	.skip = 0,
+};
+
+static GSM_Cmd cmd_SimDet =
+{
+	.cmd = "AT#SIMDET?\r\n",
+	.cmdSize = sizeof("AT#SIMDET?\r\n")-1,
+	.cmdResponseOnOk = "#SIMDET: 2,0",
+	.timeoutMs = 6000,
+	.delayMs = 400,
+	.skip = 0,
+};
+
+
+
 static GSM_Cmd *GSM_Init[] =
 {
 	//********* LTE 4G **********
 		&cmd_AT,
 		
 		&cmd_RFOn,
-		//&cmd_Pin_1,
-		//&cmd_Reg,
+		
+		&cmd_Sim,
+		&cmd_Gpio,
+		&cmd_SimDet,
+		&cmd_Pin,
 		&cmd_APN,
 
 		&cmd_Cereg,
@@ -220,7 +245,7 @@ static void ppp_status_cb(ppp_pcb *pcb, int err_code, void *ctx)
 				#endif
 
 				#if PPP_IPV6_SUPPORT
-				ESP_LOGI(TAG,"   ip6addr   = %s", ip6addr_ntoa(netif_ip6_addr(pppif, 0)));
+				ESP_LOGE(TAG,"   ip6addr   = %s", ip6addr_ntoa(netif_ip6_addr(pppif, 0)));
 				#endif
 			#endif
 			#ifdef DEBUG
@@ -262,7 +287,7 @@ static void ppp_status_cb(ppp_pcb *pcb, int err_code, void *ctx)
 		case PPPERR_USER: {
 			/* ppp_free(); -- can be called here */
 			
-			ESP_LOGW(TAG,"status_cb: User interrupt (disconnected)");
+			ESP_LOGE(TAG,"status_cb: User interrupt (disconnected)");
 			
 			xSemaphoreTake(pppos_mutex, PPPOSMUTEX_TIMEOUT);
 			gsm_status = GSM_STATE_DISCONNECTED;
@@ -488,7 +513,7 @@ static void _disconnect(uint8_t rfOff)
 	}
 
 	#if GSM_DEBUG
-	ESP_LOGI(TAG,"ONLINE, DISCONNECTING...");
+	ESP_LOGE(TAG,"ONLINE, DISCONNECTING...");
 	#endif
 	vTaskDelay(1000 / portTICK_PERIOD_MS);
 	uart_flush(uart_num);
@@ -502,7 +527,7 @@ static void _disconnect(uint8_t rfOff)
 		n++;
 		if (n > 10) {
 			#if GSM_DEBUG
-			ESP_LOGI(TAG,"STILL CONNECTED.");
+			ESP_LOGE(TAG,"STILL CONNECTED.");
 			#endif
 			n = 0;
 			vTaskDelay(1000 / portTICK_PERIOD_MS);
@@ -525,7 +550,7 @@ static void _disconnect(uint8_t rfOff)
 		res = atCmd_waitResponse("AT+CFUN=4\r\n", GSM_OK_Str, NULL, 11, 3000, NULL, 0);
 	}
 	#if GSM_DEBUG
-	ESP_LOGI(TAG,"DISCONNECTED.");
+	ESP_LOGE(TAG,"DISCONNECTED.");
 	#endif
 }
 
@@ -608,9 +633,9 @@ static void pppos_client_task(void *args)
 		#ifdef DEBUG
 		Serial.printf("Inicialización de GSM en marcha en red LTE...\n");
 		#endif
-		Update_Status_Coms(MODEM_INIT);
+		Update_Status_Coms(MODEM_REG_LTE);
 		#if GSM_DEBUG
-		ESP_LOGI(TAG,"GSM initialization start");
+		ESP_LOGE(TAG,"GSM initialization start");
 		#endif
 		vTaskDelay(500 / portTICK_PERIOD_MS);
 
@@ -635,12 +660,28 @@ static void pppos_client_task(void *args)
 					GSM_Init[gsmCmdIter]->cmdSize,
 					GSM_Init[gsmCmdIter]->timeoutMs, NULL, 0) == 0)
 			{
-				Update_Status_Coms(MODEM_REG_LTE);
+				if(gsmCmdIter==1 && nfail>10){
+					Coms.GSM.ON=false;
+				}
 				// * No response or not as expected, start from first initialization command
-				/*if(gsmCmdIter==2){
-					atCmd_waitResponse("AT+CPIN=5337\r\n", GSM_OK_Str, NULL, sizeof("AT+CPIN=5337\r\n")-1, 5000, NULL, 0);
-				}*/
-				if(gsmCmdIter==3 && nfail==20){
+				if(gsmCmdIter==4){
+					#ifdef DEBUG
+					Serial.printf("Introduzca la tarjeta SIM\n");
+					#endif
+					Update_Status_Coms(MODEM_NO_SIM);
+					Coms.GSM.ON=false;
+				}
+				if(gsmCmdIter==5){
+					#ifdef DEBUG
+					Serial.printf("Se requiere numero PIN\n");
+					#endif
+					/************ EN CASO DE ACTIVAR PIN**********/
+					/*if(atCmd_waitResponse("AT+CPIN=5337\r\n", GSM_OK_Str, NULL, sizeof("AT+CPIN=1111\r\n")-1, 5000, NULL, 0)==0){
+						Update_Status_Coms(MODEM_BAD_PIN);
+						Coms.GSM.ON=false;
+					}*/
+				}
+				if(gsmCmdIter==7 && nfail==20){
 					Update_Status_Coms(MODEM_REG_GSM);
 					#ifdef DEBUG
 					Serial.printf("Cambiando a red GPRS...\n");
@@ -675,15 +716,15 @@ static void pppos_client_task(void *args)
 						nfail_gprs++;
 					}
 				
-					atCmd_waitResponse(GSM_Init[4]->cmd,
-					GSM_Init[4]->cmdResponseOnOk, NULL,
-					GSM_Init[4]->cmdSize,
-					GSM_Init[4]->timeoutMs, NULL, 0);
+					atCmd_waitResponse(GSM_Init[8]->cmd,
+					GSM_Init[8]->cmdResponseOnOk, NULL,
+					GSM_Init[8]->cmdSize,
+					GSM_Init[8]->timeoutMs, NULL, 0);
 
-					atCmd_waitResponse(GSM_Init[5]->cmd,
-					GSM_Init[5]->cmdResponseOnOk, NULL,
-					GSM_Init[5]->cmdSize,
-					GSM_Init[5]->timeoutMs, NULL, 0);
+					atCmd_waitResponse(GSM_Init[9]->cmd,
+					GSM_Init[9]->cmdResponseOnOk, NULL,
+					GSM_Init[9]->cmdSize,
+					GSM_Init[9]->timeoutMs, NULL, 0);
 
 					gsmCmdIter = GSM_InitCmdsSize;
 					redgprs=true;
@@ -709,7 +750,7 @@ static void pppos_client_task(void *args)
 		}
 
 		#if GSM_DEBUG
-		ESP_LOGI(TAG,"GSM initialized.");
+		ESP_LOGE(TAG,"GSM initialized.");
 		#endif
 		
 		#ifdef DEBUG
