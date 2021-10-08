@@ -522,9 +522,12 @@ static void _disconnect(uint8_t rfOff)
 	vTaskDelay(1100 / portTICK_PERIOD_MS);
 
 	int n = 0;
+	int c = 0;
+	bool timeout = false;
 	res = atCmd_waitResponse("ATH\r\n", GSM_OK_Str, "NO CARRIER", 5, 3000, NULL, 0);
 	while (res == 0) {
 		n++;
+		c++;
 		if (n > 10) {
 			#if GSM_DEBUG
 			ESP_LOGE(TAG,"STILL CONNECTED.");
@@ -535,10 +538,18 @@ static void _disconnect(uint8_t rfOff)
 			uart_write_bytes(uart_num, "+++", 3);
 		    uart_wait_tx_done(uart_num, 10 / portTICK_RATE_MS);
 			vTaskDelay(1000 / portTICK_PERIOD_MS);
-			Coms.GSM.ON = false;
 		}
 		vTaskDelay(100 / portTICK_PERIOD_MS);
 		res = atCmd_waitResponse("ATH\r\n", GSM_OK_Str, "NO CARRIER", 5, 3000, NULL, 0);
+
+		if(c > 10){
+			timeout=true;
+			break;
+		}
+	}
+	if(timeout){
+		Coms.GSM.ON=false;
+		timeout=false;
 	}
 	vTaskDelay(100 / portTICK_PERIOD_MS);
 	atCmd_waitResponse("AT+CFUN=1\r\n", GSM_OK_Str, NULL, 11, 10000, NULL, 0); // disable RF function
