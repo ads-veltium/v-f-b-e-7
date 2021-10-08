@@ -67,6 +67,8 @@ struct netif ppp_netif;
 
 static const char *TAG = "[PPPOS CLIENT]";
 
+std::string sim_pin = "AT+CPIN="+std::to_string(Coms.GSM.Pin[4])+"\r\n"; 
+
 typedef struct
 {
 	char		*cmd;
@@ -150,8 +152,6 @@ static GSM_Cmd cmd_APN =
 
 static GSM_Cmd cmd_Connect =
 {	
-	//.cmd = "AT+CGDATA=\"PPP\",1\r\n",
-	//.cmdSize = sizeof("AT+CGDATA=\"PPP\",1\r\n")-1,
 	.cmd = "ATD*99***1#\r\n",
 	.cmdSize = sizeof("ATD*99***1#\r\n")-1,
 	.cmdResponseOnOk = "CONNECT",
@@ -685,10 +685,13 @@ static void pppos_client_task(void *args)
 					Serial.printf("Se requiere numero PIN\n");
 					#endif
 					/************ EN CASO DE ACTIVAR PIN**********/
-					/*if(atCmd_waitResponse("AT+CPIN=5337\r\n", GSM_OK_Str, NULL, sizeof("AT+CPIN=1111\r\n")-1, 5000, NULL, 0)==0){
+					atCmd_waitResponse(const_cast<char*>(sim_pin.c_str()), GSM_OK_Str, NULL, sizeof("AT+CPIN=5337\r\n")-1, 5000, NULL, 0);
+					vTaskDelay(600 / portTICK_PERIOD_MS);
+					int pin=atCmd_waitResponse("AT+CPIN?\r\n", "CPIN: READY", NULL, sizeof("AT+CPIN?\r\n")-1, 5000, NULL, 0);
+					if(pin<=0){
 						Update_Status_Coms(MODEM_BAD_PIN);
 						Coms.GSM.ON=false;
-					}*/
+					}
 				}
 				if(gsmCmdIter==7 && nfail==20){
 					Update_Status_Coms(MODEM_REG_GSM);
