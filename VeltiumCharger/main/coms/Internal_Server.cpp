@@ -358,7 +358,7 @@ void InitServer(void) {
 
     server.on("/", HTTP_GET_A, [](AsyncWebServerRequest *request){
     String flash="";
-    request->send(SPIFFS, "/login.html",String(), false, processor);
+
     EEPROM.begin(PASS_LENGTH);
     longitud_pwd=EEPROM.read(0);
 
@@ -377,38 +377,24 @@ void InitServer(void) {
     }else{
         password = flash;
     }
+
+        
+    if(!request->authenticate(user, password.c_str()))
+        request->requestAuthentication();
+    request->send(SPIFFS, "/parameters.html",String(), false, processor);
+    
+
     });
 
     server.on("/veltium-logo-big", HTTP_GET_A, [](AsyncWebServerRequest *request){
      request->send(SPIFFS, "/veltium-logo-big.png","image/png");
     });
 
-    server.on("/login", HTTP_GET_A, [](AsyncWebServerRequest *request){
-     request->send(SPIFFS, "/login.html",String(), false, processor);
-    });
-
-    server.on("/loginForm", HTTP_GET, [] (AsyncWebServerRequest *request) {
-
-	usuario = request->getParam(USER)->value();
-	contrasena = request->getParam(PASSWORD)->value();
-
-	if(usuario!=user || contrasena!= password ){
-
-		Alert=true;
-		request->send(SPIFFS, "/login.html",String(), false, processor);
-        
-	}
-	else
-	{
-        Alert=false;
-        Autenticado=true;
-		request->send(SPIFFS, "/parameters.html",String(), false, processor);
-	}
-   });
-
     server.on("/changepass", HTTP_GET, [] (AsyncWebServerRequest *request) {
         Alert1=false;
-    if(Autenticado==true){
+    if(!request->authenticate(user, password.c_str())){
+            return request->requestAuthentication();
+    }
         contrasena_act = request->getParam(ACT_PWD)->value();
         contrasena_nueva = request->getParam(NEW_PWD)->value();
         contrasena_conf = request->getParam(CONF_PWD)->value();
@@ -434,53 +420,38 @@ void InitServer(void) {
         }else{
             Alert1=true;
             request->send(SPIFFS, "/ajustes.html",String(), false, processor);
-        }
-        
-    }else{
-        
-        request->send(SPIFFS, "/login.html",String(), false, processor);
-    }
+        }   
     });
 
     server.on("/comands", HTTP_GET_A, [](AsyncWebServerRequest *request){
-        if(Autenticado==true){
-            request->send(SPIFFS, "/comands.html",String(), false, processor);
-        }else{
-            request->send(SPIFFS, "/login.html");
+        if(!request->authenticate(user, password.c_str())){
+            return request->requestAuthentication();
         }
+        request->send(SPIFFS, "/comands.html",String(), false, processor);
     });
 
-    server.on("/comms", HTTP_GET_A, [](AsyncWebServerRequest *request){
-        if(Autenticado==true){
-            request->send(SPIFFS, "/comms.html",String(), false, processor);
-        }else{
-            request->send(SPIFFS, "/login.html");
-        }
+    server.on("/comms", HTTP_GET_A, [](AsyncWebServerRequest *request){ 
+        if(!request->authenticate(user, password.c_str()))
+            return request->requestAuthentication();
+        request->send(SPIFFS, "/comms.html",String(), false, processor);
     });
 
     server.on("/parameters", HTTP_GET_A, [](AsyncWebServerRequest *request){
-        if(Autenticado==true){
-            request->send(SPIFFS, "/parameters.html",String(), false, processor);
-        }else{
-            request->send(SPIFFS, "/login.html");
-        }
+        if(!request->authenticate(user, password.c_str()))
+            return request->requestAuthentication();
+        request->send(SPIFFS, "/parameters.html",String(), false, processor);
     });
     
     server.on("/status", HTTP_GET_A, [](AsyncWebServerRequest *request){
-        if(Autenticado==true){
-            request->send(SPIFFS, "/status.html",String(), false, processor);
-        }else{
-            request->send(SPIFFS, "/login.html");
-        }
+        if(!request->authenticate(user, password.c_str()))
+            return request->requestAuthentication();
+        request->send(SPIFFS, "/status.html",String(), false, processor);
     });
 
     server.on("/ajustes", HTTP_GET_A, [](AsyncWebServerRequest *request){
-
-        if(Autenticado==true){
-            request->send(SPIFFS, "/ajustes.html",String(), false, processor);
-        }else{
-            request->send(SPIFFS, "/login.html");
-        }
+        if(!request->authenticate(user, password.c_str()))
+            return request->requestAuthentication();
+        request->send(SPIFFS, "/ajustes.html",String(), false, processor);
     });
 
 
@@ -489,7 +460,10 @@ void InitServer(void) {
     });
 
     server.on("/get", HTTP_GET_A, [](AsyncWebServerRequest *request){
-        if(Autenticado==true){
+        if(!request->authenticate(user, password.c_str())){
+            return request->requestAuthentication();
+        }
+            
             Coms.GSM.ON = Gsm_On;
             Coms.GSM.Apn = request->getParam(Apn)->value();
             Coms.GSM.Pass = request->getParam(GSM_PWD)->value();
@@ -568,9 +542,6 @@ void InitServer(void) {
             }
 
             if(!reiniciar_eth)request->send(SPIFFS, "/comms.html",String(), false, processor);
-        }else{
-            request->send(SPIFFS, "/login.html");
-        }
 
     });
 /*
@@ -585,39 +556,33 @@ void InitServer(void) {
     });
 */
     server.on("/currcomand", HTTP_GET_A, [](AsyncWebServerRequest *request){
-        if(Autenticado==true){
+            if(!request->authenticate(user, password.c_str()))
+                return request->requestAuthentication();
             uint8_t data = request->getParam(CURR_COMAND)->value().toInt();
 
             SendToPSOC5(data, MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
             
             request->send(SPIFFS, "/comands.html",String(), false, processor);
-        }else{
-            request->send(SPIFFS, "/login.html");
-        }
     });
 
     server.on("/instcurlim", HTTP_GET_A, [](AsyncWebServerRequest *request){
-        if(Autenticado==true){
+            if(!request->authenticate(user, password.c_str()))
+                return request->requestAuthentication();
             uint8_t data = request->getParam(INST_CURR_LIM)->value().toInt();
 
             SendToPSOC5(data, MEASURES_INSTALATION_CURRENT_LIMIT_CHAR_HANDLE);
             
             request->send(SPIFFS, "/parameters.html",String(), false, processor);
-        }else{
-            request->send(SPIFFS, "/login.html");
-        }
     });
 
     server.on("/powercont", HTTP_GET_A, [](AsyncWebServerRequest *request){
-         if(Autenticado==true){
+            if(!request->authenticate(user, password.c_str()))
+                return request->requestAuthentication();
             uint8_t data = request->getParam(POT_CONT)->value().toInt();
             
             SendToPSOC5(data, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_P1_DECL_HANDLE);
             
             request->send(SPIFFS, "/parameters.html",String(), false, processor);
-         }else{
-            request->send(SPIFFS, "/login.html");
-         }
     });
 /*
     server.on("/usertype", HTTP_GET_A, [](AsyncWebServerRequest *request){
@@ -625,95 +590,147 @@ void InitServer(void) {
     });
 */
     server.on("/hp", HTTP_GET_A, [](AsyncWebServerRequest *request){
-    request->send_P(200, "text/plain", String(Status.HPT_status).c_str());
+            if(!request->authenticate(user, password.c_str()))
+                return request->requestAuthentication();
+            request->send_P(200, "text/plain", String(Status.HPT_status).c_str());
     });
 
     server.on("/icp", HTTP_GET_A, [](AsyncWebServerRequest *request){
-    request->send_P(200, "text/plain", String(Status.ICP_status).c_str());
+            if(!request->authenticate(user, password.c_str()))
+                return request->requestAuthentication();
+            request->send_P(200, "text/plain", String(Status.ICP_status).c_str());
     });
 
     server.on("/dcleak", HTTP_GET_A, [](AsyncWebServerRequest *request){
-    request->send_P(200, "text/plain", String(Status.DC_Leack_status).c_str());
+            if(!request->authenticate(user, password.c_str()))
+                return request->requestAuthentication();
+            request->send_P(200, "text/plain", String(Status.DC_Leack_status).c_str());
     });
 
     server.on("/conlock", HTTP_GET_A, [](AsyncWebServerRequest *request){
-    request->send_P(200, "text/plain", String(Status.Con_Lock).c_str());
+            if(!request->authenticate(user, password.c_str()))
+                return request->requestAuthentication();
+            request->send_P(200, "text/plain", String(Status.Con_Lock).c_str());
     });
 
     server.on("/maxcable", HTTP_GET_A, [](AsyncWebServerRequest *request){
-    request->send_P(200, "text/plain", String(Status.Measures.max_current_cable).c_str());
+            if(!request->authenticate(user, password.c_str()))
+                return request->requestAuthentication();
+            request->send_P(200, "text/plain", String(Status.Measures.max_current_cable).c_str());
     });
 
     server.on("/potenciare", HTTP_GET_A, [](AsyncWebServerRequest *request){
-    request->send_P(200, "text/plain", String(Status.Measures.reactive_power).c_str());
+            if(!request->authenticate(user, password.c_str()))
+                return request->requestAuthentication();
+            request->send_P(200, "text/plain", String(Status.Measures.reactive_power).c_str());
     });
 
     server.on("/potenciap", HTTP_GET_A, [](AsyncWebServerRequest *request){
-    request->send_P(200, "text/plain", String(Status.Measures.apparent_power).c_str());
+            if(!request->authenticate(user, password.c_str()))
+                return request->requestAuthentication();
+            request->send_P(200, "text/plain", String(Status.Measures.apparent_power).c_str());
     });
 
     server.on("/energia", HTTP_GET_A, [](AsyncWebServerRequest *request){
-    request->send_P(200, "text/plain", String(Status.Measures.active_energy).c_str());
+            if(!request->authenticate(user, password.c_str()))
+                return request->requestAuthentication();
+            request->send_P(200, "text/plain", String(Status.Measures.active_energy).c_str());
     });
 
     server.on("/energiare", HTTP_GET_A, [](AsyncWebServerRequest *request){
-    request->send_P(200, "text/plain", String(Status.Measures.reactive_energy).c_str());
+            if(!request->authenticate(user, password.c_str()))
+                return request->requestAuthentication();
+            request->send_P(200, "text/plain", String(Status.Measures.reactive_energy).c_str());
     });
 
     server.on("/powerfactor", HTTP_GET_A, [](AsyncWebServerRequest *request){
-    request->send_P(200, "text/plain", String(Status.Measures.power_factor).c_str());
+            if(!request->authenticate(user, password.c_str()))
+                return request->requestAuthentication();
+            request->send_P(200, "text/plain", String(Status.Measures.power_factor).c_str());
     });
 
     server.on("/corrientedom", HTTP_GET_A, [](AsyncWebServerRequest *request){
-    request->send_P(200, "text/plain", String(Status.Measures.consumo_domestico).c_str());
+            if(!request->authenticate(user, password.c_str()))
+                return request->requestAuthentication();
+            request->send_P(200, "text/plain", String(Status.Measures.consumo_domestico).c_str());
     });
 
    server.on("/corriente", HTTP_GET_A, [](AsyncWebServerRequest *request){
-        request->send_P(200, "text/plain", String(Status.Measures.instant_current).c_str());
+            if(!request->authenticate(user, password.c_str()))
+                return request->requestAuthentication();
+            request->send_P(200, "text/plain", String(Status.Measures.instant_current).c_str());
     });
 
     server.on("/voltaje", HTTP_GET_A, [](AsyncWebServerRequest *request){
-        request->send_P(200, "text/plain", String(Status.Measures.instant_voltage/10).c_str());
+            if(!request->authenticate(user, password.c_str()))
+                return request->requestAuthentication();
+            request->send_P(200, "text/plain", String(Status.Measures.instant_voltage/10).c_str());
     });
 
     server.on("/potencia", HTTP_GET_A, [](AsyncWebServerRequest *request){
-        request->send_P(200, "text/plain", String(Status.Measures.active_power).c_str());
+            if(!request->authenticate(user, password.c_str()))
+                return request->requestAuthentication();
+            request->send_P(200, "text/plain", String(Status.Measures.active_power).c_str());
     });
 
     server.on("/error", HTTP_GET_A, [](AsyncWebServerRequest *request){
-        request->send_P(200, "text/plain", String(Status.error_code).c_str());
+            if(!request->authenticate(user, password.c_str()))
+                return request->requestAuthentication();
+            request->send_P(200, "text/plain", String(Status.error_code).c_str());
     });
 
     server.on("/comand", HTTP_GET_A, [](AsyncWebServerRequest *request){
-        request->send_P(200, "text/plain", String(Comands.desired_current).c_str());
+            if(!request->authenticate(user, password.c_str()))
+                return request->requestAuthentication();
+            request->send_P(200, "text/plain", String(Comands.desired_current).c_str());
     });
 
     server.on("/curlim", HTTP_GET_A, [](AsyncWebServerRequest *request){
-        request->send_P(200, "text/plain", String(Params.inst_current_limit).c_str());
+            if(!request->authenticate(user, password.c_str()))
+                return request->requestAuthentication();
+            request->send_P(200, "text/plain", String(Params.inst_current_limit).c_str());
     });
     
     server.on("/power", HTTP_GET_A, [](AsyncWebServerRequest *request){
-        request->send_P(200, "text/plain", String(Params.potencia_contratada1).c_str());
+            if(!request->authenticate(user, password.c_str()))
+                return request->requestAuthentication();
+            request->send_P(200, "text/plain", String(Params.potencia_contratada1).c_str());
     });
 
     server.on("/ssid", HTTP_GET_A, [](AsyncWebServerRequest *request){
-        request->send_P(200, "text/plain", String((char*)Coms.Wifi.AP).c_str());
+            if(!request->authenticate(user, password.c_str()))
+                return request->requestAuthentication();
+            request->send_P(200, "text/plain", String((char*)Coms.Wifi.AP).c_str());
     });
 
     server.on("/ip", HTTP_GET_A, [](AsyncWebServerRequest *request){
-        request->send_P(200, "text/plain", String(ip4addr_ntoa(&Coms.ETH.IP)).c_str());
+            if(!request->authenticate(user, password.c_str()))
+                return request->requestAuthentication();
+            request->send_P(200, "text/plain", String(ip4addr_ntoa(&Coms.ETH.IP)).c_str());
     });
   
     server.on("/gateway", HTTP_GET_A, [](AsyncWebServerRequest *request){
-        request->send_P(200, "text/plain", String(ip4addr_ntoa(&Coms.ETH.Gateway)).c_str());
+            if(!request->authenticate(user, password.c_str()))
+                return request->requestAuthentication();
+            request->send_P(200, "text/plain", String(ip4addr_ntoa(&Coms.ETH.Gateway)).c_str());
     });
 
     server.on("/mask", HTTP_GET_A, [](AsyncWebServerRequest *request){
-        request->send_P(200, "text/plain", String(ip4addr_ntoa(&Coms.ETH.Mask)).c_str());
+            if(!request->authenticate(user, password.c_str()))
+                return request->requestAuthentication();
+            request->send_P(200, "text/plain", String(ip4addr_ntoa(&Coms.ETH.Mask)).c_str());
+    });
+
+    server.on("/logout", HTTP_GET_A, [](AsyncWebServerRequest *request){
+        request->send(401);
     });
   
    server.on("/update", HTTP_GET_A, [] (AsyncWebServerRequest *request) {
-    if(Autenticado==true){ 
+        
+        if(!request->authenticate(user, password.c_str())){
+            return request->requestAuthentication(); 
+        }
+            
 		int entrada;
 		entrada = request->getParam(NUM_BOTON)->value().toInt();
 		
@@ -766,22 +783,19 @@ void InitServer(void) {
             Params.CDP = (Params.CDP | 4) & 23;
             SendToPSOC5(Params.CDP,DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE);
         break;
-        case 19:
-            Autenticado=false;
-        break;
 
         default:
 
             break;
         }
-    }else{
-        request->send(SPIFFS, "/login.html");
-    }
    });
 
    server.on("/autoupdate", HTTP_GET_A, [] (AsyncWebServerRequest *request) {
-    if(Autenticado==true){
-    	bool estado;
+    	
+        if(!request->authenticate(user, password.c_str())){
+            return request->requestAuthentication(); 
+        }
+        bool estado;
         int numero;  
 		estado = request->getParam(ESTADO)->value().toInt();
         numero = request->getParam(SALIDA)->value().toInt();
@@ -819,9 +833,7 @@ void InitServer(void) {
         default:
             break;
         }
-    }else{
-        request->send(SPIFFS, "/login.html");
-    }
+    
    });
 
 #ifdef DEBUG_WIFI
