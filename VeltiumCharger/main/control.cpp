@@ -555,6 +555,9 @@ void procesar_bloque(uint16 tipo_bloque){
 					Params.potencia_contratada2 = buffer_rx_local[241]+buffer_rx_local[242]*0x100;
 					Params.CDP 	  =  buffer_rx_local[232];
 					
+					
+
+				#ifdef CONNECTED	
 					if((buffer_rx_local[232] >> 1) && 0x01){
 						Params.Tipo_Sensor    = (buffer_rx_local[232]  >> 4);
 					}
@@ -567,8 +570,6 @@ void procesar_bloque(uint16 tipo_bloque){
 						Bloqueo_de_carga = 1;
 						SendToPSOC5(Bloqueo_de_carga,BLOQUEO_CARGA);
 					}
-
-				#ifdef CONNECTED	
 					memcpy(Params.Fw_Update_mode, &buffer_rx_local[234],2);
 					Comands.desired_current = buffer_rx_local[233];
 					Coms.Wifi.ON = buffer_rx_local[236];

@@ -10,3 +10,5 @@ v5.16
     - Firebase Optimizado (5 seg deteccion conexion 150 miliseg durante conexion + añadido estado de conectado)
     - Cambio en el modo de busqueda del medidor para evitar problemas con el DHCP
     - Cambio en la detección de desconexión del cable de ethernet para evitar problemas con el medidor ISKRA
+    - Comprobar la ausencia de Diodo solo a la entrada de B1
+    - Hacer que los mensajes de error no se superpongan

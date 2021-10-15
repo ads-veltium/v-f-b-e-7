@@ -433,7 +433,7 @@ void Eth_Loop(){
 
             //Buscar el contador
             if((Coms.ETH.medidor || (ChargingGroup.Params.CDP >> 4 && ChargingGroup.Params.GroupMaster && ChargingGroup.Conected)) && !finding){
-                if(GetStateTime(xStart) > 30000){
+                if(GetStateTime(xStart) > 20000){
                     xTaskCreate( BuscarContador_Task, "BuscarContador", 4096*4, &finding, 5, NULL); 
                     finding = true;
                 }
@@ -572,6 +572,7 @@ void Eth_Loop(){
         break;
         case KILLING:        
             if(!eth_connected && !eth_connecting){
+                finding = false;
                 Coms.ETH.Internet = false;
                 Coms.ETH.DHCP = false; 
 
