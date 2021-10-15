@@ -224,7 +224,8 @@ static void eth_event_handler(void *arg, esp_event_base_t event_base, int32_t ev
                 Serial.println( "Ethernet Link Down");
                 #endif
                 Update_Status_Coms(0,ETH_BLOCK);
-                if(Coms.ETH.Auto){
+
+                if(!Coms.ETH.DHCP){
                     eth_connected = false;
                     eth_link_up = false;
                     Coms.ETH.conectado = false;
@@ -248,8 +249,11 @@ static void eth_event_handler(void *arg, esp_event_base_t event_base, int32_t ev
 
             Coms.ETH.IP.addr = ip_info->ip.addr;
 
-            uint8_t ip_Array[4] = { ip4_addr1(&Coms.ETH.IP),ip4_addr2(&Coms.ETH.IP),ip4_addr3(&Coms.ETH.IP),ip4_addr4(&Coms.ETH.IP)};
-            modifyCharacteristic(&ip_Array[0], 4, COMS_CONFIGURATION_LAN_IP);
+            
+            if (Coms.ETH.ON){
+                uint8_t ip_Array[4] = { ip4_addr1(&Coms.ETH.IP),ip4_addr2(&Coms.ETH.IP),ip4_addr3(&Coms.ETH.IP),ip4_addr4(&Coms.ETH.IP)};
+                modifyCharacteristic(&ip_Array[0], 4, COMS_CONFIGURATION_LAN_IP);
+            }
 
             eth_connected = true;
             eth_connecting = false;
@@ -266,12 +270,6 @@ void initialize_ethernet(void){
     #ifdef DEBUG_ETH
     Serial.println("Arrancando ethernet");
     #endif
-
-    //servidor DHCP
-    if((!Coms.ETH.ON && Coms.ETH.medidor) || (ChargingGroup.Params.GroupMaster && !Coms.ETH.Auto)) {
-        //si tenemos IP estatica y un medidor conectado, activamos el dhcp
-        Coms.ETH.DHCP = true;
-    }
    
     if(Coms.ETH.DHCP){
         #ifdef DEBUG_ETH
@@ -338,9 +336,9 @@ void initialize_ethernet(void){
         eth_netif = esp_netif_new(&cfg);
         esp_eth_set_default_handlers(eth_netif);
         uint8_t  on =1;
-        modifyCharacteristic(&on, 1, COMS_CONFIGURATION_ETH_ON);
-        Coms.ETH.Auto = 1;
-        SendToPSOC5(Coms.ETH.Auto, COMS_CONFIGURATION_ETH_AUTO);
+        if (Coms.ETH.ON){
+            modifyCharacteristic(&on, 1, COMS_CONFIGURATION_ETH_ON);
+        }
     }
 
     ESP_ERROR_CHECK(esp_event_handler_register(ETH_EVENT, ESP_EVENT_ANY_ID, eth_event_handler, NULL));

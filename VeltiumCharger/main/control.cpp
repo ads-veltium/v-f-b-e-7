@@ -663,8 +663,7 @@ void procesar_bloque(uint16 tipo_bloque){
 							ChargingGroup.ChargPerm = false;
 							ChargingGroup.AskPerm = false;
 #endif
-						}
-						printf("Enviando Bloqueo de carga1 %i \n", Bloqueo_de_carga);						
+						}				
 						SendToPSOC5(Bloqueo_de_carga, BLOQUEO_CARGA);
 					}
 #endif
@@ -879,6 +878,12 @@ void procesar_bloque(uint16 tipo_bloque){
 			//modifyCharacteristic(&buffer_rx_local[0], 1, RESET_RESET_CHAR_HANDLE);
 		} 
 		break;
+
+		case CHARGE_USER_ID:{
+			printf("Me ha llegado un nuevo charge_user_id %i\n", buffer_rx_local[0]);
+			modifyCharacteristic(buffer_rx_local, 1, CHARGE_USER_ID);
+		}
+		break;
 		
 		case ENERGY_RECORD_RECORD_CHAR_HANDLE:{
 			#ifdef DEBUG
@@ -1065,24 +1070,53 @@ void procesar_bloque(uint16 tipo_bloque){
 #ifdef CONNECTED
 		case COMS_CONFIGURATION_WIFI_ON:{
 			Coms.Wifi.ON    =  buffer_rx_local[0];
+
 			#ifdef DEBUG
 			Serial.print("WIFI ON:");
 			Serial.println(Coms.Wifi.ON);
 			#endif
+
 			modifyCharacteristic(buffer_rx_local , 1, COMS_CONFIGURATION_WIFI_ON);
 		} 
 		break;
 		
 		case COMS_CONFIGURATION_ETH_ON:{
-			if(Coms.ETH.medidor && !Coms.ETH.ON && buffer_rx_local[0]){
+
+			if(Coms.ETH.medidor && !Coms.ETH.ON && buffer_rx_local[0] && !Coms.ETH.conectado){
 				Coms.ETH.restart = true;
 			}
-			else if (Coms.ETH.medidor && Coms.ETH.ON && !buffer_rx_local[0]){
+			else if (Coms.ETH.medidor && Coms.ETH.ON && !buffer_rx_local[0] && !Coms.ETH.conectado){
 				Coms.ETH.restart = true;
 			}
-			
-			
+
 			Coms.ETH.ON  =  buffer_rx_local[0];
+
+			uint8_t ip_Array[4] = { 0,0,0,0};
+			if(Coms.ETH.ON ){
+				
+				ip_Array[0] = ip4_addr1(&Coms.ETH.IP);
+				ip_Array[1] = ip4_addr2(&Coms.ETH.IP);
+				ip_Array[2] = ip4_addr3(&Coms.ETH.IP);
+				ip_Array[3] = ip4_addr4(&Coms.ETH.IP);
+
+				if(ComprobarConexion()){
+					ConnectionState = DISCONNECTED;
+					Coms.ETH.Internet = true;
+					Coms.ETH.Wifi_Perm = false;
+				}	
+			}
+			else{
+				Coms.ETH.Wifi_Perm = true;
+				Coms.ETH.Internet = false;
+				if(!Coms.GSM.ON && !Coms.Wifi.ON){
+					ConfigFirebase.InternetConection = false;
+				}
+			}
+
+			
+			modifyCharacteristic(&ip_Array[0], 4, COMS_CONFIGURATION_LAN_IP);
+			
+			
 			#ifdef DEBUG
 			Serial.print("ETH ON:");
 			Serial.println(Coms.ETH.ON);
@@ -1438,7 +1472,6 @@ void procesar_bloque(uint16 tipo_bloque){
 			else{
 				Bloqueo_de_carga = false;
 			}
-			printf("Enviando Bloqueo de carga3 %i \n", Bloqueo_de_carga);
 			SendToPSOC5(Bloqueo_de_carga, BLOQUEO_CARGA);
 
 			

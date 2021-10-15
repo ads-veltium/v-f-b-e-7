@@ -1,8 +1,14 @@
+v5.15
+    - En teoria misma versión que la v5.14, pero debió de haber algun problema en el despliegue
+
 v5.16
+    - Cambio en la detección de desconexión del cable de ethernet para evitar problemas con el medidor ISKRA
+
+v5.17
     - Eliminado Smartconfig
     - Añadida gestión de grupos
     - Añadido multiusuario
-    - Añadido guardar registro entre cargas
+    - Añadido guardar registro entre reinicios
     - Añadido Status de comunicaciones (Solo en el equipo)
     - Reducido tamaño memoria en spiram
     - Mejora en la visualizacion de la busqueda del medidor (LEDS)
@@ -11,4 +17,5 @@ v5.16
     - Cambio en el modo de busqueda del medidor para evitar problemas con el DHCP
     - Cambio en la detección de desconexión del cable de ethernet para evitar problemas con el medidor ISKRA
     - Comprobar la ausencia de Diodo solo a la entrada de B1
-    - Hacer que los mensajes de error no se superpongan
+    - Nueva característica para indicar el usuario que ha iniciado la recarga
+    - Ethernet siempre activo

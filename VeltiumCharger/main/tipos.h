@@ -720,14 +720,13 @@ typedef struct{
 
 //Caracteristica de estatus de las comunicaciones
 #define STATUS_COMS						   (0x00D3u)
-
-
+#define CHARGE_USER_ID					   (0x00D5u)
 
 //Caracteristicas no RCS (Se pueden repetir indices)
-#define MEASURES_EXTERNAL_COUNTER		   (0x00D3u)
-#define COMS_FW_UPDATEMODE_CHAR_HANDLE     (0x00D5u)
-#define GROUPS_DEVICES_PART_1 	  		   (0x00D7u)
-#define GROUPS_DEVICES_PART_2 	  		   (0x00D9u)
+#define MEASURES_EXTERNAL_COUNTER		   (0x00D2u)
+#define COMS_FW_UPDATEMODE_CHAR_HANDLE     (0x00D4u)
+#define GROUPS_DEVICES_PART_1 	  		   (0x00D6u)
+#define GROUPS_DEVICES_PART_2 	  		   (0x00D8u)
 
 #define SEND_GROUP_DATA		 		 	   (0x00DBu)
 #define BLOQUEO_CARGA                      (0x00DDu)

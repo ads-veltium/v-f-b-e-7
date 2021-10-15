@@ -376,7 +376,7 @@ bool WriteFirebaseHistoric(char* buffer){
 /***************************************************
   Funciones de lectura
 ***************************************************/
-
+#ifdef NO_EJECUTAR
 bool ReadFirebaseGroups(String Path){
 
   long long ts_app_req=Database->Get_Timestamp(Path+"/ts_app_req",&Lectura, true);
@@ -482,6 +482,7 @@ bool ReadFirebaseGroups(String Path){
 
 }
 
+#endif
 bool ReadFirebaseComs(String Path){
 
   long long ts_app_req=Database->Get_Timestamp(Path+"/ts_app_req",&Lectura);
@@ -790,19 +791,35 @@ void Firebase_Conn_Task(void *args){
     }
 
     //Si estamos conectados a través de gsm y tenemos muchos errores, significa que hemos perdido la cobertura
+    //Sino esque nos han desconectado el cable o hemos perdido el wifi
     //Y debemos reiniciar el modem
-    if(Coms.GSM.ON && Coms.GSM.Internet && Error_Count >= 20){
-      Coms.GSM.reboot = true;
-      Coms.GSM.Internet = false;
-      Error_Count = 0;
-      if(ConnectionState > CONNECTING){
-        ConnectionState=DISCONNECTING;
+    if(Error_Count >= 20){
+      if(Coms.GSM.ON && Coms.GSM.Internet && Error_Count >= 20){
+        Coms.GSM.reboot = true;
+        Coms.GSM.Internet = false;
+        Error_Count = 0;
+        if(ConnectionState > CONNECTING){
+          ConnectionState=DISCONNECTING;
+        }
+        else{
+          ConnectionState=DISCONNECTED;
+          delayeando = 10000;
+        }
       }
       else{
-        ConnectionState=DISCONNECTED;
-        delayeando = 10000;
+        Coms.ETH.Internet = false;
+        Coms.Wifi.Internet = false;
+        ConfigFirebase.InternetConection = false;
+        if(ConnectionState > CONNECTING){
+          ConnectionState=DISCONNECTING;
+        }
+        else{
+          ConnectionState=DISCONNECTED;
+          delayeando = 10000;
+        }
       }
     }
+
 
     switch (ConnectionState){
     //Comprobar estado de la red
@@ -1105,7 +1122,7 @@ void Firebase_Conn_Task(void *args){
       NextState=READING_PARAMS;
       break;
 
-#ifdef CONNECTED
+#ifdef NO_EJECUTAR
     case READING_GROUP:
       Error_Count+=!ReadFirebaseGroups("123456789");
       ConnectionState=IDLE;

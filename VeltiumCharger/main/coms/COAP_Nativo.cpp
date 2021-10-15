@@ -925,7 +925,7 @@ static void coap_server(void *p){
                         send_to(get_IP(charger_table[i].name), "Start client");
                     }
                     
-                    //si un equipo lleva muchisimo sin contestar, lo damos por muerto y lo eliminamos de la tabla
+                    //si un equipo lleva muchisimo sin contestar, lo damos por muerto y lo eponemos como inactivo
                     if(charger_table[i].Period >=60000 && charger_table[i].Period <= 65000){
                         if(memcmp(charger_table[i].name, ConfigFirebase.Device_Id,8)){
                             memcpy(charger_table[i].HPT, "0V", 2);

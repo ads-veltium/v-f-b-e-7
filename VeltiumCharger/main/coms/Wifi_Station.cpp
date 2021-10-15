@@ -192,6 +192,11 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
 }
 
 void stop_wifi(void){
+    uint8_t AP[34]={'\0'};
+    modifyCharacteristic((uint8_t*)AP, 16, COMS_CONFIGURATION_WIFI_SSID_1);
+    modifyCharacteristic(&AP[16], 16, COMS_CONFIGURATION_WIFI_SSID_2);
+    
+
     ConfigFirebase.InternetConection = false;
     #ifdef DEBUG_WIFI
     Serial.println("Esperando a que firebase se desconecte!");
@@ -355,18 +360,18 @@ void Eth_Loop(){
 
     switch (Coms.ETH.State){
         case APAGADO:
-            if(Coms.ETH.ON || Coms.ETH.medidor ){
-                initialize_ethernet();
-                Coms.ETH.State = CONNECTING;
-                xStart = xTaskGetTickCount();
-                SendToPSOC5(1,SEND_GROUP_DATA);
-                finding = false;
-            }
+            initialize_ethernet();
+            Coms.ETH.State = CONNECTING;
+            xStart = xTaskGetTickCount();
+            SendToPSOC5(1,SEND_GROUP_DATA);
+            finding = false;
+            Coms.ETH.conectado = false;
+            
         break;
         case CONNECTING:
             if(eth_connected){
-                //Solo comprobamos la conexion a internet si no hemos activado el servidor dhcp
-                if(!Coms.ETH.DHCP){
+                //Solo comprobamos la conexion a internet si no hemos activado el servidor dhcp y si el usuario a activado el ETH
+                if(!Coms.ETH.DHCP && Coms.ETH.ON){
                     if(Coms.Wifi.ON){
                         wifi_last = true;
                     }
@@ -386,32 +391,28 @@ void Eth_Loop(){
                         Coms.ETH.Wifi_Perm = true;
                     }
                 }
-                #ifdef CONNECTED
-                    SendToPSOC5(2,SEND_GROUP_DATA);
-                    SendToPSOC5(3,SEND_GROUP_DATA);          
-                    delay(5000);
-                    start_udp();
-                #endif
+
+                SendToPSOC5(2,SEND_GROUP_DATA);
+                SendToPSOC5(3,SEND_GROUP_DATA);          
+                delay(5000);
+                start_udp();
+
                 escape =0;
                 wifi_last = false;
                 Coms.ETH.State = CONECTADO;
                 xConnect = xTaskGetTickCount();
             }
-
-            else if(!Coms.ETH.ON && !Coms.ETH.medidor){
-                stop_ethernet();
-                Coms.ETH.State = DISCONNECTING;                
-            }
-            //si somos el maestro de un grupo, y a los 2 minutos no tenemos conexion a internet, activamos el DHCP
-            else if((ChargingGroup.Params.GroupMaster && ChargingGroup.Params.GroupActive)){
-                if(GetStateTime(xStart) > 60000){
-                    #ifdef DEBUG_ETH
-                        Serial.println("Activo DHCP");
-                    #endif
-                    kill_ethernet();
-                    Coms.ETH.Auto = false;
-                    Coms.ETH.State = KILLING;
-                    SendToPSOC5(Coms.ETH.Auto,COMS_CONFIGURATION_ETH_AUTO);
+            //si somos el maestro de un grupo, y al minuto no tenemos conexion a internet, activamos el DHCP
+            else if(!Coms.ETH.ON){
+                if((ChargingGroup.Params.GroupMaster && ChargingGroup.Params.GroupActive) || Coms.ETH.medidor){
+                    if(GetStateTime(xStart) > 60000){
+                        #ifdef DEBUG_ETH
+                            Serial.println("Activo DHCP");
+                        #endif
+                        kill_ethernet();
+                        Coms.ETH.DHCP = true;
+                        Coms.ETH.State = KILLING;
+                    }
                 }
             }
             
@@ -424,6 +425,7 @@ void Eth_Loop(){
                 if(ComprobarConexion()){
                     ConnectionState = DISCONNECTED;
                     Coms.ETH.Internet = true;
+                    Coms.ETH.Wifi_Perm = false;
                 }
             }
 
@@ -460,59 +462,19 @@ void Eth_Loop(){
 
 
             //Apagar el eth
-            if((!Coms.ETH.ON && !Coms.ETH.medidor)|| Coms.ETH.restart){  
+            if(Coms.ETH.restart){  
                 if(Coms.ETH.ON){
-                    if(ChargingGroup.Conected){
-                        ChargingGroup.Params.GroupActive = false;
-                        ChargingGroup.StopOrder = true;   
-                    }
-                    close_udp();   
-
                     wait_for_firebase_stop(100);
-
                 }
+                if(ChargingGroup.Conected){
+                    ChargingGroup.Params.GroupActive = false;
+                    ChargingGroup.StopOrder = true;   
+                }
+                close_udp();   
                 kill_ethernet();
                 Coms.ETH.State = KILLING;
                 Coms.ETH.restart = false;
                 break;               
-            }
-
-            //Desconexion del cable
-            if(!eth_connected && !eth_link_up && !Coms.ETH.medidor){
-                printf("Me han desconectado el cable!\n");
-                if(Coms.ETH.Internet){
-                    Coms.ETH.Internet = false;
-
-                    wait_for_firebase_stop(100);
-
-                    Coms.ETH.State = DISCONNECTING;
-                    close_udp();
-                    if(ChargingGroup.Conected){
-                        ChargingGroup.Params.GroupActive = false;
-                        ChargingGroup.StopOrder = true;
-                    }
-
-                    if(Coms.Wifi.ON && Coms.Wifi.Internet){
-                        Coms.Wifi.restart = true;
-                    }
-
-                }
-                else{
-                    eth_connecting = false;
-                    eth_connected = false;
-                    Coms.ETH.State = DISCONNECTING;
-
-                    close_udp();
-                    if(ChargingGroup.Conected){
-                        ChargingGroup.Params.GroupActive = false;
-                        ChargingGroup.StopOrder = true;
-                    }
-
-                    if(Coms.Wifi.ON && Coms.Wifi.Internet){
-                        Coms.Wifi.restart = true;
-                    }
-                }
-                break;
             }
 
             //Lectura del contador
@@ -560,21 +522,22 @@ void Eth_Loop(){
                 
                 Coms.ETH.State = DISCONNECTED;
                 Coms.ETH.Internet = false;
+                Coms.ETH.conectado = false;
             }
         break;
 
         case DISCONNECTED:
-            if(Coms.ETH.ON || Coms.ETH.medidor){
-                restart_ethernet();
-                Coms.ETH.State = CONNECTING;
-                xStart = xTaskGetTickCount();
-            }
+            restart_ethernet();
+            Coms.ETH.State = CONNECTING;
+            xStart = xTaskGetTickCount();
+            
         break;
         case KILLING:        
             if(!eth_connected && !eth_connecting){
                 finding = false;
                 Coms.ETH.Internet = false;
                 Coms.ETH.DHCP = false; 
+                Coms.ETH.conectado = false;
 
                 if(ContadorExt.GatewayConectado){
                     ContadorExt.GatewayConectado = false;
@@ -684,11 +647,9 @@ void ComsTask(void *args){
             //Encendido de las interfaces GSM     
             if(Coms.GSM.ON){
                 if(!gsm_connected){
-                    if(Coms.ETH.ON){
-                        if(!Coms.ETH.Internet && Coms.ETH.Wifi_Perm && !Coms.Wifi.ON){
-                            StartGSM();                     
-                        }
-                    }
+                    if(!Coms.ETH.Internet && Coms.ETH.Wifi_Perm && !Coms.Wifi.ON){
+                        StartGSM();                     
+                    }      
                     else if(!Coms.Wifi.ON){
                         StartGSM();  
                         }
@@ -711,7 +672,7 @@ void ComsTask(void *args){
             //Encendido de las interfaces     
             if(Coms.Wifi.ON && !wifi_connected && !wifi_connecting){
                 if(Coms.ETH.ON){
-                    if(!Coms.ETH.Internet && Coms.ETH.Wifi_Perm){
+                    if(!Coms.ETH.Internet && Coms.ETH.Wifi_Perm ){
                         start_wifi();                     
                     }
                 }
@@ -720,7 +681,7 @@ void ComsTask(void *args){
                 }                
             }
 
-            else if((!Coms.Wifi.ON || Coms.Wifi.restart) && (wifi_connected || wifi_connecting)){
+            else if((!Coms.Wifi.ON || Coms.Wifi.restart || !Coms.ETH.Wifi_Perm) && (wifi_connected || wifi_connecting)){
                 stop_wifi();
                 Coms.Wifi.restart = false;
             }
