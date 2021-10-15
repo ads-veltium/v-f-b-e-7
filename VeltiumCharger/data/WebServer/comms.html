@@ -135,12 +135,12 @@
 function cerrar(element){
   var xhr = new XMLHttpRequest();
 
-  if(element.clicked){ xhr.open("GET", "/update?output="+element.id+"", true); }
+  if(element.clicked){ xhr.open("GET", "/logout", true); }
 
-  else { xhr.open("GET", "/update?output="+element.id+"", true); }
+  else { xhr.open("GET", "/logout", true); }
 
   xhr.send();
-  self.location.href = "/";
+  setTimeout(function(){ window.open("/","_self"); }, 500);
 }
 
 function myFunction() {
