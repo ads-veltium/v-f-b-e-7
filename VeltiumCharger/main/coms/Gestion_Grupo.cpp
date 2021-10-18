@@ -174,6 +174,7 @@ void store_group_in_mem(carac_charger* group, uint8_t size){
 }
 
 void store_params_in_mem(){
+    Serial.println("Almacenando datos en la memoria\n");
     char buffer[7];
     buffer[0] = ChargingGroup.Params.GroupMaster;
     buffer[1] = ChargingGroup.Params.GroupActive;

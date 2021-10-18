@@ -141,8 +141,8 @@ hnd_get(coap_context_t *ctx, coap_resource_t *resource,coap_session_t *session,c
 
         cJSON_AddNumberToObject(Params_Json, "cdp", ChargingGroup.Params.CDP);
         cJSON_AddNumberToObject(Params_Json, "contract", ChargingGroup.Params.ContractPower);
-        cJSON_AddNumberToObject(Params_Json, "active", ChargingGroup.Params.GroupActive);
-        cJSON_AddNumberToObject(Params_Json, "master", ChargingGroup.Params.GroupMaster);
+        cJSON_AddNumberToObject(Params_Json, "active", ChargingGroup.Params.GroupActive ? 1 : 0);
+        cJSON_AddNumberToObject(Params_Json, "master", ChargingGroup.Params.GroupMaster ? 1 : 0);
         cJSON_AddNumberToObject(Params_Json, "pot_max", ChargingGroup.Params.potencia_max);
 
         char *my_json_string = cJSON_Print(Params_Json);   
@@ -151,7 +151,7 @@ hnd_get(coap_context_t *ctx, coap_resource_t *resource,coap_session_t *session,c
         int size = strlen(my_json_string);
         memcpy(&buffer[1], my_json_string, size);
         buffer[size+1]='\0';
-
+        Serial.println(buffer);
         free(my_json_string);
     }
     else if(!memcmp(resource->uri_path->s, "CONTROL", resource->uri_path->length)){
@@ -1046,8 +1046,8 @@ void Send_Params(){
 
   cJSON_AddNumberToObject(Params_Json, "cdp", ChargingGroup.Params.CDP);
   cJSON_AddNumberToObject(Params_Json, "contract", ChargingGroup.Params.ContractPower);
-  cJSON_AddNumberToObject(Params_Json, "active", ChargingGroup.Params.GroupActive);
-  cJSON_AddNumberToObject(Params_Json, "master", ChargingGroup.Params.GroupMaster);
+  cJSON_AddNumberToObject(Params_Json, "active", ChargingGroup.Params.GroupActive ? 1:0);
+  cJSON_AddNumberToObject(Params_Json, "master", ChargingGroup.Params.GroupMaster ? 1:0);
   cJSON_AddNumberToObject(Params_Json, "pot_max", ChargingGroup.Params.potencia_max);
 
 

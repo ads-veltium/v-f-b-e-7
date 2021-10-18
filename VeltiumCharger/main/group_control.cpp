@@ -134,6 +134,7 @@ void New_Params(uint8_t* Buffer, int Data_size){
 
 //Funcion para recibir nuevos parametros de carga para el grupo
 void New_Params(char* Data, int Data_size){    
+
   ChargingGroup.NewData = true;
   uint8_t buffer[7];
 
@@ -143,9 +144,16 @@ void New_Params(char* Data, int Data_size){
   if(!cJSON_HasObjectItem(mensaje_Json,"cdp")){
     return;
   }
+
+  //Si es el maestro, cojemos los datos lo antes posible
+  if(ChargingGroup.Params.GroupMaster){
+    ChargingGroup.Params.CDP = (uint8_t) cJSON_GetObjectItem(mensaje_Json,"cdp")->valueint;
+    ChargingGroup.Params.ContractPower = (uint16_t) cJSON_GetObjectItem(mensaje_Json,"contract")->valueint;
+    ChargingGroup.Params.potencia_max  = (uint8_t) cJSON_GetObjectItem(mensaje_Json,"pot_max")->valueint;
+  }
+
   
   //Extraer los datos
-  buffer[0] = (uint8_t) cJSON_GetObjectItem(mensaje_Json,"master")->valueint;
   buffer[1] = (uint8_t) cJSON_GetObjectItem(mensaje_Json,"active")->valueint;
   buffer[2]=  (uint8_t) cJSON_GetObjectItem(mensaje_Json,"cdp")->valueint;
   uint16_t Contratada = (uint16_t) cJSON_GetObjectItem(mensaje_Json,"contract")->valueint;
@@ -272,6 +280,18 @@ void New_Circuit(uint8_t* Buffer, int Data_size){
   buffer[0]=size;
   for(uint8_t i=0; i<size;i++){
     buffer[i+1] = Buffer[i+2];
+  }
+
+  if(ChargingGroup.Params.GroupMaster){
+    int numero_circuitos = buffer[0];
+    ChargingGroup.Circuit_number = numero_circuitos;
+    for(int i=0;i< numero_circuitos;i++){
+      Circuitos[i].numero = i+1;
+      Circuitos[i].Fases[0].numero = 1;
+      Circuitos[i].Fases[1].numero = 2;
+      Circuitos[i].Fases[2].numero = 3;
+      Circuitos[i].limite_corriente = buffer[i+1];			
+    }
   }
 
   SendToPSOC5((char*)buffer,size+1,GROUPS_CIRCUITS); 
