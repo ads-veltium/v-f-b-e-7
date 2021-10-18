@@ -891,12 +891,12 @@ void serverbleTask(void *arg)
 			#ifdef DEBUG_BLE
 				printf(" disconnecting \r\n");
 			#endif
-			changeAdvName(device_ID);
+			pServer->startAdvertising();
 			
 			#ifdef DEBUG_BLE
 				printf("start advertising again\r\n");
 			#endif
-
+			Status.LastConn = xTaskGetTickCount();
 			UpdateStatus.DescargandoArchivo=0;
 			oldDeviceBleConnected = deviceBleConnected;
 		}

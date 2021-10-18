@@ -371,15 +371,15 @@ void LedControl_Task(void *arg){
 		}
 
 #ifdef USE_COMS
+		else if(Params.Tipo_Sensor && ContadorExt.ConexionPerdida){
+			Kit(NARANJA_OSCURO);
+			Delay= 85;
+		}
 		//Buscando Medidor
 		else if(Params.Tipo_Sensor && !ContadorExt.MeidorConectado){
-			if(ContadorExt.ConexionPerdida){
-				Kit(NARANJA_OSCURO);
-				Delay= 85;
-			}
 			//Buscando Gateway
-			else if(!ContadorExt.GatewayConectado){
-				if(Coms.ETH.Auto){
+			if(!ContadorExt.GatewayConectado){
+				if(!Coms.ETH.DHCP){
 					InWave(VERDE);
 				}
 				else{
@@ -392,8 +392,6 @@ void LedControl_Task(void *arg){
 				Kit(VERDE);
 				Delay=85;
 			}
-
-			
 		}
 
 

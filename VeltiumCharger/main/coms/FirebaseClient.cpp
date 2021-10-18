@@ -946,22 +946,22 @@ void Firebase_Conn_Task(void *args){
         }
       }
       
-      if(ts_app_req > Status.last_ts_app_req){
+      if(ts_app_req > Status.last_ts_app_req && !serverbleGetConnected()){
         Status.last_ts_app_req= ts_app_req;
-        xStarted = xTaskGetTickCount();
-        Error_Count+=!WriteFirebaseStatus("/status");
-        if(!ConfigFirebase.ClientConnected){  
-          Error_Count+=!WriteFirebaseComs("/coms"); 
-          ReadFirebaseUser();  
-          delayeando = 10;   
-          ConnectionState = USER_CONNECTED;
-          ConfigFirebase.ClientConnected  = true;
-          Error_Count=0;
+        if(GetStateTime(Status.LastConn)> 5000){
+          xStarted = xTaskGetTickCount();
+          Error_Count+=!WriteFirebaseStatus("/status");
+          if(!ConfigFirebase.ClientConnected){  
+            Error_Count+=!WriteFirebaseComs("/coms"); 
+            ReadFirebaseUser();  
+            delayeando = 10;   
+            ConnectionState = USER_CONNECTED;
+            ConfigFirebase.ClientConnected  = true;
+            Error_Count=0;
+          }
         }
-        break;
       }
       
-       
       break;
 
     /*********************** Usuario conectado **********************/

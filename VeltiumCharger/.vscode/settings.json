@@ -1,4 +1,5 @@
 
+{
 "actionButtons": {
     "defaultColor": "#ff0034", // Can also use string color names.
     "loadNpmCommands":false, // Disables automatic generation of actions for npm commands.
@@ -8,13 +9,13 @@
             "name": "BUILD",
             "color": "white",
             "singleInstance": true,
-            "command": ". /home/joel/Documents/fw-bird-esp32/SDK/esp-idf/./export.sh && cd /home/joel/Documents/fw-bird-esp32/VeltiumCharger/ && make",
+            "command": ". /home/joel/Documents/fw-bird-esp32/SDK/esp-idf/./export.sh && cd /home/joel/Documents/fw-bird-esp32/VeltiumCharger/ && make -j6",
         },
         {
             "name": "MFM",
             "color": "white",
             "singleInstance": true,
-            "command": ". /home/joel/Documents/fw-bird-esp32/SDK/esp-idf/./export.sh && cd /home/joel/Documents/fw-bird-esp32/VeltiumCharger/ && make flash monitor",
+            "command": ". /home/joel/Documents/fw-bird-esp32/SDK/esp-idf/./export.sh && cd /home/joel/Documents/fw-bird-esp32/VeltiumCharger/ && make flash monitor -j6",
         },
         {
             "name": "MONITOR",
@@ -32,11 +33,11 @@
             "name": "FLASH",
             "color": "white",
             "singleInstance": true,
-            "command": ". /home/joel/Documents/fw-bird-esp32/SDK/esp-idf/./export.sh && cd /home/joel/Documents/firmware/fw-bird-esp32/VeltiumCharger/ && make flash",
+            "command": ". /home/joel/Documents/fw-bird-esp32/SDK/esp-idf/./export.sh && cd /home/joel/Documents/firmware/fw-bird-esp32/VeltiumCharger/ && make flash -j6",
         },
 
     ]
 },
 "C_Cpp.errorSquiggles": "Enabled",
 "C_Cpp.dimInactiveRegions": false
-
+}
