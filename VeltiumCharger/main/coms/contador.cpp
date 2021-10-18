@@ -53,8 +53,29 @@ bool Contador::read(){
 /*********** Convertir los datos del json ************/
 void Contador::parse(){
     //Podemos medir lo que nos salga, pero de momento solo queremos intensidades
-    String medida;
-    static uint8_t old = 0;
+    String medida , time;
+    static String last_time = " ";
+    static uint8_t old = 0, Same_time_count = 0;
+
+
+    //comprobar que no se ha desconectado el medidor
+
+    time = Measurements["header"]["local_time"].as<String>();
+    if(time == last_time){
+        if(++Same_time_count > 5){
+            ContadorExt.ConexionPerdida = 1;
+            Update_Status_Coms(MED_LEYENDO_MEDIDOR);
+            return;
+        }
+    }
+    else{
+        ContadorExt.ConexionPerdida = 0;
+        Same_time_count = 0;
+    }
+    last_time = time;
+   
+
+    
     //Leer corrientes
     /*medida = Measurements["measurements"]["I1"].as<String>();
     ContadorExt.DomesticCurrentA = medida.toFloat() *100;
@@ -65,11 +86,19 @@ void Contador::parse(){
 
     //Leer potencias 
     medida = Measurements["measurements"]["P0"].as<String>();
+    
 
     ContadorExt.MeidorConectado = medida != "null";
     if(ContadorExt.MeidorConectado != old){
+        if(old){ //Si ya estab a leyendo y perdemos comunicacion,
+            ContadorExt.ConexionPerdida = 1;
+        }
+        else{
+            ContadorExt.ConexionPerdida = 0;
+        }
         old = ContadorExt.MeidorConectado;
         Update_Status_Coms(MED_LEYENDO_MEDIDOR);
+        
     }
 
     uint16_t medida_dom = 0;

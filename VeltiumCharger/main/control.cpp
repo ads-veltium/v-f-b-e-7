@@ -85,7 +85,7 @@ uint16 cnt_diferencia = 1;
 uint8 HPT_estados[9][3] = {"0V", "A1", "A2", "B1", "B2", "C1", "C2", "E1", "F1"};
 
 #ifdef USE_COMS
-uint8 version_firmware[11] = {"VBLE2_0510"};	
+uint8 version_firmware[11] = {"VBLE2_0513"};	
 #else
 uint8 version_firmware[11] = {"VBLE0_0511"};	
 #endif
@@ -676,6 +676,7 @@ void procesar_bloque(uint16 tipo_bloque){
 				modifyCharacteristic(&buffer_rx_local[7], 2, STATUS_CONN_LOCK_STATUS_CHAR_HANDLE);			
 				modifyCharacteristic(&buffer_rx_local[9], 1, MEASURES_MAX_CURRENT_CABLE_CHAR_HANDLE);
 				modifyCharacteristic(&buffer_rx_local[10], 2, DOMESTIC_CONSUMPTION_DOMESTIC_CURRENT_CHAR_HANDLE);
+				Status.Measures.consumo_domestico = buffer_rx_local[10] + (buffer_rx_local[11] * 0x100);
 				modifyCharacteristic(&buffer_rx_local[12], 1, DOMESTIC_CONSUMPTION_REAL_CURRENT_LIMIT_CHAR_HANDLE);
 				Status.current_limit = buffer_rx_local[12];
 				modifyCharacteristic(&buffer_rx_local[13], 1, ERROR_STATUS_ERROR_CODE_CHAR_HANDLE);	
@@ -1046,6 +1047,7 @@ void procesar_bloque(uint16 tipo_bloque){
 					Params.Tipo_Sensor    = (buffer_rx_local[0]  >> 4);
 					//Bloquear la carga hasta que encontremos el medidor
 					if(Params.Tipo_Sensor){
+
 						Coms.ETH.medidor = true;
 						Update_Status_Coms(0,MED_BUSCANDO_GATEWAY);
 						Bloqueo_de_carga = 1;
@@ -1059,6 +1061,9 @@ void procesar_bloque(uint16 tipo_bloque){
 				if(!Params.Tipo_Sensor){
 					Coms.ETH.medidor = false;
 					Update_Status_Coms(0,MED_BLOCK);
+					if(Coms.ETH.DHCP && !ChargingGroup.Params.GroupActive){
+						Coms.ETH.restart = true;
+					}
 				}
 			#endif
 			#ifdef DEBUG_BLE

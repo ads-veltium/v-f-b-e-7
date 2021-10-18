@@ -144,6 +144,7 @@ typedef struct{
 	caract_date_time Time;
 
 	long long last_ts_app_req= 0;
+	TickType_t LastConn = 0;
 } carac_Status;
 
 typedef struct{

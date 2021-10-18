@@ -150,10 +150,7 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
             case WIFI_PROV_CRED_FAIL: {
                 wifi_prov_sta_fail_reason_t *reason = (wifi_prov_sta_fail_reason_t *)event_data;
                 #ifdef DEBUG_WIFI
-                Serial.printf( "Provisioning failed!\n\tReason : %s"
-                         "\n\tPlease reset to factory and retry provisioning\n",
-                         (*reason == WIFI_PROV_STA_AUTH_ERROR) ?
-                         "Wi-Fi station authentication failed" : "Wi-Fi access-point not found");
+                Serial.printf( "Provisioning failed!\n\tReason : %s\n",(*reason == WIFI_PROV_STA_AUTH_ERROR) ?"Wi-Fi station authentication failed" : "Wi-Fi access-point not found");
                 #endif
                 Update_Status_Coms(WIFI_BAD_CREDENTIALS);
                 esp_wifi_connect();
@@ -169,10 +166,10 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
                 Coms.Provisioning = false;
                 wifi_prov_mgr_stop_provisioning();
                 delay(10000);
-                /*
+                
                 MAIN_RESET_Write(0);
                 ESP.restart();
-                */
+                
                 break;
             case WIFI_PROV_END:
                 #ifdef DEBUG_WIFI
@@ -367,6 +364,7 @@ void Eth_Loop(){
             finding = false;
             Coms.ETH.conectado = false;
             
+            
         break;
         case CONNECTING:
             if(eth_connected){
@@ -420,7 +418,7 @@ void Eth_Loop(){
 
         case CONECTADO:{
             // Recomprobar si tenemos conexion a firebase
-            if(Coms.ETH.ON && !Coms.ETH.Internet && !ConfigFirebase.InternetConection && GetStateTime(xCheckConn) > 60000){
+            if(Coms.ETH.ON && !Coms.ETH.DHCP && !Coms.ETH.Internet && !ConfigFirebase.InternetConection && GetStateTime(xCheckConn) > 60000){
                 xCheckConn = xTaskGetTickCount();
                 if(ComprobarConexion()){
                     ConnectionState = DISCONNECTED;
@@ -435,7 +433,7 @@ void Eth_Loop(){
 
             //Buscar el contador
             if((Coms.ETH.medidor || (ChargingGroup.Params.CDP >> 4 && ChargingGroup.Params.GroupMaster && ChargingGroup.Conected)) && !finding){
-                if(GetStateTime(xStart) > 20000){
+                if(GetStateTime(xConnect) > 20000){
                     xTaskCreate( BuscarContador_Task, "BuscarContador", 4096*4, &finding, 5, NULL); 
                     finding = true;
                 }
@@ -473,6 +471,7 @@ void Eth_Loop(){
                 close_udp();   
                 kill_ethernet();
                 Coms.ETH.State = KILLING;
+                Coms.ETH.DHCP = false;
                 Coms.ETH.restart = false;
                 break;               
             }
@@ -510,7 +509,9 @@ void Eth_Loop(){
             }
         break;
             
-        case DISCONNECTING:
+        case DISCONNECTING:{
+            uint8_t ip_Array[4] = { 0,0,0,0};
+			modifyCharacteristic(&ip_Array[0], 4, COMS_CONFIGURATION_LAN_IP);
             if(!eth_connected && !eth_connecting){        
                 finding = false;
                 if(ContadorExt.GatewayConectado){
@@ -524,6 +525,7 @@ void Eth_Loop(){
                 Coms.ETH.Internet = false;
                 Coms.ETH.conectado = false;
             }
+        }
         break;
 
         case DISCONNECTED:
@@ -532,11 +534,12 @@ void Eth_Loop(){
             xStart = xTaskGetTickCount();
             
         break;
-        case KILLING:        
+        case KILLING:{   
+            uint8_t ip_Array[4] = { 0,0,0,0};
+			modifyCharacteristic(&ip_Array[0], 4, COMS_CONFIGURATION_LAN_IP);
             if(!eth_connected && !eth_connecting){
                 finding = false;
                 Coms.ETH.Internet = false;
-                Coms.ETH.DHCP = false; 
                 Coms.ETH.conectado = false;
 
                 if(ContadorExt.GatewayConectado){
@@ -564,6 +567,7 @@ void Eth_Loop(){
                 initialize_ethernet();         
                 xStart = xTaskGetTickCount();
             }
+        }
         break;
 
         default:
@@ -623,6 +627,7 @@ void ComsTask(void *args){
                 }
                 if(eth_connected || eth_connecting){
                     Coms.ETH.State = KILLING;
+                    Coms.ETH.DHCP = false;
                     Coms.ETH.ON = false;
                     kill_ethernet();
                 }
@@ -676,7 +681,7 @@ void ComsTask(void *args){
                         start_wifi();                     
                     }
                 }
-                else{
+                else if(Coms.ETH.Wifi_Perm){
                     start_wifi();
                 }                
             }
