@@ -40,7 +40,6 @@ bool Contador::read(){
         Serial.printf("Counter reading error\n");
         #endif
         ContadorExt.ConexionPerdida = true;
-        ContadorExt.MeidorConectado = false;
         Update_Status_Coms(MED_CONECTION_LOST);
         return false;
     }
@@ -99,6 +98,10 @@ void Contador::parse(){
         old = ContadorExt.MeidorConectado;
         Update_Status_Coms(MED_LEYENDO_MEDIDOR);
         
+    }
+
+    if(ContadorExt.ConexionPerdida){
+        ContadorExt.DomesticPower = 0;
     }
 
     uint16_t medida_dom = 0;
