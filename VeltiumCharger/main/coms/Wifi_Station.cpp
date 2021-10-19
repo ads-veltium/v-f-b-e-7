@@ -402,7 +402,7 @@ void Eth_Loop(){
             }
             //si somos el maestro de un grupo, y al minuto no tenemos conexion a internet, activamos el DHCP
             else if(!Coms.ETH.ON){
-                if((ChargingGroup.Params.GroupMaster && ChargingGroup.Params.GroupActive) || Coms.ETH.medidor){
+                if((ChargingGroup.Params.GroupMaster && (ChargingGroup.Params.GroupActive || ChargingGroup.Creando) )|| Coms.ETH.medidor){
                     if(GetStateTime(xStart) > 60000){
                         #ifdef DEBUG_ETH
                             Serial.println("Activo DHCP");
@@ -410,12 +410,12 @@ void Eth_Loop(){
                         kill_ethernet();
                         Coms.ETH.DHCP = true;
                         Coms.ETH.State = KILLING;
+                        ChargingGroup.Creando = false;
                     }
                 }
             }
             
         break;
-
         case CONECTADO:{
             // Recomprobar si tenemos conexion a firebase
             if(Coms.ETH.ON && !Coms.ETH.DHCP && !Coms.ETH.Internet && !ConfigFirebase.InternetConection && GetStateTime(xCheckConn) > 60000){
@@ -439,7 +439,7 @@ void Eth_Loop(){
                 }
             }
             //Arrancar los grupos
-            else if(!ChargingGroup.Conected && Coms.ETH.conectado){
+            else if(!ChargingGroup.Conected && (Coms.ETH.conectado || Coms.ETH.DHCP)){
                 if(ChargingGroup.Params.GroupActive && GetStateTime(xConnect) > 5000 ){
                     if(ConnectionState == IDLE || ConnectionState == DISCONNECTED){       //Esperar a que arranque firebase
                         if(ChargingGroup.StartClient){

@@ -518,6 +518,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 						printf("Tengo que crear un grupo!\n");
 						if(!ChargingGroup.Conected){
 							ChargingGroup.Params.GroupMaster = true;
+							ChargingGroup.Creando = true;
 						}
 						
 
