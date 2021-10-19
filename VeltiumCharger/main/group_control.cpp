@@ -76,9 +76,12 @@ carac_charger New_Data(char* Data, int Data_size){
     }
     if(cJSON_HasObjectItem(mensaje_Json,"Perm")){
       Cargador.Baimena = cJSON_GetObjectItem(mensaje_Json,"Perm")->valueint;
+
+      #ifdef DEBUG_GROUPS
       if(Cargador.Baimena){
         printf("Pidiendo permiso al maestro!\n");
       }
+      #endif
     }
     //Datos para los trifasicos
     if(cJSON_HasObjectItem(mensaje_Json,"currentB")){
@@ -388,6 +391,7 @@ void LimiteConsumo(void *p){
         if(pdTICKS_TO_MS(xTaskGetTickCount() - Start_Timer) > 50000){
           for(int i = 0; i < ChargingGroup.Charger_number; i++){
             if(!memcmp(charger_table[i].HPT, "B1", 2) && charger_table[i].Baimena){
+              
               //cls();
               float reparto = (ChargingGroup.Params.potencia_max *100/230);
               if(charger_table[i].trifasico){

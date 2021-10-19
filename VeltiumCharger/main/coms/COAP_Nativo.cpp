@@ -35,7 +35,8 @@ extern carac_Params Params;
 extern carac_group  ChargingGroup;
 extern carac_charger charger_table[MAX_GROUP_SIZE];
 extern carac_Comands  Comands ;
-extern carac_circuito               Circuitos[MAX_GROUP_SIZE];
+extern carac_circuito Circuitos[MAX_GROUP_SIZE];
+extern carac_Contador ContadorExt;
 
 static StackType_t xServerStack [4096*4]     EXT_RAM_ATTR;
 static StackType_t xLimitStack [4096*4]     EXT_RAM_ATTR;
@@ -491,19 +492,20 @@ void coap_put( char* Topic, char* Message){
 
             if(ChargingGroup.AskPerm && ChargingGroup.ChargPerm){
                 ChargingGroup.AskPerm = false;
+                if(ChargingGroup.Params.CDP >> 4){
+                    if(!ContadorExt.MeidorConectado){
+                        ChargingGroup.AskPerm = true;
+                    }
+                }
                 SendToPSOC5(1, BLOQUEO_CARGA);
-            }
-
+            }            
             
-            
-            if( Cargador.Consigna == 0){
-                Cargador.Consigna = 2;
-            }
-
             //TODOJ: Cambiar lo de corriente d
-            if((uint8_t)Cargador.Consigna != Comands.desired_current){
+            if((uint8_t)Cargador.Consigna != Comands.desired_current && Cargador.Consigna!=0){
                 //corrienteDeseada = Cargador.Consigna * 100;
-                printf("Enviando nueva consigna! %i %i\n", Cargador.Consigna, Comands.desired_current);
+                #ifdef DEBUG_GROUPS
+                    printf("Enviando nueva consigna! %i %i\n", Cargador.Consigna, Comands.desired_current);
+                #endif
                 SendToPSOC5((uint8_t)Cargador.Consigna,MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
             }
 
@@ -750,6 +752,9 @@ static void coap_server(void *p){
     CHARGERS = NULL; 
     TXANDA   = NULL;
     CIRCUITS = NULL;
+
+
+    SendToPSOC5(1, BLOQUEO_CARGA); //Bloquear la carga
 
     memcpy(LastControl, "NOTHING",7);
     while (1) {
