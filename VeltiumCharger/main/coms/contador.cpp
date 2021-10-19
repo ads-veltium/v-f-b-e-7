@@ -43,7 +43,6 @@ bool Contador::read(){
         Update_Status_Coms(MED_CONECTION_LOST);
         return false;
     }
-    ContadorExt.ConexionPerdida = false;
     Measurements.clear();
     deserializeJson(Measurements,CounterClient.ObtenerRespuesta());
 
