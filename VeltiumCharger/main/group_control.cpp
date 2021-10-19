@@ -265,6 +265,9 @@ void New_Current(uint8_t* Buffer, int Data_size){
       Serial.printf("Nueva corriente recibida!!!!\n");
       
       SendToPSOC5(desired_current,MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
+      if(ChargingGroup.ChargPerm){
+        SendToPSOC5(0, BLOQUEO_CARGA);
+      }
   }
 
 }

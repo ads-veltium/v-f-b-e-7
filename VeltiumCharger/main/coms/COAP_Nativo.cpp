@@ -489,15 +489,17 @@ void coap_put( char* Topic, char* Message){
             carac_charger Cargador = New_Data(Message,  strlen(Message));
             
             ChargingGroup.ChargPerm = Cargador.Consigna > 0;
-
+            uint8_t bloqueo_carga = 0;
             if(ChargingGroup.AskPerm && ChargingGroup.ChargPerm){
                 ChargingGroup.AskPerm = false;
                 if(ChargingGroup.Params.CDP >> 4){
                     if(!ContadorExt.MeidorConectado){
                         ChargingGroup.AskPerm = true;
+                        ChargingGroup.ChargPerm = false;
+                        bloqueo_carga =1;
                     }
                 }
-                SendToPSOC5(1, BLOQUEO_CARGA);
+                SendToPSOC5(bloqueo_carga, BLOQUEO_CARGA);
             }            
             
             //TODOJ: Cambiar lo de corriente d

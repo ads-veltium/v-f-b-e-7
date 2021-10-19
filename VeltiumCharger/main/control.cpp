@@ -645,16 +645,12 @@ void procesar_bloque(uint16 tipo_bloque){
 					if(memcmp(&buffer_rx_local[1],"C2",2) && memcmp(&buffer_rx_local[1],"B2",2)){
 						if(Params.Tipo_Sensor || ChargingGroup.Conected){
 							if(!memcmp(status_hpt_anterior, "C",1)){
-								Last_Block = xTaskGetTickCount();
-							}
-							else{
-								Last_Block = 0;
-							}
-						
-							Bloqueo_de_carga = true;
-							ChargingGroup.ChargPerm = false;
-							ChargingGroup.AskPerm = false;
-							SendToPSOC5(Bloqueo_de_carga, BLOQUEO_CARGA);
+								Bloqueo_de_carga = true;
+								ChargingGroup.ChargPerm = false;
+								ChargingGroup.AskPerm = false;
+								SendToPSOC5(Bloqueo_de_carga, BLOQUEO_CARGA);
+							}				
+							
 						}				
 					}
 #endif
