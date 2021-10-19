@@ -643,14 +643,7 @@ void procesar_bloque(uint16 tipo_bloque){
 
 					//Si sale de C2 bloquear la siguiente carga
 					if(memcmp(&buffer_rx_local[1],"C2",2) && memcmp(&buffer_rx_local[1],"B2",2)){
-						Bloqueo_de_carga = false;
-
-#ifdef CONNECTED
 						if(Params.Tipo_Sensor || ChargingGroup.Conected){
-#endif
-#ifndef CONNECTED
-						if(Params.Tipo_Sensor){
-#endif
 							if(!memcmp(status_hpt_anterior, "C",1)){
 								Last_Block = xTaskGetTickCount();
 							}
@@ -659,12 +652,10 @@ void procesar_bloque(uint16 tipo_bloque){
 							}
 						
 							Bloqueo_de_carga = true;
-#ifdef CONNECTED
 							ChargingGroup.ChargPerm = false;
 							ChargingGroup.AskPerm = false;
-#endif
+							SendToPSOC5(Bloqueo_de_carga, BLOQUEO_CARGA);
 						}				
-						SendToPSOC5(Bloqueo_de_carga, BLOQUEO_CARGA);
 					}
 #endif
 					memcpy(status_hpt_anterior, &buffer_rx_local[1], 2);
@@ -1450,25 +1441,26 @@ void procesar_bloque(uint16 tipo_bloque){
 
 
 		case BLOQUEO_CARGA:{
+			Bloqueo_de_carga = true;
 			if(dispositivo_inicializado != 2){
 				Bloqueo_de_carga = true;
 			}
 
 			//si somos parte de un grupo, debemos pedir permiso al maestro
 			else if(ChargingGroup.Params.GroupActive || ChargingGroup.Finding ){
-				if(ChargingGroup.Conected && ChargingGroup.ChargPerm){
-					Bloqueo_de_carga = false;
-					ChargingGroup.AskPerm = false;
+				if(ChargingGroup.Conected){
+					if(ChargingGroup.ChargPerm){
+						Bloqueo_de_carga = false;
+						ChargingGroup.AskPerm = false;
+					}
+					else if(!ChargingGroup.AskPerm ){
+						ChargingGroup.AskPerm = true;
+					}
 				}
-				//Pedir permiso solo si estamos en B1 y si han pasado 15 segundos desde el ultimo bloqueo
-				else if(!ChargingGroup.AskPerm ){
-					ChargingGroup.AskPerm = true;
-				}
-				
 			}
 
 			//Si tenemos un medidor conectado, asta que no nos conectemos a el no permitimos la carga
-			else if(Params.Tipo_Sensor){
+			else if(Params.Tipo_Sensor || (ChargingGroup.Params.GroupMaster && ChargingGroup.Params.CDP >> 4)){
 				if(ContadorExt.MeidorConectado){
 					Bloqueo_de_carga = false;
 				}
@@ -1803,6 +1795,7 @@ void UpdateCompressedTask(void *arg){
 #endif
 
 void controlInit(void){
+	
 	//Freertos estatico
 	xTaskCreateStatic(LedControl_Task,"TASK LEDS",4096*2,NULL,PRIORIDAD_LEDS,xLEDStack,&xLEDBuffer); 
 	xTaskCreateStatic(controlTask,"TASK CONTROL",4096*6,NULL,PRIORIDAD_CONTROL,xControlStack,&xControlBuffer); 

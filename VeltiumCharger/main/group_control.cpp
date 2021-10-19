@@ -28,6 +28,7 @@ TickType_t xStart1;
 
 int Delta_total;
 float Corriente_disponible_total = 0;
+float corriente_disponible_limitada = 0;
 uint8_t Consumo_total = 0;
 uint8_t Conex_Delta;
 uint8_t Conex;
@@ -477,7 +478,7 @@ void LimiteConsumo(void *p){
         LastConex = Conex;
 
         //Comprobar si en algun momento nos estamos pasando de los limites
-        if(Consumo_total > ChargingGroup.Params.potencia_max *100/230){
+        if(Consumo_total > corriente_disponible_limitada){
           ControlGrupoState = CALCULO;
           break;
         }
@@ -502,7 +503,7 @@ void LimiteConsumo(void *p){
           if(!memcmp(charger_table[i].HPT, "B1", 2) && charger_table[i].Baimena){
             //Compruebo si entraria en el grupo con la corriente general
             if(charger_table[i].trifasico ){ //Si el equipo estaba detectado como trifasico, debemos tener en cuenta el triple de corriente
-              float reparto = (ChargingGroup.Params.potencia_max *100/230) / (Conex_Con_tri+3);
+              float reparto = (corriente_disponible_limitada) / (Conex_Con_tri+3);
               if(reparto >= 6){
                 printf("Entra en el grupo!\n");
                 //Compruebo si entraria en el circuito           
@@ -526,7 +527,7 @@ void LimiteConsumo(void *p){
                 }
               }
             }
-            else if((ChargingGroup.Params.potencia_max *100/230) / (Conex_Con_tri+1) >= 6){
+            else if((corriente_disponible_limitada) / (Conex_Con_tri+1) >= 6){
               printf("Entra en el grupo!\n");
               //Compruebo si entraria en el circuito           
                if(Circuitos[charger_table[i].Circuito-1].limite_corriente / (Circuitos[charger_table[i].Circuito-1].Fases[charger_table[i].Fase-1].conex +1 )> 6){
@@ -610,6 +611,7 @@ bool Calculo_General(){
     Conex_Delta = 0;
     uint16_t total_pc =0;
     uint16_t total_consigna=0;
+    uint8_t conectados = 0;
     static uint16_t recalc_count =0;
 
     //Resetear valores
@@ -627,6 +629,21 @@ bool Calculo_General(){
         Circuitos[i].Fases[2].corriente_total = 0;
         Circuitos[i].Fases[2].consigna_total = 0;
     }
+
+    //Comprobar cuantos cargadores están conectados
+    for(int i = 0; i < ChargingGroup.Charger_number; i++){
+      if(charger_table[i].Conected){
+        conectados ++;
+      }
+    }
+    //Si no están todos conectadoes, tendremos algunos en un estado desconocido, por seguridad limitamos la potencia máxima
+    if(conectados == ChargingGroup.Charger_number){
+      corriente_disponible_limitada = floor(ChargingGroup.Params.potencia_max *100/230);
+    }
+    else{
+      corriente_disponible_limitada = floor((ChargingGroup.Params.potencia_max * conectados / ChargingGroup.Charger_number)*100/230);
+    }
+
 
     for(int i = 0; i < ChargingGroup.Charger_number; i++){
 
@@ -717,13 +734,11 @@ bool Calculo_General(){
 
     Consumo_total = ceil(total_pc/100);
     
-    uint16_t corriente_a_repartir = 0;
     bool recalcular = false;
-    corriente_a_repartir = floor(ChargingGroup.Params.potencia_max *100/230);
 
     if(Conex_Con_tri > 0){
       
-      Corriente_disponible_total = floor(corriente_a_repartir / Conex_Con_tri);
+      Corriente_disponible_total = floor(corriente_disponible_limitada / Conex_Con_tri);
     
       if(ChargingGroup.Params.CDP >> 4 && ContadorExt.GatewayConectado){
         float Corriente_CDP__sobra = 0;
@@ -751,9 +766,9 @@ bool Calculo_General(){
         uint16_t Corriente_limite_cdp = Corriente_CDP__sobra;
 
         //Ver si nos pasamos
-        if(Corriente_limite_cdp < Consumo_total || floor(ChargingGroup.Params.potencia_max *100/230) > Corriente_limite_cdp){ //Estamos por encima del limite
-            corriente_a_repartir =  Corriente_limite_cdp;
-            Corriente_disponible_total = floor(corriente_a_repartir / Conex_Con_tri);
+        if(Corriente_limite_cdp < Consumo_total || corriente_disponible_limitada > Corriente_limite_cdp){ //Estamos por encima del limite
+            corriente_disponible_limitada =  Corriente_limite_cdp;
+            Corriente_disponible_total = floor(corriente_disponible_limitada / Conex_Con_tri);
             recalcular = true;
         }
           printf("Recalcular %i \n",recalcular);
@@ -788,7 +803,7 @@ bool Calculo_General(){
           Conex_Con_tri -=2;
         }
         if(Conex_Con_tri > 0){
-          Corriente_disponible_total = floor(corriente_a_repartir / Conex_Con_tri);
+          Corriente_disponible_total = floor(corriente_disponible_limitada / Conex_Con_tri);
         }
         else{
           break;
@@ -796,7 +811,7 @@ bool Calculo_General(){
       }
     }
 
-    if((ChargingGroup.Params.potencia_max *100/230-total_consigna) > 5) {
+    if((corriente_disponible_limitada-total_consigna) > 5) {
       if(++recalc_count > 25){
         recalcular = true;
         recalc_count = 0;
@@ -806,12 +821,10 @@ bool Calculo_General(){
 
 
 #ifdef DEBUG_GROUPS
-    printf("Total Current %f\n",floor(ChargingGroup.Params.potencia_max *100/230)); 
+    printf("Total Current %f\n",corriente_disponible_limitada); 
     printf("Consumo total %i \n\n",Consumo_total); 
     printf("Consigna total %i \n\n",total_consigna); 
     printf("Corriente_disponible_total %f \n\n",Corriente_disponible_total); 
-
-     
 #endif
     return recalcular;
 }

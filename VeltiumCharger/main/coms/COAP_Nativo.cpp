@@ -488,6 +488,13 @@ void coap_put( char* Topic, char* Message){
             carac_charger Cargador = New_Data(Message,  strlen(Message));
             
             ChargingGroup.ChargPerm = Cargador.Consigna > 0;
+
+            if(ChargingGroup.AskPerm && ChargingGroup.ChargPerm){
+                ChargingGroup.AskPerm = false;
+                SendToPSOC5(1, BLOQUEO_CARGA);
+            }
+
+            
             
             if( Cargador.Consigna == 0){
                 Cargador.Consigna = 2;
