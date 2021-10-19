@@ -335,6 +335,7 @@ typedef struct{
 	bool StartClient   = false;
 	bool ChargPerm     = false;
 	bool Finding       = false;
+	bool Creando	   = false;
 	uint8_t Circuit_number = 0;
 	uint8_t Charger_number = 0;
 
