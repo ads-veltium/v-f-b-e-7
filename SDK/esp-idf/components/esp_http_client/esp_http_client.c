@@ -897,6 +897,7 @@ int esp_http_client_read(esp_http_client_handle_t client, char *buffer, int len)
 esp_err_t esp_http_client_perform(esp_http_client_handle_t client)
 {
     esp_err_t err;
+    client->redirect_counter = 0;
     do {
         if (client->process_again) {
             esp_http_client_prepare(client);

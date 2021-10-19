@@ -124,8 +124,8 @@ void BuscarContador_Task(void *args){
             if(resultado == PING_SUCCESS){           
                 char url[100] = "http://";
                 strcat(url, ip);
-                if(Cliente.Send_Command(url,LEER)) {
-                    String respuesta = Cliente.ObtenerRespuesta();      
+                if(Cliente.Send_Command(url,LEER)){
+                    String respuesta = Cliente.ObtenerRespuesta();  
                     if(respuesta.indexOf("Iskra")>-1){
                         strcpy(ContadorExt.ContadorIp,ip);
                         ContadorExt.GatewayConectado = true;
