@@ -400,10 +400,22 @@ void Eth_Loop(){
                 Coms.ETH.State = CONECTADO;
                 xConnect = xTaskGetTickCount();
             }
-            //si somos el maestro de un grupo, y al minuto no tenemos conexion a internet, activamos el DHCP
+            //Si tenemos un grupo activo y al minuto no tenemos conexion a internet, activamos el DHCP
+            //Si no soy el maestro, espero 2 minutos
             else if(!Coms.ETH.ON){
                 if((ChargingGroup.Params.GroupMaster && (ChargingGroup.Params.GroupActive || ChargingGroup.Creando) )|| Coms.ETH.medidor){
                     if(GetStateTime(xStart) > 60000){
+                        #ifdef DEBUG_ETH
+                            Serial.println("Activo DHCP");
+                        #endif
+                        kill_ethernet();
+                        Coms.ETH.DHCP = true;
+                        Coms.ETH.State = KILLING;
+                        ChargingGroup.Creando = false;
+                    }
+                }
+                else if((ChargingGroup.Params.GroupActive && !ChargingGroup.Conected)){
+                    if(GetStateTime(xStart) > 120000){
                         #ifdef DEBUG_ETH
                             Serial.println("Activo DHCP");
                         #endif
