@@ -115,9 +115,22 @@ hnd_get(coap_context_t *ctx, coap_resource_t *resource,coap_session_t *session,c
         }
         
         for(uint8_t i=0;i< ChargingGroup.Charger_number;i++){
-            memcpy(&buffer[3+(i*9)],charger_table[i].name,8);   
-            itoa(((charger_table[i].Circuito << 2) + charger_table[i].Fase),&buffer[11+(i*9)],10);
+            memcpy(&buffer[3+(i*11)],charger_table[i].name,8);  
+
+            uint8_t value = (charger_table[i].Circuito << 2) + charger_table[i].Fase;
+
+            if(value< 10){
+                sprintf(&buffer[11+(i*11)],"00%i",(char)ChargingGroup.Charger_number);
+            }
+            else if(value< 100){
+                sprintf(&buffer[11+(i*11)],"0%i",(char)value);
+            }
+            else{
+                sprintf(&buffer[11+(i*11)],"%i",(char)value);
+            }
         }
+
+        printf("Me piden cargadores %s\n", (char*)buffer);
     }
     else if(!memcmp(resource->uri_path->s, "CIRCUITS", resource->uri_path->length)){
         
@@ -133,6 +146,7 @@ hnd_get(coap_context_t *ctx, coap_resource_t *resource,coap_session_t *session,c
         for(uint8_t i=0;i< ChargingGroup.Circuit_number;i++){ 
             buffer[i+3] = (char)Circuitos[i].limite_corriente;
         }
+
     }
     else if(!memcmp(resource->uri_path->s, "PARAMS", resource->uri_path->length)){
         
@@ -152,7 +166,6 @@ hnd_get(coap_context_t *ctx, coap_resource_t *resource,coap_session_t *session,c
         int size = strlen(my_json_string);
         memcpy(&buffer[1], my_json_string, size);
         buffer[size+1]='\0';
-        Serial.println(buffer);
         free(my_json_string);
     }
     else if(!memcmp(resource->uri_path->s, "CONTROL", resource->uri_path->length)){
@@ -258,6 +271,7 @@ message_handler(coap_context_t *ctx, coap_session_t *session,coap_pdu_t *sent, c
                             New_Control(&data[1],  data_len-1);
                             break;
                         case GROUP_CHARGERS:
+                            printf("New group2 \n");
                             New_Group(&data[1],  data_len-1);
                             break;
                         case TURNO:
@@ -297,13 +311,15 @@ static void hnd_espressif_put(coap_context_t *ctx,coap_resource_t *resource,coap
     (void)coap_get_data(request, &size, &data);
 
     if(!memcmp(resource->uri_path->s, "CHARGERS", resource->uri_path->length)){
+        printf("New group1 \n");
         New_Group(data,  size);
+        delay(100);
         coap_resource_notify_observers(resource, NULL);
     }
     else if(!memcmp(resource->uri_path->s, "PARAMS", resource->uri_path->length)){
-        coap_resource_notify_observers(resource, NULL);
         New_Params(data, size);
-        
+        delay(100);
+        coap_resource_notify_observers(resource, NULL);        
     }
     else if(!memcmp(resource->uri_path->s, "CONTROL", resource->uri_path->length)){
 
@@ -1029,9 +1045,21 @@ void Send_Chargers(){
   }
   
   for(uint8_t i=0;i< ChargingGroup.Charger_number;i++){
-      memcpy(&buffer[2+(i*9)],charger_table[i].name,8);   
-      itoa((charger_table[i].Circuito << 2) + charger_table[i].Fase,&buffer[10+(i*9)],10);
+      memcpy(&buffer[2+(i*11)],charger_table[i].name,8);  
+
+      uint8_t value = (charger_table[i].Circuito << 2) + charger_table[i].Fase;
+
+      if(value< 10){
+        sprintf(&buffer[10+(i*11)],"00%i",(char)ChargingGroup.Charger_number);
+      }
+      else if(value< 100){
+        sprintf(&buffer[10+(i*11)],"0%i",(char)value);
+      }
+      else{
+        sprintf(&buffer[10+(i*11)],"%i",(char)value);
+      }
   }
+
   coap_put("CHARGERS", buffer);
 }
 

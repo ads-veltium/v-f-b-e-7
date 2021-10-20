@@ -195,9 +195,7 @@ void New_Control(char* Data, int Data_size){
 
   if(!memcmp(Data,"Pause",5)){
     printf("Tengo que pausar el grupo\n");
-    if(ChargingGroup.Params.GroupMaster){
-      broadcast_a_grupo("Geldituzazu taldea", 18);
-    }
+    broadcast_a_grupo("Geldituzazu taldea", 18);
     ChargingGroup.StopOrder = true;
     ChargingGroup.Params.GroupActive = 0;
     store_params_in_mem();
@@ -275,6 +273,7 @@ void New_Circuit(uint8_t* Buffer, int Data_size){
   if(Data_size <=0){
     return;
   }
+  printf("%s\n", Buffer);
   
   
   char size_char[2];
@@ -289,9 +288,8 @@ void New_Circuit(uint8_t* Buffer, int Data_size){
   }
 
   if(ChargingGroup.Params.GroupMaster){
-    int numero_circuitos = buffer[0];
-    ChargingGroup.Circuit_number = numero_circuitos;
-    for(int i=0;i< numero_circuitos;i++){
+    ChargingGroup.Circuit_number = size;
+    for(int i=0;i< size;i++){
       Circuitos[i].numero = i+1;
       Circuitos[i].Fases[0].numero = 1;
       Circuitos[i].Fases[1].numero = 2;
@@ -351,10 +349,18 @@ void New_Group(char* Data, int Data_size){
             ID[j]=(char)Data[2+i*9+j];
         }
 
-        add_to_group(ID, get_IP(ID), charger_table, &ChargingGroup.Charger_number);
+        add_to_group(ID, get_IP(ID), charger_table, &ChargingGroup.Charger_number); 
+        
+        char v[3];
+        memcpy(v,&Data[10+i*11],3);
+        uint8_t value = atoi(v);
 
-        charger_table[i].Fase = uint8_t(Data[10+i*9]-'0') & 0x03;
-        charger_table[i].Circuito = uint8_t(Data[10+i*9]-'0') >> 0x02;
+        printf("Crudo fase y circuito %i %i %i\n",value, value & 0x03, value >> 2);
+
+
+
+        charger_table[i].Fase = value & 0x03;
+        charger_table[i].Circuito = value >> 2;
 
         uint8_t index =check_in_group(ID, temp_chargers, temp_chargers_size);
         if(index != 255){
@@ -771,14 +777,26 @@ bool Calculo_General(){
         //Establecer el limite disponible
         uint16_t Corriente_limite_cdp = Corriente_CDP__sobra;
 
-        //Ver si nos pasamos
-        if(Corriente_limite_cdp < Consumo_total || corriente_disponible_limitada > Corriente_limite_cdp){ //Estamos por encima del limite
+        
+        if(floor(ChargingGroup.Params.potencia_max *100/230) > Corriente_limite_cdp){
+          if(conectados == ChargingGroup.Charger_number){
             corriente_disponible_limitada =  Corriente_limite_cdp;
+          }
+          else{
+            corriente_disponible_limitada = Corriente_limite_cdp * conectados / ChargingGroup.Charger_number;
+          }
+          Corriente_disponible_total = floor(corriente_disponible_limitada / Conex_Con_tri);
+        }
+
+        //Ver si nos pasamos
+        if(Corriente_limite_cdp < Consumo_total){ //Estamos por encima del limite
             Corriente_disponible_total = floor(corriente_disponible_limitada / Conex_Con_tri);
             recalcular = true;
         }
           printf("Recalcular %i \n",recalcular);
           printf("Corriente_limite_cdp %i \n",Corriente_limite_cdp);
+          printf("Consumo_total %i \n",Consumo_total);
+          printf("corriente_disponible_limitada %f \n",corriente_disponible_limitada);
           printf("Corriente_CDP__sobra %f \n",Corriente_CDP__sobra);
       }
 

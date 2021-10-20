@@ -10,6 +10,7 @@ extern carac_Firebase_Configuration ConfigFirebase;
 extern carac_Status Status;
 extern carac_Contador   ContadorExt;
 extern carac_Params Params;
+extern carac_charger charger_table[MAX_GROUP_SIZE];
 
 //Contador trifasico
 Contador Counter   EXT_RAM_ATTR;
@@ -354,6 +355,7 @@ void Eth_Loop(){
     static uint8_t LastStatus = APAGADO;
     static uint8_t escape =0;
     static  bool wifi_last =false;
+    static uint8 reintentos = 0;
 
     switch (Coms.ETH.State){
         case APAGADO:
@@ -414,21 +416,33 @@ void Eth_Loop(){
                         ChargingGroup.Creando = false;
                     }
                 }
+
+
+
                 else if((ChargingGroup.Params.GroupActive && !ChargingGroup.Conected)){
-                    if(GetStateTime(xStart) > 120000){
-                        #ifdef DEBUG_ETH
+                    uint8 wait_time = reintentos == 0 ? 90000:30000;
+                    if(GetStateTime(xStart) > wait_time){
+                        if(!memcmp(charger_table[reintentos].name,ConfigFirebase.Device_Id,8)){
+                            #ifdef DEBUG_ETH
                             Serial.println("Activo DHCP");
-                        #endif
-                        kill_ethernet();
-                        Coms.ETH.DHCP = true;
-                        Coms.ETH.State = KILLING;
-                        ChargingGroup.Creando = false;
+                            #endif
+                            kill_ethernet();
+                            Coms.ETH.DHCP = true;
+                            Coms.ETH.State = KILLING;
+                            ChargingGroup.Creando = false;
+                        }
+                        else{
+                            xStart = xTaskGetTickCount();
+                            reintentos++;
+                        }
+                        
                     }
                 }
             }
             
         break;
         case CONECTADO:{
+            reintentos=0;
             // Recomprobar si tenemos conexion a firebase
             if(Coms.ETH.ON && !Coms.ETH.DHCP && !Coms.ETH.Internet && !ConfigFirebase.InternetConection && GetStateTime(xCheckConn) > 60000){
                 xCheckConn = xTaskGetTickCount();

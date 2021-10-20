@@ -641,6 +641,11 @@ void procesar_bloque(uint16 tipo_bloque){
 						ConfigFirebase.ResetUser = false;
 					}
 
+					if (!memcmp(&buffer_rx_local[1], "A",1) || !memcmp(status_hpt_anterior, "0",1)){
+						ChargingGroup.ChargPerm = false;
+						ChargingGroup.AskPerm = false;
+					}
+
 					//Si sale de C2 bloquear la siguiente carga
 					if(memcmp(&buffer_rx_local[1],"C2",2) && memcmp(&buffer_rx_local[1],"B2",2)){
 						if(Params.Tipo_Sensor || ChargingGroup.Conected){
@@ -1258,7 +1263,7 @@ void procesar_bloque(uint16 tipo_bloque){
                     ID[j]=(char)buffer_rx_local[2+i*9+j];
                 }
                 add_to_group(ID, get_IP(ID), charger_table, &ChargingGroup.Charger_number);
-
+				printf("Crudo fase y circuito psoc %i %i %i\n",buffer_rx_local[10+i*9], uint8_t(buffer_rx_local[10+i*9]) & 0x03, uint8_t(buffer_rx_local[10+i*9]) >> 2);
                 charger_table[i].Fase = (buffer_rx_local[10+i*9]) & 0x03;
 				charger_table[i].Circuito = (buffer_rx_local[10+i*9]) >> 2;
 
@@ -1420,6 +1425,7 @@ void procesar_bloque(uint16 tipo_bloque){
 		}
 
 		case GROUPS_CIRCUITS:{
+
 			ChargingGroup.NewData = true;
 			int numero_circuitos = buffer_rx_local[0];
 			ChargingGroup.Circuit_number = numero_circuitos;

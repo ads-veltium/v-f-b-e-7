@@ -480,14 +480,12 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 				if(!ChargingGroup.Conected && payload[0]){
 					ChargingGroup.Params.GroupMaster = true;
 				}
-				printf("Me han llegau los params! %i\n", ChargingGroup.Params.GroupMaster);
 				uint8_t sendBuffer[7];
 				sendBuffer[0] = ChargingGroup.Params.GroupMaster;
 
 				if(ChargingGroup.Params.GroupActive && !payload[0]){
 					ChargingGroup.SendNewParams = true;
 				}
-				printf("%s\n", (char*)sendBuffer);
 				memcpy(&sendBuffer[1], payload,6);
 				
 				buffer_tx[0] = HEADER_TX;
@@ -502,6 +500,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 				return;
 			}
 			else if (handle == GROUPS_CIRCUITS) {
+                
 				uint8_t circuit_number = payload[0];
 				size = circuit_number +1;
 				buffer_tx[0] = HEADER_TX;
