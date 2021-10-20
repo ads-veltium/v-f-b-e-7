@@ -230,7 +230,6 @@ static void eth_event_handler(void *arg, esp_event_base_t event_base, int32_t ev
                     eth_link_up = false;
                     Coms.ETH.conectado = false;
                 }
-                ChargingGroup.StopOrder = true;
 
                 break;
             default:
