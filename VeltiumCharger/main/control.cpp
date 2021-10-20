@@ -1280,7 +1280,6 @@ void procesar_bloque(uint16 tipo_bloque){
 
                 if(!memcmp(ID,ConfigFirebase.Device_Id,8)){
                     charger_table[i].Conected = true;
-                    Params.Fase = (buffer_rx_local[10+i*9]-'0') & 0x03;
                 }
             }
 
@@ -1352,11 +1351,6 @@ void procesar_bloque(uint16 tipo_bloque){
 					charger_table[i].Consigna = temp_chargers[index].Consigna;
 					charger_table[i].Delta_timer = temp_chargers[index].Delta_timer;
 				}
-
-                if(!memcmp(ID,ConfigFirebase.Device_Id,8)){
-                    Params.Fase = (buffer_rx_local[10+i*9]-'0') & 0x03;
-                }
-
             }
 
             //si llega un grupo en el que no estoy, significa que me han sacado de el
