@@ -120,7 +120,7 @@ hnd_get(coap_context_t *ctx, coap_resource_t *resource,coap_session_t *session,c
             uint8_t value = (charger_table[i].Circuito << 2) + charger_table[i].Fase;
 
             if(value< 10){
-                sprintf(&buffer[11+(i*11)],"00%i",(char)ChargingGroup.Charger_number);
+                sprintf(&buffer[11+(i*11)],"00%i",(char)value);
             }
             else if(value< 100){
                 sprintf(&buffer[11+(i*11)],"0%i",(char)value);
@@ -1050,7 +1050,7 @@ void Send_Chargers(){
       uint8_t value = (charger_table[i].Circuito << 2) + charger_table[i].Fase;
 
       if(value< 10){
-        sprintf(&buffer[10+(i*11)],"00%i",(char)ChargingGroup.Charger_number);
+        sprintf(&buffer[10+(i*11)],"00%i",(char)value);
       }
       else if(value< 100){
         sprintf(&buffer[10+(i*11)],"0%i",(char)value);
