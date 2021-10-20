@@ -329,13 +329,13 @@ void start_udp(){
                     }
                 }
                 else if(!memcmp(Desencriptado.c_str(), "Ezabatu taldea", 14)){
-                    if(ChargingGroup.Conected && !ChargingGroup.Params.GroupMaster){
+                    if(ChargingGroup.Conected){
                         Serial.println("el maestro me pide que borre el grupo!");
                         ChargingGroup.DeleteOrder = true;
                     }
                 }
                 else if(!memcmp(Desencriptado.c_str(), "Geldituzazu taldea", 18)){
-                    if(ChargingGroup.Conected && !ChargingGroup.Params.GroupMaster){
+                    if(ChargingGroup.Conected){
                         Serial.println("el maestro me pide que pause el grupo!");
                         ChargingGroup.StopOrder = true;
                     }

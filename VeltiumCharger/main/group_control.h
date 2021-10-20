@@ -22,6 +22,7 @@ carac_charger New_Data(char* Data, int Data_size);
 void New_Params(char* Data, int Data_size);
 void New_Group(char* Data, int Data_size);
 void New_Control(char* Data, int Data_size);
+void broadcast_a_grupo(char* Mensaje, uint16_t size);
 
 bool Calculo_General();
 void Reparto_Delta();

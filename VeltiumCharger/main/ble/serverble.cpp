@@ -583,6 +583,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 
 					//borrado
 					case 3:
+						broadcast_a_grupo("Ezabatu taldea", 14);
 						New_Control("Delete", 7);
 							
 

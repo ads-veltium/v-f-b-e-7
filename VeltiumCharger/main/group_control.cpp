@@ -205,9 +205,7 @@ void New_Control(char* Data, int Data_size){
   else if(!memcmp(Data,"Delete",6)){
     
     printf("Tengo que borrar el grupo\n");
-    if(ChargingGroup.Params.GroupMaster){
-      broadcast_a_grupo("Ezabatu taldea", 14);
-    }
+
     
     ChargingGroup.Params.GroupActive   = 0;
     ChargingGroup.Params.GroupMaster   = 0;
