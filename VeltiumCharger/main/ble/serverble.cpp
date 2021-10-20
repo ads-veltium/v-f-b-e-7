@@ -477,13 +477,17 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 			}
 #ifdef CONNECTED
 			else if (handle == GROUPS_PARAMS) {
+				if(!ChargingGroup.Conected && payload[0]){
+					ChargingGroup.Params.GroupMaster = true;
+				}
+				printf("Me han llegau los params! %i\n", ChargingGroup.Params.GroupMaster);
 				uint8_t sendBuffer[7];
 				sendBuffer[0] = ChargingGroup.Params.GroupMaster;
 
 				if(ChargingGroup.Params.GroupActive && !payload[0]){
 					ChargingGroup.SendNewParams = true;
 				}
-				printf("%s\n", payload);
+				printf("%s\n", (char*)sendBuffer);
 				memcpy(&sendBuffer[1], payload,6);
 				
 				buffer_tx[0] = HEADER_TX;
@@ -508,6 +512,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 				controlSendToSerialLocal(buffer_tx, size + 4);
 				delay(100);
 				ChargingGroup.SendNewCircuits = true;
+				
 				return;
 			}
 			else if (handle == GROUPS_OPERATIONS) {
@@ -515,12 +520,11 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 				switch(operation){
 					//Creacion
 					case 1:
-						printf("Tengo que crear un grupo!\n");
+						
 						if(!ChargingGroup.Conected){
 							ChargingGroup.Params.GroupMaster = true;
 							ChargingGroup.Creando = true;
 						}
-						
 
 						//Actualizar net devices
 						uint8_t net_buffer[452];
@@ -536,7 +540,6 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 
 					//modificacion
 					case 2:
-						printf("Tengo que modificar el grupo!\n");
 						if(!ChargingGroup.Conected){
 							ChargingGroup.Params.GroupMaster = true;
 						}
@@ -580,17 +583,8 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 
 					//borrado
 					case 3:
-						printf("Me ha llegado la orden de borrado\n");
-						//TODO: Ver porque se reinicia al recibir la orden de borrado(Solo pasa a veces)
-						if(ChargingGroup.Conected ){
+						New_Control("Delete", 7);
 							
-							char buffer[20];
-							memcpy(buffer,"Delete",6);
-							coap_put("CONTROL", buffer);
-						}
-						else{
-							New_Control("Delete", 7);
-						}								
 
 					break;
 

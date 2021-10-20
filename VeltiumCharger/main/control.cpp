@@ -1656,7 +1656,48 @@ void Update_Status_Coms(uint16_t Code, uint8_t block){
 #endif
 }
 
+/************************************************
+Esperar a que una variable tenga un valor(bloqueante)
+************************************************/
+bool WaitForValue(uint8* variable, uint8_t objetivo, uint16_t timeout){
 
+	while(*variable != objetivo || --timeout > 0){
+		delay(10);
+	}
+
+	return *variable == objetivo;
+
+}
+
+bool WaitForValue(uint16_t* variable, uint16_t objetivo, uint16_t timeout){
+
+	while(*variable != objetivo || --timeout > 0){
+		delay(10);
+	}
+
+	return *variable == objetivo;
+
+}
+
+bool WaitForValue(float* variable, float objetivo, uint16_t timeout){
+
+	while(*variable != objetivo || --timeout > 0){
+		delay(10);
+	}
+
+	return *variable == objetivo;
+
+}
+
+bool WaitForValue(String* variable, String objetivo, uint16_t timeout){
+
+	while(*variable != objetivo || --timeout > 0){
+		delay(10);
+	}
+
+	return *variable == objetivo;
+
+}
 
 
 /************************************************

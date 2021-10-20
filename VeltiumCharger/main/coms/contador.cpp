@@ -62,13 +62,14 @@ void Contador::parse(){
     if(time == last_time){
         if(++Same_time_count > 5){
             ContadorExt.ConexionPerdida = 1;
-            Update_Status_Coms(MED_LEYENDO_MEDIDOR);
+            Update_Status_Coms(MED_CONECTION_LOST);
             return;
         }
     }
     else{
         ContadorExt.ConexionPerdida = 0;
         Same_time_count = 0;
+        Update_Status_Coms(MED_LEYENDO_MEDIDOR);
     }
     last_time = time;
    
@@ -84,12 +85,13 @@ void Contador::parse(){
 
     //Leer potencias 
     medida = Measurements["measurements"]["P0"].as<String>();
-    
+    Serial.println(medida);
 
     ContadorExt.MeidorConectado = medida != "null";
     if(ContadorExt.MeidorConectado != old){
         if(old){ //Si ya estab a leyendo y perdemos comunicacion,
             ContadorExt.ConexionPerdida = 1;
+            Update_Status_Coms(MED_CONECTION_LOST);
         }
         else{
             ContadorExt.ConexionPerdida = 0;

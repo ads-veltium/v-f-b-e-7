@@ -484,6 +484,7 @@ static void Subscribe(char* TOPIC){
 }
 
 void coap_put( char* Topic, char* Message){
+    ChargingGroup.Putting = true;
     if(ChargingGroup.Params.GroupMaster){
         if(!memcmp("DATA", Topic, 4)){    
             carac_charger Cargador = New_Data(Message,  strlen(Message));
@@ -559,7 +560,7 @@ void coap_put( char* Topic, char* Message){
         
         Esperando_datos =1;
     }
-
+    ChargingGroup.Putting = false;
 }
 
 static void coap_client(void *p){

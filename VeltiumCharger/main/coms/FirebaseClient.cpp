@@ -154,16 +154,16 @@ bool WriteFirebaseParams(String Path){
 bool WriteFirebaseComs(String Path){
 
   Escritura.clear();
-      Escritura["wifi/on"]     = Coms.Wifi.ON;
-      Escritura["wifi/ssid"]   = Coms.Wifi.AP;
-      Escritura["eth/on"]      = Coms.ETH.ON;
-      Escritura["eth/auto"]    = Coms.ETH.Auto;
+  Escritura["wifi/on"]     = Coms.Wifi.ON;
+  Escritura["wifi/ssid"]   = Coms.Wifi.AP;
+  Escritura["eth/on"]      = Coms.ETH.ON;
+  Escritura["eth/auto"]    = Coms.ETH.Auto;
 
-    if(Coms.ETH.Auto){
-      Escritura["eth/ip"]      = ip4addr_ntoa(&Coms.ETH.IP);
-      Escritura["eth/gateway"]  = ip4addr_ntoa(&Coms.ETH.Gateway);
-      Escritura["eth/mask"]     = ip4addr_ntoa(&Coms.ETH.Mask);
-    }
+  if(Coms.ETH.Auto){
+    Escritura["eth/ip"]       = ip4addr_ntoa(&Coms.ETH.IP);
+    Escritura["eth/gateway"]  = ip4addr_ntoa(&Coms.ETH.Gateway);
+    Escritura["eth/mask"]     = ip4addr_ntoa(&Coms.ETH.Mask);
+  }
 
   #ifdef USE_GSM
     Comms_Json.set("modem/apn",Coms.GSM.APN);
