@@ -346,7 +346,7 @@ void New_Group(char* Data, int Data_size){
 
     for(uint8_t i=0; i<numero_de_cargadores;i++){    
         for(uint8_t j =0; j< 8; j++){
-            ID[j]=(char)Data[2+i*9+j];
+            ID[j]=(char)Data[2+i*11+j];
         }
 
         add_to_group(ID, get_IP(ID), charger_table, &ChargingGroup.Charger_number); 
@@ -376,7 +376,6 @@ void New_Group(char* Data, int Data_size){
 
         if(!memcmp(ID,ConfigFirebase.Device_Id,8)){
             charger_table[i].Conected = true;
-            Params.Fase = uint8_t(Data[10+i*9]-'0') & 0x03;
         }
     }
     store_group_in_mem(charger_table, ChargingGroup.Charger_number);
