@@ -405,6 +405,7 @@ void Eth_Loop(){
             //Si tenemos un grupo activo y al minuto no tenemos conexion a internet, activamos el DHCP
             //Si no soy el maestro, espero 2 minutos
             else if(!Coms.ETH.ON){
+                Coms.ETH.Wifi_Perm = true;
                 if((ChargingGroup.Params.GroupMaster && (ChargingGroup.Params.GroupActive || ChargingGroup.Creando) )|| Coms.ETH.medidor){
                     if(GetStateTime(xStart) > 60000){
                         #ifdef DEBUG_ETH

@@ -67,7 +67,6 @@ struct netif ppp_netif;
 
 static const char *TAG = "[PPPOS CLIENT]";
 
-std::string sim_pin = "AT+CPIN="+std::to_string(Coms.GSM.Pin[4])+"\r\n"; 
 
 typedef struct
 {
@@ -684,11 +683,22 @@ static void pppos_client_task(void *args)
 					#ifdef DEBUG
 					Serial.printf("Se requiere numero PIN\n");
 					#endif
+					int i=0;
+					char sim_pin[14];
+					char output[4];
+					for(i=0;i<4;i++){
+						output[i]=Coms.GSM.Pin[i];
+					}
+					sprintf(sim_pin, "AT+CPIN=%s\r\n",output);
+
 					/************ EN CASO DE ACTIVAR PIN**********/
-					atCmd_waitResponse(const_cast<char*>(sim_pin.c_str()), GSM_OK_Str, NULL, sizeof("AT+CPIN=5337\r\n")-1, 5000, NULL, 0);
+					atCmd_waitResponse(sim_pin, GSM_OK_Str, NULL, sizeof("AT+CPIN=5337\r\n")-1, 5000, NULL, 0);
 					vTaskDelay(600 / portTICK_PERIOD_MS);
 					int pin=atCmd_waitResponse("AT+CPIN?\r\n", "CPIN: READY", NULL, sizeof("AT+CPIN?\r\n")-1, 5000, NULL, 0);
 					if(pin<=0){
+						#ifdef DEBUG
+						Serial.printf("PIN incorrecto\n");
+						#endif
 						Update_Status_Coms(MODEM_BAD_PIN);
 						Coms.GSM.ON=false;
 					}
