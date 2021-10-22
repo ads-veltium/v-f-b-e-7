@@ -376,7 +376,7 @@ void LedControl_Task(void *arg){
 			Delay= 85;
 		}
 		//Buscando Medidor
-		else if((Params.Tipo_Sensor || (ChargingGroup.Params.GroupMaster &&  ChargingGroup.Params.CDP >> 4))  && !ContadorExt.MeidorConectado){
+		else if((Params.Tipo_Sensor || (ChargingGroup.Params.GroupMaster &&  ChargingGroup.Params.CDP >> 4))  && !ContadorExt.MeidorConectado && !Coms.Provisioning){
 			//Buscando Gateway
 			if(!ContadorExt.GatewayConectado){
 				if(!Coms.ETH.DHCP){

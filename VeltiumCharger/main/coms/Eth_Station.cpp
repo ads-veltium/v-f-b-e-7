@@ -301,8 +301,8 @@ void initialize_ethernet(void){
         esp_event_handler_register(ETH_EVENT, ETHERNET_EVENT_STOP, esp_netif_action_stop, eth_netif);
         eth_connected = true;
         
-        uint8_t ip_Array[4] = { ip4_addr1(&Coms.ETH.IP),ip4_addr2(&Coms.ETH.IP),ip4_addr3(&Coms.ETH.IP),ip4_addr4(&Coms.ETH.IP)};
-        modifyCharacteristic(&ip_Array[0], 4, COMS_CONFIGURATION_LAN_IP);
+        uint8_t ip_Array[4] = { 0,0,0,0};
+		modifyCharacteristic(&ip_Array[0], 4, COMS_CONFIGURATION_LAN_IP);
         Coms.ETH.conectado = true;	
         
     }   

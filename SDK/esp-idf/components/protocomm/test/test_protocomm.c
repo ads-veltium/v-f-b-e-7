@@ -308,6 +308,7 @@ static esp_err_t verify_response1(session_t *session, SessionData *resp)
     hexdump("Dec Device verifier", check_buf, sizeof(check_buf));
 
     if (memcmp(check_buf, session->client_pubkey, sizeof(session->client_pubkey)) != 0) {
+        printf("%s vs %s \n", (char*)session->client_pubkey, (char*)check_buf);
         ESP_LOGE(TAG, "Key mismatch. Close connection");
         return ESP_FAIL;
     }

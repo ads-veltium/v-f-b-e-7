@@ -155,6 +155,20 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
                 #endif
                 Update_Status_Coms(WIFI_BAD_CREDENTIALS);
                 esp_wifi_connect();
+
+                if(*reason == WIFI_PROV_STA_AUTH_ERROR){
+                    wifi_config_t conf;
+                    memset(&conf, 0, sizeof(wifi_config_t));
+                    if(esp_wifi_set_config(WIFI_IF_STA, &conf)){
+                        wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+                        ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+                        esp_wifi_set_config(WIFI_IF_STA, &conf);
+                    }
+                    Coms.Provisioning = false;
+                    delay(1000);
+                    stop_wifi();
+                }
+                
                 break;
             }
             case WIFI_PROV_CRED_SUCCESS:
@@ -166,7 +180,7 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
                 SendToPSOC5(Coms.Wifi.ON,COMS_CONFIGURATION_WIFI_ON);
                 Coms.Provisioning = false;
                 wifi_prov_mgr_stop_provisioning();
-                delay(10000);
+                delay(8000);
                 
                 MAIN_RESET_Write(0);
                 ESP.restart();
@@ -252,7 +266,9 @@ void initialise_provisioning(void){
         esp_wifi_set_config(WIFI_IF_STA, &conf);
     }
     ESP_ERROR_CHECK(esp_event_handler_register(WIFI_PROV_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL));
-    //configuracion del provision
+
+    
+    //configuracion del provisioning
     sta_netif = esp_netif_create_default_wifi_sta();
     ap_netif = esp_netif_create_default_wifi_ap();
 
@@ -365,6 +381,7 @@ void Eth_Loop(){
             SendToPSOC5(1,SEND_GROUP_DATA);
             finding = false;
             Coms.ETH.conectado = false;
+            Coms.ETH.Wifi_Perm = false;
             
             
         break;
@@ -405,38 +422,41 @@ void Eth_Loop(){
             //Si tenemos un grupo activo y al minuto no tenemos conexion a internet, activamos el DHCP
             //Si no soy el maestro, espero 2 minutos
             else if(!Coms.ETH.ON){
-                Coms.ETH.Wifi_Perm = true;
-                if((ChargingGroup.Params.GroupMaster && (ChargingGroup.Params.GroupActive || ChargingGroup.Creando) )|| Coms.ETH.medidor){
-                    if(GetStateTime(xStart) > 60000){
-                        #ifdef DEBUG_ETH
-                            Serial.println("Activo DHCP");
-                        #endif
-                        kill_ethernet();
-                        Coms.ETH.DHCP = true;
-                        Coms.ETH.State = KILLING;
-                        ChargingGroup.Creando = false;
+                if(!Coms.ETH.medidor && !ChargingGroup.Params.GroupActive){
+                    if(GetStateTime(xStart) > 5000){
+                        Coms.ETH.Wifi_Perm = true;
                     }
                 }
-
-
-
-                else if((ChargingGroup.Params.GroupActive && !ChargingGroup.Conected)){
-                    uint8 wait_time = reintentos == 0 ? 90000:30000;
-                    if(GetStateTime(xStart) > wait_time){
-                        if(!memcmp(charger_table[reintentos].name,ConfigFirebase.Device_Id,8)){
+                if(!Coms.Provisioning){
+                    if((ChargingGroup.Params.GroupMaster && (ChargingGroup.Params.GroupActive || ChargingGroup.Creando) )|| Coms.ETH.medidor){
+                        if(GetStateTime(xStart) > 90000){
                             #ifdef DEBUG_ETH
-                            Serial.println("Activo DHCP");
+                                Serial.println("Activo DHCP");
                             #endif
                             kill_ethernet();
                             Coms.ETH.DHCP = true;
                             Coms.ETH.State = KILLING;
                             ChargingGroup.Creando = false;
                         }
-                        else{
-                            xStart = xTaskGetTickCount();
-                            reintentos++;
+                    }
+                    else if((ChargingGroup.Params.GroupActive && !ChargingGroup.Conected)){
+                        uint8 wait_time = reintentos == 0 ? 110000:30000;
+                        if(GetStateTime(xStart) > wait_time){
+                            if(!memcmp(charger_table[reintentos].name,ConfigFirebase.Device_Id,8)){
+                                #ifdef DEBUG_ETH
+                                Serial.println("Activo DHCP");
+                                #endif
+                                kill_ethernet();
+                                Coms.ETH.DHCP = true;
+                                Coms.ETH.State = KILLING;
+                                ChargingGroup.Creando = false;
+                            }
+                            else{
+                                xStart = xTaskGetTickCount();
+                                reintentos++;
+                            }
+                            
                         }
-                        
                     }
                 }
             }
@@ -445,17 +465,20 @@ void Eth_Loop(){
         case CONECTADO:{
             reintentos=0;
             // Recomprobar si tenemos conexion a firebase
-            if(Coms.ETH.ON && !Coms.ETH.DHCP && !Coms.ETH.Internet && !ConfigFirebase.InternetConection && GetStateTime(xCheckConn) > 60000){
-                xCheckConn = xTaskGetTickCount();
-                if(ComprobarConexion()){
-                    ConnectionState = DISCONNECTED;
-                    Coms.ETH.Internet = true;
-                    Coms.ETH.Wifi_Perm = false;
+            if(Coms.ETH.ON){
+                if(!Coms.ETH.DHCP && !Coms.ETH.Internet && !ConfigFirebase.InternetConection && GetStateTime(xCheckConn) > 60000){
+                    xCheckConn = xTaskGetTickCount();
+                    if(ComprobarConexion()){
+                        ConnectionState = DISCONNECTED;
+                        Coms.ETH.Internet = true;
+                        Coms.ETH.Wifi_Perm = false;
+                    }
                 }
             }
-
-            if(ChargingGroup.Params.GroupActive){
-                Coms.ETH.Wifi_Perm = true;
+            else{
+                if(!Coms.ETH.medidor || (Coms.ETH.medidor && ContadorExt.GatewayConectado)){
+                    Coms.ETH.Wifi_Perm = true;
+                }
             }
 
             //Buscar el contador
@@ -574,18 +597,13 @@ void Eth_Loop(){
                     ContadorExt.MeidorConectado = false;
                     Counter.end();
                     Update_Status_Coms(0,MED_BLOCK);
-                }
-
-                if(!Coms.ETH.ON && ! Coms.ETH.medidor){
-                    Coms.ETH.State = APAGADO;
-                    break;
-                }              
+                }           
                 
-                Coms.ETH.Wifi_Perm = false;
-
                 wait_for_firebase_stop(100);
 
                 stop_wifi();
+                Coms.ETH.Wifi_Perm = false;
+
                 if(Coms.GSM.ON){
                     FinishGSM();
                 }
@@ -635,7 +653,7 @@ void ComsTask(void *args){
         if(Coms.StartConnection){
             Eth_Loop();     
             //Arranque del provisioning
-            if(Coms.StartProvisioning){
+            if(Coms.StartProvisioning && !Coms.Provisioning){
                 if(Coms.GSM.ON){
                     if(gsm_connected){
                         Coms.GSM.ON = false;
@@ -652,12 +670,7 @@ void ComsTask(void *args){
                     StopServer();
                     ServidorArrancado = false;
                 }
-                if(eth_connected || eth_connecting){
-                    Coms.ETH.State = KILLING;
-                    Coms.ETH.DHCP = false;
-                    Coms.ETH.ON = false;
-                    kill_ethernet();
-                }
+                Coms.ETH.Wifi_Perm = true;
 
                 delay(100);
                 initialise_provisioning();
