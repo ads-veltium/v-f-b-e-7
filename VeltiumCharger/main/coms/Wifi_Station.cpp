@@ -433,8 +433,8 @@ void Eth_Loop(){
                             #ifdef DEBUG_ETH
                                 Serial.println("Activo DHCP");
                             #endif
-                            kill_ethernet();
                             Coms.ETH.DHCP = true;
+                            kill_ethernet();
                             Coms.ETH.State = KILLING;
                             ChargingGroup.Creando = false;
                         }
@@ -446,8 +446,8 @@ void Eth_Loop(){
                                 #ifdef DEBUG_ETH
                                 Serial.println("Activo DHCP");
                                 #endif
-                                kill_ethernet();
                                 Coms.ETH.DHCP = true;
+                                kill_ethernet();
                                 Coms.ETH.State = KILLING;
                                 ChargingGroup.Creando = false;
                             }
@@ -604,7 +604,7 @@ void Eth_Loop(){
                 stop_wifi();
                 Coms.ETH.Wifi_Perm = false;
 
-                if(Coms.GSM.ON){
+                if(Coms.GSM.ON && gsm_connected){
                     FinishGSM();
                 }
                 Coms.ETH.State = CONNECTING;
@@ -692,12 +692,14 @@ void ComsTask(void *args){
             //Encendido de las interfaces GSM     
             if(Coms.GSM.ON){
                 if(!gsm_connected){
-                    if(!Coms.ETH.Internet && Coms.ETH.Wifi_Perm && !Coms.Wifi.ON){
-                        StartGSM();                     
-                    }      
-                    else if(!Coms.Wifi.ON){
-                        StartGSM();  
+                    if(Coms.ETH.ON){
+                        if(!Coms.ETH.Internet && Coms.ETH.Wifi_Perm && !Coms.Wifi.Internet){
+                            StartGSM();                    
                         }
+                    }
+                    else if(Coms.ETH.Wifi_Perm && !Coms.Wifi.Internet){
+                        StartGSM();
+                    }                
                 }
                 else{
                     if(Coms.GSM.reboot){
@@ -708,7 +710,7 @@ void ComsTask(void *args){
                     }
                 }                
             }
-            else{
+            if((!Coms.GSM.ON || !Coms.ETH.Wifi_Perm)){
                 if(gsm_connected){
                     FinishGSM();
                 }

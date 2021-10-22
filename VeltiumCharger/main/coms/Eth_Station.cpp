@@ -156,10 +156,10 @@ void BuscarContador_Task(void *args){
     }
     else{
         Coms.ETH.Wifi_Perm = true;
-        if(Coms.GSM.ON){
+        /*if(Coms.GSM.ON){
             Update_Status_Coms(0,MODEM_BLOCK);
             Coms.GSM.reboot=true;
-        }
+        }*/
     }
            
    
@@ -216,7 +216,10 @@ static void eth_event_handler(void *arg, esp_event_base_t event_base, int32_t ev
                 Update_Status_Coms(0,MED_BLOCK);
                 ContadorExt.GatewayConectado = false;
                 ContadorExt.MeidorConectado = false;
-                Coms.ETH.Wifi_Perm = true;
+                if(!Coms.ETH.DHCP){
+                    Coms.ETH.Wifi_Perm = true;
+                }
+                
                 eth_connected = false;
                 break;
             case ETHERNET_EVENT_DISCONNECTED:
