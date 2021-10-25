@@ -85,7 +85,7 @@ uint16 cnt_diferencia = 1;
 uint8 HPT_estados[9][3] = {"0V", "A1", "A2", "B1", "B2", "C1", "C2", "E1", "F1"};
 
 #ifdef USE_COMS
-uint8 version_firmware[11] = {"VBLE2_0517"};	
+uint8 version_firmware[11] = {"VBLE2_0516"};	
 #else
 uint8 version_firmware[11] = {"VBLE0_0513"};	
 #endif
@@ -244,7 +244,7 @@ void controlTask(void *arg)
 						//Alguien se está intentando conectar	
 						if(AuthTimer !=0){
 							uint32_t Transcurrido = pdTICKS_TO_MS(xTaskGetTickCount()-AuthTimer);
-							if(Transcurrido > 10000 && !authSuccess){
+							if(Transcurrido > 20000 && !authSuccess){
 								#ifdef DEBUG
 								printf("Auth request fallada, me desconecto!!\n");
 								#endif
