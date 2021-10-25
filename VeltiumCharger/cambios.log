@@ -8,14 +8,15 @@ v5.17
     - Eliminado Smartconfig
     - Añadida gestión de grupos
     - Añadido multiusuario
-    - Añadido guardar registro entre reinicios
+    - Añadido guardar registro de carga entre reinicios
     - Añadido Status de comunicaciones (Solo en el equipo)
     - Reducido tamaño memoria en spiram
     - Mejora en la visualizacion de la busqueda del medidor (LEDS)
-    - Aumentado tiempo de inicio de busqueda modem(30 seg a 2minutos)
+    - Aumentado tiempo de inicio de busqueda modem(30 seg a 90)
     - Firebase Optimizado (5 seg deteccion conexion 150 miliseg durante conexion + añadido estado de conectado)
     - Cambio en el modo de busqueda del medidor para evitar problemas con el DHCP
     - Cambio en la detección de desconexión del cable de ethernet para evitar problemas con el medidor ISKRA
     - Comprobar la ausencia de Diodo solo a la entrada de B1
     - Nueva característica para indicar el usuario que ha iniciado la recarga
     - Ethernet siempre activo
+    - Actualizada Librería NimBLE

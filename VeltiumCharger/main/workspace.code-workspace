@@ -8,18 +8,45 @@
 		}
 	],
 	"settings": {
-		"python.pythonPath": "/bin/python",
+		"actionButtons": {
+			"defaultColor": "#ff0034",
+			"loadNpmCommands": false,
+			"reloadButton": "♻️",
+			"commands": [
+				{
+					"name": "BUILD",
+					"color": "white",
+					"singleInstance": true,
+					"command": ". /home/joel/Documents/fw-bird-esp32/SDK/esp-idf/./export.sh && cd /home/joel/Documents/fw-bird-esp32/VeltiumCharger/ && make -j6"
+				},
+				{
+					"name": "MFM",
+					"color": "white",
+					"singleInstance": true,
+					"command": ". /home/joel/Documents/fw-bird-esp32/SDK/esp-idf/./export.sh && cd /home/joel/Documents/fw-bird-esp32/VeltiumCharger/ && make flash monitor -j6"
+				},
+				{
+					"name": "MONITOR",
+					"color": "white",
+					"singleInstance": true,
+					"command": ". /home/joel/Documents/fw-bird-esp32/SDK/esp-idf/./export.sh && cd /home/joel/Documents/fw-bird-esp32/VeltiumCharger/ && make monitor"
+				},
+				{
+					"name": "MENUCONFIG",
+					"color": "white",
+					"singleInstance": true,
+					"command": ". /home/joel/Documents/fw-bird-esp32/SDK/esp-idf/./export.sh && cd /home/joel/Documents/fw-bird-esp32/VeltiumCharger && make menuconfig"
+				},
+				{
+					"name": "FLASH",
+					"color": "white",
+					"singleInstance": true,
+					"command": ". /home/joel/Documents/fw-bird-esp32/SDK/esp-idf/./export.sh && cd /home/joel/Documents/firmware/fw-bird-esp32/VeltiumCharger/ && make flash -j6"
+				}
+			]
+		},
 		"files.associations": {
-			"array": "cpp",
-			"deque": "cpp",
-			"list": "cpp",
-			"string": "cpp",
-			"unordered_map": "cpp",
-			"unordered_set": "cpp",
-			"vector": "cpp",
-			"string_view": "cpp",
-			"initializer_list": "cpp",
-			"regex": "cpp"
+			"cmath": "cpp"
 		}
 	}
 }
