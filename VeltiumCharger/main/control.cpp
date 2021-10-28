@@ -87,7 +87,7 @@ uint8 HPT_estados[9][3] = {"0V", "A1", "A2", "B1", "B2", "C1", "C2", "E1", "F1"}
 #ifdef USE_COMS
 uint8 version_firmware[11] = {"VBLE2_0516"};	
 #else
-uint8 version_firmware[11] = {"VBLE0_0513"};	
+uint8 version_firmware[11] = {"VBLE0_0511"};	
 #endif
 
 
@@ -419,6 +419,10 @@ void startSystem(void){
 		//Init firebase values
 		UpdateStatus.ESP_Act_Ver = ParseFirmwareVersion((char *)(version_firmware));
 		UpdateStatus.PSOC5_Act_Ver = ParseFirmwareVersion((char *)(PSOC5_version_firmware));
+
+		Serial.println(UpdateStatus.PSOC5_Act_Ver);
+		Serial.println(UpdateStatus.ESP_Act_Ver);
+
 
 		//compatibilidad con versiones anteriores de firmwware
 		if(UpdateStatus.PSOC5_Act_Ver <= 510){
@@ -1616,12 +1620,12 @@ void Update_Status_Coms(uint16_t Code, uint8_t block){
 			Status_Coms &= 0b1111111111100011;
 
 		}
-		else if(Code <= MED_CONECTION_LOST){
-			Status_Coms &= 0b1111111000011111;
+		else if(Code <= MED_CONECTION_RESTAURED){
+			Status_Coms &= 0b1111111100011111;
 			
 		}
 		else if(Code <= MODEM_CONNECTED){
-			Status_Coms &= 0b1110000111111111;
+			Status_Coms &= 0b1000001111111111;
 		}	
 		Status_Coms |= Code;
 	}
@@ -1634,10 +1638,10 @@ void Update_Status_Coms(uint16_t Code, uint8_t block){
 				Status_Coms &= ~0b1111111111100011;
 				break;
 			case MED_BLOCK:
-				Status_Coms &= ~0b1111111000011111;
+				Status_Coms &= ~0b1111110000011111;
 				break;
 			case MODEM_BLOCK:
-				Status_Coms &= ~0b1110000111111111;
+				Status_Coms &= ~0b1000001111111111;
 				break;
 		}
 	}
@@ -1650,7 +1654,7 @@ void Update_Status_Coms(uint16_t Code, uint8_t block){
 
 #ifdef DEBUG
 	if(Last_Status != Status_Coms){
-		printf("m: "BYTE_TO_BINARY_PATTERN" "BYTE_TO_BINARY_PATTERN"\n",BYTE_TO_BINARY( Status_Coms >> 8), BYTE_TO_BINARY( Status_Coms ));
+		printf("Nuevo status coms: "BYTE_TO_BINARY_PATTERN" "BYTE_TO_BINARY_PATTERN"\n",BYTE_TO_BINARY( Status_Coms >> 8), BYTE_TO_BINARY( Status_Coms ));
 		Last_Status = Status_Coms;
 	}
 #endif

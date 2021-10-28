@@ -72,8 +72,6 @@ void Contador::parse(){
         Update_Status_Coms(MED_LEYENDO_MEDIDOR);
     }
     last_time = time;
-   
-
     
     //Leer corrientes
     /*medida = Measurements["measurements"]["I1"].as<String>();
@@ -89,7 +87,7 @@ void Contador::parse(){
 
     ContadorExt.MeidorConectado = medida != "null";
     if(ContadorExt.MeidorConectado != old){
-        if(old){ //Si ya estab a leyendo y perdemos comunicacion,
+        if(old){ //Si ya estaba leyendo y perdemos comunicacion,
             ContadorExt.ConexionPerdida = 1;
             Update_Status_Coms(MED_CONECTION_LOST);
         }
@@ -98,7 +96,6 @@ void Contador::parse(){
         }
         old = ContadorExt.MeidorConectado;
         Update_Status_Coms(MED_LEYENDO_MEDIDOR);
-        
     }
 
     if(ContadorExt.ConexionPerdida){

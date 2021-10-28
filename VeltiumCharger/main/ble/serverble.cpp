@@ -6,6 +6,7 @@
 #include "services/gap/ble_svc_gap.h"
 
 
+
 StaticTask_t xBLEBuffer ;
 static StackType_t xBLEStack[4096*2] EXT_RAM_ATTR;
 
@@ -427,6 +428,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 				Serial.printf("Firmware file has global crc32 %08X\n", fullCRC32);
 				Serial.printf("Received FwUpdate Epilog\n");
 				#endif
+
 				// notify success (0x00000000)
 				uint32_t successCode = 0x00000000;
 				serverbleNotCharacteristic((uint8_t*)&successCode, sizeof(successCode), FWUPDATE_BIRD_DATA_PSEUDO_CHAR_HANDLE);
@@ -630,8 +632,8 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 		{
 			//Serial.printf("Received FwData message with length %u\n", dlen);
 
-			/*uint16_t partIndex;
-			memcpy(&partIndex, &data[0], sizeof(partIndex));*/
+			uint16_t partIndex;
+			memcpy(&partIndex, &data[0], sizeof(partIndex));
 
 			uint16_t partSize;
 			memcpy(&partSize, &data[2], sizeof(partSize));
@@ -640,8 +642,8 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 			memset(payload, 0, 256);
 			memcpy(payload, &data[4], 256);
 
-			/*uint32_t partCRC32;
-			memcpy(&partCRC32, &data[260], 4);*/
+			uint32_t partCRC32;
+			memcpy(&partCRC32, &data[260], 4);
 
 			//Serial.printf("Firmware part with index %4u has %3u bytes and crc32 %08X\n", partIndex, partSize, partCRC32);
 
@@ -672,7 +674,6 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 				}
 			}	
 
-			// TODO: DO SOMETHING WITH PAYLOAD
 			delete[] payload;
 
 			
