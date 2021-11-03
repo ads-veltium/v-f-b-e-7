@@ -41,6 +41,8 @@
 "C_Cpp.errorSquiggles": "Enabled",
 "C_Cpp.dimInactiveRegions": false,
 "files.associations": {
-    "cmath": "cpp"
+    "cmath": "cpp",
+    "string_view": "cpp",
+    "regex": "cpp"
 }
 }

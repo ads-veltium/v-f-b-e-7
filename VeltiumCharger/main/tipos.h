@@ -182,6 +182,7 @@ typedef struct{
 	bool restart   = false;
 	bool conectado = false;
 	bool medidor   = false;
+	bool finding   = false;
 
 	ip4_addr_t IP;
 	ip4_addr_t Gateway;
@@ -224,9 +225,11 @@ typedef struct{
 typedef struct{
 	
 	bool      GatewayConectado = false;
-	bool      ConexionPerdida = false;
+	bool      ConexionPerdida  = false;
 	bool 	  MeidorConectado  = false;
+	bool 	  FirstRound       = false;
 	char      ContadorIp[15] ={"0"};
+	uint16    vueltas = 0;
 	uint16    DomesticPower;
 	uint16    DomesticCurrentA;
 	uint16    DomesticCurrentB;

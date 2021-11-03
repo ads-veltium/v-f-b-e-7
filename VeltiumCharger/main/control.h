@@ -6,15 +6,15 @@
 
 /*********** Configuracion del build**************/
 
-//#define USE_COMS                   //Comentar para no utilzar las comunicaciones [ Veltium lite Zero]
+#define USE_COMS                   //Comentar para no utilzar las comunicaciones [ Veltium lite Zero]
 
-//#define DEVELOPMENT				   //Comentar para pasar firmware a produccion ( Cambio de base de datos y quitar debugs)
+#define DEVELOPMENT				   //Comentar para pasar firmware a produccion ( Cambio de base de datos y quitar debugs)
 
 #ifdef USE_COMS
 #define CONNECTED			   //Comentar para no utilizar los grupos de potencia
 #endif
 
-//#ifdef DEVELOPMENT
+#ifdef DEVELOPMENT
 	#define DEBUG				   //Activar los distintos debugs
 	#ifdef DEBUG 
 
@@ -30,7 +30,7 @@
 			//#define DEBUG_MEDIDOR  //Activar el debug del medidor
 		#endif
 	#endif
-//#endif
+#endif
 
 /*********** Fin configuracion build**************/
 #include "Arduino.h"
