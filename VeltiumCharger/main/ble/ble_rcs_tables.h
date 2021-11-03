@@ -94,7 +94,7 @@
 //  78 APN_Password                32 RW   uint8_array CD20 XXXX 00CD                   
 //  79 APN_Pin                      4 RW   uint8_array CD20 XXXX 00CF                   
 //  80 APN_ON                       1 RW   uint8       CD20 XXXX 00D1                   
-//  81 Staus_Coms                   2 RW   uint16      CD20 XXXX 00D3                   
+//  81 Policy                       3 RW   utf8s       CD20 XXXX 00D3                   
 //  82 charge_user_id               1 R    uint8       CD07 CC04 00D5                   
 
 // table with 83 bytes
@@ -132,7 +132,7 @@ static uint8_t table_size_for_idx[1+RCS_MAX_IDX] = {
     1,1,1,1,1,1,1,1,1,1,1,6,2,2,2,2,
     10,10,2,10,8,8,1,2,1,1,1,2,1,1,16,4,
     1,16,16,1,1,4,1,6,41,2,2,41,32,32,32,4,
-    1,2,1
+    1,3,1
 };
 
 // table with 83 bytes

@@ -382,6 +382,7 @@ typedef struct{
 #define MODEM_REG_LTE			0b0000100000000000
 #define MODEM_CONNECTED			0b0001000000000000
 #define MODEM_BAD_PIN 			0b0010000000000000
+								
 
 #define ETH_BLOCK   0
 #define WIFI_BLOCK  1
@@ -722,8 +723,9 @@ typedef struct{
 #define APN_ON 							   (0x00D1u)
 
 //Caracteristica de estatus de las comunicaciones
-#define STATUS_COMS						   (0x00D3u)
+#define POLICY						   (0x00D3u)
 #define CHARGE_USER_ID					   (0x00D5u)
+
 
 //Caracteristicas no RCS (Se pueden repetir indices)
 #define MEASURES_EXTERNAL_COUNTER		   (0x00D2u)
@@ -736,6 +738,8 @@ typedef struct{
 
 #define CHARGING_GROUP_BLE_NET_DEVICES	   (0x00DFu)
 #define CHARGING_GROUP_BLE_CHARGING_GROUP  (0x00E1u)
+#define STATUS_COMS						   (0x00E3u)
+
 
 #endif
 

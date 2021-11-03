@@ -951,6 +951,12 @@ void procesar_bloque(uint16 tipo_bloque){
 			modifyCharacteristic(buffer_rx_local, 2, RECORDING_REC_INDEX_CHAR_HANDLE);
 		} 
 		break;
+
+		case POLICY:{
+			Serial.printf("Nueva policy recibida! %c %c %c\n", buffer_rx_local[0],buffer_rx_local[1],buffer_rx_local[2]);
+			modifyCharacteristic(buffer_rx_local, 3, POLICY);
+		} 
+		break;
 		
 		case RECORDING_REC_LAPS_CHAR_HANDLE:{
 			uint8_t buffer[2];
@@ -1628,32 +1634,31 @@ void Update_Status_Coms(uint16_t Code, uint8_t block){
 	else{
 		switch (block){
 			case ETH_BLOCK:
-				Status_Coms &= ~0b1111111111111100;
+				Status_Coms &= 0b1111111111111100;
 				break;
 			case WIFI_BLOCK:
-				Status_Coms &= ~0b1111111111100011;
+				Status_Coms &= 0b1111111111100011;
 				break;
 			case MED_BLOCK:
-				Status_Coms &= ~0b1111111000011111;
+				Status_Coms &= 0b1111111000011111;
 				break;
 			case MODEM_BLOCK:
-				Status_Coms &= ~0b1110000111111111;
+				Status_Coms &= 0b1110000111111111;
 				break;
 		}
 	}
-	
 
-	uint8 data[2];
-	data[0] = (uint8)(Status_Coms & 0x00FF);
-	data[1] = (uint8)((Status_Coms >> 8) & 0x00FF);
-	modifyCharacteristic((uint8_t*)data, 2, STATUS_COMS);
-
-#ifdef DEBUG
 	if(Last_Status != Status_Coms){
+#ifdef DEBUG
 		printf("m: "BYTE_TO_BINARY_PATTERN" "BYTE_TO_BINARY_PATTERN"\n",BYTE_TO_BINARY( Status_Coms >> 8), BYTE_TO_BINARY( Status_Coms ));
-		Last_Status = Status_Coms;
-	}
 #endif
+		Last_Status = Status_Coms;
+		uint8 data[2];
+		data[0] = (uint8)(Status_Coms & 0x00FF);
+		data[1] = (uint8)((Status_Coms >> 8) & 0x00FF);
+		serverbleNotCharacteristic((uint8_t*)data, 2, STATUS_COMS);
+
+	}
 }
 
 /************************************************

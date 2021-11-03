@@ -89,6 +89,7 @@ BLECharacteristic *pbleCharacteristics[NUMBER_OF_CHARACTERISTICS];
 // VSC_FW_COMMAND     WN 288
 // VSC_NET_GROUP      N  451
 // VSC_CHARGING_GROUP RW 451
+// BLE_CHA_STATUS_COMS RN 16
 
 BLE_FIELD blefields[MAX_BLE_FIELDS] =
 {
@@ -106,6 +107,7 @@ BLE_FIELD blefields[MAX_BLE_FIELDS] =
 	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC009),NUMBER_OF_CHARACTERISTICS, PROP_RN, 0, RCS_INSC_CURR, BLE_CHA_INSC_CURR,   1},
 	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC00A),NUMBER_OF_CHARACTERISTICS, PROP_RN, 0, RCS_NET_GROUP, BLE_CHA_NET_GROUP,   1},
 	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC00B),NUMBER_OF_CHARACTERISTICS, PROP_RW, 0, RCS_CHARGING_GROUP, BLE_CHA_CHARGING_GROUP,   1},
+	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC00C),NUMBER_OF_CHARACTERISTICS, PROP_RN, 0, RCS_STATUS_COMS, BLE_CHA_STATUS_COMS,   1},
 #endif
 
 } ;
@@ -138,6 +140,11 @@ void serverbleNotCharacteristic ( uint8_t *data, int len, uint16_t handle )
 	if (handle == CHARGING_GROUP_BLE_NET_DEVICES) {
 		pbleCharacteristics[BLE_CHA_NET_GROUP]->setValue(data, len);
 		pbleCharacteristics[BLE_CHA_NET_GROUP]->notify();
+		return;
+	}
+	if (handle == STATUS_COMS) {
+		pbleCharacteristics[BLE_CHA_STATUS_COMS]->setValue(data, len);
+		pbleCharacteristics[BLE_CHA_STATUS_COMS]->notify();
 		return;
 	}
 #endif
@@ -175,6 +182,10 @@ void serverbleSetCharacteristic ( uint8_t *data, int len, uint16_t handle )
 	}
 	if (handle == CHARGING_GROUP_BLE_CHARGING_GROUP) {
 		pbleCharacteristics[BLE_CHA_CHARGING_GROUP]->setValue(data, len);
+		return;
+	}
+	if (handle == STATUS_COMS) {
+		pbleCharacteristics[BLE_CHA_STATUS_COMS]->setValue(data, len);
 		return;
 	}
 #endif
