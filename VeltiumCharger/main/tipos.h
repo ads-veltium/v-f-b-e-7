@@ -182,6 +182,7 @@ typedef struct{
 	bool restart   = false;
 	bool conectado = false;
 	bool medidor   = false;
+	bool finding   = false;
 
 	ip4_addr_t IP;
 	ip4_addr_t Gateway;
@@ -224,9 +225,11 @@ typedef struct{
 typedef struct{
 	
 	bool      GatewayConectado = false;
-	bool      ConexionPerdida = false;
+	bool      ConexionPerdida  = false;
 	bool 	  MeidorConectado  = false;
+	bool 	  FirstRound       = false;
 	char      ContadorIp[15] ={"0"};
+	uint16    vueltas = 0;
 	uint16    DomesticPower;
 	uint16    DomesticCurrentA;
 	uint16    DomesticCurrentB;
@@ -377,12 +380,12 @@ typedef struct{
 #define MED_BUSCANDO_MEDIDOR	0b0000000001000000
 #define MED_LEYENDO_MEDIDOR		0b0000000010000000
 #define MED_CONECTION_LOST		0b0000000100000000
-#define MODEM_NO_SIM			0b0000001000000000
-#define MODEM_REG_GSM			0b0000010000000000
-#define MODEM_REG_LTE			0b0000100000000000
-#define MODEM_CONNECTED			0b0001000000000000
-#define MODEM_BAD_PIN 			0b0010000000000000
-								
+#define MED_CONECTION_RESTAURED	0b0000001000000000
+#define MODEM_NO_SIM			0b0000010000000000
+#define MODEM_REG_GSM			0b0000100000000000
+#define MODEM_REG_LTE			0b0001000000000000
+#define MODEM_CONNECTED			0b0010000000000000
+#define MODEM_BAD_PIN 			0b0100000000000000
 
 #define ETH_BLOCK   0
 #define WIFI_BLOCK  1

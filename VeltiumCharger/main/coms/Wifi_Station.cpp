@@ -367,7 +367,6 @@ void Eth_Loop(){
     static TickType_t xStart = 0;
     static TickType_t xCheckConn = 0;
     static TickType_t xConnect = 0;
-    static bool finding = false;
     static uint8_t LastStatus = APAGADO;
     static uint8_t escape =0;
     static  bool wifi_last =false;
@@ -379,7 +378,7 @@ void Eth_Loop(){
             Coms.ETH.State = CONNECTING;
             xStart = xTaskGetTickCount();
             SendToPSOC5(1,SEND_GROUP_DATA);
-            finding = false;
+            Coms.ETH.finding = false;
             Coms.ETH.conectado = false;
             Coms.ETH.Wifi_Perm = false;
             
@@ -482,12 +481,13 @@ void Eth_Loop(){
             }
 
             //Buscar el contador
-            if((Coms.ETH.medidor || (ChargingGroup.Params.CDP >> 4 && ChargingGroup.Params.GroupMaster && ChargingGroup.Conected)) && !finding){
+            if((Coms.ETH.medidor || (ChargingGroup.Params.CDP >> 4 && ChargingGroup.Params.GroupMaster && ChargingGroup.Conected)) && !Coms.ETH.finding){
                 if(GetStateTime(xConnect) > 20000){
-                    xTaskCreate( BuscarContador_Task, "BuscarContador", 4096*4, &finding, 5, NULL); 
-                    finding = true;
+                    xTaskCreate( BuscarContador_Task, "BuscarContador", 4096*4, &Coms.ETH.finding, 5, NULL); 
+                    Coms.ETH.finding = true;
                 }
             }
+            
             //Arrancar los grupos
             else if(!ChargingGroup.Conected && (Coms.ETH.conectado || Coms.ETH.DHCP)){
                 if(ChargingGroup.Params.GroupActive && GetStateTime(xConnect) > 5000 ){
@@ -507,7 +507,6 @@ void Eth_Loop(){
                     }
                 }
             }
-
 
             //Apagar el eth
             if(Coms.ETH.restart){  
@@ -553,7 +552,7 @@ void Eth_Loop(){
                 ContadorExt.MeidorConectado = false;
                 Counter.Inicializado = false;
                 Counter.end();
-                finding = false;
+                Coms.ETH.finding = false;
                 Update_Status_Coms(0,MED_BLOCK);
             }
             }
@@ -563,7 +562,7 @@ void Eth_Loop(){
             uint8_t ip_Array[4] = { 0,0,0,0};
 			modifyCharacteristic(&ip_Array[0], 4, COMS_CONFIGURATION_LAN_IP);
             if(!eth_connected && !eth_connecting){        
-                finding = false;
+                Coms.ETH.finding = false;
                 if(ContadorExt.GatewayConectado){
                     ContadorExt.GatewayConectado = false;
                     ContadorExt.MeidorConectado = false;
@@ -588,7 +587,7 @@ void Eth_Loop(){
             uint8_t ip_Array[4] = { 0,0,0,0};
 			modifyCharacteristic(&ip_Array[0], 4, COMS_CONFIGURATION_LAN_IP);
             if(!eth_connected && !eth_connecting){
-                finding = false;
+                Coms.ETH.finding = false;
                 Coms.ETH.Internet = false;
                 Coms.ETH.conectado = false;
 
