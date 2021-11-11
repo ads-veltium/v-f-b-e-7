@@ -77,7 +77,7 @@ uint8 mainFwUpdateActive = 0;
 uint8 dispositivo_inicializado = 1;
 uint8 PSOC_inicializado =0;
 uint8 cnt_timeout_inicio = 0;
-uint16 cnt_repeticiones_inicio = 500;	//1000;
+uint16 cnt_repeticiones_inicio = 50;	//1000;
 
 uint8 status_hpt_anterior[2] = {'F','F' };
 uint16 inst_current_anterior = 0x0000;
@@ -1756,14 +1756,17 @@ void UpdateTask(void *arg){
 		Buffer=file.readStringUntil('\n'); 
 		int longitud = Buffer.length()-1;  
 		unsigned char* b = (unsigned char*) Buffer.c_str(); 
-		err=CyBtldr_ParseHeader((unsigned int)longitud,  b, &siliconID , &siliconRev ,&packetChkSumType);  
+		err = CyBtldr_ParseHeader((unsigned int)longitud,  b, &siliconID , &siliconRev ,&packetChkSumType);  
+		Serial.printf("Error 1%i \n", err);
 		err = CyBtldr_ParseRowData((unsigned int)longitud,b, &arrayId, &rowNum, rowData, &rowSize, &checksum);
+		Serial.printf("Error 1%i \n", err);
 
 		//Reiniciar la lectura del archivo
 		file.seek(PRIMERA_FILA,SeekSet);
-
+		
 		Serial.println(siliconID);
 		Serial.println(siliconRev);
+
 		siliconID = 772943977;
 		err = CyBtldr_StartBootloadOperation(&serialLocal ,siliconID, siliconRev ,&blVer);
 		
@@ -1779,7 +1782,10 @@ void UpdateTask(void *arg){
 				}
 				if (err==0){
 					err = CyBtldr_ProgramRow(arrayId, rowNum, rowData, rowSize);
-				}	
+				}
+				/*if (err==0){
+					err = CyBtldr_VerifyRow(arrayId, rowNum, checksum);
+				}	*/
 						
 				Nlinea++;
 				Serial.printf("Lineas leidas: %u \n",Nlinea);

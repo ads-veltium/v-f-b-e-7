@@ -14,6 +14,7 @@ File UpdateFile;
 uint8_t  UpdateType  = 0;
 uint16_t Conn_Handle = 0;
 uint8 RaspberryTest[6] ={139,96,111,50,166,220};
+//uint8 RaspberryTest2[6] ={227 ,233, 58 ,1 ,95 ,228 };
 uint8 RaspberryTest2[6] ={153 ,117, 207 ,235 ,39 ,184 };
 extern uint8 dispositivo_inicializado;
 
@@ -641,9 +642,9 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 			memcpy(payload, &data[4], 256);
 
 			/*uint32_t partCRC32;
-			memcpy(&partCRC32, &data[260], 4);*/
+			memcpy(&partCRC32, &data[partSize+4], 4);*/
 
-			//Serial.printf("Firmware part with index %4u has %3u bytes and crc32 %08X\n", partIndex, partSize, partCRC32);
+			Serial.printf("Firmware part has %3u bytesn", partSize);
 
 			// notify success (0x00000000)
 			uint32_t successCode = 0x00000000;
@@ -663,7 +664,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 					}
 				#endif
 			}
-			else if(UpdateType == VELT_UPDATE){
+			else if(UpdateType == VELT_UPDATE){			
 				if(UpdateFile.write(payload,partSize)!=partSize){
 					Serial.println("Writing Error");
 					successCode = 0x00000002;

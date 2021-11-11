@@ -36,7 +36,7 @@ int CyBtldr_TransferData(unsigned char* inBuf, int inSize, unsigned char* outBuf
             err=68;
         }
         if(--cnt_timeout_tx == 0){
-            cnt_timeout_tx = TIMEOUT_TX_BLOQUE2;
+            cnt_timeout_tx = 17;
             sendBinaryBlock(inBuf, inSize);
             timeout++;
         }
@@ -96,6 +96,7 @@ int CyBtldr_ValidateRow(unsigned char arrayId, unsigned short rowNum)
             if (CYRET_SUCCESS != status)
                 err = status | CYRET_ERR_BTLDR_MASK;
 
+            
             if (CYRET_SUCCESS == err)
             {
                 if (CYRET_SUCCESS == status)
@@ -106,10 +107,13 @@ int CyBtldr_ValidateRow(unsigned char arrayId, unsigned short rowNum)
         }
         if (CYRET_SUCCESS == err)
         {
-            minRow = (unsigned short)(g_validRows[arrayId] >> 16);
+            minRow = (unsigned short)(g_validRows[arrayId] >> 16) - 2;
             maxRow = (unsigned short)g_validRows[arrayId];
-            if (rowNum < minRow || rowNum > maxRow)
+            if ((rowNum < minRow || rowNum > maxRow) && rowNum != 0){
                 err = CYRET_ERR_ROW;
+            }
+            
+                            
         }
     }
     else
@@ -239,7 +243,8 @@ int CyBtldr_ProgramRow(unsigned char arrayID, unsigned short rowNum, unsigned ch
     unsigned char status = CYRET_SUCCESS;
     int err = CYRET_SUCCESS;
     
-    /*if (arrayID < MAX_FLASH_ARRAYS)
+    /*
+    if (arrayID < MAX_FLASH_ARRAYS)
        err = CyBtldr_ValidateRow(arrayID, rowNum);*/
 
     //Break row into pieces to ensure we don't send too much for the transfer protocol
@@ -310,8 +315,8 @@ int CyBtldr_VerifyRow(unsigned char arrayID, unsigned short rowNum, unsigned cha
     unsigned char status = CYRET_SUCCESS;
     int err = CYRET_SUCCESS;
     
-    if (arrayID < MAX_FLASH_ARRAYS)
-        err = CyBtldr_ValidateRow(arrayID, rowNum);
+    /*if (arrayID < MAX_FLASH_ARRAYS)
+        err = CyBtldr_ValidateRow(arrayID, rowNum);*/
     if (CYRET_SUCCESS == err)
         err = CyBtldr_CreateVerifyRowCmd(arrayID, rowNum, inBuf, &inSize, &outSize);
     if (CYRET_SUCCESS == err)
@@ -322,6 +327,7 @@ int CyBtldr_VerifyRow(unsigned char arrayID, unsigned short rowNum, unsigned cha
         err = status | CYRET_ERR_BTLDR_MASK;
     if ((CYRET_SUCCESS == err) && (rowChecksum != checksum)){
         Serial.println("Checksum error detected");
+        Serial.println(rowNum);
         Serial.println(rowChecksum);
         Serial.println(checksum);
         err = CYRET_ERR_CHECKSUM;
