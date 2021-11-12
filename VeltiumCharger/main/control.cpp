@@ -30,21 +30,20 @@ carac_Status   Status        EXT_RAM_ATTR;
 carac_Params   Params        EXT_RAM_ATTR;
 
 #ifdef CONNECTED
-carac_Coms     Coms          EXT_RAM_ATTR;
-carac_Contador ContadorExt   EXT_RAM_ATTR;
-carac_Firebase_Configuration ConfigFirebase EXT_RAM_ATTR;
-carac_circuito Circuitos[MAX_GROUP_SIZE] EXT_RAM_ATTR;
-carac_group    ChargingGroup EXT_RAM_ATTR;
-carac_charger  charger_table[50] EXT_RAM_ATTR;
-carac_charger temp_chargers[MAX_GROUP_SIZE] EXT_RAM_ATTR;
-uint8_t 		temp_chargers_size EXT_RAM_ATTR;
-
+carac_Coms     Coms          				 EXT_RAM_ATTR;
+carac_Contador ContadorExt   				 EXT_RAM_ATTR;
+carac_Firebase_Configuration ConfigFirebase  EXT_RAM_ATTR;
+carac_circuito Circuitos  [MAX_GROUP_SIZE] 	 EXT_RAM_ATTR;
+carac_group    ChargingGroup 				 EXT_RAM_ATTR;
+carac_charger  charger_table  [50] 			 EXT_RAM_ATTR;
+carac_charger  temp_chargers[MAX_GROUP_SIZE] EXT_RAM_ATTR;
+uint8_t 	   temp_chargers_size 			 EXT_RAM_ATTR;
 #endif
 
 /* VARIABLES BLE */
 uint8 device_ID[16] = {"VCD17010001"};
-uint8 deviceSerNum[10] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};     //{0x00, 0x00, 0x00, 0x00, 0x0B, 0xCD, 0x17, 0x01, 0x00, 0x05};
-uint8 authChallengeReply[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+uint8 deviceSerNum[10] 		 = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};     //{0x00, 0x00, 0x00, 0x00, 0x0B, 0xCD, 0x17, 0x01, 0x00, 0x05};
+uint8 authChallengeReply[8]  = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 // DACO changed size by crash
 //uint8 authChallengeQuery[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};      //{0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF};
 uint8 authChallengeQuery[10] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};      //{0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF};
@@ -63,7 +62,7 @@ uint8 cnt_fin_bloque = 0;
 int estado_recepcion = 0;
 uint8 buffer_tx_local[256]  EXT_RAM_ATTR;
 uint8 buffer_rx_local[256]  EXT_RAM_ATTR;
-uint8 record_buffer[550] EXT_RAM_ATTR;
+uint8 record_buffer[550]    EXT_RAM_ATTR;
 uint16 puntero_rx_local = 0;
 uint32 TimeFromStart = 60; //tiempo para buscar el contador, hay que darle tiempo a conectarse
 uint8 updateTaskrunning=0;
@@ -85,14 +84,14 @@ uint16 cnt_diferencia = 1;
 uint8 HPT_estados[9][3] = {"0V", "A1", "A2", "B1", "B2", "C1", "C2", "E1", "F1"};
 
 #ifdef USE_COMS
-uint8 version_firmware[11] = {"VBLE2_0517"};	
+uint8 version_firmware[11] = {"VBLE2_0518"};	
 #else
-uint8 version_firmware[11] = {"VBLE0_0513"};	
+uint8 version_firmware[11] = {"VBLE0_0515"};	
 #endif
 
 
 uint8 PSOC5_version_firmware[11] ;		
-TickType_t Last_Block=0;
+TickType_t Last_Block=0; 
 uint8 systemStarted = 0;
 uint8 Record_Num =4;
 uint8 Bloqueo_de_carga = 1;
@@ -105,11 +104,10 @@ void StackEventHandler( uint32 eventCode, void *eventParam );
 void modifyCharacteristic(uint8* data, uint16 len, uint16 attrHandle);
 void proceso_recepcion(void);
 int Convert_To_Epoch(uint8_t DateTime[6]);
-void Disable_VELT1_CHARGER_services(void);
-void broadcast_a_grupo(char* Mensaje, uint16_t size);
 
 
 #ifdef CONNECTED
+void broadcast_a_grupo(char* Mensaje, uint16_t size);
 uint8_t check_in_group(const char* ID, carac_charger* group,uint8_t size);
 bool remove_from_group(const char* ID ,carac_charger* group, uint8_t *size);
 bool add_to_group(const char* ID, IPAddress IP, carac_charger* group, uint8_t *size);
@@ -244,7 +242,7 @@ void controlTask(void *arg)
 						//Alguien se está intentando conectar	
 						if(AuthTimer !=0){
 							uint32_t Transcurrido = pdTICKS_TO_MS(xTaskGetTickCount()-AuthTimer);
-							if(Transcurrido > 10000 && !authSuccess){
+							if(Transcurrido > 20000 && !authSuccess){
 								#ifdef DEBUG
 								printf("Auth request fallada, me desconecto!!\n");
 								#endif
@@ -420,6 +418,10 @@ void startSystem(void){
 		UpdateStatus.ESP_Act_Ver = ParseFirmwareVersion((char *)(version_firmware));
 		UpdateStatus.PSOC5_Act_Ver = ParseFirmwareVersion((char *)(PSOC5_version_firmware));
 
+		Serial.println(UpdateStatus.PSOC5_Act_Ver);
+		Serial.println(UpdateStatus.ESP_Act_Ver);
+
+
 		//compatibilidad con versiones anteriores de firmwware
 		if(UpdateStatus.PSOC5_Act_Ver <= 510){
 			dispositivo_inicializado = 2;
@@ -538,6 +540,7 @@ void procesar_bloque(uint16 tipo_bloque){
 				modifyCharacteristic(&buffer_rx_local[211], 1, RECORDING_REC_LAPS_CHAR_HANDLE);
 
 				modifyCharacteristic(&buffer_rx_local[212], 2, CONFIGURACION_AUTENTICATION_MODES_CHAR_HANDLE);
+				Serial.printf("Nueva autenticacion recibida! %c %c \n", buffer_rx_local[212],buffer_rx_local[213]);
 				memcpy(deviceSerNum, &buffer_rx_local[219], 10);			
 				modifyCharacteristic(&buffer_rx_local[229], 2, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_P1_CHAR_HANDLE);
 				modifyCharacteristic(&buffer_rx_local[231], 1, LED_LUMIN_COLOR_LUMINOSITY_LEVEL_CHAR_HANDLE);
@@ -949,6 +952,12 @@ void procesar_bloque(uint16 tipo_bloque){
 		
 		case RECORDING_REC_INDEX_CHAR_HANDLE:{
 			modifyCharacteristic(buffer_rx_local, 2, RECORDING_REC_INDEX_CHAR_HANDLE);
+		} 
+		break;
+
+		case POLICY:{
+			Serial.printf("Nueva policy recibida! %c %c %c\n", buffer_rx_local[0],buffer_rx_local[1],buffer_rx_local[2]);
+			modifyCharacteristic(buffer_rx_local, 3, POLICY);
 		} 
 		break;
 		
@@ -1465,7 +1474,9 @@ void procesar_bloque(uint16 tipo_bloque){
 			//si no se cumple nada de lo anterior, permitimos la carga
 			else{
 				Bloqueo_de_carga = false;
+				printf("AAAAA\n");
 			}
+			printf("Enviando bloqueo %i\n", Bloqueo_de_carga);
 			SendToPSOC5(Bloqueo_de_carga, BLOQUEO_CARGA);
 
 			
@@ -1616,44 +1627,43 @@ void Update_Status_Coms(uint16_t Code, uint8_t block){
 			Status_Coms &= 0b1111111111100011;
 
 		}
-		else if(Code <= MED_CONECTION_LOST){
-			Status_Coms &= 0b1111111000011111;
+		else if(Code <= MED_CONECTION_RESTAURED){
+			Status_Coms &= 0b1111111100011111;
 			
 		}
 		else if(Code <= MODEM_CONNECTED){
-			Status_Coms &= 0b1110000111111111;
+			Status_Coms &= 0b1000001111111111;
 		}	
 		Status_Coms |= Code;
 	}
 	else{
 		switch (block){
 			case ETH_BLOCK:
-				Status_Coms &= ~0b1111111111111100;
+				Status_Coms &= 0b1111111111111100;
 				break;
 			case WIFI_BLOCK:
-				Status_Coms &= ~0b1111111111100011;
+				Status_Coms &= 0b1111111111100011;
 				break;
 			case MED_BLOCK:
-				Status_Coms &= ~0b1111111000011111;
+				Status_Coms &= 0b1111110000011111;
 				break;
 			case MODEM_BLOCK:
-				Status_Coms &= ~0b1110000111111111;
+				Status_Coms &= 0b1000001111111111;
 				break;
 		}
 	}
-	
 
-	uint8 data[2];
-	data[0] = (uint8)(Status_Coms & 0x00FF);
-	data[1] = (uint8)((Status_Coms >> 8) & 0x00FF);
-	modifyCharacteristic((uint8_t*)data, 2, STATUS_COMS);
-
-#ifdef DEBUG
 	if(Last_Status != Status_Coms){
-		printf("m: "BYTE_TO_BINARY_PATTERN" "BYTE_TO_BINARY_PATTERN"\n",BYTE_TO_BINARY( Status_Coms >> 8), BYTE_TO_BINARY( Status_Coms ));
+		#ifdef DEBUG
+		printf("Nuevo status coms: "BYTE_TO_BINARY_PATTERN" "BYTE_TO_BINARY_PATTERN"\n",BYTE_TO_BINARY( Status_Coms >> 8), BYTE_TO_BINARY( Status_Coms ));
+		#endif
 		Last_Status = Status_Coms;
+		uint8 data[2];
+		data[0] = (uint8)(Status_Coms & 0x00FF);
+		data[1] = (uint8)((Status_Coms >> 8) & 0x00FF);
+		serverbleNotCharacteristic((uint8_t*)data, 2, STATUS_COMS);
+
 	}
-#endif
 }
 
 /************************************************
@@ -1698,7 +1708,6 @@ bool WaitForValue(String* variable, String objetivo, uint16_t timeout){
 	return *variable == objetivo;
 
 }
-
 
 /************************************************
 		Convertir fecha a timestamp epoch
@@ -1757,17 +1766,11 @@ void UpdateTask(void *arg){
 		int longitud = Buffer.length()-1;  
 		unsigned char* b = (unsigned char*) Buffer.c_str(); 
 		err = CyBtldr_ParseHeader((unsigned int)longitud,  b, &siliconID , &siliconRev ,&packetChkSumType);  
-		Serial.printf("Error 1%i \n", err);
 		err = CyBtldr_ParseRowData((unsigned int)longitud,b, &arrayId, &rowNum, rowData, &rowSize, &checksum);
 		Serial.printf("Error 1%i \n", err);
 
 		//Reiniciar la lectura del archivo
 		file.seek(PRIMERA_FILA,SeekSet);
-		
-		Serial.println(siliconID);
-		Serial.println(siliconRev);
-
-		siliconID = 772943977;
 		err = CyBtldr_StartBootloadOperation(&serialLocal ,siliconID, siliconRev ,&blVer);
 		
 		while(1){

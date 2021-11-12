@@ -4,7 +4,10 @@
 #include "ble_rcs.h"
 #include "ble_rcs_server.h"
 #include "services/gap/ble_svc_gap.h"
-
+#include <algorithm>
+#include <array>
+#include <cstdint>
+#include <numeric>
 
 StaticTask_t xBLEBuffer ;
 static StackType_t xBLEStack[4096*2] EXT_RAM_ATTR;
@@ -27,14 +30,14 @@ extern carac_Update_Status 			UpdateStatus;
 extern carac_Comands                Comands;
 
 #ifdef CONNECTED
-	#ifdef CONNECTED
-		extern carac_group ChargingGroup;
-		extern carac_charger net_group[MAX_GROUP_SIZE];
-		extern uint8_t net_group_size;
-		extern carac_charger charger_table[MAX_GROUP_SIZE];
-		extern carac_circuito Circuitos[MAX_GROUP_SIZE];
-		void coap_put( char* Topic, char* Message);
-	#endif
+
+	extern carac_group ChargingGroup;
+	extern carac_charger net_group[MAX_GROUP_SIZE];
+	extern uint8_t net_group_size;
+	extern carac_charger charger_table[MAX_GROUP_SIZE];
+	extern carac_circuito Circuitos[MAX_GROUP_SIZE];
+	void coap_put( char* Topic, char* Message);
+	extern carac_Contador   ContadorExt;
 	extern carac_Coms					Coms;
 	extern carac_Firebase_Configuration ConfigFirebase;
 	
@@ -51,6 +54,39 @@ void milestone(const char* mname)
 	ms_prev = ms_curr;
 
 	Serial.printf ("**MILESTONE** [%6u] [%+7d] [%s]\n", ms_curr, delta, mname);
+}
+
+
+static unsigned long crc32(int n, unsigned char c[], int checksum)
+{
+	int i, j, b;
+	int r;
+	int b0,b1,b2,b3;
+
+	r = checksum;
+	for (i = 0; i < n; i++) {
+		b = c[i];
+		b&=0xFF;
+		for (j = 0; j < 8; j++){
+			boolean flag = ((b&1)^(r &1))!=0;
+			r = r>>1;
+			r=r&0x7FFFFFFFUL;
+
+			if(flag){
+				r^=0xEDB88320UL;
+			}
+
+			b= b>>1;
+		}
+	}
+	r= r ^ 0xFFFFFFFFUL;
+
+	b0 = (r&0x000000ff) << 24u;
+	b1 = (r&0x0000ff00) << 8;
+	b2 = (r&0x00ff0000) >> 8;
+	b3 = (r&0xff000000) >> 24u;
+
+	return (b0|b1|b2|b3);
 }
 
 //BLEServer *pServer = NULL;
@@ -90,6 +126,7 @@ BLECharacteristic *pbleCharacteristics[NUMBER_OF_CHARACTERISTICS];
 // VSC_FW_COMMAND     WN 288
 // VSC_NET_GROUP      N  451
 // VSC_CHARGING_GROUP RW 451
+// BLE_CHA_STATUS_COMS RN 16
 
 BLE_FIELD blefields[MAX_BLE_FIELDS] =
 {
@@ -107,6 +144,7 @@ BLE_FIELD blefields[MAX_BLE_FIELDS] =
 	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC009),NUMBER_OF_CHARACTERISTICS, PROP_RN, 0, RCS_INSC_CURR, BLE_CHA_INSC_CURR,   1},
 	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC00A),NUMBER_OF_CHARACTERISTICS, PROP_RN, 0, RCS_NET_GROUP, BLE_CHA_NET_GROUP,   1},
 	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC00B),NUMBER_OF_CHARACTERISTICS, PROP_RW, 0, RCS_CHARGING_GROUP, BLE_CHA_CHARGING_GROUP,   1},
+	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC00C),NUMBER_OF_CHARACTERISTICS, PROP_RN, 0, RCS_STATUS_COMS, BLE_CHA_STATUS_COMS,   1},
 #endif
 
 } ;
@@ -139,6 +177,11 @@ void serverbleNotCharacteristic ( uint8_t *data, int len, uint16_t handle )
 	if (handle == CHARGING_GROUP_BLE_NET_DEVICES) {
 		pbleCharacteristics[BLE_CHA_NET_GROUP]->setValue(data, len);
 		pbleCharacteristics[BLE_CHA_NET_GROUP]->notify();
+		return;
+	}
+	if (handle == STATUS_COMS) {
+		pbleCharacteristics[BLE_CHA_STATUS_COMS]->setValue(data, len);
+		pbleCharacteristics[BLE_CHA_STATUS_COMS]->notify();
 		return;
 	}
 #endif
@@ -176,6 +219,10 @@ void serverbleSetCharacteristic ( uint8_t *data, int len, uint16_t handle )
 	}
 	if (handle == CHARGING_GROUP_BLE_CHARGING_GROUP) {
 		pbleCharacteristics[BLE_CHA_CHARGING_GROUP]->setValue(data, len);
+		return;
+	}
+	if (handle == STATUS_COMS) {
+		pbleCharacteristics[BLE_CHA_STATUS_COMS]->setValue(data, len);
 		return;
 	}
 #endif
@@ -238,6 +285,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 {
 	void onWrite(BLECharacteristic *pCharacteristic) 
 	{
+		static uint32_t UpdatefileSize;
 		std::string rxValue = pCharacteristic->getValue();
 
 		//Serial.printf("onWrite: char = %s\n", pCharacteristic->getUUID().toString().c_str());
@@ -333,7 +381,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 
 			#ifdef DEBUG_BLE
 				Serial.printf("Received write request for selector %u\n", selector);
-			#endif				
+			#endif			
 			
 			// special cases
 			if (handle == AUTENTICACION_TOKEN_CHAR_HANDLE) {
@@ -352,18 +400,19 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 			}
 			
 			if (handle == FWUPDATE_BIRD_PROLOG_PSEUDO_CHAR_HANDLE) {
+				
 				// prolog
 				String Signature;
 				char signature[11];
 				memcpy(signature, &payload[0], 10);
 				signature[10] = '\0';
 				Signature= String(signature);
-				uint32_t fileSize;
-				memcpy(&fileSize, &payload[10], sizeof(fileSize));
+				
+				memcpy(&UpdatefileSize, &payload[10], sizeof(UpdatefileSize));
 
 				#ifdef DEBUG_BLE
 				Serial.printf("Received FwUpdate Prolog\n");
-				Serial.printf("Firmware file with signature %s has %u bytes\n", signature, fileSize);
+				Serial.printf("Firmware file with signature %s has %u bytes\n", signature, UpdatefileSize);
 				#endif
 
 				uint32_t successCode = 0x00000000;
@@ -375,14 +424,14 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 						#ifdef DEBUG_BLE
 						Serial.println("Updating VBLE");
 						#endif			
-						if(!Update.begin(fileSize)){
+						if(!Update.begin(UpdatefileSize)){
 							Serial.println("File too big");
 							Update.end();
 							successCode = 0x00000001;
 						};
 					#else 
 						Serial.println("Updating VBLE Compressed");	
-						if (SPIFFS.begin(1,"/spiffs",1,"ESP32")){}
+						if (SPIFFS.begin(1,"/spiffs",1,"ESP32")){
 							vTaskDelay(pdMS_TO_TICKS(50));
 							SPIFFS.format();
 						}
@@ -426,8 +475,9 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 
 				#ifdef DEBUG_BLE
 				Serial.printf("Firmware file has global crc32 %08X\n", fullCRC32);
-				Serial.printf("Received FwUpdate Epilog\n");
 				#endif
+
+				
 				// notify success (0x00000000)
 				uint32_t successCode = 0x00000000;
 				serverbleNotCharacteristic((uint8_t*)&successCode, sizeof(successCode), FWUPDATE_BIRD_DATA_PSEUDO_CHAR_HANDLE);
@@ -476,7 +526,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 				SendToPSOC5(payload[0],COMS_CONFIGURATION_WIFI_ON);
 				return;
 			}
-#ifdef CONNECTED
+
 			else if (handle == GROUPS_PARAMS) {
 				if(!ChargingGroup.Conected && payload[0]){
 					ChargingGroup.Params.GroupMaster = true;
@@ -600,7 +650,17 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 				}
 				return;
 			}
-#endif
+
+			else if(handle == DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE){
+				
+				//Si el CDP está apagado y se enciende desde el ble, significa que es la primera vez que arranca
+				if(!Coms.ETH.medidor && buffer_tx[0] >>4){
+					#ifdef DEBUG_MEDIDOR
+					printf("Primera busqueda del medidor!\n");
+					#endif
+					ContadorExt.FirstRound = true;
+				}
+			}
 			
 #endif			
 			// if we are here, we are authenticated.
@@ -630,9 +690,9 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 		if ( pCharacteristic->getUUID().equals(blefields[FW_DATA].uuid) )
 		{
 			//Serial.printf("Received FwData message with length %u\n", dlen);
-
-			/*uint16_t partIndex;
-			memcpy(&partIndex, &data[0], sizeof(partIndex));*/
+			uint32_t successCode = 0x00000000;
+			uint16_t partIndex;
+			memcpy(&partIndex, &data[0], sizeof(partIndex));
 
 			uint16_t partSize;
 			memcpy(&partSize, &data[2], sizeof(partSize));
@@ -641,13 +701,26 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 			memset(payload, 0, 256);
 			memcpy(payload, &data[4], 256);
 
-			/*uint32_t partCRC32;
-			memcpy(&partCRC32, &data[partSize+4], 4);*/
+			uint32_t partCRC32;
+			memcpy(&partCRC32, &data[260], 4);
+			
+			uint32_t checksum=crc32(partSize, payload,0xFFFFFFFFUL);
 
-			Serial.printf("Firmware part has %3u bytesn", partSize);
-
-			// notify success (0x00000000)
-			uint32_t successCode = 0x00000000;
+			if(checksum!= partCRC32){
+				successCode = 0x00000002;
+				serverbleNotCharacteristic((uint8_t*)&successCode, sizeof(successCode), FWUPDATE_BIRD_DATA_PSEUDO_CHAR_HANDLE);
+				delete[] payload;
+				if(UpdateType == VELT_UPDATE){
+					SPIFFS.end();
+					UpdateFile.close();
+				}
+				else{
+					Update.end();
+				}
+				UpdateStatus.DescargandoArchivo = false;
+				return;
+			}
+		
 
 			//Escribir los datos en la actualizacion
 			if(UpdateType == VBLE_UPDATE){
@@ -671,9 +744,44 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 					SPIFFS.end();
 					UpdateFile.close();
 				}
+
+				uint8* escrito = new uint8[256];
+				printf("%i\n",UpdateFile.position());
+
+				UpdateFile.seek(UpdateFile.position()-partSize, SeekCur);
+
+				UpdateFile.read(escrito, partSize);
+
+
+
+				//Comprobar el checksum de lo que se ha escrito
+				uint32_t writtenchecksum=crc32(partSize, (uint8_t*)escrito,0xFFFFFFFFUL);
+				
+				printf("%s \n\n", escrito);
+				printf("%s \n", payload);
+
+				Serial.printf("Writen vs checksum %08X %08X\n", writtenchecksum, checksum);
+
+				if(checksum!= writtenchecksum){
+					successCode = 0x00000002;
+					serverbleNotCharacteristic((uint8_t*)&successCode, sizeof(successCode), FWUPDATE_BIRD_DATA_PSEUDO_CHAR_HANDLE);
+					delete[] payload;
+					if(UpdateType == VELT_UPDATE){
+						SPIFFS.end();
+						UpdateFile.close();
+					}
+					else{
+						Update.end();
+					}
+					UpdateStatus.DescargandoArchivo = false;
+					return;
+				}
+
 			}	
 
-			// TODO: DO SOMETHING WITH PAYLOAD
+
+			
+
 			delete[] payload;
 
 			

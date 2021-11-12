@@ -153,13 +153,17 @@ void BuscarContador_Task(void *args){
 
     if(!ContadorExt.GatewayConectado){
         *finding = false;
+
+        //si es la primera vez que intentamos buscarlo, dejamos de hacerlo
+        if(ContadorExt.FirstRound && ++ContadorExt.vueltas >= 2){
+            ContadorExt.FirstRound = false;
+            Params.Tipo_Sensor = 0;
+            Coms.ETH.medidor = 0;
+            Coms.ETH.restart = true;
+        }
     }
     else{
         Coms.ETH.Wifi_Perm = true;
-        /*if(Coms.GSM.ON){
-            Update_Status_Coms(0,MODEM_BLOCK);
-            Coms.GSM.reboot=true;
-        }*/
     }
            
    

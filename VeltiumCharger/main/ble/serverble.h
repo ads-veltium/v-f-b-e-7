@@ -11,7 +11,7 @@
 #define NUMBER_OF_SERVICES 		  1
 
 #ifdef CONNECTED
-#define NUMBER_OF_CHARACTERISTICS 11
+#define NUMBER_OF_CHARACTERISTICS 12
 #else
 #define NUMBER_OF_CHARACTERISTICS 7
 #endif
@@ -41,6 +41,7 @@ enum indexCharacteristicsAll
 	RCS_INSC_CURR  		=  9,
 	RCS_NET_GROUP  		= 10,
 	RCS_CHARGING_GROUP  = 11,
+	RCS_STATUS_COMS     = 12,
 #endif
 };
 
@@ -60,6 +61,7 @@ enum indexCharacteristics
 	BLE_CHA_INSC_CURR       = 8,
 	BLE_CHA_NET_GROUP       = 9,
 	BLE_CHA_CHARGING_GROUP  =10,
+	BLE_CHA_STATUS_COMS     =11,
 #endif
 
 };

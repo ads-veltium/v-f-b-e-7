@@ -60,9 +60,10 @@ void Contador::parse(){
 
     time = Measurements["header"]["local_time"].as<String>();
     if(time == last_time){
-        if(++Same_time_count > 5){
+        if(++Same_time_count > 5 && !ContadorExt.ConexionPerdida){
             ContadorExt.ConexionPerdida = 1;
             Update_Status_Coms(MED_CONECTION_LOST);
+            Coms.ETH.finding = false;
             return;
         }
     }
@@ -72,8 +73,6 @@ void Contador::parse(){
         Update_Status_Coms(MED_LEYENDO_MEDIDOR);
     }
     last_time = time;
-   
-
     
     //Leer corrientes
     /*medida = Measurements["measurements"]["I1"].as<String>();
@@ -85,20 +84,24 @@ void Contador::parse(){
 
     //Leer potencias 
     medida = Measurements["measurements"]["P0"].as<String>();
-    Serial.println(medida);
+    #ifdef DEBUG_MEDIDOR
+        Serial.println(medida);
+    #endif
 
     ContadorExt.MeidorConectado = medida != "null";
     if(ContadorExt.MeidorConectado != old){
-        if(old){ //Si ya estab a leyendo y perdemos comunicacion,
-            ContadorExt.ConexionPerdida = 1;
-            Update_Status_Coms(MED_CONECTION_LOST);
+        if(old){ //Si ya estaba leyendo y perdemos comunicacion,
+            if(!ContadorExt.ConexionPerdida){
+                ContadorExt.ConexionPerdida = 1;
+                Update_Status_Coms(MED_CONECTION_LOST);
+                Coms.ETH.finding = false;
+            }
         }
         else{
             ContadorExt.ConexionPerdida = 0;
         }
         old = ContadorExt.MeidorConectado;
         Update_Status_Coms(MED_LEYENDO_MEDIDOR);
-        
     }
 
     if(ContadorExt.ConexionPerdida){
@@ -120,24 +123,6 @@ void Contador::parse(){
     #ifdef DEBUG_MEDIDOR
     Serial.println(ContadorExt.DomesticPower);
     #endif
-
-
-    /*medida = Measurements["measurements"]["U1"].as<String>();
-    Status.Measures.instant_voltage = medida.toFloat() *100;
-    Serial.println(Status.Measures.instant_voltage);
-    medida = Measurements["measurements"]["P1"].as<String>();
-    Status.Measures.active_power = medida.toFloat() *100;
-
-    medida = Measurements["measurements"]["U2"].as<String>();
-    Status.MeasuresB.instant_voltage = medida.toFloat() *100;
-    medida = Measurements["measurements"]["P2"].as<String>();
-    Status.MeasuresB.active_power = medida.toFloat() *100;
-
-    medida = Measurements["measurements"]["U3"].as<String>();
-    Status.MeasuresC.instant_voltage = medida.toFloat() *100;
-    medida = Measurements["measurements"]["P3"].as<String>();
-    Status.MeasuresC.active_power = medida.toFloat() *100;*/
-
 }
 
 #endif

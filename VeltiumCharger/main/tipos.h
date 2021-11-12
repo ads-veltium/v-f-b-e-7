@@ -182,6 +182,7 @@ typedef struct{
 	bool restart   = false;
 	bool conectado = false;
 	bool medidor   = false;
+	bool finding   = false;
 
 	ip4_addr_t IP;
 	ip4_addr_t Gateway;
@@ -224,9 +225,11 @@ typedef struct{
 typedef struct{
 	
 	bool      GatewayConectado = false;
-	bool      ConexionPerdida = false;
+	bool      ConexionPerdida  = false;
 	bool 	  MeidorConectado  = false;
+	bool 	  FirstRound       = false;
 	char      ContadorIp[15] ={"0"};
+	uint16    vueltas = 0;
 	uint16    DomesticPower;
 	uint16    DomesticCurrentA;
 	uint16    DomesticCurrentB;
@@ -377,11 +380,12 @@ typedef struct{
 #define MED_BUSCANDO_MEDIDOR	0b0000000001000000
 #define MED_LEYENDO_MEDIDOR		0b0000000010000000
 #define MED_CONECTION_LOST		0b0000000100000000
-#define MODEM_NO_SIM			0b0000001000000000
-#define MODEM_REG_GSM			0b0000010000000000
-#define MODEM_REG_LTE			0b0000100000000000
-#define MODEM_CONNECTED			0b0001000000000000
-#define MODEM_BAD_PIN 			0b0010000000000000
+#define MED_CONECTION_RESTAURED	0b0000001000000000
+#define MODEM_NO_SIM			0b0000010000000000
+#define MODEM_REG_GSM			0b0000100000000000
+#define MODEM_REG_LTE			0b0001000000000000
+#define MODEM_CONNECTED			0b0010000000000000
+#define MODEM_BAD_PIN 			0b0100000000000000
 
 #define ETH_BLOCK   0
 #define WIFI_BLOCK  1
@@ -722,8 +726,9 @@ typedef struct{
 #define APN_ON 							   (0x00D1u)
 
 //Caracteristica de estatus de las comunicaciones
-#define STATUS_COMS						   (0x00D3u)
+#define POLICY						   (0x00D3u)
 #define CHARGE_USER_ID					   (0x00D5u)
+
 
 //Caracteristicas no RCS (Se pueden repetir indices)
 #define MEASURES_EXTERNAL_COUNTER		   (0x00D2u)
@@ -736,6 +741,8 @@ typedef struct{
 
 #define CHARGING_GROUP_BLE_NET_DEVICES	   (0x00DFu)
 #define CHARGING_GROUP_BLE_CHARGING_GROUP  (0x00E1u)
+#define STATUS_COMS						   (0x00E3u)
+
 
 #endif
 
