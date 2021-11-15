@@ -25,7 +25,6 @@ class Real_Time_Database{
     String RTDB_url, Read_url, GROUPS_url,Write_url, Base_Path;
     esp_http_client_handle_t RTDB_client, *Auth_client; 
     
-
     
     String Auth_url= "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=";
     StaticJsonDocument<256> AuthDoc;

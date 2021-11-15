@@ -15,6 +15,7 @@
 #define TIPOS_H
 
 #include "lwip/ip_addr.h"
+#include "Arduino.h"
 
 #define EXT_FLASH_SIZE								8*1024*1024
 #define EXT_FLASH_PAGE_SIZE							4096
@@ -368,6 +369,13 @@ typedef struct{
 	String PSOC_url;
 
 } carac_Update_Status;
+
+//Caracteristica para almacenar la configuracion del equipo
+typedef struct{
+	String Keylist[2] = {"FW_VERSION", "PART_NUMBER"};
+	String Firmware = "VBLE2_0512";
+	String Part_Number = "LU320111250";
+} carac_config;
 
 //Estados de las comunicaciones
 

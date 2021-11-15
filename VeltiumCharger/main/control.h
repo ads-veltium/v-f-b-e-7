@@ -60,6 +60,7 @@
 #include <math.h>
 #include "SPIFFS.h"
 #include "helpers.h"
+#include "config.h"
 
 
 

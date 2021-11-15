@@ -43,6 +43,7 @@
 "files.associations": {
     "cmath": "cpp",
     "string_view": "cpp",
-    "regex": "cpp"
+    "regex": "cpp",
+    "*.ipp": "cpp"
 }
 }
