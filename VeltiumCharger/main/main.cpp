@@ -1,7 +1,5 @@
 #include "control.h"
 
-
-
 void setup() 
 {
 	Serial.begin(115200);
@@ -13,8 +11,6 @@ void setup()
 	#endif
 
 	DRACO_GPIO_Init();
-	unsigned char dummySerial[10] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
-	dev_auth_init(dummySerial);
 	
 	#ifdef DEBUG
 	Serial.println("FREE HEAP MEMORY [after DRACO_GPIO_Init] **************************");

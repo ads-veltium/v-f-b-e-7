@@ -40,6 +40,7 @@
 	#define MAX_GROUP_SIZE 40
 	#include "coms/Wifi_Station.h"
 	#include "libGSM.h"
+	#include "coms/helper_coms.h"
 	#ifndef CONNECTED
 		#define CONNECTED
 	#endif
@@ -142,25 +143,13 @@ void updateCharacteristic(uint8_t* data, uint16_t len, uint16_t attrHandle);
 void procesar_bloque(uint16 tipo_bloque);
 int controlSendToSerialLocal(uint8_t * data, int len);
 void UpdateCompressedTask(void *arg);
-uint8_t sendBinaryBlock ( uint8_t *data, int len );
 int controlMain(void);
-void deviceConnectInd(void);
-void deviceDisconnectInd(void);
-uint8_t isMainFwUpdateActive(void);
-uint8_t setMainFwUpdateActive(uint8_t val);
-uint8_t setAuthToken(uint8_t *data, int len);
-uint8_t authorizedOK(void);
+
 void MAIN_RESET_Write(uint8_t val);
 void controlInit(void);
 void UpdateTask(void *arg);
 void UpdateESP();
 void modifyCharacteristic(uint8* data, uint16 len, uint16 attrHandle);
-int Convert_To_Epoch(uint8* data);
-void SendToPSOC5(uint8 data, uint16 attrHandle);
-void SendToPSOC5(char *data, uint16 len, uint16 attrHandle);
-void StartGSM();
-void shutdownGSM();
-void Update_Status_Coms(uint16_t Code,uint8_t block = 0);
 
-uint32 GetStateTime(TickType_t xStart);
+
 #endif // __CONTROL_MAIN

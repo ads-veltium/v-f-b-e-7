@@ -90,4 +90,12 @@ void serverbleSetCharacteristic(uint8_t * data, int len, uint16_t handle);
 void serverbleNotCharacteristic ( uint8_t *data, int len, uint16_t handle );
 void changeAdvName( uint8_t * name);
 
+void deviceConnectInd(void);
+void deviceDisconnectInd(void);
+void InitializeAuthsystem();
+uint8_t setMainFwUpdateActive(uint8_t val);
+uint8_t setAuthToken(uint8_t *data, int len);
+uint8_t authorizedOK(void);
+
+
 #endif // __SERVER_BLE_H

@@ -21,6 +21,7 @@
 #include "netif/ppp/ppp.h"
 #include "netif/ppp/pppapi.h"
 #include "../../../main/control.h"
+#include "../../../main/coms/helper_coms.h"
 
 #include "libGSM.h"
 

@@ -8,6 +8,7 @@
 #include "cybtldr_command.h"
 #include "cybtldr_api.h"
 #include  "../control.h"
+#include "../helpers.h"
 
 
 /* The highest number of memory arrays for any device. This includes flash and EEPROM arrays */
@@ -64,7 +65,7 @@ int CyBtldr_TransferData(unsigned char* inBuf, int inSize, unsigned char* outBuf
                 err=outBuf[1];
             }            
         }
-        vTaskDelay(pdMS_TO_TICKS(5));        
+        vTaskDelay(pdMS_TO_TICKS(25));        
     }
     channel->flush();
     if (CYRET_SUCCESS != err)

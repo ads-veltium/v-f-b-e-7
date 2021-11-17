@@ -7,7 +7,7 @@
 #include "ArduinoJson.h"
 #include "../control.h"
 #include "Eth_Station.h"
-
+#include "helper_coms.h"
 
 class Contador{
     

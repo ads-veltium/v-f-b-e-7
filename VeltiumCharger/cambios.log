@@ -20,3 +20,6 @@ v5.17
     - Nueva característica para indicar el usuario que ha iniciado la recarga
     - Ethernet siempre activo
     - Actualizada Librería NimBLE
+
+v5.18
+    - Añadido comprobación de checksum en el envio del firmware nuevo al PSOC5.

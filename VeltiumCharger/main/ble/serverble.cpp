@@ -19,6 +19,12 @@ uint16_t Conn_Handle = 0;
 uint8 RaspberryTest[6] ={139,96,111,50,166,220};
 //uint8 RaspberryTest2[6] ={227 ,233, 58 ,1 ,95 ,228 };
 uint8 RaspberryTest2[6] ={153 ,117, 207 ,235 ,39 ,184 };
+
+uint8 authChallengeReply[8]  = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+uint8 authChallengeQuery[10] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};      //{0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF};
+uint8 authSuccess = 0;
+int aut_semilla = 0x0000;
+
 extern uint8 dispositivo_inicializado;
 
 extern uint8 authChallengeReply[8] ;
@@ -28,6 +34,9 @@ extern carac_Status                 Status;
 NimBLEDevice BLE_SERVER EXT_RAM_ATTR;
 extern carac_Update_Status 			UpdateStatus;
 extern carac_Comands                Comands;
+extern TickType_t AuthTimer;
+extern uint8 deviceSerNum[10];
+extern uint8 initialSerNum[10];
 
 #ifdef CONNECTED
 
@@ -388,16 +397,12 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 				setAuthToken(payload, size);
 				return;
 			}
-			if (handle == RESET_RESET_CHAR_HANDLE) {
-				if( isMainFwUpdateActive() )
-				{
-					vTaskDelay(pdMS_TO_TICKS(200));	
-					MAIN_RESET_Write(0);
-					vTaskDelay(pdMS_TO_TICKS(100));	
-					ESP.restart();
-					return;
-				}
-			}
+			/*if (handle == RESET_RESET_CHAR_HANDLE) {
+				MAIN_RESET_Write(0);
+				vTaskDelay(pdMS_TO_TICKS(500));	
+				ESP.restart();
+				return;
+			}*/
 			
 			if (handle == FWUPDATE_BIRD_PROLOG_PSEUDO_CHAR_HANDLE) {
 				
@@ -745,20 +750,18 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 					UpdateFile.close();
 				}
 
+				//Comprobacion de lo que s eha escrito, vía checksum (Muy muy lento)
+				/*
 				uint8* escrito = new uint8[256];
-				printf("%i\n",UpdateFile.position());
-
-				UpdateFile.seek(UpdateFile.position()-partSize, SeekCur);
-
+				int posicion = UpdateFile.position()-partSize;
+				UpdateFile.close();
+				UpdateFile = SPIFFS.open("/FreeRTOS_V6.cyacd", FILE_READ);
+				UpdateFile.seek(posicion, SeekCur);
 				UpdateFile.read(escrito, partSize);
-
 
 
 				//Comprobar el checksum de lo que se ha escrito
 				uint32_t writtenchecksum=crc32(partSize, (uint8_t*)escrito,0xFFFFFFFFUL);
-				
-				printf("%s \n\n", escrito);
-				printf("%s \n", payload);
 
 				Serial.printf("Writen vs checksum %08X %08X\n", writtenchecksum, checksum);
 
@@ -776,6 +779,10 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 					UpdateStatus.DescargandoArchivo = false;
 					return;
 				}
+
+				UpdateFile.close();
+				UpdateFile = SPIFFS.open("/FreeRTOS_V6.cyacd", FILE_APPEND);
+				*/
 
 			}	
 
@@ -1041,5 +1048,87 @@ void serverbleTask(void *arg)
 	}
 }
 
+void deviceConnectInd ( void ){
+	if(dispositivo_inicializado == 2){
+		int random = 0;
+		const void* outputvec1;
+		// This event is received when device is connected over GATT level 
 
+		srand(aut_semilla);
+		random = rand();
+		authChallengeQuery[7] = (uint8)(random >> 8);
+		authChallengeQuery[6] = (uint8)random;
+		random = rand();
+		authChallengeQuery[5] = (uint8)(random >> 8);
+		authChallengeQuery[4] = (uint8)random;
+		random = rand();
+		authChallengeQuery[3] = (uint8)(random >> 8);
+		authChallengeQuery[2] = (uint8)random;
+		random = rand();
+		authChallengeQuery[1] = (uint8)(random >> 8);
+		authChallengeQuery[0] = (uint8)random;
 
+		outputvec1 = dev_auth_challenge(authChallengeQuery);
+
+		memcpy(authChallengeReply, outputvec1, 8);
+
+		//Delay para dar tiempo a conectar
+		//vTaskDelay(pdMS_TO_TICKS(250));
+		modifyCharacteristic(authChallengeQuery, 8, AUTENTICACION_MATRIX_CHAR_HANDLE);
+
+		#ifdef DEBUG
+		Serial.println("Sending authentication");
+		#endif
+		vTaskDelay(pdMS_TO_TICKS(500));
+		AuthTimer = xTaskGetTickCount();
+	}
+	AuthTimer = xTaskGetTickCount();
+}
+
+void deviceDisconnectInd ( void )
+{
+	authSuccess = 0;
+	memset(authChallengeReply, 0x00, 8);
+	//memset(authChallengeQuery, 0x00, 8);
+	modifyCharacteristic(authChallengeQuery, 10, AUTENTICACION_MATRIX_CHAR_HANDLE);
+	vTaskDelay(pdMS_TO_TICKS(500));
+}
+
+uint8_t setAuthToken ( uint8_t *data, int len ){
+	if(!authSuccess){
+		if(!memcmp(authChallengeReply, data, 8) || !memcmp(deviceSerNum, initialSerNum, 10))
+		{
+			AuthTimer=0;
+			#ifdef DEBUG
+			printf("authSuccess\r\n");
+			#endif
+			
+			serverbleSetConnected(true);
+			SendStatusToPSOC5(serverbleGetConnected(), dispositivo_inicializado);
+
+			authSuccess = 1;
+		}
+	}
+
+	return 1;
+}
+
+uint8_t authorizedOK ( void ){
+	return (authSuccess || getMainFwUpdateActive() );
+}
+
+void updateCharacteristic(uint8_t* data, uint16_t len, uint16_t attrHandle){
+	serverbleSetCharacteristic ( data,len,attrHandle);
+	return;
+}
+
+void modifyCharacteristic(uint8* data, uint16 len, uint16 attrHandle){
+	serverbleSetCharacteristic ( data,len,attrHandle);
+	return;
+}
+
+void InitializeAuthsystem(){
+	srand(aut_semilla);
+
+	modifyCharacteristic(authChallengeQuery, 8, AUTENTICACION_MATRIX_CHAR_HANDLE);
+}
