@@ -3,6 +3,7 @@
 
 extern HardwareSerialMOD serialLocal;
 extern uint8_t mainFwUpdateActive;
+extern uint8_t updateTaskrunning;
 
 //*Declaracion de funciones privadas*/
 int controlSendToSerialLocal ( uint8_t * data, int len );
@@ -92,7 +93,8 @@ void SendToPSOC5(uint8 data, uint16 attrHandle){
   buffer_tx_local[2] = (uint8)(attrHandle);
   buffer_tx_local[3] = 1; //size
   buffer_tx_local[4] = data;
-  controlSendToSerialLocal(buffer_tx_local, 5);
+  //controlSendToSerialLocal(buffer_tx_local, 5);
+  serialLocal.write(buffer_tx_local, 5);
 }
 
 void SendToPSOC5(uint8 *data, uint16 len, uint16 attrHandle){
@@ -151,8 +153,8 @@ uint8_t getMainFwUpdateActive (){
 //********************Funciones privadas no accessibles desde fuera***********************************/
 int controlSendToSerialLocal ( uint8_t * data, int len ){
 
-	if(!mainFwUpdateActive){
-	    int ret=0;
+	if(!updateTaskrunning){
+	  int ret=0;
 		ret = serialLocal.write(data, len);
 
 		return ret;

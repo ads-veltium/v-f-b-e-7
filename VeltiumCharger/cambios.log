@@ -23,3 +23,4 @@ v5.17
 
 v5.18
     - Añadido comprobación de checksum en el envio del firmware nuevo al PSOC5.
+    - Añadido delay entre envio de lineas para el firmware del PSOC5

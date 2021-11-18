@@ -179,11 +179,10 @@ void controlTask(void *arg) {
 
 	MAIN_RESET_Write(1);        // Permito el arranque del micro principal
 
-	while(1)
-	{
+	while(1){
+
 		// Eventos 10 mS
-		if(contador_cent_segundos != contador_cent_segundos_ant)
-		{
+		if(contador_cent_segundos != contador_cent_segundos_ant){
 			contador_cent_segundos_ant = contador_cent_segundos;
 
 			if(mainFwUpdateActive == 0){
@@ -313,7 +312,6 @@ void controlTask(void *arg) {
 					SendToPSOC5(Zero,BOOT_LOADER_LOAD_SW_APP_CHAR_HANDLE);					
 				}				
 			}
-
 		}
 		
 		// Eventos 1 segundo
@@ -380,8 +378,8 @@ void proceso_recepcion(void *arg){
 	uint16 tipo_bloque = 0x0000;
 
 	for(;;){
-		delay(mainFwUpdateActive ? 1000:5);
-		if(!mainFwUpdateActive){
+		delay(updateTaskrunning ? 1000:5);
+		if(!updateTaskrunning){
 			uint8_t ui8Tmp;
 			len = serialLocal.available();
 			
@@ -1438,7 +1436,7 @@ void procesar_bloque(uint16 tipo_bloque){
 }
 
 /************************************************
- * Update Tasks
+ * Update Task
  * **********************************************/
 void UpdateTask(void *arg){
 	UpdateStatus.InstalandoArchivo = true;
