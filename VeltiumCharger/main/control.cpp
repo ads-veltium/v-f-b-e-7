@@ -175,7 +175,7 @@ void controlTask(void *arg) {
 	bool Iface_Con = BLE;
 	uint8 old_inicializado = 0;
 	serialLocal.begin(115200, SERIAL_8N1, 34, 4); // pins: rx, tx
-
+	
 	// INICIALIZO ELEMENTOS PARA AUTENTICACION
 	InitializeAuthsystem();
 
@@ -313,9 +313,8 @@ void controlTask(void *arg) {
 				if(!updateTaskrunning){
 					//Poner el micro principal en modo bootload
 					SendToPSOC5(Zero,BOOT_LOADER_LOAD_SW_APP_CHAR_HANDLE);
-					vTaskDelay(pdMS_TO_TICKS(500));
-					xTaskCreate(UpdateTask,"TASK UPDATE",4096,NULL,1,NULL);
-					updateTaskrunning=1;
+					
+					
 				}				
 			}
 
@@ -1494,16 +1493,22 @@ void UpdateTask(void *arg){
 				Buffer=file.readStringUntil('\n'); 
 				longitud = Buffer.length()-1; 
 				b = (unsigned char*) Buffer.c_str();     
-				err = CyBtldr_ParseRowData((unsigned int)longitud,b, &arrayId, &rowNum, rowData, &rowSize, &checksum);
-				if(err!=0){
-					Serial.printf("Error 1%i \n", err);
+				uint8 reintentos = 0;
+				err = 1;
+				while(err !=0 && ++reintentos < 10){
+					//Intentar enviar la linea varias veces asta que no falle
+					err = CyBtldr_ParseRowData((unsigned int)longitud,b, &arrayId, &rowNum, rowData, &rowSize, &checksum);
+					if (err==0){
+						err = CyBtldr_ProgramRow(arrayId, rowNum, rowData, rowSize);
+					}
+					if (err==0){
+						err = CyBtldr_VerifyRow(arrayId, rowNum, checksum);
+					}
+					if(err!=0){
+						Serial.printf("Error 1%i \n", err);
+					}
 				}
-				if (err==0){
-					err = CyBtldr_ProgramRow(arrayId, rowNum, rowData, rowSize);
-				}
-				if (err==0){
-					err = CyBtldr_VerifyRow(arrayId, rowNum, checksum);
-				}
+				
 						
 				Nlinea++;
 				Serial.printf("Lineas leidas: %u \n",Nlinea);

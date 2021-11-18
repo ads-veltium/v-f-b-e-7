@@ -65,7 +65,7 @@ int CyBtldr_TransferData(unsigned char* inBuf, int inSize, unsigned char* outBuf
                 err=outBuf[1];
             }            
         }
-        vTaskDelay(pdMS_TO_TICKS(25));        
+        vTaskDelay(pdMS_TO_TICKS(5));        
     }
     channel->flush();
     if (CYRET_SUCCESS != err)
