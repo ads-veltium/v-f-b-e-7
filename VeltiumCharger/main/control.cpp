@@ -12,11 +12,13 @@
 #include "control.h"
 #include "helpers.h"
 
-StaticTask_t xControlBuffer ;
-StaticTask_t xLEDBuffer ;
+StaticTask_t xControlBuffer;
+StaticTask_t xLEDBuffer;
+StaticTask_t xUartBuffer;
 
 static StackType_t xControlStack  [4096*6]     EXT_RAM_ATTR;
 static StackType_t xLEDStack      [4096*2]     EXT_RAM_ATTR;
+static StackType_t xUartStack     [4096*6]     EXT_RAM_ATTR;
 
 #ifdef CONNECTED
 static StackType_t xFirebaseStack [4096*6]     EXT_RAM_ATTR;
@@ -86,7 +88,6 @@ uint8 version_firmware[11] = {"VBLE2_0518"};
 uint8 version_firmware[11] = {"VBLE0_0515"};	
 #endif
 
-
 uint8 PSOC5_version_firmware[11] ;		
 TickType_t Last_Block=0; 
 uint8 systemStarted = 0;
@@ -95,11 +96,9 @@ uint8 Bloqueo_de_carga = 1;
 bool Testing = false;
 int TimeoutMainDisconnect = 0;
 extern bool deviceBleDisconnect;
-void startSystem(void);
 
-void StackEventHandler( uint32 eventCode, void *eventParam );
+void startSystem(void);
 void modifyCharacteristic(uint8* data, uint16 len, uint16 attrHandle);
-void proceso_recepcion(void);
 
 
 #ifdef CONNECTED
@@ -166,10 +165,9 @@ void MAIN_RESET_Write( uint8_t val )
 	return;
 }
 
-void controlTask(void *arg) {	
+void controlTask(void *arg) {		
 	
-	
-	// Inicia el timer de 10mS i 1 segundo
+	// Inicia el timer de 10mS y 1 segundo
 	configTimers();
 	bool LastUserCon = false;
 	bool Iface_Con = BLE;
@@ -190,9 +188,9 @@ void controlTask(void *arg) {
 
 			if(mainFwUpdateActive == 0){
 				switch (estado_actual){
+					
 					case ESTADO_ARRANQUE:
 						if(!PSOC_inicializado){
-							proceso_recepcion();
 							if(--cnt_timeout_inicio == 0){
 								SendToPSOC5(0,BLOQUE_INICIALIZACION);
 								cnt_timeout_inicio = TIMEOUT_INICIO;
@@ -211,6 +209,7 @@ void controlTask(void *arg) {
 							estado_actual = ESTADO_INICIALIZACION;
 						}
 						break;
+
 					case ESTADO_INICIALIZACION:{
 					    uint8_t data[2]={0};
 						#ifdef USE_COMS
@@ -224,9 +223,8 @@ void controlTask(void *arg) {
 						estado_actual = ESTADO_NORMAL;
 						break;
 					}
-					case ESTADO_NORMAL:
-						proceso_recepcion();
 
+					case ESTADO_NORMAL:
 						//Alguien se está intentando conectar	
 						if(AuthTimer !=0){
 							uint32_t Transcurrido = pdTICKS_TO_MS(xTaskGetTickCount()-AuthTimer);
@@ -312,13 +310,12 @@ void controlTask(void *arg) {
 			else{			
 				if(!updateTaskrunning){
 					//Poner el micro principal en modo bootload
-					SendToPSOC5(Zero,BOOT_LOADER_LOAD_SW_APP_CHAR_HANDLE);
-					
-					
+					SendToPSOC5(Zero,BOOT_LOADER_LOAD_SW_APP_CHAR_HANDLE);					
 				}				
 			}
 
 		}
+		
 		// Eventos 1 segundo
 		if(cont_seg != cont_seg_ant){
 			cont_seg_ant = cont_seg;
@@ -376,83 +373,86 @@ void startSystem(void){
 	
 }
 
-void proceso_recepcion(void)
-{
-	static uint8 byte;
-	static uint16 longitud_bloque = 0, len;
-	static uint16 tipo_bloque = 0x0000;
+void proceso_recepcion(void *arg){
 
-	if(!mainFwUpdateActive){
-		uint8_t ui8Tmp;
-		len = serialLocal.available();
-		if(len == 0)
-		{
-			if(cnt_fin_bloque == 0)
-			{
-				puntero_rx_local = 0;
-				estado_recepcion = ESPERANDO_HEADER;
+	uint8 byte;
+	uint16 longitud_bloque = 0, len;
+	uint16 tipo_bloque = 0x0000;
+
+	for(;;){
+		delay(mainFwUpdateActive ? 1000:5);
+		if(!mainFwUpdateActive){
+			uint8_t ui8Tmp;
+			len = serialLocal.available();
+			
+			if(len == 0){
+				if(cnt_fin_bloque == 0){
+					puntero_rx_local = 0;
+					estado_recepcion = ESPERANDO_HEADER;
+				}
+				continue;
 			}
-			return;
-		}
-		cnt_fin_bloque = TIMEOUT_RX_BLOQUE;
-		switch(estado_recepcion)
-		{
-			case ESPERANDO_HEADER:
-				serialLocal.read(&byte, 1);
-				if(byte != HEADER_RX)
+			
+			cnt_fin_bloque = TIMEOUT_RX_BLOQUE;
+			
+			switch(estado_recepcion){
+				case ESPERANDO_HEADER:
+					serialLocal.read(&byte, 1);
+					if(byte != HEADER_RX)
+						break;
+					estado_recepcion = ESPERANDO_TIPO;
+					if(--len == 0)
+						break;
 					break;
-				estado_recepcion = ESPERANDO_TIPO;
-				if(--len == 0)
+				case ESPERANDO_TIPO:
+					if(len < 2)
+						break;
+					serialLocal.read(&ui8Tmp,1);
+					tipo_bloque = 256 * ui8Tmp;
+					serialLocal.read(&ui8Tmp,1);
+					tipo_bloque += ui8Tmp;
+					estado_recepcion = ESPERANDO_LONGITUD;
+					len -= 2;
+					if(len == 0)
+						break;
 					break;
-				break;
-			case ESPERANDO_TIPO:
-				if(len < 2)
+				case ESPERANDO_LONGITUD:
+					serialLocal.read(&ui8Tmp,1);
+					longitud_bloque = ui8Tmp;
+					if(longitud_bloque == 0)
+						longitud_bloque = 256;
+					puntero_rx_local = 0;
+					estado_recepcion = RECIBIENDO_BLOQUE;
+					if(--len == 0)
+						break;
 					break;
-				serialLocal.read(&ui8Tmp,1);
-				tipo_bloque = 256 * ui8Tmp;
-				serialLocal.read(&ui8Tmp,1);
-				tipo_bloque += ui8Tmp;
-				estado_recepcion = ESPERANDO_LONGITUD;
-				len -= 2;
-				if(len == 0)
-					break;
-				break;
-			case ESPERANDO_LONGITUD:
-				serialLocal.read(&ui8Tmp,1);
-				longitud_bloque = ui8Tmp;
-				if(longitud_bloque == 0)
-					longitud_bloque = 256;
-				puntero_rx_local = 0;
-				estado_recepcion = RECIBIENDO_BLOQUE;
-				if(--len == 0)
-					break;
-				break;
-			case RECIBIENDO_BLOQUE:
-				do{
-					if(longitud_bloque > 0)
-					{
-						serialLocal.read(&buffer_rx_local[puntero_rx_local],1);
-						puntero_rx_local++;
-						if(--longitud_bloque == 0)
+				case RECIBIENDO_BLOQUE:
+					do{
+						if(longitud_bloque > 0)
 						{
-							procesar_bloque(tipo_bloque);
-							puntero_rx_local = 0;
-							estado_recepcion = ESPERANDO_HEADER;
-							break;
+							serialLocal.read(&buffer_rx_local[puntero_rx_local],1);
+							puntero_rx_local++;
+							if(--longitud_bloque == 0)
+							{
+								procesar_bloque(tipo_bloque);
+								puntero_rx_local = 0;
+								estado_recepcion = ESPERANDO_HEADER;
+								break;
+							}
 						}
-					}
-					else
-					{
-						serialLocal.read(&byte, 1);
-					}
-					len--;							
-				}while(len >0);						
-				break;
-			default:
-				puntero_rx_local = 0;
-				estado_recepcion = ESPERANDO_HEADER;
-				break;
+						else
+						{
+							serialLocal.read(&byte, 1);
+						}
+						len--;							
+					}while(len >0);						
+					break;
+				default:
+					puntero_rx_local = 0;
+					estado_recepcion = ESPERANDO_HEADER;
+					break;
 			}
+		}
 	}
 }
 
@@ -1546,6 +1546,7 @@ void controlInit(void){
 	//Freertos estatico
 	xTaskCreateStatic(LedControl_Task,"TASK LEDS",4096*2,NULL,PRIORIDAD_LEDS,xLEDStack,&xLEDBuffer); 
 	xTaskCreateStatic(controlTask,"TASK CONTROL",4096*6,NULL,PRIORIDAD_CONTROL,xControlStack,&xControlBuffer); 
+	xTaskCreateStatic(proceso_recepcion,"TASK UART",4096*6,NULL,PRIORIDAD_UART,xUartStack,&xUartBuffer); 
 	#ifdef CONNECTED
 		//xTaskCreateStatic(ComsTask,"TASK COMS", 4096*4,NULL,PRIORIDAD_COMS,xComsStack, &xComsBuffer);
 		xTaskCreate(ComsTask,"Task Coms",4096*2,NULL,PRIORIDAD_COMS,NULL);
