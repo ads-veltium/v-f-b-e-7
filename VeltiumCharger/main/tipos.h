@@ -372,15 +372,20 @@ typedef struct{
 
 //Caracteristica para almacenar la configuracion del equipo
 typedef struct{
-	String Keylist[2] = {"FW_VERSION", "PART_NUMBER"};
-	String Firmware = "VBLE2_0512";
-	String Part_Number = "LU320111250";
+	char device_ID[12]    = {"VCD17010001"};
+	char deviceSerNum[30] = {'0'};
+	char autentication_mode[3] = {'W', 'A', 0};
+
+	String Firmware     = "VBLE0_0500";
+	String FirmwarePSOC = "VELT0_0500";
+	String Part_Number  = "LU320111250";
+
 	uint8  CDP  = 0;
 	uint8  inst_current_limit = 32;
+
 	uint16 potencia_contratada1 = 32;
 	uint16 potencia_contratada2 = 32;
-
-	char   autentication_mode[2] = {'W', 'A'};
+	
 } carac_config;
 
 //Estados de las comunicaciones

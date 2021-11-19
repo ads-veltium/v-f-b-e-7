@@ -5,6 +5,9 @@ static bool operator==(const carac_config& lhs, const carac_config& rhs){
     if(lhs.Firmware != rhs.Firmware){
       return false;
     }
+    if(lhs.FirmwarePSOC != rhs.FirmwarePSOC){
+      return false;
+    }
     if(lhs.Part_Number != rhs.Part_Number){
       return false;
     }
@@ -20,7 +23,13 @@ static bool operator==(const carac_config& lhs, const carac_config& rhs){
     if(lhs.CDP != rhs.CDP){
       return false;
     }
-    if(memcmp(lhs.autentication_mode, rhs.autentication_mode,2)){
+     if(memcmp(lhs.device_ID, rhs.device_ID,sizeof(lhs.device_ID))){
+        return false;
+    }
+     if(memcmp(lhs.deviceSerNum, rhs.deviceSerNum,sizeof(lhs.deviceSerNum))){
+        return false;
+    }
+    if(memcmp(lhs.autentication_mode, rhs.autentication_mode,sizeof(lhs.autentication_mode))){
         return false;
     }
     
@@ -60,16 +69,20 @@ void ConfigTask(void *arg){
 void Config::Carac_to_json(){
     ConfigJSON.clear();
     ConfigJSON["fw_esp"]      = data.Firmware;
+    ConfigJSON["fw_psoc"]     = data.FirmwarePSOC;
     ConfigJSON["part_number"] = data.Part_Number;
     ConfigJSON["auth_mode"] = String(data.autentication_mode);
     ConfigJSON["pot_contratada_1"] = data.potencia_contratada1;
     ConfigJSON["pot_contratada_2"] = data.potencia_contratada2;
     ConfigJSON["inst_curr_limit"] = data.inst_current_limit;
     ConfigJSON["CDP"] = data.CDP;
+    ConfigJSON["device_ID"]      = String(data.device_ID);
+    ConfigJSON["device_ser_num"] = String(data.deviceSerNum);
 }
 
 void Config::Json_to_carac(){
     data.Firmware       = ConfigJSON["fw_esp"].as<String>();
+    data.FirmwarePSOC      = ConfigJSON["fw_psoc"].as<String>();
     data.Part_Number    = ConfigJSON["part_number"].as<String>();
 
     data.potencia_contratada1 = ConfigJSON["pot_contratada_1"].as<uint16_t>();
@@ -79,6 +92,8 @@ void Config::Json_to_carac(){
     data.CDP = ConfigJSON["CDP"].as<uint8_t>();
 
     memcpy(data.autentication_mode, ConfigJSON["auth_mode"].as<String>().c_str(),2);
+    memcpy(data.device_ID, ConfigJSON["device_ID"].as<String>().c_str(),sizeof(data.device_ID));
+    memcpy(data.deviceSerNum, ConfigJSON["device_ser_num"].as<String>().c_str(),sizeof(data.deviceSerNum));
 }
 
 //**********Funciones externas de la case de configuracion**************/

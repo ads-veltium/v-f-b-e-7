@@ -347,12 +347,18 @@ void startSystem(void){
 	dev_auth_init((void const*)&deviceSerNum);
 
 	Configuracion.data.Firmware = String((char*)version_firmware);
+	Configuracion.data.FirmwarePSOC = String((char*)PSOC5_version_firmware);
+	
+	memcpy(Configuracion.data.device_ID,device_ID,sizeof(device_ID));
+	sprintf(Configuracion.data.deviceSerNum,"%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",deviceSerNum[0], deviceSerNum[1], deviceSerNum[2], deviceSerNum[3], deviceSerNum[4],
+			deviceSerNum[5], deviceSerNum[6], deviceSerNum[7], deviceSerNum[8], deviceSerNum[9]);
 
 	#ifdef CONNECTED
 		//Get Device FirebaseDB ID
 		sprintf(ConfigFirebase.Device_Db_ID,"%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",deviceSerNum[0], deviceSerNum[1], deviceSerNum[2], deviceSerNum[3], deviceSerNum[4],
 			deviceSerNum[5], deviceSerNum[6], deviceSerNum[7], deviceSerNum[8], deviceSerNum[9]);
 		memcpy(ConfigFirebase.Device_Ser_num,ConfigFirebase.Device_Db_ID,20);
+
 		memcpy(&ConfigFirebase.Device_Db_ID[20],&device_ID[3],8);
 		memcpy(ConfigFirebase.Device_Id,&device_ID[3],8);
 
