@@ -25,13 +25,15 @@ static StackType_t xFirebaseStack [4096*6]     EXT_RAM_ATTR;
 StaticTask_t xFirebaseBuffer ;
 #endif
 
-//Variables Firebase
-carac_Update_Status UpdateStatus EXT_RAM_ATTR;
-carac_Comands  Comands       EXT_RAM_ATTR;
 carac_Status   Status        EXT_RAM_ATTR;
-carac_Params   Params        EXT_RAM_ATTR;
+carac_Update_Status UpdateStatus EXT_RAM_ATTR;
 
 #ifdef CONNECTED
+
+//Variables Firebase
+carac_Comands  Comands       EXT_RAM_ATTR;
+carac_Params   Params        EXT_RAM_ATTR;
+
 carac_Coms     Coms          				 EXT_RAM_ATTR;
 carac_Contador ContadorExt   				 EXT_RAM_ATTR;
 carac_Firebase_Configuration ConfigFirebase  EXT_RAM_ATTR;
@@ -510,17 +512,18 @@ void procesar_bloque(uint16 tipo_bloque){
 				modifyCharacteristic(&buffer_rx_local[241], 2, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_P2_CHAR_HANDLE);
 				modifyCharacteristic(&buffer_rx_local[243], 2, TIME_DATE_COUNTRY_CHAR_HANDLE);			
 
-				
+				/************************ Set configuration data **********************/
+				Configuracion.data.potencia_contratada1 = buffer_rx_local[229]+buffer_rx_local[230]*0x100;
+				Configuracion.data.potencia_contratada2 = buffer_rx_local[241]+buffer_rx_local[242]*0x100;		
+
+				#ifdef CONNECTED	
 					/************************ Set firebase Params **********************/
 					memcpy(Params.autentication_mode, &buffer_rx_local[212],2);
 					Params.inst_current_limit = buffer_rx_local[11];
 					Params.potencia_contratada1 = buffer_rx_local[229]+buffer_rx_local[230]*0x100;
 					Params.potencia_contratada2 = buffer_rx_local[241]+buffer_rx_local[242]*0x100;
 					Params.CDP 	  =  buffer_rx_local[232];
-					
-					
 
-				#ifdef CONNECTED	
 					if((buffer_rx_local[232] >> 1) && 0x01){
 						Params.Tipo_Sensor    = (buffer_rx_local[232]  >> 4);
 					}
@@ -741,12 +744,15 @@ void procesar_bloque(uint16 tipo_bloque){
 		break;
 	
 		case MEASURES_CURRENT_COMMAND_CHAR_HANDLE:{
-			Comands.desired_current = buffer_rx_local[0];
-			Comands.Newdata = false;
-			#ifdef DEBUG
-			Serial.println("Current command received");
-			Serial.println(Comands.desired_current);
+			#ifdef CONNECTED
+				Comands.desired_current = buffer_rx_local[0];
+				Comands.Newdata = false;
+				#ifdef DEBUG
+					Serial.println("Current command received");
+					Serial.println(Comands.desired_current);
+				#endif
 			#endif
+			
 			modifyCharacteristic(buffer_rx_local, 1, MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
 		}
 		break;
@@ -772,7 +778,9 @@ void procesar_bloque(uint16 tipo_bloque){
 		break;
 
 		case CHARGING_BLE_MANUAL_START_CHAR_HANDLE:{
+			#ifdef CONNECTED
 			Comands.start=0;
+			#endif
 			#ifdef DEBUG
 			Serial.println("Start recibido");
 			#endif
@@ -781,7 +789,9 @@ void procesar_bloque(uint16 tipo_bloque){
 		break;
 
 		case CHARGING_BLE_MANUAL_STOP_CHAR_HANDLE:{
+			#ifdef CONNECTED
 			Comands.stop=0;
+			#endif
 			#ifdef DEBUG
 			Serial.println("Stop recibido");
 			#endif
@@ -940,7 +950,7 @@ void procesar_bloque(uint16 tipo_bloque){
 		case CONFIGURACION_AUTENTICATION_MODES_CHAR_HANDLE:{
 			modifyCharacteristic(buffer_rx_local, 2, CONFIGURACION_AUTENTICATION_MODES_CHAR_HANDLE);
 			memcpy(Configuracion.data.autentication_mode, buffer_rx_local,2);
-			
+
 			#ifdef DEBUG
 			Serial.printf("Nueva autenticacion recibida! %c %c \n", buffer_rx_local[0],buffer_rx_local[1]);
 			#endif
@@ -952,6 +962,7 @@ void procesar_bloque(uint16 tipo_bloque){
 		
 		case DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_P1_CHAR_HANDLE:{
 			modifyCharacteristic(buffer_rx_local, 2, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_P1_CHAR_HANDLE);
+			Configuracion.data.potencia_contratada1 =buffer_rx_local[0]+buffer_rx_local[1]*100;
 			#ifdef DEBUG
 			Serial.println("Potencia contratada 1 cambiada a: ");
 			Serial.print(buffer_rx_local[0]+buffer_rx_local[1]*100);
@@ -965,6 +976,7 @@ void procesar_bloque(uint16 tipo_bloque){
 
 		case DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_P2_CHAR_HANDLE:{
 			modifyCharacteristic(buffer_rx_local, 2, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_P2_CHAR_HANDLE);
+			Configuracion.data.potencia_contratada2 =buffer_rx_local[0]+buffer_rx_local[1]*100;
 			#ifdef DEBUG
 			Serial.println("Potencia contratada 2 cambiada a: ");
 			Serial.print(buffer_rx_local[0]+buffer_rx_local[1]*100);
@@ -1004,8 +1016,9 @@ void procesar_bloque(uint16 tipo_bloque){
 		
 		case DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE:{
 			modifyCharacteristic(buffer_rx_local, 1, DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE);
-			Params.CDP				  = buffer_rx_local[0];
-			#ifdef CONNECTED			
+			
+			#ifdef CONNECTED
+				Params.CDP				  = buffer_rx_local[0];			
 				if((buffer_rx_local[0] >> 1) && 0x01){
 
 					Params.Tipo_Sensor    = (buffer_rx_local[0]  >> 4);
@@ -1029,9 +1042,9 @@ void procesar_bloque(uint16 tipo_bloque){
 						Coms.ETH.restart = true;
 					}
 				}
-			#endif
-			#ifdef DEBUG_BLE
-			Serial.printf("New CDP %i %i \n", Params.CDP, Params.Tipo_Sensor);
+				#ifdef DEBUG_BLE
+					Serial.printf("New CDP %i %i \n", Params.CDP, Params.Tipo_Sensor);
+				#endif
 			#endif
 		} 
 		break;

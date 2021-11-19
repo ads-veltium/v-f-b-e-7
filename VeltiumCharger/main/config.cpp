@@ -8,9 +8,16 @@ static bool operator==(const carac_config& lhs, const carac_config& rhs){
     if(lhs.Part_Number != rhs.Part_Number){
       return false;
     }
+    if(lhs.potencia_contratada1 != rhs.potencia_contratada1){
+      return false;
+    }
+    if(lhs.potencia_contratada2 != rhs.potencia_contratada2){
+      return false;
+    }
     if(memcmp(lhs.autentication_mode, rhs.autentication_mode,2)){
         return false;
     }
+    
     return true; 
 }
 
@@ -45,14 +52,21 @@ void ConfigTask(void *arg){
 //**********Funciones internas de la case de configuracion**************/
 
 void Config::Carac_to_json(){
-    ConfigJSON["fw_esp"] = data.Firmware;
+    ConfigJSON.clear();
+    ConfigJSON["fw_esp"]      = data.Firmware;
     ConfigJSON["part_number"] = data.Part_Number;
+    ConfigJSON["pot_contratada_1"] = data.potencia_contratada1;
+    ConfigJSON["pot_contratada_2"] = data.potencia_contratada2;
     ConfigJSON["auth_mode"] = String(data.autentication_mode);
 }
 
 void Config::Json_to_carac(){
-    data.Firmware = ConfigJSON["fw_esp"].as<String>();
-    data.Part_Number = ConfigJSON["part_number"].as<String>();
+    data.Firmware       = ConfigJSON["fw_esp"].as<String>();
+    data.Part_Number    = ConfigJSON["part_number"].as<String>();
+
+    data.potencia_contratada1 = ConfigJSON["pot_contratada_1"].as<uint16_t>();
+    data.potencia_contratada2 = ConfigJSON["pot_contratada_2"].as<uint16_t>();
+
     memcpy(data.autentication_mode, ConfigJSON["auth_mode"].as<String>().c_str(),2);
 }
 
