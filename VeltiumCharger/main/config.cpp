@@ -1,6 +1,6 @@
 #include "config.h"
 
-//********************Comparadores de las caracteristicas***********************************/
+//**********Comparadores de las caracteristicas**********/
 static bool operator==(const carac_config& lhs, const carac_config& rhs){
     if(lhs.Firmware != rhs.Firmware){
       return false;
@@ -8,10 +8,17 @@ static bool operator==(const carac_config& lhs, const carac_config& rhs){
     if(lhs.Part_Number != rhs.Part_Number){
       return false;
     }
+    if(memcmp(lhs.autentication_mode, rhs.autentication_mode,2)){
+        return false;
+    }
     return true; 
 }
 
-//Tarea de configuracion
+static bool operator!=(const carac_config& lhs, const carac_config& rhs){
+    return !(lhs==rhs); 
+}
+
+//*******************Tarea de configuracion**************/
 //Atiende a las ordenes que se le envian desde el resto de tareas
 //Para leer y almacenar datos en el spiffs.
 void ConfigTask(void *arg){
@@ -20,7 +27,7 @@ void ConfigTask(void *arg){
     while(true){
         delay(50);
 
-        if(!(Configuracion.data == old_data)){
+        if(Configuracion.data != old_data){
             Configuracion.Guardar = true;
             old_data = Configuracion.data;
         }
@@ -35,17 +42,21 @@ void ConfigTask(void *arg){
     }
 }
 
+//**********Funciones internas de la case de configuracion**************/
+
 void Config::Carac_to_json(){
     ConfigJSON["fw_esp"] = data.Firmware;
     ConfigJSON["part_number"] = data.Part_Number;
+    ConfigJSON["auth_mode"] = String(data.autentication_mode);
 }
 
 void Config::Json_to_carac(){
     data.Firmware = ConfigJSON["fw_esp"].as<String>();
     data.Part_Number = ConfigJSON["part_number"].as<String>();
+    memcpy(data.autentication_mode, ConfigJSON["auth_mode"].as<String>().c_str(),2);
 }
 
-
+//**********Funciones externas de la case de configuracion**************/
 void Config::init(){
     printf("Has llamado al constructor!!\n");
 

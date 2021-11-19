@@ -481,14 +481,26 @@ void procesar_bloque(uint16 tipo_bloque){
 				modifyCharacteristic(&buffer_rx_local[209], 2, RECORDING_REC_LAST_CHAR_HANDLE);
 				modifyCharacteristic(&buffer_rx_local[211], 1, RECORDING_REC_LAPS_CHAR_HANDLE);
 
-				modifyCharacteristic(&buffer_rx_local[212], 2, CONFIGURACION_AUTENTICATION_MODES_CHAR_HANDLE);
-
 				Serial.printf("Nueva autenticacion recibida! %c %c \n", buffer_rx_local[212],buffer_rx_local[213]);
 
+				//comprobar si el dato tiene sentido, sino cargar el de mi memoria
 				if(memcmp("AA", &buffer_rx_local[212],2) && memcmp("WA", &buffer_rx_local[212],2) && memcmp("MA", &buffer_rx_local[212],2)){
 					printf("He recibido algun dato erroneo en la autenticación\n");
-					break;
+					if(memcmp("AA", Configuracion.data.autentication_mode,2) && memcmp("WA", Configuracion.data.autentication_mode,2) && memcmp("MA", Configuracion.data.autentication_mode,2)){
+						memcpy(&buffer_rx_local[212],Configuracion.data.autentication_mode,2);
+					}
+					else{
+						//Si ninguno de los dos es correcto, lo damos por malo y ponemos el de defecto
+						//TODO: poner por defecto el modo WA
+						break;
+					}
 				}
+				else{
+					memcpy(Configuracion.data.autentication_mode, &buffer_rx_local[212],2);
+				}
+
+				modifyCharacteristic(&buffer_rx_local[212], 2, CONFIGURACION_AUTENTICATION_MODES_CHAR_HANDLE);
+
 				memcpy(deviceSerNum, &buffer_rx_local[219], 10);			
 				modifyCharacteristic(&buffer_rx_local[229], 2, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_P1_CHAR_HANDLE);
 				modifyCharacteristic(&buffer_rx_local[231], 1, LED_LUMIN_COLOR_LUMINOSITY_LEVEL_CHAR_HANDLE);
@@ -927,6 +939,8 @@ void procesar_bloque(uint16 tipo_bloque){
 		
 		case CONFIGURACION_AUTENTICATION_MODES_CHAR_HANDLE:{
 			modifyCharacteristic(buffer_rx_local, 2, CONFIGURACION_AUTENTICATION_MODES_CHAR_HANDLE);
+			memcpy(Configuracion.data.autentication_mode, buffer_rx_local,2);
+			
 			#ifdef DEBUG
 			Serial.printf("Nueva autenticacion recibida! %c %c \n", buffer_rx_local[0],buffer_rx_local[1]);
 			#endif
