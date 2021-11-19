@@ -14,6 +14,12 @@ static bool operator==(const carac_config& lhs, const carac_config& rhs){
     if(lhs.potencia_contratada2 != rhs.potencia_contratada2){
       return false;
     }
+    if(lhs.inst_current_limit != rhs.inst_current_limit){
+      return false;
+    }
+    if(lhs.CDP != rhs.CDP){
+      return false;
+    }
     if(memcmp(lhs.autentication_mode, rhs.autentication_mode,2)){
         return false;
     }
@@ -55,9 +61,11 @@ void Config::Carac_to_json(){
     ConfigJSON.clear();
     ConfigJSON["fw_esp"]      = data.Firmware;
     ConfigJSON["part_number"] = data.Part_Number;
+    ConfigJSON["auth_mode"] = String(data.autentication_mode);
     ConfigJSON["pot_contratada_1"] = data.potencia_contratada1;
     ConfigJSON["pot_contratada_2"] = data.potencia_contratada2;
-    ConfigJSON["auth_mode"] = String(data.autentication_mode);
+    ConfigJSON["inst_curr_limit"] = data.inst_current_limit;
+    ConfigJSON["CDP"] = data.CDP;
 }
 
 void Config::Json_to_carac(){
@@ -66,14 +74,15 @@ void Config::Json_to_carac(){
 
     data.potencia_contratada1 = ConfigJSON["pot_contratada_1"].as<uint16_t>();
     data.potencia_contratada2 = ConfigJSON["pot_contratada_2"].as<uint16_t>();
+    data.inst_current_limit   = ConfigJSON["inst_curr_limit"].as<uint8_t>();
+
+    data.CDP = ConfigJSON["CDP"].as<uint8_t>();
 
     memcpy(data.autentication_mode, ConfigJSON["auth_mode"].as<String>().c_str(),2);
 }
 
 //**********Funciones externas de la case de configuracion**************/
 void Config::init(){
-    printf("Has llamado al constructor!!\n");
-
     //Arrancar el SPIFFS
     if(!SPIFFS.begin(false,"/spiffs",1,"CONFIG")){
       SPIFFS.end();					
@@ -94,19 +103,25 @@ void Config::init(){
 }
 
 bool Config::Load(){
-    printf("Cargando datos desde la flash!!\n");
+   
     ConfigFile = SPIFFS.open("/config.json", FILE_READ);
     String data_to_read;
     data_to_read = ConfigFile.readString();
     deserializeJson(ConfigJSON, data_to_read);
     ConfigFile.close();
     Json_to_carac();
-    serializeJson(ConfigJSON, Serial);
+
+    #ifdef DEBUG_CONFIG
+        printf("Cargando datos desde la flash!!\n");
+        serializeJsonPretty(ConfigJSON, Serial);
+    #endif
     return true;
 }
 
 bool Config::Store(){
-    printf("Guardando datos a la flash!!\n");
+    #ifdef DEBUG_CONFIG
+        printf("Guardando datos a la flash!!\n");
+    #endif
     Carac_to_json();
     ConfigFile = SPIFFS.open("/config.json", FILE_WRITE);
     String data_to_store;

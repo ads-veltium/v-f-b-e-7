@@ -346,6 +346,8 @@ void startSystem(void){
 	#endif
 	dev_auth_init((void const*)&deviceSerNum);
 
+	Configuracion.data.Firmware = String((char*)version_firmware);
+
 	#ifdef CONNECTED
 		//Get Device FirebaseDB ID
 		sprintf(ConfigFirebase.Device_Db_ID,"%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",deviceSerNum[0], deviceSerNum[1], deviceSerNum[2], deviceSerNum[3], deviceSerNum[4],
@@ -493,7 +495,8 @@ void procesar_bloque(uint16 tipo_bloque){
 					}
 					else{
 						//Si ninguno de los dos es correcto, lo damos por malo y ponemos el de defecto
-						//TODO: poner por defecto el modo WA
+						memcpy(&buffer_rx_local[212],"WA",2);
+						SendToPSOC5(&buffer_rx_local[212],2,CONFIGURACION_AUTENTICATION_MODES_CHAR_HANDLE);
 						break;
 					}
 				}
@@ -514,7 +517,9 @@ void procesar_bloque(uint16 tipo_bloque){
 
 				/************************ Set configuration data **********************/
 				Configuracion.data.potencia_contratada1 = buffer_rx_local[229]+buffer_rx_local[230]*0x100;
-				Configuracion.data.potencia_contratada2 = buffer_rx_local[241]+buffer_rx_local[242]*0x100;		
+				Configuracion.data.potencia_contratada2 = buffer_rx_local[241]+buffer_rx_local[242]*0x100;
+				Configuracion.data.inst_current_limit   = buffer_rx_local[11];	
+				Configuracion.data.CDP   = buffer_rx_local[232];		
 
 				#ifdef CONNECTED	
 					/************************ Set firebase Params **********************/
@@ -544,7 +549,6 @@ void procesar_bloque(uint16 tipo_bloque){
 
 				#endif
 
-				Configuracion.data.Firmware = "Adiosii";
 				startSystem();
 				systemStarted = 1;
 
@@ -733,6 +737,7 @@ void procesar_bloque(uint16 tipo_bloque){
 
 		case MEASURES_INSTALATION_CURRENT_LIMIT_CHAR_HANDLE:{
 			modifyCharacteristic(buffer_rx_local, 1, MEASURES_INSTALATION_CURRENT_LIMIT_CHAR_HANDLE);
+			Configuracion.data.inst_current_limit = buffer_rx_local[0];
 			#ifdef DEBUG
 			Serial.println("Instalation current limit Changed to" );
 			Serial.print(buffer_rx_local[0]);
@@ -1016,6 +1021,7 @@ void procesar_bloque(uint16 tipo_bloque){
 		
 		case DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE:{
 			modifyCharacteristic(buffer_rx_local, 1, DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE);
+			Configuracion.data.CDP = buffer_rx_local[0];
 			
 			#ifdef CONNECTED
 				Params.CDP				  = buffer_rx_local[0];			

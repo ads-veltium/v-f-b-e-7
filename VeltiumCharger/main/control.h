@@ -23,7 +23,8 @@
 		#endif
 
 		#define DEBUG_BLE		   //Activar el debug del ble
-
+		#define DEBUG_CONFIG	   //Debugar el almacenamiento de la configuracion
+		
 		#ifdef USE_COMS	
 			#define DEBUG_WIFI	   //Activar el debug del wifi
 			#define DEBUG_ETH	   //Activar el debug del ETH
