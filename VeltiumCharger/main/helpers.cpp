@@ -150,6 +150,10 @@ uint8_t setMainFwUpdateActive (uint8_t val ){
 uint8_t getMainFwUpdateActive (){
   return mainFwUpdateActive;
 }
+
+
+
+
 //********************Funciones privadas no accessibles desde fuera***********************************/
 int controlSendToSerialLocal ( uint8_t * data, int len ){
 

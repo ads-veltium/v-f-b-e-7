@@ -529,6 +529,7 @@ void procesar_bloque(uint16 tipo_bloque){
 
 				#endif
 
+				Configuracion.data.Firmware = "Adiosii";
 				startSystem();
 				systemStarted = 1;
 
@@ -1540,11 +1541,14 @@ void UpdateTask(void *arg){
 }
 
 void controlInit(void){
-	
+
+	Configuracion.init();
+
 	//Freertos estatico
 	xTaskCreateStatic(LedControl_Task,"TASK LEDS",4096*2,NULL,PRIORIDAD_LEDS,xLEDStack,&xLEDBuffer); 
 	xTaskCreateStatic(controlTask,"TASK CONTROL",4096*6,NULL,PRIORIDAD_CONTROL,xControlStack,&xControlBuffer); 
 	xTaskCreateStatic(proceso_recepcion,"TASK UART",4096*6,NULL,PRIORIDAD_UART,xUartStack,&xUartBuffer); 
+	//xTaskCreate(proceso_recepcion,"Task UART",4096*2,NULL,PRIORIDAD_UART,NULL);
 	#ifdef CONNECTED
 		//xTaskCreateStatic(ComsTask,"TASK COMS", 4096*4,NULL,PRIORIDAD_COMS,xComsStack, &xComsBuffer);
 		xTaskCreate(ComsTask,"Task Coms",4096*2,NULL,PRIORIDAD_COMS,NULL);

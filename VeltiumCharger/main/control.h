@@ -84,6 +84,7 @@
 #define PRIORIDAD_COMS	   2
 #define PRIORIDAD_MQTT     1
 #define PRIORIDAD_UART	   3
+#define PRIORIDAD_CONFIG   5
 
 // ESTADO GENERAL
 #define	ESTADO_ARRANQUE			0

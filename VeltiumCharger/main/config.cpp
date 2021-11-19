@@ -1,13 +1,58 @@
 #include "config.h"
 
+//********************Comparadores de las caracteristicas***********************************/
+static bool operator==(const carac_config& lhs, const carac_config& rhs){
+    if(lhs.Firmware != rhs.Firmware){
+      return false;
+    }
+    if(lhs.Part_Number != rhs.Part_Number){
+      return false;
+    }
+    return true; 
+}
+
+//Tarea de configuracion
+//Atiende a las ordenes que se le envian desde el resto de tareas
+//Para leer y almacenar datos en el spiffs.
+void ConfigTask(void *arg){
+    carac_config old_data = Configuracion.data;
+
+    while(true){
+        delay(50);
+
+        if(!(Configuracion.data == old_data)){
+            Configuracion.Guardar = true;
+            old_data = Configuracion.data;
+        }
+        if(Configuracion.Guardar){
+            Configuracion.Store();
+            Configuracion.Guardar = false;
+        }
+        else if(Configuracion.Cargar){
+            Configuracion.Load();
+            Configuracion.Cargar=false;
+        }
+    }
+}
+
+void Config::Carac_to_json(){
+    ConfigJSON["fw_esp"] = data.Firmware;
+    ConfigJSON["part_number"] = data.Part_Number;
+}
+
+void Config::Json_to_carac(){
+    data.Firmware = ConfigJSON["fw_esp"].as<String>();
+    data.Part_Number = ConfigJSON["part_number"].as<String>();
+}
+
 
 void Config::init(){
     printf("Has llamado al constructor!!\n");
 
     //Arrancar el SPIFFS
-    if(!SPIFFS.begin(1,"/spiffs",1,"CONFIG")){
+    if(!SPIFFS.begin(false,"/spiffs",1,"CONFIG")){
       SPIFFS.end();					
-      SPIFFS.begin(1,"/spiffs",1,"CONFIG");
+      SPIFFS.begin(false,"/spiffs",1,"CONFIG");
     }
 
     //Sino existe el archivo, crear el de defecto
@@ -19,24 +64,26 @@ void Config::init(){
     //Abrir el archivo para lectura y 
     Load();
 
+    xTaskCreate(ConfigTask,"Task CONFIG",4096*2,NULL,PRIORIDAD_CONFIG,NULL);
+
 }
 
 bool Config::Load(){
     printf("Cargando datos desde la flash!!\n");
-    ConfigFile = SPIFFS.open("config.json", FILE_READ);
+    ConfigFile = SPIFFS.open("/config.json", FILE_READ);
     String data_to_read;
     data_to_read = ConfigFile.readString();
     deserializeJson(ConfigJSON, data_to_read);
     ConfigFile.close();
-
+    Json_to_carac();
     serializeJson(ConfigJSON, Serial);
     return true;
 }
 
 bool Config::Store(){
     printf("Guardando datos a la flash!!\n");
-
-    ConfigFile = SPIFFS.open("config.json", FILE_WRITE);
+    Carac_to_json();
+    ConfigFile = SPIFFS.open("/config.json", FILE_WRITE);
     String data_to_store;
     serializeJson(ConfigJSON, data_to_store);
     ConfigFile.print(data_to_store);
@@ -45,15 +92,4 @@ bool Config::Store(){
     return true;
 }
 
-bool Config::AddKey(){
-    return true;
-}
-
-bool Config::ModifyKey(){
-    return true;
-}
-
-bool Config::DeleteKey(){
-    return true;
-}
-
+Config Configuracion;

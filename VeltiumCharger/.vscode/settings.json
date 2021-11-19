@@ -44,6 +44,9 @@
     "cmath": "cpp",
     "string_view": "cpp",
     "regex": "cpp",
-    "*.ipp": "cpp"
+    "*.ipp": "cpp",
+    "*.inc": "cpp",
+    "memory_resource": "cpp",
+    "typeinfo": "cpp"
 }
 }

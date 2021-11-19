@@ -1,21 +1,26 @@
 #ifndef __CONFIG__
 #define __CONFIG__
 
-#include "tipos.h"
 #include "SPIFFS.h"
 #include "ArduinoJson.h"
+#include "control.h"
 
 //Clase para gestionar la configuración del equipo, 
 class Config {
     private:
-        void init();
+        void Json_to_carac();
+        void Carac_to_json();
+
+
         File ConfigFile;
         StaticJsonDocument<2048>  ConfigJSON;
 
     public:
+        //ordenes de guardado y carga de datos
+        bool Guardar = false, Cargar = false;
 
         //Inicializador
-        Config(){init();};
+        void init();
 
         //Atributos
         carac_config data;
@@ -32,6 +37,7 @@ class Config {
 
 };
 
+extern Config Configuracion;
 
 
 #endif
