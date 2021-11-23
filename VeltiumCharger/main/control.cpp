@@ -214,7 +214,7 @@ void controlTask(void *arg) {
 					case ESTADO_INICIALIZACION:{
 					    uint8_t data[2]={0};
 						#ifdef USE_COMS
-						data[0] = serverbleGetConnected() || ConfigFirebase.ClientConnected;
+						data[0] = serverbleGetConnected() || ConfigFirebase.ClientAuthenticated;
 						#else
 						data[0] = serverbleGetConnected();
 						#endif
@@ -242,7 +242,7 @@ void controlTask(void *arg) {
 							Iface_Con = BLE;
 						}
 #ifdef USE_COMS
-						else if(ConfigFirebase.ClientConnected){
+						else if(ConfigFirebase.ClientAuthenticated){
 							Iface_Con = COMS;
 						}
 #endif
@@ -259,9 +259,9 @@ void controlTask(void *arg) {
 							LastUserCon = serverbleGetConnected() ;
 						}
 #ifdef CONNECTED
-						else if(Iface_Con == COMS && LastUserCon != ConfigFirebase.ClientConnected){						
-							SendStatusToPSOC5(ConfigFirebase.ClientConnected, dispositivo_inicializado);
-							LastUserCon = ConfigFirebase.ClientConnected;
+						else if(Iface_Con == COMS && LastUserCon != ConfigFirebase.ClientAuthenticated){						
+							SendStatusToPSOC5(ConfigFirebase.ClientAuthenticated, dispositivo_inicializado);
+							LastUserCon = ConfigFirebase.ClientAuthenticated;
 						}
 
 						if (Comands.start){

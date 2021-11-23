@@ -269,6 +269,7 @@ typedef struct{
 
 	uint8 ConectionTimeout=0;
 	bool ClientConnected = false;
+	bool ClientAuthenticated = false;
 
 }carac_Firebase_Configuration;
 

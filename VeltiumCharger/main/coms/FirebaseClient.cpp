@@ -600,6 +600,8 @@ bool ReadFirebaseControl(String Path){
           Comands.desired_current = Lectura["desired_current"];
           Comands.Newdata = true;
         }
+
+        ConfigFirebase.ClientAuthenticated = Comands.start == true;
               
         Comands.fw_update       = Lectura["fw_update"] ? true : Comands.fw_update;
         Comands.conn_lock       = Lectura["conn_lock"] ? true : Comands.conn_lock;
@@ -884,6 +886,7 @@ void Firebase_Conn_Task(void *args){
 
     case IDLE:
       ConfigFirebase.ClientConnected = false;
+      ConfigFirebase.ClientAuthenticated = false;
       //No connection == Disconnect
       //Error_count > 10 == Disconnect
 
@@ -906,6 +909,7 @@ void Firebase_Conn_Task(void *args){
       else if(serverbleGetConnected()){
         bloquedByBLE = 1;
         ConfigFirebase.ClientConnected = false;
+        ConfigFirebase.ClientAuthenticated = false;
         break;
       }
       else if(!serverbleGetConnected() && bloquedByBLE){
@@ -973,6 +977,7 @@ void Firebase_Conn_Task(void *args){
 
       if(serverbleGetConnected()){
         ConfigFirebase.ClientConnected = false;
+        ConfigFirebase.ClientAuthenticated = false;
         ConnectionState = IDLE;
         break;
       }
