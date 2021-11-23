@@ -935,12 +935,6 @@ void procesar_bloque(uint16 tipo_bloque){
 			modifyCharacteristic(buffer_rx_local, 2, RECORDING_REC_INDEX_CHAR_HANDLE);
 		} 
 		break;
-
-		case POLICY:{
-			Serial.printf("Nueva policy recibida! %c %c %c\n", buffer_rx_local[0],buffer_rx_local[1],buffer_rx_local[2]);
-			modifyCharacteristic(buffer_rx_local, 3, POLICY);
-		} 
-		break;
 		
 		case RECORDING_REC_LAPS_CHAR_HANDLE:{
 			uint8_t buffer[2];

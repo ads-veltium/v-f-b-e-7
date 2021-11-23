@@ -32,6 +32,9 @@ static bool operator==(const carac_config& lhs, const carac_config& rhs){
     if(memcmp(lhs.autentication_mode, rhs.autentication_mode,sizeof(lhs.autentication_mode))){
         return false;
     }
+    if(memcmp(lhs.policy, rhs.policy,sizeof(lhs.policy))){
+        return false;
+    }
     
     return true; 
 }
@@ -78,6 +81,7 @@ void Config::Carac_to_json(){
     ConfigJSON["CDP"] = data.CDP;
     ConfigJSON["device_ID"]      = String(data.device_ID);
     ConfigJSON["device_ser_num"] = String(data.deviceSerNum);
+    ConfigJSON["policy"] = String(data.policy);
 }
 
 void Config::Json_to_carac(){
@@ -94,6 +98,7 @@ void Config::Json_to_carac(){
     memcpy(data.autentication_mode, ConfigJSON["auth_mode"].as<String>().c_str(),2);
     memcpy(data.device_ID, ConfigJSON["device_ID"].as<String>().c_str(),sizeof(data.device_ID));
     memcpy(data.deviceSerNum, ConfigJSON["device_ser_num"].as<String>().c_str(),sizeof(data.deviceSerNum));
+    memcpy(data.policy, ConfigJSON["policy"].as<String>().c_str(),3);
 }
 
 //**********Funciones externas de la case de configuracion**************/
@@ -110,10 +115,22 @@ void Config::init(){
       Store();
     }
 
-    //Abrir el archivo para lectura y 
+    //Abrir el archivo para lectura y cargar los datos
     Load();
 
+    //Crear la tarea encargada de detectar y almacenar cambios
     xTaskCreate(ConfigTask,"Task CONFIG",4096*2,NULL,PRIORIDAD_CONFIG,NULL);
+
+    //Publicar las caracteristicas que solo se almacenan en el ble, 
+    //comprobando que tengan valores logicos.
+    if(memcmp(Configuracion.data.policy, "ALL",3) && memcmp(Configuracion.data.policy,"AUT",3) && memcmp(Configuracion.data.policy, "NON",3)){
+        printf("Cambiando el policy porque no tenia!\n");
+        memcpy(Configuracion.data.policy,"ALL",3);
+    }
+    
+	modifyCharacteristic((uint8_t*)&Configuracion.data.policy, 3, POLICY);
+
+    
 
 }
 

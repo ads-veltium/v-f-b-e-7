@@ -376,6 +376,7 @@ typedef struct{
 	char device_ID[12]    = {"VCD17010001"};
 	char deviceSerNum[30] = {'0'};
 	char autentication_mode[3] = {'W', 'A', 0};
+	char policy[4] = {'A', 'L', 'L',0};
 
 	String Firmware     = "VBLE0_0500";
 	String FirmwarePSOC = "VELT0_0500";

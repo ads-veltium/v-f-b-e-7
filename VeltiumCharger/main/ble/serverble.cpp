@@ -668,6 +668,24 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 			}
 			
 #endif			
+
+			if (handle == POLICY){
+				#ifdef DEBUG
+					Serial.printf("Nueva policy recibida! %c %c %c\n", payload[0],payload[1],payload[2]);
+				#endif
+
+				//Si el valor que me llega no es ninguno estandar, descartarlo
+				if(memcmp(Configuracion.data.policy, "ALL",3) && memcmp(Configuracion.data.policy,"AUT",3) && memcmp(Configuracion.data.policy, "NON",3)){
+					#ifdef DEBUG
+						printf("Me ha llegado un valor turbio en policy!!\n %c %c %c", payload[0],payload[1],payload[2]);
+					#endif
+					return;
+				}
+				memcpy(Configuracion.data.policy, payload,3);
+				serverbleNotCharacteristic((uint8_t*)&payload, 3, POLICY);
+				return;
+			} 
+
 			// if we are here, we are authenticated.
 			// send payload downstream.
 			buffer_tx[0] = HEADER_TX;
