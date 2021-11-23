@@ -495,7 +495,6 @@ void procesar_bloque(uint16 tipo_bloque){
 
 				//comprobar si el dato tiene sentido, sino cargar el de mi memoria
 				if(memcmp("AA", &buffer_rx_local[212],2) && memcmp("WA", &buffer_rx_local[212],2) && memcmp("MA", &buffer_rx_local[212],2)){
-					printf("He recibido algun dato erroneo en la autenticación\n");
 					if(memcmp("AA", Configuracion.data.autentication_mode,2) && memcmp("WA", Configuracion.data.autentication_mode,2) && memcmp("MA", Configuracion.data.autentication_mode,2)){
 						memcpy(&buffer_rx_local[212],Configuracion.data.autentication_mode,2);
 					}
@@ -959,6 +958,23 @@ void procesar_bloque(uint16 tipo_bloque){
 		break;
 		
 		case CONFIGURACION_AUTENTICATION_MODES_CHAR_HANDLE:{
+			
+			//comprobar si el dato tiene sentido, sino cargar el de mi memoria
+			if(memcmp("AA", buffer_rx_local,2) && memcmp("WA", buffer_rx_local,2) && memcmp("MA", buffer_rx_local,2)){
+				if(memcmp("AA", Configuracion.data.autentication_mode,2) && memcmp("WA", Configuracion.data.autentication_mode,2) && memcmp("MA", Configuracion.data.autentication_mode,2)){
+					memcpy(buffer_rx_local,Configuracion.data.autentication_mode,2);
+				}
+				else{
+					//Si ninguno de los dos es correcto, lo damos por malo y ponemos el de defecto
+					memcpy(buffer_rx_local,"WA",2);
+					SendToPSOC5(buffer_rx_local,2,CONFIGURACION_AUTENTICATION_MODES_CHAR_HANDLE);
+					break;
+				}
+			}
+			else{
+				memcpy(Configuracion.data.autentication_mode, buffer_rx_local,2);
+			}
+
 			modifyCharacteristic(buffer_rx_local, 2, CONFIGURACION_AUTENTICATION_MODES_CHAR_HANDLE);
 			memcpy(Configuracion.data.autentication_mode, buffer_rx_local,2);
 
