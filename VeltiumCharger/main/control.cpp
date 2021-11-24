@@ -1213,7 +1213,6 @@ void procesar_bloque(uint16 tipo_bloque){
 
 			memcpy(Coms.GSM.Pin, buffer_rx_local,4);
 			printf("Me ha llegado el apn pin %s\n", Coms.GSM.Pin);
-			printf("%s \n", buffer_rx_local);
 			modifyCharacteristic(buffer_rx_local,  4, APN_PIN);
 			
 		} 

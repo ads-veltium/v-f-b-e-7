@@ -499,17 +499,21 @@ bool ReadFirebaseShedule(String Path){
     if(Database->Send_Command(Path,&Lectura, LEER)){
 
       Schedule.num_shedules = 0;
+      String programaciones[Schedule.num_shedules];
+
       //Obtener el numero de programaciones que hay en firebase
       for(int i = 0;i< 100;i++){
-        String key = "P0";
+        String key = i<10? "P0":"P";
         key+=String(i);
         if(!(Lectura["programs"][key])){
           break;
         }
+        programaciones[i] = Lectura["programs"][key].as<String>();
         Schedule.num_shedules++;
       }
 
-      printf("Hay %i programaciones!\n", Schedule.num_shedules);
+      //Traducir las programaciones y extraer la matriz correspondiente
+
 
       Schedule.last_ts_app_req=ts_app_req;
 
