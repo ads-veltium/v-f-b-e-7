@@ -41,6 +41,7 @@ carac_circuito Circuitos  [MAX_GROUP_SIZE] 	 EXT_RAM_ATTR;
 carac_group    ChargingGroup 				 EXT_RAM_ATTR;
 carac_charger  charger_table  [50] 			 EXT_RAM_ATTR;
 carac_charger  temp_chargers[MAX_GROUP_SIZE] EXT_RAM_ATTR;
+carac_Schedule Schedule                      EXT_RAM_ATTR;
 uint8_t 	   temp_chargers_size 			 EXT_RAM_ATTR;
 #endif
 
@@ -346,39 +347,34 @@ void startSystem(void){
 	#endif
 	dev_auth_init((void const*)&deviceSerNum);
 
-	Configuracion.data.Firmware = String((char*)version_firmware);
-	Configuracion.data.FirmwarePSOC = String((char*)PSOC5_version_firmware);
+	Configuracion.data.Firmware = ParseFirmwareVersion((char *)(version_firmware));
+	Configuracion.data.FirmwarePSOC = ParseFirmwareVersion((char *)(PSOC5_version_firmware));
 	
-	memcpy(Configuracion.data.device_ID,device_ID,sizeof(device_ID));
-	sprintf(Configuracion.data.deviceSerNum,"%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",deviceSerNum[0], deviceSerNum[1], deviceSerNum[2], deviceSerNum[3], deviceSerNum[4],
-			deviceSerNum[5], deviceSerNum[6], deviceSerNum[7], deviceSerNum[8], deviceSerNum[9]);
+	memcpy(Configuracion.data.device_ID,device_ID,sizeof(Configuracion.data.device_ID));
 
+	sprintf(Configuracion.data.deviceSerNum,"%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
+		deviceSerNum[0], deviceSerNum[1], deviceSerNum[2], deviceSerNum[3], deviceSerNum[4],
+		deviceSerNum[5], deviceSerNum[6], deviceSerNum[7], deviceSerNum[8], deviceSerNum[9]);
+
+	
 	#ifdef CONNECTED
 		//Get Device FirebaseDB ID
-		sprintf(ConfigFirebase.Device_Db_ID,"%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",deviceSerNum[0], deviceSerNum[1], deviceSerNum[2], deviceSerNum[3], deviceSerNum[4],
-			deviceSerNum[5], deviceSerNum[6], deviceSerNum[7], deviceSerNum[8], deviceSerNum[9]);
+		sprintf(ConfigFirebase.Device_Db_ID,"%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
+		deviceSerNum[0], deviceSerNum[1], deviceSerNum[2], deviceSerNum[3], deviceSerNum[4],
+		deviceSerNum[5], deviceSerNum[6], deviceSerNum[7], deviceSerNum[8], deviceSerNum[9]);
+
 		memcpy(ConfigFirebase.Device_Ser_num,ConfigFirebase.Device_Db_ID,20);
 
 		memcpy(&ConfigFirebase.Device_Db_ID[20],&device_ID[3],8);
 		memcpy(ConfigFirebase.Device_Id,&device_ID[3],8);
 
-
-		//Init firebase values
-		UpdateStatus.ESP_Act_Ver = ParseFirmwareVersion((char *)(version_firmware));
-		UpdateStatus.PSOC5_Act_Ver = ParseFirmwareVersion((char *)(PSOC5_version_firmware));
-
-		Serial.println(UpdateStatus.PSOC5_Act_Ver);
-		Serial.println(UpdateStatus.ESP_Act_Ver);
-
-
 		//compatibilidad con versiones anteriores de firmwware
-		if(UpdateStatus.PSOC5_Act_Ver <= 510){
+		if(Configuracion.data.FirmwarePSOC <= 510){
 			dispositivo_inicializado = 2;
 		}
 
 		Coms.StartConnection = true;
 	#endif
-	
 }
 
 void proceso_recepcion(void *arg){
@@ -1556,7 +1552,6 @@ void UpdateTask(void *arg){
 						Serial.printf("Error 1%i \n", err);
 					}
 				}
-				
 						
 				Nlinea++;
 				Serial.printf("Lineas leidas: %u \n",Nlinea);
@@ -1590,19 +1585,18 @@ void UpdateTask(void *arg){
 }
 
 void controlInit(void){
-
 	Configuracion.init();
-
 	//Freertos estatico
 	xTaskCreateStatic(LedControl_Task,"TASK LEDS",4096*2,NULL,PRIORIDAD_LEDS,xLEDStack,&xLEDBuffer); 
 	xTaskCreateStatic(controlTask,"TASK CONTROL",4096*6,NULL,PRIORIDAD_CONTROL,xControlStack,&xControlBuffer); 
 	xTaskCreateStatic(proceso_recepcion,"TASK UART",4096*6,NULL,PRIORIDAD_UART,xUartStack,&xUartBuffer); 
-	//xTaskCreate(proceso_recepcion,"Task UART",4096*2,NULL,PRIORIDAD_UART,NULL);
 	#ifdef CONNECTED
-		//xTaskCreateStatic(ComsTask,"TASK COMS", 4096*4,NULL,PRIORIDAD_COMS,xComsStack, &xComsBuffer);
-		xTaskCreate(ComsTask,"Task Coms",4096*2,NULL,PRIORIDAD_COMS,NULL);
+		xTaskCreate(ComsTask,"Task Coms",4096*4,NULL,PRIORIDAD_COMS,NULL);
 		xTaskCreateStatic(Firebase_Conn_Task,"TASK FIREBASE", 4096*6,NULL,PRIORIDAD_FIREBASE,xFirebaseStack , &xFirebaseBuffer );
+
 	#endif
+
+	
 }
 
 

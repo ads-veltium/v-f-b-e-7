@@ -224,6 +224,12 @@ typedef struct{
 } carac_Coms;
 
 typedef struct{
+	int num_shedules;
+
+	long long last_ts_app_req= 0;
+} carac_Schedule;
+
+typedef struct{
 	
 	bool      GatewayConectado = false;
 	bool      ConexionPerdida  = false;
@@ -373,14 +379,18 @@ typedef struct{
 
 //Caracteristica para almacenar la configuracion del equipo
 typedef struct{
-	char device_ID[12]    = {"VCD17010001"};
+	//Para cuando se quiera almacenar el part number
+	//String Part_Number  = "LU320111250";
+	char device_ID[12]    = {'V','C','D','1','7','0','1','0','0','0','1',0};
 	char deviceSerNum[30] = {'0'};
 	char autentication_mode[3] = {'W', 'A', 0};
+	char actualization_mode[3] = {'A', 'A', 0};
 	char policy[4] = {'A', 'L', 'L',0};
 
-	String Firmware     = "VBLE0_0500";
-	String FirmwarePSOC = "VELT0_0500";
-	String Part_Number  = "LU320111250";
+	uint16_t Firmware     = 500;
+	uint16_t FirmwarePSOC = 500;
+
+
 
 	uint8  CDP  = 0;
 	uint8  inst_current_limit = 32;

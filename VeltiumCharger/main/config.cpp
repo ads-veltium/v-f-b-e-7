@@ -1,5 +1,6 @@
 #include "config.h"
 
+
 //**********Comparadores de las caracteristicas**********/
 static bool operator==(const carac_config& lhs, const carac_config& rhs){
     if(lhs.Firmware != rhs.Firmware){
@@ -8,9 +9,10 @@ static bool operator==(const carac_config& lhs, const carac_config& rhs){
     if(lhs.FirmwarePSOC != rhs.FirmwarePSOC){
       return false;
     }
-    if(lhs.Part_Number != rhs.Part_Number){
+    
+    /*if(lhs.Part_Number != rhs.Part_Number){
       return false;
-    }
+    }*/
     if(lhs.potencia_contratada1 != rhs.potencia_contratada1){
       return false;
     }
@@ -50,7 +52,8 @@ void ConfigTask(void *arg){
     carac_config old_data = Configuracion.data;
 
     while(true){
-        delay(50);
+        delay(100);
+
 
         if(Configuracion.data != old_data){
             Configuracion.Guardar = true;
@@ -69,11 +72,11 @@ void ConfigTask(void *arg){
 
 //**********Funciones internas de la case de configuracion**************/
 
-void Config::Carac_to_json(){
+void Config::Carac_to_json(DynamicJsonDocument& ConfigJSON){
     ConfigJSON.clear();
     ConfigJSON["fw_esp"]      = data.Firmware;
     ConfigJSON["fw_psoc"]     = data.FirmwarePSOC;
-    ConfigJSON["part_number"] = data.Part_Number;
+    //ConfigJSON["part_number"] = data.Part_Number;
     ConfigJSON["auth_mode"] = String(data.autentication_mode);
     ConfigJSON["pot_contratada_1"] = data.potencia_contratada1;
     ConfigJSON["pot_contratada_2"] = data.potencia_contratada2;
@@ -84,10 +87,10 @@ void Config::Carac_to_json(){
     ConfigJSON["policy"] = String(data.policy);
 }
 
-void Config::Json_to_carac(){
-    data.Firmware       = ConfigJSON["fw_esp"].as<String>();
-    data.FirmwarePSOC      = ConfigJSON["fw_psoc"].as<String>();
-    data.Part_Number    = ConfigJSON["part_number"].as<String>();
+void Config::Json_to_carac(DynamicJsonDocument& ConfigJSON){
+    data.Firmware       = ConfigJSON["fw_esp"].as<uint16_t>();
+    data.FirmwarePSOC   = ConfigJSON["fw_psoc"].as<uint16_t>();
+    //data.Part_Number    = ConfigJSON["part_number"].as<String>();
 
     data.potencia_contratada1 = ConfigJSON["pot_contratada_1"].as<uint16_t>();
     data.potencia_contratada2 = ConfigJSON["pot_contratada_2"].as<uint16_t>();
@@ -103,6 +106,7 @@ void Config::Json_to_carac(){
 
 //**********Funciones externas de la case de configuracion**************/
 void Config::init(){
+  
     //Arrancar el SPIFFS
     if(!SPIFFS.begin(false,"/spiffs",1,"CONFIG")){
       SPIFFS.end();					
@@ -135,13 +139,13 @@ void Config::init(){
 }
 
 bool Config::Load(){
-   
+    DynamicJsonDocument ConfigJSON(1024);
     ConfigFile = SPIFFS.open("/config.json", FILE_READ);
     String data_to_read;
     data_to_read = ConfigFile.readString();
     deserializeJson(ConfigJSON, data_to_read);
     ConfigFile.close();
-    Json_to_carac();
+    Json_to_carac(ConfigJSON);
 
     #ifdef DEBUG_CONFIG
         printf("Cargando datos desde la flash!!\n");
@@ -151,10 +155,11 @@ bool Config::Load(){
 }
 
 bool Config::Store(){
+    DynamicJsonDocument ConfigJSON(1024);
     #ifdef DEBUG_CONFIG
         printf("Guardando datos a la flash!!\n");
     #endif
-    Carac_to_json();
+    Carac_to_json(ConfigJSON);
     ConfigFile = SPIFFS.open("/config.json", FILE_WRITE);
     String data_to_store;
     serializeJson(ConfigJSON, data_to_store);

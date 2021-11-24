@@ -8,13 +8,11 @@
 //Clase para gestionar la configuración del equipo, 
 class Config {
     private:
-        void Json_to_carac();
-        void Carac_to_json();
-
+        void Json_to_carac(DynamicJsonDocument& ConfigJSON);
+        void Carac_to_json(DynamicJsonDocument& ConfigJSON);       
 
         File ConfigFile;
-        StaticJsonDocument<2048>  ConfigJSON;
-
+    
     public:
         //ordenes de guardado y carga de datos
         bool Guardar = false, Cargar = false;

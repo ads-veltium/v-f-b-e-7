@@ -938,7 +938,6 @@ exit:
 int ppposInit()
 {
 	gsm_inicializando=true;
-	int prueba=0;
 	if (pppos_mutex != NULL) xSemaphoreTake(pppos_mutex, PPPOSMUTEX_TIMEOUT);
 	do_pppos_connect = 1;
 	int gstat = 0;

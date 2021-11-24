@@ -3,8 +3,7 @@
 #include "base64.h"
 Real_Time_Database *Database = new Real_Time_Database();
 
-StaticJsonDocument<2048>  Lectura        EXT_RAM_ATTR;
-StaticJsonDocument<2048>  Escritura      EXT_RAM_ATTR;
+DynamicJsonDocument Lectura(2048);
 
 //Extern variables
 extern carac_Firebase_Configuration ConfigFirebase;
@@ -13,11 +12,11 @@ extern carac_Status                 Status;
 extern carac_Update_Status          UpdateStatus;
 extern carac_Params                 Params;
 extern carac_Coms                   Coms;
+extern carac_Schedule               Schedule;
 
 extern uint8 user_index;
 
-
-#ifdef CONNECTED
+#ifdef USE_GROUPS
 extern carac_group                  ChargingGroup;
 extern carac_circuito               Circuitos[MAX_GROUP_SIZE];
 extern carac_charger                charger_table[ MAX_GROUP_SIZE];
@@ -69,7 +68,7 @@ uint8_t getfirebaseClientStatus(){
   Funciones de escritura
 ***************************************************/
 bool WriteFirebaseStatus(String Path){
-
+  DynamicJsonDocument Escritura(2048);
   Escritura.clear();
   if(memcmp(&Status.HPT_status[0],"F",1) && memcmp(&Status.HPT_status[0],"E",1) ){
     Escritura["hpt"]              = String(Status.HPT_status).substring(0,2);
@@ -103,17 +102,18 @@ bool WriteFirebaseStatus(String Path){
   }
   
   Escritura["error_code"] = Status.error_code;
-
+  
   if(Database->Send_Command(Path,&Escritura,UPDATE)){     
     if(Database->Send_Command(Path+"/ts_dev_ack",&Lectura,TIMESTAMP)){
       return true;
     }
   }
+
   return false;
 }
 
 bool WriteFirebaseTimes(String Path){
-
+  DynamicJsonDocument Escritura(2048);
   Escritura.clear();
 
   //Tiempos
@@ -129,7 +129,7 @@ bool WriteFirebaseTimes(String Path){
 }
 
 bool WriteFirebaseParams(String Path){
-
+  DynamicJsonDocument Escritura(2048);
   Serial.println("Write Params CALLED");
   Escritura.clear();
   Escritura["auth_mode"]           = String(Params.autentication_mode).substring(0,2);
@@ -152,7 +152,7 @@ bool WriteFirebaseParams(String Path){
 }
 
 bool WriteFirebaseComs(String Path){
-
+  DynamicJsonDocument Escritura(2048);
   Escritura.clear();
   Escritura["wifi/on"]     = Coms.Wifi.ON;
   Escritura["wifi/ssid"]   = Coms.Wifi.AP;
@@ -180,6 +180,7 @@ bool WriteFirebaseComs(String Path){
 }
 
 bool WriteFirebaseControl(String Path){
+  DynamicJsonDocument Escritura(2048);
   Escritura.clear();
 
   Escritura["fw_update"] = false;
@@ -194,15 +195,16 @@ bool WriteFirebaseControl(String Path){
 }
 
 bool WriteFirebaseFW(String Path){
+  DynamicJsonDocument Escritura(2048);
   Escritura.clear();
 
-  if(UpdateStatus.ESP_Act_Ver < 1000){
-    Escritura["VBLE2"] = "VBLE2_0"+String(UpdateStatus.ESP_Act_Ver);
-    Escritura["VELT2"] = "VELT2_0"+String(UpdateStatus.PSOC5_Act_Ver);
+  if(Configuracion.data.Firmware < 1000){
+    Escritura["VBLE2"] = "VBLE2_0"+String(Configuracion.data.Firmware);
+    Escritura["VELT2"] = "VELT2_0"+String(Configuracion.data.FirmwarePSOC);
   }
   else{
-    Escritura["VBLE2"] = "VBLE2_"+String(UpdateStatus.ESP_Act_Ver);
-    Escritura["VELT2"] = "VELT2_"+String(UpdateStatus.PSOC5_Act_Ver);
+    Escritura["VBLE2"] = "VBLE2_"+String(Configuracion.data.Firmware);
+    Escritura["VELT2"] = "VELT2_"+String(Configuracion.data.FirmwarePSOC);
   }
 
 
@@ -214,6 +216,7 @@ bool WriteFirebaseFW(String Path){
 }
 
 bool WriteFirebasegroups(String Path){
+    DynamicJsonDocument Escritura(2048);
     Escritura.clear();
 
     Escritura["delete"] = false;
@@ -226,6 +229,7 @@ bool WriteFirebasegroups(String Path){
 }
 
 bool ReiniciarMultiusuario(){
+    DynamicJsonDocument Escritura(2048);
     //Indicar que el cargador esta libre en firebase
     printf("Reiniciando usuario!\n");
     Escritura.clear();
@@ -237,6 +241,7 @@ bool ReiniciarMultiusuario(){
 }
 
 bool EscribirMultiusuario(){
+    DynamicJsonDocument Escritura(2048);
     //Indicar que el cargador esta libre en firebase
      printf("Escribiendo usuario!\n");
     Escritura.clear();
@@ -246,7 +251,7 @@ bool EscribirMultiusuario(){
 }
 
 bool WriteFirebaseHistoric(char* buffer){
-
+    DynamicJsonDocument Escritura(2048);
     struct tm t = {0};  // Initalize to all 0's
     t.tm_year = (buffer[4]!=0)?buffer[4]+100:0;  // This is year-1900, so 112 = 2012
     t.tm_mon  = (buffer[3]!=0)?buffer[3]-1:0;
@@ -373,6 +378,7 @@ bool WriteFirebaseHistoric(char* buffer){
 
   return true;
 }
+
 /***************************************************
   Funciones de lectura
 ***************************************************/
@@ -481,8 +487,40 @@ bool ReadFirebaseGroups(String Path){
   return true;
 
 }
-
 #endif
+
+//Leer las programaciones que haya disponibles en firebase
+bool ReadFirebaseShedule(String Path){
+
+  long long ts_app_req=Database->Get_Timestamp(Path+"/ts_app_req",&Lectura);
+  if(ts_app_req > Schedule.last_ts_app_req){
+    Lectura.clear();
+
+    if(Database->Send_Command(Path,&Lectura, LEER)){
+
+      Schedule.num_shedules = 0;
+      //Obtener el numero de programaciones que hay en firebase
+      for(int i = 0;i< 100;i++){
+        String key = "P0";
+        key+=String(i);
+        if(!(Lectura["programs"][key])){
+          break;
+        }
+        Schedule.num_shedules++;
+      }
+
+      printf("Hay %i programaciones!\n", Schedule.num_shedules);
+
+      Schedule.last_ts_app_req=ts_app_req;
+
+      if(!Database->Send_Command(Path+"/ts_dev_ack",&Lectura,TIMESTAMP)){
+          return false;
+      } 
+    }
+  }
+  return true;
+}
+
 bool ReadFirebaseComs(String Path){
 
   long long ts_app_req=Database->Get_Timestamp(Path+"/ts_app_req",&Lectura);
@@ -589,7 +627,7 @@ bool ReadFirebaseControl(String Path){
   if(ts_app_req> last_ts_app_req){
     Lectura.clear();
     if(Database->Send_Command(Path,&Lectura, LEER)){
-      
+
       if( Lectura["desired_current"]!=0){
         last_ts_app_req = ts_app_req;
         Comands.start           = Lectura["start"]     ? true : Comands.start;
@@ -618,10 +656,7 @@ bool ReadFirebaseControl(String Path){
   return true;
 }
 
-bool ReadFirebaseSchedule(String Path){
-  
-  return true;
-}
+
 /*****************************************************
  *              Sistema de Actualización
  *****************************************************/
@@ -640,7 +675,7 @@ bool CheckForUpdate(){
     Serial.println(PSOC5_Ver);
     Serial.println(VELT_int_Version);
 
-    if(VELT_int_Version>UpdateStatus.PSOC5_Act_Ver){
+    if(VELT_int_Version>Configuracion.data.FirmwarePSOC){
       UpdateStatus.PSOC5_UpdateAvailable= true;
       UpdateStatus.PSOC_url = Lectura["VELT2"]["url"].as<String>();
       update = true;
@@ -649,7 +684,7 @@ bool CheckForUpdate(){
     String ESP_Ver   = Lectura["VBLE2"]["verstr"].as<String>();
     uint16 ESP_int_Version=ParseFirmwareVersion(ESP_Ver);
 
-    if(ESP_int_Version>UpdateStatus.ESP_Act_Ver){
+    if(ESP_int_Version>Configuracion.data.Firmware){
       UpdateStatus.ESP_UpdateAvailable= true;
       UpdateStatus.ESP_url = Lectura["VBLE2"]["url"].as<String>();
       update = true;
@@ -663,7 +698,7 @@ bool CheckForUpdate(){
     String PSOC5_Ver   = Lectura["VELT2"]["verstr"].as<String>();
     uint16 VELT_int_Version=ParseFirmwareVersion(PSOC5_Ver);
 
-    if(VELT_int_Version>UpdateStatus.PSOC5_Act_Ver){
+    if(VELT_int_Version>Configuracion.data.FirmwarePSOC){
       UpdateStatus.PSOC5_UpdateAvailable= true;
       UpdateStatus.PSOC_url = Lectura["VELT2"]["url"].as<String>();
       update = true;
@@ -672,7 +707,7 @@ bool CheckForUpdate(){
     String ESP_Ver   = Lectura["VBLE2"]["verstr"].as<String>();
     uint16 ESP_int_Version=ParseFirmwareVersion(ESP_Ver);
 
-    if(ESP_int_Version>UpdateStatus.ESP_Act_Ver){
+    if(ESP_int_Version>Configuracion.data.Firmware){
       UpdateStatus.ESP_UpdateAvailable= true;
       UpdateStatus.ESP_url = Lectura["VBLE2"]["url"].as<String>();
       update = true;
@@ -853,13 +888,15 @@ void Firebase_Conn_Task(void *args){
     case CONECTADO:
       delayeando = 10;
       //Inicializar los timeouts
-      Params.last_ts_app_req  = Database->Get_Timestamp("/params/ts_app_req",&Lectura);
-      Params.last_ts_app_req  = Database->Get_Timestamp("/params/ts_app_req",&Lectura);
-      Comands.last_ts_app_req = Database->Get_Timestamp("/control/ts_app_req",&Lectura);
-      Coms.last_ts_app_req    = Database->Get_Timestamp("/coms/ts_app_req",&Lectura);
-      Status.last_ts_app_req  = Database->Get_Timestamp("/status/ts_app_req",&Lectura);
+      Params.last_ts_app_req   = Database->Get_Timestamp("/params/ts_app_req",&Lectura);
+      Params.last_ts_app_req   = Database->Get_Timestamp("/params/ts_app_req",&Lectura);
+      Comands.last_ts_app_req  = Database->Get_Timestamp("/control/ts_app_req",&Lectura);
+      Coms.last_ts_app_req     = Database->Get_Timestamp("/coms/ts_app_req",&Lectura);
+      Status.last_ts_app_req   = Database->Get_Timestamp("/status/ts_app_req",&Lectura);
+      Schedule.last_ts_app_req = Database->Get_Timestamp("/schedule/ts_app_req",&Lectura);
       
       Error_Count+=!WriteFirebaseFW("/fw/current");
+      Error_Count+=!WriteFirebaseComs("/coms"); 
 
       if(ChargingGroup.Params.GroupActive){
         //comprobar si han borrado el grupo mientras estabamos desconectados
@@ -1052,7 +1089,9 @@ void Firebase_Conn_Task(void *args){
       }
       if(++Params_Coms_Timeout>=5){
         Error_Count+=!ReadFirebaseParams("/params");
+        Error_Count+=!ReadFirebaseShedule("/schedule");
         Params_Coms_Timeout = 0;
+
          
       }
       if(ConfigFirebase.ResetUser){

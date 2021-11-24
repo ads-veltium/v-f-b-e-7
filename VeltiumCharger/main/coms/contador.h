@@ -1,8 +1,6 @@
 #ifndef Contador_h
 #define Contador_h
 
-#define ARDUINOJSON_USE_LONG_LONG 1
-
 #include "VeltFirebase.h"
 #include "ArduinoJson.h"
 #include "../control.h"
