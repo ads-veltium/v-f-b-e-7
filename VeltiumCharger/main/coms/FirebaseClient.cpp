@@ -1,6 +1,9 @@
 #include "VeltFirebase.h"
 #ifdef CONNECTED
 #include "base64.h"
+
+#include "mbedtls/base64.h"
+
 Real_Time_Database *Database = new Real_Time_Database();
 
 DynamicJsonDocument Lectura(2048);
@@ -33,11 +36,6 @@ uint8_t check_in_group(const char* ID, carac_charger* group, uint8_t size);
 
 bool askForPermission = false ;
 bool givePermission = false;
-
-uint16 ParseFirmwareVersion(String Texto){
-  String sub = Texto.substring(6, 10); 
-  return(sub.toInt());
-}
 
 /*************************
  Client control functions
@@ -512,8 +510,12 @@ bool ReadFirebaseShedule(String Path){
         Schedule.num_shedules++;
       }
 
-      //Traducir las programaciones y extraer la matriz correspondiente
+      //Decodificar las programaciones
+      unsigned char dst[12] = {0};
+      size_t olen = 0;
+      mbedtls_base64_decode( dst, 12, &olen, (unsigned char*)programaciones[0].c_str() , strlen(programaciones[0].c_str()) );
 
+     Serial.println(String((char*)dst));
 
       Schedule.last_ts_app_req=ts_app_req;
 

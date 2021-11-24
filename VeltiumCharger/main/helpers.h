@@ -30,4 +30,6 @@ uint8_t sendBinaryBlock ( uint8_t *data, int len );
 uint8_t setMainFwUpdateActive (uint8_t val );
 uint8_t getMainFwUpdateActive ();
 
+//Extraer el numero de version de un string
+uint16 ParseFirmwareVersion(String Texto);
 #endif

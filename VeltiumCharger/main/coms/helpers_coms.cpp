@@ -1,5 +1,5 @@
 #include "helper_coms.h"
-
+#ifdef CONNECTED
 void Update_Status_Coms(uint16_t Code, uint8_t block){
 	static uint16 Status_Coms = 0;
 
@@ -70,3 +70,4 @@ int Convert_To_Epoch(uint8* data){
 	t.tm_sec  = data[5];
 	return mktime(&t);
 }
+#endif

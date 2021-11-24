@@ -258,9 +258,10 @@ void controlTask(void *arg) {
 						else if((Iface_Con == BLE && LastUserCon != serverbleGetConnected()) || old_inicializado != dispositivo_inicializado){						
 							SendStatusToPSOC5(serverbleGetConnected(), dispositivo_inicializado);
 							LastUserCon = serverbleGetConnected() ;
+							old_inicializado = dispositivo_inicializado;
 						}
 #ifdef CONNECTED
-						else if(Iface_Con == COMS && LastUserCon != ConfigFirebase.ClientAuthenticated){						
+						else if(Iface_Con == COMS && LastUserCon != ConfigFirebase.ClientAuthenticated){
 							SendStatusToPSOC5(ConfigFirebase.ClientAuthenticated, dispositivo_inicializado);
 							LastUserCon = ConfigFirebase.ClientAuthenticated;
 						}
@@ -486,8 +487,6 @@ void procesar_bloque(uint16 tipo_bloque){
 				modifyCharacteristic(&buffer_rx_local[207], 2, RECORDING_REC_CAPACITY_CHAR_HANDLE);
 				modifyCharacteristic(&buffer_rx_local[209], 2, RECORDING_REC_LAST_CHAR_HANDLE);
 				modifyCharacteristic(&buffer_rx_local[211], 1, RECORDING_REC_LAPS_CHAR_HANDLE);
-
-				Serial.printf("Nueva autenticacion recibida! %c %c \n", buffer_rx_local[212],buffer_rx_local[213]);
 
 				//comprobar si el dato tiene sentido, sino cargar el de mi memoria
 				if(memcmp("AA", &buffer_rx_local[212],2) && memcmp("WA", &buffer_rx_local[212],2) && memcmp("MA", &buffer_rx_local[212],2)){

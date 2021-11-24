@@ -151,9 +151,11 @@ uint8_t getMainFwUpdateActive (){
   return mainFwUpdateActive;
 }
 
-
-
-
+//----------------------------------------------------------------------------
+uint16 ParseFirmwareVersion(String Texto){
+  String sub = Texto.substring(6, 10); 
+  return(sub.toInt());
+}
 //********************Funciones privadas no accessibles desde fuera***********************************/
 int controlSendToSerialLocal ( uint8_t * data, int len ){
 
