@@ -514,8 +514,8 @@ bool ReadFirebaseShedule(String Path){
         Schedule.num_shedules++;
       }
 
-      uint8_t matrix[7][24] = {0};
       uint8_t plainMatrix[168]={0};
+      uint8_t alguna_activa = 0;
 
       //Decodificar las programaciones
       for(String x : programaciones){
@@ -532,9 +532,12 @@ bool ReadFirebaseShedule(String Path){
 
           //Si nos devuelve algo es que la matriz no es valida
           if(CreateMatrix(decodedBuf, plainMatrix) == 0){
-              memcpy(matrix,plainMatrix,168);
+              alguna_activa = 1;
           }
       }
+
+      SendToPSOC5((uint8_t)alguna_activa, CHARGING_INSTANT_DELAYED_CHAR_HANDLE);
+      SendToPSOC5(plainMatrix, 168, SCHED_CHARGING_SCHEDULE_MATRIX_CHAR_HANDLE);
 
       Schedule.last_ts_app_req=ts_app_req;
 
