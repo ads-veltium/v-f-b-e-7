@@ -47,6 +47,10 @@
     "*.ipp": "cpp",
     "*.inc": "cpp",
     "memory_resource": "cpp",
-    "typeinfo": "cpp"
+    "typeinfo": "cpp",
+    "cdecode.h": "c",
+    "array": "cpp",
+    "string": "cpp",
+    "ratio": "cpp"
 }
 }

@@ -40,6 +40,19 @@ void print_table(carac_charger *table, char* table_name = "Grupo de cargadores",
 #endif
 }
 
+void printHex(const uint8_t num) {
+  char hexCar[3];
+  sprintf(hexCar, "%02X", num);
+  Serial.print(hexCar);
+  Serial.print(" ");
+}
+
+void printHexBuffer(const char* num) {
+  for(int i=0; i<strlen(num); i++){
+    printHex((uint8_t)num[i]);
+  }
+  Serial.println();
+}
 
 //----------------------------------------------------------------------------
 bool WaitForValue(uint8* variable, uint8_t objetivo, uint16_t timeout){

@@ -10,6 +10,10 @@ bool str_to_uint16(const char *str, uint16_t *res);
 void print_table(carac_charger *table, char* table_name, uint8_t size);
 //Limpiar el scroll
 void cls();
+//Printar un caracter hexadecimal
+void printHex(const uint8_t num) ;
+//Printar todo un buffer hexadecimal
+void printHexBuffer(const char* num);
 
 
 //Enviar datos al PSOC5

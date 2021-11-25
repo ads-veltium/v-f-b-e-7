@@ -144,4 +144,3 @@ static uint8_t table_type_for_idx[1+RCS_MAX_IDX] = {
     3,1,1,2,3,1,2,3,3,3,3,3,3,3,3,3,
     3,3,1
 };
-

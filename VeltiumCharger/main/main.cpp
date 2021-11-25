@@ -1,9 +1,18 @@
+
+//Descomentar el include de abajo para activar las 
+//Funciones de test
+//#include "test.h"
+
+#ifndef TESTING
+
 #include "control.h"
+#endif
 
 void setup() 
 {
 	Serial.begin(115200);
-
+	#ifndef TESTING
+	
 	#ifdef DEBUG
 	Serial.println("FREE HEAP MEMORY [initial] **************************");
 	Serial.println(ESP.getFreePsram());
@@ -30,5 +39,9 @@ void setup()
 	Serial.println("FREE HEAP MEMORY [after controlInit write] **************************");
 	Serial.println(ESP.getFreeHeap());
 	#endif
+
+	#else
+	prueba();
 	
+	#endif
 }
