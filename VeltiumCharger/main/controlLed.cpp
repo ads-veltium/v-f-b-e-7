@@ -123,7 +123,7 @@ void OutWave( uint8_t color){
 			down = false;
 		}
 	}
-	
+	luminosidad_Actual=85;
 
 }
 
@@ -352,8 +352,7 @@ void LedControl_Task(void *arg){
 	while(1){
 
 
-		if(LastBle!=serverbleGetConnected()){	
-			displayAll(90,BLANCO);	
+		if(LastBle!=serverbleGetConnected()){		
 			delay(500);
 			LastBle=serverbleGetConnected();
 		}
@@ -377,21 +376,10 @@ void LedControl_Task(void *arg){
 		}
 		//Buscando Medidor
 		else if((Params.Tipo_Sensor || (ChargingGroup.Params.GroupMaster &&  ChargingGroup.Params.CDP >> 4))  && !ContadorExt.MeidorConectado && !Coms.Provisioning){
-			//Buscando Gateway
-			if(!ContadorExt.GatewayConectado){
-				if(!Coms.ETH.DHCP){
-					InWave(VERDE);
-				}
-				else{
-					OutWave(VERDE);
-				}
-				Delay=7;
-			}	
-			//Gateway encontrado pero medidor no
-			else if(ContadorExt.GatewayConectado ){
-				Kit(VERDE);
-				Delay=85;
-			}
+
+		OutWave(VERDE);
+		Delay=7;
+
 		}
 
 
@@ -400,7 +388,6 @@ void LedControl_Task(void *arg){
 			
 			//Funcionamiento normal
 			if(Status.error_code == 0){
-				
 				if(!memcmp(Status.HPT_status, "C", 1 )) { //Cargando		
 					Delay=50;
 					if(Status.Measures.instant_current>600){
@@ -408,7 +395,7 @@ void LedControl_Task(void *arg){
 					}
 					Fade(HUE_BLUE);
 				}
-				else {
+				else {			
 					Reset_Values();
 					if(!memcmp(Status.HPT_status, "B", 1 )){
 						_LED_COLOR = HUE_BLUE;
