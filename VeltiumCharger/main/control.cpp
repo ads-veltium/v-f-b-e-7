@@ -227,6 +227,7 @@ void controlTask(void *arg) {
 					}
 
 					case ESTADO_NORMAL:
+						
 						//Alguien se está intentando conectar	
 						if(AuthTimer !=0){
 							uint32_t Transcurrido = pdTICKS_TO_MS(xTaskGetTickCount()-AuthTimer);
@@ -286,6 +287,7 @@ void controlTask(void *arg) {
 							#endif
 							SendToPSOC5(Comands.desired_current, MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
 						}
+						
 						else if (Comands.reset){
 							#ifdef DEBUG
 							Serial.println("Reiniciando por comando externo! No preocuparse");
@@ -554,6 +556,22 @@ void procesar_bloque(uint16 tipo_bloque){
 
 				cnt_timeout_inicio = TIMEOUT_INICIO;
 				PSOC_inicializado = 1;
+
+				#ifdef CONNECTED
+					//Borrar datos de los grupos
+					SendToPSOC5(41,CLEAR_FLASH_SPACE);
+					SendToPSOC5(45,CLEAR_FLASH_SPACE);
+					SendToPSOC5(3,CLEAR_FLASH_SPACE);
+					SendToPSOC5(6,CLEAR_FLASH_SPACE);
+
+					//Borrar datos del apn
+					SendToPSOC5(46,CLEAR_FLASH_SPACE);
+					SendToPSOC5(47,CLEAR_FLASH_SPACE);
+					SendToPSOC5(48,CLEAR_FLASH_SPACE);
+					SendToPSOC5(23,CLEAR_FLASH_SPACE);
+					SendToPSOC5(24,CLEAR_FLASH_SPACE);
+
+				#endif
 
 			}
 		break;
@@ -1473,6 +1491,9 @@ void procesar_bloque(uint16 tipo_bloque){
 			break;
 		}
 #endif
+		case CLEAR_FLASH_SPACE:
+			printf("Se ha borrado la caracteristica %i de la flash!\n", buffer_rx_local[0]);
+		break;
 
 		default:
 		break;

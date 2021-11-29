@@ -774,6 +774,8 @@ typedef struct{
 #define CHARGING_GROUP_BLE_CHARGING_GROUP  (0x00E1u)
 #define STATUS_COMS						   (0x00E3u)
 
+//Caracteristica para borrar un espacio de memoria de la flash
+#define CLEAR_FLASH_SPACE                  (0X00E5U)
 
 #endif
 
