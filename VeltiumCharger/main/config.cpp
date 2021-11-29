@@ -9,6 +9,9 @@ static bool operator==(const carac_config& lhs, const carac_config& rhs){
     if(lhs.FirmwarePSOC != rhs.FirmwarePSOC){
       return false;
     }
+    if(lhs.Data_cleared != rhs.Data_cleared){
+      return false;
+    }
     
     /*if(lhs.Part_Number != rhs.Part_Number){
       return false;
@@ -85,6 +88,7 @@ void Config::Carac_to_json(DynamicJsonDocument& ConfigJSON){
     ConfigJSON["device_ID"]      = String(data.device_ID);
     ConfigJSON["device_ser_num"] = String(data.deviceSerNum);
     ConfigJSON["policy"] = String(data.policy);
+    ConfigJSON["data_cleared"] = data.Data_cleared;
 }
 
 void Config::Json_to_carac(DynamicJsonDocument& ConfigJSON){
@@ -102,6 +106,8 @@ void Config::Json_to_carac(DynamicJsonDocument& ConfigJSON){
     memcpy(data.device_ID, ConfigJSON["device_ID"].as<String>().c_str(),sizeof(data.device_ID));
     memcpy(data.deviceSerNum, ConfigJSON["device_ser_num"].as<String>().c_str(),sizeof(data.deviceSerNum));
     memcpy(data.policy, ConfigJSON["policy"].as<String>().c_str(),3);
+
+    data.Data_cleared = ConfigJSON["data_cleared"].as<uint8_t>(); 
 }
 
 //**********Funciones externas de la case de configuracion**************/
@@ -133,8 +139,6 @@ void Config::init(){
     }
     
 	modifyCharacteristic((uint8_t*)&Configuracion.data.policy, 3, POLICY);
-
-    
 
 }
 

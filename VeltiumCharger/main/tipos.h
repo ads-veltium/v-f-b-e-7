@@ -390,8 +390,7 @@ typedef struct{
 	uint16_t Firmware     = 500;
 	uint16_t FirmwarePSOC = 500;
 
-
-
+	uint8  Data_cleared = 0;
 	uint8  CDP  = 0;
 	uint8  inst_current_limit = 32;
 

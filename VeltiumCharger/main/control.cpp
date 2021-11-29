@@ -558,19 +558,20 @@ void procesar_bloque(uint16 tipo_bloque){
 				PSOC_inicializado = 1;
 
 				#ifdef CONNECTED
-					//Borrar datos de los grupos
-					SendToPSOC5(41,CLEAR_FLASH_SPACE);
-					SendToPSOC5(45,CLEAR_FLASH_SPACE);
-					SendToPSOC5(3,CLEAR_FLASH_SPACE);
-					SendToPSOC5(6,CLEAR_FLASH_SPACE);
+					if(!Configuracion.data.Data_cleared){
+						//Borrar datos de los grupos
+						SendToPSOC5(41,CLEAR_FLASH_SPACE);
+						SendToPSOC5(45,CLEAR_FLASH_SPACE);
+						SendToPSOC5(3,CLEAR_FLASH_SPACE);
+						SendToPSOC5(6,CLEAR_FLASH_SPACE);
 
-					//Borrar datos del apn
-					SendToPSOC5(46,CLEAR_FLASH_SPACE);
-					SendToPSOC5(47,CLEAR_FLASH_SPACE);
-					SendToPSOC5(48,CLEAR_FLASH_SPACE);
-					SendToPSOC5(23,CLEAR_FLASH_SPACE);
-					SendToPSOC5(24,CLEAR_FLASH_SPACE);
-
+						//Borrar datos del apn
+						SendToPSOC5(46,CLEAR_FLASH_SPACE);
+						SendToPSOC5(47,CLEAR_FLASH_SPACE);
+						SendToPSOC5(48,CLEAR_FLASH_SPACE);
+						SendToPSOC5(23,CLEAR_FLASH_SPACE);
+						SendToPSOC5(24,CLEAR_FLASH_SPACE);
+					}
 				#endif
 
 			}
@@ -1493,6 +1494,7 @@ void procesar_bloque(uint16 tipo_bloque){
 #endif
 		case CLEAR_FLASH_SPACE:
 			printf("Se ha borrado la caracteristica %i de la flash!\n", buffer_rx_local[0]);
+			Configuracion.data.Data_cleared = 1;
 		break;
 
 		default:
