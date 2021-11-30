@@ -15,6 +15,8 @@ void printHex(const uint8_t num) ;
 //Printar todo un buffer hexadecimal
 void printHexBuffer(const char* num);
 
+//Printar por consola el directorio del spiffs
+void listFilesInDir(File dir, int numTabs = 1);
 
 //Enviar datos al PSOC5
 void SendToPSOC5(uint8 data, uint16 attrHandle);

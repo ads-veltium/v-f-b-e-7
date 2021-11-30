@@ -82,7 +82,7 @@ uint8 mainFwUpdateActive = 0;
 uint8 dispositivo_inicializado = 0;
 uint8 PSOC_inicializado =0;
 uint8 cnt_timeout_inicio = 0;
-uint16 cnt_repeticiones_inicio = 50;	//1000;
+uint16 cnt_repeticiones_inicio = 500;	//1000;
 
 uint8 status_hpt_anterior[2] = {'F','F' };
 uint16 inst_current_anterior = 0x0000;
@@ -206,6 +206,7 @@ void controlTask(void *arg) {
 									mainFwUpdateActive = 1;
 									updateTaskrunning=1;
 									Serial.println("Enviando firmware al PSOC5 por falta de comunicacion!");
+									Configuracion.data.count_reinicios_malos ++;
 									xTaskCreate(UpdateTask,"TASK UPDATE",4096,NULL,1,NULL);
 								}
 							}
@@ -624,6 +625,7 @@ void procesar_bloque(uint16 tipo_bloque){
 						SendToPSOC5(1,BLOQUE_APN);
 						delay(150);
 						dispositivo_inicializado = 2;
+						Configuracion.data.count_reinicios_malos = 0;
 					}
 					
 					#ifdef DEBUG
@@ -1542,7 +1544,7 @@ void UpdateTask(void *arg){
 	unsigned char rowData[512];
 	SPIFFS.begin();
 	File file;
-	file = SPIFFS.open("/FreeRTOS_V6.cyacd"); 	
+	file = Configuracion.data.count_reinicios_malos < 10 ? SPIFFS.open("/FreeRTOS_V6.cyacd"):SPIFFS.open("/FreeRTOS_V6_old.cyacd"); 	
 	if(!file || file.size() == 0){ 
 		file.close();
 		SPIFFS.end();

@@ -54,6 +54,30 @@ void printHexBuffer(const char* num) {
   Serial.println();
 }
 
+void listFilesInDir(File dir, int numTabs) {
+  while (true) {
+ 
+    File entry =  dir.openNextFile();
+    if (! entry) {
+      // no more files in the folder
+      break;
+    }
+    for (uint8_t i = 0; i < numTabs; i++) {
+      Serial.print('\t');
+    }
+    Serial.print(entry.name());
+    if (entry.isDirectory()) {
+      Serial.println("/");
+      listFilesInDir(entry, numTabs + 1);
+    } else {
+      // display zise for file, nothing for directory
+      Serial.print("\t\t");
+      Serial.println(entry.size(), DEC);
+    }
+    entry.close();
+  }
+}
+
 //----------------------------------------------------------------------------
 bool WaitForValue(uint8* variable, uint8_t objetivo, uint16_t timeout){
 

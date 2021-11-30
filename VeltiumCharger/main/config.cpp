@@ -28,6 +28,9 @@ static bool operator==(const carac_config& lhs, const carac_config& rhs){
     if(lhs.CDP != rhs.CDP){
       return false;
     }
+    if(lhs.count_reinicios_malos != rhs.count_reinicios_malos){
+      return false;
+    }
      if(memcmp(lhs.device_ID, rhs.device_ID,sizeof(lhs.device_ID))){
         return false;
     }
@@ -89,6 +92,7 @@ void Config::Carac_to_json(DynamicJsonDocument& ConfigJSON){
     ConfigJSON["device_ser_num"] = String(data.deviceSerNum);
     ConfigJSON["policy"] = String(data.policy);
     ConfigJSON["data_cleared"] = data.Data_cleared;
+    ConfigJSON["count_reinicios_malos"] = data.count_reinicios_malos;
 }
 
 void Config::Json_to_carac(DynamicJsonDocument& ConfigJSON){
@@ -106,16 +110,17 @@ void Config::Json_to_carac(DynamicJsonDocument& ConfigJSON){
     memcpy(data.device_ID, ConfigJSON["device_ID"].as<String>().c_str(),sizeof(data.device_ID));
     memcpy(data.deviceSerNum, ConfigJSON["device_ser_num"].as<String>().c_str(),sizeof(data.deviceSerNum));
     memcpy(data.policy, ConfigJSON["policy"].as<String>().c_str(),3);
-
     data.Data_cleared = ConfigJSON["data_cleared"].as<uint8_t>(); 
+    data.count_reinicios_malos = ConfigJSON["count_reinicios_malos"].as<uint8_t>(); 
 }
 
 //**********Funciones externas de la case de configuracion**************/
 void Config::init(){
   
     //Arrancar el SPIFFS
-    if(!SPIFFS.begin(true,"/spiffs",1,"ESP32")){
-      ESP.restart();
+    if(!SPIFFS.begin(1,"/spiffs",1,"ESP32")){
+      SPIFFS.end();					
+      SPIFFS.begin(1,"/spiffs",1,"ESP32");
     }
 
     //Sino existe el archivo, crear el de defecto

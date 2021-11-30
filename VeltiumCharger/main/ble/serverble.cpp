@@ -425,38 +425,36 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 				UpdateStatus.DescargandoArchivo=1;
 				if(strstr (signature,"VBLE")){
 					UpdateType= VBLE_UPDATE;
-					#ifndef UPDATE_COMPRESSED
-						#ifdef DEBUG_BLE
-						Serial.println("Updating VBLE");
-						#endif			
-						if(!Update.begin(UpdatefileSize)){
-							Serial.println("File too big");
-							Update.end();
-							successCode = 0x00000001;
-						};
-					#else 
-						Serial.println("Updating VBLE Compressed");	
-						if (SPIFFS.begin(1,"/spiffs",1,"ESP32")){
-							vTaskDelay(pdMS_TO_TICKS(50));
-							SPIFFS.format();
-						}
-						vTaskDelay(pdMS_TO_TICKS(50));
-						UpdateFile = SPIFFS.open("/VBLE2.bin.gz", FILE_WRITE);
-					#endif
+					#ifdef DEBUG_BLE
+					Serial.println("Updating VBLE");
+					#endif			
+					if(!Update.begin(UpdatefileSize)){
+						Serial.println("File too big");
+						Update.end();
+						successCode = 0x00000001;
+					};
 				}
 				else if(strstr (signature,"VELT")){
 					#ifdef DEBUG_BLE
 					Serial.println("Updating VELT");
 					#endif
-					UpdateType= VELT_UPDATE;
+					UpdateType= VELT_UPDATE;				
+
 					SPIFFS.end();
 					if(!SPIFFS.begin(1,"/spiffs",1,"PSOC5")){
 						SPIFFS.end();					
 						SPIFFS.begin(1,"/spiffs",1,"PSOC5");
 					}
+					File dir = SPIFFS.open("/");
+					listFilesInDir(dir);
 					if(SPIFFS.exists("/FreeRTOS_V6.cyacd")){
-						vTaskDelay(pdMS_TO_TICKS(50));
-						SPIFFS.format();
+						if(SPIFFS.exists("/FreeRTOS_V6_old.cyacd")){
+							SPIFFS.remove("/FreeRTOS_V6_old.cyacd");
+						}
+						SPIFFS.rename("/FreeRTOS_V6.cyacd", "/FreeRTOS_V6_old.cyacd");
+						Serial.println("Otra");
+						File dir = SPIFFS.open("/");
+						listFilesInDir(dir);
 					}
 
 					vTaskDelay(pdMS_TO_TICKS(50));
