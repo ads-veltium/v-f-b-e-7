@@ -114,14 +114,12 @@ void Config::Json_to_carac(DynamicJsonDocument& ConfigJSON){
 void Config::init(){
   
     //Arrancar el SPIFFS
-    if(!SPIFFS.begin(false,"/spiffs",1,"CONFIG")){
-      SPIFFS.end();					
-      SPIFFS.begin(false,"/spiffs",1,"CONFIG");
+    if(!SPIFFS.begin(true,"/spiffs",1,"ESP32")){
+      ESP.restart();
     }
 
     //Sino existe el archivo, crear el de defecto
     if(!SPIFFS.exists("/config.json")){
-      SPIFFS.format();
       Store();
     }
 
