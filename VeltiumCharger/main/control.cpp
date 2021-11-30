@@ -855,7 +855,9 @@ void procesar_bloque(uint16 tipo_bloque){
 		case VCD_NAME_USERS_USER_TYPE_CHAR_HANDLE:{
 		
 			modifyCharacteristic(buffer_rx_local, 1, VCD_NAME_USERS_USER_TYPE_CHAR_HANDLE);
+			#ifdef DEBUG
 			printf("Me ha llegado user type %i\n", buffer_rx_local[0]);
+			#endif
 		} 
 		break;
 		
@@ -863,7 +865,9 @@ void procesar_bloque(uint16 tipo_bloque){
 		
 			modifyCharacteristic(buffer_rx_local, 1, VCD_NAME_USERS_USER_INDEX_CHAR_HANDLE);
 			user_index = buffer_rx_local[0];
+			#ifdef DEBUG
 			printf("Me ha llegado user index %i\n", buffer_rx_local[0]);
+			#endif
 		} 
 		break;
 		
@@ -889,7 +893,9 @@ void procesar_bloque(uint16 tipo_bloque){
 		break;
 
 		case CHARGE_USER_ID:{
+			#ifdef DEBUG
 			printf("Me ha llegado un nuevo charge_user_id %i\n", buffer_rx_local[0]);
+			#endif
 			modifyCharacteristic(buffer_rx_local, 1, CHARGE_USER_ID);
 		}
 		break;
@@ -1330,8 +1336,10 @@ void procesar_bloque(uint16 tipo_bloque){
             //cierro el coap y borro el grupo
             if(check_in_group(ConfigFirebase.Device_Id,charger_table,ChargingGroup.Charger_number ) == 255){
                 if(ChargingGroup.Conected){
+					#ifdef DEBUG_GROUPS
 					printf("No estoy en el grupo control.cpp1\n");
 					print_table(charger_table,"No en grupo table 1", ChargingGroup.Charger_number);
+					#endif
                     ChargingGroup.DeleteOrder = true;
                 }
             }
@@ -1360,7 +1368,9 @@ void procesar_bloque(uint16 tipo_bloque){
                 //si soy el maestro, avisar a los nuevos de que son parte de mi grupo
                 broadcast_a_grupo("Start client", 12);
             }
+			#ifdef DEBUG_GROUPS
             print_table(charger_table, "Grupo desde PSOC", ChargingGroup.Charger_number);
+			#endif
         }
         break;
 
@@ -1424,7 +1434,9 @@ void procesar_bloque(uint16 tipo_bloque){
                 //si soy el maestro, avisar a los nuevos de que son parte de mi grupo
                 broadcast_a_grupo("Start client", 12);
             }
+			#ifdef DEBUG_GROUPS
             print_table(charger_table, "Grupo desde PSOC", ChargingGroup.Charger_number);
+			#endif
 			break;
         }
 

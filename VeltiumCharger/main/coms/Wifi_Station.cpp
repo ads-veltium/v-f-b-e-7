@@ -367,7 +367,9 @@ void Eth_Loop(){
     static TickType_t xStart = 0;
     static TickType_t xCheckConn = 0;
     static TickType_t xConnect = 0;
+    #ifdef DEBUG_ETH
     static uint8_t LastStatus = APAGADO;
+    #endif
     static uint8_t escape =0;
     static  bool wifi_last =false;
     static uint8 reintentos = 0;

@@ -445,11 +445,8 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 						SPIFFS.end();					
 						SPIFFS.begin(1,"/spiffs",1,"PSOC5");
 					}
-					#ifdef DEBUG
-					File dir = SPIFFS.open("/");
-					listFilesInDir(dir);
-					#endif
 
+					//Almacenar la version anterior de firmware
 					if(SPIFFS.exists("/FreeRTOS_V6.cyacd")){
 						if(SPIFFS.exists("/FreeRTOS_V6_old.cyacd")){
 							SPIFFS.remove("/FreeRTOS_V6_old.cyacd");
@@ -457,17 +454,14 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 						//Comprobar si nos van a entrar las dos versiones de firmware
 						File dir = SPIFFS.open("/");
 						if(dir.size() + UpdatefileSize > 0x80000){
+							#ifdef DEBUG
 							printf("No entran los dos documentos! Borro el anterior!\n");
+							#endif
 							SPIFFS.remove("/FreeRTOS_V6.cyacd");
 						}
 						else{
 							SPIFFS.rename("/FreeRTOS_V6.cyacd", "/FreeRTOS_V6_old.cyacd");
 						}
-						
-						#ifdef DEBUG
-						Serial.println("Otra");
-						listFilesInDir(dir);
-						#endif
 					}
 
 					vTaskDelay(pdMS_TO_TICKS(50));

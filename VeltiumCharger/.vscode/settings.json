@@ -57,6 +57,7 @@
     "cdecode.h": "c",
     "array": "cpp",
     "string": "cpp",
-    "ratio": "cpp"
+    "ratio": "cpp",
+    "*.contiki": "cpp"
 }
 }
