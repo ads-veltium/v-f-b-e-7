@@ -187,7 +187,6 @@ void controlTask(void *arg) {
 		// Eventos 10 mS
 		if(contador_cent_segundos != contador_cent_segundos_ant){
 			contador_cent_segundos_ant = contador_cent_segundos;
-
 			if(mainFwUpdateActive == 0){
 				switch (estado_actual){
 					
@@ -323,6 +322,8 @@ void controlTask(void *arg) {
 		// Eventos 1 segundo
 		if(cont_seg != cont_seg_ant){
 			cont_seg_ant = cont_seg;
+			powerControl();
+
 		}
 
 		// Eventos 1 minuto
@@ -514,12 +515,12 @@ void procesar_bloque(uint16 tipo_bloque){
 				modifyCharacteristic(&buffer_rx_local[232], 1, DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE);
 				modifyCharacteristic(&buffer_rx_local[233], 1, MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
 				modifyCharacteristic(&buffer_rx_local[234], 2, COMS_FW_UPDATEMODE_CHAR_HANDLE);		
-				modifyCharacteristic(&buffer_rx_local[241], 2, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_P2_CHAR_HANDLE);
+				//modifyCharacteristic(&buffer_rx_local[241], 2, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_P2_CHAR_HANDLE);
 				modifyCharacteristic(&buffer_rx_local[243], 2, TIME_DATE_COUNTRY_CHAR_HANDLE);			
 
 				/************************ Set configuration data **********************/
 				Configuracion.data.potencia_contratada1 = buffer_rx_local[229]+buffer_rx_local[230]*0x100;
-				Configuracion.data.potencia_contratada2 = buffer_rx_local[241]+buffer_rx_local[242]*0x100;
+				//Configuracion.data.potencia_contratada2 = buffer_rx_local[241]+buffer_rx_local[242]*0x100;
 				Configuracion.data.inst_current_limit   = buffer_rx_local[11];	
 				Configuracion.data.CDP   = buffer_rx_local[232];		
 
@@ -718,6 +719,7 @@ void procesar_bloque(uint16 tipo_bloque){
 		
 		case BLOQUE_DATE_TIME:{
 			modifyCharacteristic(buffer_rx_local, 6, TIME_DATE_DATE_TIME_CHAR_HANDLE);
+			Status.Time.hora=buffer_rx_local[3];
 			aut_semilla = (((int)buffer_rx_local[4]) * 0x100) + (int)buffer_rx_local[5];
 			modifyCharacteristic(&buffer_rx_local[6], 6, TIME_DATE_CONNECTION_DATE_TIME_CHAR_HANDLE);
 			modifyCharacteristic(&buffer_rx_local[12], 6, TIME_DATE_DISCONNECTION_DATE_TIME_CHAR_HANDLE);

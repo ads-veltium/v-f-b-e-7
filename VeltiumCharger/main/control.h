@@ -11,7 +11,7 @@
 #define DEVELOPMENT				   //Comentar para pasar firmware a produccion ( Cambio de base de datos y quitar debugs)
 
 #ifdef USE_COMS
-#define USE_GROUPS			   //Comentar para no utilizar los grupos de potencia
+//#define USE_GROUPS			   //Comentar para no utilizar los grupos de potencia
 #endif
 
 #ifdef DEVELOPMENT
@@ -63,6 +63,7 @@
 #include "SPIFFS.h"
 #include "helpers.h"
 #include "config.h"
+#include "power_control.h"
 
 
 

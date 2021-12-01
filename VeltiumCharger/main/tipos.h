@@ -86,6 +86,7 @@ typedef struct{
 } caract_measures;
 
 typedef struct{
+	uint8 hora;
 	long long actual_time;
 	long long connect_date_time;
 	long long disconnect_date_time;
@@ -202,6 +203,7 @@ typedef struct{
 	String Pass;
 	String User;
 	uint8_t Pin [4];
+	uint8_t Puk [8];
 	bool Internet = false;
 	
 	uint8_t   State;
@@ -416,6 +418,7 @@ typedef struct{
 #define MODEM_REG_LTE			0b0001000000000000
 #define MODEM_CONNECTED			0b0010000000000000
 #define MODEM_BAD_PIN 			0b0100000000000000
+#define MODEM_BAD_PUK 			0b1000000000000000
 
 #define ETH_BLOCK   0
 #define WIFI_BLOCK  1
