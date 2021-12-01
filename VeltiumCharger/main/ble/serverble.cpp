@@ -18,7 +18,8 @@ uint8_t  UpdateType  = 0;
 uint16_t Conn_Handle = 0;
 uint8 RaspberryTest[6] ={139,96,111,50,166,220};
 //uint8 RaspberryTest2[6] ={227 ,233, 58 ,1 ,95 ,228 };
-uint8 RaspberryTest2[6] ={153 ,117, 207 ,235 ,39 ,184 };
+uint8 RaspberryTest2[6] ={179 ,186, 112 ,1 ,95 ,228 };
+//uint8 RaspberryTest2[6] ={153 ,117, 207 ,235 ,39 ,184 };
 
 uint8 authChallengeReply[8]  = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 uint8 authChallengeQuery[10] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};      //{0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF};
@@ -199,6 +200,8 @@ void serverbleNotCharacteristic ( uint8_t *data, int len, uint16_t handle )
 		pbleCharacteristics[BLE_CHA_FW_DATA]->notify();
 		return;
 	}
+	// set characteristic value using selector mechanism
+	rcs_server_set_chr_value(handle, data, len);
 }
 
 void serverbleSetCharacteristic ( uint8_t *data, int len, uint16_t handle )
@@ -261,6 +264,10 @@ class serverCallbacks: public BLEServerCallbacks
 {
 	void onConnect(BLEServer* pServer, ble_gap_conn_desc *desc) 
 	{
+		for(uint8_t i=0;i< 6;i++){
+			printf("%i ", desc->peer_id_addr.val[i]);
+		}
+		printf("\n \n");
 		if(!memcmp(desc->peer_id_addr.val, RaspberryTest,6) || !memcmp(desc->peer_id_addr.val, RaspberryTest2,6) ){
 			Testing = true;
 			setAuthToken(authChallengeReply, 8);
@@ -676,18 +683,18 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 
 			if (handle == POLICY){
 				#ifdef DEBUG
-					Serial.printf("Nueva policy recibida! %c %c %c\n", payload[0],payload[1],payload[2]);
+					Serial.printf("Nueva policy recibida! %c%c%c\n", payload[0],payload[1],payload[2]);
 				#endif
 
 				//Si el valor que me llega no es ninguno estandar, descartarlo
-				if(memcmp(Configuracion.data.policy, "ALL",3) && memcmp(Configuracion.data.policy,"AUT",3) && memcmp(Configuracion.data.policy, "NON",3)){
+				if(memcmp(payload, "ALL",3) && memcmp(payload,"AUT",3) && memcmp(payload, "NON",3)){
 					#ifdef DEBUG
-						printf("Me ha llegado un valor turbio en policy!!\n %c %c %c", payload[0],payload[1],payload[2]);
+						printf("Me ha llegado un valor turbio en policy!!\n %c%c%c", payload[0],payload[1],payload[2]);
 					#endif
 					return;
 				}
 				memcpy(Configuracion.data.policy, payload,3);
-				serverbleNotCharacteristic((uint8_t*)&payload, 3, POLICY);
+				modifyCharacteristic((uint8_t*)&Configuracion.data.policy, 3, POLICY);
 				return;
 			} 
 

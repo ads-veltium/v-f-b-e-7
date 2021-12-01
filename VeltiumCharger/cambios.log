@@ -34,3 +34,5 @@ v5.18
     - Desactivar autenticacion automatica a través de firebase.
     - Borrado de los datos de los grupos en cargadores especificos.
     - Borrado de los datos del apn en todos los cargadores la primera vez que se enciendan.
+    - Almacenado de dos versiones de psoc5 (Actual y anterior).
+    - Restablecimiento de versión anterior de firmware en caso de que la actual no funcione correctamente. 
