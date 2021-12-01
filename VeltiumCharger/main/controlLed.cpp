@@ -340,10 +340,14 @@ void LedControl_Task(void *arg){
 	bool LastBle=0;
 	initLeds();
 	Reset_Values();
+	TransicionAverde();
+	while(dispositivo_inicializado != 1){
+		delay(100);
+	}
 	//Arrancando
 	while(dispositivo_inicializado != 2){
 		OLA(VERDE);
-		delay(5);
+		dispositivo_inicializado == 0 ? delay(1):delay(5);
 	}
 	TransicionAverde();
 	Reset_Values();

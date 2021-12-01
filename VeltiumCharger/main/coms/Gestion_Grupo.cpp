@@ -138,8 +138,10 @@ void store_group_in_mem(carac_charger* group, uint8_t size){
         //cierro el coap y borro el grupo
         if(check_in_group(ConfigFirebase.Device_Id,charger_table, ChargingGroup.Charger_number ) == 255){
             if(ChargingGroup.Conected){
+                #ifdef DEBUG_GROUPS
                 printf("¡No estoy en el grupo!!!\n");
                 print_table(charger_table,"No en grupo table", ChargingGroup.Charger_number);
+                #endif
                 ChargingGroup.DeleteOrder = true;
             }
         }
@@ -174,7 +176,9 @@ void store_group_in_mem(carac_charger* group, uint8_t size){
 }
 
 void store_params_in_mem(){
+    #ifdef DEBUG_GROUPS
     Serial.println("Almacenando datos en la memoria\n");
+    #endif
     char buffer[7];
     buffer[0] = ChargingGroup.Params.GroupMaster;
     buffer[1] = ChargingGroup.Params.GroupActive;
@@ -198,7 +202,9 @@ void remove_group(carac_charger* group, uint8_t* size){
         *size = 0;
         return;
     }
+    #ifdef DEBUG_GROUPS
     printf("Error al eliminar el grupo\n");  
+    #endif
 }
 
 //Obtener la ip de un equipo dado su ID
@@ -283,7 +289,9 @@ void start_udp(){
                     group_buffer[i*9+18]=0;
                 }
                 serverbleNotCharacteristic(group_buffer,net_group_size*9 +10, CHARGING_GROUP_BLE_NET_DEVICES);
+                #ifdef DEBUG_GROUPS
                 print_table(net_group, "Net group", net_group_size);
+                #endif
                 
 
                 //Si el cargador está en el grupo de carga, le decimos que es un esclavo
@@ -301,7 +309,9 @@ void start_udp(){
             }
             else{
                 if(!memcmp(Desencriptado.c_str(), "Start client", 12)){
+                    #ifdef DEBUG_GROUPS
                     printf("ME ha llegado start client!\n");
+                    #endif
                     if(!ChargingGroup.Conected && !ChargingGroup.StartClient){
                         #ifdef DEBUG_GROUPS
                         printf("Soy parte de un grupo !!\n");
@@ -330,13 +340,17 @@ void start_udp(){
                 }
                 else if(!memcmp(Desencriptado.c_str(), "Ezabatu taldea", 14)){
                     if(ChargingGroup.Conected){
+                        #ifdef DEBUG_GROUPS
                         Serial.println("el maestro me pide que borre el grupo!");
+                        #endif
                         ChargingGroup.DeleteOrder = true;
                     }
                 }
                 else if(!memcmp(Desencriptado.c_str(), "Geldituzazu taldea", 18)){
                     if(ChargingGroup.Conected){
+                        #ifdef DEBUG_GROUPS
                         Serial.println("el maestro me pide que pause el grupo!");
+                        #endif
                         ChargingGroup.StopOrder = true;
                     }
                 }

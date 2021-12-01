@@ -395,6 +395,7 @@ typedef struct{
 	uint8  Data_cleared = 0;
 	uint8  CDP  = 0;
 	uint8  inst_current_limit = 32;
+	uint8  count_reinicios_malos = 0;
 
 	uint16 potencia_contratada1 = 32;
 	uint16 potencia_contratada2 = 32;

@@ -33,7 +33,13 @@
             "name": "FLASH",
             "color": "white",
             "singleInstance": true,
-            "command": ". /home/joel/Documents/fw-bird-esp32/SDK/esp-idf/./export.sh && cd /home/joel/Documents/firmware/fw-bird-esp32/VeltiumCharger/ && make flash -j6",
+            "command": ". /home/joel/Documents/fw-bird-esp32/SDK/esp-idf/./export.sh && cd /home/joel/Documents/fw-bird-esp32/VeltiumCharger/ && make flash -j6",
+        },
+        {
+            "name": "ERASE",
+            "color": "white",
+            "singleInstance": true,
+            "command": ". /home/joel/Documents/fw-bird-esp32/SDK/esp-idf/./export.sh && cd /home/joel/Documents/fw-bird-esp32/VeltiumCharger/ && make erase_flash -j6",
         },
 
     ]
@@ -51,6 +57,7 @@
     "cdecode.h": "c",
     "array": "cpp",
     "string": "cpp",
-    "ratio": "cpp"
+    "ratio": "cpp",
+    "*.contiki": "cpp"
 }
 }

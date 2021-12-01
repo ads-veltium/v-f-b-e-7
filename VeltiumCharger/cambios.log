@@ -26,3 +26,13 @@ v5.18
     - Añadido delay entre envio de lineas para el firmware del PSOC5.
     - Ahora al conectarse a Firebase se escriben tambien las comunicaciones.
     - Añadida copia interna de los datos de configuracion.
+    - Añadida funcion para borrar espacios de la flash del psoc5 desde el esp.
+    - Ahora se tiene en cuenta la intensidad de las programaciones aunque esté el CDP activado.
+    - Almacenado del campo policy en el cargador.
+    - Cambiar las programaciones por comunicaciones.
+    - Cambios en la interfaz (leds y pitido del zumbador).
+    - Desactivar autenticacion automatica a través de firebase.
+    - Borrado de los datos de los grupos en cargadores especificos.
+    - Borrado de los datos del apn en todos los cargadores la primera vez que se enciendan.
+    - Almacenado de dos versiones de psoc5 (Actual y anterior).
+    - Restablecimiento de versión anterior de firmware en caso de que la actual no funcione correctamente. 

@@ -691,11 +691,9 @@ bool ReadFirebaseControl(String Path){
 bool CheckForUpdate(){
   bool update = false;
 
+/*
 #ifdef DEVELOPMENT
-  //Check Permisions
-  UpdateStatus.BetaPermission = true;//Database->checkPermisions();
   //Check Beta Firmware
-
   if(Database->Send_Command("/prod/fw/beta/",&Lectura, READ_FW)){
     String PSOC5_Ver   = Lectura["VELT2"]["verstr"].as<String>();
     uint16 VELT_int_Version=ParseFirmwareVersion(PSOC5_Ver);
@@ -720,6 +718,7 @@ bool CheckForUpdate(){
   }
   
 #endif
+*/
   
   //Check Normal Firmware
   if(Database->Send_Command("/prod/fw/prod/",&Lectura, READ_FW)){
@@ -734,6 +733,9 @@ bool CheckForUpdate(){
 
     String ESP_Ver   = Lectura["VBLE2"]["verstr"].as<String>();
     uint16 ESP_int_Version=ParseFirmwareVersion(ESP_Ver);
+
+    Serial.println(ESP_Ver);
+    Serial.println(Configuracion.data.Firmware);
 
     if(ESP_int_Version>Configuracion.data.Firmware){
       UpdateStatus.ESP_UpdateAvailable= true;

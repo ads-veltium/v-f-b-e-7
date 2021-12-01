@@ -2,10 +2,8 @@
 #ifdef CONNECTED
 void Update_Status_Coms(uint16_t Code, uint8_t block){
 	static uint16 Status_Coms = 0;
-
-#ifdef DEBUG
 	static uint16 Last_Status = 0;
-#endif
+
 
 	if(Code > 0){
 		//Resetear los bits que estuvieran activos por cada bloque

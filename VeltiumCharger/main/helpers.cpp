@@ -18,6 +18,7 @@ bool str_to_uint16(const char *str, uint16_t *res){
   return true;
 }
 
+#ifdef DEBUG
 void cls(){
 #ifdef DEBUG
     Serial.write(27);   
@@ -28,7 +29,6 @@ void cls(){
 }
 
 void print_table(carac_charger *table, char* table_name = "Grupo de cargadores", uint8_t size = 0){
-#ifdef DEBUG_GROUPS
     printf("=============== %s ===================\n", table_name);
     printf("      ID     Fase   HPT   I      CONS   D    DT     CONEX C\n");
     for(int i=0; i< size;i++){     //comprobar si el cargador ya está almacenado
@@ -37,7 +37,6 @@ void print_table(carac_charger *table, char* table_name = "Grupo de cargadores",
     printf("Memoria interna disponible: %i\n", esp_get_free_internal_heap_size());
     printf("Memoria total disponible:   %i\n", esp_get_free_heap_size());
     printf("=======================================================\n");
-#endif
 }
 
 void printHex(const uint8_t num) {
@@ -54,6 +53,30 @@ void printHexBuffer(const char* num) {
   Serial.println();
 }
 
+void listFilesInDir(File dir, int numTabs) {
+  while (true) {
+ 
+    File entry =  dir.openNextFile();
+    if (! entry) {
+      // no more files in the folder
+      break;
+    }
+    for (uint8_t i = 0; i < numTabs; i++) {
+      Serial.print('\t');
+    }
+    Serial.print(entry.name());
+    if (entry.isDirectory()) {
+      Serial.println("/");
+      listFilesInDir(entry, numTabs + 1);
+    } else {
+      // display zise for file, nothing for directory
+      Serial.print("\t\t");
+      Serial.println(entry.size(), DEC);
+    }
+    entry.close();
+  }
+}
+#endif
 //----------------------------------------------------------------------------
 bool WaitForValue(uint8* variable, uint8_t objetivo, uint16_t timeout){
 

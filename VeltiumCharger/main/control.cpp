@@ -47,6 +47,10 @@ uint8_t 	   temp_chargers_size 			 EXT_RAM_ATTR;
 
 /* VARIABLES BLE */
 uint8 device_ID[16] = {"VCD17010001"};
+uint8 not_delete_group [4][10] = {{0xCD, 0x01, 0x21, 0x07, 0x16, 0x00, 0x00, 0x04, 0x98, 0x08},
+								 {0xCD, 0x01, 0x21, 0x07, 0x16, 0x00, 0x00, 0x05, 0x29, 0x51},
+								 {0xCD, 0x01, 0x21, 0x09, 0x16, 0x00, 0x00, 0x06, 0x14, 0x54},
+								 {0xCD, 0x01, 0x21, 0x09, 0x16, 0x00, 0x00, 0x06, 0x14, 0x58}};
 uint8 deviceSerNum[10] 		 = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};     //{0x00, 0x00, 0x00, 0x00, 0x0B, 0xCD, 0x17, 0x01, 0x00, 0x05};
 TickType_t AuthTimer=0;
 uint8 contador_cent_segundos = 0, contador_cent_segundos_ant = 0;
@@ -75,10 +79,10 @@ uint8 initialSerNum[10] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
 
 uint8 mainFwUpdateActive = 0;
 
-uint8 dispositivo_inicializado = 1;
+uint8 dispositivo_inicializado = 0;
 uint8 PSOC_inicializado =0;
 uint8 cnt_timeout_inicio = 0;
-uint16 cnt_repeticiones_inicio = 50;	//1000;
+uint16 cnt_repeticiones_inicio = 500;	//1000;
 
 uint8 status_hpt_anterior[2] = {'F','F' };
 uint16 inst_current_anterior = 0x0000;
@@ -86,7 +90,7 @@ uint16 cnt_diferencia = 1;
 uint8 HPT_estados[9][3] = {"0V", "A1", "A2", "B1", "B2", "C1", "C2", "E1", "F1"};
 
 #ifdef USE_COMS
-uint8 version_firmware[11] = {"VBLE2_0518"};	
+uint8 version_firmware[11] = {"VBLE2_0510"};	
 #else
 uint8 version_firmware[11] = {"VBLE0_0515"};	
 #endif
@@ -201,6 +205,7 @@ void controlTask(void *arg) {
 									mainFwUpdateActive = 1;
 									updateTaskrunning=1;
 									Serial.println("Enviando firmware al PSOC5 por falta de comunicacion!");
+									Configuracion.data.count_reinicios_malos ++;
 									xTaskCreate(UpdateTask,"TASK UPDATE",4096,NULL,1,NULL);
 								}
 							}
@@ -560,11 +565,23 @@ void procesar_bloque(uint16 tipo_bloque){
 
 				#ifdef CONNECTED
 					if(!Configuracion.data.Data_cleared){
-						//Borrar datos de los grupos
-						SendToPSOC5(41,CLEAR_FLASH_SPACE);
-						SendToPSOC5(45,CLEAR_FLASH_SPACE);
-						SendToPSOC5(3,CLEAR_FLASH_SPACE);
-						SendToPSOC5(6,CLEAR_FLASH_SPACE);
+						bool borrar = true;
+						for(uint8_t i=0;i<4; i++){
+							//Comprobar si tengo que mantener mis datos o borrarlos
+							if(!memcmp(not_delete_group[i], deviceSerNum,10)){
+								borrar = false;
+								break;
+							}
+						}
+						
+						if(borrar){
+							//Borrar datos de los grupos
+							SendToPSOC5(41,CLEAR_FLASH_SPACE);
+							SendToPSOC5(45,CLEAR_FLASH_SPACE);
+							SendToPSOC5(3,CLEAR_FLASH_SPACE);
+							SendToPSOC5(6,CLEAR_FLASH_SPACE);
+						}
+
 
 						//Borrar datos del apn
 						SendToPSOC5(46,CLEAR_FLASH_SPACE);
@@ -609,6 +626,7 @@ void procesar_bloque(uint16 tipo_bloque){
 						SendToPSOC5(1,BLOQUE_APN);
 						delay(150);
 						dispositivo_inicializado = 2;
+						Configuracion.data.count_reinicios_malos = 0;
 					}
 					
 					#ifdef DEBUG
@@ -839,7 +857,9 @@ void procesar_bloque(uint16 tipo_bloque){
 		case VCD_NAME_USERS_USER_TYPE_CHAR_HANDLE:{
 		
 			modifyCharacteristic(buffer_rx_local, 1, VCD_NAME_USERS_USER_TYPE_CHAR_HANDLE);
+			#ifdef DEBUG
 			printf("Me ha llegado user type %i\n", buffer_rx_local[0]);
+			#endif
 		} 
 		break;
 		
@@ -847,7 +867,9 @@ void procesar_bloque(uint16 tipo_bloque){
 		
 			modifyCharacteristic(buffer_rx_local, 1, VCD_NAME_USERS_USER_INDEX_CHAR_HANDLE);
 			user_index = buffer_rx_local[0];
+			#ifdef DEBUG
 			printf("Me ha llegado user index %i\n", buffer_rx_local[0]);
+			#endif
 		} 
 		break;
 		
@@ -873,7 +895,9 @@ void procesar_bloque(uint16 tipo_bloque){
 		break;
 
 		case CHARGE_USER_ID:{
+			#ifdef DEBUG
 			printf("Me ha llegado un nuevo charge_user_id %i\n", buffer_rx_local[0]);
+			#endif
 			modifyCharacteristic(buffer_rx_local, 1, CHARGE_USER_ID);
 		}
 		break;
@@ -1314,8 +1338,10 @@ void procesar_bloque(uint16 tipo_bloque){
             //cierro el coap y borro el grupo
             if(check_in_group(ConfigFirebase.Device_Id,charger_table,ChargingGroup.Charger_number ) == 255){
                 if(ChargingGroup.Conected){
+					#ifdef DEBUG_GROUPS
 					printf("No estoy en el grupo control.cpp1\n");
 					print_table(charger_table,"No en grupo table 1", ChargingGroup.Charger_number);
+					#endif
                     ChargingGroup.DeleteOrder = true;
                 }
             }
@@ -1344,7 +1370,9 @@ void procesar_bloque(uint16 tipo_bloque){
                 //si soy el maestro, avisar a los nuevos de que son parte de mi grupo
                 broadcast_a_grupo("Start client", 12);
             }
+			#ifdef DEBUG_GROUPS
             print_table(charger_table, "Grupo desde PSOC", ChargingGroup.Charger_number);
+			#endif
         }
         break;
 
@@ -1408,7 +1436,9 @@ void procesar_bloque(uint16 tipo_bloque){
                 //si soy el maestro, avisar a los nuevos de que son parte de mi grupo
                 broadcast_a_grupo("Start client", 12);
             }
+			#ifdef DEBUG_GROUPS
             print_table(charger_table, "Grupo desde PSOC", ChargingGroup.Charger_number);
+			#endif
 			break;
         }
 
@@ -1528,7 +1558,7 @@ void UpdateTask(void *arg){
 	unsigned char rowData[512];
 	SPIFFS.begin();
 	File file;
-	file = SPIFFS.open("/FreeRTOS_V6.cyacd"); 	
+	file = Configuracion.data.count_reinicios_malos < 10 ? SPIFFS.open("/FreeRTOS_V6.cyacd"):SPIFFS.open("/FreeRTOS_V6_old.cyacd"); 	
 	if(!file || file.size() == 0){ 
 		file.close();
 		SPIFFS.end();
@@ -1608,9 +1638,10 @@ void UpdateTask(void *arg){
 }
 
 void controlInit(void){
-	Configuracion.init();
-	//Freertos estatico
 	xTaskCreateStatic(LedControl_Task,"TASK LEDS",4096*2,NULL,PRIORIDAD_LEDS,xLEDStack,&xLEDBuffer); 
+	Configuracion.init();
+	dispositivo_inicializado = 1;
+	//Freertos estatico
 	xTaskCreateStatic(controlTask,"TASK CONTROL",4096*6,NULL,PRIORIDAD_CONTROL,xControlStack,&xControlBuffer); 
 	xTaskCreateStatic(proceso_recepcion,"TASK UART",4096*6,NULL,PRIORIDAD_UART,xUartStack,&xUartBuffer); 
 	#ifdef CONNECTED

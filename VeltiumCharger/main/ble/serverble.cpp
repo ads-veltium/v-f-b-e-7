@@ -18,7 +18,8 @@ uint8_t  UpdateType  = 0;
 uint16_t Conn_Handle = 0;
 uint8 RaspberryTest[6] ={139,96,111,50,166,220};
 //uint8 RaspberryTest2[6] ={227 ,233, 58 ,1 ,95 ,228 };
-uint8 RaspberryTest2[6] ={153 ,117, 207 ,235 ,39 ,184 };
+uint8 RaspberryTest2[6] ={179 ,186, 112 ,1 ,95 ,228 };
+//uint8 RaspberryTest2[6] ={153 ,117, 207 ,235 ,39 ,184 };
 
 uint8 authChallengeReply[8]  = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 uint8 authChallengeQuery[10] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};      //{0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF};
@@ -199,6 +200,8 @@ void serverbleNotCharacteristic ( uint8_t *data, int len, uint16_t handle )
 		pbleCharacteristics[BLE_CHA_FW_DATA]->notify();
 		return;
 	}
+	// set characteristic value using selector mechanism
+	rcs_server_set_chr_value(handle, data, len);
 }
 
 void serverbleSetCharacteristic ( uint8_t *data, int len, uint16_t handle )
@@ -261,6 +264,10 @@ class serverCallbacks: public BLEServerCallbacks
 {
 	void onConnect(BLEServer* pServer, ble_gap_conn_desc *desc) 
 	{
+		for(uint8_t i=0;i< 6;i++){
+			printf("%i ", desc->peer_id_addr.val[i]);
+		}
+		printf("\n \n");
 		if(!memcmp(desc->peer_id_addr.val, RaspberryTest,6) || !memcmp(desc->peer_id_addr.val, RaspberryTest2,6) ){
 			Testing = true;
 			setAuthToken(authChallengeReply, 8);
@@ -425,38 +432,43 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 				UpdateStatus.DescargandoArchivo=1;
 				if(strstr (signature,"VBLE")){
 					UpdateType= VBLE_UPDATE;
-					#ifndef UPDATE_COMPRESSED
-						#ifdef DEBUG_BLE
-						Serial.println("Updating VBLE");
-						#endif			
-						if(!Update.begin(UpdatefileSize)){
-							Serial.println("File too big");
-							Update.end();
-							successCode = 0x00000001;
-						};
-					#else 
-						Serial.println("Updating VBLE Compressed");	
-						if (SPIFFS.begin(1,"/spiffs",1,"ESP32")){
-							vTaskDelay(pdMS_TO_TICKS(50));
-							SPIFFS.format();
-						}
-						vTaskDelay(pdMS_TO_TICKS(50));
-						UpdateFile = SPIFFS.open("/VBLE2.bin.gz", FILE_WRITE);
-					#endif
+					#ifdef DEBUG_BLE
+					Serial.println("Updating VBLE");
+					#endif			
+					if(!Update.begin(UpdatefileSize)){
+						Serial.println("File too big");
+						Update.end();
+						successCode = 0x00000001;
+					};
 				}
 				else if(strstr (signature,"VELT")){
 					#ifdef DEBUG_BLE
 					Serial.println("Updating VELT");
 					#endif
-					UpdateType= VELT_UPDATE;
+					UpdateType= VELT_UPDATE;				
+
 					SPIFFS.end();
 					if(!SPIFFS.begin(1,"/spiffs",1,"PSOC5")){
 						SPIFFS.end();					
 						SPIFFS.begin(1,"/spiffs",1,"PSOC5");
 					}
+
+					//Almacenar la version anterior de firmware
 					if(SPIFFS.exists("/FreeRTOS_V6.cyacd")){
-						vTaskDelay(pdMS_TO_TICKS(50));
-						SPIFFS.format();
+						if(SPIFFS.exists("/FreeRTOS_V6_old.cyacd")){
+							SPIFFS.remove("/FreeRTOS_V6_old.cyacd");
+						}
+						//Comprobar si nos van a entrar las dos versiones de firmware
+						File dir = SPIFFS.open("/");
+						if(dir.size() + UpdatefileSize > 0x80000){
+							#ifdef DEBUG
+							printf("No entran los dos documentos! Borro el anterior!\n");
+							#endif
+							SPIFFS.remove("/FreeRTOS_V6.cyacd");
+						}
+						else{
+							SPIFFS.rename("/FreeRTOS_V6.cyacd", "/FreeRTOS_V6_old.cyacd");
+						}
 					}
 
 					vTaskDelay(pdMS_TO_TICKS(50));
@@ -671,18 +683,18 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 
 			if (handle == POLICY){
 				#ifdef DEBUG
-					Serial.printf("Nueva policy recibida! %c %c %c\n", payload[0],payload[1],payload[2]);
+					Serial.printf("Nueva policy recibida! %c%c%c\n", payload[0],payload[1],payload[2]);
 				#endif
 
 				//Si el valor que me llega no es ninguno estandar, descartarlo
-				if(memcmp(Configuracion.data.policy, "ALL",3) && memcmp(Configuracion.data.policy,"AUT",3) && memcmp(Configuracion.data.policy, "NON",3)){
+				if(memcmp(payload, "ALL",3) && memcmp(payload,"AUT",3) && memcmp(payload, "NON",3)){
 					#ifdef DEBUG
-						printf("Me ha llegado un valor turbio en policy!!\n %c %c %c", payload[0],payload[1],payload[2]);
+						printf("Me ha llegado un valor turbio en policy!!\n %c%c%c", payload[0],payload[1],payload[2]);
 					#endif
 					return;
 				}
 				memcpy(Configuracion.data.policy, payload,3);
-				serverbleNotCharacteristic((uint8_t*)&payload, 3, POLICY);
+				modifyCharacteristic((uint8_t*)&Configuracion.data.policy, 3, POLICY);
 				return;
 			} 
 
