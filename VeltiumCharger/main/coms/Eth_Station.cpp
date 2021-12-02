@@ -294,7 +294,7 @@ void initialize_ethernet(void){
         esp_netif_ip_info_t DHCP_Server_IP;
 
         IP4_ADDR(&DHCP_Server_IP.ip, 192, 168, 15, 22);
-   	    IP4_ADDR(&DHCP_Server_IP.gw, 192, 168, 15, 1);
+   	    IP4_ADDR(&DHCP_Server_IP.gw, 192, 168, 15, 22);
    	    IP4_ADDR(&DHCP_Server_IP.netmask, 255, 255, 255, 0);
 
 

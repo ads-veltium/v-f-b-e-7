@@ -724,7 +724,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 
 		if ( pCharacteristic->getUUID().equals(blefields[FW_DATA].uuid) )
 		{
-			//Serial.printf("Received FwData message with length %u\n", dlen);
+			
 			uint32_t successCode = 0x00000000;
 			uint16_t partIndex;
 			memcpy(&partIndex, &data[0], sizeof(partIndex));
@@ -732,9 +732,11 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 			uint16_t partSize;
 			memcpy(&partSize, &data[2], sizeof(partSize));
 
-			uint8_t* payload = new uint8_t[256];
-			memset(payload, 0, 256);
-			memcpy(payload, &data[4], 256);
+			Serial.printf("Received FwData message with length and size %u %u\n", dlen, partSize);
+			
+			uint8_t* payload = new uint8_t[partSize];
+			memset(payload, 0, partSize);
+			memcpy(payload, &data[4], partSize);
 
 			uint32_t partCRC32;
 			memcpy(&partCRC32, &data[260], 4);
