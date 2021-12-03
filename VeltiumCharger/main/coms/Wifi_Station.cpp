@@ -365,6 +365,7 @@ void start_wifi(void)
 
 void Eth_Loop(){
     static TickType_t xStart = 0;
+    static TickType_t xFirstStart = 0;
     static TickType_t xCheckConn = 0;
     static TickType_t xConnect = 0;
     #ifdef DEBUG_ETH
@@ -379,6 +380,7 @@ void Eth_Loop(){
             initialize_ethernet();
             Coms.ETH.State = CONNECTING;
             xStart = xTaskGetTickCount();
+            xFirstStart = xTaskGetTickCount();
             SendToPSOC5(1,SEND_GROUP_DATA);
             Coms.ETH.finding = false;
             Coms.ETH.conectado = false;
@@ -430,7 +432,7 @@ void Eth_Loop(){
                 }
                 if(!Coms.Provisioning){
                     if((ChargingGroup.Params.GroupMaster && (ChargingGroup.Params.GroupActive || ChargingGroup.Creando) )|| Coms.ETH.medidor){
-                        if(GetStateTime(xStart) > 90000){
+                        if(GetStateTime(xFirstStart) > 90000){
                             #ifdef DEBUG_ETH
                                 Serial.println("Activo DHCP");
                             #endif

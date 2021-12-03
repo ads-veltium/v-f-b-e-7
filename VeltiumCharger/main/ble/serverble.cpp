@@ -667,17 +667,6 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 				}
 				return;
 			}
-
-			else if(handle == DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE){
-				
-				//Si el CDP está apagado y se enciende desde el ble, significa que es la primera vez que arranca
-				if(!Coms.ETH.medidor && buffer_tx[0] >>4){
-					#ifdef DEBUG_MEDIDOR
-					printf("Primera busqueda del medidor!\n");
-					#endif
-					ContadorExt.FirstRound = true;
-				}
-			}
 			
 #endif			
 
