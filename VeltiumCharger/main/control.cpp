@@ -90,9 +90,9 @@ uint16 cnt_diferencia = 1;
 uint8 HPT_estados[9][3] = {"0V", "A1", "A2", "B1", "B2", "C1", "C2", "E1", "F1"};
 
 #ifdef USE_COMS
-uint8 version_firmware[11] = {"VBLE2_0500"};	
+uint8 version_firmware[11] = {"VBLE2_0520"};	
 #else
-uint8 version_firmware[11] = {"VBLE0_0515"};	
+uint8 version_firmware[11] = {"VBLE0_0520"};	
 #endif
 
 uint8 PSOC5_version_firmware[11] ;		
@@ -1100,6 +1100,7 @@ void procesar_bloque(uint16 tipo_bloque){
 				if(!Params.Tipo_Sensor){
 					Coms.ETH.medidor = false;
 					Update_Status_Coms(0,MED_BLOCK);
+					ContadorExt.ConexionPerdida = false;
 					if(Coms.ETH.DHCP && !ChargingGroup.Params.GroupActive){
 						Coms.ETH.restart = true;
 					}

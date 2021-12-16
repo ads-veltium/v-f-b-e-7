@@ -38,6 +38,8 @@ extern carac_Comands                Comands;
 extern TickType_t AuthTimer;
 extern uint8 deviceSerNum[10];
 extern uint8 initialSerNum[10];
+static TickType_t ConexTimer;
+int count = 0;
 
 #ifdef CONNECTED
 
@@ -301,10 +303,9 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 {
 	void onWrite(BLECharacteristic *pCharacteristic) 
 	{
+		ConexTimer = xTaskGetTickCount();
 		static uint32_t UpdatefileSize;
 		std::string rxValue = pCharacteristic->getValue();
-
-		//Serial.printf("onWrite: char = %s\n", pCharacteristic->getUUID().toString().c_str());
 
 		static uint8_t omnibus_packet_buffer[4 + RCS_CHR_OMNIBUS_SIZE];
 
@@ -771,7 +772,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 					UpdateFile.close();
 				}
 
-				//Comprobacion de lo que s eha escrito, vía checksum (Muy muy lento)
+				//Comprobacion de lo que se ha escrito, vía checksum (Muy muy lento e innecesario)
 				/*
 				uint8* escrito = new uint8[256];
 				int posicion = UpdateFile.position()-partSize;
@@ -884,6 +885,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 		}
 #endif
 	}
+
 };
 
 
@@ -1012,6 +1014,17 @@ void serverbleTask(void *arg)
 {
 	while (1)
 	{
+		//Si transucrren cinco minutos sin que nadie haga nada por bluetooth, 
+		//Y hay alguien conectado, expulsamos a quien esté conectado
+
+		if(deviceBleConnected){
+			if(pdTICKS_TO_MS(xTaskGetTickCount() -ConexTimer)> 50000){
+				#ifdef DEBUG_BLE
+					printf("Expulsando por inactividad!\n");
+				#endif
+				deviceBleDisconnect = true;
+			}
+		}
 		#ifdef DEBUG_BLE
 		if (deviceBleConnected && !oldDeviceBleConnected) {
 			printf("connecting----\r\n");
@@ -1056,12 +1069,15 @@ void serverbleTask(void *arg)
 				serverbleNotCharacteristic(buffer, 2, MEASURES_INST_CURRENTC_CHAR_HANDLE); 
 			#endif
 
+			//Coger el tiempo desde la conexion
+			ConexTimer = xTaskGetTickCount();
 		}
 
 		if(deviceBleDisconnect){
 			#ifdef DEBUG_BLE
 				printf("desconectandome del intruso!!!\n");
 			#endif
+
 			pServer->disconnect(Conn_Handle);
 			deviceBleDisconnect= false;
 		}
@@ -1102,6 +1118,7 @@ void deviceConnectInd ( void ){
 		#endif
 		vTaskDelay(pdMS_TO_TICKS(500));
 		AuthTimer = xTaskGetTickCount();
+		
 	}
 	AuthTimer = xTaskGetTickCount();
 }

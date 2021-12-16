@@ -58,6 +58,14 @@
     "array": "cpp",
     "string": "cpp",
     "ratio": "cpp",
-    "*.contiki": "cpp"
-}
+    "*.contiki": "cpp",
+    "*.tcc": "cpp",
+    "deque": "cpp",
+    "list": "cpp",
+    "unordered_map": "cpp",
+    "unordered_set": "cpp",
+    "vector": "cpp",
+    "random": "cpp"
+},
+"cmake.configureOnOpen": false
 }
