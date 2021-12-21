@@ -51,7 +51,7 @@ uint8 not_delete_group [4][10] = {{0xCD, 0x01, 0x21, 0x07, 0x16, 0x00, 0x00, 0x0
 								 {0xCD, 0x01, 0x21, 0x07, 0x16, 0x00, 0x00, 0x05, 0x29, 0x51},
 								 {0xCD, 0x01, 0x21, 0x09, 0x16, 0x00, 0x00, 0x06, 0x14, 0x54},
 								 {0xCD, 0x01, 0x21, 0x09, 0x16, 0x00, 0x00, 0x06, 0x14, 0x58}};
-uint8 deviceSerNum[10] 		 = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};     //{0x00, 0x00, 0x00, 0x00, 0x0B, 0xCD, 0x17, 0x01, 0x00, 0x05};
+uint8 deviceSerNum[10] 		   = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};     //{0x00, 0x00, 0x00, 0x00, 0x0B, 0xCD, 0x17, 0x01, 0x00, 0x05};
 TickType_t AuthTimer=0;
 uint8 contador_cent_segundos = 0, contador_cent_segundos_ant = 0;
 uint32 cont_seg = 0, cont_seg_ant = 0, cont_min_ant = 0, cont_min=0, cont_hour=0, cont_hour_ant=0;
@@ -90,7 +90,7 @@ uint16 cnt_diferencia = 1;
 uint8 HPT_estados[9][3] = {"0V", "A1", "A2", "B1", "B2", "C1", "C2", "E1", "F1"};
 
 #ifdef USE_COMS
-uint8 version_firmware[11] = {"VBLE2_0520"};	
+uint8 version_firmware[11] = {"VBLE2_0500"};	
 #else
 uint8 version_firmware[11] = {"VBLE0_0520"};	
 #endif
@@ -1559,7 +1559,15 @@ void UpdateTask(void *arg){
 	unsigned char rowData[512];
 	SPIFFS.begin();
 	File file;
-	file = Configuracion.data.count_reinicios_malos < 10 ? SPIFFS.open("/FreeRTOS_V6.cyacd"):SPIFFS.open("/FreeRTOS_V6_old.cyacd"); 	
+
+	//Si falla mas de diez veces la actualizacion, recuperamos el firmware viejo que teniamos y lo volvemos a usar. 
+	if(Configuracion.data.count_reinicios_malos > 10){
+		if(SPIFFS.exists("/FreeRTOS_V6_old.cyacd")){
+			SPIFFS.remove("/FreeRTOS_V6.cyacd");
+			SPIFFS.rename("/FreeRTOS_V6_old.cyacd", "/FreeRTOS_V6.cyacd");
+		}
+	}
+	file = SPIFFS.open("/FreeRTOS_V6.cyacd");	
 	if(!file || file.size() == 0){ 
 		file.close();
 		SPIFFS.end();
