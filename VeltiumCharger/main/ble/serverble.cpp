@@ -1018,7 +1018,7 @@ void serverbleTask(void *arg)
 		//Y hay alguien conectado, expulsamos a quien esté conectado
 
 		if(deviceBleConnected){
-			if(pdTICKS_TO_MS(xTaskGetTickCount() -ConexTimer)> 500000){
+			if(pdTICKS_TO_MS(xTaskGetTickCount() - ConexTimer)> 500000){
 				#ifdef DEBUG_BLE
 					printf("Expulsando por inactividad!\n");
 				#endif
