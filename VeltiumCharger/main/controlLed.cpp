@@ -328,7 +328,13 @@ void Reset_Values(){
 	LedPointer  = 8;
 	toggle_led  = 0;
 	subiendo    = 0;
-	_LED_COLOR=VERDE;
+
+	//Si vamos a F sin error, manetemos el color que ubieramos
+	//tenido en la anterior iteracion
+	if(memcmp(Status.HPT_status, "F", 1 )){
+		_LED_COLOR=VERDE;
+	}
+	
 	cnt_parpadeo=TIME_PARPADEO;
 	Fadecolor =0;
 }

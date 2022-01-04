@@ -721,7 +721,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 
 			uint16_t partSize;
 			memcpy(&partSize, &data[2], sizeof(partSize));
-
+			ConexTimer = xTaskGetTickCount();
 			Serial.printf("Received FwData message with length and size %u %u\n", dlen, partSize);
 			
 			uint8_t* payload = new uint8_t[partSize];
@@ -1016,9 +1016,9 @@ void serverbleTask(void *arg)
 	{
 		//Si transucrren cinco minutos sin que nadie haga nada por bluetooth, 
 		//Y hay alguien conectado, expulsamos a quien esté conectado
-
+		//Tres minutos
 		if(deviceBleConnected){
-			if(pdTICKS_TO_MS(xTaskGetTickCount() -ConexTimer)> 500000){
+			if(pdTICKS_TO_MS(xTaskGetTickCount() -ConexTimer)> 300000){
 				#ifdef DEBUG_BLE
 					printf("Expulsando por inactividad!\n");
 				#endif
