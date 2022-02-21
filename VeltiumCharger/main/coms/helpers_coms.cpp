@@ -19,7 +19,7 @@ void Update_Status_Coms(uint16_t Code, uint8_t block){
 			
 		}
 		else if(Code <= MODEM_CONNECTED){
-			Status_Coms &= 0b1000001111111111;
+			Status_Coms &= 0b0000001111111111;
 		}	
 		Status_Coms |= Code;
 	}
@@ -35,7 +35,7 @@ void Update_Status_Coms(uint16_t Code, uint8_t block){
 				Status_Coms &= 0b1111110000011111;
 				break;
 			case MODEM_BLOCK:
-				Status_Coms &= 0b1000001111111111;
+				Status_Coms &= 0b0000001111111111;
 				break;
 		}
 	}

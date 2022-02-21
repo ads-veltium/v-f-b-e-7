@@ -648,12 +648,12 @@ static void pppos_client_task(void *args)
 	xSemaphoreGive(pppos_mutex);
 
 	enableAllInitCmd();
+	Update_Status_Coms(0,MODEM_BLOCK);
 	while(1)
 	{
 		#ifdef DEBUG
 		Serial.printf("Inicialización de GSM en marcha en red LTE...\n");
 		#endif
-		Update_Status_Coms(MODEM_REG_LTE);
 		#if GSM_DEBUG
 		ESP_LOGE(TAG,"GSM initialization start");
 		#endif
@@ -724,7 +724,21 @@ static void pppos_client_task(void *args)
 								#ifdef DEBUG
 								Serial.printf("Intentos restantes: %i \n",IntentosRes);
 								#endif
+								switch (IntentosRes)
+								{
+								case 1:
+									Update_Status_Coms(MODEM_INTENTOS_0);
+									break;
+								case 2:
+									Update_Status_Coms(MODEM_INTENTOS_1);
+									break;
+								case 10:
+									Update_Status_Coms(MODEM_ENTER_PUK);
+									break;
 								
+								default:
+									break;
+								}
 								Coms.GSM.ON=false;
 							}
 						}
@@ -748,7 +762,7 @@ static void pppos_client_task(void *args)
 								#ifdef DEBUG
 								Serial.printf("PUK incorrecto\n");
 								#endif
-								Update_Status_Coms(MODEM_BAD_PIN);
+								Update_Status_Coms(MODEM_BAD_PUK);
 								atCmd_waitResponse("AT#PCT\r\n", "PCT: READY", NULL, sizeof("AT#PCT\r\n")-1, 5000, NULL, 0);
 								#ifdef DEBUG
 								Serial.printf("Intentos restantes: %i \n",IntentosRes);
@@ -759,7 +773,6 @@ static void pppos_client_task(void *args)
 					}
 				}
 				if(gsmCmdIter==7 && nfail==20){
-					Update_Status_Coms(MODEM_REG_GSM);
 					#ifdef DEBUG
 					Serial.printf("Cambiando a red GPRS...\n");
 					#endif
