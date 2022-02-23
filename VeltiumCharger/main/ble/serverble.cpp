@@ -1014,11 +1014,11 @@ void serverbleTask(void *arg)
 {
 	while (1)
 	{
-		//Si transucrren cinco minutos sin que nadie haga nada por bluetooth, 
+		//Si transucrren diez minutos sin que nadie haga nada por bluetooth, 
 		//Y hay alguien conectado, expulsamos a quien esté conectado
 		//Tres minutos
 		if(deviceBleConnected){
-			if(pdTICKS_TO_MS(xTaskGetTickCount() -ConexTimer)> 300000){
+			if(pdTICKS_TO_MS(xTaskGetTickCount() -ConexTimer)> 600000){
 				#ifdef DEBUG_BLE
 					printf("Expulsando por inactividad!\n");
 				#endif
