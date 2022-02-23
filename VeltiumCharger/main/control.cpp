@@ -765,12 +765,11 @@ void procesar_bloque(uint16 tipo_bloque){
 					Status.Time.charge_stop_time = TimeStamp;
 					ConfigFirebase.WriteTime = true;
 				}
-				TimeStamp = Convert_To_Epoch(buffer_rx_local);
+			#endif
+				int TimeStamp = Convert_To_Epoch(buffer_rx_local);
 				if(TimeStamp!=Status.Time.actual_time){
 					Status.Time.actual_time = TimeStamp;
 				}
-				
-			#endif
 		}
 		break;
 

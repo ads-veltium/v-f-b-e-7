@@ -203,3 +203,14 @@ int controlSendToSerialLocal ( uint8_t * data, int len ){
 	}
 	return 0;
 }
+
+int Convert_To_Epoch(uint8* data){
+	struct tm t = {0};  // Initalize to all 0's
+	t.tm_year = (data[2]!=0)?data[2]+100:0;  // This is year-1900, so 112 = 2012
+	t.tm_mon  = (data[1]!=0)?data[1]-1:0;
+	t.tm_mday = data[0];
+	t.tm_hour = data[3];
+	t.tm_min  = data[4];
+	t.tm_sec  = data[5];
+	return mktime(&t);
+}

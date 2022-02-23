@@ -10,14 +10,13 @@ extern Config Configuracion;
 void powerControl(){
 
     uint8 weekday;
-    
     weekday = ((Status.Time.actual_time/86400) + 4) % 7; 
 
 	if(weekday==6 || weekday==7){
 		Configuracion.data.potencia_contratada1 = Configuracion.data.potencia_contratada1;
-	}else if(Status.Time.hora>= 22 || Status.Time.hora < 6){
+	}else if(Status.Time.hora> 22 || Status.Time.hora <= 6){
 		Configuracion.data.potencia_contratada1 = Configuracion.data.potencia_contratada1;
-	}else if(Status.Time.hora >= 6 && Status.Time.hora < 22){
+	}else if(Status.Time.hora > 6 && Status.Time.hora <= 22 && Configuracion.data.potencia_contratada2 != 0){
 		Configuracion.data.potencia_contratada1 = Configuracion.data.potencia_contratada2;
 	}
 
