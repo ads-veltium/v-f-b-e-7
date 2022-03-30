@@ -63,8 +63,6 @@
 #include "SPIFFS.h"
 #include "helpers.h"
 #include "config.h"
-#include "power_control.h"
-
 
 
 /*********** Pruebas tar.gz **************/

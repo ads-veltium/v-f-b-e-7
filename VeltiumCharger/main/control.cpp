@@ -327,8 +327,6 @@ void controlTask(void *arg) {
 		// Eventos 1 segundo
 		if(cont_seg != cont_seg_ant){
 			cont_seg_ant = cont_seg;
-			powerControl();
-
 		}
 
 		// Eventos 1 minuto
@@ -520,12 +518,12 @@ void procesar_bloque(uint16 tipo_bloque){
 				modifyCharacteristic(&buffer_rx_local[232], 1, DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE);
 				modifyCharacteristic(&buffer_rx_local[233], 1, MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
 				modifyCharacteristic(&buffer_rx_local[234], 2, COMS_FW_UPDATEMODE_CHAR_HANDLE);		
-				//modifyCharacteristic(&buffer_rx_local[241], 2, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_P2_CHAR_HANDLE);
+				modifyCharacteristic(&buffer_rx_local[241], 2, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_P2_CHAR_HANDLE);
 				modifyCharacteristic(&buffer_rx_local[243], 2, TIME_DATE_COUNTRY_CHAR_HANDLE);			
 
 				/************************ Set configuration data **********************/
 				Configuracion.data.potencia_contratada1 = buffer_rx_local[229]+buffer_rx_local[230]*0x100;
-				//Configuracion.data.potencia_contratada2 = buffer_rx_local[241]+buffer_rx_local[242]*0x100;
+				Configuracion.data.potencia_contratada2 = buffer_rx_local[241]+buffer_rx_local[242]*0x100;
 				Configuracion.data.inst_current_limit   = buffer_rx_local[11];	
 				Configuracion.data.CDP   = buffer_rx_local[232];		
 
@@ -765,11 +763,11 @@ void procesar_bloque(uint16 tipo_bloque){
 					Status.Time.charge_stop_time = TimeStamp;
 					ConfigFirebase.WriteTime = true;
 				}
-			#endif
-				int TimeStamp = Convert_To_Epoch(buffer_rx_local);
+				TimeStamp = Convert_To_Epoch(buffer_rx_local);
 				if(TimeStamp!=Status.Time.actual_time){
 					Status.Time.actual_time = TimeStamp;
 				}
+			#endif
 		}
 		break;
 
