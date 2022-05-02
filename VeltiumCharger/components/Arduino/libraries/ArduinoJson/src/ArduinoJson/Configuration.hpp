@@ -65,7 +65,7 @@
 
 // Store longs by default, because they usually match the size of a float.
 #ifndef ARDUINOJSON_USE_LONG_LONG
-#define ARDUINOJSON_USE_LONG_LONG 0
+#define ARDUINOJSON_USE_LONG_LONG 1
 #endif
 
 // Embedded systems usually don't have std::string

@@ -27,7 +27,6 @@ int CyBtldr_FromAscii(unsigned int bufSize, unsigned char* buffer, unsigned shor
 {
     unsigned short i;
     int err = CYRET_SUCCESS;
-
     if (bufSize & 1) // Make sure even number of bytes
         err = CYRET_ERR_LENGTH;
     else
@@ -36,6 +35,7 @@ int CyBtldr_FromAscii(unsigned int bufSize, unsigned char* buffer, unsigned shor
         {
             rowData[i] = (CyBtldr_FromHex(buffer[i * 2]) << 4) | CyBtldr_FromHex(buffer[i * 2 + 1]);
         }
+
         *rowSize = i;
     }
 
@@ -119,7 +119,12 @@ int CyBtldr_ParseRowData(unsigned int bufSize, unsigned char* buffer, unsigned c
         *arrayId = hexData[0];
         *rowNum = (hexData[1] << 8) | (hexData[2]);
         *size = (hexData[3] << 8) | (hexData[4]);
-        *checksum = (hexData[hexSize - 1]);
+
+        __uint8_t sum =0;
+        for(int i =5;i<hexSize-1;i++){
+            sum += hexData[i];
+        }
+        *checksum = 1 + ~sum;
 
         if ((*size + MIN_SIZE) == hexSize)
         {

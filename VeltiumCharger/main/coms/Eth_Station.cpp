@@ -53,7 +53,6 @@ void BuscarContador_Task(void *args){
     Cliente.begin();
     Update_Status_Coms(MED_BUSCANDO_GATEWAY);
     while(!TopeSup || !TopeInf){
-
         if(NextOne){    
             if(Sentido && !TopeInf){ //Pabajo
                 i = ip4_addr4(&Coms.ETH.IP) - inf > 1 ? ip4_addr4(&Coms.ETH.IP) - inf : 0;
@@ -147,19 +146,20 @@ void BuscarContador_Task(void *args){
         }
         delay(100);
     }
-    
     Cliente.end();
-    
 
     if(!ContadorExt.GatewayConectado){
         *finding = false;
 
         //si es la primera vez que intentamos buscarlo, dejamos de hacerlo
-        if(ContadorExt.FirstRound && ++ContadorExt.vueltas >= 2){
-            ContadorExt.FirstRound = false;
-            Params.Tipo_Sensor = 0;
-            Coms.ETH.medidor = 0;
-            Coms.ETH.restart = true;
+        if(!ContadorExt.ConexionPerdida){
+            if(++ContadorExt.vueltas >= 2){
+                Params.Tipo_Sensor = 0;
+                Coms.ETH.medidor = 0;
+                Coms.ETH.restart = true;
+                ContadorExt.vueltas = 0;
+                SendToPSOC5((uint8_t)9, DOMESTIC_CONSUMPTION_DOMESTIC_CURRENT_CHAR_HANDLE);
+            }
         }
     }
     else{
@@ -294,7 +294,7 @@ void initialize_ethernet(void){
         esp_netif_ip_info_t DHCP_Server_IP;
 
         IP4_ADDR(&DHCP_Server_IP.ip, 192, 168, 15, 22);
-   	    IP4_ADDR(&DHCP_Server_IP.gw, 192, 168, 15, 1);
+   	    IP4_ADDR(&DHCP_Server_IP.gw, 192, 168, 15, 22);
    	    IP4_ADDR(&DHCP_Server_IP.netmask, 255, 255, 255, 0);
 
 

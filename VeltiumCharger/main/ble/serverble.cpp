@@ -17,7 +17,15 @@ File UpdateFile;
 uint8_t  UpdateType  = 0;
 uint16_t Conn_Handle = 0;
 uint8 RaspberryTest[6] ={139,96,111,50,166,220};
-uint8 RaspberryTest2[6] ={153 ,117, 207 ,235 ,39 ,184 };
+//uint8 RaspberryTest2[6] ={227 ,233, 58 ,1 ,95 ,228 };
+uint8 RaspberryTest2[6] ={179 ,186, 112 ,1 ,95 ,228 };
+//uint8 RaspberryTest2[6] ={153 ,117, 207 ,235 ,39 ,184 };
+
+uint8 authChallengeReply[8]  = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+uint8 authChallengeQuery[10] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};      //{0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF};
+uint8 authSuccess = 0;
+int aut_semilla = 0x0000;
+
 extern uint8 dispositivo_inicializado;
 
 extern uint8 authChallengeReply[8] ;
@@ -27,6 +35,11 @@ extern carac_Status                 Status;
 NimBLEDevice BLE_SERVER EXT_RAM_ATTR;
 extern carac_Update_Status 			UpdateStatus;
 extern carac_Comands                Comands;
+extern TickType_t AuthTimer;
+extern uint8 deviceSerNum[10];
+extern uint8 initialSerNum[10];
+static TickType_t ConexTimer;
+int count = 0;
 
 #ifdef CONNECTED
 
@@ -125,6 +138,7 @@ BLECharacteristic *pbleCharacteristics[NUMBER_OF_CHARACTERISTICS];
 // VSC_FW_COMMAND     WN 288
 // VSC_NET_GROUP      N  451
 // VSC_CHARGING_GROUP RW 451
+// BLE_CHA_STATUS_COMS RN 16
 
 BLE_FIELD blefields[MAX_BLE_FIELDS] =
 {
@@ -142,6 +156,7 @@ BLE_FIELD blefields[MAX_BLE_FIELDS] =
 	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC009),NUMBER_OF_CHARACTERISTICS, PROP_RN, 0, RCS_INSC_CURR, BLE_CHA_INSC_CURR,   1},
 	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC00A),NUMBER_OF_CHARACTERISTICS, PROP_RN, 0, RCS_NET_GROUP, BLE_CHA_NET_GROUP,   1},
 	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC00B),NUMBER_OF_CHARACTERISTICS, PROP_RW, 0, RCS_CHARGING_GROUP, BLE_CHA_CHARGING_GROUP,   1},
+	{TYPE_CHAR, SERV_STATUS, BLEUUID((uint16_t)0xC00C),NUMBER_OF_CHARACTERISTICS, PROP_RN, 0, RCS_STATUS_COMS, BLE_CHA_STATUS_COMS,   1},
 #endif
 
 } ;
@@ -176,12 +191,19 @@ void serverbleNotCharacteristic ( uint8_t *data, int len, uint16_t handle )
 		pbleCharacteristics[BLE_CHA_NET_GROUP]->notify();
 		return;
 	}
+	if (handle == STATUS_COMS) {
+		pbleCharacteristics[BLE_CHA_STATUS_COMS]->setValue(data, len);
+		pbleCharacteristics[BLE_CHA_STATUS_COMS]->notify();
+		return;
+	}
 #endif
 	if (handle == FWUPDATE_BIRD_DATA_PSEUDO_CHAR_HANDLE) {
 		pbleCharacteristics[BLE_CHA_FW_DATA]->setValue(data, len);
 		pbleCharacteristics[BLE_CHA_FW_DATA]->notify();
 		return;
 	}
+	// set characteristic value using selector mechanism
+	rcs_server_set_chr_value(handle, data, len);
 }
 
 void serverbleSetCharacteristic ( uint8_t *data, int len, uint16_t handle )
@@ -213,6 +235,10 @@ void serverbleSetCharacteristic ( uint8_t *data, int len, uint16_t handle )
 		pbleCharacteristics[BLE_CHA_CHARGING_GROUP]->setValue(data, len);
 		return;
 	}
+	if (handle == STATUS_COMS) {
+		pbleCharacteristics[BLE_CHA_STATUS_COMS]->setValue(data, len);
+		return;
+	}
 #endif
 	if (handle == ENERGY_RECORD_RECORD_CHAR_HANDLE) {
 		pbleCharacteristics[BLE_CHA_RCS_RECORD]->setValue(data, len);
@@ -240,6 +266,10 @@ class serverCallbacks: public BLEServerCallbacks
 {
 	void onConnect(BLEServer* pServer, ble_gap_conn_desc *desc) 
 	{
+		for(uint8_t i=0;i< 6;i++){
+			printf("%i ", desc->peer_id_addr.val[i]);
+		}
+		printf("\n \n");
 		if(!memcmp(desc->peer_id_addr.val, RaspberryTest,6) || !memcmp(desc->peer_id_addr.val, RaspberryTest2,6) ){
 			Testing = true;
 			setAuthToken(authChallengeReply, 8);
@@ -273,10 +303,9 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 {
 	void onWrite(BLECharacteristic *pCharacteristic) 
 	{
+		ConexTimer = xTaskGetTickCount();
 		static uint32_t UpdatefileSize;
 		std::string rxValue = pCharacteristic->getValue();
-
-		//Serial.printf("onWrite: char = %s\n", pCharacteristic->getUUID().toString().c_str());
 
 		static uint8_t omnibus_packet_buffer[4 + RCS_CHR_OMNIBUS_SIZE];
 
@@ -376,16 +405,12 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 				setAuthToken(payload, size);
 				return;
 			}
-			if (handle == RESET_RESET_CHAR_HANDLE) {
-				if( isMainFwUpdateActive() )
-				{
-					vTaskDelay(pdMS_TO_TICKS(200));	
-					MAIN_RESET_Write(0);
-					vTaskDelay(pdMS_TO_TICKS(100));	
-					ESP.restart();
-					return;
-				}
-			}
+			/*if (handle == RESET_RESET_CHAR_HANDLE) {
+				MAIN_RESET_Write(0);
+				vTaskDelay(pdMS_TO_TICKS(500));	
+				ESP.restart();
+				return;
+			}*/
 			
 			if (handle == FWUPDATE_BIRD_PROLOG_PSEUDO_CHAR_HANDLE) {
 				
@@ -408,38 +433,43 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 				UpdateStatus.DescargandoArchivo=1;
 				if(strstr (signature,"VBLE")){
 					UpdateType= VBLE_UPDATE;
-					#ifndef UPDATE_COMPRESSED
-						#ifdef DEBUG_BLE
-						Serial.println("Updating VBLE");
-						#endif			
-						if(!Update.begin(UpdatefileSize)){
-							Serial.println("File too big");
-							Update.end();
-							successCode = 0x00000001;
-						};
-					#else 
-						Serial.println("Updating VBLE Compressed");	
-						if (SPIFFS.begin(1,"/spiffs",1,"ESP32")){
-							vTaskDelay(pdMS_TO_TICKS(50));
-							SPIFFS.format();
-						}
-						vTaskDelay(pdMS_TO_TICKS(50));
-						UpdateFile = SPIFFS.open("/VBLE2.bin.gz", FILE_WRITE);
-					#endif
+					#ifdef DEBUG_BLE
+					Serial.println("Updating VBLE");
+					#endif			
+					if(!Update.begin(UpdatefileSize)){
+						Serial.println("File too big");
+						Update.end();
+						successCode = 0x00000001;
+					};
 				}
 				else if(strstr (signature,"VELT")){
 					#ifdef DEBUG_BLE
 					Serial.println("Updating VELT");
 					#endif
-					UpdateType= VELT_UPDATE;
+					UpdateType= VELT_UPDATE;				
+
 					SPIFFS.end();
 					if(!SPIFFS.begin(1,"/spiffs",1,"PSOC5")){
 						SPIFFS.end();					
 						SPIFFS.begin(1,"/spiffs",1,"PSOC5");
 					}
+
+					//Almacenar la version anterior de firmware
 					if(SPIFFS.exists("/FreeRTOS_V6.cyacd")){
-						vTaskDelay(pdMS_TO_TICKS(50));
-						SPIFFS.format();
+						if(SPIFFS.exists("/FreeRTOS_V6_old.cyacd")){
+							SPIFFS.remove("/FreeRTOS_V6_old.cyacd");
+						}
+						//Comprobar si nos van a entrar las dos versiones de firmware
+						File dir = SPIFFS.open("/");
+						if(dir.size() + UpdatefileSize > 0x80000){
+							#ifdef DEBUG
+							printf("No entran los dos documentos! Borro el anterior!\n");
+							#endif
+							SPIFFS.remove("/FreeRTOS_V6.cyacd");
+						}
+						else{
+							SPIFFS.rename("/FreeRTOS_V6.cyacd", "/FreeRTOS_V6_old.cyacd");
+						}
 					}
 
 					vTaskDelay(pdMS_TO_TICKS(50));
@@ -638,19 +668,26 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 				}
 				return;
 			}
-
-			else if(handle == DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE){
-				
-				//Si el CDP está apagado y se enciende desde el ble, significa que es la primera vez que arranca
-				if(!Coms.ETH.medidor && buffer_tx[0] >>4){
-					#ifdef DEBUG_MEDIDOR
-					printf("Primera busqueda del medidor!\n");
-					#endif
-					ContadorExt.FirstRound = true;
-				}
-			}
 			
 #endif			
+
+			if (handle == POLICY){
+				#ifdef DEBUG
+					Serial.printf("Nueva policy recibida! %c%c%c\n", payload[0],payload[1],payload[2]);
+				#endif
+
+				//Si el valor que me llega no es ninguno estandar, descartarlo
+				if(memcmp(payload, "ALL",3) && memcmp(payload,"AUT",3) && memcmp(payload, "NON",3)){
+					#ifdef DEBUG
+						printf("Me ha llegado un valor turbio en policy!!\n %c%c%c", payload[0],payload[1],payload[2]);
+					#endif
+					return;
+				}
+				memcpy(Configuracion.data.policy, payload,3);
+				modifyCharacteristic((uint8_t*)&Configuracion.data.policy, 3, POLICY);
+				return;
+			} 
+
 			// if we are here, we are authenticated.
 			// send payload downstream.
 			buffer_tx[0] = HEADER_TX;
@@ -677,17 +714,19 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 
 		if ( pCharacteristic->getUUID().equals(blefields[FW_DATA].uuid) )
 		{
-			//Serial.printf("Received FwData message with length %u\n", dlen);
+			
 			uint32_t successCode = 0x00000000;
 			uint16_t partIndex;
 			memcpy(&partIndex, &data[0], sizeof(partIndex));
 
 			uint16_t partSize;
 			memcpy(&partSize, &data[2], sizeof(partSize));
-
-			uint8_t* payload = new uint8_t[256];
-			memset(payload, 0, 256);
-			memcpy(payload, &data[4], 256);
+			ConexTimer = xTaskGetTickCount();
+			Serial.printf("Received FwData message with length and size %u %u\n", dlen, partSize);
+			
+			uint8_t* payload = new uint8_t[partSize];
+			memset(payload, 0, partSize);
+			memcpy(payload, &data[4], partSize);
 
 			uint32_t partCRC32;
 			memcpy(&partCRC32, &data[260], 4);
@@ -725,7 +764,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 					}
 				#endif
 			}
-			else if(UpdateType == VELT_UPDATE){
+			else if(UpdateType == VELT_UPDATE){			
 				if(UpdateFile.write(payload,partSize)!=partSize){
 					Serial.println("Writing Error");
 					successCode = 0x00000002;
@@ -733,20 +772,18 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 					UpdateFile.close();
 				}
 
+				//Comprobacion de lo que se ha escrito, vía checksum (Muy muy lento e innecesario)
+				/*
 				uint8* escrito = new uint8[256];
-				printf("%i\n",UpdateFile.position());
-
-				UpdateFile.seek(UpdateFile.position()-partSize, SeekCur);
-
+				int posicion = UpdateFile.position()-partSize;
+				UpdateFile.close();
+				UpdateFile = SPIFFS.open("/FreeRTOS_V6.cyacd", FILE_READ);
+				UpdateFile.seek(posicion, SeekCur);
 				UpdateFile.read(escrito, partSize);
-
 
 
 				//Comprobar el checksum de lo que se ha escrito
 				uint32_t writtenchecksum=crc32(partSize, (uint8_t*)escrito,0xFFFFFFFFUL);
-				
-				printf("%s \n\n", escrito);
-				printf("%s \n", payload);
 
 				Serial.printf("Writen vs checksum %08X %08X\n", writtenchecksum, checksum);
 
@@ -764,6 +801,10 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 					UpdateStatus.DescargandoArchivo = false;
 					return;
 				}
+
+				UpdateFile.close();
+				UpdateFile = SPIFFS.open("/FreeRTOS_V6.cyacd", FILE_APPEND);
+				*/
 
 			}	
 
@@ -844,6 +885,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 		}
 #endif
 	}
+
 };
 
 
@@ -972,6 +1014,17 @@ void serverbleTask(void *arg)
 {
 	while (1)
 	{
+		//Si transucrren diez minutos sin que nadie haga nada por bluetooth, 
+		//Y hay alguien conectado, expulsamos a quien esté conectado
+		//Tres minutos
+		if(deviceBleConnected){
+			if(pdTICKS_TO_MS(xTaskGetTickCount() -ConexTimer)> 600000){
+				#ifdef DEBUG_BLE
+					printf("Expulsando por inactividad!\n");
+				#endif
+				deviceBleDisconnect = true;
+			}
+		}
 		#ifdef DEBUG_BLE
 		if (deviceBleConnected && !oldDeviceBleConnected) {
 			printf("connecting----\r\n");
@@ -1016,12 +1069,15 @@ void serverbleTask(void *arg)
 				serverbleNotCharacteristic(buffer, 2, MEASURES_INST_CURRENTC_CHAR_HANDLE); 
 			#endif
 
+			//Coger el tiempo desde la conexion
+			ConexTimer = xTaskGetTickCount();
 		}
 
 		if(deviceBleDisconnect){
 			#ifdef DEBUG_BLE
 				printf("desconectandome del intruso!!!\n");
 			#endif
+
 			pServer->disconnect(Conn_Handle);
 			deviceBleDisconnect= false;
 		}
@@ -1029,5 +1085,88 @@ void serverbleTask(void *arg)
 	}
 }
 
+void deviceConnectInd ( void ){
+	if(dispositivo_inicializado == 2){
+		int random = 0;
+		const void* outputvec1;
+		// This event is received when device is connected over GATT level 
 
+		srand(aut_semilla);
+		random = rand();
+		authChallengeQuery[7] = (uint8)(random >> 8);
+		authChallengeQuery[6] = (uint8)random;
+		random = rand();
+		authChallengeQuery[5] = (uint8)(random >> 8);
+		authChallengeQuery[4] = (uint8)random;
+		random = rand();
+		authChallengeQuery[3] = (uint8)(random >> 8);
+		authChallengeQuery[2] = (uint8)random;
+		random = rand();
+		authChallengeQuery[1] = (uint8)(random >> 8);
+		authChallengeQuery[0] = (uint8)random;
 
+		outputvec1 = dev_auth_challenge(authChallengeQuery);
+
+		memcpy(authChallengeReply, outputvec1, 8);
+
+		//Delay para dar tiempo a conectar
+		//vTaskDelay(pdMS_TO_TICKS(250));
+		modifyCharacteristic(authChallengeQuery, 8, AUTENTICACION_MATRIX_CHAR_HANDLE);
+
+		#ifdef DEBUG
+		Serial.println("Sending authentication");
+		#endif
+		vTaskDelay(pdMS_TO_TICKS(500));
+		AuthTimer = xTaskGetTickCount();
+		
+	}
+	AuthTimer = xTaskGetTickCount();
+}
+
+void deviceDisconnectInd ( void )
+{
+	authSuccess = 0;
+	memset(authChallengeReply, 0x00, 8);
+	//memset(authChallengeQuery, 0x00, 8);
+	modifyCharacteristic(authChallengeQuery, 10, AUTENTICACION_MATRIX_CHAR_HANDLE);
+	vTaskDelay(pdMS_TO_TICKS(500));
+}
+
+uint8_t setAuthToken ( uint8_t *data, int len ){
+	if(!authSuccess){
+		if(!memcmp(authChallengeReply, data, 8) || !memcmp(deviceSerNum, initialSerNum, 10))
+		{
+			AuthTimer=0;
+			#ifdef DEBUG
+			printf("authSuccess\r\n");
+			#endif
+			
+			serverbleSetConnected(true);
+			SendStatusToPSOC5(serverbleGetConnected(), dispositivo_inicializado);
+
+			authSuccess = 1;
+		}
+	}
+
+	return 1;
+}
+
+uint8_t authorizedOK ( void ){
+	return (authSuccess || getMainFwUpdateActive() );
+}
+
+void updateCharacteristic(uint8_t* data, uint16_t len, uint16_t attrHandle){
+	serverbleSetCharacteristic ( data,len,attrHandle);
+	return;
+}
+
+void modifyCharacteristic(uint8* data, uint16 len, uint16 attrHandle){
+	serverbleSetCharacteristic ( data,len,attrHandle);
+	return;
+}
+
+void InitializeAuthsystem(){
+	srand(aut_semilla);
+
+	modifyCharacteristic(authChallengeQuery, 8, AUTENTICACION_MATRIX_CHAR_HANDLE);
+}
