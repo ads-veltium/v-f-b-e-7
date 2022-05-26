@@ -369,8 +369,8 @@ void LedControl_Task(void *arg){
 
 		//Instalando archivo
 		else if(UpdateStatus.InstalandoArchivo){			
-			OLA(HUE_AQUA);
-			Delay = 7;
+			Delay=25;
+			Fade(HUE_PURPLE);
 		}
 
 		//Descargando archivo

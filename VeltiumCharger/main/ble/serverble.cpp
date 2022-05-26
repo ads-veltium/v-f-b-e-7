@@ -1142,7 +1142,6 @@ uint8_t setAuthToken ( uint8_t *data, int len ){
 			#endif
 			
 			serverbleSetConnected(true);
-			SendStatusToPSOC5(serverbleGetConnected(), dispositivo_inicializado);
 
 			authSuccess = 1;
 		}

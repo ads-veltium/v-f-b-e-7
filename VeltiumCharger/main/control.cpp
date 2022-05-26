@@ -64,6 +64,8 @@ uint8 Zero = 0;
 uint8 One = 1;
 uint8 NextLine=0;
 uint8_t ConnectionState;
+uint8 conexion_trigger=0;
+uint8 user_index_arrived=0;
 
 uint8 cnt_fin_bloque = 0;
 int estado_recepcion = 0;
@@ -261,9 +263,15 @@ void controlTask(void *arg) {
 						}
 
 						else if((Iface_Con == BLE && LastUserCon != serverbleGetConnected()) || old_inicializado != dispositivo_inicializado){						
-							SendStatusToPSOC5(serverbleGetConnected(), dispositivo_inicializado);
 							LastUserCon = serverbleGetConnected() ;
 							old_inicializado = dispositivo_inicializado;
+							conexion_trigger=1;
+						}
+
+						if(conexion_trigger && user_index_arrived){
+							SendStatusToPSOC5(serverbleGetConnected(), dispositivo_inicializado);
+							conexion_trigger=0;
+							user_index_arrived=0;
 						}
 #ifdef CONNECTED
 						else if(Iface_Con == COMS && LastUserCon != ConfigFirebase.ClientAuthenticated){
@@ -867,6 +875,7 @@ void procesar_bloque(uint16 tipo_bloque){
 			#ifdef DEBUG
 			printf("Me ha llegado user index %i\n", buffer_rx_local[0]);
 			#endif
+			user_index_arrived = 1;
 		} 
 		break;
 		
