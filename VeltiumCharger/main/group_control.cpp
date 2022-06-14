@@ -379,7 +379,9 @@ void New_Group(char* Data, int Data_size){
         }
     }
     store_group_in_mem(charger_table, ChargingGroup.Charger_number);
+    #ifdef DEBUG_GROUPS
     print_table(charger_table, "Grupo desde COAP",ChargingGroup.Charger_number);
+    #endif
 }
 
 void LimiteConsumo(void *p){
@@ -406,7 +408,9 @@ void LimiteConsumo(void *p){
               }
               
               if(reparto >= 6){
+                #ifdef DEBUG_GROUPS
                 print_table(charger_table, "Grupo en reposo", ChargingGroup.Charger_number);
+                #endif
                 memcpy(charger_table[i].HPT, "C2", 2);
                 charger_table[i].order =1;
                 ControlGrupoState = CALCULO;
@@ -470,8 +474,10 @@ void LimiteConsumo(void *p){
       }
 
       case EQUILIBRADO:{
+        #ifdef DEBUG_GROUPS
         cls();
         print_table(charger_table, "Grupo en equilibrado", ChargingGroup.Charger_number);
+        #endif
 
         //Calculo general
         if(Calculo_General() || ChargingGroup.NewData){

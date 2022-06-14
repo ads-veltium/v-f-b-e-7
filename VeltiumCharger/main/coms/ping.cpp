@@ -1,3 +1,5 @@
+#include "../control.h"
+#ifdef CONNECTED
 #include <stdio.h>
 #include <string.h>
 #include "sdkconfig.h"
@@ -77,3 +79,5 @@ void initialize_ping(ip_addr_t target_addr, uint8_t *resultado)
     esp_ping_new_session(&ping_config, &cbs, &ping);
     esp_ping_start(ping);
 }
+
+#endif

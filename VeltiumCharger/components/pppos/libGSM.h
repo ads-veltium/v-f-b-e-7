@@ -97,7 +97,7 @@ int gsm_RFOn();
 void FinishGSM();
 
 /*
- * Turn Off Gsm 
+ * Turn On Gsm 
  */
 //=============
 void StartGSM();

@@ -123,7 +123,7 @@ void OutWave( uint8_t color){
 			down = false;
 		}
 	}
-	
+	luminosidad_Actual=85;
 
 }
 
@@ -328,7 +328,13 @@ void Reset_Values(){
 	LedPointer  = 8;
 	toggle_led  = 0;
 	subiendo    = 0;
-	_LED_COLOR=VERDE;
+
+	//Si vamos a F sin error, manetemos el color que ubieramos
+	//tenido en la anterior iteracion
+	if(memcmp(Status.HPT_status, "F", 1 )){
+		_LED_COLOR=VERDE;
+	}
+	
 	cnt_parpadeo=TIME_PARPADEO;
 	Fadecolor =0;
 }
@@ -340,10 +346,14 @@ void LedControl_Task(void *arg){
 	bool LastBle=0;
 	initLeds();
 	Reset_Values();
+	TransicionAverde();
+	while(dispositivo_inicializado != 1){
+		delay(100);
+	}
 	//Arrancando
 	while(dispositivo_inicializado != 2){
 		OLA(VERDE);
-		delay(5);
+		dispositivo_inicializado == 0 ? delay(1):delay(5);
 	}
 	TransicionAverde();
 	Reset_Values();
@@ -352,16 +362,15 @@ void LedControl_Task(void *arg){
 	while(1){
 
 
-		if(LastBle!=serverbleGetConnected()){	
-			displayAll(90,BLANCO);	
+		if(LastBle!=serverbleGetConnected()){		
 			delay(500);
 			LastBle=serverbleGetConnected();
 		}
 
 		//Instalando archivo
 		else if(UpdateStatus.InstalandoArchivo){			
-			OLA(HUE_AQUA);
-			Delay = 7;
+			Delay=25;
+			Fade(HUE_PURPLE);
 		}
 
 		//Descargando archivo
@@ -377,21 +386,10 @@ void LedControl_Task(void *arg){
 		}
 		//Buscando Medidor
 		else if((Params.Tipo_Sensor || (ChargingGroup.Params.GroupMaster &&  ChargingGroup.Params.CDP >> 4))  && !ContadorExt.MeidorConectado && !Coms.Provisioning){
-			//Buscando Gateway
-			if(!ContadorExt.GatewayConectado){
-				if(!Coms.ETH.DHCP){
-					InWave(VERDE);
-				}
-				else{
-					OutWave(VERDE);
-				}
-				Delay=7;
-			}	
-			//Gateway encontrado pero medidor no
-			else if(ContadorExt.GatewayConectado ){
-				Kit(VERDE);
-				Delay=85;
-			}
+
+		OutWave(VERDE);
+		Delay=7;
+
 		}
 
 
@@ -400,7 +398,6 @@ void LedControl_Task(void *arg){
 			
 			//Funcionamiento normal
 			if(Status.error_code == 0){
-				
 				if(!memcmp(Status.HPT_status, "C", 1 )) { //Cargando		
 					Delay=50;
 					if(Status.Measures.instant_current>600){
@@ -408,7 +405,7 @@ void LedControl_Task(void *arg){
 					}
 					Fade(HUE_BLUE);
 				}
-				else {
+				else {			
 					Reset_Values();
 					if(!memcmp(Status.HPT_status, "B", 1 )){
 						_LED_COLOR = HUE_BLUE;
