@@ -41,6 +41,7 @@ bool Contador::read(){
         #endif
         ContadorExt.ConexionPerdida = true;
         Update_Status_Coms(MED_CONECTION_LOST);
+        Coms.ETH.restart = true;
         return false;
     }
     Measurements.clear();
@@ -57,13 +58,12 @@ void Contador::parse(){
 
 
     //comprobar que no se ha desconectado el medidor
-
     time = Measurements["header"]["local_time"].as<String>();
     if(time == last_time){
         if(++Same_time_count > 5 && !ContadorExt.ConexionPerdida){
             ContadorExt.ConexionPerdida = 1;
             Update_Status_Coms(MED_CONECTION_LOST);
-            Coms.ETH.finding = false;
+            Coms.ETH.restart = true;
             return;
         }
     }
@@ -94,7 +94,8 @@ void Contador::parse(){
             if(!ContadorExt.ConexionPerdida){
                 ContadorExt.ConexionPerdida = 1;
                 Update_Status_Coms(MED_CONECTION_LOST);
-                Coms.ETH.finding = false;
+                //Reiniciamos el eth, esto hace que el medidor al recibir una nueva ip se reinicie
+                Coms.ETH.restart = true;
             }
         }
         else{

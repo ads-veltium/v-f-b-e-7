@@ -12,24 +12,28 @@
 #include "control.h"
 #include "helpers.h"
 
-StaticTask_t xControlBuffer ;
-StaticTask_t xLEDBuffer ;
+StaticTask_t xControlBuffer;
+StaticTask_t xLEDBuffer;
+StaticTask_t xUartBuffer;
 
 static StackType_t xControlStack  [4096*6]     EXT_RAM_ATTR;
 static StackType_t xLEDStack      [4096*2]     EXT_RAM_ATTR;
+static StackType_t xUartStack     [4096*6]     EXT_RAM_ATTR;
 
 #ifdef CONNECTED
 static StackType_t xFirebaseStack [4096*6]     EXT_RAM_ATTR;
 StaticTask_t xFirebaseBuffer ;
 #endif
 
-//Variables Firebase
-carac_Update_Status UpdateStatus EXT_RAM_ATTR;
-carac_Comands  Comands       EXT_RAM_ATTR;
 carac_Status   Status        EXT_RAM_ATTR;
-carac_Params   Params        EXT_RAM_ATTR;
+carac_Update_Status UpdateStatus EXT_RAM_ATTR;
 
 #ifdef CONNECTED
+
+//Variables Firebase
+carac_Comands  Comands       EXT_RAM_ATTR;
+carac_Params   Params        EXT_RAM_ATTR;
+
 carac_Coms     Coms          				 EXT_RAM_ATTR;
 carac_Contador ContadorExt   				 EXT_RAM_ATTR;
 carac_Firebase_Configuration ConfigFirebase  EXT_RAM_ATTR;
@@ -37,26 +41,31 @@ carac_circuito Circuitos  [MAX_GROUP_SIZE] 	 EXT_RAM_ATTR;
 carac_group    ChargingGroup 				 EXT_RAM_ATTR;
 carac_charger  charger_table  [50] 			 EXT_RAM_ATTR;
 carac_charger  temp_chargers[MAX_GROUP_SIZE] EXT_RAM_ATTR;
+carac_Schedule Schedule                      EXT_RAM_ATTR;
 uint8_t 	   temp_chargers_size 			 EXT_RAM_ATTR;
 #endif
 
 /* VARIABLES BLE */
 uint8 device_ID[16] = {"VCD17010001"};
-uint8 deviceSerNum[10] 		 = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};     //{0x00, 0x00, 0x00, 0x00, 0x0B, 0xCD, 0x17, 0x01, 0x00, 0x05};
-uint8 authChallengeReply[8]  = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-// DACO changed size by crash
-//uint8 authChallengeQuery[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};      //{0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF};
-uint8 authChallengeQuery[10] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};      //{0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF};
+uint8 not_delete_group [4][10] = {{0xCD, 0x01, 0x21, 0x07, 0x16, 0x00, 0x00, 0x04, 0x98, 0x08},
+								 {0xCD, 0x01, 0x21, 0x07, 0x16, 0x00, 0x00, 0x05, 0x29, 0x51},
+								 {0xCD, 0x01, 0x21, 0x09, 0x16, 0x00, 0x00, 0x06, 0x14, 0x54},
+								 {0xCD, 0x01, 0x21, 0x09, 0x16, 0x00, 0x00, 0x06, 0x14, 0x58}};
+uint8 deviceSerNum[10] 		   = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};     //{0x00, 0x00, 0x00, 0x00, 0x0B, 0xCD, 0x17, 0x01, 0x00, 0x05};
 TickType_t AuthTimer=0;
 uint8 contador_cent_segundos = 0, contador_cent_segundos_ant = 0;
 uint32 cont_seg = 0, cont_seg_ant = 0, cont_min_ant = 0, cont_min=0, cont_hour=0, cont_hour_ant=0;
 uint8 estado_inicial = 1;
 uint8 estado_actual = ESTADO_ARRANQUE;
-uint8 authSuccess = 0;
+extern uint8 authSuccess;
 uint8 user_index = 0;
-int aut_semilla = 0x0000;
+extern int aut_semilla;
+uint8 Zero = 0;
+uint8 One = 1;
 uint8 NextLine=0;
 uint8_t ConnectionState;
+uint8 conexion_trigger=0;
+uint8 user_index_arrived=0;
 
 uint8 cnt_fin_bloque = 0;
 int estado_recepcion = 0;
@@ -66,14 +75,13 @@ uint8 record_buffer[550]    EXT_RAM_ATTR;
 uint16 puntero_rx_local = 0;
 uint32 TimeFromStart = 60; //tiempo para buscar el contador, hay que darle tiempo a conectarse
 uint8 updateTaskrunning=0;
-uint8 cnt_timeout_tx = 0;
 
 // initial serial number
 uint8 initialSerNum[10] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
 uint8 mainFwUpdateActive = 0;
 
-uint8 dispositivo_inicializado = 1;
+uint8 dispositivo_inicializado = 0;
 uint8 PSOC_inicializado =0;
 uint8 cnt_timeout_inicio = 0;
 uint16 cnt_repeticiones_inicio = 500;	//1000;
@@ -84,11 +92,10 @@ uint16 cnt_diferencia = 1;
 uint8 HPT_estados[9][3] = {"0V", "A1", "A2", "B1", "B2", "C1", "C2", "E1", "F1"};
 
 #ifdef USE_COMS
-uint8 version_firmware[11] = {"VBLE2_0518"};	
+uint8 version_firmware[11] = {"VBLE2_0500"};	
 #else
 uint8 version_firmware[11] = {"VBLE0_0515"};	
 #endif
-
 
 uint8 PSOC5_version_firmware[11] ;		
 TickType_t Last_Block=0; 
@@ -98,12 +105,9 @@ uint8 Bloqueo_de_carga = 1;
 bool Testing = false;
 int TimeoutMainDisconnect = 0;
 extern bool deviceBleDisconnect;
-void startSystem(void);
 
-void StackEventHandler( uint32 eventCode, void *eventParam );
+void startSystem(void);
 void modifyCharacteristic(uint8* data, uint16 len, uint16 attrHandle);
-void proceso_recepcion(void);
-int Convert_To_Epoch(uint8_t DateTime[6]);
 
 
 #ifdef CONNECTED
@@ -123,6 +127,7 @@ hw_timer_t * timer10ms = NULL;
 hw_timer_t * timer1s = NULL;
 HardwareSerialMOD serialLocal(2);
 unsigned long StartTime = millis();
+
 void IRAM_ATTR onTimer10ms() 
 {
 	if(++contador_cent_segundos >= 100)	// 1 segundo
@@ -169,48 +174,40 @@ void MAIN_RESET_Write( uint8_t val )
 	return;
 }
 
-void controlTask(void *arg) 
-{	
+void controlTask(void *arg) {		
 	
-	// Inicia el timer de 10mS i 1 segundo
+	// Inicia el timer de 10mS y 1 segundo
 	configTimers();
 	bool LastUserCon = false;
 	bool Iface_Con = BLE;
 	uint8 old_inicializado = 0;
 	serialLocal.begin(115200, SERIAL_8N1, 34, 4); // pins: rx, tx
-
+	
 	// INICIALIZO ELEMENTOS PARA AUTENTICACION
-	srand(aut_semilla);
-
-	modifyCharacteristic(authChallengeQuery, 8, AUTENTICACION_MATRIX_CHAR_HANDLE);
+	InitializeAuthsystem();
 
 	MAIN_RESET_Write(1);        // Permito el arranque del micro principal
 
-	while(1)
-	{
-		// Eventos 10 mS
-		if(contador_cent_segundos != contador_cent_segundos_ant)
-		{
-			contador_cent_segundos_ant = contador_cent_segundos;
+	while(1){
 
+		// Eventos 10 mS
+		if(contador_cent_segundos != contador_cent_segundos_ant){
+			contador_cent_segundos_ant = contador_cent_segundos;
 			if(mainFwUpdateActive == 0){
 				switch (estado_actual){
+					
 					case ESTADO_ARRANQUE:
 						if(!PSOC_inicializado){
-							proceso_recepcion();
 							if(--cnt_timeout_inicio == 0){
+								SendToPSOC5(0,BLOQUE_INICIALIZACION);
 								cnt_timeout_inicio = TIMEOUT_INICIO;
-								buffer_tx_local[0] = HEADER_TX;
-								buffer_tx_local[1] = (uint8)(BLOQUE_INICIALIZACION >> 8);
-								buffer_tx_local[2] = (uint8)BLOQUE_INICIALIZACION;
-								buffer_tx_local[3] = 1;
-								buffer_tx_local[4] = 0;
-								serialLocal.write(buffer_tx_local, 5);
+								
 								if(--cnt_repeticiones_inicio == 0){
 									cnt_repeticiones_inicio = 750;		//1000;								
 									mainFwUpdateActive = 1;
 									updateTaskrunning=1;
 									Serial.println("Enviando firmware al PSOC5 por falta de comunicacion!");
+									Configuracion.data.count_reinicios_malos ++;
 									xTaskCreate(UpdateTask,"TASK UPDATE",4096,NULL,1,NULL);
 								}
 							}
@@ -220,25 +217,23 @@ void controlTask(void *arg)
 							estado_actual = ESTADO_INICIALIZACION;
 						}
 						break;
-					case ESTADO_INICIALIZACION:
-						cnt_timeout_tx = TIMEOUT_TX_BLOQUE;
-						
-						buffer_tx_local[0] = HEADER_TX;
-						buffer_tx_local[1] = (uint8)(BLOQUE_STATUS >> 8);
-						buffer_tx_local[2] = (uint8)BLOQUE_STATUS;
-						buffer_tx_local[3] = 2;
+
+					case ESTADO_INICIALIZACION:{
+					    uint8_t data[2]={0};
 						#ifdef USE_COMS
-						buffer_tx_local[4] = serverbleGetConnected() || ConfigFirebase.ClientConnected;
+						data[0] = serverbleGetConnected() || ConfigFirebase.ClientAuthenticated;
 						#else
-						buffer_tx_local[4] = serverbleGetConnected();
+						data[0] = serverbleGetConnected();
 						#endif
-						buffer_tx_local[5] = dispositivo_inicializado;
-						serialLocal.write(buffer_tx_local, 6);
+						data[1] = dispositivo_inicializado;
+
+						SendToPSOC5(data,2,BLOQUE_STATUS);
 						estado_actual = ESTADO_NORMAL;
 						break;
-					case ESTADO_NORMAL:
-						proceso_recepcion();
+					}
 
+					case ESTADO_NORMAL:
+						
 						//Alguien se está intentando conectar	
 						if(AuthTimer !=0){
 							uint32_t Transcurrido = pdTICKS_TO_MS(xTaskGetTickCount()-AuthTimer);
@@ -255,92 +250,66 @@ void controlTask(void *arg)
 							Iface_Con = BLE;
 						}
 #ifdef USE_COMS
-						else if(ConfigFirebase.ClientConnected){
+						else if(ConfigFirebase.ClientAuthenticated){
 							Iface_Con = COMS;
 						}
 #endif
-						if(old_inicializado != dispositivo_inicializado){
-							cnt_timeout_tx = TIMEOUT_TX_BLOQUE2 ;
-							buffer_tx_local[0] = HEADER_TX;
-							buffer_tx_local[1] = (uint8)(BLOQUE_STATUS >> 8);
-							buffer_tx_local[2] = (uint8)BLOQUE_STATUS;
-							buffer_tx_local[3] = 2;
-							buffer_tx_local[4] = serverbleGetConnected(); 
-							buffer_tx_local[5] = dispositivo_inicializado;
-							serialLocal.write(buffer_tx_local, 6);
-							LastUserCon = serverbleGetConnected();
-							old_inicializado = dispositivo_inicializado;
-						}
 						if(Testing){
-							cnt_timeout_tx = TIMEOUT_TX_BLOQUE2 ;
-							buffer_tx_local[0] = HEADER_TX;
-							buffer_tx_local[1] = (uint8)(BLOQUE_STATUS >> 8);
-							buffer_tx_local[2] = (uint8)BLOQUE_STATUS;
-							buffer_tx_local[3] = 2;
-							buffer_tx_local[4] = 1; 
-							buffer_tx_local[5] = 4;
-							serialLocal.write(buffer_tx_local, 6);
+							uint8_t data[2]={0};
+							data[0] = 1; 
+							data[1] = 4;							
+							SendToPSOC5(data,2,BLOQUE_STATUS);
 							LastUserCon = 1 ;
 						}
 
-						else if(Iface_Con == BLE && LastUserCon != serverbleGetConnected()){
-							cnt_timeout_tx = TIMEOUT_TX_BLOQUE2 ;
-							buffer_tx_local[0] = HEADER_TX;
-							buffer_tx_local[1] = (uint8)(BLOQUE_STATUS >> 8);
-							buffer_tx_local[2] = (uint8)BLOQUE_STATUS;
-							buffer_tx_local[3] = 2;
-							buffer_tx_local[4] = serverbleGetConnected(); 
-							buffer_tx_local[5] = dispositivo_inicializado;
-							serialLocal.write(buffer_tx_local, 6);
+						else if((Iface_Con == BLE && LastUserCon != serverbleGetConnected()) || old_inicializado != dispositivo_inicializado){						
 							LastUserCon = serverbleGetConnected() ;
+							old_inicializado = dispositivo_inicializado;
+							conexion_trigger=1;
 						}
-#ifdef USE_COMS
-						else if(Iface_Con == COMS && LastUserCon != ConfigFirebase.ClientConnected){
-							cnt_timeout_tx = TIMEOUT_TX_BLOQUE2 ;
-							buffer_tx_local[0] = HEADER_TX;
-							buffer_tx_local[1] = (uint8)(BLOQUE_STATUS >> 8);
-							buffer_tx_local[2] = (uint8)BLOQUE_STATUS;
-							buffer_tx_local[3] = 2;
-							buffer_tx_local[4] = ConfigFirebase.ClientConnected;
-							buffer_tx_local[5] = dispositivo_inicializado;
-							serialLocal.write(buffer_tx_local, 6);
-							LastUserCon = ConfigFirebase.ClientConnected;
+
+						if(conexion_trigger && user_index_arrived){
+							SendStatusToPSOC5(serverbleGetConnected(), dispositivo_inicializado);
+							conexion_trigger=0;
+							user_index_arrived=0;
 						}
-#endif
-						if(cnt_timeout_tx == 0)
-						{
 #ifdef CONNECTED
-							if (Comands.start){
-								SendToPSOC5(1, CHARGING_BLE_MANUAL_START_CHAR_HANDLE);   
-								#ifdef DEBUG
-								Serial.println("Sending START");         
-								#endif
-							}
-
-							else if (Comands.stop){
-								SendToPSOC5(1, CHARGING_BLE_MANUAL_STOP_CHAR_HANDLE);
-								#ifdef DEBUG
-								Serial.println("Sending STOP");
-								#endif
-							}
-
-							else if (Comands.Newdata){
-								#ifdef DEBUG
-								printf("Enviando corriente %i\n", Comands.desired_current);
-								#endif
-								SendToPSOC5(Comands.desired_current, MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
-							}
-							else if (Comands.reset){
-								#ifdef DEBUG
-								Serial.println("Reiniciando por comando externo! No preocuparse");
-								#endif
-								//FinishGSM();
-								MAIN_RESET_Write(0);
-								delay(500);		
-								ESP.restart();
-							}	
-#endif
+						else if(Iface_Con == COMS && LastUserCon != ConfigFirebase.ClientAuthenticated){
+							SendStatusToPSOC5(ConfigFirebase.ClientAuthenticated, dispositivo_inicializado);
+							LastUserCon = ConfigFirebase.ClientAuthenticated;
 						}
+
+						if (Comands.start){
+							SendToPSOC5(One, CHARGING_BLE_MANUAL_START_CHAR_HANDLE);   
+							#ifdef DEBUG
+							Serial.println("Sending START");         
+							#endif
+						}
+
+						else if (Comands.stop){
+							SendToPSOC5(One, CHARGING_BLE_MANUAL_STOP_CHAR_HANDLE);
+							#ifdef DEBUG
+							Serial.println("Sending STOP");
+							#endif
+						}
+
+						else if (Comands.Newdata){
+							#ifdef DEBUG
+							printf("Enviando corriente %i\n", Comands.desired_current);
+							#endif
+							SendToPSOC5(Comands.desired_current, MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
+						}
+						
+						else if (Comands.reset){
+							#ifdef DEBUG
+							Serial.println("Reiniciando por comando externo! No preocuparse");
+							#endif
+							//FinishGSM();
+							MAIN_RESET_Write(0);
+							delay(500);		
+							ESP.restart();
+						}	
+#endif
 						if(++TimeoutMainDisconnect>30000){
 							#ifdef DEBUG
 							Serial.println("Main reset detected");
@@ -350,8 +319,6 @@ void controlTask(void *arg)
 							ESP.restart();
 						}
 						
-						else
-							cnt_timeout_tx--;
 						break;
 					default:
 						break;
@@ -360,21 +327,11 @@ void controlTask(void *arg)
 			else{			
 				if(!updateTaskrunning){
 					//Poner el micro principal en modo bootload
-					cnt_timeout_tx = TIMEOUT_TX_BLOQUE;
-					buffer_tx_local[0] = HEADER_TX;
-					buffer_tx_local[1] = (uint8)(BOOT_LOADER_LOAD_SW_APP_CHAR_HANDLE >> 8);
-					buffer_tx_local[2] = (uint8)BOOT_LOADER_LOAD_SW_APP_CHAR_HANDLE;
-					buffer_tx_local[3] = 1;
-					buffer_tx_local[4] = 0;
-
-					serialLocal.write(buffer_tx_local, 5);
-					vTaskDelay(pdMS_TO_TICKS(500));
-					xTaskCreate(UpdateTask,"TASK UPDATE",4096,NULL,1,NULL);
-					updateTaskrunning=1;
+					SendToPSOC5(Zero,BOOT_LOADER_LOAD_SW_APP_CHAR_HANDLE);					
 				}				
 			}
-
 		}
+		
 		// Eventos 1 segundo
 		if(cont_seg != cont_seg_ant){
 			cont_seg_ant = cont_seg;
@@ -405,110 +362,116 @@ void startSystem(void){
 	#endif
 	dev_auth_init((void const*)&deviceSerNum);
 
+	Configuracion.data.Firmware = ParseFirmwareVersion((char *)(version_firmware));
+	Configuracion.data.FirmwarePSOC = ParseFirmwareVersion((char *)(PSOC5_version_firmware));
+	
+	memcpy(Configuracion.data.device_ID,device_ID,sizeof(Configuracion.data.device_ID));
+
+	sprintf(Configuracion.data.deviceSerNum,"%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
+		deviceSerNum[0], deviceSerNum[1], deviceSerNum[2], deviceSerNum[3], deviceSerNum[4],
+		deviceSerNum[5], deviceSerNum[6], deviceSerNum[7], deviceSerNum[8], deviceSerNum[9]);
+
+	
 	#ifdef CONNECTED
 		//Get Device FirebaseDB ID
-		sprintf(ConfigFirebase.Device_Db_ID,"%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",deviceSerNum[0], deviceSerNum[1], deviceSerNum[2], deviceSerNum[3], deviceSerNum[4],
-			deviceSerNum[5], deviceSerNum[6], deviceSerNum[7], deviceSerNum[8], deviceSerNum[9]);
+		sprintf(ConfigFirebase.Device_Db_ID,"%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
+		deviceSerNum[0], deviceSerNum[1], deviceSerNum[2], deviceSerNum[3], deviceSerNum[4],
+		deviceSerNum[5], deviceSerNum[6], deviceSerNum[7], deviceSerNum[8], deviceSerNum[9]);
+
 		memcpy(ConfigFirebase.Device_Ser_num,ConfigFirebase.Device_Db_ID,20);
+
 		memcpy(&ConfigFirebase.Device_Db_ID[20],&device_ID[3],8);
 		memcpy(ConfigFirebase.Device_Id,&device_ID[3],8);
 
-
-		//Init firebase values
-		UpdateStatus.ESP_Act_Ver = ParseFirmwareVersion((char *)(version_firmware));
-		UpdateStatus.PSOC5_Act_Ver = ParseFirmwareVersion((char *)(PSOC5_version_firmware));
-
-		Serial.println(UpdateStatus.PSOC5_Act_Ver);
-		Serial.println(UpdateStatus.ESP_Act_Ver);
-
-
 		//compatibilidad con versiones anteriores de firmwware
-		if(UpdateStatus.PSOC5_Act_Ver <= 510){
+		if(Configuracion.data.FirmwarePSOC <= 510){
 			dispositivo_inicializado = 2;
 		}
 
 		Coms.StartConnection = true;
 	#endif
-	
 }
 
-void proceso_recepcion(void)
-{
-	static uint8 byte;
-	static uint16 longitud_bloque = 0, len;
-	static uint16 tipo_bloque = 0x0000;
+void proceso_recepcion(void *arg){
 
-	if(!isMainFwUpdateActive()){
-		uint8_t ui8Tmp;
-		len = serialLocal.available();
-		if(len == 0)
-		{
-			if(cnt_fin_bloque == 0)
-			{
-				puntero_rx_local = 0;
-				estado_recepcion = ESPERANDO_HEADER;
+	uint8 byte;
+	uint16 longitud_bloque = 0, len;
+	uint16 tipo_bloque = 0x0000;
+
+	for(;;){
+		delay(updateTaskrunning ? 1000:5);
+		if(!updateTaskrunning){
+			uint8_t ui8Tmp;
+			len = serialLocal.available();
+			
+			if(len == 0){
+				if(cnt_fin_bloque == 0){
+					puntero_rx_local = 0;
+					estado_recepcion = ESPERANDO_HEADER;
+				}
+				continue;
 			}
-			return;
-		}
-		cnt_fin_bloque = TIMEOUT_RX_BLOQUE;
-		switch(estado_recepcion)
-		{
-			case ESPERANDO_HEADER:
-				serialLocal.read(&byte, 1);
-				if(byte != HEADER_RX)
+			
+			cnt_fin_bloque = TIMEOUT_RX_BLOQUE;
+			
+			switch(estado_recepcion){
+				case ESPERANDO_HEADER:
+					serialLocal.read(&byte, 1);
+					if(byte != HEADER_RX)
+						break;
+					estado_recepcion = ESPERANDO_TIPO;
+					if(--len == 0)
+						break;
 					break;
-				estado_recepcion = ESPERANDO_TIPO;
-				if(--len == 0)
+				case ESPERANDO_TIPO:
+					if(len < 2)
+						break;
+					serialLocal.read(&ui8Tmp,1);
+					tipo_bloque = 256 * ui8Tmp;
+					serialLocal.read(&ui8Tmp,1);
+					tipo_bloque += ui8Tmp;
+					estado_recepcion = ESPERANDO_LONGITUD;
+					len -= 2;
+					if(len == 0)
+						break;
 					break;
-				break;
-			case ESPERANDO_TIPO:
-				if(len < 2)
+				case ESPERANDO_LONGITUD:
+					serialLocal.read(&ui8Tmp,1);
+					longitud_bloque = ui8Tmp;
+					if(longitud_bloque == 0)
+						longitud_bloque = 256;
+					puntero_rx_local = 0;
+					estado_recepcion = RECIBIENDO_BLOQUE;
+					if(--len == 0)
+						break;
 					break;
-				serialLocal.read(&ui8Tmp,1);
-				tipo_bloque = 256 * ui8Tmp;
-				serialLocal.read(&ui8Tmp,1);
-				tipo_bloque += ui8Tmp;
-				estado_recepcion = ESPERANDO_LONGITUD;
-				len -= 2;
-				if(len == 0)
-					break;
-				break;
-			case ESPERANDO_LONGITUD:
-				serialLocal.read(&ui8Tmp,1);
-				longitud_bloque = ui8Tmp;
-				if(longitud_bloque == 0)
-					longitud_bloque = 256;
-				puntero_rx_local = 0;
-				estado_recepcion = RECIBIENDO_BLOQUE;
-				if(--len == 0)
-					break;
-				break;
-			case RECIBIENDO_BLOQUE:
-				do{
-					if(longitud_bloque > 0)
-					{
-						serialLocal.read(&buffer_rx_local[puntero_rx_local],1);
-						puntero_rx_local++;
-						if(--longitud_bloque == 0)
+				case RECIBIENDO_BLOQUE:
+					do{
+						if(longitud_bloque > 0)
 						{
-							procesar_bloque(tipo_bloque);
-							puntero_rx_local = 0;
-							estado_recepcion = ESPERANDO_HEADER;
-							break;
+							serialLocal.read(&buffer_rx_local[puntero_rx_local],1);
+							puntero_rx_local++;
+							if(--longitud_bloque == 0)
+							{
+								procesar_bloque(tipo_bloque);
+								puntero_rx_local = 0;
+								estado_recepcion = ESPERANDO_HEADER;
+								break;
+							}
 						}
-					}
-					else
-					{
-						serialLocal.read(&byte, 1);
-					}
-					len--;							
-				}while(len >0);						
-				break;
-			default:
-				puntero_rx_local = 0;
-				estado_recepcion = ESPERANDO_HEADER;
-				break;
+						else
+						{
+							serialLocal.read(&byte, 1);
+						}
+						len--;							
+					}while(len >0);						
+					break;
+				default:
+					puntero_rx_local = 0;
+					estado_recepcion = ESPERANDO_HEADER;
+					break;
 			}
+		}
 	}
 }
 
@@ -539,8 +502,24 @@ void procesar_bloque(uint16 tipo_bloque){
 				modifyCharacteristic(&buffer_rx_local[209], 2, RECORDING_REC_LAST_CHAR_HANDLE);
 				modifyCharacteristic(&buffer_rx_local[211], 1, RECORDING_REC_LAPS_CHAR_HANDLE);
 
+				//comprobar si el dato tiene sentido, sino cargar el de mi memoria
+				if(memcmp("AA", &buffer_rx_local[212],2) && memcmp("WA", &buffer_rx_local[212],2) && memcmp("MA", &buffer_rx_local[212],2)){
+					if(memcmp("AA", Configuracion.data.autentication_mode,2) && memcmp("WA", Configuracion.data.autentication_mode,2) && memcmp("MA", Configuracion.data.autentication_mode,2)){
+						memcpy(&buffer_rx_local[212],Configuracion.data.autentication_mode,2);
+					}
+					else{
+						//Si ninguno de los dos es correcto, lo damos por malo y ponemos el de defecto
+						memcpy(&buffer_rx_local[212],"WA",2);
+						SendToPSOC5(&buffer_rx_local[212],2,CONFIGURACION_AUTENTICATION_MODES_CHAR_HANDLE);
+						break;
+					}
+				}
+				else{
+					memcpy(Configuracion.data.autentication_mode, &buffer_rx_local[212],2);
+				}
+
 				modifyCharacteristic(&buffer_rx_local[212], 2, CONFIGURACION_AUTENTICATION_MODES_CHAR_HANDLE);
-				Serial.printf("Nueva autenticacion recibida! %c %c \n", buffer_rx_local[212],buffer_rx_local[213]);
+
 				memcpy(deviceSerNum, &buffer_rx_local[219], 10);			
 				modifyCharacteristic(&buffer_rx_local[229], 2, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_P1_CHAR_HANDLE);
 				modifyCharacteristic(&buffer_rx_local[231], 1, LED_LUMIN_COLOR_LUMINOSITY_LEVEL_CHAR_HANDLE);
@@ -550,17 +529,20 @@ void procesar_bloque(uint16 tipo_bloque){
 				modifyCharacteristic(&buffer_rx_local[241], 2, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_P2_CHAR_HANDLE);
 				modifyCharacteristic(&buffer_rx_local[243], 2, TIME_DATE_COUNTRY_CHAR_HANDLE);			
 
-				
+				/************************ Set configuration data **********************/
+				Configuracion.data.potencia_contratada1 = buffer_rx_local[229]+buffer_rx_local[230]*0x100;
+				Configuracion.data.potencia_contratada2 = buffer_rx_local[241]+buffer_rx_local[242]*0x100;
+				Configuracion.data.inst_current_limit   = buffer_rx_local[11];	
+				Configuracion.data.CDP   = buffer_rx_local[232];		
+
+				#ifdef CONNECTED	
 					/************************ Set firebase Params **********************/
 					memcpy(Params.autentication_mode, &buffer_rx_local[212],2);
 					Params.inst_current_limit = buffer_rx_local[11];
 					Params.potencia_contratada1 = buffer_rx_local[229]+buffer_rx_local[230]*0x100;
 					Params.potencia_contratada2 = buffer_rx_local[241]+buffer_rx_local[242]*0x100;
 					Params.CDP 	  =  buffer_rx_local[232];
-					
-					
 
-				#ifdef CONNECTED	
 					if((buffer_rx_local[232] >> 1) && 0x01){
 						Params.Tipo_Sensor    = (buffer_rx_local[232]  >> 4);
 					}
@@ -586,6 +568,35 @@ void procesar_bloque(uint16 tipo_bloque){
 
 				cnt_timeout_inicio = TIMEOUT_INICIO;
 				PSOC_inicializado = 1;
+
+				#ifdef CONNECTED
+					if(!Configuracion.data.Data_cleared){
+						bool borrar = true;
+						for(uint8_t i=0;i<4; i++){
+							//Comprobar si tengo que mantener mis datos o borrarlos
+							if(!memcmp(not_delete_group[i], deviceSerNum,10)){
+								borrar = false;
+								break;
+							}
+						}
+						
+						if(borrar){
+							//Borrar datos de los grupos
+							SendToPSOC5(41,CLEAR_FLASH_SPACE);
+							SendToPSOC5(45,CLEAR_FLASH_SPACE);
+							SendToPSOC5(3,CLEAR_FLASH_SPACE);
+							SendToPSOC5(6,CLEAR_FLASH_SPACE);
+						}
+
+
+						//Borrar datos del apn
+						SendToPSOC5(46,CLEAR_FLASH_SPACE);
+						SendToPSOC5(47,CLEAR_FLASH_SPACE);
+						SendToPSOC5(48,CLEAR_FLASH_SPACE);
+						SendToPSOC5(23,CLEAR_FLASH_SPACE);
+						SendToPSOC5(24,CLEAR_FLASH_SPACE);
+					}
+				#endif
 
 			}
 		break;
@@ -621,6 +632,7 @@ void procesar_bloque(uint16 tipo_bloque){
 						SendToPSOC5(1,BLOQUE_APN);
 						delay(150);
 						dispositivo_inicializado = 2;
+						Configuracion.data.count_reinicios_malos = 0;
 					}
 					
 					#ifdef DEBUG
@@ -731,6 +743,7 @@ void procesar_bloque(uint16 tipo_bloque){
 		
 		case BLOQUE_DATE_TIME:{
 			modifyCharacteristic(buffer_rx_local, 6, TIME_DATE_DATE_TIME_CHAR_HANDLE);
+			Status.Time.hora=buffer_rx_local[3];
 			aut_semilla = (((int)buffer_rx_local[4]) * 0x100) + (int)buffer_rx_local[5];
 			modifyCharacteristic(&buffer_rx_local[6], 6, TIME_DATE_CONNECTION_DATE_TIME_CHAR_HANDLE);
 			modifyCharacteristic(&buffer_rx_local[12], 6, TIME_DATE_DISCONNECTION_DATE_TIME_CHAR_HANDLE);
@@ -762,13 +775,13 @@ void procesar_bloque(uint16 tipo_bloque){
 				if(TimeStamp!=Status.Time.actual_time){
 					Status.Time.actual_time = TimeStamp;
 				}
-				
 			#endif
 		}
 		break;
 
 		case MEASURES_INSTALATION_CURRENT_LIMIT_CHAR_HANDLE:{
 			modifyCharacteristic(buffer_rx_local, 1, MEASURES_INSTALATION_CURRENT_LIMIT_CHAR_HANDLE);
+			Configuracion.data.inst_current_limit = buffer_rx_local[0];
 			#ifdef DEBUG
 			Serial.println("Instalation current limit Changed to" );
 			Serial.print(buffer_rx_local[0]);
@@ -780,12 +793,15 @@ void procesar_bloque(uint16 tipo_bloque){
 		break;
 	
 		case MEASURES_CURRENT_COMMAND_CHAR_HANDLE:{
-			Comands.desired_current = buffer_rx_local[0];
-			Comands.Newdata = false;
-			#ifdef DEBUG
-			Serial.println("Current command received");
-			Serial.println(Comands.desired_current);
+			#ifdef CONNECTED
+				Comands.desired_current = buffer_rx_local[0];
+				Comands.Newdata = false;
+				#ifdef DEBUG
+					Serial.println("Current command received");
+					Serial.println(Comands.desired_current);
+				#endif
 			#endif
+			
 			modifyCharacteristic(buffer_rx_local, 1, MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
 		}
 		break;
@@ -811,7 +827,9 @@ void procesar_bloque(uint16 tipo_bloque){
 		break;
 
 		case CHARGING_BLE_MANUAL_START_CHAR_HANDLE:{
+			#ifdef CONNECTED
 			Comands.start=0;
+			#endif
 			#ifdef DEBUG
 			Serial.println("Start recibido");
 			#endif
@@ -820,7 +838,9 @@ void procesar_bloque(uint16 tipo_bloque){
 		break;
 
 		case CHARGING_BLE_MANUAL_STOP_CHAR_HANDLE:{
+			#ifdef CONNECTED
 			Comands.stop=0;
+			#endif
 			#ifdef DEBUG
 			Serial.println("Stop recibido");
 			#endif
@@ -842,7 +862,9 @@ void procesar_bloque(uint16 tipo_bloque){
 		case VCD_NAME_USERS_USER_TYPE_CHAR_HANDLE:{
 		
 			modifyCharacteristic(buffer_rx_local, 1, VCD_NAME_USERS_USER_TYPE_CHAR_HANDLE);
+			#ifdef DEBUG
 			printf("Me ha llegado user type %i\n", buffer_rx_local[0]);
+			#endif
 		} 
 		break;
 		
@@ -850,7 +872,10 @@ void procesar_bloque(uint16 tipo_bloque){
 		
 			modifyCharacteristic(buffer_rx_local, 1, VCD_NAME_USERS_USER_INDEX_CHAR_HANDLE);
 			user_index = buffer_rx_local[0];
+			#ifdef DEBUG
 			printf("Me ha llegado user index %i\n", buffer_rx_local[0]);
+			#endif
+			user_index_arrived = 1;
 		} 
 		break;
 		
@@ -870,13 +895,15 @@ void procesar_bloque(uint16 tipo_bloque){
 		break;
 		
 		case RESET_RESET_CHAR_HANDLE:{
+			delay(600);
 			ESP.restart();
-			//modifyCharacteristic(&buffer_rx_local[0], 1, RESET_RESET_CHAR_HANDLE);
 		} 
 		break;
 
 		case CHARGE_USER_ID:{
+			#ifdef DEBUG
 			printf("Me ha llegado un nuevo charge_user_id %i\n", buffer_rx_local[0]);
+			#endif
 			modifyCharacteristic(buffer_rx_local, 1, CHARGE_USER_ID);
 		}
 		break;
@@ -971,7 +998,26 @@ void procesar_bloque(uint16 tipo_bloque){
 		break;
 		
 		case CONFIGURACION_AUTENTICATION_MODES_CHAR_HANDLE:{
+			
+			//comprobar si el dato tiene sentido, sino cargar el de mi memoria
+			if(memcmp("AA", buffer_rx_local,2) && memcmp("WA", buffer_rx_local,2) && memcmp("MA", buffer_rx_local,2)){
+				if(memcmp("AA", Configuracion.data.autentication_mode,2) && memcmp("WA", Configuracion.data.autentication_mode,2) && memcmp("MA", Configuracion.data.autentication_mode,2)){
+					memcpy(buffer_rx_local,Configuracion.data.autentication_mode,2);
+				}
+				else{
+					//Si ninguno de los dos es correcto, lo damos por malo y ponemos el de defecto
+					memcpy(buffer_rx_local,"WA",2);
+					SendToPSOC5(buffer_rx_local,2,CONFIGURACION_AUTENTICATION_MODES_CHAR_HANDLE);
+					break;
+				}
+			}
+			else{
+				memcpy(Configuracion.data.autentication_mode, buffer_rx_local,2);
+			}
+
 			modifyCharacteristic(buffer_rx_local, 2, CONFIGURACION_AUTENTICATION_MODES_CHAR_HANDLE);
+			memcpy(Configuracion.data.autentication_mode, buffer_rx_local,2);
+
 			#ifdef DEBUG
 			Serial.printf("Nueva autenticacion recibida! %c %c \n", buffer_rx_local[0],buffer_rx_local[1]);
 			#endif
@@ -983,6 +1029,7 @@ void procesar_bloque(uint16 tipo_bloque){
 		
 		case DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_P1_CHAR_HANDLE:{
 			modifyCharacteristic(buffer_rx_local, 2, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_P1_CHAR_HANDLE);
+			Configuracion.data.potencia_contratada1 =buffer_rx_local[0]+buffer_rx_local[1]*100;
 			#ifdef DEBUG
 			Serial.println("Potencia contratada 1 cambiada a: ");
 			Serial.print(buffer_rx_local[0]+buffer_rx_local[1]*100);
@@ -996,6 +1043,7 @@ void procesar_bloque(uint16 tipo_bloque){
 
 		case DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_P2_CHAR_HANDLE:{
 			modifyCharacteristic(buffer_rx_local, 2, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_P2_CHAR_HANDLE);
+			Configuracion.data.potencia_contratada2 =buffer_rx_local[0]+buffer_rx_local[1]*100;
 			#ifdef DEBUG
 			Serial.println("Potencia contratada 2 cambiada a: ");
 			Serial.print(buffer_rx_local[0]+buffer_rx_local[1]*100);
@@ -1035,8 +1083,10 @@ void procesar_bloque(uint16 tipo_bloque){
 		
 		case DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE:{
 			modifyCharacteristic(buffer_rx_local, 1, DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE);
-			Params.CDP				  = buffer_rx_local[0];
-			#ifdef CONNECTED			
+			Configuracion.data.CDP = buffer_rx_local[0];
+			
+			#ifdef CONNECTED
+				Params.CDP				  = buffer_rx_local[0];			
 				if((buffer_rx_local[0] >> 1) && 0x01){
 
 					Params.Tipo_Sensor    = (buffer_rx_local[0]  >> 4);
@@ -1056,13 +1106,14 @@ void procesar_bloque(uint16 tipo_bloque){
 				if(!Params.Tipo_Sensor){
 					Coms.ETH.medidor = false;
 					Update_Status_Coms(0,MED_BLOCK);
+					ContadorExt.ConexionPerdida = false;
 					if(Coms.ETH.DHCP && !ChargingGroup.Params.GroupActive){
 						Coms.ETH.restart = true;
 					}
 				}
-			#endif
-			#ifdef DEBUG_BLE
-			Serial.printf("New CDP %i %i \n", Params.CDP, Params.Tipo_Sensor);
+				#ifdef DEBUG_BLE
+					Serial.printf("New CDP %i %i \n", Params.CDP, Params.Tipo_Sensor);
+				#endif
 			#endif
 		} 
 		break;
@@ -1213,7 +1264,6 @@ void procesar_bloque(uint16 tipo_bloque){
 
 			memcpy(Coms.GSM.Pin, buffer_rx_local,4);
 			printf("Me ha llegado el apn pin %s\n", Coms.GSM.Pin);
-			printf("%s \n", buffer_rx_local);
 			modifyCharacteristic(buffer_rx_local,  4, APN_PIN);
 			
 		} 
@@ -1295,8 +1345,10 @@ void procesar_bloque(uint16 tipo_bloque){
             //cierro el coap y borro el grupo
             if(check_in_group(ConfigFirebase.Device_Id,charger_table,ChargingGroup.Charger_number ) == 255){
                 if(ChargingGroup.Conected){
+					#ifdef DEBUG_GROUPS
 					printf("No estoy en el grupo control.cpp1\n");
 					print_table(charger_table,"No en grupo table 1", ChargingGroup.Charger_number);
+					#endif
                     ChargingGroup.DeleteOrder = true;
                 }
             }
@@ -1325,7 +1377,9 @@ void procesar_bloque(uint16 tipo_bloque){
                 //si soy el maestro, avisar a los nuevos de que son parte de mi grupo
                 broadcast_a_grupo("Start client", 12);
             }
+			#ifdef DEBUG_GROUPS
             print_table(charger_table, "Grupo desde PSOC", ChargingGroup.Charger_number);
+			#endif
         }
         break;
 
@@ -1389,7 +1443,9 @@ void procesar_bloque(uint16 tipo_bloque){
                 //si soy el maestro, avisar a los nuevos de que son parte de mi grupo
                 broadcast_a_grupo("Start client", 12);
             }
+			#ifdef DEBUG_GROUPS
             print_table(charger_table, "Grupo desde PSOC", ChargingGroup.Charger_number);
+			#endif
 			break;
         }
 
@@ -1468,258 +1524,25 @@ void procesar_bloque(uint16 tipo_bloque){
 			//si no se cumple nada de lo anterior, permitimos la carga
 			else{
 				Bloqueo_de_carga = false;
-				printf("AAAAA\n");
+				//printf("AAAAA\n");
 			}
-			printf("Enviando bloqueo %i\n", Bloqueo_de_carga);
-			SendToPSOC5(Bloqueo_de_carga, BLOQUEO_CARGA);
-
-			
+			//printf("Enviando bloqueo %i\n", Bloqueo_de_carga);
+			SendToPSOC5(Bloqueo_de_carga, BLOQUEO_CARGA);			
 			break;
 		}
 #endif
+		case CLEAR_FLASH_SPACE:
+			printf("Se ha borrado la caracteristica %i de la flash!\n", buffer_rx_local[0]);
+			Configuracion.data.Data_cleared = 1;
+		break;
 
 		default:
 		break;
 	}
 }
- 
-uint8_t sendBinaryBlock ( uint8_t *data, int len )
-{
-	if(mainFwUpdateActive)
-	{
-		int ret=0;
-		ret = serialLocal.write(data, len);
-		cnt_timeout_tx = 254;
-		return ret;
-	}
-
-	return 1;
-}
-
-int controlSendToSerialLocal ( uint8_t * data, int len ){
-
-	if(!mainFwUpdateActive){
-	    int ret=0;
-		ret = serialLocal.write(data, len);
-		cnt_timeout_tx = TIMEOUT_TX_BLOQUE2;
-		return ret;
-	}
-	return 0;
-}
-
-void deviceConnectInd ( void ){
-	if(dispositivo_inicializado == 2){
-		int random = 0;
-		const void* outputvec1;
-		// This event is received when device is connected over GATT level 
-
-		srand(aut_semilla);
-		random = rand();
-		authChallengeQuery[7] = (uint8)(random >> 8);
-		authChallengeQuery[6] = (uint8)random;
-		random = rand();
-		authChallengeQuery[5] = (uint8)(random >> 8);
-		authChallengeQuery[4] = (uint8)random;
-		random = rand();
-		authChallengeQuery[3] = (uint8)(random >> 8);
-		authChallengeQuery[2] = (uint8)random;
-		random = rand();
-		authChallengeQuery[1] = (uint8)(random >> 8);
-		authChallengeQuery[0] = (uint8)random;
-
-		outputvec1 = dev_auth_challenge(authChallengeQuery);
-
-		memcpy(authChallengeReply, outputvec1, 8);
-
-		//Delay para dar tiempo a conectar
-		//vTaskDelay(pdMS_TO_TICKS(250));
-		modifyCharacteristic(authChallengeQuery, 8, AUTENTICACION_MATRIX_CHAR_HANDLE);
-
-		#ifdef DEBUG
-		Serial.println("Sending authentication");
-		#endif
-		vTaskDelay(pdMS_TO_TICKS(500));
-		AuthTimer = xTaskGetTickCount();
-	}
-	AuthTimer = xTaskGetTickCount();
-}
-
-void deviceDisconnectInd ( void )
-{
-	authSuccess = 0;
-	memset(authChallengeReply, 0x00, 8);
-	//memset(authChallengeQuery, 0x00, 8);
-	modifyCharacteristic(authChallengeQuery, 10, AUTENTICACION_MATRIX_CHAR_HANDLE);
-	vTaskDelay(pdMS_TO_TICKS(500));
-}
-
-uint8_t isMainFwUpdateActive (void)
-{
-	return mainFwUpdateActive;
-}
-
-uint8_t setMainFwUpdateActive (uint8_t val )
-{
-	mainFwUpdateActive = val;
-	return mainFwUpdateActive;
-}
-
-uint8_t setAuthToken ( uint8_t *data, int len ){
-	if(!authSuccess){
-		if(!memcmp(authChallengeReply, data, 8) || !memcmp(deviceSerNum, initialSerNum, 10))
-		{
-			AuthTimer=0;
-			#ifdef DEBUG
-			printf("authSuccess\r\n");
-			#endif
-			
-			serverbleSetConnected(true);
-			buffer_tx_local[0] = HEADER_TX;
-			buffer_tx_local[1] = (uint8)(BLOQUE_STATUS >> 8);
-			buffer_tx_local[2] = (uint8)(BLOQUE_STATUS);
-			buffer_tx_local[3] = 2;
-			buffer_tx_local[4] = serverbleGetConnected();
-			buffer_tx_local[5] = ESTADO_NORMAL;
-			controlSendToSerialLocal(buffer_tx_local, 6);
-			authSuccess = 1;
-		}
-	}
-
-	return 1;
-}
-
-uint8_t authorizedOK ( void ){
-	return (authSuccess || mainFwUpdateActive == 1 );
-}
-
-void updateCharacteristic(uint8_t* data, uint16_t len, uint16_t attrHandle){
-	serverbleSetCharacteristic ( data,len,attrHandle);
-	return;
-}
-
-void modifyCharacteristic(uint8* data, uint16 len, uint16 attrHandle){
-	serverbleSetCharacteristic ( data,len,attrHandle);
-	return;
-}
 
 /************************************************
- * 		Actualizar el valor de status COMS
- ************************************************/
-void Update_Status_Coms(uint16_t Code, uint8_t block){
-	static uint16 Status_Coms = 0;
-
-#ifdef DEBUG
-	static uint16 Last_Status = 0;
-#endif
-
-	if(Code > 0){
-		//Resetear los bits que estuvieran activos por cada bloque
-		if (Code <= ETH_CONNECTED){
-			Status_Coms &= 0b1111111111111100;
-		}
-		else if(Code <= WIFI_BAD_CREDENTIALS){
-			Status_Coms &= 0b1111111111100011;
-
-		}
-		else if(Code <= MED_CONECTION_RESTAURED){
-			Status_Coms &= 0b1111111100011111;
-			
-		}
-		else if(Code <= MODEM_CONNECTED){
-			Status_Coms &= 0b1000001111111111;
-		}	
-		Status_Coms |= Code;
-	}
-	else{
-		switch (block){
-			case ETH_BLOCK:
-				Status_Coms &= ~0b1111111111111100;
-				break;
-			case WIFI_BLOCK:
-				Status_Coms &= ~0b1111111111100011;
-				break;
-			case MED_BLOCK:
-				Status_Coms &= ~0b1111110000011111;
-				break;
-			case MODEM_BLOCK:
-				Status_Coms &= ~0b1000001111111111;
-				break;
-		}
-	}
-	
-
-	uint8 data[2];
-	data[0] = (uint8)(Status_Coms & 0x00FF);
-	data[1] = (uint8)((Status_Coms >> 8) & 0x00FF);
-	modifyCharacteristic((uint8_t*)data, 2, STATUS_COMS);
-
-#ifdef DEBUG
-	if(Last_Status != Status_Coms){
-		printf("Nuevo status coms: "BYTE_TO_BINARY_PATTERN" "BYTE_TO_BINARY_PATTERN"\n",BYTE_TO_BINARY( Status_Coms >> 8), BYTE_TO_BINARY( Status_Coms ));
-		Last_Status = Status_Coms;
-	}
-#endif
-}
-
-/************************************************
-Esperar a que una variable tenga un valor(bloqueante)
-************************************************/
-bool WaitForValue(uint8* variable, uint8_t objetivo, uint16_t timeout){
-
-	while(*variable != objetivo || --timeout > 0){
-		delay(10);
-	}
-
-	return *variable == objetivo;
-
-}
-
-bool WaitForValue(uint16_t* variable, uint16_t objetivo, uint16_t timeout){
-
-	while(*variable != objetivo || --timeout > 0){
-		delay(10);
-	}
-
-	return *variable == objetivo;
-
-}
-
-bool WaitForValue(float* variable, float objetivo, uint16_t timeout){
-
-	while(*variable != objetivo || --timeout > 0){
-		delay(10);
-	}
-
-	return *variable == objetivo;
-
-}
-
-bool WaitForValue(String* variable, String objetivo, uint16_t timeout){
-
-	while(*variable != objetivo || --timeout > 0){
-		delay(10);
-	}
-
-	return *variable == objetivo;
-
-}
-
-/************************************************
-		Convertir fecha a timestamp epoch
-************************************************/
-int Convert_To_Epoch(uint8* data){
-	struct tm t = {0};  // Initalize to all 0's
-	t.tm_year = (data[2]!=0)?data[2]+100:0;  // This is year-1900, so 112 = 2012
-	t.tm_mon  = (data[1]!=0)?data[1]-1:0;
-	t.tm_mday = data[0];
-	t.tm_hour = data[3];
-	t.tm_min  = data[4];
-	t.tm_sec  = data[5];
-	return mktime(&t);
-}
-
-/************************************************
- * Update Tasks
+ * Update Task
  * **********************************************/
 void UpdateTask(void *arg){
 	UpdateStatus.InstalandoArchivo = true;
@@ -1742,7 +1565,15 @@ void UpdateTask(void *arg){
 	unsigned char rowData[512];
 	SPIFFS.begin();
 	File file;
-	file = SPIFFS.open("/FreeRTOS_V6.cyacd"); 	
+
+	//Si falla mas de diez veces la actualizacion, recuperamos el firmware viejo que teniamos y lo volvemos a usar. 
+	if(Configuracion.data.count_reinicios_malos > 10){
+		if(SPIFFS.exists("/FreeRTOS_V6_old.cyacd")){
+			SPIFFS.remove("/FreeRTOS_V6.cyacd");
+			SPIFFS.rename("/FreeRTOS_V6_old.cyacd", "/FreeRTOS_V6.cyacd");
+		}
+	}
+	file = SPIFFS.open("/FreeRTOS_V6.cyacd");	
 	if(!file || file.size() == 0){ 
 		file.close();
 		SPIFFS.end();
@@ -1762,6 +1593,7 @@ void UpdateTask(void *arg){
 		unsigned char* b = (unsigned char*) Buffer.c_str(); 
 		err = CyBtldr_ParseHeader((unsigned int)longitud,  b, &siliconID , &siliconRev ,&packetChkSumType);  
 		err = CyBtldr_ParseRowData((unsigned int)longitud,b, &arrayId, &rowNum, rowData, &rowSize, &checksum);
+		Serial.printf("Error 1%i \n", err);
 
 		//Reiniciar la lectura del archivo
 		file.seek(PRIMERA_FILA,SeekSet);
@@ -1773,13 +1605,21 @@ void UpdateTask(void *arg){
 				Buffer=file.readStringUntil('\n'); 
 				longitud = Buffer.length()-1; 
 				b = (unsigned char*) Buffer.c_str();     
-				err = CyBtldr_ParseRowData((unsigned int)longitud,b, &arrayId, &rowNum, rowData, &rowSize, &checksum);
-				if(err!=0){
-					Serial.printf("Error 1%i \n", err);
+				uint8 reintentos = 0;
+				err = 1;
+				while(err !=0 && ++reintentos < 10){
+					//Intentar enviar la linea varias veces asta que no falle
+					err = CyBtldr_ParseRowData((unsigned int)longitud,b, &arrayId, &rowNum, rowData, &rowSize, &checksum);
+					if (err==0){
+						err = CyBtldr_ProgramRow(arrayId, rowNum, rowData, rowSize);
+					}
+					if (err==0){
+						err = CyBtldr_VerifyRow(arrayId, rowNum, checksum);
+					}
+					if(err!=0){
+						Serial.printf("Error 1%i \n", err);
+					}
 				}
-				if (err==0){
-					err = CyBtldr_ProgramRow(arrayId, rowNum, rowData, rowSize);
-				}	
 						
 				Nlinea++;
 				Serial.printf("Lineas leidas: %u \n",Nlinea);
@@ -1811,64 +1651,24 @@ void UpdateTask(void *arg){
 		}
 	}
 }
-/*********** Pruebas tar.gz **************/
-#ifdef UPDATE_COMPRESSED
-void UpdateCompressedTask(void *arg){
-
-	Serial.println("Source filesystem Mount Successful :)");
-
-	GzUnpacker *GZUnpacker = new GzUnpacker();
-
-	GZUnpacker->haltOnError( true ); // stop on fail (manual restart/reset required)
-	GZUnpacker->setupFSCallbacks( targzTotalBytesFn, targzFreeBytesFn2 ); // prevent the partition from exploding, recommended
-	GZUnpacker->setGzProgressCallback( BaseUnpacker::defaultProgressCallback ); // targzNullProgressCallback or defaultProgressCallback
-	GZUnpacker->setLoggerCallback( BaseUnpacker::targzPrintLoggerCallback  );    // gz log verbosity
-
-	if( ! GZUnpacker->gzUpdater(tarGzFS, tarGzFile, false ) ) {
-	Serial.printf("gzUpdater failed with return code #%d\n", GZUnpacker->tarGzGetError() );
-	}
-	tarGzFS.end();
-}
-#endif
 
 void controlInit(void){
-	
-	//Freertos estatico
 	xTaskCreateStatic(LedControl_Task,"TASK LEDS",4096*2,NULL,PRIORIDAD_LEDS,xLEDStack,&xLEDBuffer); 
+	Configuracion.init();
+	dispositivo_inicializado = 1;
+	//Freertos estatico
 	xTaskCreateStatic(controlTask,"TASK CONTROL",4096*6,NULL,PRIORIDAD_CONTROL,xControlStack,&xControlBuffer); 
+	xTaskCreateStatic(proceso_recepcion,"TASK UART",4096*6,NULL,PRIORIDAD_UART,xUartStack,&xUartBuffer); 
 	#ifdef CONNECTED
-		//xTaskCreateStatic(ComsTask,"TASK COMS", 4096*4,NULL,PRIORIDAD_COMS,xComsStack, &xComsBuffer);
-		xTaskCreate(ComsTask,"Task Coms",4096*2,NULL,PRIORIDAD_COMS,NULL);
+		xTaskCreate(ComsTask,"Task Coms",4096*4,NULL,PRIORIDAD_COMS,NULL);
 		xTaskCreateStatic(Firebase_Conn_Task,"TASK FIREBASE", 4096*6,NULL,PRIORIDAD_FIREBASE,xFirebaseStack , &xFirebaseBuffer );
+
 	#endif
+
+	
 }
 
-uint32 GetStateTime(TickType_t xStart){
-	return (pdTICKS_TO_MS(xTaskGetTickCount() - xStart));
-}
 
-/***************************************************
- *         Enviar nuevos valores al PSOC5
-***************************************************/
-void SendToPSOC5(uint8 data, uint16 attrHandle){
 
-  cnt_timeout_tx = TIMEOUT_TX_BLOQUE2;
-  buffer_tx_local[0] = HEADER_TX;
-  buffer_tx_local[1] = (uint8)(attrHandle >> 8);
-  buffer_tx_local[2] = (uint8)(attrHandle);
-  buffer_tx_local[3] = 1; //size
-  buffer_tx_local[4] = data;
-  controlSendToSerialLocal(buffer_tx_local, 5);
-}
 
-void SendToPSOC5(char *data, uint16 len, uint16 attrHandle){
-
-  cnt_timeout_tx = TIMEOUT_TX_BLOQUE2;
-  buffer_tx_local[0] = HEADER_TX;
-  buffer_tx_local[1] = (uint8)(attrHandle >> 8);
-  buffer_tx_local[2] = (uint8)(attrHandle);
-  buffer_tx_local[3] = len; //size
-  memcpy(&buffer_tx_local[4],data,len);
-  controlSendToSerialLocal(buffer_tx_local, len+4);
-}
 

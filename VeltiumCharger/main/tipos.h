@@ -15,6 +15,7 @@
 #define TIPOS_H
 
 #include "lwip/ip_addr.h"
+#include "Arduino.h"
 
 #define EXT_FLASH_SIZE								8*1024*1024
 #define EXT_FLASH_PAGE_SIZE							4096
@@ -85,6 +86,7 @@ typedef struct{
 } caract_measures;
 
 typedef struct{
+	uint8 hora;
 	long long actual_time;
 	long long connect_date_time;
 	long long disconnect_date_time;
@@ -201,6 +203,7 @@ typedef struct{
 	String Pass;
 	String User;
 	uint8_t Pin [4];
+	uint8_t Puk [8];
 	bool Internet = false;
 	
 	uint8_t   State;
@@ -221,6 +224,12 @@ typedef struct{
 
 	long long last_ts_app_req= 0;
 } carac_Coms;
+
+typedef struct{
+	int num_shedules;
+
+	long long last_ts_app_req= 0;
+} carac_Schedule;
 
 typedef struct{
 	
@@ -268,6 +277,7 @@ typedef struct{
 
 	uint8 ConectionTimeout=0;
 	bool ClientConnected = false;
+	bool ClientAuthenticated = false;
 
 }carac_Firebase_Configuration;
 
@@ -369,6 +379,29 @@ typedef struct{
 
 } carac_Update_Status;
 
+//Caracteristica para almacenar la configuracion del equipo
+typedef struct{
+	//Para cuando se quiera almacenar el part number
+	//String Part_Number  = "LU320111250";
+	char device_ID[12]    = {'V','C','D','1','7','0','1','0','0','0','1',0};
+	char deviceSerNum[30] = {'0'};
+	char autentication_mode[3] = {'W', 'A', 0};
+	char actualization_mode[3] = {'A', 'A', 0};
+	char policy[4] = {'A', 'L', 'L',0};
+
+	uint16_t Firmware     = 500;
+	uint16_t FirmwarePSOC = 500;
+
+	uint8  Data_cleared = 0;
+	uint8  CDP  = 0;
+	uint8  inst_current_limit = 32;
+	uint8  count_reinicios_malos = 0;
+
+	uint16 potencia_contratada1 = 32;
+	uint16 potencia_contratada2 = 32;
+	
+} carac_config;
+
 //Estados de las comunicaciones
 
 #define ETH_DHCP_ACTIVE 		0b0000000000000001
@@ -382,10 +415,12 @@ typedef struct{
 #define MED_CONECTION_LOST		0b0000000100000000
 #define MED_CONECTION_RESTAURED	0b0000001000000000
 #define MODEM_NO_SIM			0b0000010000000000
-#define MODEM_REG_GSM			0b0000100000000000
-#define MODEM_REG_LTE			0b0001000000000000
-#define MODEM_CONNECTED			0b0010000000000000
-#define MODEM_BAD_PIN 			0b0100000000000000
+#define MODEM_BAD_PIN			0b0000100000000000
+#define MODEM_CONNECTED			0b0001000000000000
+#define MODEM_BAD_PUK			0b0010000000000000
+#define MODEM_INTENTOS_0 		0b0100000000000000
+#define MODEM_INTENTOS_1 		0b1000000000000000
+#define MODEM_ENTER_PUK		 	0b1100000000000000
 
 #define ETH_BLOCK   0
 #define WIFI_BLOCK  1
@@ -726,8 +761,9 @@ typedef struct{
 #define APN_ON 							   (0x00D1u)
 
 //Caracteristica de estatus de las comunicaciones
-#define STATUS_COMS						   (0x00D3u)
+#define POLICY						   (0x00D3u)
 #define CHARGE_USER_ID					   (0x00D5u)
+
 
 //Caracteristicas no RCS (Se pueden repetir indices)
 #define MEASURES_EXTERNAL_COUNTER		   (0x00D2u)
@@ -740,6 +776,12 @@ typedef struct{
 
 #define CHARGING_GROUP_BLE_NET_DEVICES	   (0x00DFu)
 #define CHARGING_GROUP_BLE_CHARGING_GROUP  (0x00E1u)
+#define STATUS_COMS						   (0x00E3u)
+
+//Caracteristica para borrar un espacio de memoria de la flash
+#define CLEAR_FLASH_SPACE                  (0X00E5U)
+
+#define APN_PUK							   (0x00D7u)
 
 #endif
 

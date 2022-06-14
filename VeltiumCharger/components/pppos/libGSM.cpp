@@ -21,6 +21,7 @@
 #include "netif/ppp/ppp.h"
 #include "netif/ppp/pppapi.h"
 #include "../../../main/control.h"
+#include "../../../main/coms/helper_coms.h"
 
 #include "libGSM.h"
 
@@ -30,6 +31,7 @@ bool gsm_connected=false;
 extern uint8_t ConnectionState;
 extern carac_Firebase_Configuration ConfigFirebase;
 bool gsm_inicializando=false;
+uint8 IntentosRes = 0;
 
 // === GSM configuration that you can set via 'make menuconfig'. ===
 #define UART_GPIO_TX 32
@@ -466,6 +468,13 @@ static int atCmd_waitResponse(char * cmd, char *resp, char * resp1, int cmdSize,
 					#if GSM_DEBUG
 					ESP_LOGE(TAG,"AT BAD RESPONSE: [%s]", sresp);
 					#endif
+					if(strstr(cmd, "AT#PCT\r\n")){
+						if(sresp[17] < 48 || sresp[17] > 57){
+							IntentosRes = sresp[16]-48;
+						}else{
+							IntentosRes = 10;
+						}
+					}
 					res = 0;
 					break;
 				}
@@ -639,12 +648,12 @@ static void pppos_client_task(void *args)
 	xSemaphoreGive(pppos_mutex);
 
 	enableAllInitCmd();
+	Update_Status_Coms(0,MODEM_BLOCK);
 	while(1)
 	{
 		#ifdef DEBUG
 		Serial.printf("Inicialización de GSM en marcha en red LTE...\n");
 		#endif
-		Update_Status_Coms(MODEM_REG_LTE);
 		#if GSM_DEBUG
 		ESP_LOGE(TAG,"GSM initialization start");
 		#endif
@@ -680,31 +689,90 @@ static void pppos_client_task(void *args)
 					Coms.GSM.ON=false;
 				}
 				if(gsmCmdIter==5){
-					#ifdef DEBUG
-					Serial.printf("Se requiere numero PIN\n");
-					#endif
-					int i=0;
-					char sim_pin[14];
-					char output[4];
-					for(i=0;i<4;i++){
-						output[i]=Coms.GSM.Pin[i];
-					}
-					sprintf(sim_pin, "AT+CPIN=%s\r\n",output);
-
-					/************ EN CASO DE ACTIVAR PIN**********/
-					atCmd_waitResponse(sim_pin, GSM_OK_Str, NULL, sizeof("AT+CPIN=5337\r\n")-1, 5000, NULL, 0);
-					vTaskDelay(600 / portTICK_PERIOD_MS);
-					int pin=atCmd_waitResponse("AT+CPIN?\r\n", "CPIN: READY", NULL, sizeof("AT+CPIN?\r\n")-1, 5000, NULL, 0);
-					if(pin<=0){
+					int puk=atCmd_waitResponse("AT+CPIN?\r\n", "CPIN: SIM PUK", NULL, sizeof("AT+CPIN?\r\n")-1, 5000, NULL, 0);
+					if(puk<=0){
+						int pin=atCmd_waitResponse("AT+CPIN?\r\n", "CPIN: SIM PIN", NULL, sizeof("AT+CPIN?\r\n")-1, 5000, NULL, 0);
+						if(pin>0){
 						#ifdef DEBUG
-						Serial.printf("PIN incorrecto\n");
+						Serial.printf("Se requiere numero PIN\n");
 						#endif
-						Update_Status_Coms(MODEM_BAD_PIN);
-						Coms.GSM.ON=false;
+						int i=0;
+						char sim_pin[14];
+						char output[4];
+						for(i=0;i<4;i++){
+							output[i]=Coms.GSM.Pin[i];
+						}
+						sprintf(sim_pin, "AT+CPIN=%s\r\n",output);
+
+						/************ EN CASO DE ACTIVAR PIN**********/
+						atCmd_waitResponse(sim_pin, GSM_OK_Str, NULL, sizeof("AT+CPIN=5337\r\n")-1, 5000, NULL, 0);
+						vTaskDelay(600 / portTICK_PERIOD_MS);
+						int pinOk=atCmd_waitResponse("AT+CPIN?\r\n", "CPIN: READY", NULL, sizeof("AT+CPIN?\r\n")-1, 5000, NULL, 0);
+							if(pinOk<=0){
+								#ifdef DEBUG
+								Serial.printf("PIN incorrecto\n");
+								#endif
+								Update_Status_Coms(MODEM_BAD_PIN);
+								atCmd_waitResponse("AT#PCT\r\n", "PCT: READY", NULL, sizeof("AT#PCT\r\n")-1, 5000, NULL, 0);
+
+								if(atCmd_waitResponse("AT+CPIN?\r\n", "CPIN: SIM PUK", NULL, sizeof("AT+CPIN?\r\n")-1, 5000, NULL, 0)>0){
+								#ifdef DEBUG
+								Serial.printf("Se requiere numero PUK\n");
+								#endif
+								}
+
+								#ifdef DEBUG
+								Serial.printf("Intentos restantes: %i \n",IntentosRes);
+								#endif
+								switch (IntentosRes)
+								{
+								case 1:
+									Update_Status_Coms(MODEM_INTENTOS_0);
+									break;
+								case 2:
+									Update_Status_Coms(MODEM_INTENTOS_1);
+									break;
+								case 10:
+									Update_Status_Coms(MODEM_ENTER_PUK);
+									break;
+								
+								default:
+									break;
+								}
+								Coms.GSM.ON=false;
+							}
+						}
+					}else{
+							#ifdef DEBUG
+							Serial.printf("Se requiere numero PUK\n");
+							#endif
+							int i=0;
+							char sim_puk[18];
+							char output[8];
+							for(i=0;i<8;i++){
+								output[i]=Coms.GSM.Puk[i];
+							}
+							//sprintf(sim_puk, "AT+CPIN=%s\r\n",output);
+
+							/************ EN CASO DE ACTIVAR PUK**********/
+							atCmd_waitResponse("AT+CPIN=82322548,5337\r\n", GSM_OK_Str, NULL, sizeof("AT+CPIN=5337,82322548\r\n")-1, 5000, NULL, 0);
+							vTaskDelay(600 / portTICK_PERIOD_MS);
+							int pukOk=atCmd_waitResponse("AT+CPIN?\r\n", "CPIN: READY", NULL, sizeof("AT+CPIN?\r\n")-1, 5000, NULL, 0);
+							if(pukOk<=0){
+								#ifdef DEBUG
+								Serial.printf("PUK incorrecto\n");
+								#endif
+								Update_Status_Coms(MODEM_BAD_PUK);
+								atCmd_waitResponse("AT#PCT\r\n", "PCT: READY", NULL, sizeof("AT#PCT\r\n")-1, 5000, NULL, 0);
+								#ifdef DEBUG
+								Serial.printf("Intentos restantes: %i \n",IntentosRes);
+								#endif
+								
+								Coms.GSM.ON=false;
+							}
 					}
 				}
 				if(gsmCmdIter==7 && nfail==20){
-					Update_Status_Coms(MODEM_REG_GSM);
 					#ifdef DEBUG
 					Serial.printf("Cambiando a red GPRS...\n");
 					#endif
@@ -937,7 +1005,6 @@ exit:
 int ppposInit()
 {
 	gsm_inicializando=true;
-	int prueba=0;
 	if (pppos_mutex != NULL) xSemaphoreTake(pppos_mutex, PPPOSMUTEX_TIMEOUT);
 	do_pppos_connect = 1;
 	int gstat = 0;

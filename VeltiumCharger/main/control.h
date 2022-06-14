@@ -6,28 +6,29 @@
 
 /*********** Configuracion del build**************/
 
-#define USE_COMS                   //Comentar para no utilzar las comunicaciones [ Veltium lite Zero]
+//#define USE_COMS                   //Comentar para no utilzar las comunicaciones [ Veltium lite Zero]
 
 #define DEVELOPMENT				   //Comentar para pasar firmware a produccion ( Cambio de base de datos y quitar debugs)
 
 #ifdef USE_COMS
-#define CONNECTED			   //Comentar para no utilizar los grupos de potencia
+#define USE_GROUPS			   //Comentar para no utilizar los grupos de potencia
 #endif
 
 #ifdef DEVELOPMENT
 	#define DEBUG				   //Activar los distintos debugs
 	#ifdef DEBUG 
 
-		#ifdef CONNECTED
+		#ifdef USE_GROUPS
 			#define DEBUG_GROUPS       //Activar el debug de los grupos
 		#endif
 
 		#define DEBUG_BLE		   //Activar el debug del ble
+		#define DEBUG_CONFIG	   //Debugar el almacenamiento de la configuracion
 
 		#ifdef USE_COMS	
-			#define DEBUG_WIFI	   //Activar el debug del wifi
-			#define DEBUG_ETH	   //Activar el debug del ETH
-			//#define DEBUG_MEDIDOR  //Activar el debug del medidor
+			#define DEBUG_WIFI	     //Activar el debug del wifi
+			#define DEBUG_ETH	   	 //Activar el debug del ETH
+			#define DEBUG_MEDIDOR  //Activar el debug del medidor
 		#endif
 	#endif
 #endif
@@ -40,6 +41,7 @@
 	#define MAX_GROUP_SIZE 40
 	#include "coms/Wifi_Station.h"
 	#include "libGSM.h"
+	#include "coms/helper_coms.h"
 	#ifndef CONNECTED
 		#define CONNECTED
 	#endif
@@ -60,7 +62,7 @@
 #include <math.h>
 #include "SPIFFS.h"
 #include "helpers.h"
-
+#include "config.h"
 
 
 /*********** Pruebas tar.gz **************/
@@ -75,12 +77,13 @@
 #define BLE  0
 #define COMS 1
 //Prioridades FreeRTOS
-#define PRIORIDAD_LEDS     2
+#define PRIORIDAD_LEDS     1
 #define PRIORIDAD_CONTROL  4
 #define PRIORIDAD_BLE      3
 #define PRIORIDAD_FIREBASE 3
 #define PRIORIDAD_COMS	   2
-#define PRIORIDAD_MQTT     1
+#define PRIORIDAD_UART	   3
+#define PRIORIDAD_CONFIG   5
 
 // ESTADO GENERAL
 #define	ESTADO_ARRANQUE			0
@@ -141,25 +144,13 @@ void updateCharacteristic(uint8_t* data, uint16_t len, uint16_t attrHandle);
 void procesar_bloque(uint16 tipo_bloque);
 int controlSendToSerialLocal(uint8_t * data, int len);
 void UpdateCompressedTask(void *arg);
-uint8_t sendBinaryBlock ( uint8_t *data, int len );
 int controlMain(void);
-void deviceConnectInd(void);
-void deviceDisconnectInd(void);
-uint8_t isMainFwUpdateActive(void);
-uint8_t setMainFwUpdateActive(uint8_t val);
-uint8_t setAuthToken(uint8_t *data, int len);
-uint8_t authorizedOK(void);
+
 void MAIN_RESET_Write(uint8_t val);
 void controlInit(void);
 void UpdateTask(void *arg);
 void UpdateESP();
 void modifyCharacteristic(uint8* data, uint16 len, uint16 attrHandle);
-int Convert_To_Epoch(uint8* data);
-void SendToPSOC5(uint8 data, uint16 attrHandle);
-void SendToPSOC5(char *data, uint16 len, uint16 attrHandle);
-void StartGSM();
-void shutdownGSM();
-void Update_Status_Coms(uint16_t Code,uint8_t block = 0);
 
-uint32 GetStateTime(TickType_t xStart);
+
 #endif // __CONTROL_MAIN

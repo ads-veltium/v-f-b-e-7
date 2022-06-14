@@ -33,7 +33,13 @@
             "name": "FLASH",
             "color": "white",
             "singleInstance": true,
-            "command": ". /home/joel/Documents/fw-bird-esp32/SDK/esp-idf/./export.sh && cd /home/joel/Documents/firmware/fw-bird-esp32/VeltiumCharger/ && make flash -j6",
+            "command": ". /home/joel/Documents/fw-bird-esp32/SDK/esp-idf/./export.sh && cd /home/joel/Documents/fw-bird-esp32/VeltiumCharger/ && make flash -j6",
+        },
+        {
+            "name": "ERASE",
+            "color": "white",
+            "singleInstance": true,
+            "command": ". /home/joel/Documents/fw-bird-esp32/SDK/esp-idf/./export.sh && cd /home/joel/Documents/fw-bird-esp32/VeltiumCharger/ && make erase_flash -j6",
         },
 
     ]
@@ -43,6 +49,23 @@
 "files.associations": {
     "cmath": "cpp",
     "string_view": "cpp",
-    "regex": "cpp"
-}
+    "regex": "cpp",
+    "*.ipp": "cpp",
+    "*.inc": "cpp",
+    "memory_resource": "cpp",
+    "typeinfo": "cpp",
+    "cdecode.h": "c",
+    "array": "cpp",
+    "string": "cpp",
+    "ratio": "cpp",
+    "*.contiki": "cpp",
+    "*.tcc": "cpp",
+    "deque": "cpp",
+    "list": "cpp",
+    "unordered_map": "cpp",
+    "unordered_set": "cpp",
+    "vector": "cpp",
+    "random": "cpp"
+},
+"cmake.configureOnOpen": false
 }
