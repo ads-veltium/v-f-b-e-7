@@ -269,13 +269,13 @@ void controlTask(void *arg) {
 						}
 
 						if(conexion_trigger && user_index_arrived){
-							SendStatusToPSOC5(serverbleGetConnected(), dispositivo_inicializado);
+							SendStatusToPSOC5(serverbleGetConnected(), dispositivo_inicializado,0);
 							conexion_trigger=0;
 							user_index_arrived=0;
 						}
 #ifdef CONNECTED
 						else if(Iface_Con == COMS && LastUserCon != ConfigFirebase.ClientAuthenticated){
-							SendStatusToPSOC5(ConfigFirebase.ClientAuthenticated, dispositivo_inicializado);
+							SendStatusToPSOC5(ConfigFirebase.ClientAuthenticated, dispositivo_inicializado,1);
 							LastUserCon = ConfigFirebase.ClientAuthenticated;
 						}
 
