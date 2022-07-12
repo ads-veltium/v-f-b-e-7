@@ -1637,7 +1637,8 @@ void UpdateTask(void *arg){
 				if(!UpdateStatus.ESP_UpdateAvailable){
 					Serial.println("Reiniciando en 4 segundos!"); 
 					vTaskDelay(pdMS_TO_TICKS(4000));
-					MAIN_RESET_Write(0);						
+					MAIN_RESET_Write(0);
+					delay(500);						
 					ESP.restart();
 				}
 				else{
