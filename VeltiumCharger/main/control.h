@@ -8,7 +8,7 @@
 
 //#define USE_COMS                   //Comentar para no utilzar las comunicaciones [ Veltium lite Zero]
 
-#define DEVELOPMENT				   //Comentar para pasar firmware a produccion ( Cambio de base de datos y quitar debugs)
+//#define DEVELOPMENT				   //Comentar para pasar firmware a produccion ( Cambio de base de datos y quitar debugs)
 
 #ifdef USE_COMS
 #define USE_GROUPS			   //Comentar para no utilizar los grupos de potencia

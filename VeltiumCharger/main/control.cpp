@@ -94,7 +94,7 @@ uint8 HPT_estados[9][3] = {"0V", "A1", "A2", "B1", "B2", "C1", "C2", "E1", "F1"}
 #ifdef USE_COMS
 uint8 version_firmware[11] = {"VBLE2_0500"};	
 #else
-uint8 version_firmware[11] = {"VBLE0_0515"};	
+uint8 version_firmware[11] = {"VBLE0_0516"};	
 #endif
 
 uint8 PSOC5_version_firmware[11] ;		
