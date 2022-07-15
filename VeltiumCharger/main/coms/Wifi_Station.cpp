@@ -72,24 +72,6 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
                     #endif
                 }
 
-                if(++Reintentos>=7 ){
-                    #ifdef DEBUG_WIFI
-                    Serial.println("Intentado demasiadas veces, desconectando");
-                    #endif
-                    //esp_wifi_restore(); //Borrar las credenciales
-                    /*if(Coms.Provisioning){
-                        MAIN_RESET_Write(0);
-                        ESP.restart();
-                    }  */
-                    
-                    Update_Status_Coms(WIFI_BAD_CREDENTIALS);
-                    stop_wifi();
-                    Coms.Wifi.ON = 0;
-                    if(Coms.StartProvisioning){
-                        Coms.StartProvisioning = 0;
-                        wifi_prov_mgr_deinit();
-                    }
-                }
             break;
             case WIFI_EVENT_STA_CONNECTED:
                wifi_connected = true;
