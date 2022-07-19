@@ -597,6 +597,34 @@ bool ReadFirebaseParams(String Path){
           memcpy(Params.Fw_Update_mode, Lectura["fw_auto"].as<String>().c_str(),2);
           SendToPSOC5(Params.Fw_Update_mode, 2, COMS_FW_UPDATEMODE_CHAR_HANDLE);
         }
+
+        if(Params.potencia_contratada1 != Lectura["contract_power"].as<uint16>()){
+          Params.potencia_contratada1=Lectura["contract_power"].as<uint16>();
+          uint8 potencia_contr[2];
+          potencia_contr[0] = Params.potencia_contratada1;
+          potencia_contr[1] = Params.potencia_contratada1 >> 8;
+          SendToPSOC5(potencia_contr,2,DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_P1_CHAR_HANDLE);
+        }
+
+        if(Params.potencia_contratada2 != Lectura["contract_power_P2"].as<uint16>()){
+          Params.potencia_contratada2=Lectura["contract_power_P2"].as<uint16>();
+          uint8 potencia_contr_2[2];
+          potencia_contr_2[0] = Params.potencia_contratada2;
+          potencia_contr_2[1] = Params.potencia_contratada2 >> 8;
+          SendToPSOC5(potencia_contr_2,2,DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_P2_CHAR_HANDLE);
+        }
+
+        if(Params.CDP != Lectura["dpc"].as<uint8>()){
+          Params.CDP=Lectura["dpc"].as<uint8>();
+          SendToPSOC5(Params.CDP,DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE);
+        }
+
+        if(Params.inst_current_limit != Lectura["inst_curr_limit"].as<uint8>()){
+          Params.inst_current_limit=Lectura["inst_curr_limit"].as<uint8>();
+          SendToPSOC5(Params.inst_current_limit,MEASURES_INSTALATION_CURRENT_LIMIT_CHAR_HANDLE);
+        }
+
+
       }
 
 

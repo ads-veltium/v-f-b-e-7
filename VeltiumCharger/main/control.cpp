@@ -1029,28 +1029,28 @@ void procesar_bloque(uint16 tipo_bloque){
 		
 		case DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_P1_CHAR_HANDLE:{
 			modifyCharacteristic(buffer_rx_local, 2, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_P1_CHAR_HANDLE);
-			Configuracion.data.potencia_contratada1 =buffer_rx_local[0]+buffer_rx_local[1]*100;
+			Configuracion.data.potencia_contratada1 =buffer_rx_local[0]+buffer_rx_local[1]*0x100;
 			#ifdef DEBUG
 			Serial.println("Potencia contratada 1 cambiada a: ");
-			Serial.print(buffer_rx_local[0]+buffer_rx_local[1]*100);
+			Serial.println(buffer_rx_local[0]+buffer_rx_local[1]*0x100);
 			#endif
 
 			#ifdef CONNECTED
-				Params.potencia_contratada1=buffer_rx_local[0]+buffer_rx_local[1]*100;
+				Params.potencia_contratada1=buffer_rx_local[0]+buffer_rx_local[1]*0x100;
 			#endif
 		}
 		break;
 
 		case DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_P2_CHAR_HANDLE:{
 			modifyCharacteristic(buffer_rx_local, 2, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_P2_CHAR_HANDLE);
-			Configuracion.data.potencia_contratada2 =buffer_rx_local[0]+buffer_rx_local[1]*100;
+			Configuracion.data.potencia_contratada2 =buffer_rx_local[0]+buffer_rx_local[1]*0x100;
 			#ifdef DEBUG
 			Serial.println("Potencia contratada 2 cambiada a: ");
-			Serial.print(buffer_rx_local[0]+buffer_rx_local[1]*100);
+			Serial.println(buffer_rx_local[0]+buffer_rx_local[1]*0x100);
 			#endif
 
 			#ifdef CONNECTED
-				Params.potencia_contratada2=buffer_rx_local[0]+buffer_rx_local[1]*100;
+				Params.potencia_contratada2=buffer_rx_local[0]+buffer_rx_local[1]*0x100;
 			#endif
 
 		}
