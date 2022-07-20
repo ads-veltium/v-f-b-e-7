@@ -1103,6 +1103,12 @@ void procesar_bloque(uint16 tipo_bloque){
 					Params.Tipo_Sensor = 0;
 				}
 
+				if(((buffer_rx_local[0] >> 5) && 0x03) > 0){
+					Status.Photovoltaic=true;
+				}else{
+					Status.Photovoltaic=false;
+				}
+
 				if(!Params.Tipo_Sensor){
 					Coms.ETH.medidor = false;
 					Update_Status_Coms(0,MED_BLOCK);
@@ -1281,6 +1287,16 @@ void procesar_bloque(uint16 tipo_bloque){
 				printf("GSM On  %i\n", Coms.GSM.ON);
 			}
 			modifyCharacteristic(buffer_rx_local,  1, APN_ON);
+		} 
+		break;
+
+		case PHOTOVOLTAIC_TOTAL_POWER:{
+			modifyCharacteristic(buffer_rx_local, 4, PHOTOVOLTAIC_TOTAL_POWER);
+		} 
+		break;
+
+		case PHOTOVOLTAIC_NET_POWER:{
+			modifyCharacteristic(buffer_rx_local, 4, PHOTOVOLTAIC_NET_POWER);
 		} 
 		break;
 

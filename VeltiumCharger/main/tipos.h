@@ -147,6 +147,9 @@ typedef struct{
 
 	long long last_ts_app_req= 0;
 	TickType_t LastConn = 0;
+	int net_power;
+	int total_power;
+	bool Photovoltaic=false; 
 } carac_Status;
 
 typedef struct{
@@ -782,6 +785,9 @@ typedef struct{
 #define CLEAR_FLASH_SPACE                  (0X00E5U)
 
 #define APN_PUK							   (0x00D7u)
+
+#define PHOTOVOLTAIC_TOTAL_POWER           (0X00E7U)
+#define PHOTOVOLTAIC_NET_POWER             (0X00E9U)
 
 #endif
 

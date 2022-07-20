@@ -102,6 +102,11 @@ bool WriteFirebaseStatus(String Path){
     Escritura["measures_phase_C/active_power"]    = Status.MeasuresC.active_power;
     Escritura["measures_phase_C/active_energy"]   = Status.MeasuresC.active_energy;   
   }
+
+  if(Status.Photovoltaic){
+    Escritura["ext_meter/net_power"]    = Status.net_power;
+    Escritura["ext_meter/total_power"]    = Status.total_power;
+  }
   
   Escritura["error_code"] = Status.error_code;
   
