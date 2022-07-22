@@ -523,31 +523,14 @@ void Eth_Loop(){
 
                 if(Params.Tipo_Sensor){
                         uint8 buffer_contador[7] = {0};
-                        uint8 buffer_contador_pt[7] = {0}; 
-
-                        
-
-                    if(!Status.Photovoltaic){
 
                         buffer_contador[0] = ContadorExt.GatewayConectado;
                         buffer_contador[1] = (uint8)(ContadorExt.DomesticPower& 0x00FF);
                         buffer_contador[2] = (uint8)((ContadorExt.DomesticPower >> 8) & 0x00FF);
+                        buffer_contador[3] = (uint8)((ContadorExt.DomesticPower >> 16) & 0x00FF);
+                        buffer_contador[4] = (uint8)((ContadorExt.DomesticPower >> 24) & 0x00FF);
 
-                        SendToPSOC5((char*)buffer_contador,3,MEASURES_EXTERNAL_COUNTER);
-                    }else{
-
-                        buffer_contador[0] = ContadorExt.GatewayConectado;
-
-                        SendToPSOC5((char*)buffer_contador,1,MEASURES_EXTERNAL_COUNTER);
-
-                        buffer_contador_pt[1] = (uint8)(Status.total_power& 0x00FF);
-                        buffer_contador_pt[2] = (uint8)((Status.total_power >> 8) & 0x00FF);
-                        buffer_contador_pt[3] = (uint8)((Status.total_power >> 16) & 0x00FF);
-                        buffer_contador_pt[4] = (uint8)((Status.total_power >> 24) & 0x00FF);
-                    
-                        SendToPSOC5((char*)buffer_contador_pt,4,PHOTOVOLTAIC_TOTAL_POWER);
-                    }
-                    
+                        SendToPSOC5((char*)buffer_contador,5,MEASURES_EXTERNAL_COUNTER);                   
                 }
 			}
 

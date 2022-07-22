@@ -242,7 +242,7 @@ typedef struct{
 	bool 	  FirstRound       = false;
 	char      ContadorIp[15] ={"0"};
 	uint16    vueltas = 0;
-	uint16    DomesticPower;
+	int32_t    DomesticPower;
 	uint16    DomesticCurrentA;
 	uint16    DomesticCurrentB;
 	uint16    DomesticCurrentC;
