@@ -708,6 +708,8 @@ void procesar_bloque(uint16 tipo_bloque){
 				modifyCharacteristic(&buffer_rx_local[16], 2, MEASURES_INST_VOLTAGE_CHAR_HANDLE);
 				modifyCharacteristic(&buffer_rx_local[18], 2, MEASURES_ACTIVE_POWER_CHAR_HANDLE);
 				modifyCharacteristic(&buffer_rx_local[20], 4, MEASURES_ACTIVE_ENERGY_CHAR_HANDLE);
+				modifyCharacteristic(&buffer_rx_local[46], 4, PHOTOVOLTAIC_TOTAL_POWER);
+				modifyCharacteristic(&buffer_rx_local[50], 4, PHOTOVOLTAIC_NET_POWER);
 				
 					
 					Status.error_code = buffer_rx_local[13];
@@ -721,6 +723,9 @@ void procesar_bloque(uint16 tipo_bloque){
 					Status.Measures.instant_voltage   = buffer_rx_local[16] + (buffer_rx_local[17] * 0x100);
 					Status.Measures.active_power      = buffer_rx_local[18] + (buffer_rx_local[19] * 0x100);
 					Status.Measures.active_energy     = buffer_rx_local[20] + (buffer_rx_local[21] * 0x100) +(buffer_rx_local[22] * 0x1000) +(buffer_rx_local[23] * 0x10000);
+
+					Status.total_power = buffer_rx_local[46] + (buffer_rx_local[47] * 0x100) +(buffer_rx_local[48] * 0x1000) +(buffer_rx_local[49] * 0x10000);
+					Staus.net_power = buffer_rx_local[50] + (buffer_rx_local[51] * 0x100) +(buffer_rx_local[52] * 0x1000) +(buffer_rx_local[53] * 0x10000);
 					
 					Status.Trifasico= buffer_rx_local[44]==3;
 					
@@ -1290,15 +1295,6 @@ void procesar_bloque(uint16 tipo_bloque){
 		} 
 		break;
 
-		case PHOTOVOLTAIC_TOTAL_POWER:{
-			modifyCharacteristic(buffer_rx_local, 4, PHOTOVOLTAIC_TOTAL_POWER);
-		} 
-		break;
-
-		case PHOTOVOLTAIC_NET_POWER:{
-			modifyCharacteristic(buffer_rx_local, 4, PHOTOVOLTAIC_NET_POWER);
-		} 
-		break;
 
 		case GROUPS_DEVICES_PART_1:{
 			ChargingGroup.NewData = true;

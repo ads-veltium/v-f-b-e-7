@@ -97,8 +97,8 @@
 //  81 Policy                       3 RW   utf8s       CD20 XXXX 00D3                   
 //  82 charge_user_id               1 R    uint8       CD07 CC04 00D5                   
 //  83 PUK                          8 RW   uint8_array CD20 XXXX 00D7                   
-//  84 total_power                  4 R    uint32      CD20 XXXX 00E7                   
-//  85 net_power                    4 R    uint32      CD20 XXXX 00E9                   
+//  84 total_power                  4 R    32bit       CD20 XXXX 00E7                   
+//  85 net_power                    4 R    32bit       CD20 XXXX 00E9                   
 
 // table with 86 bytes
 static uint8_t table_handle_for_idx[1+RCS_MAX_IDX] = {
