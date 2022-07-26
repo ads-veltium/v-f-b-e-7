@@ -724,9 +724,22 @@ void procesar_bloque(uint16 tipo_bloque){
 					Status.Measures.active_power      = buffer_rx_local[18] + (buffer_rx_local[19] * 0x100);
 					Status.Measures.active_energy     = buffer_rx_local[20] + (buffer_rx_local[21] * 0x100) +(buffer_rx_local[22] * 0x1000) +(buffer_rx_local[23] * 0x10000);
 
-					Status.total_power = buffer_rx_local[46] + (buffer_rx_local[47] * 0x100) +(buffer_rx_local[48] * 0x1000) +(buffer_rx_local[49] * 0x10000);
-					Status.net_power = buffer_rx_local[50] + (buffer_rx_local[51] * 0x100) +(buffer_rx_local[52] * 0x1000) +(buffer_rx_local[53] * 0x10000);
+					int8_t buffer_total[4];
+					int8_t buffer_net[4];
+
+					buffer_total[0] = buffer_rx_local[46];
+					buffer_total[1] = buffer_rx_local[47];
+					buffer_total[2] = buffer_rx_local[48];
+					buffer_total[3] = buffer_rx_local[49];
+
+					buffer_net[0] = buffer_rx_local[50];
+					buffer_net[1] = buffer_rx_local[51];
+					buffer_net[2] = buffer_rx_local[52];
+					buffer_net[3] = buffer_rx_local[53];
 					
+					memcpy(&Status.total_power,buffer_total,4);
+					memcpy(&Status.net_power,buffer_net,4);
+
 					Status.Trifasico= buffer_rx_local[44]==3;
 					
 					if(Status.Trifasico){
