@@ -543,7 +543,7 @@ void procesar_bloque(uint16 tipo_bloque){
 					Params.potencia_contratada2 = buffer_rx_local[241]+buffer_rx_local[242]*0x100;
 					Params.CDP 	  =  buffer_rx_local[232];
 
-					if((buffer_rx_local[232] >> 1) && 0x01){
+					if((buffer_rx_local[232] >> 1) & 0x01){
 						Params.Tipo_Sensor    = (buffer_rx_local[232]  >> 4);
 					}
 					else{
@@ -1105,9 +1105,9 @@ void procesar_bloque(uint16 tipo_bloque){
 			
 			#ifdef CONNECTED
 				Params.CDP				  = buffer_rx_local[0];			
-				if((buffer_rx_local[0] >> 1) && 0x01){
+				if((buffer_rx_local[0] >> 1) & 0x01){
 
-					Params.Tipo_Sensor    = (buffer_rx_local[0]  >> 4);
+					Params.Tipo_Sensor    = ((buffer_rx_local[0]  >> 4) & 0x01);
 					//Bloquear la carga hasta que encontremos el medidor
 					if(Params.Tipo_Sensor){
 
@@ -1121,7 +1121,7 @@ void procesar_bloque(uint16 tipo_bloque){
 					Params.Tipo_Sensor = 0;
 				}
 
-				if(((buffer_rx_local[0] >> 5) && 0x03) > 0){
+				if(((buffer_rx_local[0] >> 5) & 0x03) > 0){
 					Status.Photovoltaic=true;
 				}else{
 					Status.Photovoltaic=false;
