@@ -549,7 +549,8 @@ void procesar_bloque(uint16 tipo_bloque){
 					else{
 						Params.Tipo_Sensor    = 0;
 					}
-					if(Params.Tipo_Sensor){
+					
+					if(Params.Tipo_Sensor && !ContadorExt.MeidorConectado){
 						Coms.ETH.medidor = true;
 						Update_Status_Coms(0,MED_BUSCANDO_GATEWAY);
 						Bloqueo_de_carga = 1;
@@ -1109,7 +1110,8 @@ void procesar_bloque(uint16 tipo_bloque){
 
 					Params.Tipo_Sensor    = ((buffer_rx_local[0]  >> 4) & 0x01);
 					//Bloquear la carga hasta que encontremos el medidor
-					if(Params.Tipo_Sensor){
+					
+					if(Params.Tipo_Sensor && !ContadorExt.MeidorConectado){
 
 						Coms.ETH.medidor = true;
 						Update_Status_Coms(0,MED_BUSCANDO_GATEWAY);
