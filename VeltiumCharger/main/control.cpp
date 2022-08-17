@@ -549,6 +549,12 @@ void procesar_bloque(uint16 tipo_bloque){
 					else{
 						Params.Tipo_Sensor    = 0;
 					}
+
+					if(((buffer_rx_local[0] >> 5) & 0x03) > 0){
+						Status.Photovoltaic=true;
+					}else{
+						Status.Photovoltaic=false;
+					}
 					
 					if(Params.Tipo_Sensor && !ContadorExt.MeidorConectado){
 						Coms.ETH.medidor = true;
