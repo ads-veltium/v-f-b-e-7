@@ -102,12 +102,10 @@ bool WriteFirebaseStatus(String Path){
     Escritura["measures_phase_C/active_power"]    = Status.MeasuresC.active_power;
     Escritura["measures_phase_C/active_energy"]   = Status.MeasuresC.active_energy;   
   }
-
   if(Status.Photovoltaic){
     Escritura["ext_meter/net_power"]    = Status.net_power;
     Escritura["ext_meter/total_power"]    = Status.total_power;
   }
-  
   Escritura["error_code"] = Status.error_code;
   
   if(Database->Send_Command(Path,&Escritura,UPDATE)){     
@@ -505,17 +503,17 @@ bool ReadFirebaseShedule(String Path){
 
     if(Database->Send_Command(Path,&Lectura, LEER)){
 
-      Schedule.num_shedules = 0;
+      Schedule.num_shedules = 100;
       String programaciones[Schedule.num_shedules];
 
       //Obtener el numero de programaciones que hay en firebase
       for(int i = 0;i< 100;i++){
         String key = i<10? "P0":"P";
         key+=String(i);
-        if(!(Lectura["programs"][key])){
+        if(!(Lectura["programs_utc"][key])){
           break;
         }
-        programaciones[i] = Lectura["programs"][key].as<String>();
+        programaciones[i] = Lectura["programs_utc"][key].as<String>();
         Schedule.num_shedules++;
       }
 
@@ -602,7 +600,6 @@ bool ReadFirebaseParams(String Path){
           memcpy(Params.Fw_Update_mode, Lectura["fw_auto"].as<String>().c_str(),2);
           SendToPSOC5(Params.Fw_Update_mode, 2, COMS_FW_UPDATEMODE_CHAR_HANDLE);
         }
-
         if(Params.potencia_contratada1 != Lectura["contract_power"].as<uint16>()){
           Params.potencia_contratada1=Lectura["contract_power"].as<uint16>();
           uint8 potencia_contr[2];
@@ -695,7 +692,7 @@ bool ReadFirebaseControl(String Path){
         Comands.stop            = Lectura["stop"]      ? true : Comands.stop;
         Comands.reset           = Lectura["reset"]     ? true : Comands.reset;
 
-        if(Comands.desired_current != Lectura["desired_current"] && !Comands.Newdata){   
+        if((Comands.desired_current != Lectura["desired_current"] && !Comands.Newdata) && Lectura["desired_current"] > 6){   
           Comands.desired_current = Lectura["desired_current"];
           Comands.Newdata = true;
         }
@@ -1308,9 +1305,9 @@ void Firebase_Conn_Task(void *args){
 
 //Helpers para la matriz de carga
 uint8_t CreateMatrix(uint16_t* inBuff, uint8_t* outBufff){
-    uint8_t matrix[7][24] = {0};
+    uint8_t sch[168] = {0};
 
-    memcpy(matrix, outBufff,168);
+    memcpy(sch, outBufff,168);
 
     //Si la programacion no está activa, volvemos
     if(inBuff[0]!= 1) return 1;
@@ -1318,26 +1315,27 @@ uint8_t CreateMatrix(uint16_t* inBuff, uint8_t* outBufff){
     //Obtenemos la potencia programada para estas horas
     uint8_t power = (inBuff[4]*0x100 + inBuff[5])/100;
 
-    //Obtenemos las horas de inicio y final
-    uint8_t init = inBuff[2];
-    uint8_t fin  = inBuff[3];
 
     //Obtener los dias de la semana
     uint8_t dias = inBuff[1];
 
     //Iterar por los dias de la semana
     for(uint8_t dia=0; dia < 7;dia++){
-
+        uint8_t mask = 1 << dia;
         //Si el dia está habilitado
-        if ((dias>>dia)&1){
-            //Iteramos por las horas activas
-            for(uint8_t hora = init;hora <= fin;hora++){
-                matrix[dia][hora]=power;
-            }
+        if ((mask & dias) !=0){
+            
+            //Obtenemos las horas de inicio y final
+            uint8_t init = (dia*24) + inBuff[2];
+            uint8_t fin  = init + deltaprogram(inBuff[2],inBuff[3]);
+
+            for(uint8_t hora = init;hora < fin;hora++){
+              sch[(hora+24)%168]=power;
+            }     
         }
     }
 
-    memcpy(outBufff,matrix,168);
+    memcpy(outBufff,sch,168);
 
     return 0;
 }
@@ -1352,6 +1350,14 @@ uint8_t hex2int(char ch){
     return -1;
 }
 
+uint8_t deltaprogram(uint8_t s, uint8_t e){
+  int d = e - s;
+  if(d<=0){
+    d+=24;
+  }
+  return d;
+}
+
 uint16_t hexChar_To_uint16_t(const uint8_t num){
     char hexCar[3];
     sprintf(hexCar, "%02X", num);
@@ -1360,7 +1366,7 @@ uint16_t hexChar_To_uint16_t(const uint8_t num){
 }
 
 void Hex_Array_To_Uint16A_Array(const char* inBuff, uint16_t* outBuff) {
-    for(int i=0; i<strlen(inBuff); i++){
+    for(int i=0; i<6; i++){
         outBuff[i] = hexChar_To_uint16_t((uint8_t)inBuff[i]);
     }
 }
