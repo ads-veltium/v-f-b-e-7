@@ -41,6 +41,7 @@ void Hex_Array_To_Uint16A_Array(const char* inBuff, uint16_t* outBuff);
 bool askForPermission = false ;
 bool givePermission = false;
 
+uint16_t PeriodoLectura = 5000;
 /*************************
  Client control functions
 *************************/
@@ -714,6 +715,13 @@ bool ReadFirebaseControl(String Path){
   return true;
 }
 
+bool ReadFirebasePeriod(){
+  Lectura.clear();
+  if(Database->Send_Command("/prod/global_vars",&Lectura, READ_FW)){
+    PeriodoLectura = Lectura["coms_period"].as<uint8>()*1000;
+  }else return false;
+  return true;
+}
 
 /*****************************************************
  *              Sistema de Actualización
@@ -749,7 +757,6 @@ bool CheckForUpdate(){
   
 #endif
 */
-  
   //Check Normal Firmware
   if(Database->Send_Command("/prod/fw/prod/",&Lectura, READ_FW)){
     String PSOC5_Ver   = Lectura["VELT2"]["verstr"].as<String>();
@@ -956,7 +963,7 @@ void Firebase_Conn_Task(void *args){
       Schedule.last_ts_app_req = Database->Get_Timestamp("/schedule/ts_app_req",&Lectura);
       
       Error_Count+=!WriteFirebaseFW("/fw/current");
-      Error_Count+=!WriteFirebaseComs("/coms"); 
+      Error_Count+=!WriteFirebaseComs("/coms");
 
 #ifdef USE_GROUPS
       if(ChargingGroup.Params.GroupActive){
@@ -1047,7 +1054,7 @@ void Firebase_Conn_Task(void *args){
           }
         }
       }
-      
+
       if(ts_app_req > Status.last_ts_app_req && !serverbleGetConnected()){
         Status.last_ts_app_req= ts_app_req;
         if(GetStateTime(Status.LastConn)> 5000){
@@ -1068,6 +1075,12 @@ void Firebase_Conn_Task(void *args){
 
     /*********************** Usuario conectado **********************/
     case USER_CONNECTED:
+
+      //Comprobar periodo de lectura
+      if(!ReadFirebasePeriod()){
+        PeriodoLectura = 5000;
+      }
+
       if(askForPermission){
         givePermission = true;
         break;
@@ -1281,7 +1294,7 @@ void Firebase_Conn_Task(void *args){
       break;
     }
     if(ConnectionState!=DISCONNECTING && delayeando == 0){
-      delay(ConfigFirebase.ClientConnected ? 150:5000);
+      delay(ConfigFirebase.ClientConnected ? 150:PeriodoLectura);
     }
     else{
       delay(delayeando);
