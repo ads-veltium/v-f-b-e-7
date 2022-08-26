@@ -1105,6 +1105,12 @@ void procesar_bloque(uint16 tipo_bloque){
 			updateTaskrunning=1;
 		} 
 		break;
+
+		case TIME_TYPE:{
+			modifyCharacteristic(buffer_rx_local[0], 1, TIME_TYPE);
+			Status.Time_Type = buffer_rx_local[0];
+		}
+		break;
 		
 		case DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE:{
 			modifyCharacteristic(buffer_rx_local, 1, DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE);
