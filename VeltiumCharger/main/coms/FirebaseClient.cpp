@@ -502,9 +502,9 @@ bool ReadFirebaseShedule(String Path){
   long long ts_app_req=Database->Get_Timestamp(Path+"/ts_app_req",&Lectura);
   if(ts_app_req > Schedule.last_ts_app_req){
     
-    if(Status.Time_Type == 'U'){
+    if(Configuracion.data.time_type == 'U'){
       ProgramString = "programs_utc";
-    }else if(Status.Time_Type == 'L'){
+    }else if(Configuracion.data.time_type == 'L'){
       ProgramString = "programs";
     }
 

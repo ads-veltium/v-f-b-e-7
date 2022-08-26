@@ -43,6 +43,9 @@ static bool operator==(const carac_config& lhs, const carac_config& rhs){
     if(memcmp(lhs.policy, rhs.policy,sizeof(lhs.policy))){
         return false;
     }
+    if(lhs.time_type != rhs.time_type){
+        return false;
+    }
     
     return true; 
 }
@@ -93,6 +96,7 @@ void Config::Carac_to_json(DynamicJsonDocument& ConfigJSON){
     ConfigJSON["policy"] = String(data.policy);
     ConfigJSON["data_cleared"] = data.Data_cleared;
     ConfigJSON["count_reinicios_malos"] = data.count_reinicios_malos;
+    ConfigJSON["time_type"] = data.time_type;
 }
 
 void Config::Json_to_carac(DynamicJsonDocument& ConfigJSON){
@@ -105,6 +109,7 @@ void Config::Json_to_carac(DynamicJsonDocument& ConfigJSON){
     data.inst_current_limit   = ConfigJSON["inst_curr_limit"].as<uint8_t>();
 
     data.CDP = ConfigJSON["CDP"].as<uint8_t>();
+    data.time_type = ConfigJSON["time_type"];
 
     memcpy(data.autentication_mode, ConfigJSON["auth_mode"].as<String>().c_str(),2);
     memcpy(data.device_ID, ConfigJSON["device_ID"].as<String>().c_str(),sizeof(data.device_ID));

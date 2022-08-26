@@ -527,13 +527,15 @@ void procesar_bloque(uint16 tipo_bloque){
 				modifyCharacteristic(&buffer_rx_local[233], 1, MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
 				modifyCharacteristic(&buffer_rx_local[234], 2, COMS_FW_UPDATEMODE_CHAR_HANDLE);		
 				modifyCharacteristic(&buffer_rx_local[241], 2, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_P2_CHAR_HANDLE);
-				modifyCharacteristic(&buffer_rx_local[243], 2, TIME_DATE_COUNTRY_CHAR_HANDLE);			
+				modifyCharacteristic(&buffer_rx_local[243], 2, TIME_DATE_COUNTRY_CHAR_HANDLE);
+				modifyCharacteristic(&buffer_rx_local[245], 1, TIME_TYPE);			
 
 				/************************ Set configuration data **********************/
 				Configuracion.data.potencia_contratada1 = buffer_rx_local[229]+buffer_rx_local[230]*0x100;
 				Configuracion.data.potencia_contratada2 = buffer_rx_local[241]+buffer_rx_local[242]*0x100;
 				Configuracion.data.inst_current_limit   = buffer_rx_local[11];	
-				Configuracion.data.CDP   = buffer_rx_local[232];		
+				Configuracion.data.CDP   = buffer_rx_local[232];
+				Configuracion.data.time_type = buffer_rx_local[245];		
 
 				#ifdef CONNECTED	
 					/************************ Set firebase Params **********************/
@@ -1107,8 +1109,8 @@ void procesar_bloque(uint16 tipo_bloque){
 		break;
 
 		case TIME_TYPE:{
-			modifyCharacteristic(buffer_rx_local[0], 1, TIME_TYPE);
-			Status.Time_Type = buffer_rx_local[0];
+			modifyCharacteristic(buffer_rx_local, 1, TIME_TYPE);
+			Configuracion.data.time_type = buffer_rx_local[0];
 		}
 		break;
 		
