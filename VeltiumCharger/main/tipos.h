@@ -150,6 +150,7 @@ typedef struct{
 	int net_power;
 	int total_power;
 	bool Photovoltaic=false; 
+	char Time_Type;
 } carac_Status;
 
 typedef struct{
@@ -402,8 +403,6 @@ typedef struct{
 
 	uint16 potencia_contratada1 = 32;
 	uint16 potencia_contratada2 = 32;
-
-	char time_type = 'U';
 	
 } carac_config;
 
