@@ -791,8 +791,6 @@ typedef struct{
 #define PHOTOVOLTAIC_TOTAL_POWER           (0X00E7U)
 #define PHOTOVOLTAIC_NET_POWER             (0X00E9U)
 
-#define TIME_TYPE				           (0X00EBU)
-
 #endif
 
 /* [] END OF FILE */

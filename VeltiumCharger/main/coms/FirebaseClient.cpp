@@ -40,7 +40,6 @@ void Hex_Array_To_Uint16A_Array(const char* inBuff, uint16_t* outBuff);
 
 bool askForPermission = false ;
 bool givePermission = false;
-String ProgramString = "programs_utc";
 
 uint16_t PeriodoLectura = 5000;
 /*************************
@@ -501,13 +500,6 @@ bool ReadFirebaseShedule(String Path){
 
   long long ts_app_req=Database->Get_Timestamp(Path+"/ts_app_req",&Lectura);
   if(ts_app_req > Schedule.last_ts_app_req){
-    
-    if(Configuracion.data.time_type == 'U'){
-      ProgramString = "programs_utc";
-    }else if(Configuracion.data.time_type == 'L'){
-      ProgramString = "programs";
-    }
-
     Lectura.clear();
 
     if(Database->Send_Command(Path,&Lectura, LEER)){
@@ -519,10 +511,10 @@ bool ReadFirebaseShedule(String Path){
       for(int i = 0;i< 100;i++){
         String key = i<10? "P0":"P";
         key+=String(i);
-        if(!(Lectura[ProgramString][key])){
+        if(!(Lectura["programs_utc"][key])){
           break;
         }
-        programaciones[i] = Lectura[ProgramString][key].as<String>();
+        programaciones[i] = Lectura["programs_utc"][key].as<String>();
         Schedule.num_shedules++;
       }
 

@@ -15,10 +15,10 @@
 extern "C" {
 #endif // __cplusplus
 
-#define RCS_MAX_IDX 86
+#define RCS_MAX_IDX 85
 #define RCS_NUM_IDX (1+RCS_MAX_IDX)
 
-#define RCS_MAX_HANDLE 0x00EB
+#define RCS_MAX_HANDLE 0x00E9
 
 #define RCS_CHR_OMNIBUS_SIZE 64
 
