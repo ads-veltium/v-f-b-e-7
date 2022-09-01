@@ -544,7 +544,7 @@ void procesar_bloque(uint16 tipo_bloque){
 					Params.CDP 	  =  buffer_rx_local[232];
 
 					if((buffer_rx_local[232] >> 1) & 0x01){
-						Params.Tipo_Sensor    = (buffer_rx_local[232]  >> 4);
+						Params.Tipo_Sensor    = (buffer_rx_local[232]  >> 4)& 0x01;
 					}
 					else{
 						Params.Tipo_Sensor    = 0;
@@ -1109,7 +1109,6 @@ void procesar_bloque(uint16 tipo_bloque){
 		case DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE:{
 			modifyCharacteristic(buffer_rx_local, 1, DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE);
 			Configuracion.data.CDP = buffer_rx_local[0];
-			
 			#ifdef CONNECTED
 				Params.CDP				  = buffer_rx_local[0];			
 				if((buffer_rx_local[0] >> 1) & 0x01){
