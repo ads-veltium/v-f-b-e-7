@@ -269,13 +269,13 @@ void controlTask(void *arg) {
 						}
 
 						if(conexion_trigger && user_index_arrived){
-							SendStatusToPSOC5(serverbleGetConnected(), dispositivo_inicializado);
+							SendStatusToPSOC5(serverbleGetConnected(), dispositivo_inicializado,0);
 							conexion_trigger=0;
 							user_index_arrived=0;
 						}
 #ifdef CONNECTED
 						else if(Iface_Con == COMS && LastUserCon != ConfigFirebase.ClientAuthenticated){
-							SendStatusToPSOC5(ConfigFirebase.ClientAuthenticated, dispositivo_inicializado);
+							SendStatusToPSOC5(ConfigFirebase.ClientAuthenticated, dispositivo_inicializado,1);
 							LastUserCon = ConfigFirebase.ClientAuthenticated;
 						}
 
@@ -543,13 +543,20 @@ void procesar_bloque(uint16 tipo_bloque){
 					Params.potencia_contratada2 = buffer_rx_local[241]+buffer_rx_local[242]*0x100;
 					Params.CDP 	  =  buffer_rx_local[232];
 
-					if((buffer_rx_local[232] >> 1) && 0x01){
-						Params.Tipo_Sensor    = (buffer_rx_local[232]  >> 4);
+					if((buffer_rx_local[232] >> 1) & 0x01){
+						Params.Tipo_Sensor    = (buffer_rx_local[232]  >> 4)& 0x01;
 					}
 					else{
 						Params.Tipo_Sensor    = 0;
 					}
-					if(Params.Tipo_Sensor){
+
+					if(((buffer_rx_local[0] >> 5) & 0x03) > 0){
+						Status.Photovoltaic=true;
+					}else{
+						Status.Photovoltaic=false;
+					}
+					
+					if(Params.Tipo_Sensor && !ContadorExt.MeidorConectado){
 						Coms.ETH.medidor = true;
 						Update_Status_Coms(0,MED_BUSCANDO_GATEWAY);
 						Bloqueo_de_carga = 1;
@@ -708,6 +715,8 @@ void procesar_bloque(uint16 tipo_bloque){
 				modifyCharacteristic(&buffer_rx_local[16], 2, MEASURES_INST_VOLTAGE_CHAR_HANDLE);
 				modifyCharacteristic(&buffer_rx_local[18], 2, MEASURES_ACTIVE_POWER_CHAR_HANDLE);
 				modifyCharacteristic(&buffer_rx_local[20], 4, MEASURES_ACTIVE_ENERGY_CHAR_HANDLE);
+				modifyCharacteristic(&buffer_rx_local[46], 4, PHOTOVOLTAIC_TOTAL_POWER);
+				modifyCharacteristic(&buffer_rx_local[50], 4, PHOTOVOLTAIC_NET_POWER);
 				
 					
 					Status.error_code = buffer_rx_local[13];
@@ -721,7 +730,23 @@ void procesar_bloque(uint16 tipo_bloque){
 					Status.Measures.instant_voltage   = buffer_rx_local[16] + (buffer_rx_local[17] * 0x100);
 					Status.Measures.active_power      = buffer_rx_local[18] + (buffer_rx_local[19] * 0x100);
 					Status.Measures.active_energy     = buffer_rx_local[20] + (buffer_rx_local[21] * 0x100) +(buffer_rx_local[22] * 0x1000) +(buffer_rx_local[23] * 0x10000);
+
+					int8_t buffer_total[4];
+					int8_t buffer_net[4];
+
+					buffer_total[0] = buffer_rx_local[46];
+					buffer_total[1] = buffer_rx_local[47];
+					buffer_total[2] = buffer_rx_local[48];
+					buffer_total[3] = buffer_rx_local[49];
+
+					buffer_net[0] = buffer_rx_local[50];
+					buffer_net[1] = buffer_rx_local[51];
+					buffer_net[2] = buffer_rx_local[52];
+					buffer_net[3] = buffer_rx_local[53];
 					
+					memcpy(&Status.total_power,buffer_total,4);
+					memcpy(&Status.net_power,buffer_net,4);
+
 					Status.Trifasico= buffer_rx_local[44]==3;
 					
 					if(Status.Trifasico){
@@ -1029,28 +1054,28 @@ void procesar_bloque(uint16 tipo_bloque){
 		
 		case DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_P1_CHAR_HANDLE:{
 			modifyCharacteristic(buffer_rx_local, 2, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_P1_CHAR_HANDLE);
-			Configuracion.data.potencia_contratada1 =buffer_rx_local[0]+buffer_rx_local[1]*100;
+			Configuracion.data.potencia_contratada1 =buffer_rx_local[0]+buffer_rx_local[1]*0x100;
 			#ifdef DEBUG
 			Serial.println("Potencia contratada 1 cambiada a: ");
-			Serial.print(buffer_rx_local[0]+buffer_rx_local[1]*100);
+			Serial.println(buffer_rx_local[0]+buffer_rx_local[1]*0x100);
 			#endif
 
 			#ifdef CONNECTED
-				Params.potencia_contratada1=buffer_rx_local[0]+buffer_rx_local[1]*100;
+				Params.potencia_contratada1=buffer_rx_local[0]+buffer_rx_local[1]*0x100;
 			#endif
 		}
 		break;
 
 		case DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_P2_CHAR_HANDLE:{
 			modifyCharacteristic(buffer_rx_local, 2, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_P2_CHAR_HANDLE);
-			Configuracion.data.potencia_contratada2 =buffer_rx_local[0]+buffer_rx_local[1]*100;
+			Configuracion.data.potencia_contratada2 =buffer_rx_local[0]+buffer_rx_local[1]*0x100;
 			#ifdef DEBUG
 			Serial.println("Potencia contratada 2 cambiada a: ");
-			Serial.print(buffer_rx_local[0]+buffer_rx_local[1]*100);
+			Serial.println(buffer_rx_local[0]+buffer_rx_local[1]*0x100);
 			#endif
 
 			#ifdef CONNECTED
-				Params.potencia_contratada2=buffer_rx_local[0]+buffer_rx_local[1]*100;
+				Params.potencia_contratada2=buffer_rx_local[0]+buffer_rx_local[1]*0x100;
 			#endif
 
 		}
@@ -1080,18 +1105,18 @@ void procesar_bloque(uint16 tipo_bloque){
 			updateTaskrunning=1;
 		} 
 		break;
-		
+				
 		case DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE:{
 			modifyCharacteristic(buffer_rx_local, 1, DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE);
 			Configuracion.data.CDP = buffer_rx_local[0];
-			
 			#ifdef CONNECTED
 				Params.CDP				  = buffer_rx_local[0];			
-				if((buffer_rx_local[0] >> 1) && 0x01){
+				if((buffer_rx_local[0] >> 1) & 0x01){
 
-					Params.Tipo_Sensor    = (buffer_rx_local[0]  >> 4);
+					Params.Tipo_Sensor    = ((buffer_rx_local[0]  >> 4) & 0x01);
 					//Bloquear la carga hasta que encontremos el medidor
-					if(Params.Tipo_Sensor){
+					
+					if(Params.Tipo_Sensor && !ContadorExt.MeidorConectado){
 
 						Coms.ETH.medidor = true;
 						Update_Status_Coms(0,MED_BUSCANDO_GATEWAY);
@@ -1101,6 +1126,12 @@ void procesar_bloque(uint16 tipo_bloque){
 				}
 				else{
 					Params.Tipo_Sensor = 0;
+				}
+
+				if(((buffer_rx_local[0] >> 5) & 0x03) > 0){
+					Status.Photovoltaic=true;
+				}else{
+					Status.Photovoltaic=false;
 				}
 
 				if(!Params.Tipo_Sensor){
@@ -1283,6 +1314,7 @@ void procesar_bloque(uint16 tipo_bloque){
 			modifyCharacteristic(buffer_rx_local,  1, APN_ON);
 		} 
 		break;
+
 
 		case GROUPS_DEVICES_PART_1:{
 			ChargingGroup.NewData = true;

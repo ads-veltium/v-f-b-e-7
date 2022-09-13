@@ -72,24 +72,6 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
                     #endif
                 }
 
-                if(++Reintentos>=7 ){
-                    #ifdef DEBUG_WIFI
-                    Serial.println("Intentado demasiadas veces, desconectando");
-                    #endif
-                    //esp_wifi_restore(); //Borrar las credenciales
-                    /*if(Coms.Provisioning){
-                        MAIN_RESET_Write(0);
-                        ESP.restart();
-                    }  */
-                    
-                    Update_Status_Coms(WIFI_BAD_CREDENTIALS);
-                    stop_wifi();
-                    Coms.Wifi.ON = 0;
-                    if(Coms.StartProvisioning){
-                        Coms.StartProvisioning = 0;
-                        wifi_prov_mgr_deinit();
-                    }
-                }
             break;
             case WIFI_EVENT_STA_CONNECTED:
                wifi_connected = true;
@@ -540,13 +522,15 @@ void Eth_Loop(){
 				Counter.parse();
 
                 if(Params.Tipo_Sensor){
-                    uint8 buffer_contador[7] = {0}; 
-                
-                    buffer_contador[0] = ContadorExt.GatewayConectado;
-                    buffer_contador[1] = (uint8)(ContadorExt.DomesticPower& 0x00FF);
-                    buffer_contador[2] = (uint8)((ContadorExt.DomesticPower >> 8) & 0x00FF);
+                        uint8 buffer_contador[7] = {0};
 
-                    SendToPSOC5((char*)buffer_contador,3,MEASURES_EXTERNAL_COUNTER);
+                        buffer_contador[0] = ContadorExt.GatewayConectado;
+                        buffer_contador[1] = (uint8)(ContadorExt.DomesticPower& 0x00FF);
+                        buffer_contador[2] = (uint8)((ContadorExt.DomesticPower >> 8) & 0x00FF);
+                        buffer_contador[3] = (uint8)((ContadorExt.DomesticPower >> 16) & 0x00FF);
+                        buffer_contador[4] = (uint8)((ContadorExt.DomesticPower >> 24) & 0x00FF);
+
+                        SendToPSOC5((char*)buffer_contador,5,MEASURES_EXTERNAL_COUNTER);                   
                 }
 			}
 
