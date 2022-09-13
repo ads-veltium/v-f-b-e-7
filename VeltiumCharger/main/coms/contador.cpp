@@ -109,7 +109,7 @@ void Contador::parse(){
         ContadorExt.DomesticPower = 0;
     }
 
-    uint16_t medida_dom = 0;
+    int32_t medida_dom = 0;
     if(medida.indexOf("k W")>0){
         medida_dom = medida.toFloat()*1000;
     }

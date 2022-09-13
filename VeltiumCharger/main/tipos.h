@@ -147,6 +147,10 @@ typedef struct{
 
 	long long last_ts_app_req= 0;
 	TickType_t LastConn = 0;
+	int net_power;
+	int total_power;
+	bool Photovoltaic=false; 
+	char Time_Type;
 } carac_Status;
 
 typedef struct{
@@ -239,7 +243,7 @@ typedef struct{
 	bool 	  FirstRound       = false;
 	char      ContadorIp[15] ={"0"};
 	uint16    vueltas = 0;
-	uint16    DomesticPower;
+	int32_t    DomesticPower;
 	uint16    DomesticCurrentA;
 	uint16    DomesticCurrentB;
 	uint16    DomesticCurrentC;
@@ -782,6 +786,9 @@ typedef struct{
 #define CLEAR_FLASH_SPACE                  (0X00E5U)
 
 #define APN_PUK							   (0x00D7u)
+
+#define PHOTOVOLTAIC_TOTAL_POWER           (0X00E7U)
+#define PHOTOVOLTAIC_NET_POWER             (0X00E9U)
 
 #endif
 

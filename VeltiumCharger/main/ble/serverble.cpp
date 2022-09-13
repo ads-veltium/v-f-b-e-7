@@ -733,20 +733,22 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 			
 			uint32_t checksum=crc32(partSize, payload,0xFFFFFFFFUL);
 
-			if(checksum!= partCRC32){
-				successCode = 0x00000002;
-				serverbleNotCharacteristic((uint8_t*)&successCode, sizeof(successCode), FWUPDATE_BIRD_DATA_PSEUDO_CHAR_HANDLE);
-				delete[] payload;
-				if(UpdateType == VELT_UPDATE){
-					SPIFFS.end();
-					UpdateFile.close();
+			if(!Testing){
+				if(checksum!= partCRC32){
+					successCode = 0x00000002;
+					serverbleNotCharacteristic((uint8_t*)&successCode, sizeof(successCode), FWUPDATE_BIRD_DATA_PSEUDO_CHAR_HANDLE);
+					delete[] payload;
+					if(UpdateType == VELT_UPDATE){
+						SPIFFS.end();
+						UpdateFile.close();
+					}
+					else{
+						Update.end();
+					}
+					UpdateStatus.DescargandoArchivo = false;
+					return;
 				}
-				else{
-					Update.end();
-				}
-				UpdateStatus.DescargandoArchivo = false;
-				return;
-			}
+			}	
 		
 
 			//Escribir los datos en la actualizacion

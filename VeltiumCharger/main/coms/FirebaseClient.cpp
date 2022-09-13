@@ -41,6 +41,7 @@ void Hex_Array_To_Uint16A_Array(const char* inBuff, uint16_t* outBuff);
 bool askForPermission = false ;
 bool givePermission = false;
 
+uint16_t PeriodoLectura = 5000;
 /*************************
  Client control functions
 *************************/
@@ -102,6 +103,9 @@ bool WriteFirebaseStatus(String Path){
     Escritura["measures_phase_C/active_power"]    = Status.MeasuresC.active_power;
     Escritura["measures_phase_C/active_energy"]   = Status.MeasuresC.active_energy;   
   }
+  
+    Escritura["ext_meter/net_power"]    = Status.net_power;
+    Escritura["ext_meter/total_power"]    = Status.total_power;
   
   Escritura["error_code"] = Status.error_code;
   
@@ -500,17 +504,17 @@ bool ReadFirebaseShedule(String Path){
 
     if(Database->Send_Command(Path,&Lectura, LEER)){
 
-      Schedule.num_shedules = 0;
+      Schedule.num_shedules = 100;
       String programaciones[Schedule.num_shedules];
 
       //Obtener el numero de programaciones que hay en firebase
       for(int i = 0;i< 100;i++){
         String key = i<10? "P0":"P";
         key+=String(i);
-        if(!(Lectura["programs"][key])){
+        if(!(Lectura["programs_utc"][key])){
           break;
         }
-        programaciones[i] = Lectura["programs"][key].as<String>();
+        programaciones[i] = Lectura["programs_utc"][key].as<String>();
         Schedule.num_shedules++;
       }
 
@@ -597,6 +601,33 @@ bool ReadFirebaseParams(String Path){
           memcpy(Params.Fw_Update_mode, Lectura["fw_auto"].as<String>().c_str(),2);
           SendToPSOC5(Params.Fw_Update_mode, 2, COMS_FW_UPDATEMODE_CHAR_HANDLE);
         }
+        if(Params.potencia_contratada1 != Lectura["contract_power"].as<uint16>()){
+          Params.potencia_contratada1=Lectura["contract_power"].as<uint16>();
+          uint8 potencia_contr[2];
+          potencia_contr[0] = Params.potencia_contratada1;
+          potencia_contr[1] = Params.potencia_contratada1 >> 8;
+          SendToPSOC5(potencia_contr,2,DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_P1_CHAR_HANDLE);
+        }
+
+        if(Params.potencia_contratada2 != Lectura["contract_power_P2"].as<uint16>()){
+          Params.potencia_contratada2=Lectura["contract_power_P2"].as<uint16>();
+          uint8 potencia_contr_2[2];
+          potencia_contr_2[0] = Params.potencia_contratada2;
+          potencia_contr_2[1] = Params.potencia_contratada2 >> 8;
+          SendToPSOC5(potencia_contr_2,2,DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_P2_CHAR_HANDLE);
+        }
+
+        if(Params.CDP != Lectura["dpc"].as<uint8>()){
+          Params.CDP=Lectura["dpc"].as<uint8>();
+          SendToPSOC5(Params.CDP,DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE);
+        }
+
+        if(Params.inst_current_limit != Lectura["inst_curr_limit"].as<uint8>()){
+          Params.inst_current_limit=Lectura["inst_curr_limit"].as<uint8>();
+          SendToPSOC5(Params.inst_current_limit,MEASURES_INSTALATION_CURRENT_LIMIT_CHAR_HANDLE);
+        }
+
+
       }
 
 
@@ -662,7 +693,7 @@ bool ReadFirebaseControl(String Path){
         Comands.stop            = Lectura["stop"]      ? true : Comands.stop;
         Comands.reset           = Lectura["reset"]     ? true : Comands.reset;
 
-        if(Comands.desired_current != Lectura["desired_current"] && !Comands.Newdata){   
+        if((Comands.desired_current != Lectura["desired_current"] && !Comands.Newdata) && Lectura["desired_current"] > 6){   
           Comands.desired_current = Lectura["desired_current"];
           Comands.Newdata = true;
         }
@@ -684,6 +715,13 @@ bool ReadFirebaseControl(String Path){
   return true;
 }
 
+bool ReadFirebasePeriod(){
+  Lectura.clear();
+  if(Database->Send_Command("/prod/global_vars",&Lectura, READ_FW)){
+    PeriodoLectura = Lectura["coms_period"].as<uint8>()*1000;
+  }else return false;
+  return true;
+}
 
 /*****************************************************
  *              Sistema de Actualización
@@ -719,7 +757,6 @@ bool CheckForUpdate(){
   
 #endif
 */
-  
   //Check Normal Firmware
   if(Database->Send_Command("/prod/fw/prod/",&Lectura, READ_FW)){
     String PSOC5_Ver   = Lectura["VELT2"]["verstr"].as<String>();
@@ -926,7 +963,7 @@ void Firebase_Conn_Task(void *args){
       Schedule.last_ts_app_req = Database->Get_Timestamp("/schedule/ts_app_req",&Lectura);
       
       Error_Count+=!WriteFirebaseFW("/fw/current");
-      Error_Count+=!WriteFirebaseComs("/coms"); 
+      Error_Count+=!WriteFirebaseComs("/coms");
 
 #ifdef USE_GROUPS
       if(ChargingGroup.Params.GroupActive){
@@ -1017,7 +1054,7 @@ void Firebase_Conn_Task(void *args){
           }
         }
       }
-      
+
       if(ts_app_req > Status.last_ts_app_req && !serverbleGetConnected()){
         Status.last_ts_app_req= ts_app_req;
         if(GetStateTime(Status.LastConn)> 5000){
@@ -1038,6 +1075,12 @@ void Firebase_Conn_Task(void *args){
 
     /*********************** Usuario conectado **********************/
     case USER_CONNECTED:
+
+      //Comprobar periodo de lectura
+      if(!ReadFirebasePeriod()){
+        PeriodoLectura = 5000;
+      }
+
       if(askForPermission){
         givePermission = true;
         break;
@@ -1251,7 +1294,7 @@ void Firebase_Conn_Task(void *args){
       break;
     }
     if(ConnectionState!=DISCONNECTING && delayeando == 0){
-      delay(ConfigFirebase.ClientConnected ? 150:5000);
+      delay(ConfigFirebase.ClientConnected ? 150:PeriodoLectura);
     }
     else{
       delay(delayeando);
@@ -1275,9 +1318,9 @@ void Firebase_Conn_Task(void *args){
 
 //Helpers para la matriz de carga
 uint8_t CreateMatrix(uint16_t* inBuff, uint8_t* outBufff){
-    uint8_t matrix[7][24] = {0};
+    uint8_t sch[168] = {0};
 
-    memcpy(matrix, outBufff,168);
+    memcpy(sch, outBufff,168);
 
     //Si la programacion no está activa, volvemos
     if(inBuff[0]!= 1) return 1;
@@ -1285,26 +1328,27 @@ uint8_t CreateMatrix(uint16_t* inBuff, uint8_t* outBufff){
     //Obtenemos la potencia programada para estas horas
     uint8_t power = (inBuff[4]*0x100 + inBuff[5])/100;
 
-    //Obtenemos las horas de inicio y final
-    uint8_t init = inBuff[2];
-    uint8_t fin  = inBuff[3];
 
     //Obtener los dias de la semana
     uint8_t dias = inBuff[1];
 
     //Iterar por los dias de la semana
     for(uint8_t dia=0; dia < 7;dia++){
-
+        uint8_t mask = 1 << dia;
         //Si el dia está habilitado
-        if ((dias>>dia)&1){
-            //Iteramos por las horas activas
-            for(uint8_t hora = init;hora <= fin;hora++){
-                matrix[dia][hora]=power;
-            }
+        if ((mask & dias) !=0){
+            
+            //Obtenemos las horas de inicio y final
+            uint8_t init = (dia*24) + inBuff[2];
+            uint8_t fin  = init + deltaprogram(inBuff[2],inBuff[3]);
+
+            for(uint8_t hora = init;hora < fin;hora++){
+              sch[(hora+24)%168]=power;
+            }     
         }
     }
 
-    memcpy(outBufff,matrix,168);
+    memcpy(outBufff,sch,168);
 
     return 0;
 }
@@ -1319,6 +1363,14 @@ uint8_t hex2int(char ch){
     return -1;
 }
 
+uint8_t deltaprogram(uint8_t s, uint8_t e){
+  int d = e - s;
+  if(d<=0){
+    d+=24;
+  }
+  return d;
+}
+
 uint16_t hexChar_To_uint16_t(const uint8_t num){
     char hexCar[3];
     sprintf(hexCar, "%02X", num);
@@ -1327,7 +1379,7 @@ uint16_t hexChar_To_uint16_t(const uint8_t num){
 }
 
 void Hex_Array_To_Uint16A_Array(const char* inBuff, uint16_t* outBuff) {
-    for(int i=0; i<strlen(inBuff); i++){
+    for(int i=0; i<6; i++){
         outBuff[i] = hexChar_To_uint16_t((uint8_t)inBuff[i]);
     }
 }
