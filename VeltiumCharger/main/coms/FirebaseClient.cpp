@@ -774,12 +774,12 @@ bool CheckForUpdate(){
 */
   //Check Normal Firmware
   if(Database->Send_Command("/prod/fw/prod/",&Lectura, READ_FW)){
-    String PSOC5_Ver   = Lectura["VELT2"]["verstr"].as<String>();
+    String PSOC5_Ver   = Lectura[ParseFirmwareModel((char *)(PSOC5_version_firmware))]["verstr"].as<String>();
     uint16 VELT_int_Version=ParseFirmwareVersion(PSOC5_Ver);
 
     if(VELT_int_Version>Configuracion.data.FirmwarePSOC){
       UpdateStatus.PSOC5_UpdateAvailable= true;
-      UpdateStatus.PSOC_url = Lectura["VELT2"]["url"].as<String>();
+      UpdateStatus.PSOC_url = Lectura[ParseFirmwareModel((char *)(PSOC5_version_firmware))]["url"].as<String>();
       update = true;
     }    
 
