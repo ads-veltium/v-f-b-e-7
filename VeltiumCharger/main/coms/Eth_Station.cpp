@@ -51,6 +51,9 @@ void BuscarContador_Task(void *args){
 
     Cliente_HTTP Cliente("http://192.168.1.1", 1000);
     Cliente.begin();
+    #ifdef DEBUG_ETH
+       Serial.println("Empezamos busqueda de medidor.");
+    #endif
     Update_Status_Coms(MED_BUSCANDO_GATEWAY);
     while(!TopeSup || !TopeInf){
         if(NextOne){    
