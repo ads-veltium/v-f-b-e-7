@@ -221,6 +221,19 @@ bool WriteFirebaseFW(String Path){
   return false;
 }
 
+bool WriteInitTimestamp(String Path){
+  DynamicJsonDocument Escritura(2048);
+  Escritura.clear();
+
+  if(Database->Send_Command(Path,&Escritura,UPDATE)){     
+    if(Database->Send_Command(Path+"/ts_dev_ack",&Escritura,TIMESTAMP)){
+      return true;
+    }
+  }
+
+  return false;
+}
+
 bool WriteFirebasegroups(String Path){
     DynamicJsonDocument Escritura(2048);
     Escritura.clear();
@@ -964,6 +977,11 @@ void Firebase_Conn_Task(void *args){
       
       Error_Count+=!WriteFirebaseFW("/fw/current");
       Error_Count+=!WriteFirebaseComs("/coms");
+
+      if(Status.ts_inicio){
+        Error_Count+=!WriteInitTimestamp("/ts_last_init");
+        Status.ts_inicio = false;
+      }
 
 #ifdef USE_GROUPS
       if(ChargingGroup.Params.GroupActive){

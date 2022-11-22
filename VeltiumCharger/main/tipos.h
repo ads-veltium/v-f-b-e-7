@@ -151,6 +151,7 @@ typedef struct{
 	int total_power;
 	bool Photovoltaic=false; 
 	char Time_Type;
+	bool ts_inicio=true;
 } carac_Status;
 
 typedef struct{
