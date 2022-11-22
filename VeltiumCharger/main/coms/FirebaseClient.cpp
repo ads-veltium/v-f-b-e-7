@@ -18,6 +18,7 @@ extern carac_Coms                   Coms;
 extern carac_Schedule               Schedule;
 
 extern uint8 user_index;
+extern uint8 PSOC5_version_firmware[11] ;	
 
 #ifdef USE_GROUPS
 extern carac_group                  ChargingGroup;
@@ -204,13 +205,14 @@ bool WriteFirebaseFW(String Path){
   DynamicJsonDocument Escritura(2048);
   Escritura.clear();
 
+
   if(Configuracion.data.Firmware < 1000){
     Escritura["VBLE2"] = "VBLE2_0"+String(Configuracion.data.Firmware);
-    Escritura["VELT2"] = "VELT2_0"+String(Configuracion.data.FirmwarePSOC);
+    Escritura[ParseFirmwareModel((char *)(PSOC5_version_firmware))] = PSOC5_version_firmware;
   }
   else{
     Escritura["VBLE2"] = "VBLE2_"+String(Configuracion.data.Firmware);
-    Escritura["VELT2"] = "VELT2_"+String(Configuracion.data.FirmwarePSOC);
+    Escritura[ParseFirmwareModel((char *)(PSOC5_version_firmware))] = PSOC5_version_firmware;
   }
 
 
