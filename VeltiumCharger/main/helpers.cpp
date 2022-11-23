@@ -189,9 +189,15 @@ uint8_t getMainFwUpdateActive (){
 }
 
 //----------------------------------------------------------------------------
-uint16 ParseFirmwareVersion(String Texto){
+uint16 ParseFirmwareVersion(String Texto){ //SACA EL NÚMERO DE LA VERSIÓN
   String sub = Texto.substring(6, 10); 
   return(sub.toInt());
+}
+
+
+String ParseFirmwareModel(String Texto){ //SACA VELTX
+  String sub = Texto.substring(0, 5); 
+  return(sub);
 }
 //********************Funciones privadas no accessibles desde fuera***********************************/
 int controlSendToSerialLocal ( uint8_t * data, int len ){

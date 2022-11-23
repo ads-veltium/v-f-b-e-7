@@ -38,6 +38,7 @@ uint8_t getMainFwUpdateActive ();
 
 //Extraer el numero de version de un string
 uint16 ParseFirmwareVersion(String Texto);
+String ParseFirmwareModel(String Texto);
 
 /***********************************************************
 		    Convertir fecha a timestamp epoch

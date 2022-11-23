@@ -18,6 +18,7 @@ extern carac_Coms                   Coms;
 extern carac_Schedule               Schedule;
 
 extern uint8 user_index;
+extern uint8 PSOC5_version_firmware[11] ;	
 
 #ifdef USE_GROUPS
 extern carac_group                  ChargingGroup;
@@ -204,18 +205,32 @@ bool WriteFirebaseFW(String Path){
   DynamicJsonDocument Escritura(2048);
   Escritura.clear();
 
+
   if(Configuracion.data.Firmware < 1000){
     Escritura["VBLE2"] = "VBLE2_0"+String(Configuracion.data.Firmware);
-    Escritura["VELT2"] = "VELT2_0"+String(Configuracion.data.FirmwarePSOC);
+    Escritura[ParseFirmwareModel((char *)(PSOC5_version_firmware))] = PSOC5_version_firmware;
   }
   else{
     Escritura["VBLE2"] = "VBLE2_"+String(Configuracion.data.Firmware);
-    Escritura["VELT2"] = "VELT2_"+String(Configuracion.data.FirmwarePSOC);
+    Escritura[ParseFirmwareModel((char *)(PSOC5_version_firmware))] = PSOC5_version_firmware;
   }
 
 
   if(Database->Send_Command(Path,&Escritura,UPDATE)){
     return true;
+  }
+
+  return false;
+}
+
+bool WriteInitTimestamp(String Path){
+  DynamicJsonDocument Escritura(2048);
+  Escritura.clear();
+
+  if(Database->Send_Command(Path,&Escritura,UPDATE)){     
+    if(Database->Send_Command(Path+"/ts_dev_ack",&Escritura,TIMESTAMP)){
+      return true;
+    }
   }
 
   return false;
@@ -759,12 +774,12 @@ bool CheckForUpdate(){
 */
   //Check Normal Firmware
   if(Database->Send_Command("/prod/fw/prod/",&Lectura, READ_FW)){
-    String PSOC5_Ver   = Lectura["VELT2"]["verstr"].as<String>();
+    String PSOC5_Ver   = Lectura[ParseFirmwareModel((char *)(PSOC5_version_firmware))]["verstr"].as<String>();
     uint16 VELT_int_Version=ParseFirmwareVersion(PSOC5_Ver);
 
     if(VELT_int_Version>Configuracion.data.FirmwarePSOC){
       UpdateStatus.PSOC5_UpdateAvailable= true;
-      UpdateStatus.PSOC_url = Lectura["VELT2"]["url"].as<String>();
+      UpdateStatus.PSOC_url = Lectura[ParseFirmwareModel((char *)(PSOC5_version_firmware))]["url"].as<String>();
       update = true;
     }    
 
@@ -964,6 +979,11 @@ void Firebase_Conn_Task(void *args){
       
       Error_Count+=!WriteFirebaseFW("/fw/current");
       Error_Count+=!WriteFirebaseComs("/coms");
+
+      if(Status.ts_inicio){
+        Error_Count+=!WriteInitTimestamp("/ts_last_init");
+        Status.ts_inicio = false;
+      }
 
 #ifdef USE_GROUPS
       if(ChargingGroup.Params.GroupActive){
