@@ -28,7 +28,7 @@ void SendToPSOC5(char *data, uint16 len, uint16 attrHandle);
 void SendToPSOC5(uint8 *data, uint16 len, uint16 attrHandle);
 
 //Caso especial para enviar el status al psoc5
-void SendStatusToPSOC5(uint8_t connected, uint8_t inicializado);
+void SendStatusToPSOC5(uint8_t connected, uint8_t inicializado, uint8_t comm_type);
 
 //Caso especial para enviar firmware al psoc5
 uint8_t sendBinaryBlock ( uint8_t *data, int len );
@@ -38,6 +38,7 @@ uint8_t getMainFwUpdateActive ();
 
 //Extraer el numero de version de un string
 uint16 ParseFirmwareVersion(String Texto);
+String ParseFirmwareModel(String Texto);
 
 /***********************************************************
 		    Convertir fecha a timestamp epoch

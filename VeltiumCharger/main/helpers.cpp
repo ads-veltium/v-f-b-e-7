@@ -153,17 +153,18 @@ void SendToPSOC5(char *data, uint16 len, uint16 attrHandle){
   controlSendToSerialLocal(buffer_tx_local, len+4);
 }
 
-void SendStatusToPSOC5(uint8_t connected, uint8_t inicializado){
+void SendStatusToPSOC5(uint8_t connected, uint8_t inicializado, uint8_t comm_type){
 
   uint8 buffer_tx_local[6];
   buffer_tx_local[0] = HEADER_TX;
   buffer_tx_local[1] = (uint8)(BLOQUE_STATUS >> 8);
   buffer_tx_local[2] = (uint8)(BLOQUE_STATUS);
-  buffer_tx_local[3] = 2; //size
+  buffer_tx_local[3] = 3; //size
   buffer_tx_local[4] = connected;
   buffer_tx_local[5] = inicializado;
+  buffer_tx_local[6] = comm_type;
   
-  controlSendToSerialLocal(buffer_tx_local, 6);
+  controlSendToSerialLocal(buffer_tx_local, 7);
 }
 
 uint8_t sendBinaryBlock ( uint8_t *data, int len ){
@@ -188,9 +189,15 @@ uint8_t getMainFwUpdateActive (){
 }
 
 //----------------------------------------------------------------------------
-uint16 ParseFirmwareVersion(String Texto){
+uint16 ParseFirmwareVersion(String Texto){ //SACA EL NÚMERO DE LA VERSIÓN
   String sub = Texto.substring(6, 10); 
   return(sub.toInt());
+}
+
+
+String ParseFirmwareModel(String Texto){ //SACA VELTX
+  String sub = Texto.substring(0, 5); 
+  return(sub);
 }
 //********************Funciones privadas no accessibles desde fuera***********************************/
 int controlSendToSerialLocal ( uint8_t * data, int len ){
