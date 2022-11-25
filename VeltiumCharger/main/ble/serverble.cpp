@@ -433,6 +433,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 				UpdateStatus.DescargandoArchivo=1;
 				if(strstr (signature,"VBLE")){
 					UpdateType= VBLE_UPDATE;
+					Update.end();
 					#ifdef DEBUG_BLE
 					Serial.println("Updating VBLE");
 					#endif			
@@ -449,6 +450,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 					UpdateType= VELT_UPDATE;				
 
 					SPIFFS.end();
+					UpdateFile.close();
 					if(!SPIFFS.begin(1,"/spiffs",1,"PSOC5")){
 						SPIFFS.end();					
 						SPIFFS.begin(1,"/spiffs",1,"PSOC5");
