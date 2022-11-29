@@ -171,11 +171,6 @@ bool WriteFirebaseComs(String Path){
     Escritura["eth/gateway"]  = ip4addr_ntoa(&Coms.ETH.Gateway);
     Escritura["eth/mask"]     = ip4addr_ntoa(&Coms.ETH.Mask);
   }
-
-  #ifdef USE_GSM
-    Comms_Json.set("modem/apn",Coms.GSM.APN);
-    Comms_Json.set("modem/pass",Coms.GSM.Pass);
-  #endif
   
   if(Database->Send_Command(Path,&Escritura,UPDATE)){     
     if(Database->Send_Command(Path+"/ts_dev_ack",&Escritura,TIMESTAMP)){
@@ -581,11 +576,6 @@ bool ReadFirebaseComs(String Path){
       Coms.ETH.ON   = Lectura["eth"]["on"];
       Coms.ETH.Auto = Lectura["eth"]["auto"];
       
-      #ifdef USE_GSM
-        Coms.GSM.ON    = Lectura["modem"]["on"];
-        Coms.GSM.APN   = Lectura["modem"]["apn"];
-        Coms.GSM.Pass  = Lectura["modem"]["passwd"];
-      #endif
       //Store coms in psoc5 flash memory
       //SendToPSOC5(COMS_CONFIGURATION_CHAR_HANDLE);
 
@@ -908,37 +898,6 @@ void Firebase_Conn_Task(void *args){
     if(!ConfigFirebase.InternetConection && ConnectionState!= DISCONNECTED){
       ConnectionState=DISCONNECTING;
     }
-
-    //Si estamos conectados a través de gsm y tenemos muchos errores, significa que hemos perdido la cobertura
-    //Sino esque nos han desconectado el cable o hemos perdido el wifi
-    //Y debemos reiniciar el modem
-    if(Error_Count >= 20){
-      if(Coms.GSM.ON && Coms.GSM.Internet && Error_Count >= 20){
-        Coms.GSM.reboot = true;
-        Coms.GSM.Internet = false;
-        Error_Count = 0;
-        if(ConnectionState > CONNECTING){
-          ConnectionState=DISCONNECTING;
-        }
-        else{
-          ConnectionState=DISCONNECTED;
-          delayeando = 10000;
-        }
-      }
-      else{
-        Coms.ETH.Internet = false;
-        Coms.Wifi.Internet = false;
-        ConfigFirebase.InternetConection = false;
-        if(ConnectionState > CONNECTING){
-          ConnectionState=DISCONNECTING;
-        }
-        else{
-          ConnectionState=DISCONNECTED;
-          delayeando = 10000;
-        }
-      }
-    }
-
 
     switch (ConnectionState){
     //Comprobar estado de la red

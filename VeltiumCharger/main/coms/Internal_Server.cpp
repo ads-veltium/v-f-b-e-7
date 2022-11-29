@@ -30,7 +30,6 @@ const char* IP1 = "ip1";
 const char* GATEWAY = "Gateway";
 const char* MASK = "MASK";
 const char* Apn = "apn";
-const char* GSM_PWD = "m_pass";
 const char* CURR_COMAND = "curr_comand";
 const char* AUTH_MODE = "auth_mode";
 const char* INST_CURR_LIM = "inst_curr_lim";
@@ -44,7 +43,6 @@ const char* CONF_PWD = "conf_pwd";
 bool Alert1=false;
 bool Alert=false;
 bool Autenticado=false;
-bool Gsm_On;
 bool Eth_On;
 bool Eth_Auto;
 bool Wifi_On;
@@ -290,14 +288,6 @@ String processor(const String& var){
 		Eth_Auto=Coms.ETH.Auto;
         return checkbox;
 	}
-    else if (var == "MON")
-	{
-		String checkbox = "";
-
-		checkbox += "<label class=\"switch\"><input type=\"checkbox\" onchange=\"toggleCheckbox(this)\" id=\"15\""+outputStateWifi(Coms.GSM.ON)+"><span class=\"slider round\"></span></label>";
-		Gsm_On=Coms.GSM.ON;
-        return checkbox;
-    }
     else if (var == "CDP")
 	{
 		String buttons = "";
@@ -463,10 +453,6 @@ void InitServer(void) {
         if(!request->authenticate(user, password.c_str())){
             return request->requestAuthentication();
         }
-            
-            Coms.GSM.ON = Gsm_On;
-            Coms.GSM.Apn = request->getParam(Apn)->value();
-            Coms.GSM.Pass = request->getParam(GSM_PWD)->value();
                     
             //Hay que reiniciar ethernet si activamos una ip estatica
             bool reiniciar_eth = Coms.ETH.Auto != Eth_Auto;
@@ -820,9 +806,6 @@ void InitServer(void) {
                 break;
             case 14:
                 Eth_Auto = estado; 
-                break;
-            case 15:
-                Gsm_On = estado;
                 break;
             case 17:
                 while(Comands.conn_lock != estado){

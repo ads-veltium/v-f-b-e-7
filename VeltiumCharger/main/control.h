@@ -40,7 +40,6 @@
 #ifdef USE_COMS	
 	#define MAX_GROUP_SIZE 40
 	#include "coms/Wifi_Station.h"
-	#include "libGSM.h"
 	#include "coms/helper_coms.h"
 	#ifndef CONNECTED
 		#define CONNECTED
