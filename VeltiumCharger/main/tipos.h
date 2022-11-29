@@ -361,6 +361,11 @@ typedef struct{
 	bool DescargandoArchivo    = false;
 	bool InstalandoArchivo     = false;
 	bool DobleUpdate  		   = false;
+
+	bool Alt_available = false;
+
+	String Group;
+	String Branch;
 	
 	String ESP_url;
 	String PSOC_url;
