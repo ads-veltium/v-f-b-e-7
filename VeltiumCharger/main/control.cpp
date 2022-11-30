@@ -304,7 +304,6 @@ void controlTask(void *arg) {
 							#ifdef DEBUG
 							Serial.println("Reiniciando por comando externo! No preocuparse");
 							#endif
-							//FinishGSM();
 							MAIN_RESET_Write(0);
 							delay(500);		
 							ESP.restart();
@@ -314,7 +313,6 @@ void controlTask(void *arg) {
 							#ifdef DEBUG
 							Serial.println("Main reset detected");
 							#endif
-							//FinishGSM();
 							MAIN_RESET_Write(0);						
 							ESP.restart();
 						}
@@ -975,7 +973,7 @@ void procesar_bloque(uint16 tipo_bloque){
 			//Si no estamos conectados por ble
 			
 			if(ConfigFirebase.InternetConection){
-				if(Coms.ETH.ON || Coms.Wifi.ON || Coms.GSM.ON){
+				if(Coms.ETH.ON || Coms.Wifi.ON){
 					if(!memcmp(Status.HPT_status, "A1",2) || !memcmp(Status.HPT_status, "A2",2) || !memcmp(Status.HPT_status, "0V",2)){
 						if(!ConfigFirebase.UserReseted){
 							ConfigFirebase.ResetUser = true;
@@ -1190,7 +1188,7 @@ void procesar_bloque(uint16 tipo_bloque){
 			else{
 				Coms.ETH.Wifi_Perm = true;
 				Coms.ETH.Internet = false;
-				if(!Coms.GSM.ON && !Coms.Wifi.ON){
+				if(!Coms.Wifi.ON){
 					ConfigFirebase.InternetConection = false;
 				}
 			}
@@ -1239,82 +1237,6 @@ void procesar_bloque(uint16 tipo_bloque){
 			
 		} 
 		break;
-
-		case APN:{
-			if( memcmp(Coms.GSM.Apn.c_str(), "NA",2) && Coms.GSM.ON){
-				Coms.GSM.reboot = true;
-				printf("Haciendo un reboot del gsm!!\n");
-			}
-
-			Coms.GSM.Apn = (char*) buffer_rx_local;
-			printf("Me ha llegado el apn %s\n", Coms.GSM.Apn.c_str());
-			if( memcmp(Coms.GSM.Apn.c_str(), "NA",2)){
-				modifyCharacteristic((uint8_t*)buffer_rx_local, 30, APN);
-			}
-			else{
-				memset(buffer_rx_local, 0, sizeof buffer_rx_local);
-				modifyCharacteristic((uint8_t*)buffer_rx_local, 1, APN);
-			}
-		} 
-		break;
-
-		case APN_USER:{
-			Coms.GSM.User = (char*) buffer_rx_local;
-			printf("Me ha llegado el apn user %s\n", Coms.GSM.User.c_str());
-			if( memcmp(Coms.GSM.Apn.c_str(), "NA",2)){
-				modifyCharacteristic((uint8_t*)buffer_rx_local, 30, APN_USER);
-			}
-			else{
-				buffer_rx_local[0] = 0;
-				buffer_rx_local[1] = '\0';
-				modifyCharacteristic((uint8_t*)buffer_rx_local, 2, APN_USER);
-			}
-			
-		} 
-		break;
-
-		case APN_PASSWORD:{
-			Coms.GSM.Pass = (char*) buffer_rx_local;
-			printf("Me ha llegado el apn pass %s\n", Coms.GSM.Pass.c_str());
-
-			if(memcmp(Coms.GSM.Apn.c_str(), "NA",2)){
-				modifyCharacteristic((uint8_t*)buffer_rx_local, 30, APN_PASSWORD);
-				if(Coms.GSM.temp_on){
-					Coms.GSM.ON = true;
-					printf("GSM On  %i\n", Coms.GSM.ON);
-				}
-			}
-			else{
-				memset(buffer_rx_local, 0, sizeof buffer_rx_local);
-				//modifyCharacteristic((uint8_t*)buffer_rx_local, 1, APN_PASSWORD);
-			}
-		} 
-		break;
-
-		case APN_PIN:{
-
-			memcpy(Coms.GSM.Pin, buffer_rx_local,4);
-			printf("Me ha llegado el apn pin %s\n", Coms.GSM.Pin);
-			modifyCharacteristic(buffer_rx_local,  4, APN_PIN);
-			
-		} 
-		break;
-
-		case APN_ON:{
-			Coms.GSM.temp_on = buffer_rx_local[0];
-
-			if( memcmp(Coms.GSM.Apn.c_str(), "NA",2)  && Coms.GSM.temp_on){
-				Coms.GSM.ON = true;
-				printf("GSM On  %i\n", Coms.GSM.ON);
-			}
-			else if(!Coms.GSM.temp_on){
-				Coms.GSM.ON = false;
-				printf("GSM On  %i\n", Coms.GSM.ON);
-			}
-			modifyCharacteristic(buffer_rx_local,  1, APN_ON);
-		} 
-		break;
-
 
 		case GROUPS_DEVICES_PART_1:{
 			ChargingGroup.NewData = true;

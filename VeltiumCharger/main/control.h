@@ -8,7 +8,7 @@
 
 #define USE_COMS                   //Comentar para no utilzar las comunicaciones [ Veltium lite Zero]
 
-//#define DEVELOPMENT				   //Comentar para pasar firmware a produccion ( Cambio de base de datos y quitar debugs)
+#define DEVELOPMENT				   //Comentar para pasar firmware a produccion ( Cambio de base de datos y quitar debugs)
 
 #ifdef USE_COMS
 #define USE_GROUPS			   //Comentar para no utilizar los grupos de potencia
@@ -40,7 +40,6 @@
 #ifdef USE_COMS	
 	#define MAX_GROUP_SIZE 40
 	#include "coms/Wifi_Station.h"
-	#include "libGSM.h"
 	#include "coms/helper_coms.h"
 	#ifndef CONNECTED
 		#define CONNECTED

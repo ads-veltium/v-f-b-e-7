@@ -15,7 +15,6 @@ extern carac_charger charger_table[MAX_GROUP_SIZE];
 //Contador trifasico
 Contador Counter   EXT_RAM_ATTR;
 
-extern bool gsm_connected;
 extern bool eth_connected;
 extern bool eth_connecting;
 extern bool eth_link_up;
@@ -54,7 +53,6 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
     if (event_base == WIFI_EVENT){
         switch(event_id){
             case WIFI_EVENT_STA_START:{
-                Coms.GSM.ON=false;
                 Coms.Wifi.Internet = false;
                 esp_wifi_disconnect();
                 esp_wifi_connect();
@@ -591,9 +589,6 @@ void Eth_Loop(){
                 stop_wifi();
                 Coms.ETH.Wifi_Perm = false;
 
-                if(Coms.GSM.ON && gsm_connected){
-                    FinishGSM();
-                }
                 Coms.ETH.State = CONNECTING;
                 
                 initialize_ethernet();         
@@ -641,12 +636,6 @@ void ComsTask(void *args){
             Eth_Loop();     
             //Arranque del provisioning
             if(Coms.StartProvisioning && !Coms.Provisioning){
-                if(Coms.GSM.ON){
-                    if(gsm_connected){
-                        Coms.GSM.ON = false;
-                        FinishGSM();
-                    }
-                }
                 ConfigFirebase.InternetConection=0;
                 #ifdef DEBUG_WIFI
                 Serial.println("Starting provisioning sistem");
@@ -665,42 +654,12 @@ void ComsTask(void *args){
                 Coms.StartProvisioning = false;
             }
 
-            if(Coms.ETH.Internet){
-                Coms.GSM.ON = false;
-            }
             //Comprobar si hemos perdido todas las conexiones
-            if(!Coms.ETH.Internet && !Coms.Wifi.Internet && !Coms.GSM.Internet){
+            if(!Coms.ETH.Internet && !Coms.Wifi.Internet){
                 ConfigFirebase.InternetConection=false;
             }
             else{
                 ConfigFirebase.InternetConection=true;
-            }
-
-            //Encendido de las interfaces GSM     
-            if(Coms.GSM.ON){
-                if(!gsm_connected){
-                    if(Coms.ETH.ON){
-                        if(!Coms.ETH.Internet && Coms.ETH.Wifi_Perm && !Coms.Wifi.Internet){
-                            StartGSM();                    
-                        }
-                    }
-                    else if(Coms.ETH.Wifi_Perm && !Coms.Wifi.Internet){
-                        StartGSM();
-                    }                
-                }
-                else{
-                    if(Coms.GSM.reboot){
-                        FinishGSM();
-                        delay(2000);
-                        StartGSM();
-                        Coms.GSM.reboot=false;
-                    }
-                }                
-            }
-            if((!Coms.GSM.ON || !Coms.ETH.Wifi_Perm)){
-                if(gsm_connected){
-                    FinishGSM();
-                }
             }
 
             //Encendido de las interfaces     
