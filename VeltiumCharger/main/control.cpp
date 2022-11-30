@@ -280,7 +280,8 @@ void controlTask(void *arg) {
 						}
 
 						if (Comands.start){
-							SendToPSOC5(One, CHARGING_BLE_MANUAL_START_CHAR_HANDLE);   
+							SendToPSOC5(One, CHARGING_BLE_MANUAL_START_CHAR_HANDLE);
+							Comands.start = 0;   
 							#ifdef DEBUG
 							Serial.println("Sending START");         
 							#endif
