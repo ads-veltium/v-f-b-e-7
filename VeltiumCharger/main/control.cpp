@@ -1520,10 +1520,14 @@ void UpdateTask(void *arg){
 	unsigned char rowData[512];
 	SPIFFS.begin();
 	File file;
-
+	SPIFFS.end();
+	SPIFFS.begin(0,"/spiffs",1,"PSOC5");
 	//Si falla mas de diez veces la actualizacion, recuperamos el firmware viejo que teniamos y lo volvemos a usar. 
+	Serial.print("Intento número:");
+	Serial.println(Configuracion.data.count_reinicios_malos);
 	if(Configuracion.data.count_reinicios_malos > 10){
 		if(SPIFFS.exists("/FreeRTOS_V6_old.cyacd")){
+			Serial.println("Se ha intentado 10 veces y existe un FW_Old, se prueba con este");
 			SPIFFS.remove("/FreeRTOS_V6.cyacd");
 			SPIFFS.rename("/FreeRTOS_V6_old.cyacd", "/FreeRTOS_V6.cyacd");
 		}
