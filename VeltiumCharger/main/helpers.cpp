@@ -4,6 +4,7 @@
 extern HardwareSerialMOD serialLocal;
 extern uint8_t mainFwUpdateActive;
 extern uint8_t updateTaskrunning;
+extern uint8 deviceSerNumFlash[10];
 
 //*Declaracion de funciones privadas*/
 int controlSendToSerialLocal ( uint8_t * data, int len );
@@ -220,4 +221,16 @@ int Convert_To_Epoch(uint8* data){
 	t.tm_min  = data[4];
 	t.tm_sec  = data[5];
 	return mktime(&t);
+}
+
+void convertSN(){
+  char temp[2]={0,0};
+	int i=0;
+	int j=0;
+	while (i<20){
+		memcpy(temp,&Configuracion.data.deviceSerNum[i],2);
+		i=i+2;
+		deviceSerNumFlash[j]= (int)strtol(temp,NULL,16);
+		j++;
+	}
 }
