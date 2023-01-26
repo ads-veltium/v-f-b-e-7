@@ -47,6 +47,7 @@ uint8_t 	   temp_chargers_size 			 EXT_RAM_ATTR;
 
 /* VARIABLES BLE */
 uint8 device_ID[16] = {"VCD17010001"};
+uint8 deviceSerNumFlash[10] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 uint8 not_delete_group [4][10] = {{0xCD, 0x01, 0x21, 0x07, 0x16, 0x00, 0x00, 0x04, 0x98, 0x08},
 								 {0xCD, 0x01, 0x21, 0x07, 0x16, 0x00, 0x00, 0x05, 0x29, 0x51},
 								 {0xCD, 0x01, 0x21, 0x09, 0x16, 0x00, 0x00, 0x06, 0x14, 0x54},
@@ -80,6 +81,7 @@ uint8 updateTaskrunning=0;
 uint8 initialSerNum[10] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
 uint8 mainFwUpdateActive = 0;
+uint8 emergencyState = 0;
 
 uint8 dispositivo_inicializado = 0;
 uint8 PSOC_inicializado =0;
@@ -93,7 +95,7 @@ uint8 HPT_estados[9][3] = {"0V", "A1", "A2", "B1", "B2", "C1", "C2", "E1", "F1"}
 
 #ifdef USE_COMS
 uint8 version_firmware[11] = {"VBLE2_0520"};	
-#else
+#else	
 uint8 version_firmware[11] = {"VBLE0_0516"};	
 #endif
 
@@ -189,14 +191,13 @@ void controlTask(void *arg) {
 	MAIN_RESET_Write(1);        // Permito el arranque del micro principal
 
 	while(1){
-
 		// Eventos 10 mS
 		if(contador_cent_segundos != contador_cent_segundos_ant){
 			contador_cent_segundos_ant = contador_cent_segundos;
-			if(mainFwUpdateActive == 0){
+			if(mainFwUpdateActive == 0 || emergencyState==1){
 				switch (estado_actual){
 					
-					case ESTADO_ARRANQUE:
+					case ESTADO_ARRANQUE:					
 						if(!PSOC_inicializado){
 							if(--cnt_timeout_inicio == 0){
 								SendToPSOC5(0,BLOQUE_INICIALIZACION);
@@ -204,11 +205,37 @@ void controlTask(void *arg) {
 								
 								if(--cnt_repeticiones_inicio == 0){
 									cnt_repeticiones_inicio = 750;		//1000;								
-									mainFwUpdateActive = 1;
-									updateTaskrunning=1;
-									Serial.println("Enviando firmware al PSOC5 por falta de comunicacion!");
 									Configuracion.data.count_reinicios_malos ++;
-									xTaskCreate(UpdateTask,"TASK UPDATE",4096,NULL,1,NULL);
+									if(Configuracion.data.count_reinicios_malos > 20){
+										#ifdef DEBUG
+											printf("Entramos en modo EMERGENCIA!!\n");
+										#endif
+										memcpy(device_ID,Configuracion.data.device_ID,sizeof(Configuracion.data.device_ID));
+										memcpy(deviceSerNum,deviceSerNumFlash,sizeof(deviceSerNum));
+										convertSN();
+										changeAdvName(device_ID);
+										dev_auth_init((void const*)&deviceSerNumFlash);
+										std::string sversion = std::to_string(Configuracion.data.FirmwarePSOC);
+										std::string svelt = std::to_string(Configuracion.data.velt_v);
+										std::string version_velt = "VELT"+svelt+"_0" +sversion;
+
+										uint8 version_psoc[version_velt.length()];
+
+										memcpy(version_psoc,version_velt.data(),version_velt.length());
+									
+										
+										modifyCharacteristic(version_psoc, 10, VERSIONES_VERSION_FIRMWARE_CHAR_HANDLE);
+										modifyCharacteristic(version_firmware, 10, VERSIONES_VERSION_FIRM_BLE_CHAR_HANDLE);
+										
+										estado_actual = ESTADO_NORMAL;
+										dispositivo_inicializado = 2;
+										emergencyState=1;
+									}else{
+										mainFwUpdateActive = 1;
+										updateTaskrunning=1;
+										Serial.println("Enviando firmware al PSOC5 por falta de comunicacion!");
+										xTaskCreate(UpdateTask,"TASK UPDATE",4096,NULL,1,NULL);
+									}
 								}
 							}
 						}
@@ -233,7 +260,6 @@ void controlTask(void *arg) {
 					}
 
 					case ESTADO_NORMAL:
-						
 						//Alguien se está intentando conectar	
 						if(AuthTimer !=0){
 							uint32_t Transcurrido = pdTICKS_TO_MS(xTaskGetTickCount()-AuthTimer);
@@ -494,6 +520,9 @@ void procesar_bloque(uint16 tipo_bloque){
 				user_index = buffer_rx_local[196];
 				modifyCharacteristic(&buffer_rx_local[197], 10, VERSIONES_VERSION_FIRMWARE_CHAR_HANDLE);
 				memcpy(PSOC5_version_firmware, &buffer_rx_local[197],10);
+
+				//Guardamos la versión de CPU del psoc en flash del ESP32
+				Configuracion.data.velt_v = PSOC5_version_firmware[4]-48;
 
 				modifyCharacteristic(version_firmware, 10, VERSIONES_VERSION_FIRM_BLE_CHAR_HANDLE);
 
@@ -1627,8 +1656,3 @@ void controlInit(void){
 
 	
 }
-
-
-
-
-

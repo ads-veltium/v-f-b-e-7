@@ -38,6 +38,8 @@ extern carac_Comands                Comands;
 extern TickType_t AuthTimer;
 extern uint8 deviceSerNum[10];
 extern uint8 initialSerNum[10];
+extern uint8 deviceSerNumFlash[10];
+extern uint8 emergencyState;
 static TickType_t ConexTimer;
 int count = 0;
 
@@ -531,13 +533,24 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 
 					File InstalledFile = SPIFFS.open("/FreeRTOS_V6.cyacd", FILE_READ);
 
-					if(UpdatefileSize+1==InstalledFile.size()){
+					if(UpdatefileSize==InstalledFile.size()){
 						#ifdef DEBUG_BLE
 							Serial.printf("El fichero guardado está entero!\n");
 						#endif
 						InstalledFile.close();
 						SPIFFS.end();
 						setMainFwUpdateActive(1);
+						if(emergencyState==1){
+							if(!SPIFFS.begin(1,"/spiffs",1,"ESP32")){
+								SPIFFS.end();					
+								SPIFFS.begin(1,"/spiffs",1,"ESP32");
+							}
+							Configuracion.data.count_reinicios_malos=0;
+							emergencyState = 0;
+							MAIN_RESET_Write(0);
+							delay(200);						
+							ESP.restart();
+						}
 					}else{
 						#ifdef DEBUG_BLE
 							Serial.printf("El fichero guardado no es correcto!\n");
