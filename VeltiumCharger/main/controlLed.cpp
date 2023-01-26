@@ -11,6 +11,7 @@ extern carac_Status  Status;
 extern carac_Params	  Params;
 extern uint8 dispositivo_inicializado;
 extern carac_Coms Coms;
+extern uint8 emergencyState;
 
 #ifdef USE_COMS
 	extern carac_Contador   ContadorExt;
@@ -351,7 +352,7 @@ void LedControl_Task(void *arg){
 		delay(100);
 	}
 	//Arrancando
-	while(dispositivo_inicializado != 2){
+	while(dispositivo_inicializado != 2 || emergencyState == 1){
 		OLA(VERDE);
 		dispositivo_inicializado == 0 ? delay(1):delay(5);
 	}

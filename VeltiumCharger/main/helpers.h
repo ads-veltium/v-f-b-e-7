@@ -45,4 +45,6 @@ String ParseFirmwareModel(String Texto);
 ***********************************************************/
 int Convert_To_Epoch(uint8* data);
 
+void convertSN();
+
 #endif

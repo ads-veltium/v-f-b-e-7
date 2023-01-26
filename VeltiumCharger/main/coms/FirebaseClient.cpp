@@ -171,11 +171,6 @@ bool WriteFirebaseComs(String Path){
     Escritura["eth/gateway"]  = ip4addr_ntoa(&Coms.ETH.Gateway);
     Escritura["eth/mask"]     = ip4addr_ntoa(&Coms.ETH.Mask);
   }
-
-  #ifdef USE_GSM
-    Comms_Json.set("modem/apn",Coms.GSM.APN);
-    Comms_Json.set("modem/pass",Coms.GSM.Pass);
-  #endif
   
   if(Database->Send_Command(Path,&Escritura,UPDATE)){     
     if(Database->Send_Command(Path+"/ts_dev_ack",&Escritura,TIMESTAMP)){
@@ -581,11 +576,6 @@ bool ReadFirebaseComs(String Path){
       Coms.ETH.ON   = Lectura["eth"]["on"];
       Coms.ETH.Auto = Lectura["eth"]["auto"];
       
-      #ifdef USE_GSM
-        Coms.GSM.ON    = Lectura["modem"]["on"];
-        Coms.GSM.APN   = Lectura["modem"]["apn"];
-        Coms.GSM.Pass  = Lectura["modem"]["passwd"];
-      #endif
       //Store coms in psoc5 flash memory
       //SendToPSOC5(COMS_CONFIGURATION_CHAR_HANDLE);
 
@@ -741,61 +731,67 @@ bool ReadFirebasePeriod(){
 /*****************************************************
  *              Sistema de Actualización
  *****************************************************/
+
+bool ReadFirebaseBranch(){
+  Lectura.clear();
+  if(Database->Send_Command("/fw",&Lectura, LEER)){
+    UpdateStatus.Alt_available = Lectura["alt"]["available"];
+    UpdateStatus.Group = Lectura["perms"]["group"].as<String>(); 
+    if(UpdateStatus.Alt_available){
+      UpdateStatus.Branch = Lectura["alt"]["branch"].as<String>();
+      return true;
+    }else {
+      return false;
+    } 
+  }
+  return false;
+}
+
+//Checkear compatibilidad del grupo del cargador con el grupo de los FW
+bool CheckFwCompatibility(String fw_group){
+    if((!fw_group.compareTo(UpdateStatus.Group)) || (!fw_group.compareTo("all"))){
+      if(fw_group.compareTo("none")){
+        return true;
+      }else return false;
+    }else return false;
+}
+
 bool CheckForUpdate(){
   bool update = false;
+  String branch = "prod";
 
-/*
-#ifdef DEVELOPMENT
-  //Check Beta Firmware
-  if(Database->Send_Command("/prod/fw/beta/",&Lectura, READ_FW)){
-    String PSOC5_Ver   = Lectura["VELT2"]["verstr"].as<String>();
-    uint16 VELT_int_Version=ParseFirmwareVersion(PSOC5_Ver);
-
-    Serial.println(PSOC5_Ver);
-    Serial.println(VELT_int_Version);
-
-    if(VELT_int_Version>Configuracion.data.FirmwarePSOC){
-      UpdateStatus.PSOC5_UpdateAvailable= true;
-      UpdateStatus.PSOC_url = Lectura["VELT2"]["url"].as<String>();
-      update = true;
-    }    
-
-    String ESP_Ver   = Lectura["VBLE2"]["verstr"].as<String>();
-    uint16 ESP_int_Version=ParseFirmwareVersion(ESP_Ver);
-
-    if(ESP_int_Version>Configuracion.data.Firmware){
-      UpdateStatus.ESP_UpdateAvailable= true;
-      UpdateStatus.ESP_url = Lectura["VBLE2"]["url"].as<String>();
-      update = true;
-    }  
+  //Leemos la rama del cargador y vemos si está habilitado
+  if(ReadFirebaseBranch()){
+    branch = UpdateStatus.Branch;
   }
-  
-#endif
-*/
-  //Check Normal Firmware
-  if(Database->Send_Command("/prod/fw/prod/",&Lectura, READ_FW)){
+
+  //Check Firmware
+  if(Database->Send_Command("/prod/fw/"+branch,&Lectura, READ_FW)){
     String PSOC5_Ver   = Lectura[ParseFirmwareModel((char *)(PSOC5_version_firmware))]["verstr"].as<String>();
+    String fw_psoc_group = Lectura[ParseFirmwareModel((char *)(PSOC5_version_firmware))]["group"].as<String>();
     uint16 VELT_int_Version=ParseFirmwareVersion(PSOC5_Ver);
 
-    if(VELT_int_Version>Configuracion.data.FirmwarePSOC){
-      UpdateStatus.PSOC5_UpdateAvailable= true;
-      UpdateStatus.PSOC_url = Lectura[ParseFirmwareModel((char *)(PSOC5_version_firmware))]["url"].as<String>();
-      update = true;
-    }    
+    if(CheckFwCompatibility(fw_psoc_group)){
+      if(VELT_int_Version!=Configuracion.data.FirmwarePSOC){
+        UpdateStatus.PSOC5_UpdateAvailable= true;
+        UpdateStatus.PSOC_url = Lectura[ParseFirmwareModel((char *)(PSOC5_version_firmware))]["url"].as<String>();
+        update = true;
+      }  
+    }
 
-    String ESP_Ver   = Lectura["VBLE2"]["verstr"].as<String>();
+    String ESP_Ver = Lectura["VBLE2"]["verstr"].as<String>();
+    String fw_esp_group = Lectura["VBLE2"]["group"].as<String>();
     uint16 ESP_int_Version=ParseFirmwareVersion(ESP_Ver);
 
-    Serial.println(ESP_Ver);
-    Serial.println(Configuracion.data.Firmware);
+    if(CheckFwCompatibility(fw_esp_group)){
+      if(ESP_int_Version!=Configuracion.data.Firmware){
+        UpdateStatus.ESP_UpdateAvailable= true;
+        UpdateStatus.ESP_url = Lectura["VBLE2"]["url"].as<String>();
+        update = true;
+      } 
+    }
 
-    if(ESP_int_Version>Configuracion.data.Firmware){
-      UpdateStatus.ESP_UpdateAvailable= true;
-      UpdateStatus.ESP_url = Lectura["VBLE2"]["url"].as<String>();
-      update = true;
-    }  
   }
-
   return update;
 }
 
@@ -908,37 +904,6 @@ void Firebase_Conn_Task(void *args){
     if(!ConfigFirebase.InternetConection && ConnectionState!= DISCONNECTED){
       ConnectionState=DISCONNECTING;
     }
-
-    //Si estamos conectados a través de gsm y tenemos muchos errores, significa que hemos perdido la cobertura
-    //Sino esque nos han desconectado el cable o hemos perdido el wifi
-    //Y debemos reiniciar el modem
-    if(Error_Count >= 20){
-      if(Coms.GSM.ON && Coms.GSM.Internet && Error_Count >= 20){
-        Coms.GSM.reboot = true;
-        Coms.GSM.Internet = false;
-        Error_Count = 0;
-        if(ConnectionState > CONNECTING){
-          ConnectionState=DISCONNECTING;
-        }
-        else{
-          ConnectionState=DISCONNECTED;
-          delayeando = 10000;
-        }
-      }
-      else{
-        Coms.ETH.Internet = false;
-        Coms.Wifi.Internet = false;
-        ConfigFirebase.InternetConection = false;
-        if(ConnectionState > CONNECTING){
-          ConnectionState=DISCONNECTING;
-        }
-        else{
-          ConnectionState=DISCONNECTED;
-          delayeando = 10000;
-        }
-      }
-    }
-
 
     switch (ConnectionState){
     //Comprobar estado de la red

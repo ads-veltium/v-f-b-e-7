@@ -201,22 +201,6 @@ typedef struct{
 }carac_ETH;
 
 typedef struct{
-	bool ON;
-	bool reboot;
-	bool temp_on;
-	String Apn = "NA";
-	String Pass;
-	String User;
-	uint8_t Pin [4];
-	uint8_t Puk [8];
-	bool Internet = false;
-	
-	uint8_t   State;
-	uint32 ts_app_req;
-	uint32 ts_dev_ack;
-}carac_MODEM;
-
-typedef struct{
 	bool StartConnection   = false;
 	bool StartProvisioning = false;
 	bool RemoveCredentials = false;
@@ -225,7 +209,6 @@ typedef struct{
 
 	carac_WIFI   Wifi;
 	carac_ETH     ETH;
-	carac_MODEM   GSM;
 
 	long long last_ts_app_req= 0;
 } carac_Coms;
@@ -378,6 +361,11 @@ typedef struct{
 	bool DescargandoArchivo    = false;
 	bool InstalandoArchivo     = false;
 	bool DobleUpdate  		   = false;
+
+	bool Alt_available = false;
+
+	String Group;
+	String Branch;
 	
 	String ESP_url;
 	String PSOC_url;
@@ -404,6 +392,8 @@ typedef struct{
 
 	uint16 potencia_contratada1 = 32;
 	uint16 potencia_contratada2 = 32;
+
+	uint8 velt_v = 0;
 	
 } carac_config;
 

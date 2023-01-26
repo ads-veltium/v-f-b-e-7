@@ -38,6 +38,8 @@ extern carac_Comands                Comands;
 extern TickType_t AuthTimer;
 extern uint8 deviceSerNum[10];
 extern uint8 initialSerNum[10];
+extern uint8 deviceSerNumFlash[10];
+extern uint8 emergencyState;
 static TickType_t ConexTimer;
 int count = 0;
 
@@ -433,6 +435,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 				UpdateStatus.DescargandoArchivo=1;
 				if(strstr (signature,"VBLE")){
 					UpdateType= VBLE_UPDATE;
+					Update.end();
 					#ifdef DEBUG_BLE
 					Serial.println("Updating VBLE");
 					#endif			
@@ -449,6 +452,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 					UpdateType= VELT_UPDATE;				
 
 					SPIFFS.end();
+					UpdateFile.close();
 					if(!SPIFFS.begin(1,"/spiffs",1,"PSOC5")){
 						SPIFFS.end();					
 						SPIFFS.begin(1,"/spiffs",1,"PSOC5");
@@ -470,6 +474,10 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 						else{
 							SPIFFS.rename("/FreeRTOS_V6.cyacd", "/FreeRTOS_V6_old.cyacd");
 						}
+					}else{
+						#ifdef DEBUG_BLE
+							Serial.println("No existe el fichero FW!!");
+						#endif
 					}
 
 					vTaskDelay(pdMS_TO_TICKS(50));
@@ -520,9 +528,41 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 					
 				}
 				else if(UpdateType == VELT_UPDATE){
-					
+
 					UpdateFile.close();
-					setMainFwUpdateActive(1);
+
+					File InstalledFile = SPIFFS.open("/FreeRTOS_V6.cyacd", FILE_READ);
+
+					if(UpdatefileSize==InstalledFile.size()){
+						#ifdef DEBUG_BLE
+							Serial.printf("El fichero guardado está entero!\n");
+						#endif
+						InstalledFile.close();
+						SPIFFS.end();
+						setMainFwUpdateActive(1);
+						if(emergencyState==1){
+							if(!SPIFFS.begin(1,"/spiffs",1,"ESP32")){
+								SPIFFS.end();					
+								SPIFFS.begin(1,"/spiffs",1,"ESP32");
+							}
+							Configuracion.data.count_reinicios_malos=0;
+							emergencyState = 0;
+							MAIN_RESET_Write(0);
+							delay(200);						
+							ESP.restart();
+						}
+					}else{
+						#ifdef DEBUG_BLE
+							Serial.printf("El fichero guardado no es correcto!\n");
+						#endif
+						InstalledFile.close();
+						SPIFFS.remove("/FreeRTOS_V6.cyacd");
+						successCode = 0x00000002;
+						serverbleNotCharacteristic((uint8_t*)&successCode, sizeof(successCode), FWUPDATE_BIRD_DATA_PSEUDO_CHAR_HANDLE);
+						MAIN_RESET_Write(0);
+						delay(200);						
+						ESP.restart();
+					}
 				}				
 				return;
 			}
@@ -771,7 +811,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 					Serial.println("Writing Error");
 					successCode = 0x00000002;
 					SPIFFS.end();
-					UpdateFile.close();
+					UpdateFile.close();	
 				}
 
 				//Comprobacion de lo que se ha escrito, vía checksum (Muy muy lento e innecesario)
@@ -937,7 +977,7 @@ void serverbleInit() {
 	// Create the BLE_SERVER Device
 	BLE_SERVER.init("VCD1701XXXX");
 	BLE_SERVER.setMTU(512);
-
+	
 	#ifdef DEBUG_BLE
 	milestone("after creating BLEDevice");
 	#endif

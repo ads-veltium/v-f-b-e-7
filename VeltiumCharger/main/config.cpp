@@ -31,6 +31,9 @@ static bool operator==(const carac_config& lhs, const carac_config& rhs){
     if(lhs.count_reinicios_malos != rhs.count_reinicios_malos){
       return false;
     }
+    if(lhs.velt_v != rhs.velt_v){
+      return false;
+    }
      if(memcmp(lhs.device_ID, rhs.device_ID,sizeof(lhs.device_ID))){
         return false;
     }
@@ -93,6 +96,7 @@ void Config::Carac_to_json(DynamicJsonDocument& ConfigJSON){
     ConfigJSON["policy"] = String(data.policy);
     ConfigJSON["data_cleared"] = data.Data_cleared;
     ConfigJSON["count_reinicios_malos"] = data.count_reinicios_malos;
+    ConfigJSON["velt_v"] = data.velt_v;
 }
 
 void Config::Json_to_carac(DynamicJsonDocument& ConfigJSON){
@@ -111,7 +115,8 @@ void Config::Json_to_carac(DynamicJsonDocument& ConfigJSON){
     memcpy(data.deviceSerNum, ConfigJSON["device_ser_num"].as<String>().c_str(),sizeof(data.deviceSerNum));
     memcpy(data.policy, ConfigJSON["policy"].as<String>().c_str(),3);
     data.Data_cleared = ConfigJSON["data_cleared"].as<uint8_t>(); 
-    data.count_reinicios_malos = ConfigJSON["count_reinicios_malos"].as<uint8_t>(); 
+    data.count_reinicios_malos = ConfigJSON["count_reinicios_malos"].as<uint8_t>();
+    data.velt_v = ConfigJSON["velt_v"].as<uint8_t>();
 }
 
 //**********Funciones externas de la case de configuracion**************/
