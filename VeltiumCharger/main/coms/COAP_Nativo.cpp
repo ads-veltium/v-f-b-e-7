@@ -1153,9 +1153,6 @@ void MasterPanicTask(void *args){
                 }
             }
         }
-        /*if(!Coms.ETH.conectado){
-            break;
-        }*/
         delay(delai);
     }
     #ifdef DEBUG_GROUPS
