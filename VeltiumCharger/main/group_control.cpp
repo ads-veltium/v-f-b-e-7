@@ -400,7 +400,6 @@ void LimiteConsumo(void *p){
         if(pdTICKS_TO_MS(xTaskGetTickCount() - Start_Timer) > 50000){
           for(int i = 0; i < ChargingGroup.Charger_number; i++){
             if(!memcmp(charger_table[i].HPT, "B1", 2) && charger_table[i].Baimena){
-              
               //cls();
               float reparto = (ChargingGroup.Params.potencia_max *100/230);
               if(charger_table[i].trifasico){
@@ -757,7 +756,7 @@ bool Calculo_General(){
       
       Corriente_disponible_total = floor(corriente_disponible_limitada / Conex_Con_tri);
     
-      if(ChargingGroup.Params.CDP >> 4 && ContadorExt.GatewayConectado){
+      if(((ChargingGroup.Params.CDP >> 4) & 0x01) && ContadorExt.GatewayConectado){
         float Corriente_CDP__sobra = 0;
 
         //Comprobar primero cuanta potencia nos sobra

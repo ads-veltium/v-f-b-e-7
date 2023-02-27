@@ -322,7 +322,6 @@ static void hnd_espressif_put(coap_context_t *ctx,coap_resource_t *resource,coap
         coap_resource_notify_observers(resource, NULL);        
     }
     else if(!memcmp(resource->uri_path->s, "CONTROL", resource->uri_path->length)){
-
         if(size <=0){
             return;
         }
@@ -509,7 +508,7 @@ void coap_put( char* Topic, char* Message){
             uint8_t bloqueo_carga = 0;
             if(ChargingGroup.AskPerm && ChargingGroup.ChargPerm){
                 ChargingGroup.AskPerm = false;
-                if(ChargingGroup.Params.CDP >> 4){
+                if((ChargingGroup.Params.CDP >> 4) & 0x01){
                     if(!ContadorExt.MeidorConectado){
                         ChargingGroup.AskPerm = true;
                         ChargingGroup.ChargPerm = false;
@@ -1154,9 +1153,9 @@ void MasterPanicTask(void *args){
                 }
             }
         }
-        if(!Coms.ETH.conectado){
+        /*if(!Coms.ETH.conectado){
             break;
-        }
+        }*/
         delay(delai);
     }
     #ifdef DEBUG_GROUPS

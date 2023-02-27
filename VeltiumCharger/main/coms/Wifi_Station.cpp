@@ -25,14 +25,14 @@ bool wifi_connected  = false;
 bool wifi_connecting = false;
 bool ServidorArrancado = false;
 static uint8 Reintentos = 0;
-
+bool PausadoPorMeter = false;
 
 
 void InitServer(void);
 void StopServer(void);
 
 extern carac_group  ChargingGroup;
-
+extern void store_params_in_mem();
 void coap_start_server();
 void coap_start_client();
 void start_udp();
@@ -348,6 +348,7 @@ void Eth_Loop(){
     static TickType_t xFirstStart = 0;
     static TickType_t xCheckConn = 0;
     static TickType_t xConnect = 0;
+    static TickType_t xDhcp = 0;
     #ifdef DEBUG_ETH
     static uint8_t LastStatus = APAGADO;
     #endif
@@ -361,6 +362,7 @@ void Eth_Loop(){
             Coms.ETH.State = CONNECTING;
             xStart = xTaskGetTickCount();
             xFirstStart = xTaskGetTickCount();
+            xDhcp = xTaskGetTickCount();
             SendToPSOC5(1,SEND_GROUP_DATA);
             Coms.ETH.finding = false;
             Coms.ETH.conectado = false;
@@ -369,6 +371,11 @@ void Eth_Loop(){
             
         break;
         case CONNECTING:
+            if(PausadoPorMeter && ChargingGroup.Params.GroupMaster){
+                ChargingGroup.Params.GroupActive=true;
+                PausadoPorMeter=false;
+                store_params_in_mem();
+            }
             if(eth_connected){
                 //Solo comprobamos la conexion a internet si no hemos activado el servidor dhcp y si el usuario a activado el ETH
                 if(!Coms.ETH.DHCP && Coms.ETH.ON){
@@ -411,8 +418,10 @@ void Eth_Loop(){
                     }
                 }
                 if(!Coms.Provisioning){
-                    if((ChargingGroup.Params.GroupMaster && (ChargingGroup.Params.GroupActive || ChargingGroup.Creando) )|| Coms.ETH.medidor){
-                        if(GetStateTime(xFirstStart) > 90000){
+                    
+                    if(ChargingGroup.Params.GroupMaster || Coms.ETH.medidor){
+                        int master_time= 90000 - ((esp_random() % 10)*1000); 
+                        if(GetStateTime(xFirstStart) > master_time){
                             #ifdef DEBUG_ETH
                                 Serial.println("Activo DHCP");
                             #endif
@@ -423,9 +432,9 @@ void Eth_Loop(){
                         }
                     }
                     else if((ChargingGroup.Params.GroupActive && !ChargingGroup.Conected)){
-                        uint8 wait_time = reintentos == 0 ? 110000:30000;
-                        if(GetStateTime(xStart) > wait_time){
-                            if(!memcmp(charger_table[reintentos].name,ConfigFirebase.Device_Id,8)){
+                        
+                        int time=120000 + (esp_random() % 10);
+                        if(GetStateTime(xDhcp) > time){
                                 #ifdef DEBUG_ETH
                                 Serial.println("Activo DHCP");
                                 #endif
@@ -433,11 +442,6 @@ void Eth_Loop(){
                                 kill_ethernet();
                                 Coms.ETH.State = KILLING;
                                 ChargingGroup.Creando = false;
-                            }
-                            else{
-                                xStart = xTaskGetTickCount();
-                                reintentos++;
-                            }
                             
                         }
                     }
@@ -465,7 +469,7 @@ void Eth_Loop(){
             }
 
             //Buscar el contador
-            if((Coms.ETH.medidor || (ChargingGroup.Params.CDP >> 4 && ChargingGroup.Params.GroupMaster && ChargingGroup.Conected)) && !Coms.ETH.finding){
+            if((Coms.ETH.medidor || (((ChargingGroup.Params.CDP >> 4) & 0x01) && ChargingGroup.Params.GroupMaster && ChargingGroup.Conected)) && !Coms.ETH.finding){
                 if(GetStateTime(xConnect) > 20000){
                     xTaskCreate( BuscarContador_Task, "BuscarContador", 4096*4, &Coms.ETH.finding, 5, NULL); 
                     Coms.ETH.finding = true;
@@ -499,21 +503,27 @@ void Eth_Loop(){
                 }
                 if(ChargingGroup.Conected){
                     ChargingGroup.Params.GroupActive = false;
-                    ChargingGroup.StopOrder = true;   
+                    ChargingGroup.StopOrder = true;
+                    PausadoPorMeter=true;   
                 }
                 close_udp();   
                 kill_ethernet();
                 Coms.ETH.State = KILLING;
                 Coms.ETH.DHCP = false;
                 Coms.ETH.restart = false;
+                xFirstStart = xTaskGetTickCount();
+                xDhcp = xTaskGetTickCount();
                 break;               
             }
 
             //Lectura del contador
-			if(ContadorExt.GatewayConectado && (Params.Tipo_Sensor || (ChargingGroup.Params.CDP >> 4 && ChargingGroup.Params.GroupMaster && ChargingGroup.Conected))){
+			if(ContadorExt.GatewayConectado && (Params.Tipo_Sensor || (((ChargingGroup.Params.CDP >> 4) & 0x01) && ChargingGroup.Params.GroupMaster && ChargingGroup.Conected))){
 				if(!Counter.Inicializado){
 					Counter.begin(ContadorExt.ContadorIp);
-                    SendToPSOC5(0, BLOQUEO_CARGA);
+                    
+                    if(!(ChargingGroup.Params.GroupMaster && ChargingGroup.Conected)){
+                        SendToPSOC5(0, BLOQUEO_CARGA);
+                    }
 				}
 
 				Counter.read();
@@ -533,7 +543,7 @@ void Eth_Loop(){
 			}
 
             //Pausar lectura del contador
-            else if(ContadorExt.GatewayConectado && !Params.Tipo_Sensor && !(ChargingGroup.Params.CDP >> 4)){
+            else if(ContadorExt.GatewayConectado && !Params.Tipo_Sensor && !((ChargingGroup.Params.CDP >> 4) & 0x01)){
                 ContadorExt.GatewayConectado = false;
                 ContadorExt.MeidorConectado = false;
                 Counter.Inicializado = false;
