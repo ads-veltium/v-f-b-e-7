@@ -381,12 +381,12 @@ void LedControl_Task(void *arg){
 		}
 
 #ifdef USE_COMS
-		else if((Params.Tipo_Sensor || (ChargingGroup.Params.GroupMaster && ChargingGroup.Params.CDP >> 4)) && ContadorExt.ConexionPerdida){
+		else if((Params.Tipo_Sensor || (ChargingGroup.Params.GroupMaster && ((ChargingGroup.Params.CDP >> 4) & 0x01) && ChargingGroup.Params.GroupActive)) && ContadorExt.ConexionPerdida){
 			Kit(NARANJA_OSCURO);
 			Delay= 85;
 		}
 		//Buscando Medidor
-		else if((Params.Tipo_Sensor || (ChargingGroup.Params.GroupMaster &&  ChargingGroup.Params.CDP >> 4))  && !ContadorExt.MeidorConectado && !Coms.Provisioning){
+		else if((Params.Tipo_Sensor || (ChargingGroup.Params.GroupMaster &&  ((ChargingGroup.Params.CDP >> 4) & 0x01) && ChargingGroup.Params.GroupActive))  && !ContadorExt.MeidorConectado && !Coms.Provisioning){
 
 		OutWave(VERDE);
 		Delay=7;

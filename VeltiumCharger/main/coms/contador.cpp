@@ -4,7 +4,8 @@
 extern carac_Status Status;
 extern carac_Coms Coms;
 extern carac_Contador   ContadorExt;
-
+uint8_t error=0;
+uint8_t error_old=0;
 Cliente_HTTP CounterClient("192.168.1.1", 1000);
 
 
@@ -34,15 +35,19 @@ void Contador::end(){
 }
 
 bool Contador::read(){
-
+    
     if (!CounterClient.Send_Command(CounterUrl,LEER)) {
-        #ifdef DEVELOPMENT
-        Serial.printf("Counter reading error\n");
-        #endif
-        ContadorExt.ConexionPerdida = true;
-        Update_Status_Coms(MED_CONECTION_LOST);
-        Coms.ETH.restart = true;
-        return false;
+        error++;
+        if(error > 10){
+            #ifdef DEVELOPMENT
+            Serial.printf("Counter reading error\n");
+            #endif
+            ContadorExt.ConexionPerdida = true;
+            Update_Status_Coms(MED_CONECTION_LOST);
+            Coms.ETH.restart = true;
+            error=0;
+            return false;
+        }    
     }
     Measurements.clear();
     deserializeJson(Measurements,CounterClient.ObtenerRespuesta());
@@ -92,10 +97,15 @@ void Contador::parse(){
     if(ContadorExt.MeidorConectado != old){
         if(old){ //Si ya estaba leyendo y perdemos comunicacion,
             if(!ContadorExt.ConexionPerdida){
-                ContadorExt.ConexionPerdida = 1;
-                Update_Status_Coms(MED_CONECTION_LOST);
-                //Reiniciamos el eth, esto hace que el medidor al recibir una nueva ip se reinicie
-                Coms.ETH.restart = true;
+                error_old++;
+                if(error_old >10){
+                    error_old=0;
+                    ContadorExt.ConexionPerdida = 1;
+                    Update_Status_Coms(MED_CONECTION_LOST);
+                    //Reiniciamos el eth, esto hace que el medidor al recibir una nueva ip se reinicie
+                    Coms.ETH.restart = true;
+                }
+
             }
         }
         else{

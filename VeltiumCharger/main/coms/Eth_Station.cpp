@@ -141,7 +141,7 @@ void BuscarContador_Task(void *args){
                 }
             }
 
-            if(!Params.Tipo_Sensor && !(ChargingGroup.Params.CDP >> 4)){
+            if(!Params.Tipo_Sensor && !((ChargingGroup.Params.CDP >> 4) & 0x01)){
                 Coms.ETH.Wifi_Perm = true;
                 break;
             }

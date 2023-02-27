@@ -699,7 +699,7 @@ void procesar_bloque(uint16 tipo_bloque){
 					//Si sale de C2 bloquear la siguiente carga
 					if(memcmp(&buffer_rx_local[1],"C2",2) && memcmp(&buffer_rx_local[1],"B2",2)){
 						if(Params.Tipo_Sensor || ChargingGroup.Conected){
-							if(!memcmp(status_hpt_anterior, "C",1)){
+							if((!memcmp(status_hpt_anterior, "C",1)) || (!memcmp(status_hpt_anterior, "B2",2))){
 								Bloqueo_de_carga = true;
 								ChargingGroup.ChargPerm = false;
 								ChargingGroup.AskPerm = false;
@@ -1499,7 +1499,7 @@ void procesar_bloque(uint16 tipo_bloque){
 			}
 
 			//Si tenemos un medidor conectado, asta que no nos conectemos a el no permitimos la carga
-			else if(Params.Tipo_Sensor || (ChargingGroup.Params.GroupMaster && ChargingGroup.Params.CDP >> 4)){
+			else if(Params.Tipo_Sensor || (ChargingGroup.Params.GroupMaster && ((ChargingGroup.Params.CDP >> 4) & 0x01))){
 				if(ContadorExt.MeidorConectado){
 					Bloqueo_de_carga = false;
 				}
