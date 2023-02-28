@@ -226,7 +226,7 @@ void broadcast_a_grupo(char* Mensaje, uint16_t size){
         for(int j=0;j < ChargingGroup.Charger_number;j++){
             if(check_in_group(net_group[i].name, charger_table, ChargingGroup.Charger_number) != 255){
                 if(net_group[i].IP != IPADDR_NONE && net_group[i].IP != IPADDR_ANY){
-                    udp.sendTo(mensaje, net_group[i].IP,2702);
+                    udp.sendTo(mensaje, net_group[i].IP,2702,TCPIP_ADAPTER_IF_ETH);
                 }
                 charger_table[j].IP = net_group[i].IP; 
                 break;
@@ -239,7 +239,7 @@ void send_to(IPAddress IP,  char* Mensaje){
     AsyncUDPMessage _mensaje (strlen(Mensaje));
     _mensaje.write((uint8_t*)(Encipher(Mensaje).c_str()), 13);
     if(IP != IPADDR_NONE && IP != IPADDR_ANY){
-        udp.sendTo(_mensaje,IP,2702);
+        udp.sendTo(_mensaje,IP,2702,TCPIP_ADAPTER_IF_ETH);
     }
 }
 
@@ -271,7 +271,7 @@ void start_udp(){
                 }
 
                 if(packet.remoteIP()[0] == 0 && packet.remoteIP()[1] == 0 && packet.remoteIP()[2] == 0 && packet.remoteIP()[3] == 0 ){
-                    udp.broadcast(Encipher(String(ConfigFirebase.Device_Id)).c_str());
+                    udp.broadcastTo(Encipher(String(ConfigFirebase.Device_Id)).c_str(),2702,TCPIP_ADAPTER_IF_ETH);
                     return;
                 }
                 #ifdef DEBUG_GROUPS
@@ -303,7 +303,7 @@ void start_udp(){
                         broadcast_a_grupo("Start client", 12);
                         AsyncUDPMessage mensaje (13);
                         mensaje.write((uint8_t*)(Encipher("Start client").c_str()), 13);
-                        udp.sendTo(mensaje,packet.remoteIP(),2702);
+                        udp.sendTo(mensaje,packet.remoteIP(),2702,TCPIP_ADAPTER_IF_ETH);
                     }
                 }
             }
@@ -359,7 +359,7 @@ void start_udp(){
     }
     
     //Avisar al resto de equipos de que estamos aqui!
-    udp.broadcast(Encipher(String(ConfigFirebase.Device_Id)).c_str());
+    udp.broadcastTo(Encipher(String(ConfigFirebase.Device_Id)).c_str(),2702,TCPIP_ADAPTER_IF_ETH);
 }
 
 void close_udp(){
