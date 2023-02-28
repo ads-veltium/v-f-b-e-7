@@ -14,7 +14,7 @@
 #define USE_GROUPS			   //Comentar para no utilizar los grupos de potencia
 #endif
 
-#ifdef DEVELOPMENT
+//#ifdef DEVELOPMENT
 	#define DEBUG				   //Activar los distintos debugs
 	#ifdef DEBUG 
 
@@ -31,7 +31,7 @@
 			#define DEBUG_MEDIDOR  //Activar el debug del medidor
 		#endif
 	#endif
-#endif
+//#endif
 
 /*********** Fin configuracion build**************/
 #include "Arduino.h"
