@@ -5,7 +5,6 @@
 
 #include "ArduinoJson.h"
 #include "../control.h"
-#include "contador.h"
 #include "esp32-hal-psram.h"
 #include "esp_http_client.h"
 

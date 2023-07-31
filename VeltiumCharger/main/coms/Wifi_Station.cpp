@@ -12,8 +12,6 @@ extern carac_Contador   ContadorExt;
 extern carac_Params Params;
 extern carac_charger charger_table[MAX_GROUP_SIZE];
 
-//Contador trifasico
-Contador Counter   EXT_RAM_ATTR;
 
 extern bool eth_connected;
 extern bool eth_connecting;
@@ -516,41 +514,6 @@ void Eth_Loop(){
                 break;               
             }
 
-            //Lectura del contador
-			if(ContadorExt.GatewayConectado && (Params.Tipo_Sensor || (((ChargingGroup.Params.CDP >> 4) & 0x01) && ChargingGroup.Params.GroupMaster && ChargingGroup.Conected))){
-				if(!Counter.Inicializado){
-					Counter.begin(ContadorExt.ContadorIp);
-                    
-                    if(!(ChargingGroup.Params.GroupMaster && ChargingGroup.Conected)){
-                        SendToPSOC5(0, BLOQUEO_CARGA);
-                    }
-				}
-
-				Counter.read();
-				Counter.parse();
-
-                if(Params.Tipo_Sensor){
-                        uint8 buffer_contador[7] = {0};
-
-                        buffer_contador[0] = ContadorExt.GatewayConectado;
-                        buffer_contador[1] = (uint8)(ContadorExt.DomesticPower& 0x00FF);
-                        buffer_contador[2] = (uint8)((ContadorExt.DomesticPower >> 8) & 0x00FF);
-                        buffer_contador[3] = (uint8)((ContadorExt.DomesticPower >> 16) & 0x00FF);
-                        buffer_contador[4] = (uint8)((ContadorExt.DomesticPower >> 24) & 0x00FF);
-
-                        SendToPSOC5((char*)buffer_contador,5,MEASURES_EXTERNAL_COUNTER);                   
-                }
-			}
-
-            //Pausar lectura del contador
-            else if(ContadorExt.GatewayConectado && !Params.Tipo_Sensor && !((ChargingGroup.Params.CDP >> 4) & 0x01)){
-                ContadorExt.GatewayConectado = false;
-                ContadorExt.MeidorConectado = false;
-                Counter.Inicializado = false;
-                Counter.end();
-                Coms.ETH.finding = false;
-                Update_Status_Coms(0,MED_BLOCK);
-            }
             }
         break;
             
@@ -559,13 +522,6 @@ void Eth_Loop(){
 			modifyCharacteristic(&ip_Array[0], 4, COMS_CONFIGURATION_LAN_IP);
             if(!eth_connected && !eth_connecting){        
                 Coms.ETH.finding = false;
-                if(ContadorExt.GatewayConectado){
-                    ContadorExt.GatewayConectado = false;
-                    ContadorExt.MeidorConectado = false;
-                    Counter.end();
-                    Update_Status_Coms(0,MED_BLOCK);
-                }
-                
                 Coms.ETH.State = DISCONNECTED;
                 Coms.ETH.Internet = false;
                 Coms.ETH.conectado = false;
@@ -587,13 +543,6 @@ void Eth_Loop(){
                 Coms.ETH.Internet = false;
                 Coms.ETH.conectado = false;
 
-                if(ContadorExt.GatewayConectado){
-                    ContadorExt.GatewayConectado = false;
-                    ContadorExt.MeidorConectado = false;
-                    Counter.end();
-                    Update_Status_Coms(0,MED_BLOCK);
-                }           
-                
                 wait_for_firebase_stop(100);
 
                 stop_wifi();

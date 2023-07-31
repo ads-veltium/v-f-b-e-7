@@ -1049,6 +1049,17 @@ void procesar_bloque(uint16 tipo_bloque){
 			SendToPSOC5((char*)buffer, 2, RECORDING_REC_INDEX_CHAR_HANDLE);
 		} 
 		break;
+
+		case SEACH_EXTERNAL_COUNTER:{
+			#ifdef DEBUG
+			printf("El medidor RS485 se ha encontrado %i\n", (buffer_rx_local[0]));
+			#endif
+			//DECIRLE A LA APP QUE YA SE HA ENCONTRADO
+			//Update_Status_Coms(MED_BUSCANDO_MEDIDOR);
+			Update_Status_Coms(MED_LEYENDO_MEDIDOR);
+
+		} 
+		break;
 		
 		case CONFIGURACION_AUTENTICATION_MODES_CHAR_HANDLE:{
 			
@@ -1146,10 +1157,12 @@ void procesar_bloque(uint16 tipo_bloque){
 					
 					if(Params.Tipo_Sensor && !ContadorExt.MeidorConectado){
 
+						//Buscar medidor cuando lo pulsan en la APP
 						Coms.ETH.medidor = true;
 						Update_Status_Coms(0,MED_BUSCANDO_GATEWAY);
 						Bloqueo_de_carga = 1;
 						SendToPSOC5(Bloqueo_de_carga,BLOQUEO_CARGA);
+						SendToPSOC5(1, SEACH_EXTERNAL_COUNTER);
 					}
 				}
 				else{
@@ -1192,10 +1205,10 @@ void procesar_bloque(uint16 tipo_bloque){
 		
 		case COMS_CONFIGURATION_ETH_ON:{
 
-			if(Coms.ETH.medidor && !Coms.ETH.ON && buffer_rx_local[0] && !Coms.ETH.conectado){
+			if( !Coms.ETH.ON && buffer_rx_local[0] && !Coms.ETH.conectado){
 				Coms.ETH.restart = true;
 			}
-			else if (Coms.ETH.medidor && Coms.ETH.ON && !buffer_rx_local[0] && !Coms.ETH.conectado){
+			else if (Coms.ETH.ON && !buffer_rx_local[0] && !Coms.ETH.conectado){
 				Coms.ETH.restart = true;
 			}
 
