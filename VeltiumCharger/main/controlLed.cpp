@@ -386,7 +386,7 @@ void LedControl_Task(void *arg){
 			Delay= 85;
 		}
 		//Buscando Medidor
-		else if((Params.Tipo_Sensor || (ChargingGroup.Params.GroupMaster &&  ((ChargingGroup.Params.CDP >> 4) & 0x01) && ChargingGroup.Params.GroupActive))  && !ContadorExt.MeidorConectado && !Coms.Provisioning){
+		else if((Params.Tipo_Sensor || (ChargingGroup.Params.GroupMaster &&  ((ChargingGroup.Params.CDP >> 4) & 0x01) && ChargingGroup.Params.GroupActive))  && !ContadorExt.MeidorConectado  && !Configuracion.data.medidor485 && !Coms.Provisioning){
 
 		OutWave(VERDE);
 		Delay=7;

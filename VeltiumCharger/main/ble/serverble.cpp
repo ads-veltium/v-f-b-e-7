@@ -314,72 +314,6 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 		uint8_t* data = (uint8_t*)&rxValue[0];
 		uint16_t dlen = (uint16_t)rxValue.length();
 
-		if (pCharacteristic->getUUID().equals(blefields[SELECTOR].uuid))
-		{
-			// safety check: at least one byte for selector
-			if (dlen < 1) {
-				Serial.println("Error at write callback for Selector CHR: size less than 1");
-				uint8_t empty_packet[4] = {0, 0, 0, 0};
-				pbleCharacteristics[BLE_CHA_OMNIBUS]->setValue(empty_packet, 4);
-				return;
-			}
-			// characteristic selector https://open.spotify.com/track/04hWYuhqETLXrUy7S8Rxzp?si=iMGb3JzTRna3ikopCm89Pw
-			uint8_t selector = data[0];
-
-			// payload to be write to omnibus characteristic
-			uint8_t* payload = rcs_server_get_data_for_selector(selector);
-			// size of payload to be written to omnibus characteristic
-			uint8_t  pldsize = rcs_get_size(selector);
-
-			if(dispositivo_inicializado != 2){
-				return;
-			}
-			#ifdef DEBUG_BLE
-				Serial.printf("Receive read request for selector %u\n", selector);
-			
-			#endif
-			// prepare packet to be written to characteristic:
-			// header with 2 bytes selector little endian, 2 bytes payload size little endian
-			// afterwards, the payload with the actual data
-			uint8_t* packet = omnibus_packet_buffer;
-			uint8_t pktsize = 4 + pldsize;
-			packet[0] = selector;
-			packet[1] = 0;
-			packet[2] = pldsize;
-			packet[3] = 0;
-
-			// this flag will be set to 1 if we are not allowed to read (not authenticated)
-			uint8_t force_read_dummy_data = 0;
-
-			
-
-			// check authentication
-			if (!authorizedOK())
-			{
-				// no authentication, only allowed operation is matrix read
-				uint16_t handle = rcs_handle_for_idx(selector);
-				if (handle != AUTENTICACION_MATRIX_CHAR_HANDLE) {
-					Serial.println("BAD AUTHENTICATION TOKEN. Will return dummy data when read");
-					force_read_dummy_data = 1;
-				}
-			}
-
-			if (!force_read_dummy_data) {
-				// authorized, copy payload from pseudo-characteristics buffer
-				memcpy((packet + 4), payload, pldsize);
-			}
-			else {
-				// non authorized, copy zeros
-				memset((packet + 4), 0, pldsize);
-			}
-
-
-			// set characteristic value to be read by other end
-			pbleCharacteristics[BLE_CHA_OMNIBUS]->setValue(packet, pktsize);
-
-			return;
-		}
-
 		if (pCharacteristic->getUUID().equals(blefields[OMNIBUS].uuid))
 		{
 			// when omnibus is used for writing, it should be prefixed with:
@@ -738,6 +672,74 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 			controlSendToSerialLocal(buffer_tx, size + 4);
 			return;
 		}
+
+		else if (pCharacteristic->getUUID().equals(blefields[SELECTOR].uuid))
+		{
+			// safety check: at least one byte for selector
+			if (dlen < 1) {
+				Serial.println("Error at write callback for Selector CHR: size less than 1");
+				uint8_t empty_packet[4] = {0, 0, 0, 0};
+				pbleCharacteristics[BLE_CHA_OMNIBUS]->setValue(empty_packet, 4);
+				return;
+			}
+			// characteristic selector https://open.spotify.com/track/04hWYuhqETLXrUy7S8Rxzp?si=iMGb3JzTRna3ikopCm89Pw
+			uint8_t selector = data[0];
+
+			// payload to be write to omnibus characteristic
+			uint8_t* payload = rcs_server_get_data_for_selector(selector);
+			// size of payload to be written to omnibus characteristic
+			uint8_t  pldsize = rcs_get_size(selector);
+
+			if(dispositivo_inicializado != 2){
+				return;
+			}
+			#ifdef DEBUG_BLE
+				Serial.printf("Receive read request for selector %u\n", selector);
+			
+			#endif
+			// prepare packet to be written to characteristic:
+			// header with 2 bytes selector little endian, 2 bytes payload size little endian
+			// afterwards, the payload with the actual data
+			uint8_t* packet = omnibus_packet_buffer;
+			uint8_t pktsize = 4 + pldsize;
+			packet[0] = selector;
+			packet[1] = 0;
+			packet[2] = pldsize;
+			packet[3] = 0;
+
+			// this flag will be set to 1 if we are not allowed to read (not authenticated)
+			uint8_t force_read_dummy_data = 0;
+
+			
+
+			// check authentication
+			if (!authorizedOK())
+			{
+				// no authentication, only allowed operation is matrix read
+				uint16_t handle = rcs_handle_for_idx(selector);
+				if (handle != AUTENTICACION_MATRIX_CHAR_HANDLE) {
+					Serial.println("BAD AUTHENTICATION TOKEN. Will return dummy data when read");
+					force_read_dummy_data = 1;
+				}
+			}
+
+			if (!force_read_dummy_data) {
+				// authorized, copy payload from pseudo-characteristics buffer
+				memcpy((packet + 4), payload, pldsize);
+			}
+			else {
+				// non authorized, copy zeros
+				memset((packet + 4), 0, pldsize);
+			}
+
+
+			// set characteristic value to be read by other end
+			pbleCharacteristics[BLE_CHA_OMNIBUS]->setValue(packet, pktsize);
+
+			return;
+		}
+
+		
 
 		if ( pCharacteristic->getUUID().equals(blefields[RCS_SCH_MAT].uuid) )
 		{

@@ -46,6 +46,9 @@ static bool operator==(const carac_config& lhs, const carac_config& rhs){
     if(memcmp(lhs.policy, rhs.policy,sizeof(lhs.policy))){
         return false;
     }
+    if(lhs.medidor485 != rhs.medidor485){
+      return false;
+    }
     
     return true; 
 }
@@ -97,6 +100,7 @@ void Config::Carac_to_json(DynamicJsonDocument& ConfigJSON){
     ConfigJSON["data_cleared"] = data.Data_cleared;
     ConfigJSON["count_reinicios_malos"] = data.count_reinicios_malos;
     ConfigJSON["velt_v"] = data.velt_v;
+    ConfigJSON["medidor485"] = data.medidor485;
 }
 
 void Config::Json_to_carac(DynamicJsonDocument& ConfigJSON){
@@ -117,6 +121,7 @@ void Config::Json_to_carac(DynamicJsonDocument& ConfigJSON){
     data.Data_cleared = ConfigJSON["data_cleared"].as<uint8_t>(); 
     data.count_reinicios_malos = ConfigJSON["count_reinicios_malos"].as<uint8_t>();
     data.velt_v = ConfigJSON["velt_v"].as<uint8_t>();
+    data.medidor485 = ConfigJSON["medidor485"].as<uint8_t>();
 }
 
 //**********Funciones externas de la case de configuracion**************/
@@ -145,6 +150,10 @@ void Config::init(){
         printf("Cambiando el policy porque no tenia!\n");
         memcpy(Configuracion.data.policy,"ALL",3);
     }
+
+    if(Configuracion.data.medidor485 == 0x01 ){
+      Update_Status_Coms(MED_LEYENDO_MEDIDOR);
+    }
     
 	modifyCharacteristic((uint8_t*)&Configuracion.data.policy, 3, POLICY);
 
@@ -167,12 +176,15 @@ bool Config::Load(){
 }
 
 bool Config::Store(){
+    SPIFFS.end();
+    SPIFFS.begin(1,"/spiffs",10,"ESP32");
     DynamicJsonDocument ConfigJSON(1024);
     #ifdef DEBUG_CONFIG
         printf("Guardando datos a la flash!!\n");
     #endif
     Carac_to_json(ConfigJSON);
     ConfigFile = SPIFFS.open("/config.json", FILE_WRITE);
+
     String data_to_store;
     serializeJson(ConfigJSON, data_to_store);
     ConfigFile.print(data_to_store);

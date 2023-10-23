@@ -394,6 +394,7 @@ typedef struct{
 	uint16 potencia_contratada2 = 32;
 
 	uint8 velt_v = 0;
+	uint8 medidor485 = 0;
 	
 } carac_config;
 

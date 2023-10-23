@@ -14,6 +14,7 @@
 #include "esp_eth.h"
 #include "esp_log.h"
 #include "sdkconfig.h"
+#include "contador.h"
 #include "../control.h"
 #include "esp_netif.h"
 #include "esp_eth_netif_glue.h"

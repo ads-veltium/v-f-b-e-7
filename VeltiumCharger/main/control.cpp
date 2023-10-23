@@ -293,7 +293,7 @@ void controlTask(void *arg) {
 							old_inicializado = dispositivo_inicializado;
 							conexion_trigger=1;
 						}
-
+						
 						if(conexion_trigger && user_index_arrived){
 							SendStatusToPSOC5(serverbleGetConnected(), dispositivo_inicializado,0);
 							conexion_trigger=0;
@@ -745,7 +745,7 @@ void procesar_bloque(uint16 tipo_bloque){
 				modifyCharacteristic(&buffer_rx_local[20], 4, MEASURES_ACTIVE_ENERGY_CHAR_HANDLE);
 				modifyCharacteristic(&buffer_rx_local[46], 4, PHOTOVOLTAIC_TOTAL_POWER);
 				modifyCharacteristic(&buffer_rx_local[50], 4, PHOTOVOLTAIC_NET_POWER);
-				
+				modifyCharacteristic(&buffer_rx_local[54], 1, MEASURES_APPARENT_POWER_CHAR_HANDLE);
 					
 					Status.error_code = buffer_rx_local[13];
 					
@@ -1051,12 +1051,35 @@ void procesar_bloque(uint16 tipo_bloque){
 		break;
 
 		case SEACH_EXTERNAL_COUNTER:{
+
+			ContadorExt.MeidorConectado = true;
+			Configuracion.data.medidor485 = buffer_rx_local[0];
+
 			#ifdef DEBUG
-			printf("El medidor RS485 se ha encontrado %i\n", (buffer_rx_local[0]));
+			printf("El medidor RS485 se ha encontrado %d\n", (buffer_rx_local[0]));
 			#endif
-			//DECIRLE A LA APP QUE YA SE HA ENCONTRADO
-			//Update_Status_Coms(MED_BUSCANDO_MEDIDOR);
-			Update_Status_Coms(MED_LEYENDO_MEDIDOR);
+			if(buffer_rx_local[0]){//Se ha encontrado
+
+				ContadorExt.GatewayConectado = true;
+				Update_Status_Coms(MED_BUSCANDO_GATEWAY);
+				delay(20);
+				Update_Status_Coms(MED_BUSCANDO_MEDIDOR);
+				delay(20);
+				Update_Status_Coms(MED_LEYENDO_MEDIDOR);
+				
+			}
+			else{//NO se ha encontrado
+				
+				Update_Status_Coms(MED_BUSCANDO_GATEWAY);
+				delay(20);
+				Update_Status_Coms(0,MED_BLOCK);
+				ContadorExt.GatewayConectado = false;
+				ContadorExt.MeidorConectado = false;
+
+			}
+			
+			
+			
 
 		} 
 		break;
@@ -1152,21 +1175,35 @@ void procesar_bloque(uint16 tipo_bloque){
 				Params.CDP				  = buffer_rx_local[0];			
 				if((buffer_rx_local[0] >> 1) & 0x01){
 
-					Params.Tipo_Sensor    = ((buffer_rx_local[0]  >> 4) & 0x01);
+
+					Params.Tipo_Sensor    = ((buffer_rx_local[0]  >> 4) & 0x01); //tiene el medidor
 					//Bloquear la carga hasta que encontremos el medidor
 					
-					if(Params.Tipo_Sensor && !ContadorExt.MeidorConectado){
+					if(Params.Tipo_Sensor){
 
-						//Buscar medidor cuando lo pulsan en la APP
-						Coms.ETH.medidor = true;
-						Update_Status_Coms(0,MED_BUSCANDO_GATEWAY);
-						Bloqueo_de_carga = 1;
-						SendToPSOC5(Bloqueo_de_carga,BLOQUEO_CARGA);
-						SendToPSOC5(1, SEACH_EXTERNAL_COUNTER);
+						if(!Configuracion.data.medidor485){
+
+							//Buscar medidor cuando lo pulsan en la APP
+							Serial.println("Enviando orden de buscar medidor 485");
+							Coms.ETH.medidor = true;
+							Update_Status_Coms(0,MED_BUSCANDO_GATEWAY);
+							//Bloqueo_de_carga = 1;
+							//SendToPSOC5(Bloqueo_de_carga,BLOQUEO_CARGA);
+							SendToPSOC5(1, SEACH_EXTERNAL_COUNTER);
+						}
+					}
+					else{
+						Serial.println("CDP sin medidor");
+						Coms.ETH.medidor = false;
+						Configuracion.data.medidor485 = 0;
+						ContadorExt.MeidorConectado = 0;
 					}
 				}
 				else{
 					Params.Tipo_Sensor = 0;
+					Coms.ETH.medidor = false;
+					Configuracion.data.medidor485 = 0;
+					ContadorExt.MeidorConectado = 0;
 				}
 
 				if(((buffer_rx_local[0] >> 5) & 0x03) > 0){
@@ -1205,10 +1242,10 @@ void procesar_bloque(uint16 tipo_bloque){
 		
 		case COMS_CONFIGURATION_ETH_ON:{
 
-			if( !Coms.ETH.ON && buffer_rx_local[0] && !Coms.ETH.conectado){
+			if(Coms.ETH.medidor && !Coms.ETH.ON && buffer_rx_local[0] && !Coms.ETH.conectado){
 				Coms.ETH.restart = true;
 			}
-			else if (Coms.ETH.ON && !buffer_rx_local[0] && !Coms.ETH.conectado){
+			else if (Coms.ETH.medidor && Coms.ETH.ON && !buffer_rx_local[0] && !Coms.ETH.conectado){
 				Coms.ETH.restart = true;
 			}
 
@@ -1521,7 +1558,6 @@ void procesar_bloque(uint16 tipo_bloque){
 			//si no se cumple nada de lo anterior, permitimos la carga
 			else{
 				Bloqueo_de_carga = false;
-				//printf("AAAAA\n");
 			}
 			//printf("Enviando bloqueo %i\n", Bloqueo_de_carga);
 			SendToPSOC5(Bloqueo_de_carga, BLOQUEO_CARGA);			
