@@ -94,9 +94,9 @@ uint16 cnt_diferencia = 1;
 uint8 HPT_estados[9][3] = {"0V", "A1", "A2", "B1", "B2", "C1", "C2", "E1", "F1"};
 
 #ifdef USE_COMS
-uint8 version_firmware[11] = {"VBLE2_0521"};	
+uint8 version_firmware[11] = {"VBLE3_0501"};	
 #else	
-uint8 version_firmware[11] = {"VBLE0_0517"};	
+uint8 version_firmware[11] = {"VBLE4_0501"};	
 #endif
 
 uint8 PSOC5_version_firmware[11] ;		
@@ -234,7 +234,7 @@ void controlTask(void *arg) {
 										mainFwUpdateActive = 1;
 										updateTaskrunning=1;
 										Serial.println("Enviando firmware al PSOC5 por falta de comunicacion!");
-										xTaskCreate(UpdateTask,"TASK UPDATE",4096,NULL,1,NULL);
+										xTaskCreate(UpdateTask,"TASK UPDATE",4096*5,NULL,1,NULL);
 									}
 								}
 							}
@@ -1163,7 +1163,7 @@ void procesar_bloque(uint16 tipo_bloque){
 		break;
 		
 		case BOOT_LOADER_LOAD_SW_APP_CHAR_HANDLE:{
-			xTaskCreate(UpdateTask,"TASK UPDATE",4096,NULL,1,NULL);
+			xTaskCreate(UpdateTask,"TASK UPDATE",4096*5,NULL,1,NULL);
 			updateTaskrunning=1;
 		} 
 		break;
@@ -1580,22 +1580,29 @@ void procesar_bloque(uint16 tipo_bloque){
 void UpdateTask(void *arg){
 	UpdateStatus.InstalandoArchivo = true;
 	#ifdef DEBUG
-	Serial.println("\nComenzando actualizacion del PSOC5!!");
+	Serial.println("\nComenzando actualizacion del PSOC6!!");
 	#endif
 	
 	int Nlinea =0;
 	uint8_t err = 0;
 	String Buffer;
 
-	unsigned long  siliconID;
-	unsigned char siliconRev;
-	unsigned char packetChkSumType;
-	unsigned char arrayId; 
-	unsigned short rowNum;
-	unsigned short rowSize; 
-	unsigned char checksum ;
-	unsigned long blVer=0;
-	unsigned char rowData[512];
+	uint32_t siliconID;
+	uint8_t siliconRev;
+	uint8_t packetChkSumType;
+	uint8_t appID;
+	uint8_t bootloaderEntered = 0;
+	uint32_t applicationStartAddr = 0xffffffff;
+	uint32_t applicationSize = 0;
+	uint32_t applicationDataLines = 255;
+	uint32_t applicationDataLinesSeen = 0;
+	uint32_t prodID;
+	uint8_t arrayId;
+	uint32_t address;
+	uint16_t rowSize;
+	uint8_t checksum;
+	uint32_t blVer=0;
+	uint8_t rowData[512];
 	SPIFFS.begin();
 	File file;
 	SPIFFS.end();
@@ -1604,90 +1611,32 @@ void UpdateTask(void *arg){
 	Serial.print("Intento número:");
 	Serial.println(Configuracion.data.count_reinicios_malos);
 	if(Configuracion.data.count_reinicios_malos > 10){
-		if(SPIFFS.exists("/FreeRTOS_V6_old.cyacd")){
+		if(SPIFFS.exists("/FW_PSoC6_v7.cyacd2")){
 			Serial.println("Se ha intentado 10 veces y existe un FW_Old, se prueba con este");
-			SPIFFS.remove("/FreeRTOS_V6.cyacd");
-			SPIFFS.rename("/FreeRTOS_V6_old.cyacd", "/FreeRTOS_V6.cyacd");
+			SPIFFS.remove("/FW_PSoC6_v7.cyacd2");
+			SPIFFS.rename("/FW_PSoC6_v7_old.cyacd2", "/FW_PSoC6_v7.cyacd2");
 		}
 	}
-	file = SPIFFS.open("/FreeRTOS_V6.cyacd");	
-	if(!file || file.size() == 0){ 
-		file.close();
-		SPIFFS.end();
-		Serial.println("El spiffs parece cerrado, intentandolo otra vez"); 		
-		SPIFFS.begin(0,"/spiffs",1,"PSOC5");
-		file = SPIFFS.open("/FreeRTOS_V6.cyacd");
-		if(!file || file.size() == 0){
-			Serial.println("Imposible abrir");
-		}
-	}
-	Serial.println("Tamaño del archivo!");
-	Serial.println(file.size());
-	if(file){
-		//Leer la primera linea y obtener los datos del chip
-		Buffer=file.readStringUntil('\n'); 
-		int longitud = Buffer.length()-1;  
-		unsigned char* b = (unsigned char*) Buffer.c_str(); 
-		err = CyBtldr_ParseHeader((unsigned int)longitud,  b, &siliconID , &siliconRev ,&packetChkSumType);  
-		err = CyBtldr_ParseRowData((unsigned int)longitud,b, &arrayId, &rowNum, rowData, &rowSize, &checksum);
-		Serial.printf("Error 1%i \n", err);
 
-		//Reiniciar la lectura del archivo
-		file.seek(PRIMERA_FILA,SeekSet);
-		err = CyBtldr_StartBootloadOperation(&serialLocal ,siliconID, siliconRev ,&blVer);
-		
-		while(1){
-			delay(1);
-			if (file.available() && err == 0) {   
-				Buffer=file.readStringUntil('\n'); 
-				longitud = Buffer.length()-1; 
-				b = (unsigned char*) Buffer.c_str();     
-				uint8 reintentos = 0;
-				err = 1;
-				while(err !=0 && ++reintentos < 10){
-					//Intentar enviar la linea varias veces asta que no falle
-					err = CyBtldr_ParseRowData((unsigned int)longitud,b, &arrayId, &rowNum, rowData, &rowSize, &checksum);
-					if (err==0){
-						err = CyBtldr_ProgramRow(arrayId, rowNum, rowData, rowSize);
-					}
-					if (err==0){
-						err = CyBtldr_VerifyRow(arrayId, rowNum, checksum);
-					}
-					if(err!=0){
-						Serial.printf("Error 1%i \n", err);
-					}
-				}
-						
-				Nlinea++;
-				Serial.printf("Lineas leidas: %u \n",Nlinea);
-			}
-			else{
-				//End Bootloader Operation 
-				CyBtldr_EndBootloadOperation(&serialLocal);		
-				Serial.println("Actualizacion terminada!!");
-				Serial.printf("Lineas leidas: %u \n",Nlinea);
-				Serial.printf("Error %i \n", err);
-				file.close();
-				updateTaskrunning=0;
-				setMainFwUpdateActive(0);
-				UpdateStatus.InstalandoArchivo=0;
-				if(!UpdateStatus.ESP_UpdateAvailable){
-					Serial.println("Reiniciando en 4 segundos!"); 
-					vTaskDelay(pdMS_TO_TICKS(4000));
-					MAIN_RESET_Write(0);
-					delay(500);						
-					ESP.restart();
-				}
-				else{
-					UpdateStatus.PSOC5_UpdateAvailable = false;
-					UpdateStatus.DobleUpdate 		   = true;
-				}
-
-				vTaskDelete(NULL);		
-			}
-			
-		}
+	err = CyBtldr_RunAction(PROGRAM, &serialLocal, NULL, "/FW_PSoC6_v7.cyacd2", "PSOC5");
+	Serial.print("Actualizacion terminada: err = ");
+	Serial.println(err);
+	updateTaskrunning=0;
+	setMainFwUpdateActive(0);
+	UpdateStatus.InstalandoArchivo=0;
+	if(!UpdateStatus.ESP_UpdateAvailable){
+		Serial.println("Reiniciando en 4 segundos!"); 
+		vTaskDelay(pdMS_TO_TICKS(4000));
+		MAIN_RESET_Write(0);
+		delay(500);						
+		ESP.restart();
 	}
+	else{
+		UpdateStatus.PSOC5_UpdateAvailable = false;
+		UpdateStatus.DobleUpdate 		   = true;
+	}
+
+	vTaskDelete(NULL);			
 }
 
 void controlInit(void){

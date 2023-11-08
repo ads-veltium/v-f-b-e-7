@@ -810,12 +810,12 @@ void DownloadFileTask(void *args){
       SPIFFS.end();					
       SPIFFS.begin(1,"/spiffs",1,"PSOC5");
     }
-    if(SPIFFS.exists("/FreeRTOS_V6.cyacd")){
+    if(SPIFFS.exists("/FW_PSoC6_v7.cyacd2")){
       vTaskDelay(pdMS_TO_TICKS(50));
       SPIFFS.format();
     }
 
-    FileName="/FreeRTOS_V6.cyacd";
+    FileName="/FW_PSoC6_v7.cyacd2";
 
     vTaskDelay(pdMS_TO_TICKS(50));
     UpdateFile = SPIFFS.open(FileName, FILE_WRITE);

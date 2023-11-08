@@ -37,6 +37,9 @@
 #include "Arduino.h"
 #include "tipos.h"
 
+#include "cybtldr/cybtldr_api2.h"
+#include "cybtldr/cybtldr_command.h"
+
 #ifdef USE_COMS	
 	#define MAX_GROUP_SIZE 40
 	#include "coms/Wifi_Station.h"

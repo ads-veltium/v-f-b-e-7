@@ -4,7 +4,7 @@ otadata,     data, ota,     0x00E000,  0x002000,
 app0,        app,  ota_0,   0x010000,  0x200000,
 app1,        app,  ota_1,   0x210000,  0x200000,
 WebServer,   data, spiffs,  0x410000,  0x80000, 
-PSOC5,       data, spiffs,  0x610000,  0x80000, 
-ESP32,       data, spiffs,  0x690000,  2M,
+PSOC5,       data, spiffs,  0x610000,  0x100000, 
+ESP32,       data, spiffs,  0x710000,  2M,
 
 

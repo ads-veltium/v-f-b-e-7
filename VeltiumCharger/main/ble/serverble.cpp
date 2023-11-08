@@ -393,9 +393,9 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 					}
 
 					//Almacenar la version anterior de firmware
-					if(SPIFFS.exists("/FreeRTOS_V6.cyacd")){
-						if(SPIFFS.exists("/FreeRTOS_V6_old.cyacd")){
-							SPIFFS.remove("/FreeRTOS_V6_old.cyacd");
+					if(SPIFFS.exists("/FW_PSoC6_v7.cyacd2")){
+						if(SPIFFS.exists("/FW_PSoC6_v7_old.cyacd2")){
+							SPIFFS.remove("/FW_PSoC6_v7_old.cyacd2");
 						}
 						//Comprobar si nos van a entrar las dos versiones de firmware
 						File dir = SPIFFS.open("/");
@@ -403,10 +403,10 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 							#ifdef DEBUG
 							printf("No entran los dos documentos! Borro el anterior!\n");
 							#endif
-							SPIFFS.remove("/FreeRTOS_V6.cyacd");
+							SPIFFS.remove("/FW_PSoC6_v7.cyacd2");
 						}
 						else{
-							SPIFFS.rename("/FreeRTOS_V6.cyacd", "/FreeRTOS_V6_old.cyacd");
+							SPIFFS.rename("/FW_PSoC6_v7.cyacd2", "/FW_PSoC6_v7_old.cyacd2");
 						}
 					}else{
 						#ifdef DEBUG_BLE
@@ -415,7 +415,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 					}
 
 					vTaskDelay(pdMS_TO_TICKS(50));
-					UpdateFile = SPIFFS.open("/FreeRTOS_V6.cyacd", FILE_WRITE);
+					UpdateFile = SPIFFS.open("/FW_PSoC6_v7.cyacd2", FILE_WRITE);
 				}
 				else{
 					successCode = 0x00000040;
@@ -465,7 +465,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 
 					UpdateFile.close();
 
-					File InstalledFile = SPIFFS.open("/FreeRTOS_V6.cyacd", FILE_READ);
+					File InstalledFile = SPIFFS.open("/FW_PSoC6_v7.cyacd2", FILE_READ);
 
 					if(UpdatefileSize==InstalledFile.size()){
 						#ifdef DEBUG_BLE
@@ -490,7 +490,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 							Serial.printf("El fichero guardado no es correcto!\n");
 						#endif
 						InstalledFile.close();
-						SPIFFS.remove("/FreeRTOS_V6.cyacd");
+						SPIFFS.remove("/FW_PSoC6_v7.cyacd2");
 						successCode = 0x00000002;
 						serverbleNotCharacteristic((uint8_t*)&successCode, sizeof(successCode), FWUPDATE_BIRD_DATA_PSEUDO_CHAR_HANDLE);
 						MAIN_RESET_Write(0);
@@ -808,52 +808,28 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 					}
 				#endif
 			}
-			else if(UpdateType == VELT_UPDATE){			
-				if(UpdateFile.write(payload,partSize)!=partSize){
+				
+			else if(UpdateType == VELT_UPDATE){	
+				Serial.printf("partSize: %u\n", partSize);
+				uint16 hola = UpdateFile.write(payload,partSize);
+				Serial.printf("hola: %u\n", hola);
+
+
+				if(hola == 0 && partSize > 0){
+					hola = UpdateFile.write(payload,partSize);
+					Serial.printf("Reintento de hola: %u\n", hola);
+				}
+
+				
+				if(hola!=partSize){
+					Serial.println("MAAAAAAAAAAAAAAAAAAAAL");
 					Serial.println("Writing Error");
 					successCode = 0x00000002;
 					SPIFFS.end();
 					UpdateFile.close();	
 				}
 
-				//Comprobacion de lo que se ha escrito, vía checksum (Muy muy lento e innecesario)
-				/*
-				uint8* escrito = new uint8[256];
-				int posicion = UpdateFile.position()-partSize;
-				UpdateFile.close();
-				UpdateFile = SPIFFS.open("/FreeRTOS_V6.cyacd", FILE_READ);
-				UpdateFile.seek(posicion, SeekCur);
-				UpdateFile.read(escrito, partSize);
-
-
-				//Comprobar el checksum de lo que se ha escrito
-				uint32_t writtenchecksum=crc32(partSize, (uint8_t*)escrito,0xFFFFFFFFUL);
-
-				Serial.printf("Writen vs checksum %08X %08X\n", writtenchecksum, checksum);
-
-				if(checksum!= writtenchecksum){
-					successCode = 0x00000002;
-					serverbleNotCharacteristic((uint8_t*)&successCode, sizeof(successCode), FWUPDATE_BIRD_DATA_PSEUDO_CHAR_HANDLE);
-					delete[] payload;
-					if(UpdateType == VELT_UPDATE){
-						SPIFFS.end();
-						UpdateFile.close();
-					}
-					else{
-						Update.end();
-					}
-					UpdateStatus.DescargandoArchivo = false;
-					return;
-				}
-
-				UpdateFile.close();
-				UpdateFile = SPIFFS.open("/FreeRTOS_V6.cyacd", FILE_APPEND);
-				*/
-
 			}	
-
-
-			
 
 			delete[] payload;
 
