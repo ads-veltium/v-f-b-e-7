@@ -743,14 +743,48 @@ class CBCharacteristic: public BLECharacteristicCallbacks
 
 		if ( pCharacteristic->getUUID().equals(blefields[RCS_SCH_MAT].uuid) )
 		{
-			uint16_t size = 168;	// for schedule matrix
+			uint16_t size = 24;	// for schedule matrix
 			
 			buffer_tx[0] = HEADER_TX;
 			buffer_tx[1] = (uint8)(SCHED_CHARGING_SCHEDULE_MATRIX_CHAR_HANDLE >> 8);
 			buffer_tx[2] = (uint8)(SCHED_CHARGING_SCHEDULE_MATRIX_CHAR_HANDLE);
-			buffer_tx[3] = size;
-			memcpy(&buffer_tx[4], data, size);
-			controlSendToSerialLocal(buffer_tx, size + 4);
+			buffer_tx[3] = size +1;
+
+			//domingo
+			buffer_tx[4] = 0;
+			memcpy(&buffer_tx[5], &data[0], size);
+			controlSendToSerialLocal(buffer_tx, size + 5);
+			delay(10);
+			//lunes
+			buffer_tx[4] = 1;
+			memcpy(&buffer_tx[5], &data[24], size);
+			controlSendToSerialLocal(buffer_tx, size + 5);
+			delay(10);
+			//martes
+			buffer_tx[4] = 2;
+			memcpy(&buffer_tx[5], &data[48], size);
+			controlSendToSerialLocal(buffer_tx, size + 5);
+			delay(10);
+			//miercoles
+			buffer_tx[4] = 3;
+			memcpy(&buffer_tx[5], &data[72], size);
+			controlSendToSerialLocal(buffer_tx, size + 5);
+			delay(10);
+			//jueves
+			buffer_tx[4] = 4;
+			memcpy(&buffer_tx[5], &data[96], size);
+			controlSendToSerialLocal(buffer_tx, size + 5);
+			delay(10);
+			//viernes
+			buffer_tx[4] = 5;
+			memcpy(&buffer_tx[5], &data[120], size);
+			controlSendToSerialLocal(buffer_tx, size + 5);
+			delay(10);
+			//sabado
+			buffer_tx[4] = 6;
+			memcpy(&buffer_tx[5], &data[144], size);
+			controlSendToSerialLocal(buffer_tx, size + 5);
+
 			return;
 		}
 
