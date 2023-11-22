@@ -99,16 +99,16 @@ int CyBtldr_RunAction(CyBtldr_Action action, HardwareSerialMOD *comm, CyBtldr_Pr
             uint32_t productId = 0;
 
             err = CyBtldr_ParseHeader(lineLen, line, &siliconId, &siliconRev, &chksumtype, &appId, &productId);
-
+            
+            // Parse whole cyacd2 file to check 
+            if (err == CYRET_SUCCESS)
+                err = CyBtldr_ParseCyAcdAppStartAndSize(&applicationStartAddr, &applicationSize, &applicationDataLines, line);
             if (CYRET_SUCCESS == err) {
                 CyBtldr_SetCheckSumType(static_cast<CyBtldr_ChecksumType>(chksumtype));
 
                 // send ENTER DFU command to start communication
                 err = CyBtldr_StartBootloadOperation(comm, siliconId, siliconRev, &blVer, productId);
-
                 // send Set Application Metadata command 
-                if (err == CYRET_SUCCESS) 
-                    err = CyBtldr_ParseCyAcdAppStartAndSize(&applicationStartAddr, &applicationSize, &applicationDataLines, line);
                 if (err == CYRET_SUCCESS) 
                     err = CyBtldr_SetApplicationMetaData(appId, applicationStartAddr, applicationSize);
                 bootloaderEntered = 1;

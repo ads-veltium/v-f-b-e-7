@@ -37,7 +37,7 @@ int CyBtldr_TransferData(uint8_t* inBuf, int inSize, uint8_t* outBuf, int outSiz
 
     outBuf[0] = 'a';
 
-    channel->flush();
+    channel->flush(false);
 
     while (err == 1)
     {
