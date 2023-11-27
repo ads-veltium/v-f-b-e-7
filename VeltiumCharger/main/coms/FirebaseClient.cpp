@@ -529,6 +529,7 @@ bool ReadFirebaseShedule(String Path){
       }
 
       uint8_t plainMatrix[168]={0};
+      uint8_t plainMatrix_trozo[25]={0};
       uint8_t alguna_activa = 0;
 
       //Decodificar las programaciones
@@ -549,9 +550,46 @@ bool ReadFirebaseShedule(String Path){
               alguna_activa = 1;
           }
       }
-
       SendToPSOC5((uint8_t)alguna_activa, CHARGING_INSTANT_DELAYED_CHAR_HANDLE);
-      SendToPSOC5(plainMatrix, 168, SCHED_CHARGING_SCHEDULE_MATRIX_CHAR_HANDLE);
+      //domingo
+      plainMatrix_trozo[0] = 0;
+      memcpy(&plainMatrix_trozo[1], &plainMatrix[0], 24);
+      SendToPSOC5(plainMatrix_trozo, 24+1, SCHED_CHARGING_SCHEDULE_MATRIX_CHAR_HANDLE);
+      delay(10);
+      //lunes
+      plainMatrix_trozo[0] = 1;
+      memcpy(&plainMatrix_trozo[1], &plainMatrix[24], 24);
+      SendToPSOC5(plainMatrix_trozo, 24+1, SCHED_CHARGING_SCHEDULE_MATRIX_CHAR_HANDLE);
+      delay(10);
+      //martes
+      plainMatrix_trozo[0] = 2;
+      memcpy(&plainMatrix_trozo[1], &plainMatrix[48], 24);
+      SendToPSOC5(plainMatrix_trozo, 24+1, SCHED_CHARGING_SCHEDULE_MATRIX_CHAR_HANDLE);
+      delay(10);
+      //miercoles
+      plainMatrix_trozo[0] = 3;
+      memcpy(&plainMatrix_trozo[1], &plainMatrix[72], 24);
+      SendToPSOC5(plainMatrix_trozo, 24+1, SCHED_CHARGING_SCHEDULE_MATRIX_CHAR_HANDLE);
+      delay(10);
+      //jueves
+      plainMatrix_trozo[0] = 4;
+      memcpy(&plainMatrix_trozo[1], &plainMatrix[96], 24);
+      SendToPSOC5(plainMatrix_trozo, 24+1, SCHED_CHARGING_SCHEDULE_MATRIX_CHAR_HANDLE);
+      delay(10);
+      //viernes
+      plainMatrix_trozo[0] = 5;
+      memcpy(&plainMatrix_trozo[1], &plainMatrix[120], 24);
+      SendToPSOC5(plainMatrix_trozo, 24+1, SCHED_CHARGING_SCHEDULE_MATRIX_CHAR_HANDLE);
+      delay(10);
+      //sabado
+      plainMatrix_trozo[0] = 6;
+      memcpy(&plainMatrix_trozo[1], &plainMatrix[144], 24);
+      SendToPSOC5(plainMatrix_trozo, 24+1, SCHED_CHARGING_SCHEDULE_MATRIX_CHAR_HANDLE);
+
+      printf("Se han enviado las programaciones por COMS\n");
+      //SendToPSOC5(plainMatrix, 168, SCHED_CHARGING_SCHEDULE_MATRIX_CHAR_HANDLE);
+
+
 
       Schedule.last_ts_app_req=ts_app_req;
 
