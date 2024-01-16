@@ -6,7 +6,7 @@
 
 Real_Time_Database *Database = new Real_Time_Database();
 
-DynamicJsonDocument Lectura(2048);
+DynamicJsonDocument Lectura(4096); //Si no no entra el JSON y las lecturas devuelven NULL
 
 //Extern variables
 extern carac_Firebase_Configuration ConfigFirebase;
@@ -18,7 +18,8 @@ extern carac_Coms                   Coms;
 extern carac_Schedule               Schedule;
 
 extern uint8 user_index;
-extern uint8 PSOC5_version_firmware[11] ;	
+extern uint8 PSOC5_version_firmware[11];	
+extern uint8 version_firmware[11];
 
 #ifdef USE_GROUPS
 extern carac_group                  ChargingGroup;
@@ -202,11 +203,11 @@ bool WriteFirebaseFW(String Path){
 
 
   if(Configuracion.data.Firmware < 1000){
-    Escritura["VBLE2"] = "VBLE2_0"+String(Configuracion.data.Firmware);
+    Escritura[ParseFirmwareModel((char *)(version_firmware))] = ParseFirmwareModel((char *)(version_firmware)) +"_0" + String(Configuracion.data.Firmware);
     Escritura[ParseFirmwareModel((char *)(PSOC5_version_firmware))] = PSOC5_version_firmware;
   }
   else{
-    Escritura["VBLE2"] = "VBLE2_"+String(Configuracion.data.Firmware);
+    Escritura[ParseFirmwareModel((char *)(version_firmware))] = ParseFirmwareModel((char *)(version_firmware)) +" _" +String(Configuracion.data.Firmware);
     Escritura[ParseFirmwareModel((char *)(PSOC5_version_firmware))] = PSOC5_version_firmware;
   }
 
@@ -639,7 +640,7 @@ bool ReadFirebaseParams(String Path){
           memcpy(Params.autentication_mode, Lectura["auth_mode"].as<String>().c_str(),2);
           SendToPSOC5(Params.autentication_mode,2,CONFIGURACION_AUTENTICATION_MODES_CHAR_HANDLE);
         }     
-        
+
         if(memcmp(Params.Fw_Update_mode, Lectura["fw_auto"].as<String>().c_str(),2)!=0){
           memcpy(Params.Fw_Update_mode, Lectura["fw_auto"].as<String>().c_str(),2);
           SendToPSOC5(Params.Fw_Update_mode, 2, COMS_FW_UPDATEMODE_CHAR_HANDLE);
@@ -790,9 +791,9 @@ bool CheckFwCompatibility(String fw_group){
     if((!fw_group.compareTo(UpdateStatus.Group)) || (!fw_group.compareTo("all"))){
       if(fw_group.compareTo("none")){
         return true;
+}else return false;
       }else return false;
-    }else return false;
-}
+    }
 
 bool CheckForUpdate(){
   bool update = false;
@@ -817,14 +818,14 @@ bool CheckForUpdate(){
       }  
     }
 
-    String ESP_Ver = Lectura["VBLE2"]["verstr"].as<String>();
-    String fw_esp_group = Lectura["VBLE2"]["group"].as<String>();
+    String ESP_Ver = Lectura[ParseFirmwareModel((char *)(version_firmware))]["verstr"].as<String>();
+    String fw_esp_group = Lectura[ParseFirmwareModel((char *)(version_firmware))]["group"].as<String>();
     uint16 ESP_int_Version=ParseFirmwareVersion(ESP_Ver);
 
     if(CheckFwCompatibility(fw_esp_group)){
       if(ESP_int_Version!=Configuracion.data.Firmware){
         UpdateStatus.ESP_UpdateAvailable= true;
-        UpdateStatus.ESP_url = Lectura["VBLE2"]["url"].as<String>();
+        UpdateStatus.ESP_url = Lectura[ParseFirmwareModel((char *)(version_firmware))]["url"].as<String>();
         update = true;
       } 
     }
@@ -1004,7 +1005,7 @@ void Firebase_Conn_Task(void *args){
       //Comprobar si hay firmware nuevo
 #ifndef DEVELOPMENT
         if(!memcmp(Params.Fw_Update_mode, "AA",2)){
-          ConnectionState = UPDATING;
+            ConnectionState = UPDATING;
           break;
         }
 #endif
@@ -1072,8 +1073,8 @@ void Firebase_Conn_Task(void *args){
         if(!memcmp(Status.HPT_status, "A1",2) || !memcmp(Status.HPT_status, "0V",2)){
           UpdateCheckTimeout=0;
           if(!memcmp(Params.Fw_Update_mode, "AA",2)){
-            ConnectionState = UPDATING;
-            break;
+                        ConnectionState = UPDATING;
+                        break;
           }
         }
       }
@@ -1121,8 +1122,8 @@ void Firebase_Conn_Task(void *args){
         if(!memcmp(Status.HPT_status, "A1",2) || !memcmp(Status.HPT_status, "0V",2) ){
           UpdateCheckTimeout=0;
           Comands.fw_update=0;
-          ConnectionState = UPDATING;
-          break;
+                    ConnectionState = UPDATING;
+                    break;
         }
       }
       
@@ -1204,8 +1205,8 @@ void Firebase_Conn_Task(void *args){
         if(!memcmp(Status.HPT_status, "A1",2) || !memcmp(Status.HPT_status, "0V",2) ){
           UpdateCheckTimeout=0;
           Comands.fw_update=0;
-          ConnectionState = UPDATING;
-          break;
+                    ConnectionState = UPDATING;
+                    break;
         }
       }
       

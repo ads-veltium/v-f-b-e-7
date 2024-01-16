@@ -196,7 +196,7 @@ uint16 ParseFirmwareVersion(String Texto){ //SACA EL NÚMERO DE LA VERSIÓN
 }
 
 
-String ParseFirmwareModel(String Texto){ //SACA VELTX
+String ParseFirmwareModel(String Texto){ //SACA VELTX o VBLEX
   String sub = Texto.substring(0, 5); 
   return(sub);
 }
