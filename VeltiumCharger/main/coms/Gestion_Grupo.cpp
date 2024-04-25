@@ -1,4 +1,5 @@
 #include "../control.h"
+
 #if (defined CONNECTED && defined CONNECTED)
 
 #include "AsyncUDP.h"
@@ -11,6 +12,7 @@
 #define GROUP_CHARGERS 3
 #define SEND_DATA      4
 
+extern esp_netif_t *eth_netif;
 
 uint8_t check_in_group(const char* ID, carac_charger* group, uint8_t size);
 bool add_to_group(const char* ID, IPAddress IP, carac_charger* group, uint8_t *size);
@@ -30,10 +32,14 @@ extern carac_Comands  Comands ;
 
 carac_charger net_group[MAX_GROUP_SIZE] EXT_RAM_ATTR;
 
+bool PARAR_CLIENTE = false;
+
 bool udp_arrancado = false;
 uint8_t net_group_size =0;
 
-//Añadir un cargador a un equipo
+void coap_start_client();
+
+//Añadir un cargador a un equipo 
 bool add_to_group(const char* ID, IPAddress IP, carac_charger* group, uint8_t* size){
     if(*size < MAX_GROUP_SIZE){
         if(check_in_group(ID,group, *size)==255){
@@ -177,7 +183,7 @@ void store_group_in_mem(carac_charger* group, uint8_t size){
 
 void store_params_in_mem(){
     #ifdef DEBUG_GROUPS
-    Serial.println("Almacenando datos en la memoria\n");
+    Serial.println("Gestion_Grupo - store_params_in_mem: Almacenando datos en la memoria\n");
     #endif
     char buffer[7];
     buffer[0] = ChargingGroup.Params.GroupMaster;
@@ -190,7 +196,7 @@ void store_params_in_mem(){
     SendToPSOC5((char*)buffer,7,GROUPS_PARAMS); 
 }
 
-//Eliminar grupo
+//Eliminar grupo 
 void remove_group(carac_charger* group, uint8_t* size){
     if(*size > 0){
         for(int j=0;j < *size;j++){
@@ -202,9 +208,9 @@ void remove_group(carac_charger* group, uint8_t* size){
         *size = 0;
         return;
     }
-    #ifdef DEBUG_GROUPS
-    printf("Error al eliminar el grupo\n");  
-    #endif
+#ifdef DEBUG_GROUPS
+    Serial.printf("Gestion_Grupo - remove_group: Error al eliminar el grupo\n");
+#endif
 }
 
 //Obtener la ip de un equipo dado su ID
@@ -226,7 +232,10 @@ void broadcast_a_grupo(char* Mensaje, uint16_t size){
         for(int j=0;j < ChargingGroup.Charger_number;j++){
             if(check_in_group(net_group[i].name, charger_table, ChargingGroup.Charger_number) != 255){
                 if(net_group[i].IP != IPADDR_NONE && net_group[i].IP != IPADDR_ANY){
-                    udp.sendTo(mensaje, net_group[i].IP,2702,TCPIP_ADAPTER_IF_ETH);
+                    udp.sendTo(mensaje, net_group[i].IP,2702, TCPIP_ADAPTER_IF_ETH);
+#ifdef DEBUG_UDP
+                    Serial.printf("Gestion_Grupo - broadcast_a_grupo: udp.sendTo \"%s\" to %s\n", Mensaje, net_group[i].IP.toString().c_str());
+#endif
                 }
                 charger_table[j].IP = net_group[i].IP; 
                 break;
@@ -245,13 +254,16 @@ void send_to(IPAddress IP,  char* Mensaje){
 
 //Arrancar la comunicacion udp para escuchar cuando el maestro nos lo ordene
 void start_udp(){
+#ifdef DEBUG_UDP
+    Serial.printf("Gestion_Grupo - start_udp\n");
+#endif   
     if(udp_arrancado){
         return;
     }
     udp_arrancado = true;
 
     if(udp.listen(2702)) {
-        udp.onPacket([](AsyncUDPPacket packet) {         
+        udp.onPacket([](AsyncUDPPacket packet) {    
             int size = packet.length();
             char buffer[size+1] ;
             memcpy(buffer, packet.data(), size);
@@ -259,26 +271,31 @@ void start_udp(){
 
             String Desencriptado;
             Desencriptado = Decipher(String(buffer));
+#ifdef DEBUG_UDP
+            Serial.printf("Gestion_Grupo - start_udp: paquete UDP recibido: \"%s\" desde %s por la interfaz %i\n",Desencriptado.c_str(),packet.remoteIP().toString().c_str(),packet.interface());
+#endif   
             if(size<=8){
                 if(packet.isBroadcast()){                   
                     packet.print(Encipher(String(ConfigFirebase.Device_Id)).c_str());
                 }
-
                 uint8 index = check_in_group(Desencriptado.c_str(), net_group, net_group_size);
-
                 if (index != 255){
                     remove_from_group(Desencriptado.c_str(),net_group, &net_group_size);
                 }
-
                 if(packet.remoteIP()[0] == 0 && packet.remoteIP()[1] == 0 && packet.remoteIP()[2] == 0 && packet.remoteIP()[3] == 0 ){
-                    udp.broadcastTo(Encipher(String(ConfigFirebase.Device_Id)).c_str(),2702,TCPIP_ADAPTER_IF_ETH);
+#ifdef DEBUG_UDP
+                    Serial.printf("Gestion_Grupo - start_udp: udp.broadcast %s\n",ConfigFirebase.Device_Id);
+#endif
+                    AsyncUDPMessage broadcast_message(8);
+                    broadcast_message.write((uint8_t *)(Encipher(ConfigFirebase.Device_Id).c_str()), 8);
+                    udp.sendTo(broadcast_message, IPADDR_BROADCAST, 2702, TCPIP_ADAPTER_IF_ETH);
+                    //udp.broadcast(Encipher(String(ConfigFirebase.Device_Id)).c_str());
                     return;
                 }
-                #ifdef DEBUG_GROUPS
-                Serial.printf("El cargador VCD%s con ip %s se ha añadido a la lista de red\n", Desencriptado.c_str(), packet.remoteIP().toString().c_str());  
-                #endif
+#ifdef DEBUG_GROUPS
+                Serial.printf("El cargador VCD%s con ip %s se ha añadido a la lista de red\n", Desencriptado.c_str(), packet.remoteIP().toString().c_str());
+#endif
                 add_to_group(Desencriptado.c_str(), packet.remoteIP(), net_group, &net_group_size);
-
                 //Actualizar net devices
                 uint8_t group_buffer[452];
                 group_buffer[0] = net_group_size +1;
@@ -289,48 +306,65 @@ void start_udp(){
                     group_buffer[i*9+18]=0;
                 }
                 serverbleNotCharacteristic(group_buffer,net_group_size*9 +10, CHARGING_GROUP_BLE_NET_DEVICES);
-                #ifdef DEBUG_GROUPS
-                print_table(net_group, "Net group", net_group_size);
-                #endif
-                
-
+#ifdef DEBUG_GROUPS
+                print_net_table(net_group, "Net group", net_group_size);
+#endif
                 //Si el cargador está en el grupo de carga, le decimos que es un esclavo
                 if(ChargingGroup.Params.GroupMaster && ChargingGroup.Conected){
                     if(check_in_group(Desencriptado.c_str(), charger_table, net_group_size) != 255){
-                        #ifdef DEBUG_GROUPS
-                        Serial.printf("El cargador VCD%s está en el grupo de carga\n", Desencriptado.c_str());  
-                        #endif
+#ifdef DEBUG_GROUPS
+                        Serial.printf("El cargador VCD%s está en el grupo de carga\n", Desencriptado.c_str());
+#endif
                         broadcast_a_grupo("Start client", 12);
                         AsyncUDPMessage mensaje (13);
                         mensaje.write((uint8_t*)(Encipher("Start client").c_str()), 13);
+#ifdef DEBUG_UDP
+                        Serial.printf("Gestion_Grupo - start_udp: udp.sendTo \"Start client\" to %s\n",packet.remoteIP().toString().c_str());
+#endif
                         udp.sendTo(mensaje,packet.remoteIP(),2702,TCPIP_ADAPTER_IF_ETH);
                     }
                 }
             }
             else{
                 if(!memcmp(Desencriptado.c_str(), "Start client", 12)){
-                    #ifdef DEBUG_GROUPS
-                    printf("ME ha llegado start client!\n");
-                    #endif
+#ifdef DEBUG_GROUPS
+                    Serial.printf("Gestion_Grupo - start_udp: Me ha llegado start client\n");
+                    Serial.printf("Gestion_Grupo - start_udp: ChargingGroup.Conected = %i, ChargingGroup.StartClient = %i\n", ChargingGroup.Conected, ChargingGroup.StartClient);
+                    print_group_param (&ChargingGroup);
+#endif
                     if(!ChargingGroup.Conected && !ChargingGroup.StartClient){
-                        #ifdef DEBUG_GROUPS
-                        printf("Soy parte de un grupo !!\n");
-                        #endif
+#ifdef DEBUG_GROUPS
+                        Serial.printf("Soy parte de un grupo !!\n");
+#endif
+                        ChargingGroup.StartClient = true;
+                        ChargingGroup.Params.GroupMaster = false;
+                        ChargingGroup.Params.GroupActive = true;
+                        ChargingGroup.MasterIP = packet.remoteIP();
+                    }
+                    else if(ChargingGroup.Conected){
+                        // ADS Hay que reiniciar el cliente.
+#ifdef DEBUG_GROUPS
+                        Serial.printf("Gestion_Grupo - start_udp: Hay que reiniciar el cliente\n");
+#endif                  
+                        if (PARAR_CLIENTE){
+                            coap_start_client();
+                            PARAR_CLIENTE=false;
+                        }
+                        else{
+                            PARAR_CLIENTE=true;
+                        }
+                    }
+                }
+                else if(!memcmp(Desencriptado.c_str(), "Master here?", 12)){
+                    if(ChargingGroup.Conected && ChargingGroup.Params.GroupMaster){
+#ifdef DEBUG_UDP
+                        Serial.printf("Gestion_Grupo - start_udp: Respuesta: \"Yes, Master here\" to %s\n",packet.remoteIP().toString().c_str());
+#endif
+                        packet.print(Encipher(String("Yes, Master here")).c_str());
 
-                        ChargingGroup.StartClient = true;
-                        ChargingGroup.Params.GroupMaster = false;
-                        ChargingGroup.Params.GroupActive = true;
-                        ChargingGroup.MasterIP =packet.remoteIP();
-                        
-                    }
-      
-                }
-                else if(!memcmp(Desencriptado.c_str(), "Hay maestro?", 12)){
-                    if(ChargingGroup.Conected && ChargingGroup.Params.GroupMaster){
-                        packet.print(Encipher(String("Bai, hemen nago")).c_str());
                     }
                 }
-                else if(!memcmp(Desencriptado.c_str(), "Bai, hemen nago", 15)){
+                else if(!memcmp(Desencriptado.c_str(), "Yes, Master here", 16)){
                     if(ChargingGroup.Conected && ChargingGroup.Params.GroupMaster){
                         ChargingGroup.StartClient = true;
                         ChargingGroup.Params.GroupMaster = false;
@@ -338,19 +372,20 @@ void start_udp(){
                         ChargingGroup.MasterIP =packet.remoteIP();
                     }
                 }
-                else if(!memcmp(Desencriptado.c_str(), "Ezabatu taldea", 14)){
+                else if(!memcmp(Desencriptado.c_str(), "Delete group", 12)){
                     if(ChargingGroup.Conected){
-                        #ifdef DEBUG_GROUPS
+#ifdef DEBUG_GROUPS
                         Serial.println("el maestro me pide que borre el grupo!");
-                        #endif
+#endif
                         ChargingGroup.DeleteOrder = true;
                     }
                 }
-                else if(!memcmp(Desencriptado.c_str(), "Geldituzazu taldea", 18)){
+                else if(!memcmp(Desencriptado.c_str(), "Pause group", 11)){
+
                     if(ChargingGroup.Conected){
-                        #ifdef DEBUG_GROUPS
+#ifdef DEBUG_GROUPS
                         Serial.println("el maestro me pide que pause el grupo!");
-                        #endif
+#endif
                         ChargingGroup.StopOrder = true;
                     }
                 }
@@ -359,10 +394,21 @@ void start_udp(){
     }
     
     //Avisar al resto de equipos de que estamos aqui!
-    udp.broadcastTo(Encipher(String(ConfigFirebase.Device_Id)).c_str(),2702,TCPIP_ADAPTER_IF_ETH);
+#ifdef DEBUG_UDP
+    Serial.printf("Gestion_Grupo - start_udp: udp.broadcast %s\n",ConfigFirebase.Device_Id);
+    int netif_index = esp_netif_get_netif_impl_index (eth_netif);
+    Serial.printf("Gestion_Grupo - start_udp: Interfaz=%i\n",netif_index);
+#endif
+    AsyncUDPMessage broadcast_message (8);
+    broadcast_message.write((uint8_t*)(Encipher(ConfigFirebase.Device_Id).c_str()),8);
+    udp.sendTo(broadcast_message,IPADDR_BROADCAST,2702,TCPIP_ADAPTER_IF_ETH);
+    //udp.broadcast(Encipher(String(ConfigFirebase.Device_Id)).c_str());
 }
 
 void close_udp(){
+#ifdef DEBUG_UDP
+    printf("Gestion_Grupo - close_udp\n");
+#endif   
     remove_group(net_group,&net_group_size);
     net_group_size = 0;
     udp.close();

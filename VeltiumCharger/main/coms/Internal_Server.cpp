@@ -288,7 +288,7 @@ String processor(const String& var){
 		Eth_Auto=Coms.ETH.Auto;
         return checkbox;
 	}
-    else if (var == "CDP")
+        else if (var == "CDP")
 	{
 		String buttons = "";
 		
@@ -339,11 +339,12 @@ void StopServer(void){
 }
 
 void InitServer(void) {
+    Serial.printf("Internal_Server - InitServer\n");
     SPIFFS.begin(false,"/spiffs",10,"WebServer");
 	server.begin();
 	//Cargar los archivos del servidor
 #ifdef DEBUG_WIFI
-	Serial.println(ESP.getFreeHeap());
+    Serial.printf("Internal_Server - InitServer: Free HEAP = %i\n",ESP.getFreeHeap());
 #endif
 
     server.on("/", HTTP_GET_A, [](AsyncWebServerRequest *request){
@@ -453,7 +454,7 @@ void InitServer(void) {
         if(!request->authenticate(user, password.c_str())){
             return request->requestAuthentication();
         }
-                    
+                                
             //Hay que reiniciar ethernet si activamos una ip estatica
             bool reiniciar_eth = Coms.ETH.Auto != Eth_Auto;
             Coms.ETH.Auto = Eth_Auto;
@@ -820,7 +821,7 @@ void InitServer(void) {
    });
 
 #ifdef DEBUG_WIFI
-   Serial.println(ESP.getFreeHeap());
+   Serial.printf("Internal_Server - InitServer: Free Heap: %i\n", ESP.getFreeHeap());
 #endif
 }
 

@@ -13,7 +13,7 @@ extern uint8 dispositivo_inicializado;
 extern carac_Coms Coms;
 extern uint8 emergencyState;
 
-#ifdef USE_COMS
+#ifdef IS_UNO_KUBO
 	extern carac_Contador   ContadorExt;
 	#ifdef CONNECTED
 	extern carac_group    ChargingGroup;
@@ -380,21 +380,24 @@ void LedControl_Task(void *arg){
 			Fade(HUE_PURPLE);
 		}
 
-#ifdef USE_COMS
-		else if((Params.Tipo_Sensor || (ChargingGroup.Params.GroupMaster && ((ChargingGroup.Params.CDP >> 4) & 0x01) && ChargingGroup.Params.GroupActive)) && ContadorExt.ConexionPerdida){
+#ifdef IS_UNO_KUBO
+		// Buscando Medidor
+		// else if((Params.Tipo_Sensor || (ChargingGroup.Params.GroupMaster &&  ContadorConfigurado()))  && !ContadorExt.MedidorConectado && !Coms.Provisioning){
+		else if((Params.Tipo_Sensor || (ChargingGroup.Params.GroupMaster &&  ContadorConfigurado()))  && !ContadorExt.MedidorConectado && !Configuracion.data.medidor485 && !Coms.Provisioning && ContadorExt.Searching){
+			OutWave(VERDE);
+			Delay=7;
+		}
+		else if((Params.Tipo_Sensor || (ChargingGroup.Params.GroupMaster && ContadorConfigurado())) && ContadorExt.ConexionPerdida){
 			Kit(NARANJA_OSCURO);
 			Delay= 85;
 		}
-		//Buscando Medidor
-		else if((Params.Tipo_Sensor || (ChargingGroup.Params.GroupMaster &&  ((ChargingGroup.Params.CDP >> 4) & 0x01) && ChargingGroup.Params.GroupActive))  && !ContadorExt.MeidorConectado  && !Configuracion.data.medidor485 && !Coms.Provisioning){
+#endif
 
-		OutWave(VERDE);
-		Delay=7;
 
-		}
 
 
 #endif
+
 		else{
 			
 			//Funcionamiento normal

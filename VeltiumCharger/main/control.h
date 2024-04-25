@@ -4,33 +4,39 @@
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 #pragma GCC diagnostic ignored "-Wwrite-strings"
 
-/*********** Configuracion del build**************/
+/*********** Configuracion del build**************/ 
 
-#define USE_COMS                   //Comentar para no utilzar las comunicaciones [ Veltium lite Zero]
+#define IS_UNO_KUBO               //Comentar para no utilzar las comunicaciones [ Veltium lite Zero]
+#ifdef IS_UNO_KUBO
+	#define USE_GROUPS			   //Comentar para no utilizar los grupos de potencia
+#endif
 
 //#define DEVELOPMENT				   //Comentar para pasar firmware a produccion ( Cambio de base de datos y quitar debugs)
 
-#ifdef USE_COMS
-#define USE_GROUPS			   //Comentar para no utilizar los grupos de potencia
-#endif
-
 #ifdef DEVELOPMENT
 	#define DEBUG				   //Activar los distintos debugs
-	#ifdef DEBUG 
-
+	#ifdef DEBUG
 		#ifdef USE_GROUPS
-			#define DEBUG_GROUPS       //Activar el debug de los grupos
+			//#define DEBUG_GROUPS	//Activar el debug de los grupos
+			//#define DEBUG_COAP		// ADS - Debug de mensajes COAP
+			//#define DEBUG_UDP		//Debug de mensajes UDP enviados y recibidos
 		#endif
 
 		#define DEBUG_BLE		   //Activar el debug del ble
 		#define DEBUG_CONFIG	   //Debugar el almacenamiento de la configuracion
 
-		#ifdef USE_COMS	
+		#ifdef IS_UNO_KUBO	
 			#define DEBUG_WIFI	     //Activar el debug del wifi
 			#define DEBUG_ETH	   	 //Activar el debug del ETH
-			#define DEBUG_MEDIDOR  //Activar el debug del medidor
+			//#define DEBUG_MEDIDOR  //Activar el debug del medidor
 		#endif
 	#endif
+	#define DEMO_MODE				// Modo para activar valores de medida y estados del cargador ficticios
+	#ifdef DEMO_MODE
+		//#define DEMO_MODE_METER		//Lectura del medidor ficticia
+		//#define DEMO_MODE_CURRENT	//Valor de corriente de carga enviado por un cargador ficticia
+		#define DEMO_MODE_BACKEND   //Modo para conectar el equipo al backend de Firebase de producción estando trabajando en DEVELOPMENT
+	#endif 
 #endif
 
 /*********** Fin configuracion build**************/
@@ -40,7 +46,7 @@
 #include "cybtldr/cybtldr_api2.h"
 #include "cybtldr/cybtldr_command.h"
 
-#ifdef USE_COMS	
+#ifdef IS_UNO_KUBO	
 	#define MAX_GROUP_SIZE 40
 	#include "coms/Wifi_Station.h"
 	#include "coms/helper_coms.h"
@@ -81,7 +87,7 @@
 //Prioridades FreeRTOS
 #define PRIORIDAD_LEDS     1
 #define PRIORIDAD_CONTROL  4
-#define PRIORIDAD_BLE      3
+#define PRIORIDAD_BLE      4
 #define PRIORIDAD_FIREBASE 3
 #define PRIORIDAD_COMS	   2
 #define PRIORIDAD_UART	   3
@@ -112,8 +118,8 @@
 #define STACK_SIZE 4096*4
 
 //SISTEMA DE ACTUALIZACION
-#define VBLE_UPDATE    1
-#define VELT_UPDATE    2
+#define ESP_UPDATE    1
+#define PSOC_UPDATE    2
 
 /*Direcciones del archivo*/
 #define PRIMERA_FILA 14
@@ -132,11 +138,12 @@
 #define READING_PARAMS   26
 #define READING_COMS     27
 #define READING_GROUP    28
-#define WRITTING_CONTROL 35
-#define WRITTING_STATUS  36
-#define WRITTING_PARAMS  37
-#define WRITTING_COMS    38
-#define WRITTING_TIMES   39
+#define WRITING_CONTROL  35
+#define WRITING_STATUS   36
+#define WRITING_PARAMS   37
+#define WRITING_COMS     38
+#define WRITING_TIMES    39
+#define WRITING_RECORD   40
 #define DOWNLOADING      55
 #define UPDATING         65
 #define INSTALLING       70

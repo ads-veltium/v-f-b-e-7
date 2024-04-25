@@ -15,7 +15,8 @@ class Config {
     
     public:
         //ordenes de guardado y carga de datos
-        bool Guardar = false, Cargar = false;
+        bool Guardar = false;
+        bool Cargar = false;
 
         //Inicializador
         void init();

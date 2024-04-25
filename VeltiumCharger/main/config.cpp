@@ -3,7 +3,7 @@
 
 //**********Comparadores de las caracteristicas**********/
 static bool operator==(const carac_config& lhs, const carac_config& rhs){
-    if(lhs.Firmware != rhs.Firmware){
+    if(lhs.FirmwareESP != rhs.FirmwareESP){
       return false;
     }
     if(lhs.FirmwarePSOC != rhs.FirmwarePSOC){
@@ -31,7 +31,7 @@ static bool operator==(const carac_config& lhs, const carac_config& rhs){
     if(lhs.count_reinicios_malos != rhs.count_reinicios_malos){
       return false;
     }
-    if(lhs.velt_v != rhs.velt_v){
+        if(lhs.velt_v != rhs.velt_v){
       return false;
     }
      if(memcmp(lhs.device_ID, rhs.device_ID,sizeof(lhs.device_ID))){
@@ -47,7 +47,7 @@ static bool operator==(const carac_config& lhs, const carac_config& rhs){
         return false;
     }
     if(lhs.medidor485 != rhs.medidor485){
-      return false;
+        return false;
     }
     
     return true; 
@@ -65,8 +65,6 @@ void ConfigTask(void *arg){
 
     while(true){
         delay(100);
-
-
         if(Configuracion.data != old_data){
             Configuracion.Guardar = true;
             old_data = Configuracion.data;
@@ -86,7 +84,7 @@ void ConfigTask(void *arg){
 
 void Config::Carac_to_json(DynamicJsonDocument& ConfigJSON){
     ConfigJSON.clear();
-    ConfigJSON["fw_esp"]      = data.Firmware;
+    ConfigJSON["fw_esp"]      = data.FirmwareESP;
     ConfigJSON["fw_psoc"]     = data.FirmwarePSOC;
     //ConfigJSON["part_number"] = data.Part_Number;
     ConfigJSON["auth_mode"] = String(data.autentication_mode);
@@ -104,7 +102,7 @@ void Config::Carac_to_json(DynamicJsonDocument& ConfigJSON){
 }
 
 void Config::Json_to_carac(DynamicJsonDocument& ConfigJSON){
-    data.Firmware       = ConfigJSON["fw_esp"].as<uint16_t>();
+    data.FirmwareESP    = ConfigJSON["fw_esp"].as<uint16_t>();
     data.FirmwarePSOC   = ConfigJSON["fw_psoc"].as<uint16_t>();
     //data.Part_Number    = ConfigJSON["part_number"].as<String>();
 
@@ -119,7 +117,7 @@ void Config::Json_to_carac(DynamicJsonDocument& ConfigJSON){
     memcpy(data.deviceSerNum, ConfigJSON["device_ser_num"].as<String>().c_str(),sizeof(data.deviceSerNum));
     memcpy(data.policy, ConfigJSON["policy"].as<String>().c_str(),3);
     data.Data_cleared = ConfigJSON["data_cleared"].as<uint8_t>(); 
-    data.count_reinicios_malos = ConfigJSON["count_reinicios_malos"].as<uint8_t>();
+    data.count_reinicios_malos = ConfigJSON["count_reinicios_malos"].as<uint8_t>(); 
     data.velt_v = ConfigJSON["velt_v"].as<uint8_t>();
     data.medidor485 = ConfigJSON["medidor485"].as<uint8_t>();
 }

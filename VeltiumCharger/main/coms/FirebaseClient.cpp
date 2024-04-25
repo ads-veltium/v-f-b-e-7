@@ -1,12 +1,14 @@
 #include "VeltFirebase.h"
 #ifdef CONNECTED
 #include "base64.h"
-
+#include <esp_err.h>
 #include "libb64/cdecode.h"
+
+static const char* TAG = "FirebaseClient";
 
 Real_Time_Database *Database = new Real_Time_Database();
 
-DynamicJsonDocument Lectura(4096); //Si no no entra el JSON y las lecturas devuelven NULL
+DynamicJsonDocument Lectura(4096);
 
 //Extern variables
 extern carac_Firebase_Configuration ConfigFirebase;
@@ -18,16 +20,14 @@ extern carac_Coms                   Coms;
 extern carac_Schedule               Schedule;
 
 extern uint8 user_index;
-extern uint8 PSOC5_version_firmware[11];	
-extern uint8 version_firmware[11];
+extern uint8 PSOC_version_firmware[11];
+extern uint8 ESP_version_firmware[11];
 
 #ifdef USE_GROUPS
 extern carac_group                  ChargingGroup;
 extern carac_circuito               Circuitos[MAX_GROUP_SIZE];
 extern carac_charger                charger_table[ MAX_GROUP_SIZE];
 #endif
-
-extern uint8_t ConnectionState;
 
 //Declaracion de funciones locales
 void DownloadTask(void *arg);
@@ -43,30 +43,49 @@ void Hex_Array_To_Uint16A_Array(const char* inBuff, uint16_t* outBuff);
 bool askForPermission = false ;
 bool givePermission = false;
 
-uint16_t PeriodoLectura = 5000;
+String FIREBASE_HOST_IP, HOST_FOR_DATABASE;
+String FIREBASE_AUTH_HOST_IP, HOST_FOR_AUTH;
+
+#ifndef DEVELOPMENT
+String FIREBASE_PROJECT = FIREBASE_PROD_PROJECT;
+#else
+#ifdef DEMO_MODE_BACKEND
+String FIREBASE_PROJECT = FIREBASE_PROD_PROJECT;
+#else
+String FIREBASE_PROJECT = FIREBASE_DEV_PROJECT;
+#endif
+#endif
+
 /*************************
  Client control functions
 *************************/
 bool initFirebaseClient(){
 
-    Database->deviceID = ConfigFirebase.Device_Id;
-    if(!Database->LogIn()){
-      return false;
-    }
-    #ifdef DEVELOPMENT
-    String project = FIREBASE_DEV_PROJECT;
-    #else
-    String project = FIREBASE_PROJECT;
-    #endif
-    project += "/";
-    Database->begin(project, ConfigFirebase.Device_Db_ID);
-    
-    return true;
+  /* // Modificaciones para convetir en direccion IP las direciones de los servidores de Firebase
+  if (FIREBASE_HOST_IP.isEmpty()){
+    obtener_direccion_IP(project, FIREBASE_HOST_IP);
+  }
+  HOST_FOR_DATABASE = FIREBASE_HOST_IP.isEmpty() ? project : FIREBASE_HOST_IP;
 
-}
+  if (FIREBASE_AUTH_HOST_IP.isEmpty()){
+    obtener_direccion_IP(FIREBASE_AUTH_HOST, FIREBASE_AUTH_HOST_IP);
+  }
+  HOST_FOR_AUTH = FIREBASE_AUTH_HOST_IP.isEmpty() ? FIREBASE_AUTH_HOST : FIREBASE_AUTH_HOST_IP;
+  */
 
-uint8_t getfirebaseClientStatus(){
-  return ConfigFirebase.FirebaseConnected;
+  HOST_FOR_DATABASE = FIREBASE_PROJECT; 
+  HOST_FOR_AUTH = FIREBASE_AUTH_HOST;
+
+  ESP_LOGI(TAG, "HOST_FOR_DATABASE=%s HOST_FOR_AUTH=%s", HOST_FOR_DATABASE.c_str(), HOST_FOR_AUTH.c_str());
+
+  Database->deviceID = ConfigFirebase.Device_Id;
+  if (!Database->LogIn(HOST_FOR_AUTH)){
+    return false;
+  }
+  if (!Database->begin(HOST_FOR_DATABASE, ConfigFirebase.Device_Db_ID)){
+    return false;
+  }
+  return true;
 }
 
 /***************************************************
@@ -141,11 +160,9 @@ bool WriteFirebaseParams(String Path){
   Serial.println("Write Params CALLED");
   Escritura.clear();
   Escritura["auth_mode"]           = String(Params.autentication_mode).substring(0,2);
-  Escritura["inst_curr_limit"]      = Params.inst_current_limit;
-  Escritura["contract_power1"]      = Params.potencia_contratada1;
-  Escritura["contract_power2"]      = Params.potencia_contratada2;
-  //Escritura["dps_placement"]       = Params.Ubicacion_Sensor;
-  //Escritura["dpc_on"]              = Params.CDP_On;
+  Escritura["inst_curr_limit"]     = Params.inst_current_limit;
+  Escritura["contract_power1"]     = Params.potencia_contratada1;
+  Escritura["contract_power2"]     = Params.potencia_contratada2;
   Escritura["dpc" ]                = Params.CDP;
   Escritura["fw_auto"]             = String(Params.Fw_Update_mode).substring(0,2);
   
@@ -167,10 +184,22 @@ bool WriteFirebaseComs(String Path){
   Escritura["eth/on"]      = Coms.ETH.ON;
   Escritura["eth/auto"]    = Coms.ETH.Auto;
 
-  if(Coms.ETH.Auto){
+  if(Coms.ETH.Auto & Coms.ETH.ON){
     Escritura["eth/ip"]       = ip4addr_ntoa(&Coms.ETH.IP);
     Escritura["eth/gateway"]  = ip4addr_ntoa(&Coms.ETH.Gateway);
     Escritura["eth/mask"]     = ip4addr_ntoa(&Coms.ETH.Mask);
+  }
+  else{
+    Escritura["eth/ip"]       = "";
+    Escritura["eth/gateway"]  = "";
+    Escritura["eth/mask"]     = "";
+
+  }
+  if(Coms.Wifi.ON){
+    Escritura["wifi/ip"]      = ip4addr_ntoa(&Coms.Wifi.IP);
+  }
+  else{
+    Escritura["wifi/ip"]      = "";
   }
   
   if(Database->Send_Command(Path,&Escritura,UPDATE)){     
@@ -201,14 +230,13 @@ bool WriteFirebaseFW(String Path){
   DynamicJsonDocument Escritura(2048);
   Escritura.clear();
 
-
-  if(Configuracion.data.Firmware < 1000){
-    Escritura[ParseFirmwareModel((char *)(version_firmware))] = ParseFirmwareModel((char *)(version_firmware)) +"_0" + String(Configuracion.data.Firmware);
-    Escritura[ParseFirmwareModel((char *)(PSOC5_version_firmware))] = PSOC5_version_firmware;
+  if(Configuracion.data.FirmwareESP < 1000){
+    Escritura[ParseFirmwareModel((char *)(ESP_version_firmware))] = ParseFirmwareModel((char *)(ESP_version_firmware)) +"_0" + String(Configuracion.data.FirmwareESP);
+    Escritura[ParseFirmwareModel((char *)(PSOC_version_firmware))] = PSOC_version_firmware;
   }
   else{
-    Escritura[ParseFirmwareModel((char *)(version_firmware))] = ParseFirmwareModel((char *)(version_firmware)) +" _" +String(Configuracion.data.Firmware);
-    Escritura[ParseFirmwareModel((char *)(PSOC5_version_firmware))] = PSOC5_version_firmware;
+    Escritura["VBLE2"] = "VBLE2_"+String(Configuracion.data.FirmwareESP);
+    Escritura[ParseFirmwareModel((char *)(PSOC_version_firmware))] = PSOC_version_firmware;
   }
 
 
@@ -349,16 +377,18 @@ bool WriteFirebaseHistoric(char* buffer){
     int count = 0;
     askForPermission = true;
     
-    while(ConnectionState != IDLE && !givePermission){
+    while(ConfigFirebase.FirebaseConnState != IDLE && !givePermission){
       delay(10);
       if(++count > 1000){
         return true;
       }
     }
     
-    uint8 Lastconn = ConnectionState;
-    ConnectionState = 11;
-  
+    uint8 ReturnToLastconn = ConfigFirebase.FirebaseConnState;
+    ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
+    ConfigFirebase.FirebaseConnState = WRITING_RECORD;
+    ESP_LOGI(TAG, "Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
+
     String Path = "/records/";
     Escritura.clear();
 
@@ -375,7 +405,7 @@ bool WriteFirebaseHistoric(char* buffer){
     
     //escribir el historico nuevo
     if(Database->Send_Command(Path+buf,&Escritura,UPDATE)){
-      ConnectionState = Lastconn;
+      ConfigFirebase.FirebaseConnState = ReturnToLastconn;
       askForPermission = false;
       givePermission = false;
       return true;
@@ -383,14 +413,14 @@ bool WriteFirebaseHistoric(char* buffer){
     else{
       printf("Fallo en el envio del registro!\n");
       Database->Send_Command(Path+buf,&Escritura,UPDATE);
-      ConnectionState = Lastconn;
+      ConfigFirebase.FirebaseConnState = ReturnToLastconn;
       askForPermission = false;
       givePermission = false;
       return false;
     }
     askForPermission = false;
     givePermission = false;
-    ConnectionState = Lastconn;
+    ConfigFirebase.FirebaseConnState = ReturnToLastconn;
 
 
   return true;
@@ -441,7 +471,7 @@ bool ReadFirebaseGroups(String Path){
           uint8_t temp_chargers_size =0;
 
           for(uint8_t i=0; i<ChargingGroup.Charger_number;i++){    
-            if(!memcmp(charger_table[i].HPT, "C2",2)){
+            if(!memcmp(charger_table[i].HPT, "C2",3)){
                 memcpy(temp_chargers[temp_chargers_size].name,charger_table[i].name,9);
                 temp_chargers[temp_chargers_size].Current = charger_table[i].Current;
                 temp_chargers[temp_chargers_size].CurrentB = charger_table[i].CurrentB;
@@ -464,7 +494,7 @@ bool ReadFirebaseGroups(String Path){
 
             uint8_t index =check_in_group(kv.key().c_str(), temp_chargers, temp_chargers_size);
             if(index != 255){
-              memcpy(charger_table[ChargingGroup.Charger_number-1].HPT,"C2",2);
+              memcpy(charger_table[ChargingGroup.Charger_number-1].HPT,"C2",3);
               charger_table[ChargingGroup.Charger_number-1].Current = temp_chargers[index].Current;
               charger_table[ChargingGroup.Charger_number-1].CurrentB = temp_chargers[index].CurrentB;
               charger_table[ChargingGroup.Charger_number-1].CurrentC = temp_chargers[index].CurrentC;
@@ -530,7 +560,6 @@ bool ReadFirebaseShedule(String Path){
       }
 
       uint8_t plainMatrix[168]={0};
-      uint8_t plainMatrix_trozo[25]={0};
       uint8_t alguna_activa = 0;
 
       //Decodificar las programaciones
@@ -551,46 +580,9 @@ bool ReadFirebaseShedule(String Path){
               alguna_activa = 1;
           }
       }
+
       SendToPSOC5((uint8_t)alguna_activa, CHARGING_INSTANT_DELAYED_CHAR_HANDLE);
-      //domingo
-      plainMatrix_trozo[0] = 0;
-      memcpy(&plainMatrix_trozo[1], &plainMatrix[0], 24);
-      SendToPSOC5(plainMatrix_trozo, 24+1, SCHED_CHARGING_SCHEDULE_MATRIX_CHAR_HANDLE);
-      delay(10);
-      //lunes
-      plainMatrix_trozo[0] = 1;
-      memcpy(&plainMatrix_trozo[1], &plainMatrix[24], 24);
-      SendToPSOC5(plainMatrix_trozo, 24+1, SCHED_CHARGING_SCHEDULE_MATRIX_CHAR_HANDLE);
-      delay(10);
-      //martes
-      plainMatrix_trozo[0] = 2;
-      memcpy(&plainMatrix_trozo[1], &plainMatrix[48], 24);
-      SendToPSOC5(plainMatrix_trozo, 24+1, SCHED_CHARGING_SCHEDULE_MATRIX_CHAR_HANDLE);
-      delay(10);
-      //miercoles
-      plainMatrix_trozo[0] = 3;
-      memcpy(&plainMatrix_trozo[1], &plainMatrix[72], 24);
-      SendToPSOC5(plainMatrix_trozo, 24+1, SCHED_CHARGING_SCHEDULE_MATRIX_CHAR_HANDLE);
-      delay(10);
-      //jueves
-      plainMatrix_trozo[0] = 4;
-      memcpy(&plainMatrix_trozo[1], &plainMatrix[96], 24);
-      SendToPSOC5(plainMatrix_trozo, 24+1, SCHED_CHARGING_SCHEDULE_MATRIX_CHAR_HANDLE);
-      delay(10);
-      //viernes
-      plainMatrix_trozo[0] = 5;
-      memcpy(&plainMatrix_trozo[1], &plainMatrix[120], 24);
-      SendToPSOC5(plainMatrix_trozo, 24+1, SCHED_CHARGING_SCHEDULE_MATRIX_CHAR_HANDLE);
-      delay(10);
-      //sabado
-      plainMatrix_trozo[0] = 6;
-      memcpy(&plainMatrix_trozo[1], &plainMatrix[144], 24);
-      SendToPSOC5(plainMatrix_trozo, 24+1, SCHED_CHARGING_SCHEDULE_MATRIX_CHAR_HANDLE);
-
-      printf("Se han enviado las programaciones por COMS\n");
-      //SendToPSOC5(plainMatrix, 168, SCHED_CHARGING_SCHEDULE_MATRIX_CHAR_HANDLE);
-
-
+      SendToPSOC5(plainMatrix, 168, SCHED_CHARGING_SCHEDULE_MATRIX_CHAR_HANDLE);
 
       Schedule.last_ts_app_req=ts_app_req;
 
@@ -615,7 +607,7 @@ bool ReadFirebaseComs(String Path){
       Coms.ETH.ON   = Lectura["eth"]["on"];
       Coms.ETH.Auto = Lectura["eth"]["auto"];
       
-      //Store coms in psoc5 flash memory
+            //Store coms in psoc5 flash memory
       //SendToPSOC5(COMS_CONFIGURATION_CHAR_HANDLE);
 
       if(!Database->Send_Command(Path+"/ts_dev_ack",&Lectura,TIMESTAMP)){
@@ -631,34 +623,40 @@ bool ReadFirebaseParams(String Path){
   long long ts_app_req=Database->Get_Timestamp(Path+"/ts_app_req",&Lectura);
   if(ts_app_req > Params.last_ts_app_req){
     Lectura.clear();
-    if(Database->Send_Command(Path,&Lectura, LEER)){
-      
-      Params.last_ts_app_req=ts_app_req;
+    if (Database->Send_Command(Path, &Lectura, LEER)){
+      ESP_LOGI(TAG,"ReadFirebaseParams. Lectura = %s",Lectura.as<String>().c_str());
 
-      if(Lectura["auth_mode"].as<String>()!="null"){
-        if(memcmp(Params.autentication_mode,Lectura["auth_mode"].as<String>().c_str(),2)){
-          memcpy(Params.autentication_mode, Lectura["auth_mode"].as<String>().c_str(),2);
-          SendToPSOC5(Params.autentication_mode,2,CONFIGURACION_AUTENTICATION_MODES_CHAR_HANDLE);
-        }     
+      Params.last_ts_app_req = ts_app_req;
 
-        if(memcmp(Params.Fw_Update_mode, Lectura["fw_auto"].as<String>().c_str(),2)!=0){
-          memcpy(Params.Fw_Update_mode, Lectura["fw_auto"].as<String>().c_str(),2);
+      if (Lectura["auth_mode"].as<String>() != "null"){
+        if (memcmp(Params.autentication_mode, Lectura["auth_mode"].as<String>().c_str(), 2)){
+          memcpy(Params.autentication_mode, Lectura["auth_mode"].as<String>().c_str(), 2);
+          Params.autentication_mode[2] = '\0';
+          ESP_LOGI(TAG,"ReadFirebaseParams - auth_mode = %s",Params.autentication_mode);
+          SendToPSOC5(Params.autentication_mode, 2, CONFIGURACION_AUTENTICATION_MODES_CHAR_HANDLE);
+        }
+    
+        if (memcmp(Params.Fw_Update_mode, Lectura["fw_auto"].as<String>().c_str(), 2) != 0){
+          memcpy(Params.Fw_Update_mode, Lectura["fw_auto"].as<String>().c_str(), 2);
+          Params.Fw_Update_mode[2] = '\0';
+          ESP_LOGI(TAG,"ReadFirebaseParams - Fw_Update_mode = %s",Params.Fw_Update_mode);
           SendToPSOC5(Params.Fw_Update_mode, 2, COMS_FW_UPDATEMODE_CHAR_HANDLE);
         }
-        if(Params.potencia_contratada1 != Lectura["contract_power"].as<uint16>()){
-          Params.potencia_contratada1=Lectura["contract_power"].as<uint16>();
+
+        if (Params.potencia_contratada1 != Lectura["contract_power"].as<uint16>()){
+          Params.potencia_contratada1 = Lectura["contract_power"].as<uint16>();
           uint8 potencia_contr[2];
           potencia_contr[0] = Params.potencia_contratada1;
           potencia_contr[1] = Params.potencia_contratada1 >> 8;
-          SendToPSOC5(potencia_contr,2,DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_P1_CHAR_HANDLE);
+          SendToPSOC5(potencia_contr, 2, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_P1_CHAR_HANDLE);
         }
 
-        if(Params.potencia_contratada2 != Lectura["contract_power_P2"].as<uint16>()){
-          Params.potencia_contratada2=Lectura["contract_power_P2"].as<uint16>();
+        if (Params.potencia_contratada2 != Lectura["contract_power_P2"].as<uint16>()){
+          Params.potencia_contratada2 = Lectura["contract_power_P2"].as<uint16>();
           uint8 potencia_contr_2[2];
           potencia_contr_2[0] = Params.potencia_contratada2;
           potencia_contr_2[1] = Params.potencia_contratada2 >> 8;
-          SendToPSOC5(potencia_contr_2,2,DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_P2_CHAR_HANDLE);
+          SendToPSOC5(potencia_contr_2, 2, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_P2_CHAR_HANDLE);
         }
 
         if(Params.CDP != Lectura["dpc"].as<uint8>()){
@@ -670,15 +668,11 @@ bool ReadFirebaseParams(String Path){
           Params.inst_current_limit=Lectura["inst_curr_limit"].as<uint8>();
           SendToPSOC5(Params.inst_current_limit,MEASURES_INSTALATION_CURRENT_LIMIT_CHAR_HANDLE);
         }
-
-
       }
 
-
-      
       if(!Database->Send_Command(Path+"/ts_dev_ack",&Lectura,TIMESTAMP)){
           return false;
-      } 
+      }
     }
     else return false;  
   }
@@ -759,12 +753,26 @@ bool ReadFirebaseControl(String Path){
   return true;
 }
 
-bool ReadFirebasePeriod(){
+bool ReadFirebaseReadingPeriod(){
   Lectura.clear();
-  if(Database->Send_Command("/prod/global_vars",&Lectura, READ_FW)){
-    PeriodoLectura = Lectura["coms_period"].as<uint8>()*1000;
-  }else return false;
-  return true;
+  if(Database->Send_Command("/prod/global_vars/coms_period",&Lectura, READ_FW)){
+    ConfigFirebase.PeriodoLectura = Lectura.as<uint8>() * 1000;
+    ESP_LOGI(TAG,"ConfigFirebase.PeriodoLectura=%i",ConfigFirebase.PeriodoLectura);
+    return true;
+  }
+  else 
+    return false;
+}
+
+bool ReadFirebaseUpdatePeriod(){
+  Lectura.clear();
+  if(Database->Send_Command("/prod/global_vars/update_period",&Lectura, READ_FW)){
+    ConfigFirebase.PeriodoFWUpdate = Lectura.as<uint16>();
+    ESP_LOGI(TAG,"ConfigFirebase.PeriodoFWUpdate=%i",ConfigFirebase.PeriodoFWUpdate);
+    return true;
+  }
+  else 
+    return false;
 }
 
 /*****************************************************
@@ -773,65 +781,93 @@ bool ReadFirebasePeriod(){
 
 bool ReadFirebaseBranch(){
   Lectura.clear();
-  if(Database->Send_Command("/fw",&Lectura, LEER)){
+  if (Database->Send_Command("/fw", &Lectura, LEER)){
     UpdateStatus.Alt_available = Lectura["alt"]["available"];
-    UpdateStatus.Group = Lectura["perms"]["group"].as<String>(); 
-    if(UpdateStatus.Alt_available){
+    UpdateStatus.Group = Lectura["perms"]["group"].as<String>();
+    if (UpdateStatus.Alt_available){
       UpdateStatus.Branch = Lectura["alt"]["branch"].as<String>();
       return true;
-    }else {
+    }
+    else{
       return false;
-    } 
+    }
   }
   return false;
 }
 
 //Checkear compatibilidad del grupo del cargador con el grupo de los FW
-bool CheckFwCompatibility(String fw_group){
-    if((!fw_group.compareTo(UpdateStatus.Group)) || (!fw_group.compareTo("all"))){
-      if(fw_group.compareTo("none")){
-        return true;
-}else return false;
-      }else return false;
+bool CheckFwPermissions(String fw_group){
+  if ((!fw_group.compareTo(UpdateStatus.Group)) || (!fw_group.compareTo("all"))){
+    if (fw_group.compareTo("none")){
+      return true;
     }
+    else{
+      return false;
+    }
+  }
+  else{
+    return false;
+  }
+}
 
 bool CheckForUpdate(){
   bool update = false;
   String branch = "prod";
+  String PSOC_string;
+  String ESP_string;
 
   //Leemos la rama del cargador y vemos si está habilitado
   if(ReadFirebaseBranch()){
     branch = UpdateStatus.Branch;
+  }  
+  else{
+    branch = "prod";
   }
 
-  //Check Firmware
-  if(Database->Send_Command("/prod/fw/"+branch,&Lectura, READ_FW)){
-    String PSOC5_Ver   = Lectura[ParseFirmwareModel((char *)(PSOC5_version_firmware))]["verstr"].as<String>();
-    String fw_psoc_group = Lectura[ParseFirmwareModel((char *)(PSOC5_version_firmware))]["group"].as<String>();
-    uint16 VELT_int_Version=ParseFirmwareVersion(PSOC5_Ver);
+  ESP_LOGI(TAG,"Branch de FW=%s",branch.c_str());
+  PSOC_string = ParseFirmwareModel((char *)(PSOC_version_firmware));
+  ESP_string = ParseFirmwareModel((char *)(ESP_version_firmware));
+  ESP_LOGI(TAG,"PSOC_string=%s - ESP_string=%s",PSOC_string.c_str(),ESP_string.c_str());
 
-    if(CheckFwCompatibility(fw_psoc_group)){
-      if(VELT_int_Version!=Configuracion.data.FirmwarePSOC){
-        UpdateStatus.PSOC5_UpdateAvailable= true;
-        UpdateStatus.PSOC_url = Lectura[ParseFirmwareModel((char *)(PSOC5_version_firmware))]["url"].as<String>();
+  //Check Firmware PSoC
+  if (Database->Send_Command("/prod/fw/" + branch + "/" + PSOC_string, &Lectura, READ_FW)){
+    String PSOC_Ver = Lectura["verstr"].as<String>();
+    String fw_psoc_group = Lectura["group"].as<String>();
+    uint16 PSOC_int_Version = ParseFirmwareVersion(PSOC_Ver);
+    ESP_LOGI(TAG, "PSoC: Version instalada:%i - Version publicada:%i",Configuracion.data.FirmwarePSOC,PSOC_int_Version);
+    if (PSOC_int_Version != Configuracion.data.FirmwarePSOC){
+      if (CheckFwPermissions(fw_psoc_group)){
+        UpdateStatus.PSOC_UpdateAvailable = true;
+        UpdateStatus.PSOC_url = Lectura["url"].as<String>();
         update = true;
-      }  
+        ESP_LOGI(TAG, "PSoC: Actualizando a %i",PSOC_int_Version);
+      }
+      else{
+        ESP_LOGI(TAG, "group=%s. FW group=%s. PSoC NO se actualiza",UpdateStatus.Group.c_str(),fw_psoc_group.c_str());
+      }
     }
+  }
 
-    String ESP_Ver = Lectura[ParseFirmwareModel((char *)(version_firmware))]["verstr"].as<String>();
-    String fw_esp_group = Lectura[ParseFirmwareModel((char *)(version_firmware))]["group"].as<String>();
-    uint16 ESP_int_Version=ParseFirmwareVersion(ESP_Ver);
-
-    if(CheckFwCompatibility(fw_esp_group)){
-      if(ESP_int_Version!=Configuracion.data.Firmware){
-        UpdateStatus.ESP_UpdateAvailable= true;
-        UpdateStatus.ESP_url = Lectura[ParseFirmwareModel((char *)(version_firmware))]["url"].as<String>();
+  // Check Firmware ESP
+  if (Database->Send_Command("/prod/fw/" + branch + "/" + ESP_string, &Lectura, READ_FW)){
+    String ESP_Ver = Lectura["verstr"].as<String>();
+    String fw_esp_group = Lectura["group"].as<String>();
+    uint16 ESP_int_Version = ParseFirmwareVersion(ESP_Ver);
+    ESP_LOGI(TAG, "ESP: Version instalada:%i - Version publicada:%i",Configuracion.data.FirmwareESP,ESP_int_Version);
+    if (ESP_int_Version != Configuracion.data.FirmwareESP){
+      if (CheckFwPermissions(fw_esp_group)){
+        UpdateStatus.ESP_UpdateAvailable = true;
+        UpdateStatus.ESP_url = Lectura["url"].as<String>();
         update = true;
-      } 
+        ESP_LOGI(TAG, "ESP32: Actualizando a %i", ESP_int_Version);
+      }
+      else{
+        ESP_LOGI(TAG, "group=%s. FW group=%s. ESP NO se actualiza", UpdateStatus.Group.c_str(), fw_esp_group.c_str());
+      }
     }
-
   }
   return update;
+  //return false;
 }
 
 void DownloadFileTask(void *args){
@@ -842,25 +878,29 @@ void DownloadFileTask(void *args){
   String url;
 
   //Si descargamos actualizacion para el PSOC5, debemos crear el archivo en el SPIFFS
-  if(UpdateStatus.PSOC5_UpdateAvailable){
+  if(UpdateStatus.PSOC_UpdateAvailable){
+    ESP_LOGI(TAG, "FW for PSoC Available");
     url=UpdateStatus.PSOC_url;
+    ESP_LOGI(TAG, "URL: %s", url.c_str());
     SPIFFS.end();
     if(!SPIFFS.begin(1,"/spiffs",1,"PSOC5")){
       SPIFFS.end();					
       SPIFFS.begin(1,"/spiffs",1,"PSOC5");
     }
-    if(SPIFFS.exists("/FW_PSoC6_v7.cyacd2")){
+    if(SPIFFS.exists("/FreeRTOS_V6.cyacd")){
+      ESP_LOGI(TAG, "Existe fichero FreeRTOS_V6.cyacd - formatendo SPIFFS");
       vTaskDelay(pdMS_TO_TICKS(50));
       SPIFFS.format();
     }
 
-    FileName="/FW_PSoC6_v7.cyacd2";
-
+    FileName="/FreeRTOS_V6.cyacd";
     vTaskDelay(pdMS_TO_TICKS(50));
     UpdateFile = SPIFFS.open(FileName, FILE_WRITE);
   }
   else{
+    ESP_LOGI(TAG, "FW for ESP32 Available");
     url=UpdateStatus.ESP_url;
+    ESP_LOGI(TAG, "URL: %s", url.c_str());
   }
 
 
@@ -875,9 +915,9 @@ void DownloadFileTask(void *args){
     stream = DownloadClient.getStreamPtr();
     uint8_t buff[1024] = { 0 };
 
-    if(UpdateStatus.ESP_UpdateAvailable && !UpdateStatus.PSOC5_UpdateAvailable){
+    if(UpdateStatus.ESP_UpdateAvailable && !UpdateStatus.PSOC_UpdateAvailable){
       if(!Update.begin(total)){
-        Serial.println("Error with size");
+        ESP_LOGE(TAG, "Error with size");
       };
     }
 
@@ -887,7 +927,7 @@ void DownloadFileTask(void *args){
 
         int c = stream->readBytes(buff, ((size > sizeof(buff)) ? sizeof(buff) : size));
 
-        if(UpdateStatus.PSOC5_UpdateAvailable){
+        if(UpdateStatus.PSOC_UpdateAvailable){
           UpdateFile.write(buff, c);
         }
         else{
@@ -899,13 +939,14 @@ void DownloadFileTask(void *args){
           len -= c;
         }
       }
-      vTaskDelay(pdMS_TO_TICKS(1));
+    vTaskDelay(10 / portTICK_PERIOD_MS);
     }
   }
 
-  if(UpdateStatus.ESP_UpdateAvailable && !UpdateStatus.PSOC5_UpdateAvailable){
+  if(UpdateStatus.ESP_UpdateAvailable && !UpdateStatus.PSOC_UpdateAvailable){
     if(Update.end()){	
       //reboot
+      ESP_LOGI(TAG, "Update finalizado - Reboot");
       MAIN_RESET_Write(0);
       ESP.restart();
     }
@@ -928,42 +969,58 @@ void DownloadFileTask(void *args){
 ***************************************************/
 
 void Firebase_Conn_Task(void *args){
-  ConnectionState =  DISCONNECTED;
-  uint8_t  LastStatus = DISCONNECTED, NextState = 0;
-  uint8_t Error_Count = 0, null_count=0, bloquedByBLE=0;
+  ConfigFirebase.FirebaseConnState =  DISCONNECTED;
+  ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
+  uint8_t NextState = 0;
+  uint8_t Error_Count = 0;
+  uint8_t null_count=0;
+  uint8_t bloquedByBLE=0;
   //timeouts para leer parametros y coms (Para leer menos a menudo)
   uint8 Params_Coms_Timeout =0;
-  String Base_Path;
+  // String Base_Path;
   long long ts_app_req =0;
-  TickType_t xStarted = 0, xElapsed = 0; 
-  int UpdateCheckTimeout=0;
+  TickType_t xStarted = 0;
+  TickType_t xElapsed = 0; 
+  uint32_t UpdateCheckTimeout=0;
   int  delayeando = 0;
+
   while(1){
     delayeando = 0;
-    if(!ConfigFirebase.InternetConection && ConnectionState!= DISCONNECTED){
-      ConnectionState=DISCONNECTING;
+    if(!ConfigFirebase.InternetConection && ConfigFirebase.FirebaseConnState!= DISCONNECTED){
+      ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
+      ConfigFirebase.FirebaseConnState=DISCONNECTING;
+      ESP_LOGI(TAG, "GENERAL - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
     }
-
-    switch (ConnectionState){
-    //Comprobar estado de la red
+    switch (ConfigFirebase.FirebaseConnState){
     case DISCONNECTED:{
-      delete Database;
-      Database = new Real_Time_Database();
 
-      if(ConfigFirebase.InternetConection){
-        Error_Count=0;
-        Base_Path="prod/devices/";
-        ConnectionState=CONNECTING;
+      if (ConfigFirebase.InternetConection){
+        if (Database != NULL)
+        {
+          ESP_LOGI (TAG, "DISCONNECTED - Borrando Database");
+          delete Database;
+        }
+        ESP_LOGI (TAG, "DISCONNECTED - Creando Database");
+        Database = new Real_Time_Database();
+
+        Error_Count = 0;
+        // Base_Path = "/prod/devices/"; 
+        ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
+        ConfigFirebase.FirebaseConnState = CONNECTING;
+        ESP_LOGI(TAG, "DISCONNECTED - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
         delayeando = 10;
       }
       break;
     }
 
     case CONNECTING:
-      if(initFirebaseClient()){
-        ConfigFirebase.FirebaseConnected=1;
-        Base_Path += (char *)ConfigFirebase.Device_Db_ID;
-        ConnectionState=CONECTADO;
+      bool conex_err;
+      conex_err = initFirebaseClient();
+      if(conex_err && (Database->idToken != NULL)){
+        // Base_Path += (char *)ConfigFirebase.Device_Db_ID;
+        ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
+        ConfigFirebase.FirebaseConnState = CONECTADO;
+        ESP_LOGI(TAG, "CONNECTING - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
         delayeando = 10;
       }
       else{
@@ -972,14 +1029,18 @@ void Firebase_Conn_Task(void *args){
       break;
     
     case CONECTADO:
-      delayeando = 10;
+      // delayeando = 10;
       //Inicializar los timeouts
       Params.last_ts_app_req   = Database->Get_Timestamp("/params/ts_app_req",&Lectura);
-      Params.last_ts_app_req   = Database->Get_Timestamp("/params/ts_app_req",&Lectura);
+      ESP_LOGI(TAG,"params/ts_app_req= %lld",Params.last_ts_app_req);
       Comands.last_ts_app_req  = Database->Get_Timestamp("/control/ts_app_req",&Lectura);
+      ESP_LOGI(TAG,"control/ts_app_req= %lld",Comands.last_ts_app_req);
       Coms.last_ts_app_req     = Database->Get_Timestamp("/coms/ts_app_req",&Lectura);
+      ESP_LOGI(TAG,"coms/ts_app_req= %lld",Coms.last_ts_app_req);
       Status.last_ts_app_req   = Database->Get_Timestamp("/status/ts_app_req",&Lectura);
+      ESP_LOGI(TAG,"status/ts_app_req= %lld",Status.last_ts_app_req);
       Schedule.last_ts_app_req = Database->Get_Timestamp("/schedule/ts_app_req",&Lectura);
+      ESP_LOGI(TAG,"schedule/ts_app_req= %lld",Schedule.last_ts_app_req);
       
       Error_Count+=!WriteFirebaseFW("/fw/current");
       Error_Count+=!WriteFirebaseComs("/coms");
@@ -989,28 +1050,44 @@ void Firebase_Conn_Task(void *args){
         Status.ts_inicio = false;
       }
 
+      //Comprobar periodo de lectura
+      if(!ReadFirebaseReadingPeriod()){
+        ConfigFirebase.PeriodoLectura = FB_DEFAULT_READING_PERIOD;
+      }
+      //Comprobar periodo de fw auto update 
+      if(!ReadFirebaseUpdatePeriod()){
+        ConfigFirebase.PeriodoFWUpdate = FB_DEFAULT_CHECK_UPDATES_PERIOD;
+      }
+
 #ifdef USE_GROUPS
       if(ChargingGroup.Params.GroupActive){
         //comprobar si han borrado el grupo mientras estabamos desconectados
         if(!ReadFirebasePath("/groupId")){
-          #ifdef DEBUG_GROUPS
-          printf("Han borrado el grupo mientras estaba descoenctado!\n");
-          #endif
+#ifdef DEBUG_GROUPS
+          printf("FirebaseClient - Firebase_Conn_Task: CONECTADO - groupId borrado de Firebase\n");
+#endif
+          /*   //  ADS - Por ahora no hacemos nada ni nos salimos del grupo
           ChargingGroup.Params.GroupActive = false;
           ChargingGroup.Params.GroupMaster = false;
+          */ 
         }
       }
 #endif
 
       //Comprobar si hay firmware nuevo
-#ifndef DEVELOPMENT
-        if(!memcmp(Params.Fw_Update_mode, "AA",2)){
-            ConnectionState = UPDATING;
-          break;
-        }
-#endif
+/*#ifndef DEVELOPMENT*/
+      if(!memcmp(Params.Fw_Update_mode, "AA", 2)){
+        ESP_LOGI(TAG, "Fw_Update_mode = %s",Params.Fw_Update_mode);
+        ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
+        ConfigFirebase.FirebaseConnState = UPDATING;
+        ESP_LOGI(TAG, "CONECTADO - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
+        break;
+      }
+/*#endif*/
       
-      ConnectionState=IDLE;
+      ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
+      ConfigFirebase.FirebaseConnState = IDLE;
+      ESP_LOGI(TAG, "CONECTADO - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
       break;
 
     case IDLE:
@@ -1020,11 +1097,14 @@ void Firebase_Conn_Task(void *args){
       //Error_count > 10 == Disconnect
 
       if(!ConfigFirebase.InternetConection || Error_Count>10){
-        ConnectionState=DISCONNECTING;
+        ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
+        ConfigFirebase.FirebaseConnState = DISCONNECTING;
+        ESP_LOGI(TAG, "IDLE - No ha conexión a Internet - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
         break;
       }
       else if(ConfigFirebase.ResetUser){
         if(!serverbleGetConnected()){
+          ESP_LOGI(TAG,"A ReiniciarMultiusiario");
           ReiniciarMultiusuario();
         }
         ConfigFirebase.ResetUser = 0;
@@ -1043,38 +1123,45 @@ void Firebase_Conn_Task(void *args){
       }
       else if(!serverbleGetConnected() && bloquedByBLE){
         bloquedByBLE = 0;
-        Status.last_ts_app_req = Database->Get_Timestamp("/status/ts_app_req",&Lectura) + 10000;
       }
+      //comprobar si hay usuarios observando:   
 
-      //comprobar si hay usuarios observando:    
-      ts_app_req=Database->Get_Timestamp("/status/ts_app_req",&Lectura);
-      if(ts_app_req < 1){//connection refused o autenticacion terminada, comprobar respuesta
+      ts_app_req = Database->Get_Timestamp("/status/ts_app_req",&Lectura);
+      if (ts_app_req < 1){ // connection refused o autenticacion terminada, comprobar respuesta
         String ResponseString = Lectura["error"];
-        if(strcmp(ResponseString.c_str(),"Auth token is expired") == 0){
-            if(Database->LogIn()){
-              break;
-            }
-            ConnectionState=DISCONNECTING;
-        }
+        if (strcmp(ResponseString.c_str(), "Auth token is expired") == 0){
+          if (Database->LogIn(HOST_FOR_AUTH)){
+            break;
+          }
+          ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
+          ConfigFirebase.FirebaseConnState = DISCONNECTING;
+          ESP_LOGI(TAG, "IDLE - Auth token expirado - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
+      }
         else{
-          if(++null_count>=3){
-              ConnectionState=DISCONNECTING;
+          if (++null_count >= 3){
+            ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
+            ConfigFirebase.FirebaseConnState = DISCONNECTING;
+            ESP_LOGI(TAG, "IDLE - Error de lectura de /status/ts_app_req - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
           }
         }
-        break; 
+        break;
       }
       else{
         null_count=0;
         Error_Count=0;
       }
 
-      //Comprobar actualizaciones automaticas
-      if(++UpdateCheckTimeout>8575){ // Unas 12 horas
-        if(!memcmp(Status.HPT_status, "A1",2) || !memcmp(Status.HPT_status, "0V",2)){
-          UpdateCheckTimeout=0;
-          if(!memcmp(Params.Fw_Update_mode, "AA",2)){
-                        ConnectionState = UPDATING;
-                        break;
+      //Comprobar actualizaciones automaticas cada FB_CHECK_UPDATES_PERIOD horas
+      if(++UpdateCheckTimeout > (ConfigFirebase.PeriodoFWUpdate*60*60)/(ConfigFirebase.PeriodoLectura/1000)){
+        ESP_LOGI(TAG, "UpdateCheckTimeout");
+        if(!memcmp(Status.HPT_status, "A1", 2) || !memcmp(Status.HPT_status, "0V", 2)){
+          UpdateCheckTimeout = 0;
+          if(!memcmp(Params.Fw_Update_mode, "AA", 2)){
+            ESP_LOGI(TAG, "Fw_Update_mode = %s",Params.Fw_Update_mode);
+            ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
+            ConfigFirebase.FirebaseConnState = UPDATING;
+            ESP_LOGI(TAG, "IDLE - Fw_Update - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
+            break;
           }
         }
       }
@@ -1088,9 +1175,12 @@ void Firebase_Conn_Task(void *args){
             Error_Count+=!WriteFirebaseComs("/coms"); 
             ReadFirebaseUser();  
             delayeando = 10;   
-            ConnectionState = USER_CONNECTED;
+            ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
+            ConfigFirebase.FirebaseConnState = USER_CONNECTED;
+            ESP_LOGI(TAG, "IDLE - Usuario conectado - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
             ConfigFirebase.ClientConnected  = true;
             Error_Count=0;
+            break;
           }
         }
       }
@@ -1100,11 +1190,6 @@ void Firebase_Conn_Task(void *args){
     /*********************** Usuario conectado **********************/
     case USER_CONNECTED:
 
-      //Comprobar periodo de lectura
-      if(!ReadFirebasePeriod()){
-        PeriodoLectura = 5000;
-      }
-
       if(askForPermission){
         givePermission = true;
         break;
@@ -1113,18 +1198,10 @@ void Firebase_Conn_Task(void *args){
       if(serverbleGetConnected()){
         ConfigFirebase.ClientConnected = false;
         ConfigFirebase.ClientAuthenticated = false;
-        ConnectionState = IDLE;
+        ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
+        ConfigFirebase.FirebaseConnState = IDLE;
+        ESP_LOGI(TAG, "USER_CONNECTED - Conexión BLE - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
         break;
-      }
-
-      //Comprobar actualizaciones manualmente
-      else if(Comands.fw_update){
-        if(!memcmp(Status.HPT_status, "A1",2) || !memcmp(Status.HPT_status, "0V",2) ){
-          UpdateCheckTimeout=0;
-          Comands.fw_update=0;
-                    ConnectionState = UPDATING;
-                    break;
-        }
       }
       
        //comprobar si hay usuarios observando:    
@@ -1132,14 +1209,18 @@ void Firebase_Conn_Task(void *args){
       if(ts_app_req < 1){//connection refused o autenticacion terminada, comprobar respuesta
         String ResponseString = Lectura["error"];
         if(strcmp(ResponseString.c_str(),"Auth token is expired") == 0){
-            if(Database->LogIn()){
+            if(Database->LogIn(HOST_FOR_AUTH)){
               break;
             }
-            ConnectionState=DISCONNECTING;
+            ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
+            ConfigFirebase.FirebaseConnState = DISCONNECTING;
+            ESP_LOGI(TAG, "USER_CONNECTED - Auth token expirado - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
         }
         else{
           if(++null_count>=3){
-              ConnectionState=DISCONNECTING;
+            ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
+            ConfigFirebase.FirebaseConnState = DISCONNECTING;
+            ESP_LOGI(TAG, "USER_CONNECTED - Erorr de lectura /status/ts_app_req - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
           }
         }
         break; 
@@ -1155,11 +1236,14 @@ void Firebase_Conn_Task(void *args){
         ConfigFirebase.ClientConnected  = true;
       }
 
-      //Si pasan 35 segundos sin actualizar el status, lo damos por desconectado
+      //Si pasan FB_USER_CONNECTED_TIMEOUT_S segundos sin actualizar el status, lo damos por desconectado
       xElapsed=xTaskGetTickCount()-xStarted;
-      if(pdTICKS_TO_MS(xElapsed)>45000){
+      if(pdTICKS_TO_MS(xElapsed)>FB_USER_CONNECTED_TIMEOUT){
         ConfigFirebase.ClientConnected  = false;
-        ConnectionState = IDLE;
+        ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
+        ConfigFirebase.FirebaseConnState = IDLE;
+        ESP_LOGI(TAG, "USER_CONNECTED - ts_app_req no actualizado en %i segundos", FB_USER_CONNECTED_TIMEOUT_S);
+        ESP_LOGI(TAG, "USER_CONNECTED - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
         break;
       }
 
@@ -1190,7 +1274,6 @@ void Firebase_Conn_Task(void *args){
         Error_Count+=!ReadFirebaseShedule("/schedule");
         Params_Coms_Timeout = 0;
 
-         
       }
       if(ConfigFirebase.ResetUser){
         ReiniciarMultiusuario();
@@ -1203,10 +1286,13 @@ void Firebase_Conn_Task(void *args){
       //Comprobar actualizaciones manuales
       if(Comands.fw_update){
         if(!memcmp(Status.HPT_status, "A1",2) || !memcmp(Status.HPT_status, "0V",2) ){
+          ESP_LOGI(TAG, "Orden de Update recibida");
           UpdateCheckTimeout=0;
           Comands.fw_update=0;
-                    ConnectionState = UPDATING;
-                    break;
+          ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
+          ConfigFirebase.FirebaseConnState = UPDATING;
+          ESP_LOGI(TAG, "USER_CONNECTED - fw_update - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
+          break;
         }
       }
       
@@ -1216,86 +1302,116 @@ void Firebase_Conn_Task(void *args){
 
       break;
 
-    /*********************** WRITTING states **********************/
-    case WRITTING_CONTROL:
+    /*********************** WRITING states **********************/
+    case WRITING_CONTROL:
       Error_Count+=!WriteFirebaseControl("/control");
-      ConnectionState=IDLE;
+      ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
+      ConfigFirebase.FirebaseConnState = IDLE;
+      ESP_LOGI(TAG, "WRITING_CONTROL - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
       break;
 
-    case WRITTING_STATUS:
+    case WRITING_STATUS:
       Error_Count+=!WriteFirebaseStatus("/status");
       if(askForPermission){
         askForPermission = false;
-        ConnectionState = IDLE;
+        ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
+        ConfigFirebase.FirebaseConnState = IDLE;
+        ESP_LOGI(TAG, "WRITING_STATUS - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
         break;
       }
-      ConnectionState = NextState ==0 ? READING_CONTROL : NextState;
+      ConfigFirebase.FirebaseConnState = NextState ==0 ? READING_CONTROL : NextState;
       break;
 
-    case WRITTING_COMS:
+    case WRITING_COMS:
       Error_Count+=!WriteFirebaseComs("/coms");
-      ConnectionState=IDLE;
+      ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
+      ConfigFirebase.FirebaseConnState = IDLE;
+      ESP_LOGI(TAG, "WRITING_COMS - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
       break;
     
-    case WRITTING_PARAMS:
+    case WRITING_PARAMS:
       Error_Count+=!WriteFirebaseParams("/params");
-      ConnectionState=IDLE;
+      ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
+      ConfigFirebase.FirebaseConnState = IDLE;
+      ESP_LOGI(TAG, "WRITING_PARAMS - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
       break;
 
-    case WRITTING_TIMES:
+    case WRITING_TIMES:
       Error_Count+=!WriteFirebaseTimes("/status/times");
-      ConnectionState=IDLE;
+      ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
+      ConfigFirebase.FirebaseConnState = IDLE;
+      ESP_LOGI(TAG, "WRITING_TIMES - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
       break;
     /*********************** READING states **********************/
     case READING_CONTROL:
       Error_Count+=!ReadFirebaseControl("/control");
-      ConnectionState = NextState == 0 ? IDLE : NextState;
+      ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
+      ConfigFirebase.FirebaseConnState = NextState == 0 ? IDLE : NextState;
+      ESP_LOGI(TAG, "READING_CONTROL - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
       break;
 
     case READING_PARAMS:
       Error_Count+=!ReadFirebaseParams("/params");
-      ConnectionState=IDLE;
+      ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
+      ConfigFirebase.FirebaseConnState = IDLE;
+      ESP_LOGI(TAG, "READING_PARAMS - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
       break;
     
     //Está preparado pero nunca lee las comunicaciones de firebase
     case READING_COMS: 
       Error_Count+=!ReadFirebaseComs("/coms");
-      ConnectionState=IDLE;
+      ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
+      ConfigFirebase.FirebaseConnState = IDLE;
+      ESP_LOGI(TAG, "READING_COMS - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
       NextState=READING_PARAMS;
       break;
 
 #ifdef NO_EJECUTAR
     case READING_GROUP:
       Error_Count+=!ReadFirebaseGroups("123456789");
-      ConnectionState=IDLE;
-      NextState=WRITTING_STATUS;
+      ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
+      ConfigFirebase.FirebaseConnState = IDLE;
+      NextState=WRITING_STATUS;
       break;
 #endif
 
     /*********************** UPDATING states **********************/
     case UPDATING:
       delayeando = 10;
-      Serial.println("Comprobando firmware nuevo");
-      if(CheckForUpdate()){
+      ESP_LOGI(TAG, "UPDATING - Comprobación de nuevo FW");
+      bool CheckResult;
+      CheckResult = CheckForUpdate();
+
+      if(CheckResult){
+        ESP_LOGI(TAG, "UPDATING - Descargando nuevo FW");
         xTaskCreate(DownloadFileTask,"DOWNLOAD FILE", 4096*2, NULL, 1,NULL);
-        ConnectionState=DOWNLOADING;
+        ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
+        ConfigFirebase.FirebaseConnState = DOWNLOADING;
+        ESP_LOGI(TAG, "UPDATING - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
       }
       else{
-        Serial.println("No hay software nuevo disponible");
-        ConnectionState=IDLE;
+        ESP_LOGI(TAG, "UPDATING - No hay FW nuevo");
+        ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
+        ConfigFirebase.FirebaseConnState = IDLE;
+        ESP_LOGI(TAG, "Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
       }
       break;
 
     case DOWNLOADING:
       if(!UpdateStatus.DescargandoArchivo){
-        ConnectionState=INSTALLING;
-      }  
+        ESP_LOGI(TAG, "DOWNLOADING - Descarga finalizada");
+        ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
+        ConfigFirebase.FirebaseConnState = INSTALLING;
+        ESP_LOGI(TAG, "DOWNLOADING - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);      }  
       break;
 
     case INSTALLING:
       if(UpdateStatus.DobleUpdate){
+        ESP_LOGI(TAG, "INSTALLING - Update segundo micro. Descargando");
         xTaskCreate(DownloadFileTask,"DOWNLOAD FILE", 4096*2, NULL, 1,NULL);
-        ConnectionState=DOWNLOADING;
+        ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
+        ConfigFirebase.FirebaseConnState = DOWNLOADING;
+        ESP_LOGI(TAG, "INSTALLING - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
       }
      
       //Do nothing
@@ -1303,40 +1419,48 @@ void Firebase_Conn_Task(void *args){
 
     /*********************** DISCONNECT states **********************/
     case DISCONNECTING:
+      ESP_LOGW (TAG, "DISCONNECTING - Borrando Database");
       Database->end();
-      ConnectionState=DISCONNECTED;
+      Database->endAuth();
+      delete Database;
+      Database = nullptr;  
+      ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
+      ConfigFirebase.FirebaseConnState = DISCONNECTED;
+      ESP_LOGI(TAG, "DISCONNECTING - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
       delayeando = 10;
       break;
 
-    case 11:
+    case WRITING_RECORD:
       break;
     default:
-      while(1){
-        delay(1000);
-        Serial.printf("Error en la maquina d estados de firebase: %i \n", ConnectionState);
-      }
+      delay(1000);
+      ESP_LOGE (TAG, "Error en la maquina de estados de Firebase. Estado: %i", ConfigFirebase.FirebaseConnState);
+      ESP_LOGW (TAG, "Borrando Database");
+      Database->end();
+      Database->endAuth();
+      delete Database;
+      Database = nullptr;  
+      ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
+      ConfigFirebase.FirebaseConnState = DISCONNECTED;
+      ESP_LOGI(TAG, "Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
       break;
     }
-    if(ConnectionState!=DISCONNECTING && delayeando == 0){
-      delay(ConfigFirebase.ClientConnected ? 150:PeriodoLectura);
+
+    if (ConfigFirebase.FirebaseConnState != DISCONNECTING && delayeando == 0){
+      delay(ConfigFirebase.ClientConnected ? 300 : ConfigFirebase.PeriodoLectura);
     }
     else{
       delay(delayeando);
     }
-    
 
-    #ifdef DEBUG
-    if(LastStatus!= ConnectionState){
-      Serial.printf("Maquina de estados de Firebase de % i a %i \n", LastStatus, ConnectionState);
-      LastStatus= ConnectionState;
+#ifdef DEBUG
+    // chivatos de la ram
+    if (ESP.getFreePsram() < 2000000 || ESP.getFreeHeap() < 20000){
+      Serial.printf("FirebaseClient - Firebase_Conn_Task: Free PSRAM = %i\n", ESP.getFreePsram());
+      Serial.printf("FirebaseClient - Firebase_Conn_Task: Free HEAP = %i\n", ESP.getFreeHeap());
     }
-
-    //chivatos de la ram
-    if(ESP.getFreePsram() < 2000000 || ESP.getFreeHeap() < 20000){
-        Serial.println(ESP.getFreePsram());
-        Serial.println(ESP.getFreeHeap());
-    }
-    #endif
+#endif
+    vTaskDelay(10 / portTICK_PERIOD_MS);
   }
 }
 

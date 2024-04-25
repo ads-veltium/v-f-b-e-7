@@ -14,6 +14,8 @@
 #include <stdlib.h>
 #include "blowfish.h"
 
+static const char* TAG = "dev_auth";
+
 static unsigned long (*ul1_for_vec8)(const void*) = NULL;
 static unsigned long (*ul2_for_vec8)(const void*) = NULL;
 

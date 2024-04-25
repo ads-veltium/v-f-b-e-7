@@ -58,6 +58,8 @@ have time to provide unpaid support for everyone who uses this code.
 
 #include "blowfish.h"
 
+static const char* TAG = "blowfish";
+
 #define N               16
 
 static const unsigned long ORIG_P[16 + 2] = {

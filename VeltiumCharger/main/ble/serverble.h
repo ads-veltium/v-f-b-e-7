@@ -83,7 +83,6 @@ typedef struct _BLE_FIELD
 void serverbleInit();
 void serverbleStartAdvertising(void);
 bool serverbleGetConnected(void);
-void serverbleSetConnected(bool value);
 
 void serverbleTask(void *arg);
 void serverbleSetCharacteristic(uint8_t * data, int len, uint16_t handle);

@@ -1,6 +1,6 @@
 /* ========================================
  *
- * Copyright DRACO SYSTEMS , THE 2020
+ * Copyright DRACO SYSTEMS , THE 2020 
  * All Rights Reserved
  * UNPUBLISHED, LICENSED SOFTWARE.
  *
@@ -20,6 +20,9 @@ static StackType_t xControlStack  [4096*6]     EXT_RAM_ATTR;
 static StackType_t xLEDStack      [4096*2]     EXT_RAM_ATTR;
 static StackType_t xUartStack     [4096*6]     EXT_RAM_ATTR;
 
+static const char* TAG = "control.cpp";
+
+
 #ifdef CONNECTED
 static StackType_t xFirebaseStack [4096*6]     EXT_RAM_ATTR;
 StaticTask_t xFirebaseBuffer ;
@@ -33,7 +36,6 @@ carac_Update_Status UpdateStatus EXT_RAM_ATTR;
 //Variables Firebase
 carac_Comands  Comands       EXT_RAM_ATTR;
 carac_Params   Params        EXT_RAM_ATTR;
-
 carac_Coms     Coms          				 EXT_RAM_ATTR;
 carac_Contador ContadorExt   				 EXT_RAM_ATTR;
 carac_Firebase_Configuration ConfigFirebase  EXT_RAM_ATTR;
@@ -43,6 +45,11 @@ carac_charger  charger_table  [50] 			 EXT_RAM_ATTR;
 carac_charger  temp_chargers[MAX_GROUP_SIZE] EXT_RAM_ATTR;
 carac_Schedule Schedule                      EXT_RAM_ATTR;
 uint8_t 	   temp_chargers_size 			 EXT_RAM_ATTR;
+#endif
+
+#ifdef DEMO_MODE_CURRENT
+uint8_t FAKE_BASE_CURRENT = 20; // Valor medio FAKE de coriente del cargador. Ej= 20 Amperios
+double FAKE_RANGE = 1.0; // Valor FAKE de oscilación de corriente +- sobre el BASE_CURRENT.
 #endif
 
 /* VARIABLES BLE */
@@ -64,7 +71,6 @@ extern int aut_semilla;
 uint8 Zero = 0;
 uint8 One = 1;
 uint8 NextLine=0;
-uint8_t ConnectionState;
 uint8 conexion_trigger=0;
 uint8 user_index_arrived=0;
 
@@ -93,20 +99,22 @@ uint16 inst_current_anterior = 0x0000;
 uint16 cnt_diferencia = 1;
 uint8 HPT_estados[9][3] = {"0V", "A1", "A2", "B1", "B2", "C1", "C2", "E1", "F1"};
 
-#ifdef USE_COMS
-uint8 version_firmware[11] = {"VBLE3_0502"};	
-#else	
-uint8 version_firmware[11] = {"VBLE4_0501"};	
+#ifdef IS_UNO_KUBO
+uint8 ESP_version_firmware[11] = {"VBLE2_0607"};	   
+#else
+uint8 ESP_version_firmware[11] = {"VBLE0_0607"};	
 #endif
 
-uint8 PSOC5_version_firmware[11] ;		
+uint8 PSOC_version_firmware[11] ;		
 TickType_t Last_Block=0; 
 uint8 systemStarted = 0;
 uint8 Record_Num =4;
 uint8 Bloqueo_de_carga = 1;
+uint8 Bloqueo_de_carga_old = 1; // ADS - Anañido para reducir envíos al PSoC
 bool Testing = false;
 int TimeoutMainDisconnect = 0;
 extern bool deviceBleDisconnect;
+
 
 void startSystem(void);
 void modifyCharacteristic(uint8* data, uint16 len, uint16 attrHandle);
@@ -197,14 +205,14 @@ void controlTask(void *arg) {
 			if(mainFwUpdateActive == 0 || emergencyState==1){
 				switch (estado_actual){
 					
-					case ESTADO_ARRANQUE:					
+					case ESTADO_ARRANQUE:
 						if(!PSOC_inicializado){
 							if(--cnt_timeout_inicio == 0){
 								SendToPSOC5(0,BLOQUE_INICIALIZACION);
 								cnt_timeout_inicio = TIMEOUT_INICIO;
 								
 								if(--cnt_repeticiones_inicio == 0){
-									cnt_repeticiones_inicio = 750;		//1000;								
+									cnt_repeticiones_inicio = 750;		//1000;	
 									Configuracion.data.count_reinicios_malos ++;
 									if(Configuracion.data.count_reinicios_malos > 20){
 										#ifdef DEBUG
@@ -222,18 +230,17 @@ void controlTask(void *arg) {
 										uint8 version_psoc[version_velt.length()];
 
 										memcpy(version_psoc,version_velt.data(),version_velt.length());
-									
-										
+								
 										modifyCharacteristic(version_psoc, 10, VERSIONES_VERSION_FIRMWARE_CHAR_HANDLE);
-										modifyCharacteristic(version_firmware, 10, VERSIONES_VERSION_FIRM_BLE_CHAR_HANDLE);
+										modifyCharacteristic(ESP_version_firmware, 10, VERSIONES_VERSION_FIRM_BLE_CHAR_HANDLE);
 										
 										estado_actual = ESTADO_NORMAL;
 										dispositivo_inicializado = 2;
 										emergencyState=1;
 									}else{
-										mainFwUpdateActive = 1;
-										updateTaskrunning=1;
-										Serial.println("Enviando firmware al PSOC5 por falta de comunicacion!");
+									mainFwUpdateActive = 1;
+									updateTaskrunning=1;
+									Serial.println("Enviando firmware al PSOC5 por falta de comunicacion!");
 										xTaskCreate(UpdateTask,"TASK UPDATE",4096*5,NULL,1,NULL);
 									}
 								}
@@ -247,7 +254,7 @@ void controlTask(void *arg) {
 
 					case ESTADO_INICIALIZACION:{
 					    uint8_t data[2]={0};
-						#ifdef USE_COMS
+						#ifdef IS_UNO_KUBO
 						data[0] = serverbleGetConnected() || ConfigFirebase.ClientAuthenticated;
 						#else
 						data[0] = serverbleGetConnected();
@@ -259,15 +266,13 @@ void controlTask(void *arg) {
 						break;
 					}
 
-					case ESTADO_NORMAL:
+					case ESTADO_NORMAL:						
 						//Alguien se está intentando conectar	
 						if(AuthTimer !=0){
 							uint32_t Transcurrido = pdTICKS_TO_MS(xTaskGetTickCount()-AuthTimer);
-							if(Transcurrido > 20000 && !authSuccess){
-								#ifdef DEBUG
-								printf("Auth request fallada, me desconecto!!\n");
-								#endif
+							if(Transcurrido > DEFAULT_BLE_AUTH_TIMEOUT && !authSuccess){
 								AuthTimer=0;
+								ESP_LOGI(TAG, "Desconexion por autentenicacion fallida");
 								deviceBleDisconnect = true;
 							}
 						}
@@ -275,7 +280,7 @@ void controlTask(void *arg) {
 					    if(serverbleGetConnected()){
 							Iface_Con = BLE;
 						}
-#ifdef USE_COMS
+#ifdef IS_UNO_KUBO
 						else if(ConfigFirebase.ClientAuthenticated){
 							Iface_Con = COMS;
 						}
@@ -288,12 +293,12 @@ void controlTask(void *arg) {
 							LastUserCon = 1 ;
 						}
 
-						else if((Iface_Con == BLE && LastUserCon != serverbleGetConnected()) || old_inicializado != dispositivo_inicializado){						
+						if((Iface_Con == BLE && LastUserCon != serverbleGetConnected()) || old_inicializado != dispositivo_inicializado){						
 							LastUserCon = serverbleGetConnected() ;
 							old_inicializado = dispositivo_inicializado;
 							conexion_trigger=1;
 						}
-						
+
 						if(conexion_trigger && user_index_arrived){
 							SendStatusToPSOC5(serverbleGetConnected(), dispositivo_inicializado,0);
 							conexion_trigger=0;
@@ -308,38 +313,38 @@ void controlTask(void *arg) {
 						if (Comands.start){
 							SendToPSOC5(One, CHARGING_BLE_MANUAL_START_CHAR_HANDLE);
 							Comands.start = 0;   
-							#ifdef DEBUG
-							Serial.println("Sending START");         
-							#endif
+#ifdef DEBUG
+							Serial.println("Sending START");
+#endif
 						}
 
 						else if (Comands.stop){
 							SendToPSOC5(One, CHARGING_BLE_MANUAL_STOP_CHAR_HANDLE);
-							#ifdef DEBUG
+#ifdef DEBUG
 							Serial.println("Sending STOP");
-							#endif
+#endif
 						}
 
 						else if (Comands.Newdata){
-							#ifdef DEBUG
-							printf("Enviando corriente %i\n", Comands.desired_current);
-							#endif
+#ifdef DEBUG
+							Serial.printf("Enviando corriente %i\n", Comands.desired_current);
+#endif
 							SendToPSOC5(Comands.desired_current, MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
 						}
 						
 						else if (Comands.reset){
-							#ifdef DEBUG
+#ifdef DEBUG
 							Serial.println("Reiniciando por comando externo! No preocuparse");
-							#endif
+#endif
 							MAIN_RESET_Write(0);
 							delay(500);		
 							ESP.restart();
 						}	
 #endif
 						if(++TimeoutMainDisconnect>30000){
-							#ifdef DEBUG
+#ifdef DEBUG
 							Serial.println("Main reset detected");
-							#endif
+#endif
 							MAIN_RESET_Write(0);						
 							ESP.restart();
 						}
@@ -379,16 +384,16 @@ void controlTask(void *arg) {
 }
 
 void startSystem(void){
-	
-	#ifdef DEBUG
+
+#ifdef DEBUG
 	Serial.printf("startSystem(): device SN = %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X \n",
-		deviceSerNum[0], deviceSerNum[1], deviceSerNum[2], deviceSerNum[3], deviceSerNum[4],
-		deviceSerNum[5], deviceSerNum[6], deviceSerNum[7], deviceSerNum[8], deviceSerNum[9]);
-	#endif
+				  deviceSerNum[0], deviceSerNum[1], deviceSerNum[2], deviceSerNum[3], deviceSerNum[4],
+				  deviceSerNum[5], deviceSerNum[6], deviceSerNum[7], deviceSerNum[8], deviceSerNum[9]);
+#endif
 	dev_auth_init((void const*)&deviceSerNum);
 
-	Configuracion.data.Firmware = ParseFirmwareVersion((char *)(version_firmware));
-	Configuracion.data.FirmwarePSOC = ParseFirmwareVersion((char *)(PSOC5_version_firmware));
+	Configuracion.data.FirmwareESP  = ParseFirmwareVersion((char *)(ESP_version_firmware));
+	Configuracion.data.FirmwarePSOC = ParseFirmwareVersion((char *)(PSOC_version_firmware));
 	
 	memcpy(Configuracion.data.device_ID,device_ID,sizeof(Configuracion.data.device_ID));
 
@@ -519,12 +524,12 @@ void procesar_bloque(uint16 tipo_bloque){
 				modifyCharacteristic(&buffer_rx_local[196], 1, VCD_NAME_USERS_USER_INDEX_CHAR_HANDLE);
 				user_index = buffer_rx_local[196];
 				modifyCharacteristic(&buffer_rx_local[197], 10, VERSIONES_VERSION_FIRMWARE_CHAR_HANDLE);
-				memcpy(PSOC5_version_firmware, &buffer_rx_local[197],10);
-
+				memcpy(PSOC_version_firmware, &buffer_rx_local[197],10);
+				
 				//Guardamos la versión de CPU del psoc en flash del ESP32
-				Configuracion.data.velt_v = PSOC5_version_firmware[4]-48;
+				Configuracion.data.velt_v = PSOC_version_firmware[4]-48;
 
-				modifyCharacteristic(version_firmware, 10, VERSIONES_VERSION_FIRM_BLE_CHAR_HANDLE);
+				modifyCharacteristic(ESP_version_firmware, 10, VERSIONES_VERSION_FIRM_BLE_CHAR_HANDLE);
 
 				modifyCharacteristic(&buffer_rx_local[207], 2, RECORDING_REC_CAPACITY_CHAR_HANDLE);
 				modifyCharacteristic(&buffer_rx_local[209], 2, RECORDING_REC_LAST_CHAR_HANDLE);
@@ -555,7 +560,7 @@ void procesar_bloque(uint16 tipo_bloque){
 				modifyCharacteristic(&buffer_rx_local[233], 1, MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
 				modifyCharacteristic(&buffer_rx_local[234], 2, COMS_FW_UPDATEMODE_CHAR_HANDLE);		
 				modifyCharacteristic(&buffer_rx_local[241], 2, DOMESTIC_CONSUMPTION_POTENCIA_CONTRATADA_P2_CHAR_HANDLE);
-				modifyCharacteristic(&buffer_rx_local[243], 2, TIME_DATE_COUNTRY_CHAR_HANDLE);
+				modifyCharacteristic(&buffer_rx_local[243], 2, TIME_DATE_COUNTRY_CHAR_HANDLE);			
 
 				/************************ Set configuration data **********************/
 				Configuracion.data.potencia_contratada1 = buffer_rx_local[229]+buffer_rx_local[230]*0x100;
@@ -584,19 +589,27 @@ void procesar_bloque(uint16 tipo_bloque){
 						Status.Photovoltaic=false;
 					}
 					
-					if(Params.Tipo_Sensor && !ContadorExt.MeidorConectado){
+					if(Params.Tipo_Sensor && !ContadorExt.MedidorConectado){
 						Coms.ETH.medidor = true;
 						Update_Status_Coms(0,MED_BUSCANDO_GATEWAY);
 						Bloqueo_de_carga = 1;
 						SendToPSOC5(Bloqueo_de_carga,BLOQUEO_CARGA);
+#ifdef DEBUG_GROUPS
+						printf("procesar_bloque - BLOQUE_INICIALIZACION: Bloqueo_de_carga = %i enviado al PSoC\n", Bloqueo_de_carga);
+#endif
 					}
+					
+					ESP_LOGI(TAG,"Params.Fw_Update_mode=%s",Params.Fw_Update_mode);
 					memcpy(Params.Fw_Update_mode, &buffer_rx_local[234],2);
+					Params.Fw_Update_mode[2]='\0';
+					ESP_LOGI(TAG,"Params.Fw_Update_mode=%s",Params.Fw_Update_mode);
+					modifyCharacteristic(&buffer_rx_local[234], 2, COMS_FW_UPDATEMODE_CHAR_HANDLE);
 					Comands.desired_current = buffer_rx_local[233];
 					Coms.Wifi.ON = buffer_rx_local[236];
 					Coms.ETH.ON = buffer_rx_local[237];	
 					modifyCharacteristic(&buffer_rx_local[236], 1, COMS_CONFIGURATION_WIFI_ON);
 
-				#endif
+#endif
 
 				startSystem();
 				systemStarted = 1;
@@ -660,6 +673,7 @@ void procesar_bloque(uint16 tipo_bloque){
 
 				//Pasar datos a Status
 				memcpy(Status.HPT_status, &buffer_rx_local[1], 2);
+				Status.HPT_status[2]='\0';            
 				//Hilo piloto
 				if((memcmp(&buffer_rx_local[1], status_hpt_anterior, 2) != 0)){
 					
@@ -669,11 +683,11 @@ void procesar_bloque(uint16 tipo_bloque){
 						dispositivo_inicializado = 2;
 						Configuracion.data.count_reinicios_malos = 0;
 					}
-					
-					#ifdef DEBUG
-					Serial.printf("Hilo piloto de %c %c a %c %c\n",status_hpt_anterior[0], status_hpt_anterior[1], buffer_rx_local[1],buffer_rx_local[2]);
-					#endif
-					
+
+#ifdef DEBUG
+					Serial.printf("Hilo piloto de %c %c a %c %c\n", status_hpt_anterior[0], status_hpt_anterior[1], buffer_rx_local[1], buffer_rx_local[2]);
+#endif
+
 					modifyCharacteristic(&buffer_rx_local[1], 2, STATUS_HPT_STATUS_CHAR_HANDLE);
 					if(serverbleGetConnected()){
 						if(buffer_rx_local[1]!= 'E' && buffer_rx_local[1]!= 'F'){
@@ -699,11 +713,14 @@ void procesar_bloque(uint16 tipo_bloque){
 					//Si sale de C2 bloquear la siguiente carga
 					if(memcmp(&buffer_rx_local[1],"C2",2) && memcmp(&buffer_rx_local[1],"B2",2)){
 						if(Params.Tipo_Sensor || ChargingGroup.Conected){
-							if((!memcmp(status_hpt_anterior, "C",1)) || (!memcmp(status_hpt_anterior, "B2",2))){
+							if(!memcmp(status_hpt_anterior, "C",1)){
 								Bloqueo_de_carga = true;
 								ChargingGroup.ChargPerm = false;
 								ChargingGroup.AskPerm = false;
 								SendToPSOC5(Bloqueo_de_carga, BLOQUEO_CARGA);
+#ifdef DEBUG_GROUPS
+								printf("procesar_bloque - BLOQUE_STATUS: Bloqueo_de_carga = %i enviado al PSoC\n", Bloqueo_de_carga);
+#endif
 							}				
 							
 						}				
@@ -725,6 +742,21 @@ void procesar_bloque(uint16 tipo_bloque){
 
 				//FaseA	
 				Status.Measures.instant_current = buffer_rx_local[14] + (buffer_rx_local[15] * 0x100);
+#ifdef DEMO_MODE_CURRENT
+				// ADS - Añadido para trucar la corriente. 
+				// La corriente leida es igual a la consigna enviada menos un valor aleatorio entre 0 y FAKE_RANGE(1)
+				FAKE_BASE_CURRENT = Comands.desired_current;
+				uint32_t random_value = esp_random();
+				double normalized_value = static_cast<double>(random_value)/static_cast<double>(UINT32_MAX);
+				double scaled_value = normalized_value - FAKE_RANGE;
+				double random_current = (static_cast<double>(FAKE_BASE_CURRENT) + scaled_value);
+        		if(!memcmp(Status.HPT_status, "C2",2)){
+					Status.Measures.instant_current = 100*random_current;
+				}
+				else {
+					Status.Measures.instant_current = 0;
+				}
+#endif
 				if(((Status.Measures.instant_current) != (inst_current_anterior)) && (serverbleGetConnected())&& (--cnt_diferencia == 0))
 				{
 					modifyCharacteristic(&buffer_rx_local[14], 2, MEASURES_INST_CURRENT_CHAR_HANDLE);
@@ -793,72 +825,69 @@ void procesar_bloque(uint16 tipo_bloque){
 #endif
 			}
 		break;
-		
 		case BLOQUE_DATE_TIME:{
 			modifyCharacteristic(buffer_rx_local, 6, TIME_DATE_DATE_TIME_CHAR_HANDLE);
-			Status.Time.hora=buffer_rx_local[3];
+			Status.Time.hora = buffer_rx_local[3];
 			aut_semilla = (((int)buffer_rx_local[4]) * 0x100) + (int)buffer_rx_local[5];
 			modifyCharacteristic(&buffer_rx_local[6], 6, TIME_DATE_CONNECTION_DATE_TIME_CHAR_HANDLE);
 			modifyCharacteristic(&buffer_rx_local[12], 6, TIME_DATE_DISCONNECTION_DATE_TIME_CHAR_HANDLE);
 			modifyCharacteristic(&buffer_rx_local[18], 6, TIME_DATE_CHARGING_START_TIME_CHAR_HANDLE);
 			modifyCharacteristic(&buffer_rx_local[24], 6, TIME_DATE_CHARGING_STOP_TIME_CHAR_HANDLE);
-
-			#ifdef CONNECTED
-				int TimeStamp = (Convert_To_Epoch(&buffer_rx_local[6]));
-				if(TimeStamp!=Status.Time.connect_date_time){
-					Status.Time.connect_date_time = TimeStamp;
-					ConfigFirebase.WriteTime = true;
-				}
-				TimeStamp = Convert_To_Epoch(&buffer_rx_local[12]);
-				if(TimeStamp!=Status.Time.disconnect_date_time){
-					Status.Time.disconnect_date_time = TimeStamp;
-					ConfigFirebase.WriteTime = true;
-				}
-				TimeStamp = Convert_To_Epoch(&buffer_rx_local[18]);
-				if(TimeStamp!=Status.Time.charge_start_time){
-					Status.Time.charge_start_time = TimeStamp;
-					ConfigFirebase.WriteTime = true;
-				}
-				TimeStamp = Convert_To_Epoch(&buffer_rx_local[24]);
-				if(TimeStamp!=Status.Time.charge_stop_time){
-					Status.Time.charge_stop_time = TimeStamp;
-					ConfigFirebase.WriteTime = true;
-				}
-				TimeStamp = Convert_To_Epoch(buffer_rx_local);
-				if(TimeStamp!=Status.Time.actual_time){
-					Status.Time.actual_time = TimeStamp;
-				}
-			#endif
+#ifdef CONNECTED
+			int TimeStamp = (Convert_To_Epoch(&buffer_rx_local[6]));
+			if (TimeStamp != Status.Time.connect_date_time){
+				Status.Time.connect_date_time = TimeStamp;
+				ConfigFirebase.WriteTime = true;
+			}
+			TimeStamp = Convert_To_Epoch(&buffer_rx_local[12]);
+			if (TimeStamp != Status.Time.disconnect_date_time){
+				Status.Time.disconnect_date_time = TimeStamp;
+				ConfigFirebase.WriteTime = true;
+			}
+			TimeStamp = Convert_To_Epoch(&buffer_rx_local[18]);
+			if (TimeStamp != Status.Time.charge_start_time){
+				Status.Time.charge_start_time = TimeStamp;
+				ConfigFirebase.WriteTime = true;
+			}
+			TimeStamp = Convert_To_Epoch(&buffer_rx_local[24]);
+			if (TimeStamp != Status.Time.charge_stop_time){
+				Status.Time.charge_stop_time = TimeStamp;
+				ConfigFirebase.WriteTime = true;
+			}
+			TimeStamp = Convert_To_Epoch(buffer_rx_local);
+			if (TimeStamp != Status.Time.actual_time){
+				Status.Time.actual_time = TimeStamp;
+			}
+#endif
 		}
 		break;
 
 		case MEASURES_INSTALATION_CURRENT_LIMIT_CHAR_HANDLE:{
 			modifyCharacteristic(buffer_rx_local, 1, MEASURES_INSTALATION_CURRENT_LIMIT_CHAR_HANDLE);
 			Configuracion.data.inst_current_limit = buffer_rx_local[0];
-			#ifdef DEBUG
-			Serial.println("Instalation current limit Changed to" );
+#ifdef DEBUG
+			Serial.println("Instalation current limit Changed to");
 			Serial.print(buffer_rx_local[0]);
-			#endif
-			#ifdef CONNECTED
-				Params.inst_current_limit = buffer_rx_local[0];
-			#endif
-		}	
+#endif
+#ifdef CONNECTED
+			Params.inst_current_limit = buffer_rx_local[0];
+#endif
+		}
 		break;
-	
+
 		case MEASURES_CURRENT_COMMAND_CHAR_HANDLE:{
-			#ifdef CONNECTED
-				Comands.desired_current = buffer_rx_local[0];
-				Comands.Newdata = false;
-				#ifdef DEBUG
-					Serial.println("Current command received");
-					Serial.println(Comands.desired_current);
-				#endif
-			#endif
-			
+#ifdef CONNECTED
+			Comands.desired_current = buffer_rx_local[0];
+			Comands.Newdata = false;
+#ifdef DEBUG
+			Serial.printf("control - procesar_bloque: MEASURES_CURRENT_COMMAND_CHAR_HANDLE - Current command received = %i\n", Comands.desired_current);
+#endif
+#endif
+
 			modifyCharacteristic(buffer_rx_local, 1, MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
 		}
 		break;
-		
+
 		case TIME_DATE_CHARGING_START_TIME_CHAR_HANDLE:{
 			modifyCharacteristic(buffer_rx_local, 6, TIME_DATE_CHARGING_START_TIME_CHAR_HANDLE);
 		}
@@ -913,21 +942,15 @@ void procesar_bloque(uint16 tipo_bloque){
 		break;
 		
 		case VCD_NAME_USERS_USER_TYPE_CHAR_HANDLE:{
-		
 			modifyCharacteristic(buffer_rx_local, 1, VCD_NAME_USERS_USER_TYPE_CHAR_HANDLE);
-			#ifdef DEBUG
-			printf("Me ha llegado user type %i\n", buffer_rx_local[0]);
-			#endif
+			ESP_LOGI(TAG,"Recibido user_type %i",buffer_rx_local[0]);
 		} 
 		break;
 		
 		case VCD_NAME_USERS_USER_INDEX_CHAR_HANDLE:{
-		
 			modifyCharacteristic(buffer_rx_local, 1, VCD_NAME_USERS_USER_INDEX_CHAR_HANDLE);
 			user_index = buffer_rx_local[0];
-			#ifdef DEBUG
-			printf("Me ha llegado user index %i\n", buffer_rx_local[0]);
-			#endif
+			ESP_LOGI(TAG,"Recibido user_index=%i",user_index);
 			user_index_arrived = 1;
 		} 
 		break;
@@ -954,9 +977,9 @@ void procesar_bloque(uint16 tipo_bloque){
 		break;
 
 		case CHARGE_USER_ID:{
-			#ifdef DEBUG
-			printf("Me ha llegado un nuevo charge_user_id %i\n", buffer_rx_local[0]);
-			#endif
+#ifdef DEBUG
+			ESP_LOGI(TAG,"Recibido charge_user_id=%i",buffer_rx_local[0]);
+#endif
 			modifyCharacteristic(buffer_rx_local, 1, CHARGE_USER_ID);
 		}
 		break;
@@ -975,7 +998,7 @@ void procesar_bloque(uint16 tipo_bloque){
 						end = true;
 					}
 					int PotLeida=buffer_rx_local[j]*0x100+buffer_rx_local[j+1];
-					if(PotLeida >0 && PotLeida < 5500 && !end){
+					if(PotLeida >0 && PotLeida < 5900 && !end){
 						record_buffer[i]   = buffer_rx_local[j];
 						record_buffer[i+1] = buffer_rx_local[j+1];
 						record_buffer[i+2] = 0;
@@ -1022,9 +1045,9 @@ void procesar_bloque(uint16 tipo_bloque){
 		break;
 		
 		case RECORDING_REC_LAST_CHAR_HANDLE:{
-			#ifdef DEBUG
-			printf("Me ha llegado una nueva recarga! %i\n", (buffer_rx_local[0] + buffer_rx_local[1]*0x100));
-			#endif
+#ifdef DEBUG
+			Serial.printf("Me ha llegado una nueva recarga! %i\n", (buffer_rx_local[0] + buffer_rx_local[1] * 0x100));
+#endif
 			LastRecord = (buffer_rx_local[0] + buffer_rx_local[1]*0x100);
 			modifyCharacteristic(buffer_rx_local, 2, RECORDING_REC_LAST_CHAR_HANDLE);
 		} 
@@ -1037,9 +1060,9 @@ void procesar_bloque(uint16 tipo_bloque){
 		
 		case RECORDING_REC_LAPS_CHAR_HANDLE:{
 			uint8_t buffer[2];
-			#ifdef DEBUG
-			printf("Me ha llegado una nueva vuelta! %i\n", (buffer_rx_local[0] + buffer_rx_local[1]*0x100));
-			#endif
+#ifdef DEBUG
+			Serial.printf("Me ha llegado una nueva vuelta! %i\n", (buffer_rx_local[0] + buffer_rx_local[1] * 0x100));
+#endif
 
 			buffer[0] = (uint8)(LastRecord & 0x00FF);
 			buffer[1] = (uint8)((LastRecord >> 8) & 0x00FF);
@@ -1105,12 +1128,12 @@ void procesar_bloque(uint16 tipo_bloque){
 			modifyCharacteristic(buffer_rx_local, 2, CONFIGURACION_AUTENTICATION_MODES_CHAR_HANDLE);
 			memcpy(Configuracion.data.autentication_mode, buffer_rx_local,2);
 
-			#ifdef DEBUG
-			Serial.printf("Nueva autenticacion recibida! %c %c \n", buffer_rx_local[0],buffer_rx_local[1]);
-			#endif
-			#ifdef CONNECTED
-				memcpy(Params.autentication_mode,buffer_rx_local,2);
-			#endif
+#ifdef DEBUG
+			ESP_LOGI(TAG,"Nuevo autentication_mode= %c%c",buffer_rx_local[0], buffer_rx_local[1]);
+#endif
+#ifdef CONNECTED
+			memcpy(Params.autentication_mode, buffer_rx_local, 2);
+#endif
 		} 
 		break;
 		
@@ -1175,20 +1198,19 @@ void procesar_bloque(uint16 tipo_bloque){
 				Params.CDP				  = buffer_rx_local[0];			
 				if((buffer_rx_local[0] >> 1) & 0x01){
 
-
-					Params.Tipo_Sensor    = ((buffer_rx_local[0]  >> 4) & 0x01); //tiene el medidor
+					Params.Tipo_Sensor    = ((buffer_rx_local[0]  >> 4) & 0x01);
 					//Bloquear la carga hasta que encontremos el medidor
-					
-					if(Params.Tipo_Sensor){
 
-						if(!Configuracion.data.medidor485){
+					if (Params.Tipo_Sensor){
 
-							//Buscar medidor cuando lo pulsan en la APP
+						if (!Configuracion.data.medidor485){
+
+							// Buscar medidor cuando lo pulsan en la APP
 							Serial.println("Enviando orden de buscar medidor 485");
 							Coms.ETH.medidor = true;
-							Update_Status_Coms(0,MED_BUSCANDO_GATEWAY);
-							//Bloqueo_de_carga = 1;
-							//SendToPSOC5(Bloqueo_de_carga,BLOQUEO_CARGA);
+							Update_Status_Coms(0, MED_BUSCANDO_GATEWAY);
+							// Bloqueo_de_carga = 1;
+							// SendToPSOC5(Bloqueo_de_carga,BLOQUEO_CARGA);
 							SendToPSOC5(1, SEACH_EXTERNAL_COUNTER);
 						}
 					}
@@ -1220,10 +1242,10 @@ void procesar_bloque(uint16 tipo_bloque){
 						Coms.ETH.restart = true;
 					}
 				}
-				#ifdef DEBUG_BLE
+#ifdef DEBUG_BLE
 					Serial.printf("New CDP %i %i \n", Params.CDP, Params.Tipo_Sensor);
-				#endif
-			#endif
+#endif
+#endif
 		} 
 		break;
 
@@ -1260,7 +1282,8 @@ void procesar_bloque(uint16 tipo_bloque){
 				ip_Array[3] = ip4_addr4(&Coms.ETH.IP);
 
 				if(ComprobarConexion()){
-					ConnectionState = DISCONNECTED;
+					ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
+					ConfigFirebase.FirebaseConnState = DISCONNECTED;
 					Coms.ETH.Internet = true;
 					Coms.ETH.Wifi_Perm = false;
 				}	
@@ -1299,9 +1322,10 @@ void procesar_bloque(uint16 tipo_bloque){
 
 		case COMS_FW_UPDATEMODE_CHAR_HANDLE:{
 			memcpy(Params.Fw_Update_mode,buffer_rx_local,2);
-			#ifdef DEBUG
-			Serial.printf("Nuevo fw_update:%c %c \n", buffer_rx_local[0],buffer_rx_local[1]);
-			#endif
+			Params.Fw_Update_mode[2]='\0';
+#ifdef DEBUG
+			ESP_LOGI(TAG,"Nuevo Fw_Update_mode= %c%c",buffer_rx_local[0], buffer_rx_local[1]);
+#endif
 		} 
 		break;
 		
@@ -1324,7 +1348,7 @@ void procesar_bloque(uint16 tipo_bloque){
 			//Almacenado temporal del grupo
 			for(uint8_t i=0; i<ChargingGroup.Charger_number;i++){    
 				memcpy(temp_chargers[temp_chargers_size].name,charger_table[i].name,9);
-				memcpy(temp_chargers[temp_chargers_size].HPT,charger_table[i].HPT,2);
+				memcpy(temp_chargers[temp_chargers_size].HPT,charger_table[i].HPT,3);
 				temp_chargers[temp_chargers_size].Current = charger_table[i].Current;
 				temp_chargers[temp_chargers_size].CurrentB = charger_table[i].CurrentB;
 				temp_chargers[temp_chargers_size].CurrentC = charger_table[i].CurrentC;
@@ -1349,14 +1373,16 @@ void procesar_bloque(uint16 tipo_bloque){
                 for(uint8_t j =0; j< 8; j++){
                     ID[j]=(char)buffer_rx_local[2+i*9+j];
                 }
-                add_to_group(ID, get_IP(ID), charger_table, &ChargingGroup.Charger_number);
-				printf("Crudo fase y circuito psoc %i %i %i\n",buffer_rx_local[10+i*9], uint8_t(buffer_rx_local[10+i*9]) & 0x03, uint8_t(buffer_rx_local[10+i*9]) >> 2);
-                charger_table[i].Fase = (buffer_rx_local[10+i*9]) & 0x03;
+				add_to_group(ID, get_IP(ID), charger_table, &ChargingGroup.Charger_number);
+#ifdef DEBUG_GROUPS
+				Serial.printf("Crudo fase y circuito PSoC %i %i %i\n", buffer_rx_local[10 + i * 9], uint8_t(buffer_rx_local[10 + i * 9]) & 0x03, uint8_t(buffer_rx_local[10 + i * 9]) >> 2);
+#endif
+				charger_table[i].Fase = (buffer_rx_local[10+i*9]) & 0x03;
 				charger_table[i].Circuito = (buffer_rx_local[10+i*9]) >> 2;
 
 				uint8_t index =check_in_group(ID, temp_chargers, temp_chargers_size);
 				if(index != 255){
-					memcpy(charger_table[i].HPT,temp_chargers[index].HPT,2);
+					memcpy(charger_table[i].HPT,temp_chargers[index].HPT,3);
 					charger_table[i].Current = temp_chargers[index].Current;
 					charger_table[i].CurrentB = temp_chargers[index].CurrentB;
 					charger_table[i].CurrentC = temp_chargers[index].CurrentC;
@@ -1379,11 +1405,11 @@ void procesar_bloque(uint16 tipo_bloque){
             //cierro el coap y borro el grupo
             if(check_in_group(ConfigFirebase.Device_Id,charger_table,ChargingGroup.Charger_number ) == 255){
                 if(ChargingGroup.Conected){
-					#ifdef DEBUG_GROUPS
-					printf("No estoy en el grupo control.cpp1\n");
-					print_table(charger_table,"No en grupo table 1", ChargingGroup.Charger_number);
-					#endif
-                    ChargingGroup.DeleteOrder = true;
+#ifdef DEBUG_GROUPS
+			Serial.printf("control - procesar_bloque: GROUPS_DEVICES_PART_1 - No estoy en el grupo !! \n");
+			print_table(charger_table, "No en grupo table 1", ChargingGroup.Charger_number);
+#endif
+					ChargingGroup.DeleteOrder = true;
                 }
             }
 
@@ -1403,7 +1429,7 @@ void procesar_bloque(uint16 tipo_bloque){
 							charger_table[ChargingGroup.Charger_number-1].Consigna = OldMaster.Consigna;
 							charger_table[ChargingGroup.Charger_number-1].Delta = OldMaster.Delta;
 							charger_table[ChargingGroup.Charger_number-1].Delta_timer = OldMaster.Delta_timer;
-							memcpy(charger_table[ChargingGroup.Charger_number-1].HPT, OldMaster.HPT, 2);
+							memcpy(charger_table[ChargingGroup.Charger_number-1].HPT, OldMaster.HPT, 3);
                         }
                         ChargingGroup.SendNewGroup = true;
                     }
@@ -1411,15 +1437,18 @@ void procesar_bloque(uint16 tipo_bloque){
                 //si soy el maestro, avisar a los nuevos de que son parte de mi grupo
                 broadcast_a_grupo("Start client", 12);
             }
-			#ifdef DEBUG_GROUPS
-            print_table(charger_table, "Grupo desde PSOC", ChargingGroup.Charger_number);
-			#endif
-        }
+#ifdef DEBUG_GROUPS
+			Serial.printf("control - procesar_bloque: GROUPS_DEVICES_PART_1\n");
+			print_table(charger_table, "Grupo desde PSOC", ChargingGroup.Charger_number);
+#endif
+		}
         break;
 
         //Segunda parte del grupo de cargadores
         case GROUPS_DEVICES_PART_2:{
-            Serial.printf("Segunda parte del grupo recibida\n");
+#ifdef DEBUG_GROUPS
+			Serial.printf("control - procesar_bloque: GROUPS_DEVICES_PART_2 - Segunda parte del grupo\n");
+#endif
             char n[2];
             char ID[8];
             memcpy(n,buffer_rx_local,2);
@@ -1434,7 +1463,7 @@ void procesar_bloque(uint16 tipo_bloque){
 
 				uint8_t index =check_in_group(ID, temp_chargers, temp_chargers_size);
 				if(index != 255){
-					memcpy(charger_table[i].HPT,temp_chargers[index].HPT,2);
+					memcpy(charger_table[i].HPT,temp_chargers[index].HPT,3);
 					charger_table[i].Current = temp_chargers[index].Current;
 					charger_table[i].CurrentB = temp_chargers[index].CurrentB;
 					charger_table[i].CurrentC = temp_chargers[index].CurrentC;
@@ -1448,7 +1477,9 @@ void procesar_bloque(uint16 tipo_bloque){
             //cierro el coap y borro el grupo
             if(check_in_group(ConfigFirebase.Device_Id,charger_table, ChargingGroup.Charger_number ) == 255){
                 if(ChargingGroup.Conected){
-					printf("!No estoy en el grupo!!!\n");
+#ifdef DEBUG_GROUPS
+			Serial.printf("control - procesar_bloque: GROUPS_DEVICES_PART_2 - No estoy en el grupo !!\n");
+#endif
                     ChargingGroup.DeleteOrder = true;
                 }
             }
@@ -1469,7 +1500,7 @@ void procesar_bloque(uint16 tipo_bloque){
 							charger_table[ChargingGroup.Charger_number-1].Consigna = OldMaster.Consigna;
 							charger_table[ChargingGroup.Charger_number-1].Delta = OldMaster.Delta;
 							charger_table[ChargingGroup.Charger_number-1].Delta_timer = OldMaster.Delta_timer;
-							memcpy(charger_table[ChargingGroup.Charger_number-1].HPT, OldMaster.HPT, 2);
+							memcpy(charger_table[ChargingGroup.Charger_number-1].HPT, OldMaster.HPT, 3);
                         }
                         ChargingGroup.SendNewGroup = true;
                     }
@@ -1477,9 +1508,10 @@ void procesar_bloque(uint16 tipo_bloque){
                 //si soy el maestro, avisar a los nuevos de que son parte de mi grupo
                 broadcast_a_grupo("Start client", 12);
             }
-			#ifdef DEBUG_GROUPS
-            print_table(charger_table, "Grupo desde PSOC", ChargingGroup.Charger_number);
-			#endif
+#ifdef DEBUG_GROUPS
+			Serial.printf("control - procesar_bloque: GROUPS_DEVICES_PART_2\n");
+			print_table(charger_table, "Grupo desde PSOC", ChargingGroup.Charger_number);
+#endif
 			break;
         }
 
@@ -1498,16 +1530,14 @@ void procesar_bloque(uint16 tipo_bloque){
 			ChargingGroup.Params.ContractPower = buffer_rx_local[3] + buffer_rx_local[4] *0x100 ;
 			ChargingGroup.Params.potencia_max = buffer_rx_local[5] + buffer_rx_local[6] *0x100 ;
 
-			
-
-			#ifdef DEBUG_GROUPS
-			Serial.printf("Group active %i \n", ChargingGroup.Params.GroupActive);
-			Serial.printf("Group master %i \n", ChargingGroup.Params.GroupMaster);
-			Serial.printf("Group potencia_max %i \n", ChargingGroup.Params.potencia_max);
-			Serial.printf("Group contract power %i \n", ChargingGroup.Params.ContractPower);
-			Serial.printf("Group CDP %i \n", ChargingGroup.Params.CDP);	
-			#endif
-			
+#ifdef DEBUG_GROUPS
+			Serial.printf("control - procesar_bloque: GROUPS_PARAMS: ChargingGroup.Params.GroupActive %i \n", ChargingGroup.Params.GroupActive);
+			Serial.printf("control - procesar_bloque: GROUPS_PARAMS: ChargingGroup.Params.GroupMaster %i \n", ChargingGroup.Params.GroupMaster);
+			Serial.printf("control - procesar_bloque: GROUPS_PARAMS: ChargingGroup.Params.potencia_max %i \n", ChargingGroup.Params.potencia_max);
+			Serial.printf("control - procesar_bloque: GROUPS_PARAMS: ChargingGroup.Params.ContractPower %i \n", ChargingGroup.Params.ContractPower);
+			Serial.printf("control - procesar_bloque: GROUPS_PARAMS: ChargingGroup.Params.CDP %i \n", ChargingGroup.Params.CDP);
+			Serial.printf("control - procesar_bloque: GROUPS_PARAMS: ChargingGroup.Params.inst_max %i \n", ChargingGroup.Params.inst_max);
+#endif
 			break;
 		}
 
@@ -1521,15 +1551,20 @@ void procesar_bloque(uint16 tipo_bloque){
 				Circuitos[i].Fases[0].numero = 1;
 				Circuitos[i].Fases[1].numero = 2;
 				Circuitos[i].Fases[2].numero = 3;
-            	Circuitos[i].limite_corriente = buffer_rx_local[i+1];	
-				printf("Corriente del circuito %i\n", Circuitos[i].limite_corriente);			
+            	Circuitos[i].limite_corriente = buffer_rx_local[i+1];
+#ifdef DEBUG_GROUPS
+				Serial.printf("control - procesar_bloque: GROUPS_CIRCUITS: Circuito %i limite_corriente %i \n", i, Circuitos[i].limite_corriente);
+#endif
 			}
 			break;
 			
 		}
 
-
 		case BLOQUEO_CARGA:{
+#ifdef DEBUG_GROUPS
+			printf("control - procesar_bloque: BLOQUEO_CARGA. Recibido de PSoC BLOQUEO_CARGA. Bloqueo_de_carga = %i\n", Bloqueo_de_carga);
+#endif
+			Bloqueo_de_carga_old = Bloqueo_de_carga;
 			Bloqueo_de_carga = true;
 			if(dispositivo_inicializado != 2){
 				Bloqueo_de_carga = true;
@@ -1541,31 +1576,48 @@ void procesar_bloque(uint16 tipo_bloque){
 					if(ChargingGroup.ChargPerm){
 						Bloqueo_de_carga = false;
 						ChargingGroup.AskPerm = false;
+#ifdef DEBUG_GROUPS
+						Serial.printf("control - procesar_bloque: BLOQUEO_CARGA. A CARGAR !\n");
+						Serial.printf("control - procesar_bloque: BLOQUEO_CARGA. Bloqueo_de_carga = %i\n",Bloqueo_de_carga);
+						Serial.printf("control - procesar_bloque: BLOQUEO_CARGA. ChargingGroup.AskPerm = %i\n",ChargingGroup.AskPerm);
+#endif
 					}
 					else if(!ChargingGroup.AskPerm ){
 						ChargingGroup.AskPerm = true;
+#ifdef DEBUG_GROUPS
+						Serial.printf("control - procesar_bloque: BLOQUEO_CARGA. ChargingGroup.AskPerm = %i\n",ChargingGroup.AskPerm);
+#endif
 					}
 				}
 			}
-
-			//Si tenemos un medidor conectado, asta que no nos conectemos a el no permitimos la carga
-			else if(Params.Tipo_Sensor || (ChargingGroup.Params.GroupMaster && ((ChargingGroup.Params.CDP >> 4) & 0x01))){
-				if(ContadorExt.MeidorConectado){
+			//Si tenemos un medidor conectado, hasta que no nos conectemos a él no permitimos la carga
+			else if(Params.Tipo_Sensor || (ChargingGroup.Params.GroupMaster && ContadorConfigurado())){
+				if(ContadorExt.MedidorConectado){
 					Bloqueo_de_carga = false;
+#ifdef DEBUG_GROUPS
+					Serial.printf("procesar_bloque - BLOQUEO_CARGA. else final. Bloqueo_de_carga = false\n");
+#endif
 				}
 			}
 
 			//si no se cumple nada de lo anterior, permitimos la carga
 			else{
+#ifdef DEBUG_GROUPS
+				Serial.printf("procesar_bloque - BLOQUEO_CARGA. else final. Bloqueo_de_carga = false\n");
+#endif
 				Bloqueo_de_carga = false;
 			}
-			//printf("Enviando bloqueo %i\n", Bloqueo_de_carga);
-			SendToPSOC5(Bloqueo_de_carga, BLOQUEO_CARGA);			
+			if (Bloqueo_de_carga != Bloqueo_de_carga_old){
+				SendToPSOC5(Bloqueo_de_carga, BLOQUEO_CARGA);
+#ifdef DEBUG_GROUPS
+				Serial.printf("procesar_bloque - BLOQUEO_CARGA. Se envía Bloqueo_de_carga = %i al PSoC\n", Bloqueo_de_carga);
+#endif
+			}
 			break;
 		}
 #endif
 		case CLEAR_FLASH_SPACE:
-			printf("Se ha borrado la caracteristica %i de la flash!\n", buffer_rx_local[0]);
+			Serial.printf("Se ha borrado la caracteristica %i de la flash!\n", buffer_rx_local[0]);
 			Configuracion.data.Data_cleared = 1;
 		break;
 
@@ -1579,11 +1631,11 @@ void procesar_bloque(uint16 tipo_bloque){
  * **********************************************/
 void UpdateTask(void *arg){
 	UpdateStatus.InstalandoArchivo = true;
-	#ifdef DEBUG
-	Serial.println("\nComenzando actualizacion del PSOC6!!");
-	#endif
-	
-	int Nlinea =0;
+#ifdef DEBUG
+	Serial.println("\nComenzando actualizacion del PSoC!!");
+#endif
+
+	int Nlinea = 0;
 	uint8_t err = 0;
 	String Buffer;
 
@@ -1621,22 +1673,22 @@ void UpdateTask(void *arg){
 	err = CyBtldr_RunAction(PROGRAM, &serialLocal, NULL, "/FW_PSoC6_v7.cyacd2", "PSOC5");
 	Serial.print("Actualizacion terminada: err = ");
 	Serial.println(err);
-	updateTaskrunning=0;
-	setMainFwUpdateActive(0);
-	UpdateStatus.InstalandoArchivo=0;
-	if(!UpdateStatus.ESP_UpdateAvailable){
-		Serial.println("Reiniciando en 4 segundos!"); 
-		vTaskDelay(pdMS_TO_TICKS(4000));
-		MAIN_RESET_Write(0);
-		delay(500);						
-		ESP.restart();
-	}
-	else{
-		UpdateStatus.PSOC5_UpdateAvailable = false;
-		UpdateStatus.DobleUpdate 		   = true;
-	}
+				updateTaskrunning=0;
+				setMainFwUpdateActive(0);
+				UpdateStatus.InstalandoArchivo=0;
+				if(!UpdateStatus.ESP_UpdateAvailable){
+					Serial.println("Reiniciando en 4 segundos!"); 
+					vTaskDelay(pdMS_TO_TICKS(4000));
+					MAIN_RESET_Write(0);
+					delay(500);						
+					ESP.restart();
+				}
+				else{
+					UpdateStatus.PSOC_UpdateAvailable = false;
+					UpdateStatus.DobleUpdate 		   = true;
+				}
 
-	vTaskDelete(NULL);			
+				vTaskDelete(NULL);		
 }
 
 void controlInit(void){
@@ -1648,6 +1700,7 @@ void controlInit(void){
 	xTaskCreateStatic(proceso_recepcion,"TASK UART",4096*6,NULL,PRIORIDAD_UART,xUartStack,&xUartBuffer); 
 	#ifdef CONNECTED
 		xTaskCreate(ComsTask,"Task Coms",4096*4,NULL,PRIORIDAD_COMS,NULL);
+		vTaskDelay(pdMS_TO_TICKS(500));
 		xTaskCreateStatic(Firebase_Conn_Task,"TASK FIREBASE", 4096*6,NULL,PRIORIDAD_FIREBASE,xFirebaseStack , &xFirebaseBuffer );
 
 	#endif

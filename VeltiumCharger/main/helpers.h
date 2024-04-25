@@ -8,6 +8,10 @@
 bool str_to_uint16(const char *str, uint16_t *res);
 //Imprimir la tabla de cargadores
 void print_table(carac_charger *table, char* table_name, uint8_t size);
+//Imprimir la tabla de equipos de red
+void print_net_table(carac_charger *table, char* table_name, uint8_t size);
+//Imprimir parámetros de grupo
+void print_group_param(carac_group* group);
 //Limpiar el scroll
 void cls();
 //Printar un caracter hexadecimal
@@ -47,4 +51,10 @@ int Convert_To_Epoch(uint8* data);
 
 void convertSN();
 
+// Devuelve si hay un contador en función de la configuración CDP
+bool ContadorConfigurado();
+
+void SetDNS();
+
+int obtener_direccion_IP(const String &host_name, String &ip_address);
 #endif

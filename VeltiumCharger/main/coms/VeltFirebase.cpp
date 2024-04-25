@@ -3,10 +3,25 @@
 #include <string>
 #include <iostream>
 
+
 bool FinishReading = false;
 int  Readed = 0;
 char *TotalResponse = new char[1500];
 extern carac_Firebase_Configuration ConfigFirebase;
+
+extern carac_Coms  Coms;
+
+static const char* TAG = "VeltFirebase";
+
+#ifndef DEVELOPMENT
+String FIREBASE_API_KEY = FIREBASE_PROD_API_KEY;
+#else
+#ifdef DEMO_MODE_BACKEND
+String FIREBASE_API_KEY = FIREBASE_PROD_API_KEY;
+#else
+String FIREBASE_API_KEY = FIREBASE_DEV_API_KEY;
+#endif
+#endif
 
 esp_err_t _http_event_handle(esp_http_client_event_t *evt){
 
@@ -32,7 +47,6 @@ esp_err_t _http_event_handle(esp_http_client_event_t *evt){
             }
             break;
         case HTTP_EVENT_ON_FINISH:
-            
             FinishReading = true;
             break;
         case HTTP_EVENT_DISCONNECTED:
@@ -46,78 +60,75 @@ esp_err_t _http_event_handle(esp_http_client_event_t *evt){
 
 
 /*********** Autenticacion ************/
-void Real_Time_Database::beginAuth (void) {
-    char URL[1500] ={"0"} ;
-    memcpy(URL,Auth_url.c_str(),Auth_url.length());
-    
-    #ifdef DEVELOPMENT
-        strcat(URL,FIREBASE_DEV_API_KEY);
-    #else
-        strcat(URL,FIREBASE_API_KEY);
-    #endif
-        esp_http_client_config_t config = {
-        .url = URL,
-        .timeout_ms = 1000,
+
+void Real_Time_Database::configAuth(String ConfigHost) {
+    String Auth_url = "https://" + ConfigHost + "/v1/accounts:signInWithPassword?key=" + FIREBASE_API_KEY;
+    esp_http_client_config_t config = {
+        .url = Auth_url.c_str(),
+        .timeout_ms = 5000,
         .event_handler = _http_event_handle,
     };
-    *Auth_client = esp_http_client_init(&config);
-    esp_http_client_set_header(*Auth_client,"Content-Type", "application/json");
-    esp_http_client_set_header(*Auth_client,"Connection", "close");
+    Auth_client = esp_http_client_init(&config);
+    esp_http_client_set_header(Auth_client, "Content-Type", "application/json");
+    esp_http_client_set_header(Auth_client, "Connection", "close");
 }
 
-bool Real_Time_Database::LogIn(void){
-    
-    Auth_client = (esp_http_client_handle_t *) malloc(sizeof(esp_http_client_handle_t));
+bool Real_Time_Database::LogIn(String Host) {
+    configAuth(Host);
 
-    beginAuth();
-    uint8 Timeout = 0;
-    String AuthPostData;
-    DynamicJsonDocument Response(4096);
-
-    AuthDoc["email"] = "charger+VCD"+deviceID+"@veltium.com";
-    String ID  = deviceID;
-    for(int i=0;i<6;i++){
-        ID[i] = ID[i+2];
-    }
-    ID[6]='J';
-    ID[7]='M';
-
-    AuthDoc["password"]  = ID;
+    String email = "charger+VCD" + deviceID + "@veltium.com";
+    String password = deviceID.substring(2, 8) + "JM";
+    AuthDoc["email"] = email;
+    AuthDoc["password"] = password;
     AuthDoc["returnSecureToken"] = true;
 
+    String AuthPostData;
     serializeJson(AuthDoc, AuthPostData);
 
-    esp_http_client_set_method(*Auth_client, HTTP_METHOD_POST);
-    esp_http_client_set_post_field(*Auth_client, AuthPostData.c_str(), AuthPostData.length());
-    if (esp_http_client_perform(*Auth_client) != ESP_OK) {
-        return false;
-    }
-    while(!FinishReading ){
-        delay(50);
-        Timeout ++;
-        if(Timeout > 30){
-            return false;
-        }
-    }
-
-    if(Timeout >= 30 ){
-        return false;
-    }
+    esp_http_client_set_method(Auth_client, HTTP_METHOD_POST);
+    esp_http_client_set_post_field(Auth_client, AuthPostData.c_str(), AuthPostData.length());
+    int err = esp_http_client_perform(Auth_client);
     
-    std::string s(TotalResponse, TotalResponse+Readed);
+    if (err != ESP_OK) {
+        if (err == ESP_ERR_HTTP_CONNECT) {
+            SetDNS();
+            endAuth();
+        }
+        return false;
+    }
 
-    deserializeJson(Response, s);
+   for (uint8_t Timeout = 0; !FinishReading && Timeout <= 30; Timeout++){
+        delay(50);
+    }
+
+    DynamicJsonDocument Response(4096);
+    DeserializationError jsonErr = deserializeJson(Response, TotalResponse);
+    if (jsonErr){
+        ESP_LOGE(TAG,"LogIn: Error al parsear la respuesta JSON");
+        return false;
+    }
 
     idToken = Response["idToken"].as<String>();
     localId = Response["localId"].as<String>();
+    refreshToken = Response["refreshToken"].as<String>();
+    expiration = atoi(Response["expiresIn"].as<String>().c_str());
+    ESP_LOGD(TAG,"idToken= %s",idToken.c_str());
+    ESP_LOGD(TAG,"localId= %s",localId.c_str());
+    ESP_LOGD(TAG,"refreshToken= %s",refreshToken.c_str());
+    ESP_LOGD(TAG,"expiration of idToken= %d",expiration);
 
-    endAuth();
-    return true;
+    if (idToken != NULL){
+        //endAuth();
+        return true;
+    }
+    else{
+        return false;
+    }
 }
 
 void Real_Time_Database::endAuth(void){
-    esp_http_client_cleanup(*Auth_client);
-    free(Auth_client);
+    esp_http_client_cleanup(Auth_client);
+    Auth_client = NULL;
 }
 
 bool Real_Time_Database::checkPermisions(void){
@@ -127,8 +138,9 @@ bool Real_Time_Database::checkPermisions(void){
 
     esp_http_client_set_url(RTDB_client, String(Base_Path+"/prod/users/"+localId+"/perms.json?auth="+idToken).c_str());
     esp_http_client_set_method(RTDB_client, HTTP_METHOD_GET);
+    int err = esp_http_client_perform(RTDB_client);
 
-    if (esp_http_client_perform(RTDB_client) != ESP_OK) {
+    if (err != ESP_OK) {
         return false;
     }
 
@@ -155,46 +167,45 @@ bool Real_Time_Database::checkPermisions(void){
 
 /*********** Clase RTDB ***********************/
 
-void Real_Time_Database::begin(String Host, String DatabaseID){
-    RTDB_url="https://";
-    RTDB_url+=Host+("prod/devices/"+DatabaseID);
+bool Real_Time_Database::begin(String Host, String DatabaseID){
+    Base_Path = "https://" + Host;
+    RTDB_url = Base_Path + "/prod/devices/" + DatabaseID;
+    GROUPS_url = Base_Path + "/groups/";
 
-    GROUPS_url = "https://";
-    GROUPS_url+=Host+("groups/");
-
-    Base_Path="https://";
-    Base_Path+=Host;
-
-    Write_url = RTDB_url+"/status/ts_app_req.json?auth="+idToken+"&timeout=2500ms";
+    Write_url = RTDB_url + "/status/ts_app_req.json?auth=" + idToken + "&timeout=2500ms";
 
     esp_http_client_config_t config = {
         .url = Write_url.c_str(),
         .timeout_ms = 5000,
         .event_handler = _http_event_handle,
         .buffer_size_tx = 2048,
-        .is_async = true,
     };
 
     RTDB_client = esp_http_client_init(&config);
-    esp_http_client_set_header(RTDB_client,"Content-Type", "application/json");
+    if(RTDB_client != NULL){
+        esp_http_client_set_header(RTDB_client,"Content-Type", "application/json");
+        return true;
+    }
+    else {
+        return false;
+    }
 }
 
 void Real_Time_Database::end(){
     esp_http_client_cleanup(RTDB_client);
-
+    RTDB_client = NULL;
 }
 
 void Real_Time_Database::reload (){
-    
+    ESP_LOGI(TAG, "Real_Time_Database reload");
+    end();
     Write_url = RTDB_url+"/status/ts_app_req.json?auth="+idToken+"&timeout=2500ms";
-
     esp_http_client_config_t config = {
         .url = Write_url.c_str(),
         .timeout_ms = 5000,
         .event_handler = _http_event_handle,
         .buffer_size_tx = 2048,
     };
-    esp_http_client_cleanup(RTDB_client);
     RTDB_client = esp_http_client_init(&config);
     esp_http_client_set_header(RTDB_client,"Content-Type", "application/json");
 }
@@ -202,14 +213,14 @@ void Real_Time_Database::reload (){
 bool Real_Time_Database::Send_Command(String path, JsonDocument *doc, uint8_t Command, bool groups){   
     String SerializedData;
     uint8 Timeout = 0;
+    Write_url = "";
     Write_url = RTDB_url+path+".json?auth="+idToken;
-
     if(groups){
         Write_url = GROUPS_url+path+".json?auth="+idToken;
     }
 
     if(Command < 3){      
-        Write_url += +"&timeout=2500ms";           
+        Write_url += "&timeout=2500ms";           
         serializeJson(*doc, SerializedData);
     }
     
@@ -232,8 +243,10 @@ bool Real_Time_Database::Send_Command(String path, JsonDocument *doc, uint8_t Co
             esp_http_client_set_method(RTDB_client, HTTP_METHOD_GET);
             break;
         case READ_FW:
-            esp_http_client_set_url(RTDB_client, String(Base_Path+path+".json?auth="+idToken).c_str());
-            esp_http_client_set_method(RTDB_client, HTTP_METHOD_GET);
+            Write_url = Base_Path+path+".json?auth="+idToken;
+            ESP_LOGD(TAG,"READ_FW URL=%s",Write_url.c_str());
+            esp_http_client_set_url(RTDB_client, Write_url.c_str());
+            esp_http_client_set_method(RTDB_client, HTTP_METHOD_GET);    
             break;
 
         default:
@@ -243,7 +256,10 @@ bool Real_Time_Database::Send_Command(String path, JsonDocument *doc, uint8_t Co
     }
     int err = esp_http_client_perform(RTDB_client);
     if (err != ESP_OK ) {
-        Serial.printf("HTTP request failed: %s\n", esp_err_to_name(err));
+        ESP_LOGE(TAG,"Send_Command: HTTP request failed: %s\n", esp_err_to_name(err));
+        if (err == ESP_ERR_HTTP_CONNECT) {
+            SetDNS();
+        }
         reload();
         return false;
     }
@@ -268,7 +284,6 @@ bool Real_Time_Database::Send_Command(String path, JsonDocument *doc, uint8_t Co
         return false;
     }
     
-    
     std::string s(TotalResponse, TotalResponse+Readed);
 
     deserializeJson(*doc, s);
@@ -281,27 +296,30 @@ bool Real_Time_Database::Send_Command(String path, JsonDocument *doc, uint8_t Co
 long long  Real_Time_Database::Get_Timestamp(String path, JsonDocument *respuesta, bool groups){
     String SerializedData;
     respuesta->clear();
+    Write_url = " ";
     uint8 Timeout = 0;
     if(groups){
         Write_url = GROUPS_url+path+".json?auth="+idToken+"&timeout=2000ms";
     }
     else{
         Write_url = RTDB_url+path+".json?auth="+idToken+"&timeout=2000ms";
+        ESP_LOGD(TAG,"Get_Timestamp:Write_url (%i): %s",Write_url.length(),Write_url.c_str());
     }
-
-    esp_http_client_set_url(RTDB_client, Write_url.c_str());
-    esp_http_client_set_method(RTDB_client, HTTP_METHOD_GET);
+    ESP_ERROR_CHECK(esp_http_client_set_url(RTDB_client, Write_url.c_str()));
+    ESP_ERROR_CHECK(esp_http_client_set_method(RTDB_client, HTTP_METHOD_GET));
     int err = esp_http_client_perform(RTDB_client);
-
-    if (err != ESP_OK ) {
-        Serial.printf("HTTP request failed: %s\n", esp_err_to_name(err));
-        reload();
-        FinishReading = false;
-        Readed = 0;
-        if(err == -1){
-            return -1;
-        } 
-        return 1;
+   if (err != ESP_OK) {
+        ESP_LOGE(TAG,"Get_Timestamp: esp_http_client_perform fail with err: %s", esp_err_to_name(err));
+        if (err == ESP_ERR_HTTP_CONNECT) {
+            SetDNS();
+            reload();
+            FinishReading = false;
+            Readed = 0;
+            ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
+            ConfigFirebase.FirebaseConnState = DISCONNECTING;
+            ESP_LOGI(TAG, "Get_Timestamp: Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
+        }
+        return -1;
     }
 
     while(!FinishReading ){
@@ -316,7 +334,6 @@ long long  Real_Time_Database::Get_Timestamp(String path, JsonDocument *respuest
         return false;
     }
     
-    
     std::string s(TotalResponse, TotalResponse+Readed);
 
     FinishReading = false;
@@ -330,138 +347,4 @@ long long  Real_Time_Database::Get_Timestamp(String path, JsonDocument *respuest
     return data1;
 }
 
-
-/********** Cliente http generico *************/
-bool _lectura_finalizada = false;
-int  _leidos = 0;
-char *_respuesta_total = new char[2048];
-esp_err_t _generic_http_event_handle(esp_http_client_event_t *evt){
-
-    char *response  = new char[1024];
-    switch(evt->event_id) {
-        case HTTP_EVENT_ERROR:
-            break;
-        case HTTP_EVENT_ON_CONNECTED:
-            _lectura_finalizada = false;
-            _leidos = 0;
-            free(_respuesta_total);
-            _respuesta_total = new char[2048];
-            break;
-        case HTTP_EVENT_HEADER_SENT:
-            break;
-        case HTTP_EVENT_ON_HEADER:
-            ESP_LOGI("HTTP_CLIENT", "HTTP_EVENT_ON_HEADER");
-            printf("%.*s", evt->data_len, (char*)evt->data);
-            break;
-        case HTTP_EVENT_ON_DATA:
-            if(evt->data_len>0 && evt->data_len<1024 && _leidos +evt->data_len < 2048){
-                esp_http_client_read(evt->client, response, evt->data_len);
-                memcpy(&_respuesta_total[_leidos],response,evt->data_len);
-                _leidos+=evt->data_len;
-            }
-            break;
-        case HTTP_EVENT_ON_FINISH:
-            
-            _lectura_finalizada = true;
-            break;
-        case HTTP_EVENT_DISCONNECTED:
-            //printf("END");
-            //esp_http_client_cleanup(evt->client);
-            break;
-    }
-    if(response != NULL){
-        free(response);
-        response = NULL;
-    }
-    
-
-    return ESP_OK;
-}
-void Cliente_HTTP::set_url(String url){
-    _url=url;
-}
-
-void Cliente_HTTP::begin(){
-    
-    esp_http_client_config_t config = {
-        .url = _url.c_str(),
-        .timeout_ms = 5000,
-        .max_redirection_count =3,
-        .event_handler = _generic_http_event_handle,
-        .buffer_size_tx = 2048,
-        .is_async = false,
-        
-    };
-    _client = esp_http_client_init(&config);
-    esp_http_client_set_header(_client,"Content-Type", "application/json");
-}
-
-void Cliente_HTTP::end(){
-
-    esp_http_client_cleanup(_client);
-}
-
-String Cliente_HTTP::ObtenerRespuesta(){
-    return String(_respuesta_total);
-}
-
-bool Cliente_HTTP::Send_Command(String url, uint8_t Command){   
-    uint8_t tiempo_lectura =0;
-
-    esp_http_client_set_url(_client, url.c_str());
-    switch(Command){
-        case ESCRIBIR:        
-            esp_http_client_set_method(_client, HTTP_METHOD_POST);
-            //esp_http_client_set_post_field(_client, SerializedData.c_str(), SerializedData.length());
-            break;
-        case UPDATE:
-            esp_http_client_set_method(_client, HTTP_METHOD_PATCH);
-            //esp_http_client_set_post_field(_client, SerializedData.c_str(), SerializedData.length());
-            break;
-        case TIMESTAMP:     
-            esp_http_client_set_method(_client, HTTP_METHOD_PUT);
-            esp_http_client_set_post_field(_client, "{\".sv\": \"timestamp\"}", strlen("{\".sv\": \"timestamp\"}"));
-            break;
-        case LEER:
-            free(_respuesta_total);
-            _respuesta_total = new char[2048];
-            esp_http_client_set_method(_client, HTTP_METHOD_GET);
-            break;
-
-        default:
-            Serial.println("Accion no implementada!");
-            return false;
-            break;
-    }
-
-    int err = esp_http_client_perform(_client);
-    if (err != ESP_OK ) {
-        Serial.printf("HTTP request failed: %s\n", esp_err_to_name(err));
-        return false;
-    }
-
-    if(Command < 5){
-        _lectura_finalizada = false;
-        _leidos = 0;
-        return true;
-    }
-
-    while(!_lectura_finalizada ){
-        delay(50);
-        tiempo_lectura ++;
-        if(tiempo_lectura > 30){
-            return false;
-        }
-    }
-
-    if(tiempo_lectura >= 30){
-        return false;
-    }
-
-    _lectura_finalizada = false;
-    _leidos = 0;
-
-    return true;   
-
-}
 #endif

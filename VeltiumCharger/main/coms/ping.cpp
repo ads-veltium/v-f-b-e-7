@@ -67,8 +67,8 @@ void initialize_ping(ip_addr_t target_addr, uint8_t *resultado)
     esp_ping_config_t ping_config = ESP_PING_DEFAULT_CONFIG();
     ping_config.target_addr = target_addr;          // target IP address
     ping_config.count = ESP_PING_COUNT_INFINITE;    // ping in infinite mode, esp_ping_stop can stop it
-    ping_config.timeout_ms  = 250;
-    ping_config.interval_ms = 1000;
+    ping_config.timeout_ms  = 500;
+    ping_config.interval_ms = 500;
     /* set callback functions */
     esp_ping_callbacks_t cbs;
     cbs.on_ping_success = test_on_ping_success;

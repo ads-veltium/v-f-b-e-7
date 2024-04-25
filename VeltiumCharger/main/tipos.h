@@ -138,7 +138,7 @@ typedef struct{
 	bool Trifasico = false;
 	uint8 error_code;
 	uint8 current_limit;
-	char HPT_status[2];
+	char HPT_status[3];
 	
 	caract_measures Measures;
 	caract_measures MeasuresB;
@@ -152,11 +152,11 @@ typedef struct{
 	bool Photovoltaic=false; 
 	char Time_Type;
 	bool ts_inicio=true;
+	uint8  status_desired_current;
 } carac_Status;
 
 typedef struct{
 	bool   Tipo_Sensor;
-	bool   CDP_On;
 	bool   Sensor_Conectado;
 	bool   NewData;
 	char   Fw_Update_mode[2];
@@ -172,16 +172,23 @@ typedef struct{
 
 typedef struct{
 	bool ON;
+	bool connecting;
+	bool connected;
 	bool Internet = false;
 	uint8_t AP[34]={'\0'};
 	uint8_t Pass[64]={'\0'};
 	ip4_addr_t IP;
+	ip4_addr_t Gateway;
+	ip4_addr_t Mask;
 	bool restart = false;
 	bool SetFromInternal = false;
 }carac_WIFI;
 
 typedef struct{
 	bool ON;
+	bool LinkUp    = false;
+	bool connecting = false;
+	bool connected = false;
 	bool Auto = 1;
 	bool DHCP = 0;
 	bool Internet  = false;
@@ -223,17 +230,25 @@ typedef struct{
 	
 	bool      GatewayConectado = false;
 	bool      ConexionPerdida  = false;
-	bool 	  MeidorConectado  = false;
+	bool 	  MedidorConectado  = false;
 	bool 	  FirstRound       = false;
-	char      ContadorIp[15] ={"0"};
+	char      IPadd[15] ={"0"};
 	uint16    vueltas = 0;
-	int32_t    DomesticPower;
-	uint16    DomesticCurrentA;
-	uint16    DomesticCurrentB;
-	uint16    DomesticCurrentC;
+	int32_t   Power;
+	uint16    CurrentA;
+	uint16    CurrentB;
+	uint16    CurrentC;
 
 	long long last_ts_app_req= 0;
+
+	bool	Searching = false;
 } carac_Contador;
+
+#define FB_DEFAULT_READING_PERIOD_S 5 // Periodo de lectura en segundos de los timestamps de Firebase
+#define FB_DEFAULT_READING_PERIOD 1000*FB_DEFAULT_READING_PERIOD_S // Periodo de lectura en milisegundos de los timestamps de Firebas
+#define FB_USER_CONNECTED_TIMEOUT_S 45  //Timeout en segundos de desconexion de usuario por Firebase
+#define FB_USER_CONNECTED_TIMEOUT 1000*FB_USER_CONNECTED_TIMEOUT_S  //Timeout en ms de desconexion de usuario por Firebase
+#define FB_DEFAULT_CHECK_UPDATES_PERIOD 24  //Periodo en horas de comprobacion de actualizaciones de Firebase
 
 typedef struct{
 	//Machine state orders
@@ -260,12 +275,16 @@ typedef struct{
 	uint8 User_Db_ID[30		]= {'0'};
 
 	//Firebase conection Status
-	bool FirebaseConnected = false;
 	bool InternetConection = false;
 
 	uint8 ConectionTimeout=0;
 	bool ClientConnected = false;
 	bool ClientAuthenticated = false;
+
+	uint8_t FirebaseConnState = 0;
+	uint8_t LastConnState =0;
+	uint16_t PeriodoLectura = FB_DEFAULT_READING_PERIOD;
+	uint16_t PeriodoFWUpdate = FB_DEFAULT_CHECK_UPDATES_PERIOD;
 
 }carac_Firebase_Configuration;
 
@@ -282,12 +301,10 @@ typedef struct{
 	uint16_t CurrentB = 0;
 	uint16_t CurrentC = 0;
 	uint16_t   Delta  = 0;
-
-
 	uint16_t Delta_timer = 0;
 	TickType_t Period = 0;
 	bool Conected = false;
-	bool Baimena = false;
+	bool ChargeReq = false;
 
 }carac_charger;
 
@@ -356,12 +373,11 @@ typedef struct{
 	uint16 PSOC5_Act_Ver;
 	uint16 ESP_Act_Ver;
 
-	bool PSOC5_UpdateAvailable = false;
+	bool PSOC_UpdateAvailable  = false;
 	bool ESP_UpdateAvailable   = false;
 	bool DescargandoArchivo    = false;
 	bool InstalandoArchivo     = false;
 	bool DobleUpdate  		   = false;
-
 	bool Alt_available = false;
 
 	String Group;
@@ -382,7 +398,7 @@ typedef struct{
 	char actualization_mode[3] = {'A', 'A', 0};
 	char policy[4] = {'A', 'L', 'L',0};
 
-	uint16_t Firmware     = 500;
+	uint16_t FirmwareESP  = 500;
 	uint16_t FirmwarePSOC = 500;
 
 	uint8  Data_cleared = 0;
@@ -783,6 +799,26 @@ typedef struct{
 #define PHOTOVOLTAIC_NET_POWER             (0X00E9U)
 
 #endif
+
+// Datos del DNS
+
+const uint8_t DNS_MAIN_SERVER_IP[]={8,8,8,8};
+const uint8_t DNS_BACKUP_SERVER_IP[]={8,8,4,4};
+
+#define FIREBASE_AUTH_HOST "identitytoolkit.googleapis.com"
+
+#define FIREBASE_PROD_API_KEY "AIzaSyBaJA88_Y3ViCzNF_J08f4LBMAM771aZLs"
+#define FIREBASE_PROD_PROJECT "veltiumbackend.firebaseio.com"
+
+#define FIREBASE_DEV_API_KEY "AIzaSyCYZpVNUOQvrXvc3qETxCqX4DPfp3Fwe3w"
+#define FIREBASE_DEV_PROJECT "veltiumdev-default-rtdb.firebaseio.com"
+
+// Variables BLE
+#define DEFAULT_BLE_AUTH_TIMEOUT_SECS	20 // Timeout en segundos de espera de autenticacion correcta
+#define DEFAULT_BLE_AUTH_TIMEOUT	1000*DEFAULT_BLE_AUTH_TIMEOUT_SECS
+#define DEFAULT_BLE_INACTIVE_TIMEOUT_MIN	10 // Timeout en minutos de inactividad de cliente conectado por BLE
+#define DEFAULT_BLE_INACTIVE_TIMEOUT 60*1000*DEFAULT_BLE_INACTIVE_TIMEOUT_MIN 
+
 
 /* [] END OF FILE */
 

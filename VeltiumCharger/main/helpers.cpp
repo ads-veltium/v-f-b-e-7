@@ -1,12 +1,14 @@
 #include "control.h"
 #include "helpers.h"
+#include "lwip/dns.h"
 
 extern HardwareSerialMOD serialLocal;
 extern uint8_t mainFwUpdateActive;
 extern uint8_t updateTaskrunning;
 extern uint8 deviceSerNumFlash[10];
+extern carac_group  ChargingGroup;
 
-//*Declaracion de funciones privadas*/
+//*Declaracion de funciones privadas*/ 
 int controlSendToSerialLocal ( uint8_t * data, int len );
 
 //********************Funciones publicas accessibles desde fuera***********************************/
@@ -30,14 +32,30 @@ void cls(){
 }
 
 void print_table(carac_charger *table, char* table_name = "Grupo de cargadores", uint8_t size = 0){
-    printf("=============== %s ===================\n", table_name);
-    printf("      ID     Fase   HPT   I      CONS   D    DT     CONEX C\n");
+    Serial.printf("================================================= %s =================================================\n", table_name);
+    Serial.printf("\tID\tFase\tHPT\tI\tConsig\tDelta\tDeltaT\tConnected\tPeriod\tCircuit\tChargeReq\tOrder\tIP Add\n");
     for(int i=0; i< size;i++){     //comprobar si el cargador ya está almacenado
-        printf("   %s    %i    %s  %i   %i   %i   %i    %i  %i\n", table[i].name,table[i].Fase,table[i].HPT,table[i].Current, table[i].Consigna, table[i].Delta,  table[i].Delta_timer, table[i].Conected, table[i].Circuito);
+        Serial.printf("  %s\t%i\t%s\t%i\t%i\t%i\t%i\t%i\t\t%i\t%i\t%i\t%i\t%s\n",table[i].name,table[i].Fase,table[i].HPT,table[i].Current, table[i].Consigna, table[i].Delta,  table[i].Delta_timer, table[i].Conected, table[i].Period, table[i].Circuito, table[i].ChargeReq, table[i].order, table[i].IP.toString().c_str());
     }
-    printf("Memoria interna disponible: %i\n", esp_get_free_internal_heap_size());
-    printf("Memoria total disponible:   %i\n", esp_get_free_heap_size());
-    printf("=======================================================\n");
+    Serial.printf("Memoria interna disponible: %i\n", esp_get_free_internal_heap_size());
+    Serial.printf("Memoria total disponible:   %i\n", esp_get_free_heap_size());
+    Serial.printf("==================================================================================================\n");
+}
+
+void print_net_table(carac_charger *table, char* table_name = "Grupo de cargadores", uint8_t size = 0){
+    Serial.printf("================ %s ================\n", table_name);
+    Serial.printf("\tID\tIP Add\n");
+    for(int i=0; i< size;i++){     //comprobar si el cargador ya está almacenado
+        Serial.printf("  %s\t%s\n",table[i].name,table[i].IP.toString().c_str());
+    }
+    Serial.printf("================================================\n");
+}
+
+void print_group_param(carac_group* group){
+    Serial.printf("================================================= Parámetros =================================================\n");
+    Serial.printf("Perm\tNewData\tConect\tStopOrd\tDelOrd\tStartCl\tChargP\tFind\tCreando\tGrAct\tGrMast\n");
+    Serial.printf("  %i\t%i\t%i\t%i\t%i\t%i\t%i\t%i\t%i\t%i\t%i\n",group->AskPerm,group->NewData,group->Conected,group->StopOrder,group->DeleteOrder,group->StartClient,group->ChargPerm,group->Finding,group->Creando,group->Params.GroupActive,group->Params.GroupMaster);
+    Serial.printf("==============================================================================================================\n");
 }
 
 void printHex(const uint8_t num) {
@@ -196,7 +214,7 @@ uint16 ParseFirmwareVersion(String Texto){ //SACA EL NÚMERO DE LA VERSIÓN
 }
 
 
-String ParseFirmwareModel(String Texto){ //SACA VELTX o VBLEX
+String ParseFirmwareModel(String Texto){ //SACA VELTx o VBLEx
   String sub = Texto.substring(0, 5); 
   return(sub);
 }
@@ -221,7 +239,7 @@ int Convert_To_Epoch(uint8* data){
 	t.tm_min  = data[4];
 	t.tm_sec  = data[5];
 	return mktime(&t);
-}
+	}
 
 void convertSN(){
   char temp[2]={0,0};
@@ -234,3 +252,45 @@ void convertSN(){
 		j++;
 	}
 }
+
+bool ContadorConfigurado(){
+  return ((ChargingGroup.Params.CDP >> 4) & 0x01);
+}
+
+#ifdef IS_UNO_KUBO
+
+void SetDNS(){
+    ESP_LOGD("SetDNS()", "Dirección del DNS Principal: %s", ipaddr_ntoa(dns_getserver(ESP_NETIF_DNS_MAIN)));
+    ESP_LOGD("SetDNS()", "Dirección del DNS Backup: %s", ipaddr_ntoa(dns_getserver(ESP_NETIF_DNS_BACKUP)));
+    ip_addr_t dns_main_server_info;
+    ip_addr_t dns_backup_server_info;
+
+    IP4_ADDR(ip_2_ip4(&dns_main_server_info), DNS_MAIN_SERVER_IP[0], DNS_MAIN_SERVER_IP[1], DNS_MAIN_SERVER_IP[2], DNS_MAIN_SERVER_IP[3]);
+    IP4_ADDR(ip_2_ip4(&dns_backup_server_info), DNS_BACKUP_SERVER_IP[0], DNS_BACKUP_SERVER_IP[1], DNS_BACKUP_SERVER_IP[2], DNS_BACKUP_SERVER_IP[3]);
+
+    dns_setserver(ESP_NETIF_DNS_MAIN, &dns_main_server_info);
+    dns_setserver(ESP_NETIF_DNS_BACKUP, &dns_backup_server_info);
+
+    ESP_LOGD("SetDNS()", "Nueva dirección del DNS Principal: %s", ipaddr_ntoa(dns_getserver(ESP_NETIF_DNS_MAIN)));
+    ESP_LOGD("SetDNS()", "Nueva dirección del DNS Backup: %s", ipaddr_ntoa(dns_getserver(ESP_NETIF_DNS_BACKUP)));
+    dns_init();
+}
+
+int obtener_direccion_IP(const String &host_name, String &ip_address) {
+  // MODIFICAR PARA USAR EL CALLBACK. VER dns_found_callback
+    ip_addr_t addr;
+    err_t err = dns_gethostbyname(host_name.c_str(), &addr, NULL, NULL);
+    if (err == ERR_OK) {
+        char ip_str[16]; // Suficiente para almacenar una dirección IPv4 en formato de texto
+        ip4_addr_t *ip4 = (ip4_addr_t *)&addr.u_addr.ip4;
+        sprintf(ip_str, IPSTR, IP2STR(ip4));
+        ip_address = String(ip_str); // Guarda la dirección IP en el argumento de salida
+        ESP_LOGE("obtener_direccion_IP", "HOST: %s - IP: %s", host_name.c_str(), ip_str);
+        return 0; // Devuelve 0 para indicar éxito
+    } else {
+        ip_address = ""; // Asigna una cadena vacía en caso de error
+        ESP_LOGE("obtener_direccion_IP", "No se puede resolver la direccion del HOST: %s", host_name.c_str());
+        return -1; // Devuelve -1 para indicar error
+    }
+}
+#endif
