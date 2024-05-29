@@ -778,7 +778,7 @@ typedef struct{
 
 
 //Caracteristicas no RCS (Se pueden repetir indices)
-#define SEACH_EXTERNAL_COUNTER		       (0x00D2u)
+#define SEARCH_EXTERNAL_METER		       (0x00D2u)
 #define COMS_FW_UPDATEMODE_CHAR_HANDLE     (0x00D4u)
 #define GROUPS_DEVICES_PART_1 	  		   (0x00D6u)
 #define GROUPS_DEVICES_PART_2 	  		   (0x00D8u)

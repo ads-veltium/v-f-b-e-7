@@ -392,12 +392,6 @@ void LedControl_Task(void *arg){
 			Delay= 85;
 		}
 #endif
-
-
-
-
-#endif
-
 		else{
 			
 			//Funcionamiento normal

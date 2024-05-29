@@ -40,7 +40,7 @@ bool Contador::read(){
 #endif
 /*    if (!MeterClient.Send_Command(MeterUrl,LEER)) {
         #ifdef DEVELOPMENT
-        Serial.printf("Counter reading error\n");
+        Serial.printf("Meter reading error\n");
         #endif
         ContadorExt.ConexionPerdida = true;
         Update_Status_Coms(MED_CONECTION_LOST);

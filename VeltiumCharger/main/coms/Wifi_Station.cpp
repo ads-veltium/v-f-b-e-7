@@ -502,7 +502,7 @@ void Eth_Loop(){
             }
         }*/
         // Arrancar los grupos
-        else if (!ChargingGroup.Conected && (Coms.ETH.conectado || Coms.ETH.DHCP)){
+        if (!ChargingGroup.Conected && (Coms.ETH.conectado || Coms.ETH.DHCP)){
             if (ChargingGroup.Params.GroupActive && GetStateTime(xConnect) > 1000){
                 if (ConfigFirebase.FirebaseConnState == IDLE || ConfigFirebase.FirebaseConnState == DISCONNECTED){ // Esperar a que arranque firebase
                     if (ChargingGroup.StartClient){
@@ -567,7 +567,7 @@ void Eth_Loop(){
                 buffer_contador[2] = (uint8)((ContadorExt.Power >> 8) & 0x00FF);
                 buffer_contador[3] = (uint8)((ContadorExt.Power >> 16) & 0x00FF);
                 buffer_contador[4] = (uint8)((ContadorExt.Power >> 24) & 0x00FF);
-                SendToPSOC5((char *)buffer_contador, 5, SEACH_EXTERNAL_COUNTER);
+                SendToPSOC5((char *)buffer_contador, 5, SEARCH_EXTERNAL_METER);
             }
         }
 

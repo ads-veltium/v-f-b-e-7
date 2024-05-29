@@ -100,7 +100,7 @@ uint16 cnt_diferencia = 1;
 uint8 HPT_estados[9][3] = {"0V", "A1", "A2", "B1", "B2", "C1", "C2", "E1", "F1"};
 
 #ifdef IS_UNO_KUBO
-uint8 ESP_version_firmware[11] = {"VBLE2_0607"};	   
+uint8 ESP_version_firmware[11] = {"VBLE3_0607"};	   
 #else
 uint8 ESP_version_firmware[11] = {"VBLE0_0607"};	
 #endif
@@ -1073,9 +1073,9 @@ void procesar_bloque(uint16 tipo_bloque){
 		} 
 		break;
 
-		case SEACH_EXTERNAL_COUNTER:{
+		case SEARCH_EXTERNAL_METER:{
 
-			ContadorExt.MeidorConectado = true;
+			ContadorExt.MedidorConectado = true;
 			Configuracion.data.medidor485 = buffer_rx_local[0];
 
 			#ifdef DEBUG
@@ -1097,7 +1097,7 @@ void procesar_bloque(uint16 tipo_bloque){
 				delay(20);
 				Update_Status_Coms(0,MED_BLOCK);
 				ContadorExt.GatewayConectado = false;
-				ContadorExt.MeidorConectado = false;
+				ContadorExt.MedidorConectado = false;
 
 			}
 			
@@ -1211,21 +1211,21 @@ void procesar_bloque(uint16 tipo_bloque){
 							Update_Status_Coms(0, MED_BUSCANDO_GATEWAY);
 							// Bloqueo_de_carga = 1;
 							// SendToPSOC5(Bloqueo_de_carga,BLOQUEO_CARGA);
-							SendToPSOC5(1, SEACH_EXTERNAL_COUNTER);
+							SendToPSOC5(1, SEARCH_EXTERNAL_METER);
 						}
 					}
 					else{
 						Serial.println("CDP sin medidor");
 						Coms.ETH.medidor = false;
 						Configuracion.data.medidor485 = 0;
-						ContadorExt.MeidorConectado = 0;
+						ContadorExt.MedidorConectado = 0;
 					}
 				}
 				else{
 					Params.Tipo_Sensor = 0;
 					Coms.ETH.medidor = false;
 					Configuracion.data.medidor485 = 0;
-					ContadorExt.MeidorConectado = 0;
+					ContadorExt.MedidorConectado = 0;
 				}
 
 				if(((buffer_rx_local[0] >> 5) & 0x03) > 0){
