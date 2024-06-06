@@ -22,7 +22,7 @@ static bool operator==(const carac_config& lhs, const carac_config& rhs){
     if(lhs.potencia_contratada2 != rhs.potencia_contratada2){
       return false;
     }
-    if(lhs.inst_current_limit != rhs.inst_current_limit){
+    if(lhs.install_current_limit != rhs.install_current_limit){
       return false;
     }
     if(lhs.CDP != rhs.CDP){
@@ -90,7 +90,7 @@ void Config::Carac_to_json(DynamicJsonDocument& ConfigJSON){
     ConfigJSON["auth_mode"] = String(data.autentication_mode);
     ConfigJSON["pot_contratada_1"] = data.potencia_contratada1;
     ConfigJSON["pot_contratada_2"] = data.potencia_contratada2;
-    ConfigJSON["inst_curr_limit"] = data.inst_current_limit;
+    ConfigJSON["inst_curr_limit"]  = data.install_current_limit;
     ConfigJSON["CDP"] = data.CDP;
     ConfigJSON["device_ID"]      = String(data.device_ID);
     ConfigJSON["device_ser_num"] = String(data.deviceSerNum);
@@ -108,7 +108,7 @@ void Config::Json_to_carac(DynamicJsonDocument& ConfigJSON){
 
     data.potencia_contratada1 = ConfigJSON["pot_contratada_1"].as<uint16_t>();
     data.potencia_contratada2 = ConfigJSON["pot_contratada_2"].as<uint16_t>();
-    data.inst_current_limit   = ConfigJSON["inst_curr_limit"].as<uint8_t>();
+    data.install_current_limit   = ConfigJSON["inst_curr_limit"].as<uint8_t>();
 
     data.CDP = ConfigJSON["CDP"].as<uint8_t>();
 
@@ -174,8 +174,8 @@ bool Config::Load(){
 }
 
 bool Config::Store(){
-    SPIFFS.end();
-    SPIFFS.begin(1,"/spiffs",10,"ESP32");
+    //SPIFFS.end();
+    //SPIFFS.begin(1,"/spiffs",10,"ESP32");
     DynamicJsonDocument ConfigJSON(1024);
     #ifdef DEBUG_CONFIG
         printf("Guardando datos a la flash!!\n");

@@ -3,7 +3,7 @@
 # project subdirectory.
 #
 
-PROJECT_NAME := VBLE2
+PROJECT_NAME := VBLE
 
 include $(IDF_PATH)/make/project.mk
 

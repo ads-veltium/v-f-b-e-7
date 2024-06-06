@@ -11,13 +11,13 @@
 	#define USE_GROUPS			   //Comentar para no utilizar los grupos de potencia
 #endif
 
-//#define DEVELOPMENT				   //Comentar para pasar firmware a produccion ( Cambio de base de datos y quitar debugs)
+#define DEVELOPMENT				   //Comentar para pasar firmware a produccion ( Cambio de base de datos y quitar debugs)
 
 #ifdef DEVELOPMENT
 	#define DEBUG				   //Activar los distintos debugs
 	#ifdef DEBUG
 		#ifdef USE_GROUPS
-			//#define DEBUG_GROUPS	//Activar el debug de los grupos
+			#define DEBUG_GROUPS	//Activar el debug de los grupos
 			//#define DEBUG_COAP		// ADS - Debug de mensajes COAP
 			//#define DEBUG_UDP		//Debug de mensajes UDP enviados y recibidos
 		#endif
@@ -28,7 +28,7 @@
 		#ifdef IS_UNO_KUBO	
 			#define DEBUG_WIFI	     //Activar el debug del wifi
 			#define DEBUG_ETH	   	 //Activar el debug del ETH
-			//#define DEBUG_MEDIDOR  //Activar el debug del medidor
+			#define DEBUG_MEDIDOR  //Activar el debug del medidor
 		#endif
 	#endif
 	#define DEMO_MODE				// Modo para activar valores de medida y estados del cargador ficticios

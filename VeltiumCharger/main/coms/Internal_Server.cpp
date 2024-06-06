@@ -216,7 +216,7 @@ String processor(const String& var){
 	}*/
     else if (var == "CURLIM")
 	{
-		return String(Params.inst_current_limit);
+		return String(Params.install_current_limit);
 	}
     else if (var == "POWER")
 	{
@@ -675,7 +675,7 @@ void InitServer(void) {
     server.on("/curlim", HTTP_GET_A, [](AsyncWebServerRequest *request){
             if(!request->authenticate(user, password.c_str()))
                 return request->requestAuthentication();
-            request->send_P(200, "text/plain", String(Params.inst_current_limit).c_str());
+            request->send_P(200, "text/plain", String(Params.install_current_limit).c_str());
     });
     
     server.on("/power", HTTP_GET_A, [](AsyncWebServerRequest *request){

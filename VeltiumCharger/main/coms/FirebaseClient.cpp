@@ -160,7 +160,7 @@ bool WriteFirebaseParams(String Path){
   Serial.println("Write Params CALLED");
   Escritura.clear();
   Escritura["auth_mode"]           = String(Params.autentication_mode).substring(0,2);
-  Escritura["inst_curr_limit"]     = Params.inst_current_limit;
+  Escritura["inst_curr_limit"]     = Params.install_current_limit;
   Escritura["contract_power1"]     = Params.potencia_contratada1;
   Escritura["contract_power2"]     = Params.potencia_contratada2;
   Escritura["dpc" ]                = Params.CDP;
@@ -664,9 +664,9 @@ bool ReadFirebaseParams(String Path){
           SendToPSOC5(Params.CDP,DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE);
         }
 
-        if(Params.inst_current_limit != Lectura["inst_curr_limit"].as<uint8>()){
-          Params.inst_current_limit=Lectura["inst_curr_limit"].as<uint8>();
-          SendToPSOC5(Params.inst_current_limit,MEASURES_INSTALATION_CURRENT_LIMIT_CHAR_HANDLE);
+        if(Params.install_current_limit != Lectura["inst_curr_limit"].as<uint8>()){
+          Params.install_current_limit=Lectura["inst_curr_limit"].as<uint8>();
+          SendToPSOC5(Params.install_current_limit,MEASURES_INSTALATION_CURRENT_LIMIT_CHAR_HANDLE);
         }
       }
 

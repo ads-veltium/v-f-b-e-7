@@ -20,7 +20,6 @@ Contador Meter EXT_RAM_ATTR;
 
 bool ServidorArrancado = false;
 static uint8 Reintentos = 0;
-bool PausadoPorMeter = false;
 
 static uint8_t ComsEHT_OldState = APAGADO;
 
@@ -28,7 +27,6 @@ void InitServer(void);
 void StopServer(void);
 
 extern carac_group  ChargingGroup;
-extern void store_params_in_mem();
 void coap_start_server();
 void coap_start_client();
 void start_udp();
@@ -373,11 +371,6 @@ void Eth_Loop(){
         break;
 
     case CONNECTING:
-            if(PausadoPorMeter && ChargingGroup.Params.GroupMaster){
-                ChargingGroup.Params.GroupActive=true;
-                PausadoPorMeter=false;
-                store_params_in_mem();
-            }
         if (Coms.ETH.connected){
             // Solo comprobamos la conexion a internet si no hemos activado el servidor dhcp y si el usuario a activado el ETH
             if (!Coms.ETH.DHCP && Coms.ETH.ON){
@@ -420,13 +413,15 @@ void Eth_Loop(){
         // Si tenemos un grupo activo y al minuto no tenemos conexion a internet, activamos el DHCP
         // Si no soy el maestro, espero 2 minutos
         else if (!Coms.ETH.ON){
-            if (!Coms.ETH.medidor && !ChargingGroup.Params.GroupActive){
+            // if (!Coms.ETH.medidor && !ChargingGroup.Params.GroupActive){
+            if (!ChargingGroup.Params.GroupActive){
                 if (GetStateTime(xStart) > 1000){
                     Coms.ETH.Wifi_Perm = true;
                 }
             }
             if (!Coms.Provisioning){
-                if ((ChargingGroup.Params.GroupMaster && (ChargingGroup.Params.GroupActive || ChargingGroup.Creando)) || Coms.ETH.medidor){ // ADS REVISAR Cuándo pasa por aquí
+                //if ((ChargingGroup.Params.GroupMaster && (ChargingGroup.Params.GroupActive || ChargingGroup.Creando)) || Coms.ETH.medidor){ // ADS REVISAR Cuándo pasa por aquí
+                if (ChargingGroup.Params.GroupMaster && (ChargingGroup.Params.GroupActive || ChargingGroup.Creando)){ 
                     if (GetStateTime(xFirstStart) > 5000){
 #ifdef DEBUG_ETH
                         Serial.println("Wifi_Station - Eth_Loop: Master : Activo DHCP");
@@ -710,7 +705,6 @@ void ComsTask(void *args){
                     ServidorArrancado = false;
                 }
                 */
-
                 Coms.ETH.Wifi_Perm = true;
                 delay(100);
                 initialise_provisioning();

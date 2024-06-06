@@ -1117,14 +1117,14 @@ void deviceConnectInd(void){
 		for (size_t i = 0; i < length; ++i){
 			snprintf(&hexStringQuery[i * 2], 3, "%02X", authChallengeQuery[i]); 
 		}
-		ESP_LOGI("TAG", "authChallengeQuery=0x%s", hexStringQuery); 
+		ESP_LOGI(TAG, "authChallengeQuery=0x%s", hexStringQuery); 
 
 		length = strlen((const char *)authChallengeReply);
 		char hexStringReply[length * 2 + 1];		
 		for (size_t i = 0; i < length; ++i){
 			snprintf(&hexStringReply[i * 2], 3, "%02X", authChallengeReply[i]); 
 		}
-		ESP_LOGI("TAG", "authChallengeReply=0x%s", hexStringReply); 
+		ESP_LOGI(TAG, "authChallengeReply=0x%s", hexStringReply); 
 #endif
 
 		// Delay para dar tiempo a conectar
@@ -1154,7 +1154,7 @@ uint8_t setAuthToken ( uint8_t *data, int len ){
 	for (size_t i = 0; i < length; ++i){
 		snprintf(&hexString[i * 2], 3, "%02X", data[i]); // Convertir cada byte a formato hexadecimal y agregarlo a la cadena
 	}
-	ESP_LOGI("TAG", "data=0x%s", hexString); // Imprimir la cadena completa
+	ESP_LOGI(TAG, "data recieved=0x%s", hexString); // Imprimir la cadena completa
 #endif
 
 	if(!authSuccess){
@@ -1181,7 +1181,7 @@ uint8_t setAuthToken ( uint8_t *data, int len ){
 			for (size_t i = 0; i < length; ++i){
 				snprintf(&hexStringReply[i * 2], 3, "%02X", authChallengeReply[i]); 
 			}
-			ESP_LOGE("TAG", "data=0x%s distinto de authChallengeReply=0x%s", hexStringData, hexStringReply);
+			ESP_LOGE(TAG, "data received=0x%s distinto de authChallengeReply=0x%s", hexStringData, hexStringReply);
 		}
 	}
 	return 1;

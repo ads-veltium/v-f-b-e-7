@@ -34,6 +34,7 @@ void initialize_ping(ip_addr_t target_addr, uint8_t *resultado);
 void end_ping();
 
 void BuscarContador_Task(void *args){
+/*
     bool *finding = (bool*) args;
     uint8 i = 100;
     uint8 Sup = 1, inf = 1 ;
@@ -174,9 +175,8 @@ void BuscarContador_Task(void *args){
     else{
         Coms.ETH.Wifi_Perm = true;
     }
-           
-   
     vTaskDelete(NULL);
+*/
 }
 
 bool ComprobarConexion(void){

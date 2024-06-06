@@ -1,9 +1,12 @@
 #include "helper_coms.h"
 #ifdef CONNECTED
+static const char* TAG = "helpers_coms";
+
 void Update_Status_Coms(uint16_t Code, uint8_t block){
 	static uint16 Status_Coms = 0;
 	static uint16 Last_Status = 0;
 
+    ESP_LOGI(TAG,"Update_Status_Coms. Code=%i block=%i",Code,block);
 
 	if(Code > 0){
 		//Resetear los bits que estuvieran activos por cada bloque
@@ -12,11 +15,9 @@ void Update_Status_Coms(uint16_t Code, uint8_t block){
 		}
 		else if(Code <= WIFI_BAD_CREDENTIALS){
 			Status_Coms &= 0b1111111111100011;
-
 		}
 		else if(Code <= MED_CONECTION_RESTAURED){
 			Status_Coms &= 0b1111111100011111;
-			
 		}
 		else if(Code <= MODEM_CONNECTED){
 			Status_Coms &= 0b0000001111111111;
@@ -49,7 +50,6 @@ void Update_Status_Coms(uint16_t Code, uint8_t block){
 		data[0] = (uint8)(Status_Coms & 0x00FF);
 		data[1] = (uint8)((Status_Coms >> 8) & 0x00FF);
 		serverbleNotCharacteristic((uint8_t*)data, 2, STATUS_COMS);
-
 	}
 }
 

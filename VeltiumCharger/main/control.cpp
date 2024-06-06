@@ -565,13 +565,13 @@ void procesar_bloque(uint16 tipo_bloque){
 				/************************ Set configuration data **********************/
 				Configuracion.data.potencia_contratada1 = buffer_rx_local[229]+buffer_rx_local[230]*0x100;
 				Configuracion.data.potencia_contratada2 = buffer_rx_local[241]+buffer_rx_local[242]*0x100;
-				Configuracion.data.inst_current_limit   = buffer_rx_local[11];	
+				Configuracion.data.install_current_limit   = buffer_rx_local[11];	
 				Configuracion.data.CDP   = buffer_rx_local[232];		
 
 				#ifdef CONNECTED	
 					/************************ Set firebase Params **********************/
 					memcpy(Params.autentication_mode, &buffer_rx_local[212],2);
-					Params.inst_current_limit = buffer_rx_local[11];
+					Params.install_current_limit = buffer_rx_local[11];
 					Params.potencia_contratada1 = buffer_rx_local[229]+buffer_rx_local[230]*0x100;
 					Params.potencia_contratada2 = buffer_rx_local[241]+buffer_rx_local[242]*0x100;
 					Params.CDP 	  =  buffer_rx_local[232];
@@ -805,6 +805,9 @@ void procesar_bloque(uint16 tipo_bloque){
 					buffer_net[3] = buffer_rx_local[53];
 					
 					memcpy(&Status.total_power,buffer_total,4);
+#ifdef DEBUG_MEDIDOR
+					ESP_LOGI(TAG,"Potencia del contador recibida del PSoC=%i",Status.total_power);
+#endif
 					memcpy(&Status.net_power,buffer_net,4);
 
 					Status.Trifasico= buffer_rx_local[44]==3;
@@ -864,13 +867,12 @@ void procesar_bloque(uint16 tipo_bloque){
 
 		case MEASURES_INSTALATION_CURRENT_LIMIT_CHAR_HANDLE:{
 			modifyCharacteristic(buffer_rx_local, 1, MEASURES_INSTALATION_CURRENT_LIMIT_CHAR_HANDLE);
-			Configuracion.data.inst_current_limit = buffer_rx_local[0];
+			Configuracion.data.install_current_limit = buffer_rx_local[0];
 #ifdef DEBUG
-			Serial.println("Instalation current limit Changed to");
-			Serial.print(buffer_rx_local[0]);
+			Serial.printf("Instalation current limit Changed to %i\n",Configuracion.data.install_current_limit);
 #endif
 #ifdef CONNECTED
-			Params.inst_current_limit = buffer_rx_local[0];
+			Params.install_current_limit = buffer_rx_local[0];
 #endif
 		}
 		break;
@@ -1195,18 +1197,15 @@ void procesar_bloque(uint16 tipo_bloque){
 			modifyCharacteristic(buffer_rx_local, 1, DOMESTIC_CONSUMPTION_DPC_MODE_CHAR_HANDLE);
 			Configuracion.data.CDP = buffer_rx_local[0];
 			#ifdef CONNECTED
-				Params.CDP				  = buffer_rx_local[0];			
-				if((buffer_rx_local[0] >> 1) & 0x01){
-
-					Params.Tipo_Sensor    = ((buffer_rx_local[0]  >> 4) & 0x01);
+				Params.CDP = buffer_rx_local[0];			
+				if((Params.CDP >> 1) & 0x01){
+					Params.Tipo_Sensor = ((Params.CDP >> 4) & 0x01);
 					//Bloquear la carga hasta que encontremos el medidor
-
 					if (Params.Tipo_Sensor){
-
+						ESP_LOGI(TAG,"CDP con medidor");
 						if (!Configuracion.data.medidor485){
-
 							// Buscar medidor cuando lo pulsan en la APP
-							Serial.println("Enviando orden de buscar medidor 485");
+							ESP_LOGI(TAG,"Enviando peticion de búsqueda de medidor 485 al PSoC");
 							Coms.ETH.medidor = true;
 							Update_Status_Coms(0, MED_BUSCANDO_GATEWAY);
 							// Bloqueo_de_carga = 1;
@@ -1215,7 +1214,7 @@ void procesar_bloque(uint16 tipo_bloque){
 						}
 					}
 					else{
-						Serial.println("CDP sin medidor");
+						ESP_LOGI(TAG,"CDP con CURVE");
 						Coms.ETH.medidor = false;
 						Configuracion.data.medidor485 = 0;
 						ContadorExt.MedidorConectado = 0;
@@ -1251,13 +1250,11 @@ void procesar_bloque(uint16 tipo_bloque){
 
 #ifdef CONNECTED
 		case COMS_CONFIGURATION_WIFI_ON:{
-			Coms.Wifi.ON    =  buffer_rx_local[0];
-
+			Coms.Wifi.ON =  buffer_rx_local[0];
 			#ifdef DEBUG
 			Serial.print("WIFI ON:");
 			Serial.println(Coms.Wifi.ON);
 			#endif
-
 			modifyCharacteristic(buffer_rx_local , 1, COMS_CONFIGURATION_WIFI_ON);
 		} 
 		break;

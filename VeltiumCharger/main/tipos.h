@@ -163,7 +163,7 @@ typedef struct{
 	char   autentication_mode[2];
 	uint8  Fase = 1;
 	uint8  CDP;
-	uint8  inst_current_limit;
+	uint8  install_current_limit;
 	uint16 potencia_contratada1;
 	uint16 potencia_contratada2;
 
@@ -403,7 +403,7 @@ typedef struct{
 
 	uint8  Data_cleared = 0;
 	uint8  CDP  = 0;
-	uint8  inst_current_limit = 32;
+	uint8  install_current_limit = 32;
 	uint8  count_reinicios_malos = 0;
 
 	uint16 potencia_contratada1 = 32;
