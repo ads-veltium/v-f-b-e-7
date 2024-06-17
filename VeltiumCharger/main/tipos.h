@@ -819,6 +819,10 @@ const uint8_t DNS_BACKUP_SERVER_IP[]={8,8,4,4};
 #define DEFAULT_BLE_INACTIVE_TIMEOUT_MIN	10 // Timeout en minutos de inactividad de cliente conectado por BLE
 #define DEFAULT_BLE_INACTIVE_TIMEOUT 60*1000*DEFAULT_BLE_INACTIVE_TIMEOUT_MIN 
 
+// BACKDOOR actions para acciones desde pantalla de diagnósticos
+#define BACKDOOR_ACTION_NO_ACTION				0
+#define BACKDOOR_ACTION_DELETE_GROUP			69
+
 
 /* [] END OF FILE */
 

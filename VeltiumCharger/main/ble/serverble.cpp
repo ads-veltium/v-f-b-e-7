@@ -63,6 +63,8 @@ int count = 0;
 uint64_t startTime;
 uint64_t endTime;
 
+uint8 backdoor_selector = 0;
+
 /* milestone: one-liner for reporting memory usage */
 void milestone(const char* mname)
 {
@@ -713,6 +715,42 @@ class CBCharacteristic: public BLECharacteristicCallbacks {
 				modifyCharacteristic((uint8_t*)&Configuracion.data.policy, 3, POLICY);
 				return;
 			} 
+
+			if (handle == DOMESTIC_CONSUMPTION_KS_CHAR_HANDLE){
+				backdoor_selector = payload [0];
+				ESP_LOGI(TAG,"SET backdoor_selector=%i",backdoor_selector);
+				modifyCharacteristic((uint8_t*)&backdoor_selector, 1, DOMESTIC_CONSUMPTION_KS_CHAR_HANDLE);
+				switch (backdoor_selector){
+#ifdef CONNECTED
+				case BACKDOOR_ACTION_DELETE_GROUP:
+					modifyCharacteristic((uint8_t*)&ChargingGroup.Params.GroupActive, 1, DOMESTIC_CONSUMPTION_FCT_CHAR_HANDLE);
+					modifyCharacteristic((uint8_t*)&ChargingGroup.Params.GroupMaster, 1, DOMESTIC_CONSUMPTION_FS_CHAR_HANDLE);
+					break;
+#endif
+				default:
+				break;
+				}
+			}
+			if ((handle == TEST_LAUNCH_MCB_TEST_CHAR_HANDLE) && (backdoor_selector != 0)) {
+				ESP_LOGI(TAG,"CONFIRM backdoor selection");
+				switch (backdoor_selector){
+#ifdef CONNECTED
+					case BACKDOOR_ACTION_DELETE_GROUP:
+						ESP_LOGI(TAG,"Confirmed action: Borrado de grupo");
+						broadcast_a_grupo("Delete group", 12);
+						New_Control("Delete", 7);
+						modifyCharacteristic((uint8_t*)&ChargingGroup.Params.GroupActive, 1, DOMESTIC_CONSUMPTION_FCT_CHAR_HANDLE);
+						modifyCharacteristic((uint8_t*)&ChargingGroup.Params.GroupMaster, 1, DOMESTIC_CONSUMPTION_FS_CHAR_HANDLE);
+						break;
+#endif
+					default:
+						ESP_LOGI(TAG,"No action");
+					break;					
+				}
+				backdoor_selector = BACKDOOR_ACTION_NO_ACTION;
+				modifyCharacteristic((uint8_t*)&backdoor_selector, 1, DOMESTIC_CONSUMPTION_KS_CHAR_HANDLE);
+				ESP_LOGI(TAG,"RESET backdoor_selector=%i",backdoor_selector);
+			}
 
 			// if we are here, we are authenticated.
 			// send payload downstream.

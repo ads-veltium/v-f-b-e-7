@@ -100,9 +100,9 @@ uint16 cnt_diferencia = 1;
 uint8 HPT_estados[9][3] = {"0V", "A1", "A2", "B1", "B2", "C1", "C2", "E1", "F1"};
 
 #ifdef IS_UNO_KUBO
-uint8 ESP_version_firmware[11] = {"VBLE3_0607"};	   
+uint8 ESP_version_firmware[11] = {"VBLE3_0666"};	   
 #else
-uint8 ESP_version_firmware[11] = {"VBLE0_0607"};	
+uint8 ESP_version_firmware[11] = {"VBLE0_0608"};	
 #endif
 
 uint8 PSOC_version_firmware[11] ;		
@@ -192,7 +192,7 @@ void controlTask(void *arg) {
 	bool Iface_Con = BLE;
 	uint8 old_inicializado = 0;
 	serialLocal.begin(115200, SERIAL_8N1, 34, 4); // pins: rx, tx
-	
+
 	// INICIALIZO ELEMENTOS PARA AUTENTICACION
 	InitializeAuthsystem();
 
