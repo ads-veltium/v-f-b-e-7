@@ -31,7 +31,9 @@ int ProcessDataRow(CyBtldr_Action action, uint32_t rowSize, char* rowData, CyBtl
 
     int err = CyBtldr_ParseCyAcd2RowData(rowSize, rowData, &address, buffer, &bufSize, &checksum);
     if (CYRET_SUCCESS == err) {
+#ifdef DEBUG_UPDATE
         Serial.println("CyBtldr_ParseCyAcd2RowData");
+#endif
         switch (action)
         {
         case ERASE:
@@ -129,8 +131,10 @@ int CyBtldr_RunAction(CyBtldr_Action action, HardwareSerialMOD *comm, CyBtldr_Pr
                             break;
                         case ':':
                         err = ProcessDataRow(action, lineLen, line, update, applicationStartAddr, applicationDataLines, &applicationDataLinesSeen);
+#ifdef DEBUG_UPDATE
                         Serial.print("ProcessDataRow - applicationDataLinesSeen:");
                         Serial.println(applicationDataLinesSeen);
+#endif
                         break;
                     }
                 } else if (CYRET_ERR_EOF == err) {

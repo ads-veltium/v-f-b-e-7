@@ -24,6 +24,7 @@
 
 		#define DEBUG_BLE		   //Activar el debug del ble
 		#define DEBUG_CONFIG	   //Debugar el almacenamiento de la configuracion
+		#define DEBUG_UPDATE
 
 		#ifdef IS_UNO_KUBO	
 			#define DEBUG_WIFI	     //Activar el debug del wifi
@@ -69,6 +70,7 @@
 #include "HardwareSerialMOD.h"
 #include <math.h>
 #include "SPIFFS.h"
+
 #include "helpers.h"
 #include "config.h"
 

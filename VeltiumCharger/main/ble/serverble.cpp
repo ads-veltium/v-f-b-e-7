@@ -78,7 +78,6 @@ void milestone(const char* mname)
 	Serial.printf ("**MILESTONE** [%6u] [%+7d] [%s]\n", ms_curr, delta, mname);
 }
 
-
 static unsigned long crc32(int n, unsigned char c[], int checksum)
 {
 	int i, j, b;
@@ -175,45 +174,42 @@ BLE_FIELD blefields[MAX_BLE_FIELDS] =
 void serverbleNotCharacteristic ( uint8_t *data, int len, uint16_t handle )
 {
 	// check non-selected handles first
-	if (handle == STATUS_HPT_STATUS_CHAR_HANDLE) {
-		pbleCharacteristics[BLE_CHA_HPT_STAT]->setValue(data, len);
-		pbleCharacteristics[BLE_CHA_HPT_STAT]->notify();
-		return;		
-	}
-	if (handle == MEASURES_INST_CURRENT_CHAR_HANDLE) {
-		pbleCharacteristics[BLE_CHA_INS_CURR]->setValue(data, len);
-		pbleCharacteristics[BLE_CHA_INS_CURR]->notify();
-		return;
-	}
+	switch(handle){
+		case STATUS_HPT_STATUS_CHAR_HANDLE: 
+			pbleCharacteristics[BLE_CHA_HPT_STAT]->setValue(data, len);
+			pbleCharacteristics[BLE_CHA_HPT_STAT]->notify();
+			break;		
+		case MEASURES_INST_CURRENT_CHAR_HANDLE: 
+			pbleCharacteristics[BLE_CHA_INS_CURR]->setValue(data, len);
+			pbleCharacteristics[BLE_CHA_INS_CURR]->notify();
+			break;
 #ifdef CONNECTED
-	if (handle == MEASURES_INST_CURRENTB_CHAR_HANDLE) {
-		pbleCharacteristics[BLE_CHA_INSB_CURR]->setValue(data, len);
-		pbleCharacteristics[BLE_CHA_INSB_CURR]->notify();
-		return;
-	}
-	if (handle == MEASURES_INST_CURRENTC_CHAR_HANDLE) {
-		pbleCharacteristics[BLE_CHA_INSC_CURR]->setValue(data, len);
-		pbleCharacteristics[BLE_CHA_INSC_CURR]->notify();
-		return;
-	}
-	if (handle == CHARGING_GROUP_BLE_NET_DEVICES) {
-		pbleCharacteristics[BLE_CHA_NET_GROUP]->setValue(data, len);
-		pbleCharacteristics[BLE_CHA_NET_GROUP]->notify();
-		return;
-	}
-	if (handle == STATUS_COMS) {
-		pbleCharacteristics[BLE_CHA_STATUS_COMS]->setValue(data, len);
-		pbleCharacteristics[BLE_CHA_STATUS_COMS]->notify();
-		return;
-	}
+		case MEASURES_INST_CURRENTB_CHAR_HANDLE: 
+			pbleCharacteristics[BLE_CHA_INSB_CURR]->setValue(data, len);
+			pbleCharacteristics[BLE_CHA_INSB_CURR]->notify();
+			break;
+		case MEASURES_INST_CURRENTC_CHAR_HANDLE: 
+			pbleCharacteristics[BLE_CHA_INSC_CURR]->setValue(data, len);
+			pbleCharacteristics[BLE_CHA_INSC_CURR]->notify();
+			break;
+		case CHARGING_GROUP_BLE_NET_DEVICES: 
+			pbleCharacteristics[BLE_CHA_NET_GROUP]->setValue(data, len);
+			pbleCharacteristics[BLE_CHA_NET_GROUP]->notify();
+			break;
+		case STATUS_COMS: 
+			pbleCharacteristics[BLE_CHA_STATUS_COMS]->setValue(data, len);
+			pbleCharacteristics[BLE_CHA_STATUS_COMS]->notify();
+			break;
 #endif
-	if (handle == FWUPDATE_BIRD_DATA_PSEUDO_CHAR_HANDLE) {
-		pbleCharacteristics[BLE_CHA_FW_DATA]->setValue(data, len);
-		pbleCharacteristics[BLE_CHA_FW_DATA]->notify();
-		return;
+		case FWUPDATE_BIRD_DATA_PSEUDO_CHAR_HANDLE:
+			pbleCharacteristics[BLE_CHA_FW_DATA]->setValue(data, len);
+			pbleCharacteristics[BLE_CHA_FW_DATA]->notify();
+			break;
+		default:
+			// set characteristic value using selector mechanism
+		    rcs_server_set_chr_value(handle, data, len);
+            break;
 	}
-	// set characteristic value using selector mechanism
-	rcs_server_set_chr_value(handle, data, len);
 }
 
 void serverbleSetCharacteristic ( uint8_t *data, int len, uint16_t handle )
@@ -415,20 +411,21 @@ class CBCharacteristic: public BLECharacteristicCallbacks {
 				
 				memcpy(&UpdatefileSize, &payload[10], sizeof(UpdatefileSize));
 
-				#ifdef DEBUG_BLE
+#ifdef DEBUG_BLE
 				Serial.printf("Received FwUpdate Prolog\n");
 				Serial.printf("Firmware file with signature %s has %u bytes\n", signature, UpdatefileSize);
-				#endif
+#endif
 
 				uint32_t successCode = 0x00000000;
+				bool 	 success_op;
 				//Empezar el sistema de actualizacion
 				UpdateStatus.DescargandoArchivo=1;
 				if(strstr (signature,"VBLE")){
 					UpdateType= ESP_UPDATE;
 					Update.end();
-					#ifdef DEBUG_BLE
+#ifdef DEBUG_BLE
 					Serial.println("Updating ESP");
-					#endif			
+#endif			
 					if(!Update.begin(UpdatefileSize)){
 						Serial.println("File too big");
 						Update.end();
@@ -436,9 +433,9 @@ class CBCharacteristic: public BLECharacteristicCallbacks {
 					};
 				}
 				else if(strstr (signature,"VELT")){
-					#ifdef DEBUG_BLE
+#ifdef DEBUG_BLE
 					Serial.println("Updating PSOC");
-					#endif
+#endif
 					UpdateType= PSOC_UPDATE;				
 
 					SPIFFS.end();
@@ -448,30 +445,29 @@ class CBCharacteristic: public BLECharacteristicCallbacks {
 						SPIFFS.begin(1,"/spiffs",1,"PSOC5");
 					}
 
-					//Almacenar la version anterior de firmware
-					if(SPIFFS.exists("/FW_PSoC6_v7.cyacd2")){
-						if(SPIFFS.exists("/FW_PSoC6_v7_old.cyacd2")){
-							SPIFFS.remove("/FW_PSoC6_v7_old.cyacd2");
-						}
-						//Comprobar si nos van a entrar las dos versiones de firmware
-						File dir = SPIFFS.open("/");
-						if(dir.size() + UpdatefileSize > 0x80000){
-							#ifdef DEBUG
-							printf("No entran los dos documentos! Borro el anterior!\n");
-							#endif
-							SPIFFS.remove("/FW_PSoC6_v7.cyacd2");
-						}
-						else{
-							SPIFFS.rename("/FW_PSoC6_v7.cyacd2", "/FW_PSoC6_v7_old.cyacd2");
-						}
-					}else{
-						#ifdef DEBUG_BLE
-							Serial.println("No existe el fichero FW!!");
-						#endif
+					if(SPIFFS.exists(PSOC_UPDATE_FILE)){
+						ESP_LOGI(TAG,"Existe %s. Se borra",PSOC_UPDATE_FILE);
+						success_op = SPIFFS.remove(PSOC_UPDATE_FILE);
+						ESP_LOGI(TAG,"Borrado =%i",success_op);
 					}
 
-					vTaskDelay(pdMS_TO_TICKS(50));
-					UpdateFile = SPIFFS.open("/FW_PSoC6_v7.cyacd2", FILE_WRITE);
+					if(SPIFFS.exists(PSOC_UPDATE_OLD_FILE)){
+						ESP_LOGI(TAG,"Existe %s. Se borra",PSOC_UPDATE_OLD_FILE);
+						SPIFFS.remove(PSOC_UPDATE_OLD_FILE);
+					}	
+
+					UpdateFile = SPIFFS.open(PSOC_UPDATE_FILE, FILE_WRITE);
+					if (!UpdateFile){
+						ESP_LOGE(TAG,"No se pudo crear y abrir %s",PSOC_UPDATE_FILE);
+					}
+					uint8 open_file_retry_number=0;
+					while (!UpdateFile && (open_file_retry_number++ <5)){
+						ESP_LOGI(TAG,"Reintento %u de abrir %s",open_file_retry_number,PSOC_UPDATE_FILE);
+						SPIFFS.end();					
+						SPIFFS.begin(1,"/spiffs",1,"PSOC5");
+						SPIFFS.format();
+						UpdateFile = SPIFFS.open(PSOC_UPDATE_FILE, FILE_WRITE);
+					}
 				}
 				else{
 					successCode = 0x00000040;
@@ -521,7 +517,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks {
 					
 					UpdateFile.close();
 
-					File InstalledFile = SPIFFS.open("/FW_PSoC6_v7.cyacd2", FILE_READ);
+					File InstalledFile = SPIFFS.open(PSOC_UPDATE_FILE, FILE_READ);
 
 					if(UpdatefileSize==InstalledFile.size()){
 						#ifdef DEBUG_BLE
@@ -546,7 +542,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks {
 							Serial.printf("El fichero guardado no es correcto!\n");
 						#endif
 						InstalledFile.close();
-						SPIFFS.remove("/FW_PSoC6_v7.cyacd2");
+						SPIFFS.remove(PSOC_UPDATE_FILE);
 						successCode = 0x00000002;
 						serverbleNotCharacteristic((uint8_t*)&successCode, sizeof(successCode), FWUPDATE_BIRD_DATA_PSEUDO_CHAR_HANDLE);
 						MAIN_RESET_Write(0);
@@ -820,7 +816,9 @@ class CBCharacteristic: public BLECharacteristicCallbacks {
 			uint16_t partSize;
 			memcpy(&partSize, &data[2], sizeof(partSize));
 			ConexTimer = xTaskGetTickCount();
+#ifdef DEBUG_UPDATE
 			Serial.printf("Received FwData message with length and size %u %u\n", dlen, partSize);
+#endif
 			uint8_t* payload = new uint8_t[partSize];
 			memset(payload, 0, partSize);
 			memcpy(payload, &data[4], partSize);
@@ -828,16 +826,18 @@ class CBCharacteristic: public BLECharacteristicCallbacks {
 			uint32_t partCRC32;
 			memcpy(&partCRC32, &data[260], 4);
 			
-			uint32_t checksum=crc32(partSize, payload,0xFFFFFFFFUL);
-
+			uint32_t checksum=crc32(partSize, payload,0xFFFFFFFFUL);		
 			if(!Testing){
 				if(checksum!= partCRC32){
+					ESP_LOGE(TAG,"checksum calculado=%u crc32 recibido=%u",checksum, partCRC32);
 					successCode = 0x00000002;
 					serverbleNotCharacteristic((uint8_t*)&successCode, sizeof(successCode), FWUPDATE_BIRD_DATA_PSEUDO_CHAR_HANDLE);
 					delete[] payload;
 					if(UpdateType == PSOC_UPDATE){
-						SPIFFS.end();
 						UpdateFile.close();
+						ESP_LOGI(TAG,"Borrando %s",PSOC_UPDATE_FILE);
+						SPIFFS.remove(PSOC_UPDATE_FILE);
+						SPIFFS.end();
 					}
 					else{
 						Update.end();
@@ -846,36 +846,37 @@ class CBCharacteristic: public BLECharacteristicCallbacks {
 					return;
 				}
 			}	
-		
 
 			//Escribir los datos en la actualizacion
 			if(UpdateType == ESP_UPDATE){
 				#ifndef UPDATE_COMPRESSED
 					if(Update.write(payload,partSize)!=partSize){
-						Serial.println("Writing Error");
+						ESP_LOGE(TAG,"ESP update file writing error");
 						successCode = 0x00000002;
-						
 					}
 				#else
 					if(UpdateFile.write(payload,partSize)!=partSize){
-						Serial.println("Writing Error");
+						ESP_LOGE(TAG,"ESP update file writing error");
 						successCode = 0x00000002;
 					}
 				#endif
 			}
-			else if(UpdateType == PSOC_UPDATE){	
+			else if(UpdateType == PSOC_UPDATE){
+				uint8 retry_number=0;
 				uint16 write_result = UpdateFile.write(payload,partSize);
-				Serial.printf("partSize: %u - write_result: %u\n", partSize, write_result);
-
-				if(write_result == 0 && partSize > 0){
-					write_result = UpdateFile.write(payload,partSize);
-					Serial.printf("Reintento de write: %u\n", write_result);
+				ESP_LOGI(TAG,"partSize: %u write: %u", partSize, write_result);
+				while ((write_result != partSize)&&(retry_number++ < 15)){
+						write_result = UpdateFile.write(payload,partSize);
+						ESP_LOGW(TAG,"Reintento %i de write: %u", retry_number, write_result);
 				}
 				if(write_result!=partSize){
-					ESP_LOGE(TAG,"Writing Error");
+					ESP_LOGE(TAG,"Writing Error en %s",PSOC_UPDATE_FILE);
 					successCode = 0x00000002;
+					UpdateFile.close();
+					ESP_LOGI(TAG,"Borrando %s",PSOC_UPDATE_FILE);
+					SPIFFS.remove(PSOC_UPDATE_FILE);
 					SPIFFS.end();
-					UpdateFile.close();	
+					UpdateStatus.DescargandoArchivo = false;	
 				}
 
 			}
@@ -1181,7 +1182,7 @@ void deviceDisconnectInd ( void ){
 	memset(authChallengeReply , 0x00, 8);
 	//memset(authChallengeQuery, 0x00, 8);
 	modifyCharacteristic(authChallengeQuery, 8, AUTENTICACION_MATRIX_CHAR_HANDLE);
-	vTaskDelay(pdMS_TO_TICKS(500));
+	//vTaskDelay(pdMS_TO_TICKS(500)); // ADS Eliminado 
 }
 
 uint8_t setAuthToken ( uint8_t *data, int len ){

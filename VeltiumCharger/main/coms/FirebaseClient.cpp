@@ -879,23 +879,20 @@ void DownloadFileTask(void *args){
 
   //Si descargamos actualizacion para el PSOC5, debemos crear el archivo en el SPIFFS
   if(UpdateStatus.PSOC_UpdateAvailable){
-    ESP_LOGI(TAG, "FW for PSoC Available");
     url=UpdateStatus.PSOC_url;
-    ESP_LOGI(TAG, "URL: %s", url.c_str());
+    ESP_LOGI(TAG, "FW for PSoC Available at URL: %s", url.c_str());
     SPIFFS.end();
     if(!SPIFFS.begin(1,"/spiffs",1,"PSOC5")){
       SPIFFS.end();					
       SPIFFS.begin(1,"/spiffs",1,"PSOC5");
     }
-    if(SPIFFS.exists("/FreeRTOS_V6.cyacd")){
-      ESP_LOGI(TAG, "Existe fichero FreeRTOS_V6.cyacd - formatendo SPIFFS");
+    if(SPIFFS.exists(PSOC_UPDATE_FILE)){
+      ESP_LOGI(TAG, "Existe fichero previo - formatendo SPIFFS");
       vTaskDelay(pdMS_TO_TICKS(50));
       SPIFFS.format();
     }
-
-    FileName="/FreeRTOS_V6.cyacd";
     vTaskDelay(pdMS_TO_TICKS(50));
-    UpdateFile = SPIFFS.open(FileName, FILE_WRITE);
+    UpdateFile = SPIFFS.open(PSOC_UPDATE_FILE, FILE_WRITE);
   }
   else{
     ESP_LOGI(TAG, "FW for ESP32 Available");
@@ -905,6 +902,7 @@ void DownloadFileTask(void *args){
 
 
   HTTPClient DownloadClient;
+  ESP_LOGI(TAG, "Downloading: %s", url.c_str());
   DownloadClient.begin(url);
   WiFiClient *stream = new WiFiClient();
   int total = 0;
@@ -1400,6 +1398,7 @@ void Firebase_Conn_Task(void *args){
     case DOWNLOADING:
       if(!UpdateStatus.DescargandoArchivo){
         ESP_LOGI(TAG, "DOWNLOADING - Descarga finalizada");
+        xTaskCreate(UpdateTask,"TASK UPDATE",4096*3,NULL,1,NULL);
         ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
         ConfigFirebase.FirebaseConnState = INSTALLING;
         ESP_LOGI(TAG, "DOWNLOADING - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);      }  
@@ -1413,7 +1412,11 @@ void Firebase_Conn_Task(void *args){
         ConfigFirebase.FirebaseConnState = DOWNLOADING;
         ESP_LOGI(TAG, "INSTALLING - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
       }
-     
+      if(!UpdateStatus.DescargandoArchivo && !UpdateStatus.InstalandoArchivo){
+        ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
+        ConfigFirebase.FirebaseConnState = IDLE;
+        ESP_LOGI(TAG, "INSTALLING - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
+      }
       //Do nothing
       break;
 

@@ -56,9 +56,11 @@ int CyBtldr_TransferData(uint8_t* inBuf, int inSize, uint8_t* outBuf, int outSiz
         }
         if (channel->available() != 0)
         {
+#ifdef DEBUG_UPDATE
             Serial.print("Available: ");
             Serial.println(channel->available());
             Serial.println(outSize);
+#endif
             int longitud_bloque = outSize;
             int puntero_rx_local = 0;
             do
@@ -72,15 +74,17 @@ int CyBtldr_TransferData(uint8_t* inBuf, int inSize, uint8_t* outBuf, int outSiz
             } while (longitud_bloque > 0);
             for (int i = 0; i < outSize; i++)
             {
+#ifdef DEBUG_UPDATE
                 Serial.print(outBuf[i]);
                 Serial.print(" ");
+#endif
             }
-            Serial.println();
             if (outBuf[0] == 1 && outBuf[outSize - 1] == 0x17 && outBuf[1] == 0)
             {
-
+#ifdef DEBUG_UPDATE
                 Serial.print("outBuf[1]: ");
                 Serial.println(outBuf[1]);
+#endif
                 err = outBuf[1];
             }
         }
@@ -174,15 +178,19 @@ static int SendData(HardwareSerialMOD *ReceivedChannel, uint8_t *buf, uint16_t s
         }
         err = CyBtldr_CreateSendDataCmd(&buf[*offset], cmdLen, inBuf, &inSize, &outSize);
         if (CYRET_SUCCESS == err) {
+#ifdef DEBUG_UPDATE
             Serial.println("CyBtldr_CreateSendDataCmd success");
+#endif
             if (outFile != NULL)
             {
                 fprintf(outFile, "Write packet: ");
                 writePacketToFile(inBuf, inSize, outFile);
             }
             err = CyBtldr_TransferData(inBuf, inSize, outBuf, outSize);
+#ifdef DEBUG_UPDATE
             Serial.print("SendData CyBtldr_TransferData ");
             Serial.println(err);
+#endif
             if (CYRET_SUCCESS == err)
             {
                 if (outFile != NULL) {
@@ -190,8 +198,10 @@ static int SendData(HardwareSerialMOD *ReceivedChannel, uint8_t *buf, uint16_t s
                     writePacketToFile(outBuf, outSize, outFile);
                 }
                 err = CyBtldr_ParseSendDataCmdResult(outBuf, outSize, &status);
+#ifdef DEBUG_UPDATE
                 Serial.print("CyBtldr_ParseSendDataCmdResult ");
                 Serial.println(err);
+#endif               
             }
         }
         if (CYRET_SUCCESS != status) err = status | CYRET_ERR_BTLDR_MASK;
@@ -294,9 +304,11 @@ int CyBtldr_VerifyRow(uint32_t address, uint8_t* buf, uint16_t size) {
             err = status | CYRET_ERR_BTLDR_MASK;
             if (CYRET_ERR_CHECKSUM == err)
             {
+#ifdef DEBUG_UPDATE
                 Serial.println("Checksum error detected");
                 Serial.println(address);
                 Serial.println(chksum);
+#endif
             }
         }
     }

@@ -823,6 +823,10 @@ const uint8_t DNS_BACKUP_SERVER_IP[]={8,8,4,4};
 #define BACKDOOR_ACTION_NO_ACTION				0
 #define BACKDOOR_ACTION_DELETE_GROUP			69
 
+// ACTUALIZACION DE FW
+#define PSOC_UPDATE_FILE "/FW_PSoC6_v7.cyacd2"
+#define PSOC_UPDATE_OLD_FILE "/FW_PSoC6_v7_old.cyacd2"
+
 
 /* [] END OF FILE */
 

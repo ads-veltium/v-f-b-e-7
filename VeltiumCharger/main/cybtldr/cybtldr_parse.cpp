@@ -21,6 +21,7 @@
 #include "../HardwareSerialMOD.h"
 #include "SPIFFS.h"
 
+
 /* Pointer to the *.cyacd file containing the data that is to be read */
 static File dataFile;
 

@@ -100,9 +100,9 @@ uint16 cnt_diferencia = 1;
 uint8 HPT_estados[9][3] = {"0V", "A1", "A2", "B1", "B2", "C1", "C2", "E1", "F1"};
 
 #ifdef IS_UNO_KUBO
-uint8 ESP_version_firmware[11] = {"VBLE3_0666"};	   
+uint8 ESP_version_firmware[11] = {"VBLE3_0609"};	   
 #else
-uint8 ESP_version_firmware[11] = {"VBLE0_0608"};	
+uint8 ESP_version_firmware[11] = {"VBLE0_0609"};	
 #endif
 
 uint8 PSOC_version_firmware[11] ;		
@@ -1660,32 +1660,32 @@ void UpdateTask(void *arg){
 	Serial.print("Intento número:");
 	Serial.println(Configuracion.data.count_reinicios_malos);
 	if(Configuracion.data.count_reinicios_malos > 10){
-		if(SPIFFS.exists("/FW_PSoC6_v7.cyacd2")){
+		if(SPIFFS.exists(PSOC_UPDATE_OLD_FILE)){
 			Serial.println("Se ha intentado 10 veces y existe un FW_Old, se prueba con este");
-			SPIFFS.remove("/FW_PSoC6_v7.cyacd2");
-			SPIFFS.rename("/FW_PSoC6_v7_old.cyacd2", "/FW_PSoC6_v7.cyacd2");
+			SPIFFS.remove(PSOC_UPDATE_FILE);
+			SPIFFS.rename(PSOC_UPDATE_OLD_FILE, PSOC_UPDATE_FILE);
 		}
 	}
 
-	err = CyBtldr_RunAction(PROGRAM, &serialLocal, NULL, "/FW_PSoC6_v7.cyacd2", "PSOC5");
+	err = CyBtldr_RunAction(PROGRAM, &serialLocal, NULL, PSOC_UPDATE_FILE, "PSOC5");
 	Serial.print("Actualizacion terminada: err = ");
 	Serial.println(err);
-				updateTaskrunning=0;
-				setMainFwUpdateActive(0);
-				UpdateStatus.InstalandoArchivo=0;
-				if(!UpdateStatus.ESP_UpdateAvailable){
-					Serial.println("Reiniciando en 4 segundos!"); 
-					vTaskDelay(pdMS_TO_TICKS(4000));
-					MAIN_RESET_Write(0);
-					delay(500);						
-					ESP.restart();
-				}
-				else{
-					UpdateStatus.PSOC_UpdateAvailable = false;
-					UpdateStatus.DobleUpdate 		   = true;
-				}
+	updateTaskrunning = 0;
+	setMainFwUpdateActive(0);
+	UpdateStatus.InstalandoArchivo = false;
+	if (!UpdateStatus.ESP_UpdateAvailable){
+		Serial.println("Reiniciando en 4 segundos!");
+		vTaskDelay(pdMS_TO_TICKS(4000));
+		MAIN_RESET_Write(0);
+		delay(500);
+		ESP.restart();
+	}
+	else{
+		UpdateStatus.PSOC_UpdateAvailable = false;
+		UpdateStatus.DobleUpdate = true;
+	}
 
-				vTaskDelete(NULL);		
+	vTaskDelete(NULL);
 }
 
 void controlInit(void){
