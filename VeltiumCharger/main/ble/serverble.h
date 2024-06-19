@@ -96,5 +96,6 @@ uint8_t setMainFwUpdateActive(uint8_t val);
 uint8_t setAuthToken(uint8_t *data, int len);
 uint8_t authorizedOK(void);
 
+void RemoveUpdateFileTask(void *arg);
 
 #endif // __SERVER_BLE_H

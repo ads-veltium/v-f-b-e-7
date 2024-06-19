@@ -1652,8 +1652,9 @@ void UpdateTask(void *arg){
 	uint8_t checksum;
 	uint32_t blVer=0;
 	uint8_t rowData[512];
-	SPIFFS.begin();
 	File file;
+	
+	SPIFFS.begin();
 	SPIFFS.end();
 	SPIFFS.begin(0,"/spiffs",1,"PSOC5");
 	//Si falla mas de diez veces la actualizacion, recuperamos el firmware viejo que teniamos y lo volvemos a usar. 
@@ -1662,14 +1663,26 @@ void UpdateTask(void *arg){
 	if(Configuracion.data.count_reinicios_malos > 10){
 		if(SPIFFS.exists(PSOC_UPDATE_OLD_FILE)){
 			Serial.println("Se ha intentado 10 veces y existe un FW_Old, se prueba con este");
-			SPIFFS.remove(PSOC_UPDATE_FILE);
-			SPIFFS.rename(PSOC_UPDATE_OLD_FILE, PSOC_UPDATE_FILE);
+			if(SPIFFS.exists(PSOC_UPDATE_FILE)){
+				err = SPIFFS.remove(PSOC_UPDATE_FILE);
+				ESP_LOGE(TAG,"Removing %s with errcode %u",PSOC_UPDATE_FILE,err);
+			}
+			err = SPIFFS.rename(PSOC_UPDATE_OLD_FILE, PSOC_UPDATE_FILE);
+			ESP_LOGE(TAG,"Renaming %s to %s with errcode %u",PSOC_UPDATE_OLD_FILE,PSOC_UPDATE_FILE,err);
 		}
 	}
 
 	err = CyBtldr_RunAction(PROGRAM, &serialLocal, NULL, PSOC_UPDATE_FILE, "PSOC5");
 	Serial.print("Actualizacion terminada: err = ");
 	Serial.println(err);
+	if (!err){
+		if(SPIFFS.exists(PSOC_UPDATE_OLD_FILE)){
+			err = SPIFFS.remove(PSOC_UPDATE_OLD_FILE);
+			ESP_LOGE(TAG,"Removing %s with errcode %u",PSOC_UPDATE_OLD_FILE,err);
+		}
+		err = SPIFFS.rename(PSOC_UPDATE_FILE, PSOC_UPDATE_OLD_FILE);
+		ESP_LOGE(TAG,"Renaming %s to %s with errcode %u",PSOC_UPDATE_FILE,PSOC_UPDATE_OLD_FILE,err);
+	}
 	updateTaskrunning = 0;
 	setMainFwUpdateActive(0);
 	UpdateStatus.InstalandoArchivo = false;
@@ -1701,6 +1714,4 @@ void controlInit(void){
 		xTaskCreateStatic(Firebase_Conn_Task,"TASK FIREBASE", 4096*6,NULL,PRIORIDAD_FIREBASE,xFirebaseStack , &xFirebaseBuffer );
 
 	#endif
-
-	
 }

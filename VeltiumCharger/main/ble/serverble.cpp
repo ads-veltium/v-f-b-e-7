@@ -45,6 +45,7 @@ extern uint8 deviceSerNumFlash[10];
 extern uint8 emergencyState;
 static TickType_t ConexTimer;
 int count = 0;
+static uint32_t UpdatefileSize;
 
 #ifdef CONNECTED
 
@@ -64,6 +65,7 @@ uint64_t startTime;
 uint64_t endTime;
 
 uint8 backdoor_selector = 0;
+uint8 	 err_code = 0;
 
 /* milestone: one-liner for reporting memory usage */
 void milestone(const char* mname)
@@ -299,7 +301,7 @@ class serverCallbacks: public BLEServerCallbacks {
 class CBCharacteristic: public BLECharacteristicCallbacks {
 	void onWrite(BLECharacteristic *pCharacteristic) {
 		ConexTimer = xTaskGetTickCount();
-		static uint32_t UpdatefileSize;
+		//static uint32_t UpdatefileSize;
 		std::string rxValue = pCharacteristic->getValue();
 
 		static uint8_t omnibus_packet_buffer[4 + RCS_CHR_OMNIBUS_SIZE];
@@ -417,9 +419,8 @@ class CBCharacteristic: public BLECharacteristicCallbacks {
 #endif
 
 				uint32_t successCode = 0x00000000;
-				bool 	 success_op;
 				//Empezar el sistema de actualizacion
-				UpdateStatus.DescargandoArchivo=1;
+				UpdateStatus.DescargandoArchivo = true;
 				if(strstr (signature,"VBLE")){
 					UpdateType= ESP_UPDATE;
 					Update.end();
@@ -446,14 +447,13 @@ class CBCharacteristic: public BLECharacteristicCallbacks {
 					}
 
 					if(SPIFFS.exists(PSOC_UPDATE_FILE)){
-						ESP_LOGI(TAG,"Existe %s. Se borra",PSOC_UPDATE_FILE);
-						success_op = SPIFFS.remove(PSOC_UPDATE_FILE);
-						ESP_LOGI(TAG,"Borrado =%i",success_op);
+						err_code = SPIFFS.remove(PSOC_UPDATE_FILE);
+						ESP_LOGI(TAG,"Existe %s. Borrado con err_code %u",PSOC_UPDATE_FILE,err_code);
 					}
 
 					if(SPIFFS.exists(PSOC_UPDATE_OLD_FILE)){
-						ESP_LOGI(TAG,"Existe %s. Se borra",PSOC_UPDATE_OLD_FILE);
-						SPIFFS.remove(PSOC_UPDATE_OLD_FILE);
+						err_code = SPIFFS.remove(PSOC_UPDATE_OLD_FILE);
+						ESP_LOGI(TAG,"Existe %s. Borrado con err_code %u",PSOC_UPDATE_OLD_FILE,err_code);
 					}	
 
 					UpdateFile = SPIFFS.open(PSOC_UPDATE_FILE, FILE_WRITE);
@@ -495,8 +495,8 @@ class CBCharacteristic: public BLECharacteristicCallbacks {
 				serverbleNotCharacteristic((uint8_t*)&successCode, sizeof(successCode), FWUPDATE_BIRD_DATA_PSEUDO_CHAR_HANDLE);
 
 				//Terminar el sistema de actualizacion
-				UpdateStatus.DescargandoArchivo=0;
-				UpdateStatus.InstalandoArchivo=1;
+				UpdateStatus.DescargandoArchivo = false;
+				UpdateStatus.InstalandoArchivo = true;
 			    if(UpdateType == ESP_UPDATE){
 					#ifndef UPDATE_COMPRESSED
 						if(Update.end()){	
@@ -878,7 +878,6 @@ class CBCharacteristic: public BLECharacteristicCallbacks {
 					SPIFFS.end();
 					UpdateStatus.DescargandoArchivo = false;	
 				}
-
 			}
 			
 			delete[] payload;
@@ -1095,12 +1094,17 @@ void serverbleTask(void *arg)
 		}
 
 		// disconnecting
-		if (!deviceBleConnected && oldDeviceBleConnected) {
+		if (!deviceBleConnected && oldDeviceBleConnected){
 			ESP_LOGI(TAG, "Disconnectig");
 			// vTaskDelay(500/portTICK_PERIOD_MS); // give the bluetooth stack the chance to get things ready
-			// pServer->startAdvertising(); //Está activado por defcto advertiseOnDisconnect. 
+			// pServer->startAdvertising(); //Está activado por defcto advertiseOnDisconnect.
 			Status.LastConn = xTaskGetTickCount();
-			UpdateStatus.DescargandoArchivo=0;
+			if (UpdateStatus.DescargandoArchivo){
+				UpdateStatus.DescargandoArchivo = false;
+				if (UpdateType == PSOC_UPDATE){
+					xTaskCreate(RemoveUpdateFileTask,"REMOVE FILE", 4096*2, NULL, 1,NULL);
+				}
+			}
 			oldDeviceBleConnected = deviceBleConnected;
 		}
 		// connecting
@@ -1244,4 +1248,18 @@ void InitializeAuthsystem(){
 	srand(aut_semilla);
 
 	modifyCharacteristic(authChallengeQuery, 8, AUTENTICACION_MATRIX_CHAR_HANDLE);
+}
+
+/************************************************
+ * Delete Update File Task
+ * **********************************************/
+void RemoveUpdateFileTask(void *arg){
+	uint8 err_code;
+	ESP_LOGI(TAG,"RemoveUpdateFileTask: Borrado de fichero de actualización");
+	UpdateFile.close();
+	if(SPIFFS.exists(PSOC_UPDATE_FILE)){
+		err_code = SPIFFS.remove(PSOC_UPDATE_FILE);
+		ESP_LOGI(TAG,"Existe %s. Borrado con err_code %u",PSOC_UPDATE_FILE,err_code);
+	}
+	vTaskDelete(NULL);
 }
