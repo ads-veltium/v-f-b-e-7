@@ -214,7 +214,7 @@ void controlTask(void *arg) {
 								if(--cnt_repeticiones_inicio == 0){
 									cnt_repeticiones_inicio = 750;		//1000;	
 									Configuracion.data.count_reinicios_malos ++;
-									if(Configuracion.data.count_reinicios_malos > 20){
+									if(Configuracion.data.count_reinicios_malos > 10){
 										#ifdef DEBUG
 											printf("Entramos en modo EMERGENCIA!!\n");
 										#endif
@@ -1372,7 +1372,7 @@ void procesar_bloque(uint16 tipo_bloque){
                 }
 				add_to_group(ID, get_IP(ID), charger_table, &ChargingGroup.Charger_number);
 #ifdef DEBUG_GROUPS
-				Serial.printf("Crudo fase y circuito PSoC %i %i %i\n", buffer_rx_local[10 + i * 9], uint8_t(buffer_rx_local[10 + i * 9]) & 0x03, uint8_t(buffer_rx_local[10 + i * 9]) >> 2);
+				Serial.printf("Crudo fase y circuito PSoC %s %i %i %i\n", ID, buffer_rx_local[10 + i * 9], uint8_t(buffer_rx_local[10 + i * 9]) & 0x03, uint8_t(buffer_rx_local[10 + i * 9]) >> 2);
 #endif
 				charger_table[i].Fase = (buffer_rx_local[10+i*9]) & 0x03;
 				charger_table[i].Circuito = (buffer_rx_local[10+i*9]) >> 2;
@@ -1660,7 +1660,7 @@ void UpdateTask(void *arg){
 	//Si falla mas de diez veces la actualizacion, recuperamos el firmware viejo que teniamos y lo volvemos a usar. 
 	Serial.print("Intento número:");
 	Serial.println(Configuracion.data.count_reinicios_malos);
-	if(Configuracion.data.count_reinicios_malos > 10){
+	if(Configuracion.data.count_reinicios_malos > 5){
 		if(SPIFFS.exists(PSOC_UPDATE_OLD_FILE)){
 			Serial.println("Se ha intentado 10 veces y existe un FW_Old, se prueba con este");
 			if(SPIFFS.exists(PSOC_UPDATE_FILE)){

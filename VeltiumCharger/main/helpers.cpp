@@ -223,8 +223,8 @@ int controlSendToSerialLocal ( uint8_t * data, int len ){
 
 	if(!updateTaskrunning){
 	  int ret=0;
-		ret = serialLocal.write(data, len);
-
+		ret = serialLocal.write(data, len+1);
+    // NOTA: Se envía 1 byte adicional por compatibilidad en la recepcion el PSoC. NO ELIMINAR 
 		return ret;
 	}
 	return 0;

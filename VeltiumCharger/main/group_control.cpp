@@ -364,7 +364,7 @@ void New_Group(char* Data, int Data_size){
         memcpy(v,&Data[10+i*11],3);
         uint8_t value = atoi(v);
 
-        printf("Crudo fase y circuito %i %i %i\n",value, value & 0x03, value >> 2);
+        printf("Crudo fase y circuito %s %i %i %i\n",ID, value, value & 0x03, value >> 2);
 
 
 

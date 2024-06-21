@@ -19,7 +19,7 @@
 		#ifdef USE_GROUPS
 			#define DEBUG_GROUPS	//Activar el debug de los grupos
 			//#define DEBUG_COAP		// ADS - Debug de mensajes COAP
-			//#define DEBUG_UDP		//Debug de mensajes UDP enviados y recibidos
+			#define DEBUG_UDP		//Debug de mensajes UDP enviados y recibidos
 		#endif
 
 		#define DEBUG_BLE		   //Activar el debug del ble

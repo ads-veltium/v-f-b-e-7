@@ -442,6 +442,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks {
 					SPIFFS.end();
 					UpdateFile.close();
 					if(!SPIFFS.begin(1,"/spiffs",1,"PSOC5")){
+						ESP_LOGI(TAG,"Problema en la inicialización SPIFFS /spiffs");
 						SPIFFS.end();					
 						SPIFFS.begin(1,"/spiffs",1,"PSOC5");
 					}
@@ -771,37 +772,37 @@ class CBCharacteristic: public BLECharacteristicCallbacks {
 			//domingo
 			buffer_tx[4] = 0;
 			memcpy(&buffer_tx[5], &data[0], size);
-			controlSendToSerialLocal(buffer_tx, size + 5);
+			controlSendToSerialLocal(buffer_tx, size + 4);
 			delay(10);
 			//lunes
 			buffer_tx[4] = 1;
 			memcpy(&buffer_tx[5], &data[24], size);
-			controlSendToSerialLocal(buffer_tx, size + 5);
+			controlSendToSerialLocal(buffer_tx, size + 4);
 			delay(10);
 			//martes
 			buffer_tx[4] = 2;
 			memcpy(&buffer_tx[5], &data[48], size);
-			controlSendToSerialLocal(buffer_tx, size + 5);
+			controlSendToSerialLocal(buffer_tx, size + 4);
 			delay(10);
 			//miercoles
 			buffer_tx[4] = 3;
 			memcpy(&buffer_tx[5], &data[72], size);
-			controlSendToSerialLocal(buffer_tx, size + 5);
+			controlSendToSerialLocal(buffer_tx, size + 4);
 			delay(10);
 			//jueves
 			buffer_tx[4] = 4;
 			memcpy(&buffer_tx[5], &data[96], size);
-			controlSendToSerialLocal(buffer_tx, size + 5);
+			controlSendToSerialLocal(buffer_tx, size + 4);
 			delay(10);
 			//viernes
 			buffer_tx[4] = 5;
 			memcpy(&buffer_tx[5], &data[120], size);
-			controlSendToSerialLocal(buffer_tx, size + 5);
+			controlSendToSerialLocal(buffer_tx, size + 4);
 			delay(10);
 			//sabado
 			buffer_tx[4] = 6;
 			memcpy(&buffer_tx[5], &data[144], size);
-			controlSendToSerialLocal(buffer_tx, size + 5);
+			controlSendToSerialLocal(buffer_tx, size + 4);
 
 			return;
 		}
