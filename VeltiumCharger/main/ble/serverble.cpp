@@ -441,21 +441,37 @@ class CBCharacteristic: public BLECharacteristicCallbacks {
 
 					SPIFFS.end();
 					UpdateFile.close();
-					if(!SPIFFS.begin(1,"/spiffs",1,"PSOC5")){
-						ESP_LOGI(TAG,"Problema en la inicialización SPIFFS /spiffs");
+					if(!SPIFFS.begin(1,"/spiffs",2,"PSOC5")){
+						ESP_LOGE(TAG,"Problema en la inicialización SPIFFS /spiffs");
 						SPIFFS.end();					
-						SPIFFS.begin(1,"/spiffs",1,"PSOC5");
+						SPIFFS.begin(1,"/spiffs",2,"PSOC5");
 					}
 
 					if(SPIFFS.exists(PSOC_UPDATE_FILE)){
 						err_code = SPIFFS.remove(PSOC_UPDATE_FILE);
-						ESP_LOGI(TAG,"Existe %s. Borrado con err_code %u",PSOC_UPDATE_FILE,err_code);
+						if (err_code){
+							ESP_LOGI(TAG,"Existe %s. Borrado con err_code %u",PSOC_UPDATE_FILE,err_code);
+						}
+						else {
+							ESP_LOGE(TAG,"Error borrando %s",PSOC_UPDATE_FILE);
+							SPIFFS.end();					
+							SPIFFS.begin(1,"/spiffs",2,"PSOC5");
+							SPIFFS.format();
+						}
 					}
 
 					if(SPIFFS.exists(PSOC_UPDATE_OLD_FILE)){
 						err_code = SPIFFS.remove(PSOC_UPDATE_OLD_FILE);
-						ESP_LOGI(TAG,"Existe %s. Borrado con err_code %u",PSOC_UPDATE_OLD_FILE,err_code);
-					}	
+						if (err_code){
+							ESP_LOGI(TAG,"Existe %s. Borrado con err_code %u",PSOC_UPDATE_OLD_FILE,err_code);
+						}
+						else{
+							ESP_LOGE(TAG,"Error borrando %s",PSOC_UPDATE_OLD_FILE);
+							SPIFFS.end();					
+							SPIFFS.begin(1,"/spiffs",2,"PSOC5");
+							SPIFFS.format();
+						}
+					}
 
 					UpdateFile = SPIFFS.open(PSOC_UPDATE_FILE, FILE_WRITE);
 					if (!UpdateFile){
@@ -465,7 +481,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks {
 					while (!UpdateFile && (open_file_retry_number++ <5)){
 						ESP_LOGI(TAG,"Reintento %u de abrir %s",open_file_retry_number,PSOC_UPDATE_FILE);
 						SPIFFS.end();					
-						SPIFFS.begin(1,"/spiffs",1,"PSOC5");
+						SPIFFS.begin(1,"/spiffs",2,"PSOC5");
 						SPIFFS.format();
 						UpdateFile = SPIFFS.open(PSOC_UPDATE_FILE, FILE_WRITE);
 					}
@@ -1262,5 +1278,7 @@ void RemoveUpdateFileTask(void *arg){
 		err_code = SPIFFS.remove(PSOC_UPDATE_FILE);
 		ESP_LOGI(TAG,"Existe %s. Borrado con err_code %u",PSOC_UPDATE_FILE,err_code);
 	}
+	SPIFFS.end();
+	ESP.restart(); // Se reinicia para evitar problemas con el SPIFFS en caso de apagado. 
 	vTaskDelete(NULL);
 }
