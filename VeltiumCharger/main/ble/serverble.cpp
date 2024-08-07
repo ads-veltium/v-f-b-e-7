@@ -952,6 +952,9 @@ class CBCharacteristic: public BLECharacteristicCallbacks {
 						sendBuffer[10+(i*9)] = (char)data[9+(i*9)];
 
 					}
+#ifdef DEBUG_GROUPS
+					Serial.printf("Envío de grupo a PSOC. Buffer=%s Size=%u\n", sendBuffer, size);
+#endif
 					SendToPSOC5(sendBuffer,size*9+2,GROUPS_DEVICES_PART_1); 
 					
 				}

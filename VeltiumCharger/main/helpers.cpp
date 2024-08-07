@@ -33,9 +33,9 @@ void cls(){
 
 void print_table(carac_charger *table, char* table_name = "Grupo de cargadores", uint8_t size = 0){
     Serial.printf("================================================= %s =================================================\n", table_name);
-    Serial.printf("\tID\tFase\tHPT\tI\tConsig\tDelta\tDeltaT\tConnected\tPeriod\tCircuit\tChargeReq\tOrder\tIP Add\n");
+    Serial.printf("\tID\tFase\tHPT\tI\tConsig\tDelta\tDeltaT\tConnect\tPeriod\tCircuit\tCharReq\tOrder\tIP Add\n");
     for(int i=0; i< size;i++){     //comprobar si el cargador ya está almacenado
-        Serial.printf("  %s\t%i\t%s\t%i\t%i\t%i\t%i\t%i\t\t%i\t%i\t%i\t%i\t%s\n",table[i].name,table[i].Fase,table[i].HPT,table[i].Current, table[i].Consigna, table[i].Delta,  table[i].Delta_timer, table[i].Conected, table[i].Period, table[i].Circuito, table[i].ChargeReq, table[i].order, table[i].IP.toString().c_str());
+        Serial.printf("  %s\t%i\t%s\t%i\t%i\t%i\t%i\t%i\t%i\t%i\t%i\t%i\t%s\n",table[i].name,table[i].Fase,table[i].HPT,table[i].Current, table[i].Consigna, table[i].Delta,  table[i].Delta_timer, table[i].Conected, table[i].Period, table[i].Circuito, table[i].ChargeReq, table[i].order, table[i].IP.toString().c_str());
     }
     Serial.printf("Memoria interna disponible: %i\n", esp_get_free_internal_heap_size());
     Serial.printf("Memoria total disponible:   %i\n", esp_get_free_heap_size());

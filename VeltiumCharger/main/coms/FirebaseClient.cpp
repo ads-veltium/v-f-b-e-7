@@ -219,6 +219,7 @@ bool WriteFirebaseControl(String Path){
   Escritura["reset"]     = false;
   Escritura["start"]     = false;
   Escritura["stop"]      = false;
+  Escritura["desired_current"] = Comands.desired_current;
   if(Database->Send_Command(Path,&Escritura,UPDATE)){
     return true;
   }
@@ -423,6 +424,15 @@ bool WriteFirebaseHistoric(char* buffer){
     ConfigFirebase.FirebaseConnState = ReturnToLastconn;
 
 
+  return true;
+}
+
+bool WriteFirebaseLastRecord(char *rec){
+  DynamicJsonDocument Escritura(2048);
+  printf("Escribiendo ULTIMO REGISTRO!\n");
+  Escritura.clear();
+  Escritura["last_record"] = false;
+  Database->Send_Command("/records",&Escritura,UPDATE);
   return true;
 }
 
@@ -720,36 +730,33 @@ bool ReadFirebaseUser(){
 
 bool ReadFirebaseControl(String Path){
   static long long last_ts_app_req = 0;
-  long long ts_app_req=Database->Get_Timestamp(Path+"/ts_app_req",&Lectura);
-  if(ts_app_req> last_ts_app_req){
+  long long ts_app_req = Database->Get_Timestamp(Path + "/ts_app_req", &Lectura);
+  if (ts_app_req > last_ts_app_req){
     Lectura.clear();
-    if(Database->Send_Command(Path,&Lectura, LEER)){
+    if (Database->Send_Command(Path, &Lectura, LEER)){
+      last_ts_app_req = ts_app_req;
+      Comands.start = Lectura["start"] ? true : Comands.start;
+      ConfigFirebase.ClientAuthenticated = Comands.start == true;
+      Comands.stop = Lectura["stop"] ? true : Comands.stop;
+      Comands.reset = Lectura["reset"] ? true : Comands.reset;
+      Comands.fw_update = Lectura["fw_update"] ? true : Comands.fw_update;
+      Comands.conn_lock = Lectura["conn_lock"] ? true : Comands.conn_lock;
 
-      if( Lectura["desired_current"]!=0){
-        last_ts_app_req = ts_app_req;
-        Comands.start           = Lectura["start"]     ? true : Comands.start;
-        Comands.stop            = Lectura["stop"]      ? true : Comands.stop;
-        Comands.reset           = Lectura["reset"]     ? true : Comands.reset;
-
-        if((Comands.desired_current != Lectura["desired_current"] && !Comands.Newdata) && Lectura["desired_current"] > 6){   
+      if ((Comands.desired_current != Lectura["desired_current"] && !Comands.Newdata) && Lectura["desired_current"] > 6){
+        if (!ChargingGroup.Params.GroupActive){
           Comands.desired_current = Lectura["desired_current"];
           Comands.Newdata = true;
         }
+      }
 
-        ConfigFirebase.ClientAuthenticated = Comands.start == true;
-              
-        Comands.fw_update       = Lectura["fw_update"] ? true : Comands.fw_update;
-        Comands.conn_lock       = Lectura["conn_lock"] ? true : Comands.conn_lock;
-
-        WriteFirebaseControl("/control");
-        if(!Database->Send_Command(Path+"/ts_dev_ack",&Lectura,TIMESTAMP)){
-            return false;
-        } 
+      WriteFirebaseControl("/control");
+      if (!Database->Send_Command(Path + "/ts_dev_ack", &Lectura, TIMESTAMP)){
+        return false;
       }
     }
-    else return false;  
+    else
+      return false;
   }
-   
   return true;
 }
 
@@ -1064,10 +1071,9 @@ void Firebase_Conn_Task(void *args){
 #ifdef DEBUG_GROUPS
           printf("FirebaseClient - Firebase_Conn_Task: CONECTADO - groupId borrado de Firebase\n");
 #endif
-          /*   //  ADS - Por ahora no hacemos nada ni nos salimos del grupo
-          ChargingGroup.Params.GroupActive = false;
-          ChargingGroup.Params.GroupMaster = false;
-          */ 
+          //  ADS - 2 lineas comentadas - Por ahora no hacemos nada ni nos salimos del grupo
+          // ChargingGroup.Params.GroupActive = false;
+          // ChargingGroup.Params.GroupMaster = false;
         }
       }
 #endif

@@ -713,7 +713,7 @@ void procesar_bloque(uint16 tipo_bloque){
 					//Si sale de C2 bloquear la siguiente carga
 					if(memcmp(&buffer_rx_local[1],"C2",2) && memcmp(&buffer_rx_local[1],"B2",2)){
 						if(Params.Tipo_Sensor || ChargingGroup.Conected){
-							if(!memcmp(status_hpt_anterior, "C",1)){
+							if(!memcmp(status_hpt_anterior, "C",1) || !memcmp(status_hpt_anterior, "B",1)){
 								Bloqueo_de_carga = true;
 								ChargingGroup.ChargPerm = false;
 								ChargingGroup.AskPerm = false;
@@ -987,9 +987,9 @@ void procesar_bloque(uint16 tipo_bloque){
 		break;
 		
 		case ENERGY_RECORD_RECORD_CHAR_HANDLE:{
-			#ifdef DEBUG
+#ifdef DEBUG
 			Serial.println("Total record received");
-			#endif
+#endif
 			memcpy(record_buffer,buffer_rx_local,20);
 
 			int j = 20;
@@ -1037,6 +1037,7 @@ void procesar_bloque(uint16 tipo_bloque){
 					
 					if(!serverbleGetConnected()){
 						WriteFirebaseHistoric((char*)buffer_rx_local);
+						WriteFirebaseLastRecord((char*)LastRecord);
 					}	
 				}
 			}
@@ -1363,7 +1364,10 @@ void procesar_bloque(uint16 tipo_bloque){
             char n[2];
             char ID[8];
             memcpy(n,buffer_rx_local,2);
-            ChargingGroup.Charger_number=0;
+#ifdef USE_GROUPS
+			Serial.printf("Buffer recibido del PSOC= %s\n", buffer_rx_local);
+#endif
+			ChargingGroup.Charger_number=0;
             uint8_t limit = atoi(n) > 25? 25: atoi(n);
 			
             for(uint8_t i=0; i<limit;i++){    
@@ -1372,7 +1376,7 @@ void procesar_bloque(uint16 tipo_bloque){
                 }
 				add_to_group(ID, get_IP(ID), charger_table, &ChargingGroup.Charger_number);
 #ifdef DEBUG_GROUPS
-				Serial.printf("Crudo fase y circuito PSoC %s %i %i %i\n", ID, buffer_rx_local[10 + i * 9], uint8_t(buffer_rx_local[10 + i * 9]) & 0x03, uint8_t(buffer_rx_local[10 + i * 9]) >> 2);
+				Serial.printf("Crudo fase y circuito PSoC %s %i %i %i\n",ID, buffer_rx_local[10 + i * 9], uint8_t(buffer_rx_local[10 + i * 9]) & 0x03, uint8_t(buffer_rx_local[10 + i * 9]) >> 2);
 #endif
 				charger_table[i].Fase = (buffer_rx_local[10+i*9]) & 0x03;
 				charger_table[i].Circuito = (buffer_rx_local[10+i*9]) >> 2;

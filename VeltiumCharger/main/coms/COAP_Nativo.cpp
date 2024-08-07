@@ -38,6 +38,8 @@ extern carac_Comands  Comands ;
 extern carac_circuito Circuitos[MAX_GROUP_SIZE];
 extern carac_Contador ContadorExt;
 
+extern uint8 Bloqueo_de_carga;
+
 static StackType_t xServerStack [4096*4]     EXT_RAM_ATTR;
 static StackType_t xLimitStack [4096*4]     EXT_RAM_ATTR;
 static StackType_t xClientStack [4096*4]     EXT_RAM_ATTR;

@@ -827,6 +827,8 @@ const uint8_t DNS_BACKUP_SERVER_IP[]={8,8,4,4};
 #define PSOC_UPDATE_FILE "/FW_PSoC6_v7.cyacd2"
 #define PSOC_UPDATE_OLD_FILE "/FW_PSoC6_v7_old.cyacd2"
 
+// GRUPOS
+#define GROUP_REST_TIME		1000
 
 /* [] END OF FILE */
 

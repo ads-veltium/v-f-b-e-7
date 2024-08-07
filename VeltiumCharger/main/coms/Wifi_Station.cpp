@@ -13,6 +13,8 @@ extern carac_Contador ContadorExt;
 extern carac_Params Params;
 extern carac_charger charger_table[MAX_GROUP_SIZE];
 
+extern uint8 Bloqueo_de_carga;
+
 static const char *TAG = "Wifi_Station";
 
 //Contador trifasico 

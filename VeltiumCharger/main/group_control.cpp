@@ -14,6 +14,8 @@ extern carac_charger charger_table[MAX_GROUP_SIZE];
 extern carac_circuito Circuitos[MAX_GROUP_SIZE];
 extern carac_Contador   ContadorExt;
 
+extern uint8 Bloqueo_de_carga;
+
 bool add_to_group(const char* ID, IPAddress IP, carac_charger* group, uint8_t* size);
 void remove_group(carac_charger* group, uint8_t* size);
 void coap_put( char* Topic, char* Message);
@@ -258,7 +260,7 @@ void New_Current(uint8_t* Buffer, int Data_size){
   if(desired_current == 0 && !ChargingGroup.ChargPerm && !memcmp(Status.HPT_status,"C2",2)){
 #ifdef DEBUG_GROUPS
     Serial.printf("group_control - New_Current: ¡ Detener la carga !\n");
-    Serial.printf("group_control - New_Current: Envío Bloqueo_de_carga = 1 al PSoC\n");
+    Serial.printf("group_control - New_Current: Envío 1 en BLOQUEO_CARGA al PSoC. Bloqueo_de_carga %i=\n",Bloqueo_de_carga);
     Serial.printf("group_control - New_Current: Envío desired_current = %i al PSoC\n",desired_current);
 #endif
     SendToPSOC5(1, BLOQUEO_CARGA);
@@ -419,7 +421,7 @@ void LimiteConsumo(void *p){
     switch(ControlGrupoState){
       //Estado reposo, no hay nadie cargando
       case REPOSO:
-        if(pdTICKS_TO_MS(xTaskGetTickCount() - Start_Timer) > 5000){ //ADS Tiempo reducido a 5 segundos
+        if(pdTICKS_TO_MS(xTaskGetTickCount() - Start_Timer) > GROUP_REST_TIME){ 
           for(int i = 0; i < ChargingGroup.Charger_number; i++){
             if(!memcmp(charger_table[i].HPT, "B1", 2) && charger_table[i].ChargeReq){
               
@@ -432,9 +434,7 @@ void LimiteConsumo(void *p){
               if(reparto >= 6){
 #ifdef DEBUG_GROUPS
                 print_table(charger_table, "Grupo en reposo", ChargingGroup.Charger_number);
-                Serial.printf("group_control - LimiteConsumo: REPOSO PASAMOS A %s DE %s A C2\n",charger_table[i].name,charger_table[i].HPT);
 #endif
-                memcpy(charger_table[i].HPT, "C2", 3); // ADS: ¿PARA QUÉ HACER ESTO? - Porque si no un equipo que entra en B1 no sale de ahí. !!
                 charger_table[i].order =1;
                 ControlGrupoState = CALCULO;
               }
@@ -460,7 +460,7 @@ void LimiteConsumo(void *p){
 
         //Repartir toda la potencia disponible viendo cual es la mas pequeña
         for(int i = 0; i < ChargingGroup.Charger_number; i++){
-          if(!memcmp(charger_table[i].HPT,"C2",2)){
+          if(!memcmp(charger_table[i].HPT,"C2",2) || !memcmp(charger_table[i].HPT,"B",1)){
             if(Circuitos[charger_table[i].Circuito-1].Fases[charger_table[i].Fase-1].corriente_disponible <= corriente_disponible_total)
               charger_table[i].Consigna =  Circuitos[charger_table[i].Circuito-1].Fases[charger_table[i].Fase-1].corriente_disponible;
             else
@@ -683,7 +683,7 @@ bool Calculo_General(){
         Serial.printf("group_control - Calculo_General: Cargador %s. HPT = %s. I = %i. ChargeReq = %i\n",charger_table[i].name,charger_table[i].HPT,charger_table[i].Current,charger_table[i].ChargeReq);
 #endif
         //Datos por Grupo
-        if(!memcmp(charger_table[i].HPT,"C2",2) || !memcmp(charger_table[i].HPT,"C1",2) || !memcmp(charger_table[i].HPT,"B2",2)){
+        if(!memcmp(charger_table[i].HPT,"C2",2) || !memcmp(charger_table[i].HPT,"C1",2) || !memcmp(charger_table[i].HPT,"B2",2) || !memcmp(charger_table[i].HPT,"B1",2)){
             conex++;
             conex_con_tri++;
             uint8_t faseA, faseB = 0, faseC = 0;
