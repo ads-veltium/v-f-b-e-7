@@ -139,9 +139,8 @@ bool WaitForValue(String* variable, String objetivo, uint16_t timeout){
 
 //----------------------------------------------------------------------------
 void SendToPSOC5(uint8 data, uint16 attrHandle){
-  
   uint8 buffer_tx_local[5];
-
+  int err;
   //cnt_timeout_tx = TIMEOUT_TX_BLOQUE2;
   buffer_tx_local[0] = HEADER_TX;
   buffer_tx_local[1] = (uint8)(attrHandle >> 8);
@@ -149,32 +148,43 @@ void SendToPSOC5(uint8 data, uint16 attrHandle){
   buffer_tx_local[3] = 1; //size
   buffer_tx_local[4] = data;
   //controlSendToSerialLocal(buffer_tx_local, 5);
-  serialLocal.write(buffer_tx_local, 5);
+  err=serialLocal.write(buffer_tx_local, 5);
+#ifdef DEBUG_GROUPS
+  Serial.printf("SenToPSOC5 %i bytes sent. attrHandle=%X\n",err, attrHandle);
+#endif   
 }
 
 void SendToPSOC5(uint8 *data, uint16 len, uint16 attrHandle){
   uint8 buffer_tx_local[len +4];
+  int err;
   buffer_tx_local[0] = HEADER_TX;
   buffer_tx_local[1] = (uint8)(attrHandle >> 8);
   buffer_tx_local[2] = (uint8)(attrHandle);
   buffer_tx_local[3] = len; //size
   memcpy(&buffer_tx_local[4],data,len);
-  controlSendToSerialLocal(buffer_tx_local, len+4);
+  err = controlSendToSerialLocal(buffer_tx_local, len+4);
+#ifdef DEBUG_GROUPS
+  Serial.printf("SenToPSOC5(int) %i bytes sent. attrHandle=%X\n",err, attrHandle);
+#endif 
 }
 
 void SendToPSOC5(char *data, uint16 len, uint16 attrHandle){
   uint8 buffer_tx_local[len +4];
+  int err;
   buffer_tx_local[0] = HEADER_TX;
   buffer_tx_local[1] = (uint8)(attrHandle >> 8);
   buffer_tx_local[2] = (uint8)(attrHandle);
   buffer_tx_local[3] = len; //size
   memcpy(&buffer_tx_local[4],data,len);
-  controlSendToSerialLocal(buffer_tx_local, len+4);
+  err = controlSendToSerialLocal(buffer_tx_local, len+4);
+#ifdef DEBUG_GROUPS
+  Serial.printf("SenToPSOC5(char). Sent %i bytes. attrHandle=%X. data=[%s]\n", err, attrHandle, data);
+#endif 
 }
 
 void SendStatusToPSOC5(uint8_t connected, uint8_t inicializado, uint8_t comm_type){
-
   uint8 buffer_tx_local[6];
+  int err;
   buffer_tx_local[0] = HEADER_TX;
   buffer_tx_local[1] = (uint8)(BLOQUE_STATUS >> 8);
   buffer_tx_local[2] = (uint8)(BLOQUE_STATUS);
@@ -182,8 +192,10 @@ void SendStatusToPSOC5(uint8_t connected, uint8_t inicializado, uint8_t comm_typ
   buffer_tx_local[4] = connected;
   buffer_tx_local[5] = inicializado;
   buffer_tx_local[6] = comm_type;
-  
-  controlSendToSerialLocal(buffer_tx_local, 7);
+  err=controlSendToSerialLocal(buffer_tx_local, 7);
+#ifdef DEBUG_GROUPS
+  Serial.printf("SendStatusToPSOC5 %i bytes sent.\n",err);
+#endif 
 }
 
 uint8_t sendBinaryBlock ( uint8_t *data, int len ){

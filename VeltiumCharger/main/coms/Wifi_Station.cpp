@@ -365,7 +365,7 @@ void Eth_Loop(){
 #endif
         xStart = xTaskGetTickCount();
         xFirstStart = xTaskGetTickCount();
-        SendToPSOC5(1, SEND_GROUP_DATA);
+        Get_Stored_Group_Params();
         Coms.ETH.finding = false;
         Coms.ETH.conectado = false;
         Coms.ETH.Wifi_Perm = false;
@@ -396,8 +396,9 @@ void Eth_Loop(){
                 }
             }
 
-            SendToPSOC5(2, SEND_GROUP_DATA);
-            SendToPSOC5(3, SEND_GROUP_DATA);
+            Get_Stored_Group_Data();
+            Get_Stored_Group_Circuits();
+
             delay(1000);
             start_udp();
 

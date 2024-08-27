@@ -65,7 +65,7 @@ uint64_t startTime;
 uint64_t endTime;
 
 uint8 backdoor_selector = 0;
-uint8 	 err_code = 0;
+uint8 err_code = 0;
 
 /* milestone: one-liner for reporting memory usage */
 void milestone(const char* mname)
@@ -589,45 +589,89 @@ class CBCharacteristic: public BLECharacteristicCallbacks {
 			}
 
 			else if (handle == GROUPS_PARAMS) {
+				Serial.printf("ChargingGroup.Conected = %i\n",ChargingGroup.Conected);
 				if(!ChargingGroup.Conected && payload[0]){
 					ChargingGroup.Params.GroupMaster = true;
 				}
-				uint8_t sendBuffer[7];
-				sendBuffer[0] = ChargingGroup.Params.GroupMaster;
+				Configuracion.group_data.params[0] = ChargingGroup.Params.GroupMaster;
+
+				if (ChargingGroup.Params.GroupActive && !payload[0]){
+					ChargingGroup.StopOrder = true;
+				}
+				ChargingGroup.Params.GroupActive = payload[0];
+				ChargingGroup.Params.CDP = payload[1];
+				ChargingGroup.Params.ContractPower = payload[2] + payload[3] * 0x100;
+				ChargingGroup.Params.potencia_max = payload[4] + payload[5] * 0x100;
+				ChargingGroup.NewData = true;
 
 				if(ChargingGroup.Params.GroupActive && !payload[0]){
 					ChargingGroup.SendNewParams = true;
 				}
-				memcpy(&sendBuffer[1], payload,6);
-				
-				buffer_tx[0] = HEADER_TX;
-				buffer_tx[1] = (uint8)(handle >> 8);
-				buffer_tx[2] = (uint8)(handle);
-				buffer_tx[3] = 7;
-				memcpy(&buffer_tx[4], sendBuffer, 7);
-				controlSendToSerialLocal(buffer_tx, 7 + 4);
 
-				delay(100);
+#ifdef DEBUG_GROUPS
+				Serial.printf("BLE received GROUPS_PARAMS=[");
+				for (uint8 i=0; i<SIZE_OF_GROUP_PARAMS; i++){
+					Serial.printf("%i",payload[i]);
+					if (i<SIZE_OF_GROUP_PARAMS-1){
+						Serial.printf(",");
+					}
+				}
+				Serial.printf("]\n");
+				Serial.printf("serverble - GROUPS_PARAMS: ChargingGroup.Params.GroupActive %i \n", ChargingGroup.Params.GroupActive);
+				Serial.printf("serverble - GROUPS_PARAMS: ChargingGroup.Params.GroupMaster %i \n", ChargingGroup.Params.GroupMaster);
+				Serial.printf("serverble - GROUPS_PARAMS: ChargingGroup.Params.potencia_max %i \n", ChargingGroup.Params.potencia_max);
+				Serial.printf("serverble - GROUPS_PARAMS: ChargingGroup.Params.ContractPower %i \n", ChargingGroup.Params.ContractPower);
+				Serial.printf("serverble - GROUPS_PARAMS: ChargingGroup.Params.CDP %i \n", ChargingGroup.Params.CDP);
+				Serial.printf("serverble - GROUPS_PARAMS: ChargingGroup.Params.inst_max %i \n", ChargingGroup.Params.inst_max);
+#endif
+				memcpy(&Configuracion.group_data.params[1], payload,SIZE_OF_GROUP_PARAMS-1);
+				Configuracion.Group_Guardar = true;
+				delay (200);
 				ChargingGroup.SendNewParams = true;
 				return;
 			}
+			
 			else if (handle == GROUPS_CIRCUITS) {
-                
 				uint8_t circuit_number = payload[0];
-				size = circuit_number +1;
-				buffer_tx[0] = HEADER_TX;
-				buffer_tx[1] = (uint8)(handle >> 8);
-				buffer_tx[2] = (uint8)(handle);
-				buffer_tx[3] = circuit_number +1;
-				memcpy(&buffer_tx[4], payload, size);
-				controlSendToSerialLocal(buffer_tx, size + 4);
-				delay(100);
+				size = circuit_number + 1;
+#ifdef DEBUG_GROUPS
+				Serial.printf("BLE received GROUPS_CIRCUITS=[");
+				for (uint8 i = 0; i < size; i++){
+					Serial.printf("%i", payload[i]);
+					if (i < size - 1){
+						Serial.printf(",");
+					}
+				}
+				Serial.printf("]\n");
+
+#endif
+				ChargingGroup.Circuit_number = circuit_number;
+				for (int i = 0; i < circuit_number; i++){
+					Circuitos[i].numero = i + 1;
+					Circuitos[i].Fases[0].numero = 1;
+					Circuitos[i].Fases[1].numero = 2;
+					Circuitos[i].Fases[2].numero = 3;
+					Circuitos[i].limite_corriente = payload[i + 1];
+
+#ifdef DEBUG_GROUPS
+				Serial.printf("serverble - GROUPS_CIRCUITS: Circuito %i limite_corriente %i \n", i, Circuitos[i].limite_corriente);
+#endif
+				}
+				ChargingGroup.NewData = true;
+				memcpy(&Configuracion.group_data.circuits[0], payload, size);
+				Configuracion.Group_Guardar = true;
+				delay(200);
 				ChargingGroup.SendNewCircuits = true;
-				
+
 				return;
 			}
-			else if (handle == GROUPS_OPERATIONS) {
+
+			else if (handle == GROUPS_OPERATIONS)
+			{
 				uint8_t operation = payload[0];
+#ifdef DEBUG_GROUPS
+				Serial.printf("BLE received GROUPS_OPERATIONS. operation=[%i]\n", operation);
+#endif
 				switch(operation){
 					//Creacion
 					case 1:
@@ -681,7 +725,14 @@ class CBCharacteristic: public BLECharacteristicCallbacks {
 						group_buffer[3] = (uint8)((ChargingGroup.Params.ContractPower >>8) & 0x00FF);
 						group_buffer[4] = (uint8)(ChargingGroup.Params.potencia_max & 0x00FF);
 						group_buffer[5] = (uint8)((ChargingGroup.Params.potencia_max >>8) & 0x00FF);
-
+#ifdef DEBUG_GROUPS
+	Serial.printf("serverble - GROUPS_OPERATIONS: ChargingGroup.Conected %i \n", ChargingGroup.Conected);
+	Serial.printf("serverble - GROUPS_OPERATIONS: ChargingGroup.Params.GroupMaster %i \n", ChargingGroup.Params.GroupMaster);
+	Serial.printf("serverble - GROUPS_OPERATIONS: ChargingGroup.Params.GroupActive %i \n", ChargingGroup.Params.GroupActive);
+	Serial.printf("serverble - GROUPS_OPERATIONS: ChargingGroup.Params.CDP %i \n", ChargingGroup.Params.CDP);
+	Serial.printf("serverble - GROUPS_OPERATIONS: ChargingGroup.Params.potencia_max %i \n", ChargingGroup.Params.potencia_max);
+	Serial.printf("serverble - GROUPS_OPERATIONS: ChargingGroup.Params.ContractPower %i \n", ChargingGroup.Params.ContractPower);
+#endif
 						serverbleSetCharacteristic(group_buffer,6 ,GROUPS_PARAMS);
 
 						//Actualizar circuits
@@ -709,7 +760,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks {
 				}
 				return;
 			}
-			
+
 #endif			
 
 			if (handle == POLICY){
@@ -906,70 +957,42 @@ class CBCharacteristic: public BLECharacteristicCallbacks {
 		}
 #ifdef CONNECTED 
 		if ( pCharacteristic->getUUID().equals(blefields[RCS_CHARGING_GROUP].uuid) ){
-			
+
 			uint8 size = uint8(data[0]);
-			printf("Me ha llegado un grupo con %i cargadores !\n", size);
-
-			char sendBuffer[252];
+	#ifdef DEBUG_GROUPS
+			Serial.printf("Me ha llegado un grupo con %i cargadores !\n", size);
+			Serial.printf("Datos recibidos: [%s]\n", data);
+	#endif
 			if(size< 10){
-				sprintf(&sendBuffer[0],"0%i",(char)size);
+				sprintf(&Configuracion.group_data.group[0],"0%i",(char)size);
 			}
-
 			else{
-				sprintf(&sendBuffer[0],"%i",(char)size);
+				sprintf(&Configuracion.group_data.group[0],"%i",(char)size);
 			}
 
 			if(size>0){
-				if(size>25){
-					//Envio de la primera parte
-					for(uint8_t i = 0;i < 25; i++){
-						memcpy(&sendBuffer[2+(i*9)],&data[1+(i*9)],8);
-						sendBuffer[10+(i*9)] = (char)data[9+(i*9)];
-					}
-
-					SendToPSOC5(sendBuffer,227,GROUPS_DEVICES_PART_1); 
-					delay(250);
-
-					//Envio de la segunda mitad
-					if(size - 25< 10){
-						sprintf(&sendBuffer[0],"0%i",(char)size-25);
-					}
-					else{
-						sprintf(&sendBuffer[0],"%i",(char)size-25);
-					}
-					for(uint8_t i=0;i<(size - 25);i++){
-						memcpy(&sendBuffer[2+(i*9)],&data[1+((i+25)*9)],8);
-						sendBuffer[10+(i*9)] = (char)data[9+((i+25)*9)];
-					}
-
-					SendToPSOC5(sendBuffer,(size - 25)*9+2,GROUPS_DEVICES_PART_2); 
-
+				uint16_t i;
+				for(i=0;i<size;i++){
+					memcpy(&Configuracion.group_data.group[2+(i*9)],&data[1+(i*9)],8);
+					Configuracion.group_data.group[10+(i*9)] = (char)data[9+(i*9)];
 				}
-				else{
-					//El grupo entra en una parte, asique solo mandamos una
-					for(uint8_t i=0;i<size;i++){
-						memcpy(&sendBuffer[2+(i*9)],&data[1+(i*9)],8);
-						sendBuffer[10+(i*9)] = (char)data[9+(i*9)];
-
-					}
-#ifdef DEBUG_GROUPS
-					Serial.printf("Envío de grupo a PSOC. Buffer=%s Size=%u\n", sendBuffer, size);
-#endif
-					SendToPSOC5(sendBuffer,size*9+2,GROUPS_DEVICES_PART_1); 
-					
-				}
+				Configuracion.group_data.group[2+(i*9)] = '\0'; 
+	#ifdef DEBUG_GROUPS
+				Serial.printf("serverble - Almacenamiento en flash del grupo. Buffer=[%s] Size=%u\n", Configuracion.group_data.group,size);
+	#endif
+				Configuracion.Group_Guardar = true;
+				delay(500);
 			}
 			else{
-				for(int i=0;i<=250;i++){
-					sendBuffer[i]=(char)0;
-				}
-				SendToPSOC5(sendBuffer,250,GROUPS_DEVICES_PART_1); 
-				SendToPSOC5(sendBuffer,250,GROUPS_DEVICES_PART_2); 
-
+				memset(Configuracion.group_data.group, 0, MAX_GROUP_BUFFER_SIZE);
+				sprintf(&Configuracion.group_data.group[0],"00_CLEAN");
+				Configuracion.group_data.group[8]='\0';
+				Configuracion.Group_Guardar = true;
+				delay(500);
 			}
-			delay(250);
-			SendToPSOC5(2,SEND_GROUP_DATA);
-			delay(250);
+			Serial.print("serverble - Lectura de datos almacenados del grupo\n");
+			Get_Stored_Group_Data();
+			delay(500);
 			ChargingGroup.SendNewGroup = true;
 		}
 #endif

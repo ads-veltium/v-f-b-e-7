@@ -137,7 +137,7 @@ void New_Params(uint8_t* Buffer, int Data_size){
 void New_Params(char* Data, int Data_size){    
 
   ChargingGroup.NewData = true;
-  uint8_t buffer[7];
+  uint8_t buffer[SIZE_OF_GROUP_PARAMS];
 
   cJSON *mensaje_Json = cJSON_Parse(Data);
 
@@ -169,9 +169,21 @@ void New_Params(char* Data, int Data_size){
   cJSON_Delete(mensaje_Json);
 
   buffer[0] = ChargingGroup.Params.GroupMaster;
-  //buffer[1] = ChargingGroup.Params.GroupActive;
-  SendToPSOC5((char*)buffer,7,GROUPS_PARAMS); 
-  delay(50);
+// buffer[1] = ChargingGroup.Params.GroupActive;
+// SendToPSOC5((char*)buffer,7,GROUPS_PARAMS);
+#ifdef DEBUG_GROUPS
+  Serial.printf("group_control - New_Params. Guardando parametros de grupo=[");
+  for (uint8 i = 0; i < SIZE_OF_GROUP_PARAMS; i++){
+    Serial.printf("%i", buffer[i]);
+    if (i < SIZE_OF_GROUP_PARAMS - 1){
+      Serial.printf(",");
+    }
+  }
+#endif
+  memcpy(&Configuracion.group_data.params[0],buffer,SIZE_OF_GROUP_PARAMS);
+	Configuracion.Group_Guardar = true;
+	delay (200);
+
 }
 
 void New_Control(uint8_t* Buffer, int Data_size){  
@@ -188,34 +200,33 @@ void New_Control(uint8_t* Buffer, int Data_size){
 }
 
 //Funcion para recibir ordenes de grupo que se hayan enviado a otro cargador
-void New_Control(char* Data, int Data_size){
-
-  if(!memcmp(Data,"Pause",5)){
-    #ifdef DEBUG_GROUPS
-      Serial.printf("Tengo que pausar el grupo\n");
-    #endif
+void New_Control(char *Data, int Data_size){
+  if (!memcmp(Data, "Pause", 5)){
+#ifdef DEBUG_GROUPS
+    Serial.printf("Tengo que pausar el grupo\n");
+#endif
     broadcast_a_grupo("Pause group", 11);
     ChargingGroup.StopOrder = true;
     ChargingGroup.Params.GroupActive = 0;
     store_params_in_mem();
   }
-  else if(!memcmp(Data,"Delete",6)){
-    #ifdef DEBUG_GROUPS
-      Serial.printf("Tengo que borrar el grupo\n");
-    #endif
-    ChargingGroup.Params.GroupActive   = 0;
-    ChargingGroup.Params.GroupMaster   = 0;
+  else if (!memcmp(Data, "Delete", 6)){
+#ifdef DEBUG_GROUPS
+    Serial.printf("Tengo que borrar el grupo\n");
+#endif
+    ChargingGroup.Params.GroupActive = 0;
+    ChargingGroup.Params.GroupMaster = 0;
     ChargingGroup.Params.ContractPower = 0;
     ChargingGroup.Params.CDP = 0;
-    ChargingGroup.Params.potencia_max  = 0;
+    ChargingGroup.Params.potencia_max = 0;
     ChargingGroup.DeleteOrder = false;
-    ChargingGroup.StopOrder   = true;
-    
+    ChargingGroup.StopOrder = true;
+    ChargingGroup.Conected = false;
+
     remove_group(charger_table, &ChargingGroup.Charger_number);
-    store_group_in_mem(charger_table,ChargingGroup.Charger_number);
-    delay(250);
-    store_params_in_mem();
+    store_group_in_mem(charger_table, ChargingGroup.Charger_number);
     delay(100);
+    store_params_in_mem();
   }
 }
 
@@ -309,7 +320,11 @@ void New_Circuit(uint8_t* Buffer, int Data_size){
     }
   }
 
-  SendToPSOC5((char*)buffer,size+1,GROUPS_CIRCUITS); 
+  //SendToPSOC5((char*)buffer,size+1,GROUPS_CIRCUITS); 
+  memcpy(&Configuracion.group_data.circuits[0],buffer,size);
+    Serial.printf("************ 4 - GroupMaster=%i\n",ChargingGroup.Params.GroupMaster);
+	Configuracion.Group_Guardar = true;
+	delay (200);
 }
 
 void New_Group(uint8_t* Buffer, int Data_size){  
@@ -359,6 +374,7 @@ void New_Group(char* Data, int Data_size){
         for(uint8_t j =0; j< 8; j++){
             ID[j]=(char)Data[2+i*11+j];
         }
+				ID[8]='\0';
 
         add_to_group(ID, get_IP(ID), charger_table, &ChargingGroup.Charger_number); 
         
@@ -366,7 +382,9 @@ void New_Group(char* Data, int Data_size){
         memcpy(v,&Data[10+i*11],3);
         uint8_t value = atoi(v);
 
-        printf("Crudo fase y circuito %s %i %i %i\n",ID, value, value & 0x03, value >> 2);
+#ifdef DEBUG_GROUPS
+        Serial.printf("Crudo fase y circuito %s %i %i %i\n",ID, value, value & 0x03, value >> 2);
+#endif
 
 
 
@@ -389,10 +407,11 @@ void New_Group(char* Data, int Data_size){
             charger_table[i].Conected = true;
         }
     }
+
     store_group_in_mem(charger_table, ChargingGroup.Charger_number);
-    #ifdef DEBUG_GROUPS
+#ifdef DEBUG_GROUPS
     print_table(charger_table, "Grupo desde COAP",ChargingGroup.Charger_number);
-    #endif
+#endif
 }
 
 void LimiteConsumo(void *p){

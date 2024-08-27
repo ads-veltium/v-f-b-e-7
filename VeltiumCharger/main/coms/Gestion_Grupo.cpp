@@ -94,60 +94,36 @@ bool remove_from_group(const char* ID ,carac_charger* group, uint8_t* size){
 //Almacenar grupo en la flash
 //Si el tamaño del grupo es mayor de 25 cargadores, enviarlo en dos trozos
 void store_group_in_mem(carac_charger* group, uint8_t size){
-    char sendBuffer[252];
-    if(size< 10){
-        sprintf(&sendBuffer[0],"0%i",(char)size);
+    if(size < 10){
+        sprintf(&Configuracion.group_data.group[0],"0%i",(char)size);
     }
-
     else{
-        sprintf(&sendBuffer[0],"%i",(char)size);
+        sprintf(&Configuracion.group_data.group[0],"%i",(char)size);
     }
 
     if(size>0){
-        if(size>25){
-            //Envio de la primera parte
-            for(uint8_t i = 0;i < 25; i++){
-                memcpy(&sendBuffer[2+(i*9)],group[i].name,8);
-                sendBuffer[10+(i*9)] = (char)((group[i].Circuito << 2) + group[i].Fase);
-            }
+        uint16_t i;
 
-            SendToPSOC5(sendBuffer,227,GROUPS_DEVICES_PART_1); 
-            delay(250);
-
-            //Envio de la segunda mitad
-            if(size - 25< 10){
-                sprintf(&sendBuffer[0],"0%i",(char)size-25);
-            }
-            else{
-                sprintf(&sendBuffer[0],"%i",(char)size-25);
-            }
-            for(uint8_t i=0;i<(size - 25);i++){
-                memcpy(&sendBuffer[2+(i*9)],group[i+25].name,8);
-                sendBuffer[10+(i*9)] = (char)((group[i+25].Circuito << 2) + group[i+25].Fase);
-                
-            }
-
-            SendToPSOC5(sendBuffer,(size - 25)*9+2,GROUPS_DEVICES_PART_2); 
-            delay(100);
+        //El grupo entra en una parte, asique solo mandamos una
+        for(i=0;i<size;i++){
+            memcpy(&Configuracion.group_data.group[2+(i*9)],group[i].name,8);
+            Configuracion.group_data.group[10+(i*9)] = (char)((group[i].Circuito << 2) + group[i].Fase);
         }
-        else{
-
-            //El grupo entra en una parte, asique solo mandamos una
-            for(uint8_t i=0;i<size;i++){
-                memcpy(&sendBuffer[2+(i*9)],group[i].name,8);
-                sendBuffer[10+(i*9)] = (char)((group[i].Circuito << 2) + group[i].Fase);
-            }
-            SendToPSOC5(sendBuffer,ChargingGroup.Charger_number*9+2,GROUPS_DEVICES_PART_1); 
-        }
+        Configuracion.group_data.group[2+(i*9)] = '\0';
+#ifdef DEBUG_GROUPS
+        Serial.printf("Gestion_Grupo - Almacenamiento de grupo en flash COMPLETO. Buffer=[%s] Size=%u\n", Configuracion.group_data.group, size);
+#endif
+        Configuracion.Group_Guardar = true;
+        delay(500);
 
         //si llega un grupo en el que no estoy, significa que me han sacado de el
         //cierro el coap y borro el grupo
         if(check_in_group(ConfigFirebase.Device_Id,charger_table, ChargingGroup.Charger_number ) == 255){
             if(ChargingGroup.Conected){
-                #ifdef DEBUG_GROUPS
+#ifdef DEBUG_GROUPS
                 printf("¡No estoy en el grupo!!!\n");
                 print_table(charger_table,"No en grupo table", ChargingGroup.Charger_number);
-                #endif
+#endif
                 ChargingGroup.DeleteOrder = true;
             }
         }
@@ -171,13 +147,14 @@ void store_group_in_mem(carac_charger* group, uint8_t size){
 
     }
     else{
-        for(int i=0;i<=250;i++){
-            sendBuffer[i]=(char)0;
-        }
-        SendToPSOC5(sendBuffer,250,GROUPS_DEVICES_PART_1); 
-        SendToPSOC5(sendBuffer,250,GROUPS_DEVICES_PART_2); 
-        
+        memset(Configuracion.group_data.group, 0, MAX_GROUP_BUFFER_SIZE);
+        sprintf(&Configuracion.group_data.group[0],"00_CLEAN_");
+		Configuracion.group_data.group[8]='\0';
+        Configuracion.Group_Guardar = true;
+        delay(500);
     }
+	delay(500);
+
     return;
 }
 
@@ -185,15 +162,15 @@ void store_params_in_mem(){
     #ifdef DEBUG_GROUPS
     Serial.println("Gestion_Grupo - store_params_in_mem: Almacenando datos en la memoria\n");
     #endif
-    char buffer[7];
-    buffer[0] = ChargingGroup.Params.GroupMaster;
-    buffer[1] = ChargingGroup.Params.GroupActive;
-    buffer[2] =  ChargingGroup.Params.CDP;
-    buffer[3] = (uint8_t) (ChargingGroup.Params.ContractPower  & 0x00FF);
-    buffer[4] = (uint8_t) ((ChargingGroup.Params.ContractPower >> 8)  & 0x00FF);
-    buffer[5] = (uint8_t) (ChargingGroup.Params.potencia_max  & 0x00FF);
-    buffer[6] = (uint8_t) ((ChargingGroup.Params.potencia_max >> 8)  & 0x00FF);
-    SendToPSOC5((char*)buffer,7,GROUPS_PARAMS); 
+    Configuracion.group_data.params[0] = ChargingGroup.Params.GroupMaster;
+    Configuracion.group_data.params[1] = ChargingGroup.Params.GroupActive;
+    Configuracion.group_data.params[2] =  ChargingGroup.Params.CDP;
+    Configuracion.group_data.params[3] = (uint8_t) (ChargingGroup.Params.ContractPower  & 0x00FF);
+    Configuracion.group_data.params[4] = (uint8_t) ((ChargingGroup.Params.ContractPower >> 8)  & 0x00FF);
+    Configuracion.group_data.params[5] = (uint8_t) (ChargingGroup.Params.potencia_max  & 0x00FF);
+    Configuracion.group_data.params[6] = (uint8_t) ((ChargingGroup.Params.potencia_max >> 8)  & 0x00FF);
+	Configuracion.Group_Guardar = true;
+    delay (200); // La actualizacion de parámetros se ejecuta cada 100 
 }
 
 //Eliminar grupo 

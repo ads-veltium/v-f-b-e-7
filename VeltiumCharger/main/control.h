@@ -25,6 +25,7 @@
 		#define DEBUG_BLE		   //Activar el debug del ble
 		#define DEBUG_CONFIG	   //Debugar el almacenamiento de la configuracion
 		#define DEBUG_UPDATE
+		//#define DEBUG_UART
 
 		#ifdef IS_UNO_KUBO	
 			#define DEBUG_WIFI	     //Activar el debug del wifi
@@ -47,8 +48,7 @@
 #include "cybtldr/cybtldr_api2.h"
 #include "cybtldr/cybtldr_command.h"
 
-#ifdef IS_UNO_KUBO	
-	#define MAX_GROUP_SIZE 40
+#ifdef IS_UNO_KUBO
 	#include "coms/Wifi_Station.h"
 	#include "coms/helper_coms.h"
 	#ifndef CONNECTED
@@ -163,5 +163,8 @@ void UpdateTask(void *arg);
 void UpdateESP();
 void modifyCharacteristic(uint8* data, uint16 len, uint16 attrHandle);
 
+void Get_Stored_Group_Data();
+void Get_Stored_Group_Params();
+void Get_Stored_Group_Circuits();
 
 #endif // __CONTROL_MAIN

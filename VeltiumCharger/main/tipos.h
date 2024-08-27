@@ -68,6 +68,12 @@
 #define LED_MAXIMO_PWM      1200     // Sobre 1200 de periodo
 #define pdTICKS_TO_MS( xTicks )   ( ( uint32_t ) ( xTicks ) * 1000 / configTICK_RATE_HZ )
 
+// GRUPOS
+#define GROUP_REST_TIME			1000
+#define MAX_GROUP_SIZE			40 // 40 
+#define MAX_GROUP_BUFFER_SIZE	(9*MAX_GROUP_SIZE)+2 // 362
+#define SIZE_OF_GROUP_PARAMS    7 // Número de parámetros
+
 typedef	uint8_t			uint8;
 typedef	uint16_t		uint16;
 typedef	uint32_t		uint32;
@@ -411,8 +417,13 @@ typedef struct{
 
 	uint8 velt_v = 0;
 	uint8 medidor485 = 0;
-	
 } carac_config;
+
+typedef struct{
+    char group[MAX_GROUP_BUFFER_SIZE];
+	uint8 params[SIZE_OF_GROUP_PARAMS];
+	uint8 circuits[MAX_GROUP_BUFFER_SIZE];
+} carac_group_config;
 
 //Estados de las comunicaciones
 
@@ -773,7 +784,7 @@ typedef struct{
 #define APN_ON 							   (0x00D1u)
 
 //Caracteristica de estatus de las comunicaciones
-#define POLICY						   (0x00D3u)
+#define POLICY						   	   (0x00D3u)
 #define CHARGE_USER_ID					   (0x00D5u)
 
 
@@ -827,8 +838,10 @@ const uint8_t DNS_BACKUP_SERVER_IP[]={8,8,4,4};
 #define PSOC_UPDATE_FILE "/FW_PSoC6_v7.cyacd2"
 #define PSOC_UPDATE_OLD_FILE "/FW_PSoC6_v7_old.cyacd2"
 
-// GRUPOS
-#define GROUP_REST_TIME		1000
+
+
+// MAX_GROUP_SIZE se reduce de 40 a 24 por la limitacion en el buffer FIFO de la UART del PSoC6, de 128 bytes
+// Para aumentar el tamaño hay que implementar más mensajes de envío de los grupos entre ESP y PSOC o almacenar en ESP
 
 /* [] END OF FILE */
 

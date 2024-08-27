@@ -30,8 +30,6 @@ void LimiteConsumo(void *p);
 
 
 
-
-
 #define REPOSO 1
 #define EQUILIBRADO 2
 #define CALCULO 3

@@ -1292,7 +1292,7 @@ void coap_start_server(){
                 charger_table[ChargingGroup.Charger_number-1].Fase=OldMaster.Fase;
                 charger_table[ChargingGroup.Charger_number-1].Circuito =OldMaster.Circuito;
             }
-            store_group_in_mem(charger_table, ChargingGroup.Charger_number);
+            //store_group_in_mem(charger_table, ChargingGroup.Charger_number);
         }
         else{
             //Si el grupo está vacio o el cargador no está en el grupo,
