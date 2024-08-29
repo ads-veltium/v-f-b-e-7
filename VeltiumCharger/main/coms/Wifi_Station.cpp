@@ -493,12 +493,12 @@ void Eth_Loop(){
         }
 
         // Buscar el contador
-        /*if ((Coms.ETH.medidor || (ContadorConfigurado() && ChargingGroup.Params.GroupMaster && ChargingGroup.Conected)) && !Coms.ETH.finding){
+        if ((Coms.ETH.medidor || (ContadorConfigurado() && ChargingGroup.Params.GroupMaster && ChargingGroup.Conected)) && !Coms.ETH.finding){
             if (GetStateTime(xConnect) > 6000){
-                xTaskCreate(BuscarContador_Task, "BuscarContador", 4096 * 4, &Coms.ETH.finding, 5, NULL);
+			    SendToPSOC5(1, SEARCH_EXTERNAL_METER);
                 Coms.ETH.finding = true;
             }
-        }*/
+        }
         // Arrancar los grupos
         if (!ChargingGroup.Conected && (Coms.ETH.conectado || Coms.ETH.DHCP)){
             if (ChargingGroup.Params.GroupActive && GetStateTime(xConnect) > 1000){

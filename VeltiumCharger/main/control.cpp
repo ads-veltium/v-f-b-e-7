@@ -781,6 +781,7 @@ void procesar_bloque(uint16 tipo_bloque){
 				modifyCharacteristic(&buffer_rx_local[46], 4, PHOTOVOLTAIC_TOTAL_POWER);
 				modifyCharacteristic(&buffer_rx_local[50], 4, PHOTOVOLTAIC_NET_POWER);
 				modifyCharacteristic(&buffer_rx_local[54], 1, MEASURES_APPARENT_POWER_CHAR_HANDLE);
+				modifyCharacteristic(&buffer_rx_local[55], 1, EXTERNAL_METER_POWER);
 					
 					Status.error_code = buffer_rx_local[13];
 					
@@ -796,6 +797,7 @@ void procesar_bloque(uint16 tipo_bloque){
 
 					int8_t buffer_total[4];
 					int8_t buffer_net[4];
+					int8_t buffer_external_meter[4];
 
 					buffer_total[0] = buffer_rx_local[46];
 					buffer_total[1] = buffer_rx_local[47];
@@ -807,11 +809,21 @@ void procesar_bloque(uint16 tipo_bloque){
 					buffer_net[2] = buffer_rx_local[52];
 					buffer_net[3] = buffer_rx_local[53];
 					
+					buffer_external_meter[0] = buffer_rx_local[55];
+					buffer_external_meter[1] = buffer_rx_local[56];
+					buffer_external_meter[2] = buffer_rx_local[57];
+					buffer_external_meter[3] = buffer_rx_local[58];
+
 					memcpy(&Status.total_power,buffer_total,4);
-#ifdef DEBUG_MEDIDOR
-					ESP_LOGI(TAG,"Potencia del contador recibida del PSoC=%i",Status.total_power);
-#endif
 					memcpy(&Status.net_power,buffer_net,4);
+					memcpy(&Status.external_meter_power,buffer_external_meter,4);
+					
+					ContadorExt.Power=Status.external_meter_power;  // Copiamos el valor de potencia recibido del medidor
+					ContadorExt.Power=1000*ContadorExt.Power;
+					
+#ifdef DEBUG_MEDIDOR
+					ESP_LOGI(TAG,"Potencia del contador recibida del PSoC=%i",Status.external_meter_power);
+#endif
 
 					Status.Trifasico= buffer_rx_local[44]==3;
 					

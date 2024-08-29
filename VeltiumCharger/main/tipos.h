@@ -153,8 +153,9 @@ typedef struct{
 
 	long long last_ts_app_req= 0;
 	TickType_t LastConn = 0;
-	int net_power;
-	int total_power;
+	int32_t net_power;
+	int32_t total_power;
+	int32_t external_meter_power;
 	bool Photovoltaic=false; 
 	char Time_Type;
 	bool ts_inicio=true;
@@ -808,6 +809,8 @@ typedef struct{
 
 #define PHOTOVOLTAIC_TOTAL_POWER           (0X00E7U)
 #define PHOTOVOLTAIC_NET_POWER             (0X00E9U)
+
+#define EXTERNAL_METER_POWER	           (0X00EAU)			
 
 #endif
 

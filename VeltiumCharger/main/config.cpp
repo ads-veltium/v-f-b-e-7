@@ -211,11 +211,10 @@ bool Config::Load(){
     deserializeJson(ConfigJSON, data_to_read);
     ConfigFile.close();
     Json_to_carac(ConfigJSON);
-
-    #ifdef DEBUG_CONFIG
-        printf("Cargando datos desde la flash!!\n");
-        serializeJsonPretty(ConfigJSON, Serial);
-    #endif
+#ifdef DEBUG_CONFIG
+    printf("Cargando datos desde la flash!!\n");
+    serializeJsonPretty(ConfigJSON, Serial);
+#endif
     return true;
 }
 
@@ -223,13 +222,13 @@ bool Config::Store(){
     //SPIFFS.end();
     //SPIFFS.begin(1,"/spiffs",10,"ESP32");
     DynamicJsonDocument ConfigJSON(1024);
-#ifdef DEBUG_CONFIG
-    printf("Guardando datos a la flash!!\n");
-#endif
     Carac_to_json(ConfigJSON);
     ConfigFile = SPIFFS.open("/config.json", FILE_WRITE);
     String data_to_store;
     serializeJson(ConfigJSON, data_to_store);
+#ifdef DEBUG_CONFIG
+    Serial.printf("Guardando datos en la flash =\n%s\n",data_to_store.c_str());
+#endif
     ConfigFile.print(data_to_store);
     ConfigFile.close();
 

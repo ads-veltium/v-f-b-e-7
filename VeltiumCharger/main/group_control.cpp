@@ -322,7 +322,6 @@ void New_Circuit(uint8_t* Buffer, int Data_size){
 
   //SendToPSOC5((char*)buffer,size+1,GROUPS_CIRCUITS); 
   memcpy(&Configuracion.group_data.circuits[0],buffer,size);
-    Serial.printf("************ 4 - GroupMaster=%i\n",ChargingGroup.Params.GroupMaster);
 	Configuracion.Group_Guardar = true;
 	delay (200);
 }
