@@ -26,7 +26,7 @@ extern uint8 ESP_version_firmware[11];
 #ifdef USE_GROUPS
 extern carac_group                  ChargingGroup;
 extern carac_circuito               Circuitos[MAX_GROUP_SIZE];
-extern carac_charger                charger_table[ MAX_GROUP_SIZE];
+extern carac_charger                charger_table[MAX_GROUP_SIZE];
 #endif
 
 //Declaracion de funciones locales

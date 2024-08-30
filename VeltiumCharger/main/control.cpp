@@ -100,9 +100,9 @@ uint16 cnt_diferencia = 1;
 uint8 HPT_estados[9][3] = {"0V", "A1", "A2", "B1", "B2", "C1", "C2", "E1", "F1"};
 
 #ifdef IS_UNO_KUBO
-uint8 ESP_version_firmware[11] = {"VBLE3_0610"};	   
+uint8 ESP_version_firmware[11] = {"VBLE3_0611"};	   
 #else
-uint8 ESP_version_firmware[11] = {"VBLE0_0610"};	
+uint8 ESP_version_firmware[11] = {"VBLE0_0611"};	
 #endif
 
 uint8 PSOC_version_firmware[11] ;		
@@ -1401,7 +1401,7 @@ void procesar_bloque(uint16 tipo_bloque){
 				if(ContadorExt.MedidorConectado){
 					Bloqueo_de_carga = false;
 #ifdef DEBUG_GROUPS
-					Serial.printf("procesar_bloque - BLOQUEO_CARGA. else final. Bloqueo_de_carga = false\n");
+					Serial.printf("procesar_bloque - BLOQUEO_CARGA. MedidorConectado. Bloqueo_de_carga = false\n");
 #endif
 				}
 			}
@@ -1526,9 +1526,8 @@ void controlInit(void){
 }
 
 
-
+#ifdef CONNECTED
 void Get_Stored_Group_Data(){
-Serial.printf("Entro en Get_Stored_Group_Data\n");
   char n[2];
   char ID[9];
   uint8 buffer_group[MAX_GROUP_BUFFER_SIZE];
@@ -1557,7 +1556,7 @@ Serial.printf("Entro en Get_Stored_Group_Data\n");
   memcpy(buffer_group,Configuracion.group_data.group,MAX_GROUP_BUFFER_SIZE);
   memcpy(n,Configuracion.group_data.group, 2);
 
-#ifdef USE_GROUPS
+#ifdef DEBUG_GROUPS
   Serial.printf("Buffer group leido de configuracion=[%s]\n", buffer_group);
 #endif
 
@@ -1633,10 +1632,10 @@ Serial.printf("Entro en Get_Stored_Group_Data\n");
 #endif
 
 }
+#endif
 
+#ifdef CONNECTED
 void Get_Stored_Group_Params(){
-	Serial.printf("Entro en Get_Stored_Group_Params\n");
-
 	uint8 buffer_params[SIZE_OF_GROUP_PARAMS];
 
 	ChargingGroup.NewData = true;
@@ -1662,10 +1661,10 @@ void Get_Stored_Group_Params(){
 	Serial.printf("control - Get_Stored_Group_Params: ChargingGroup.Params.inst_max %i \n", ChargingGroup.Params.inst_max);
 #endif
 }
+#endif
 
 #ifdef CONNECTED
 void Get_Stored_Group_Circuits(){
-	Serial.printf("Entro en Get_Stored_Group_Circuits\n");
 	uint8 buffer_circuits[MAX_GROUP_SIZE];
 	ChargingGroup.NewData = true;
 	

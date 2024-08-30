@@ -589,7 +589,6 @@ class CBCharacteristic: public BLECharacteristicCallbacks {
 			}
 
 			else if (handle == GROUPS_PARAMS) {
-				Serial.printf("ChargingGroup.Conected = %i\n",ChargingGroup.Conected);
 				if(!ChargingGroup.Conected && payload[0]){
 					ChargingGroup.Params.GroupMaster = true;
 				}
@@ -726,12 +725,12 @@ class CBCharacteristic: public BLECharacteristicCallbacks {
 						group_buffer[4] = (uint8)(ChargingGroup.Params.potencia_max & 0x00FF);
 						group_buffer[5] = (uint8)((ChargingGroup.Params.potencia_max >>8) & 0x00FF);
 #ifdef DEBUG_GROUPS
-	Serial.printf("serverble - GROUPS_OPERATIONS: ChargingGroup.Conected %i \n", ChargingGroup.Conected);
-	Serial.printf("serverble - GROUPS_OPERATIONS: ChargingGroup.Params.GroupMaster %i \n", ChargingGroup.Params.GroupMaster);
-	Serial.printf("serverble - GROUPS_OPERATIONS: ChargingGroup.Params.GroupActive %i \n", ChargingGroup.Params.GroupActive);
-	Serial.printf("serverble - GROUPS_OPERATIONS: ChargingGroup.Params.CDP %i \n", ChargingGroup.Params.CDP);
-	Serial.printf("serverble - GROUPS_OPERATIONS: ChargingGroup.Params.potencia_max %i \n", ChargingGroup.Params.potencia_max);
-	Serial.printf("serverble - GROUPS_OPERATIONS: ChargingGroup.Params.ContractPower %i \n", ChargingGroup.Params.ContractPower);
+						Serial.printf("serverble - GROUPS_OPERATIONS: ChargingGroup.Conected %i \n", ChargingGroup.Conected);
+						Serial.printf("serverble - GROUPS_OPERATIONS: ChargingGroup.Params.GroupMaster %i \n", ChargingGroup.Params.GroupMaster);
+						Serial.printf("serverble - GROUPS_OPERATIONS: ChargingGroup.Params.GroupActive %i \n", ChargingGroup.Params.GroupActive);
+						Serial.printf("serverble - GROUPS_OPERATIONS: ChargingGroup.Params.CDP %i \n", ChargingGroup.Params.CDP);
+						Serial.printf("serverble - GROUPS_OPERATIONS: ChargingGroup.Params.potencia_max %i \n", ChargingGroup.Params.potencia_max);
+						Serial.printf("serverble - GROUPS_OPERATIONS: ChargingGroup.Params.ContractPower %i \n", ChargingGroup.Params.ContractPower);
 #endif
 						serverbleSetCharacteristic(group_buffer,6 ,GROUPS_PARAMS);
 
@@ -959,10 +958,10 @@ class CBCharacteristic: public BLECharacteristicCallbacks {
 		if ( pCharacteristic->getUUID().equals(blefields[RCS_CHARGING_GROUP].uuid) ){
 
 			uint8 size = uint8(data[0]);
-	#ifdef DEBUG_GROUPS
+#ifdef DEBUG_GROUPS
 			Serial.printf("Me ha llegado un grupo con %i cargadores !\n", size);
 			Serial.printf("Datos recibidos: [%s]\n", data);
-	#endif
+#endif
 			if(size< 10){
 				sprintf(&Configuracion.group_data.group[0],"0%i",(char)size);
 			}
@@ -977,9 +976,9 @@ class CBCharacteristic: public BLECharacteristicCallbacks {
 					Configuracion.group_data.group[10+(i*9)] = (char)data[9+(i*9)];
 				}
 				Configuracion.group_data.group[2+(i*9)] = '\0'; 
-	#ifdef DEBUG_GROUPS
+#ifdef DEBUG_GROUPS
 				Serial.printf("serverble - Almacenamiento en flash del grupo. Buffer=[%s] Size=%u\n", Configuracion.group_data.group,size);
-	#endif
+#endif
 				Configuracion.Group_Guardar = true;
 				delay(500);
 			}
@@ -990,7 +989,6 @@ class CBCharacteristic: public BLECharacteristicCallbacks {
 				Configuracion.Group_Guardar = true;
 				delay(500);
 			}
-			Serial.print("serverble - Lectura de datos almacenados del grupo\n");
 			Get_Stored_Group_Data();
 			delay(500);
 			ChargingGroup.SendNewGroup = true;

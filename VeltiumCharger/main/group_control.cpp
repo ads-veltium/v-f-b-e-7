@@ -159,7 +159,6 @@ void New_Params(char* Data, int Data_size){
   buffer[2]=  (uint8_t) cJSON_GetObjectItem(mensaje_Json,"cdp")->valueint;
   uint16_t Contratada = (uint16_t) cJSON_GetObjectItem(mensaje_Json,"contract")->valueint;
   uint16_t Maxima = (uint8_t) cJSON_GetObjectItem(mensaje_Json,"pot_max")->valueint;
-  Serial.printf("pot_max %i\n", Maxima);
   buffer[3] = (uint8_t) (Contratada  & 0x00FF);
   buffer[4] = (uint8_t) ((Contratada >> 8)  & 0x00FF);
   buffer[5] = (uint8_t) (Maxima  & 0x00FF);

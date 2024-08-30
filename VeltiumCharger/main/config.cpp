@@ -73,18 +73,21 @@ void ConfigTask(void *arg){
             Configuracion.Store();
             Configuracion.Guardar = false;
         }
-        else if(Configuracion.Group_Guardar){
-            Configuracion.Group_Store();
-            Configuracion.Group_Guardar = false;
-        }
         else if(Configuracion.Cargar){
             Configuracion.Load();
             Configuracion.Cargar=false;
         }
+#ifdef CONNECTED        
+        else if(Configuracion.Group_Guardar){
+            Configuracion.Group_Store();
+            Configuracion.Group_Guardar = false;
+        }
+
         else if(Configuracion.Group_Cargar){
             Configuracion.Group_Load();
             Configuracion.Group_Cargar=false;
         }
+#endif
     }
 }
 
