@@ -77,6 +77,17 @@ void ConfigTask(void *arg){
             Configuracion.Load();
             Configuracion.Cargar=false;
         }
+#ifdef CONNECTED        
+        else if(Configuracion.Group_Guardar){
+            Configuracion.Group_Store();
+            Configuracion.Group_Guardar = false;
+        }
+
+        else if(Configuracion.Group_Cargar){
+            Configuracion.Group_Load();
+            Configuracion.Group_Cargar=false;
+        }
+#endif
     }
 }
 
@@ -122,22 +133,58 @@ void Config::Json_to_carac(DynamicJsonDocument& ConfigJSON){
     data.medidor485 = ConfigJSON["medidor485"].as<uint8_t>();
 }
 
+#ifdef CONNECTED
+void Config::Group_Carac_to_json(DynamicJsonDocument& ConfigJSON){
+    ConfigJSON.clear();
+    ConfigJSON["group"] = String(group_data.group);
+    JsonArray paramsArray = ConfigJSON.createNestedArray("params");
+    for (int i = 0; i < SIZE_OF_GROUP_PARAMS; i++) {
+        paramsArray.add(group_data.params[i]);
+    }
+    JsonArray circuitsArray = ConfigJSON.createNestedArray("circuits");
+    for (int i = 0; i < MAX_GROUP_SIZE; i++) {
+        circuitsArray.add(group_data.circuits[i]);
+    }
+}
+#endif
+
+#ifdef CONNECTED
+void Config::Group_Json_to_carac(DynamicJsonDocument& ConfigJSON){
+    memcpy(group_data.group, ConfigJSON["group"].as<String>().c_str(),sizeof(group_data.group));
+    JsonArray paramsArray = ConfigJSON["params"].as<JsonArray>();
+    for (int i = 0; i < paramsArray.size() && i < sizeof(group_data.params); i++) {
+        group_data.params[i] = paramsArray[i].as<int>();
+    }
+    JsonArray circuitsArray = ConfigJSON["circuits"].as<JsonArray>();
+    for (int i = 0; i < circuitsArray.size() && i < MAX_GROUP_SIZE; i++) {
+        group_data.circuits[i] = circuitsArray[i].as<int>();
+    }}
+#endif
+
 //**********Funciones externas de la case de configuracion**************/
 void Config::init(){
   
     //Arrancar el SPIFFS
-    if(!SPIFFS.begin(1,"/spiffs",1,"ESP32")){
+    if(!SPIFFS.begin(1,"/spiffs",2,"ESP32")){
       SPIFFS.end();					
-      SPIFFS.begin(1,"/spiffs",1,"ESP32");
+      SPIFFS.begin(1,"/spiffs",2,"ESP32");
     }
 
     //Sino existe el archivo, crear el de defecto
     if(!SPIFFS.exists("/config.json")){
       Store();
     }
+#ifdef CONNECTED
+    if(!SPIFFS.exists("/group.json")){
+      Group_Store();
+    }
+#endif
 
     //Abrir el archivo para lectura y cargar los datos
     Load();
+#ifdef CONNECTED
+    Group_Load();
+#endif
 
     //Crear la tarea encargada de detectar y almacenar cambios
     xTaskCreate(ConfigTask,"Task CONFIG",4096*2,NULL,PRIORIDAD_CONFIG,NULL);
@@ -149,10 +196,12 @@ void Config::init(){
         memcpy(Configuracion.data.policy,"ALL",3);
     }
 
+#ifdef CONNECTED
     if(Configuracion.data.medidor485 == 0x01 ){
       Update_Status_Coms(MED_LEYENDO_MEDIDOR);
     }
-    
+#endif
+
 	modifyCharacteristic((uint8_t*)&Configuracion.data.policy, 3, POLICY);
 
 }
@@ -165,11 +214,10 @@ bool Config::Load(){
     deserializeJson(ConfigJSON, data_to_read);
     ConfigFile.close();
     Json_to_carac(ConfigJSON);
-
-    #ifdef DEBUG_CONFIG
-        printf("Cargando datos desde la flash!!\n");
-        serializeJsonPretty(ConfigJSON, Serial);
-    #endif
+#ifdef DEBUG_CONFIG
+    printf("Cargando datos desde la flash!!\n");
+    serializeJsonPretty(ConfigJSON, Serial);
+#endif
     return true;
 }
 
@@ -177,18 +225,49 @@ bool Config::Store(){
     //SPIFFS.end();
     //SPIFFS.begin(1,"/spiffs",10,"ESP32");
     DynamicJsonDocument ConfigJSON(1024);
-    #ifdef DEBUG_CONFIG
-        printf("Guardando datos a la flash!!\n");
-    #endif
     Carac_to_json(ConfigJSON);
     ConfigFile = SPIFFS.open("/config.json", FILE_WRITE);
-
     String data_to_store;
     serializeJson(ConfigJSON, data_to_store);
+#ifdef DEBUG_CONFIG
+    Serial.printf("Guardando datos en la flash =\n%s\n",data_to_store.c_str());
+#endif
     ConfigFile.print(data_to_store);
     ConfigFile.close();
 
     return true;
 }
+
+#ifdef CONNECTED
+bool Config::Group_Load(){
+    DynamicJsonDocument ConfigJSON(1024);
+    ConfigFile = SPIFFS.open("/group.json", FILE_READ);
+    String data_to_read;
+    data_to_read = ConfigFile.readString();
+    deserializeJson(ConfigJSON, data_to_read);
+    ConfigFile.close();
+    Group_Json_to_carac(ConfigJSON);
+#ifdef DEBUG_GROUPS
+    Serial.printf("Leyendo datos del grupo de la flash =\n%s\n",data_to_read.c_str());
+#endif
+    return true;
+}
+#endif
+
+#ifdef CONNECTED
+bool Config::Group_Store(){
+    DynamicJsonDocument ConfigJSON(1024);
+    Group_Carac_to_json(ConfigJSON);
+    ConfigFile = SPIFFS.open("/group.json", FILE_WRITE);
+    String data_to_store;
+    serializeJson(ConfigJSON, data_to_store);
+#ifdef DEBUG_GROUPS
+    Serial.printf("Guardando datos del grupo en la flash =\n%s\n",data_to_store.c_str());
+#endif
+    ConfigFile.print(data_to_store);
+    ConfigFile.close();
+    return true;
+}
+#endif
 
 Config Configuracion;

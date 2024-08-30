@@ -13,6 +13,8 @@ extern carac_Contador ContadorExt;
 extern carac_Params Params;
 extern carac_charger charger_table[MAX_GROUP_SIZE];
 
+extern uint8 Bloqueo_de_carga;
+
 static const char *TAG = "Wifi_Station";
 
 //Contador trifasico 
@@ -363,7 +365,7 @@ void Eth_Loop(){
 #endif
         xStart = xTaskGetTickCount();
         xFirstStart = xTaskGetTickCount();
-        SendToPSOC5(1, SEND_GROUP_DATA);
+        Get_Stored_Group_Params();
         Coms.ETH.finding = false;
         Coms.ETH.conectado = false;
         Coms.ETH.Wifi_Perm = false;
@@ -394,8 +396,9 @@ void Eth_Loop(){
                 }
             }
 
-            SendToPSOC5(2, SEND_GROUP_DATA);
-            SendToPSOC5(3, SEND_GROUP_DATA);
+            Get_Stored_Group_Data();
+            Get_Stored_Group_Circuits();
+
             delay(1000);
             start_udp();
 
@@ -490,12 +493,12 @@ void Eth_Loop(){
         }
 
         // Buscar el contador
-        /*if ((Coms.ETH.medidor || (ContadorConfigurado() && ChargingGroup.Params.GroupMaster && ChargingGroup.Conected)) && !Coms.ETH.finding){
+        if ((Coms.ETH.medidor || (ContadorConfigurado() && ChargingGroup.Params.GroupMaster && ChargingGroup.Conected)) && !Coms.ETH.finding){
             if (GetStateTime(xConnect) > 6000){
-                xTaskCreate(BuscarContador_Task, "BuscarContador", 4096 * 4, &Coms.ETH.finding, 5, NULL);
+			    SendToPSOC5(1, SEARCH_EXTERNAL_METER);
                 Coms.ETH.finding = true;
             }
-        }*/
+        }
         // Arrancar los grupos
         if (!ChargingGroup.Conected && (Coms.ETH.conectado || Coms.ETH.DHCP)){
             if (ChargingGroup.Params.GroupActive && GetStateTime(xConnect) > 1000){

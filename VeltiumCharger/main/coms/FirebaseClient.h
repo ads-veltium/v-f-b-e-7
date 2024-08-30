@@ -11,6 +11,7 @@ bool initFirebaseClient();
 void Firebase_Conn_Task(void *args);
 uint8_t deltaprogram(uint8_t s, uint8_t e);
 bool WriteFirebaseHistoric(char* buffer);
+bool WriteFirebaseLastRecord(char* rec);
 bool ReiniciarMultiusuario();
 
 #endif

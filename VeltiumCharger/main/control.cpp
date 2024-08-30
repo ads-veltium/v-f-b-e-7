@@ -41,7 +41,7 @@ carac_Contador ContadorExt   				 EXT_RAM_ATTR;
 carac_Firebase_Configuration ConfigFirebase  EXT_RAM_ATTR;
 carac_circuito Circuitos  [MAX_GROUP_SIZE] 	 EXT_RAM_ATTR;
 carac_group    ChargingGroup 				 EXT_RAM_ATTR;
-carac_charger  charger_table  [50] 			 EXT_RAM_ATTR;
+carac_charger  charger_table  [MAX_GROUP_SIZE] EXT_RAM_ATTR;
 carac_charger  temp_chargers[MAX_GROUP_SIZE] EXT_RAM_ATTR;
 carac_Schedule Schedule                      EXT_RAM_ATTR;
 uint8_t 	   temp_chargers_size 			 EXT_RAM_ATTR;
@@ -76,7 +76,7 @@ uint8 user_index_arrived=0;
 
 uint8 cnt_fin_bloque = 0;
 int estado_recepcion = 0;
-uint8 buffer_tx_local[256]  EXT_RAM_ATTR;
+//uint8 buffer_tx_local[256]  EXT_RAM_ATTR;
 uint8 buffer_rx_local[256]  EXT_RAM_ATTR;
 uint8 record_buffer[550]    EXT_RAM_ATTR;
 uint16 puntero_rx_local = 0;
@@ -100,9 +100,9 @@ uint16 cnt_diferencia = 1;
 uint8 HPT_estados[9][3] = {"0V", "A1", "A2", "B1", "B2", "C1", "C2", "E1", "F1"};
 
 #ifdef IS_UNO_KUBO
-uint8 ESP_version_firmware[11] = {"VBLE3_0610"};	   
+uint8 ESP_version_firmware[11] = {"VBLE3_0611"};	   
 #else
-uint8 ESP_version_firmware[11] = {"VBLE0_0610"};	
+uint8 ESP_version_firmware[11] = {"VBLE0_0611"};	
 #endif
 
 uint8 PSOC_version_firmware[11] ;		
@@ -507,7 +507,10 @@ void proceso_recepcion(void *arg){
 
 void procesar_bloque(uint16 tipo_bloque){
 	static int LastRecord =0;
-	switch(tipo_bloque){
+#ifdef DEBUG_UART
+		Serial.printf("Recibido bloque=%X. Buffer=[%s]\n",tipo_bloque,buffer_rx_local);
+#endif	
+	switch(tipo_bloque){	
 		case BLOQUE_INICIALIZACION:
 			if (!systemStarted && (buffer_rx_local[239]==0x36 || buffer_rx_local[238]==0x36)) { //Compatibilidad con 509
 				memcpy(device_ID, buffer_rx_local, 11);
@@ -713,7 +716,7 @@ void procesar_bloque(uint16 tipo_bloque){
 					//Si sale de C2 bloquear la siguiente carga
 					if(memcmp(&buffer_rx_local[1],"C2",2) && memcmp(&buffer_rx_local[1],"B2",2)){
 						if(Params.Tipo_Sensor || ChargingGroup.Conected){
-							if(!memcmp(status_hpt_anterior, "C",1)){
+							if(!memcmp(status_hpt_anterior, "C",1) || !memcmp(status_hpt_anterior, "B",1)){
 								Bloqueo_de_carga = true;
 								ChargingGroup.ChargPerm = false;
 								ChargingGroup.AskPerm = false;
@@ -778,6 +781,7 @@ void procesar_bloque(uint16 tipo_bloque){
 				modifyCharacteristic(&buffer_rx_local[46], 4, PHOTOVOLTAIC_TOTAL_POWER);
 				modifyCharacteristic(&buffer_rx_local[50], 4, PHOTOVOLTAIC_NET_POWER);
 				modifyCharacteristic(&buffer_rx_local[54], 1, MEASURES_APPARENT_POWER_CHAR_HANDLE);
+				modifyCharacteristic(&buffer_rx_local[55], 1, EXTERNAL_METER_POWER);
 					
 					Status.error_code = buffer_rx_local[13];
 					
@@ -793,6 +797,7 @@ void procesar_bloque(uint16 tipo_bloque){
 
 					int8_t buffer_total[4];
 					int8_t buffer_net[4];
+					int8_t buffer_external_meter[4];
 
 					buffer_total[0] = buffer_rx_local[46];
 					buffer_total[1] = buffer_rx_local[47];
@@ -804,11 +809,21 @@ void procesar_bloque(uint16 tipo_bloque){
 					buffer_net[2] = buffer_rx_local[52];
 					buffer_net[3] = buffer_rx_local[53];
 					
+					buffer_external_meter[0] = buffer_rx_local[55];
+					buffer_external_meter[1] = buffer_rx_local[56];
+					buffer_external_meter[2] = buffer_rx_local[57];
+					buffer_external_meter[3] = buffer_rx_local[58];
+
 					memcpy(&Status.total_power,buffer_total,4);
-#ifdef DEBUG_MEDIDOR
-					ESP_LOGI(TAG,"Potencia del contador recibida del PSoC=%i",Status.total_power);
-#endif
 					memcpy(&Status.net_power,buffer_net,4);
+					memcpy(&Status.external_meter_power,buffer_external_meter,4);
+					
+					ContadorExt.Power=Status.external_meter_power;  // Copiamos el valor de potencia recibido del medidor
+					ContadorExt.Power=1000*ContadorExt.Power;
+					
+#ifdef DEBUG_MEDIDOR
+					ESP_LOGI(TAG,"Potencia del contador recibida del PSoC=%i",Status.external_meter_power);
+#endif
 
 					Status.Trifasico= buffer_rx_local[44]==3;
 					
@@ -987,9 +1002,9 @@ void procesar_bloque(uint16 tipo_bloque){
 		break;
 		
 		case ENERGY_RECORD_RECORD_CHAR_HANDLE:{
-			#ifdef DEBUG
+#ifdef DEBUG
 			Serial.println("Total record received");
-			#endif
+#endif
 			memcpy(record_buffer,buffer_rx_local,20);
 
 			int j = 20;
@@ -1037,6 +1052,7 @@ void procesar_bloque(uint16 tipo_bloque){
 					
 					if(!serverbleGetConnected()){
 						WriteFirebaseHistoric((char*)buffer_rx_local);
+						WriteFirebaseLastRecord((char*)LastRecord);
 					}	
 				}
 			}
@@ -1075,40 +1091,32 @@ void procesar_bloque(uint16 tipo_bloque){
 		} 
 		break;
 
+#ifdef CONNECTED
 		case SEARCH_EXTERNAL_METER:{
-
 			ContadorExt.MedidorConectado = true;
 			Configuracion.data.medidor485 = buffer_rx_local[0];
-
 			#ifdef DEBUG
 			printf("El medidor RS485 se ha encontrado %d\n", (buffer_rx_local[0]));
 			#endif
 			if(buffer_rx_local[0]){//Se ha encontrado
-
 				ContadorExt.GatewayConectado = true;
 				Update_Status_Coms(MED_BUSCANDO_GATEWAY);
 				delay(20);
 				Update_Status_Coms(MED_BUSCANDO_MEDIDOR);
 				delay(20);
-				Update_Status_Coms(MED_LEYENDO_MEDIDOR);
-				
+				Update_Status_Coms(MED_LEYENDO_MEDIDOR);	
 			}
 			else{//NO se ha encontrado
-				
 				Update_Status_Coms(MED_BUSCANDO_GATEWAY);
 				delay(20);
 				Update_Status_Coms(0,MED_BLOCK);
 				ContadorExt.GatewayConectado = false;
 				ContadorExt.MedidorConectado = false;
-
 			}
-			
-			
-			
-
 		} 
 		break;
-		
+#endif		
+
 		case CONFIGURACION_AUTENTICATION_MODES_CHAR_HANDLE:{
 			
 			//comprobar si el dato tiene sentido, sino cargar el de mi memoria
@@ -1315,8 +1323,6 @@ void procesar_bloque(uint16 tipo_bloque){
 		} 
 		break;
 		
-		break;
-
 		case COMS_FW_UPDATEMODE_CHAR_HANDLE:{
 			memcpy(Params.Fw_Update_mode,buffer_rx_local,2);
 			Params.Fw_Update_mode[2]='\0';
@@ -1340,222 +1346,25 @@ void procesar_bloque(uint16 tipo_bloque){
 		break;
 
 		case GROUPS_DEVICES_PART_1:{
-			ChargingGroup.NewData = true;
-			temp_chargers_size = 0;
-			//Almacenado temporal del grupo
-			for(uint8_t i=0; i<ChargingGroup.Charger_number;i++){    
-				memcpy(temp_chargers[temp_chargers_size].name,charger_table[i].name,9);
-				memcpy(temp_chargers[temp_chargers_size].HPT,charger_table[i].HPT,3);
-				temp_chargers[temp_chargers_size].Current = charger_table[i].Current;
-				temp_chargers[temp_chargers_size].CurrentB = charger_table[i].CurrentB;
-				temp_chargers[temp_chargers_size].CurrentC = charger_table[i].CurrentC;
-
-				temp_chargers[temp_chargers_size].Delta = charger_table[i].Delta;
-				temp_chargers[temp_chargers_size].Consigna = charger_table[i].Consigna;
-				temp_chargers[temp_chargers_size].Delta_timer = charger_table[i].Delta_timer;
-				temp_chargers[temp_chargers_size].Fase = charger_table[i].Fase;
-				temp_chargers[temp_chargers_size].Circuito = charger_table[i].Circuito;
-				
-				temp_chargers_size ++;
-			}
-	
-			//Obtencion del grupo recibido desde el psoc
-            char n[2];
-            char ID[8];
-            memcpy(n,buffer_rx_local,2);
-            ChargingGroup.Charger_number=0;
-            uint8_t limit = atoi(n) > 25? 25: atoi(n);
-			
-            for(uint8_t i=0; i<limit;i++){    
-                for(uint8_t j =0; j< 8; j++){
-                    ID[j]=(char)buffer_rx_local[2+i*9+j];
-                }
-				add_to_group(ID, get_IP(ID), charger_table, &ChargingGroup.Charger_number);
-#ifdef DEBUG_GROUPS
-				Serial.printf("Crudo fase y circuito PSoC %s %i %i %i\n", ID, buffer_rx_local[10 + i * 9], uint8_t(buffer_rx_local[10 + i * 9]) & 0x03, uint8_t(buffer_rx_local[10 + i * 9]) >> 2);
-#endif
-				charger_table[i].Fase = (buffer_rx_local[10+i*9]) & 0x03;
-				charger_table[i].Circuito = (buffer_rx_local[10+i*9]) >> 2;
-
-				uint8_t index =check_in_group(ID, temp_chargers, temp_chargers_size);
-				if(index != 255){
-					memcpy(charger_table[i].HPT,temp_chargers[index].HPT,3);
-					charger_table[i].Current = temp_chargers[index].Current;
-					charger_table[i].CurrentB = temp_chargers[index].CurrentB;
-					charger_table[i].CurrentC = temp_chargers[index].CurrentC;
-					charger_table[i].Delta = temp_chargers[index].Delta;
-					charger_table[i].Consigna = temp_chargers[index].Consigna;
-					charger_table[i].Delta_timer = temp_chargers[index].Delta_timer;
-				}
-
-                if(!memcmp(ID,ConfigFirebase.Device_Id,8)){
-                    charger_table[i].Conected = true;
-                }
-            }
-
-            //Si tenemos mas de 25, las comprobaciones del grupo las realizamos en la segunda parte
-            if(atoi(n)>25){
-                break;
-            }
-
-            //si llega un grupo en el que no estoy, significa que me han sacado de el
-            //cierro el coap y borro el grupo
-            if(check_in_group(ConfigFirebase.Device_Id,charger_table,ChargingGroup.Charger_number ) == 255){
-                if(ChargingGroup.Conected){
-#ifdef DEBUG_GROUPS
-			Serial.printf("control - procesar_bloque: GROUPS_DEVICES_PART_1 - No estoy en el grupo !! \n");
-			print_table(charger_table, "No en grupo table 1", ChargingGroup.Charger_number);
-#endif
-					ChargingGroup.DeleteOrder = true;
-                }
-            }
-
-            //Ponerme el primero en el grupo para indicar que soy el maestro
-            if(ChargingGroup.Params.GroupMaster){
-                if(memcmp(charger_table[0].name,ConfigFirebase.Device_Id, 8)){
-                    if(ChargingGroup.Charger_number > 0 && check_in_group(ConfigFirebase.Device_Id,charger_table,ChargingGroup.Charger_number ) != 255){
-                        while(memcmp(charger_table[0].name,ConfigFirebase.Device_Id, 8)){
-                            carac_charger OldMaster=charger_table[0];
-                            remove_from_group(OldMaster.name, charger_table, &ChargingGroup.Charger_number);
-                            add_to_group(OldMaster.name, OldMaster.IP, charger_table,  &ChargingGroup.Charger_number);
-                            charger_table[ChargingGroup.Charger_number-1].Fase=OldMaster.Fase;
-							charger_table[ChargingGroup.Charger_number-1].Circuito =OldMaster.Circuito;
-							charger_table[ChargingGroup.Charger_number-1].Current = OldMaster.Current;
-							charger_table[ChargingGroup.Charger_number-1].CurrentB = OldMaster.CurrentB;
-							charger_table[ChargingGroup.Charger_number-1].CurrentC = OldMaster.CurrentC;
-							charger_table[ChargingGroup.Charger_number-1].Consigna = OldMaster.Consigna;
-							charger_table[ChargingGroup.Charger_number-1].Delta = OldMaster.Delta;
-							charger_table[ChargingGroup.Charger_number-1].Delta_timer = OldMaster.Delta_timer;
-							memcpy(charger_table[ChargingGroup.Charger_number-1].HPT, OldMaster.HPT, 3);
-                        }
-                        ChargingGroup.SendNewGroup = true;
-                    }
-                }
-                //si soy el maestro, avisar a los nuevos de que son parte de mi grupo
-                broadcast_a_grupo("Start client", 12);
-            }
-#ifdef DEBUG_GROUPS
-			Serial.printf("control - procesar_bloque: GROUPS_DEVICES_PART_1\n");
-			print_table(charger_table, "Grupo desde PSOC", ChargingGroup.Charger_number);
-#endif
+			Serial.printf("GROUPS_DEVICES_PART_1 : AQUÍ NO SE HACE NADA\n");
 		}
-        break;
-
+		break;
+		
         //Segunda parte del grupo de cargadores
         case GROUPS_DEVICES_PART_2:{
-#ifdef DEBUG_GROUPS
-			Serial.printf("control - procesar_bloque: GROUPS_DEVICES_PART_2 - Segunda parte del grupo\n");
-#endif
-            char n[2];
-            char ID[8];
-            memcpy(n,buffer_rx_local,2);
-            
-            for(uint8_t i=0; i<atoi(n);i++){    
-                for(uint8_t j =0; j< 8; j++){
-                    ID[j]=(char)buffer_rx_local[2+i*9+j];
-                }
-                add_to_group(ID, get_IP(ID), charger_table,  &ChargingGroup.Charger_number);
-                charger_table[i].Fase = (buffer_rx_local[10+i*9]-'0') & 0x03;
-				charger_table[i].Circuito = (buffer_rx_local[10+i*9]-'0') >> 2;
-
-				uint8_t index =check_in_group(ID, temp_chargers, temp_chargers_size);
-				if(index != 255){
-					memcpy(charger_table[i].HPT,temp_chargers[index].HPT,3);
-					charger_table[i].Current = temp_chargers[index].Current;
-					charger_table[i].CurrentB = temp_chargers[index].CurrentB;
-					charger_table[i].CurrentC = temp_chargers[index].CurrentC;
-					charger_table[i].Delta = temp_chargers[index].Delta;
-					charger_table[i].Consigna = temp_chargers[index].Consigna;
-					charger_table[i].Delta_timer = temp_chargers[index].Delta_timer;
-				}
-            }
-
-            //si llega un grupo en el que no estoy, significa que me han sacado de el
-            //cierro el coap y borro el grupo
-            if(check_in_group(ConfigFirebase.Device_Id,charger_table, ChargingGroup.Charger_number ) == 255){
-                if(ChargingGroup.Conected){
-#ifdef DEBUG_GROUPS
-			Serial.printf("control - procesar_bloque: GROUPS_DEVICES_PART_2 - No estoy en el grupo !!\n");
-#endif
-                    ChargingGroup.DeleteOrder = true;
-                }
-            }
-
-            //Ponerme el primero en el grupo para indicar que soy el maestro
-            if(ChargingGroup.Params.GroupMaster){
-                if(memcmp(charger_table[0].name,ConfigFirebase.Device_Id, 8)){
-                    if(ChargingGroup.Charger_number > 0 && check_in_group(ConfigFirebase.Device_Id,charger_table,ChargingGroup.Charger_number ) != 255){
-                        while(memcmp(charger_table[0].name,ConfigFirebase.Device_Id, 8)){
-                            carac_charger OldMaster=charger_table[0];
-                            remove_from_group(OldMaster.name, charger_table, &ChargingGroup.Charger_number);
-                            add_to_group(OldMaster.name, OldMaster.IP, charger_table,  &ChargingGroup.Charger_number);
-                            charger_table[ChargingGroup.Charger_number-1].Fase=OldMaster.Fase;
-							charger_table[ChargingGroup.Charger_number-1].Circuito =OldMaster.Circuito;
-							charger_table[ChargingGroup.Charger_number-1].Current = OldMaster.Current;
-							charger_table[ChargingGroup.Charger_number-1].CurrentB = OldMaster.CurrentB;
-							charger_table[ChargingGroup.Charger_number-1].CurrentC = OldMaster.CurrentC;
-							charger_table[ChargingGroup.Charger_number-1].Consigna = OldMaster.Consigna;
-							charger_table[ChargingGroup.Charger_number-1].Delta = OldMaster.Delta;
-							charger_table[ChargingGroup.Charger_number-1].Delta_timer = OldMaster.Delta_timer;
-							memcpy(charger_table[ChargingGroup.Charger_number-1].HPT, OldMaster.HPT, 3);
-                        }
-                        ChargingGroup.SendNewGroup = true;
-                    }
-                }
-                //si soy el maestro, avisar a los nuevos de que son parte de mi grupo
-                broadcast_a_grupo("Start client", 12);
-            }
-#ifdef DEBUG_GROUPS
-			Serial.printf("control - procesar_bloque: GROUPS_DEVICES_PART_2\n");
-			print_table(charger_table, "Grupo desde PSOC", ChargingGroup.Charger_number);
-#endif
-			break;
-        }
-
-
+			Serial.printf("GROUPS_DEVICES_PART_2 : AQUÍ NO SE HACE NADA\n");
+		}
+		break;
+	
 		case GROUPS_PARAMS:{	
+			Serial.printf("GROUPS_PARAMS : AQUÍ NO SE HACE NADA\n");
+		}
+		break;
 		
-			ChargingGroup.NewData = true;
-			ChargingGroup.Params.GroupMaster = buffer_rx_local[0];
-
-			if(ChargingGroup.Params.GroupActive && !buffer_rx_local[1]){
-				ChargingGroup.StopOrder = true;
-			}
-			ChargingGroup.Params.GroupActive = buffer_rx_local[1];
-			
-			ChargingGroup.Params.CDP = buffer_rx_local[2];
-			ChargingGroup.Params.ContractPower = buffer_rx_local[3] + buffer_rx_local[4] *0x100 ;
-			ChargingGroup.Params.potencia_max = buffer_rx_local[5] + buffer_rx_local[6] *0x100 ;
-
-#ifdef DEBUG_GROUPS
-			Serial.printf("control - procesar_bloque: GROUPS_PARAMS: ChargingGroup.Params.GroupActive %i \n", ChargingGroup.Params.GroupActive);
-			Serial.printf("control - procesar_bloque: GROUPS_PARAMS: ChargingGroup.Params.GroupMaster %i \n", ChargingGroup.Params.GroupMaster);
-			Serial.printf("control - procesar_bloque: GROUPS_PARAMS: ChargingGroup.Params.potencia_max %i \n", ChargingGroup.Params.potencia_max);
-			Serial.printf("control - procesar_bloque: GROUPS_PARAMS: ChargingGroup.Params.ContractPower %i \n", ChargingGroup.Params.ContractPower);
-			Serial.printf("control - procesar_bloque: GROUPS_PARAMS: ChargingGroup.Params.CDP %i \n", ChargingGroup.Params.CDP);
-			Serial.printf("control - procesar_bloque: GROUPS_PARAMS: ChargingGroup.Params.inst_max %i \n", ChargingGroup.Params.inst_max);
-#endif
-			break;
-		}
-
 		case GROUPS_CIRCUITS:{
-
-			ChargingGroup.NewData = true;
-			int numero_circuitos = buffer_rx_local[0];
-			ChargingGroup.Circuit_number = numero_circuitos;
-			for(int i=0;i< numero_circuitos;i++){
-				Circuitos[i].numero = i+1;
-				Circuitos[i].Fases[0].numero = 1;
-				Circuitos[i].Fases[1].numero = 2;
-				Circuitos[i].Fases[2].numero = 3;
-            	Circuitos[i].limite_corriente = buffer_rx_local[i+1];
-#ifdef DEBUG_GROUPS
-				Serial.printf("control - procesar_bloque: GROUPS_CIRCUITS: Circuito %i limite_corriente %i \n", i, Circuitos[i].limite_corriente);
-#endif
-			}
-			break;
-			
+			Serial.printf("GROUPS_CIRCUITS : AQUÍ NO SE HACE NADA\n");
 		}
+		break;
 
 		case BLOQUEO_CARGA:{
 #ifdef DEBUG_GROUPS
@@ -1592,7 +1401,7 @@ void procesar_bloque(uint16 tipo_bloque){
 				if(ContadorExt.MedidorConectado){
 					Bloqueo_de_carga = false;
 #ifdef DEBUG_GROUPS
-					Serial.printf("procesar_bloque - BLOQUEO_CARGA. else final. Bloqueo_de_carga = false\n");
+					Serial.printf("procesar_bloque - BLOQUEO_CARGA. MedidorConectado. Bloqueo_de_carga = false\n");
 #endif
 				}
 			}
@@ -1610,8 +1419,9 @@ void procesar_bloque(uint16 tipo_bloque){
 				Serial.printf("procesar_bloque - BLOQUEO_CARGA. Se envía Bloqueo_de_carga = %i al PSoC\n", Bloqueo_de_carga);
 #endif
 			}
-			break;
 		}
+		break;
+
 #endif
 		case CLEAR_FLASH_SPACE:
 			Serial.printf("Se ha borrado la caracteristica %i de la flash!\n", buffer_rx_local[0]);
@@ -1708,10 +1518,171 @@ void controlInit(void){
 	//Freertos estatico
 	xTaskCreateStatic(controlTask,"TASK CONTROL",4096*6,NULL,PRIORIDAD_CONTROL,xControlStack,&xControlBuffer); 
 	xTaskCreateStatic(proceso_recepcion,"TASK UART",4096*6,NULL,PRIORIDAD_UART,xUartStack,&xUartBuffer); 
-	#ifdef CONNECTED
-		xTaskCreate(ComsTask,"Task Coms",4096*4,NULL,PRIORIDAD_COMS,NULL);
-		vTaskDelay(pdMS_TO_TICKS(500));
-		xTaskCreateStatic(Firebase_Conn_Task,"TASK FIREBASE", 4096*6,NULL,PRIORIDAD_FIREBASE,xFirebaseStack , &xFirebaseBuffer );
-
-	#endif
+#ifdef CONNECTED
+	xTaskCreate(ComsTask,"Task Coms",4096*4,NULL,PRIORIDAD_COMS,NULL);
+	vTaskDelay(pdMS_TO_TICKS(500));
+	xTaskCreateStatic(Firebase_Conn_Task,"TASK FIREBASE", 4096*6,NULL,PRIORIDAD_FIREBASE,xFirebaseStack , &xFirebaseBuffer );
+#endif
 }
+
+
+#ifdef CONNECTED
+void Get_Stored_Group_Data(){
+  char n[2];
+  char ID[9];
+  uint8 buffer_group[MAX_GROUP_BUFFER_SIZE];
+
+  ChargingGroup.NewData = true;
+  temp_chargers_size = 0;
+  // Almacenado temporal del grupo
+  for (uint8_t i = 0; i < ChargingGroup.Charger_number; i++){
+    memcpy(temp_chargers[temp_chargers_size].name, charger_table[i].name, 9);
+    memcpy(temp_chargers[temp_chargers_size].HPT, charger_table[i].HPT, 3);
+    temp_chargers[temp_chargers_size].Current = charger_table[i].Current;
+    temp_chargers[temp_chargers_size].CurrentB = charger_table[i].CurrentB;
+    temp_chargers[temp_chargers_size].CurrentC = charger_table[i].CurrentC;
+    temp_chargers[temp_chargers_size].Delta = charger_table[i].Delta;
+    temp_chargers[temp_chargers_size].Consigna = charger_table[i].Consigna;
+    temp_chargers[temp_chargers_size].Delta_timer = charger_table[i].Delta_timer;
+    temp_chargers[temp_chargers_size].Fase = charger_table[i].Fase;
+    temp_chargers[temp_chargers_size].Circuito = charger_table[i].Circuito;
+
+    temp_chargers_size++;
+  }
+
+  // Obtencion de datos grupo desde la flash
+  Configuracion.Group_Cargar = true;
+  delay (500);
+  memcpy(buffer_group,Configuracion.group_data.group,MAX_GROUP_BUFFER_SIZE);
+  memcpy(n,Configuracion.group_data.group, 2);
+
+#ifdef DEBUG_GROUPS
+  Serial.printf("Buffer group leido de configuracion=[%s]\n", buffer_group);
+#endif
+
+  ChargingGroup.Charger_number = 0;
+  uint8_t limit = atoi(n);
+
+  for (uint8_t i = 0; i < limit; i++){
+    for (uint8_t j = 0; j < 8; j++){
+      ID[j] = (char)buffer_group[2 + i * 9 + j];
+    }
+    ID[8] = '\0';
+    add_to_group(ID, get_IP(ID), charger_table, &ChargingGroup.Charger_number);
+#ifdef DEBUG_GROUPS
+    Serial.printf("Crudo fase y circuito PSoC %s %i %i %i\n", ID, uint8_t(buffer_group[10 + i * 9]), uint8_t(buffer_group[10 + i * 9]) & 0x03, uint8_t(buffer_group[10 + i * 9]) >> 2);
+#endif
+    charger_table[i].Fase = (buffer_group[10 + i * 9]) & 0x03;
+    charger_table[i].Circuito = (buffer_group[10 + i * 9]) >> 2;
+
+    uint8_t index = check_in_group(ID, temp_chargers, temp_chargers_size);
+    if (index != 255){
+      memcpy(charger_table[i].HPT, temp_chargers[index].HPT, 3);
+      charger_table[i].Current = temp_chargers[index].Current;
+      charger_table[i].CurrentB = temp_chargers[index].CurrentB;
+      charger_table[i].CurrentC = temp_chargers[index].CurrentC;
+      charger_table[i].Delta = temp_chargers[index].Delta;
+      charger_table[i].Consigna = temp_chargers[index].Consigna;
+      charger_table[i].Delta_timer = temp_chargers[index].Delta_timer;
+    }
+
+    if (!memcmp(ID, ConfigFirebase.Device_Id, 8)){
+      charger_table[i].Conected = true;
+    }
+  }
+
+  // si llega un grupo en el que no estoy, significa que me han sacado de el
+  // cierro el coap y borro el grupo
+  if (check_in_group(ConfigFirebase.Device_Id, charger_table, ChargingGroup.Charger_number) == 255){
+    if (ChargingGroup.Conected){
+#ifdef DEBUG_GROUPS
+      Serial.printf("control - procesar_bloque:  - No estoy en el grupo !! \n");
+      print_table(charger_table, "No en grupo table 1", ChargingGroup.Charger_number);
+#endif
+      ChargingGroup.DeleteOrder = true;
+    }
+  }
+
+  // Ponerme el primero en el grupo para indicar que soy el maestro
+  if (ChargingGroup.Params.GroupMaster){
+    if (memcmp(charger_table[0].name, ConfigFirebase.Device_Id, 8)){
+      if (ChargingGroup.Charger_number > 0 && check_in_group(ConfigFirebase.Device_Id, charger_table, ChargingGroup.Charger_number) != 255){
+        while (memcmp(charger_table[0].name, ConfigFirebase.Device_Id, 8)){
+          carac_charger OldMaster = charger_table[0];
+          remove_from_group(OldMaster.name, charger_table, &ChargingGroup.Charger_number);
+          add_to_group(OldMaster.name, OldMaster.IP, charger_table, &ChargingGroup.Charger_number);
+          charger_table[ChargingGroup.Charger_number - 1].Fase = OldMaster.Fase;
+          charger_table[ChargingGroup.Charger_number - 1].Circuito = OldMaster.Circuito;
+          charger_table[ChargingGroup.Charger_number - 1].Current = OldMaster.Current;
+          charger_table[ChargingGroup.Charger_number - 1].CurrentB = OldMaster.CurrentB;
+          charger_table[ChargingGroup.Charger_number - 1].CurrentC = OldMaster.CurrentC;
+          charger_table[ChargingGroup.Charger_number - 1].Consigna = OldMaster.Consigna;
+          charger_table[ChargingGroup.Charger_number - 1].Delta = OldMaster.Delta;
+          charger_table[ChargingGroup.Charger_number - 1].Delta_timer = OldMaster.Delta_timer;
+          memcpy(charger_table[ChargingGroup.Charger_number - 1].HPT, OldMaster.HPT, 3);
+        }
+        ChargingGroup.SendNewGroup = true;
+      }
+    }
+    // si soy el maestro, avisar a los nuevos de que son parte de mi grupo
+    broadcast_a_grupo("Start client", 12);
+  }
+#ifdef DEBUG_GROUPS
+  print_table(charger_table, "Grupo en FLASH", ChargingGroup.Charger_number);
+#endif
+
+}
+#endif
+
+#ifdef CONNECTED
+void Get_Stored_Group_Params(){
+	uint8 buffer_params[SIZE_OF_GROUP_PARAMS];
+
+	ChargingGroup.NewData = true;
+	Configuracion.Group_Cargar = true;
+	delay(500);
+	memcpy(buffer_params, Configuracion.group_data.params, SIZE_OF_GROUP_PARAMS);
+
+	ChargingGroup.Params.GroupMaster = buffer_params[0];
+	if (ChargingGroup.Params.GroupActive && !buffer_params[1]){
+		ChargingGroup.StopOrder = true;
+	}
+	ChargingGroup.Params.GroupActive = buffer_params[1];
+	ChargingGroup.Params.CDP = buffer_params[2];
+	ChargingGroup.Params.ContractPower = buffer_params[3] + buffer_params[4] * 0x100;
+	ChargingGroup.Params.potencia_max = buffer_params[5] + buffer_params[6] * 0x100;
+
+#ifdef DEBUG_GROUPS
+	Serial.printf("control - Get_Stored_Group_Params: ChargingGroup.Params.GroupActive %i \n", ChargingGroup.Params.GroupActive);
+	Serial.printf("control - Get_Stored_Group_Params: ChargingGroup.Params.GroupMaster %i \n", ChargingGroup.Params.GroupMaster);
+	Serial.printf("control - Get_Stored_Group_Params: ChargingGroup.Params.potencia_max %i \n", ChargingGroup.Params.potencia_max);
+	Serial.printf("control - Get_Stored_Group_Params: ChargingGroup.Params.ContractPower %i \n", ChargingGroup.Params.ContractPower);
+	Serial.printf("control - Get_Stored_Group_Params: ChargingGroup.Params.CDP %i \n", ChargingGroup.Params.CDP);
+	Serial.printf("control - Get_Stored_Group_Params: ChargingGroup.Params.inst_max %i \n", ChargingGroup.Params.inst_max);
+#endif
+}
+#endif
+
+#ifdef CONNECTED
+void Get_Stored_Group_Circuits(){
+	uint8 buffer_circuits[MAX_GROUP_SIZE];
+	ChargingGroup.NewData = true;
+	
+	Configuracion.Group_Cargar = true;
+	delay(500);
+	memcpy(buffer_circuits, Configuracion.group_data.circuits, MAX_GROUP_SIZE);
+
+	int numero_circuitos = buffer_circuits[0];
+	ChargingGroup.Circuit_number = numero_circuitos;
+	for (int i = 0; i < numero_circuitos; i++){
+		Circuitos[i].numero = i + 1;
+		Circuitos[i].Fases[0].numero = 1;
+		Circuitos[i].Fases[1].numero = 2;
+		Circuitos[i].Fases[2].numero = 3;
+		Circuitos[i].limite_corriente = buffer_circuits[i + 1];
+#ifdef DEBUG_GROUPS
+		Serial.printf("Get_Stored_Group_Circuits: GROUPS_CIRCUITS: Circuito %i limite_corriente %i \n", i, Circuitos[i].limite_corriente);
+#endif
+	}
+}
+#endif

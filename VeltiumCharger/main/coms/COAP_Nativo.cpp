@@ -38,6 +38,8 @@ extern carac_Comands  Comands ;
 extern carac_circuito Circuitos[MAX_GROUP_SIZE];
 extern carac_Contador ContadorExt;
 
+extern uint8 Bloqueo_de_carga;
+
 static StackType_t xServerStack [4096*4]     EXT_RAM_ATTR;
 static StackType_t xLimitStack [4096*4]     EXT_RAM_ATTR;
 static StackType_t xClientStack [4096*4]     EXT_RAM_ATTR;
@@ -1290,7 +1292,7 @@ void coap_start_server(){
                 charger_table[ChargingGroup.Charger_number-1].Fase=OldMaster.Fase;
                 charger_table[ChargingGroup.Charger_number-1].Circuito =OldMaster.Circuito;
             }
-            store_group_in_mem(charger_table, ChargingGroup.Charger_number);
+            //store_group_in_mem(charger_table, ChargingGroup.Charger_number);
         }
         else{
             //Si el grupo está vacio o el cargador no está en el grupo,
