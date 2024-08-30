@@ -810,7 +810,7 @@ typedef struct{
 #define PHOTOVOLTAIC_TOTAL_POWER           (0X00E7U)
 #define PHOTOVOLTAIC_NET_POWER             (0X00E9U)
 
-#define EXTERNAL_METER_POWER	           (0X00EAU)			
+#define EXTERNAL_METER_POWER	           (0X00EBU)			
 
 #endif
 
