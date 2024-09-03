@@ -566,12 +566,10 @@ void LimiteConsumo(void *p){
             if(charger_table[i].trifasico ){ //Si el equipo estaba detectado como trifasico, debemos tener en cuenta el triple de corriente
               float reparto = (corriente_disponible_limitada) / (conex_con_tri+3);
               if(reparto >= 6){
-                Serial.printf("Entra en el grupo!\n");
                 //Compruebo si entraria en el circuito           
                 if(Circuitos[charger_table[i].Circuito-1].limite_corriente / (Circuitos[charger_table[i].Circuito-1].Fases[0].conex +1 )> 6){
                   if(Circuitos[charger_table[i].Circuito-1].limite_corriente / (Circuitos[charger_table[i].Circuito-1].Fases[1].conex +1 )> 6){
                     if(Circuitos[charger_table[i].Circuito-1].limite_corriente / (Circuitos[charger_table[i].Circuito-1].Fases[2].conex +1 )> 6){
-                        Serial.printf("Entra en el circuito!\n");
 #ifdef DEBUG_GROUPS
                         Serial.printf("group_control - LimiteConsumo: EQUILIBRADO PASAMOS A %s DE %s A C2\n", charger_table[i].name, charger_table[i].HPT);
 #endif
@@ -592,10 +590,8 @@ void LimiteConsumo(void *p){
               }
             }
             else if((corriente_disponible_limitada) / (conex_con_tri+1) >= 6){
-              Serial.printf("Entra en el grupo!\n");
               //Compruebo si entraria en el circuito           
                if(Circuitos[charger_table[i].Circuito-1].limite_corriente / (Circuitos[charger_table[i].Circuito-1].Fases[charger_table[i].Fase-1].conex +1 )> 6){
-                Serial.printf("Entra en el circuito!\n");
 #ifdef DEBUG_GROUPS
                 Serial.printf("group_control - LimiteConsumo: EQUILIBRADO_2 PASAMOS A %s DE %s A C2\n", charger_table[i].name, charger_table[i].HPT);
 #endif

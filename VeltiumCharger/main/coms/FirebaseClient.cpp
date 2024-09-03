@@ -592,7 +592,7 @@ bool ReadFirebaseShedule(String Path){
       }
 
       SendToPSOC5((uint8_t)alguna_activa, CHARGING_INSTANT_DELAYED_CHAR_HANDLE);
-      SendToPSOC5(plainMatrix, 168, SCHED_CHARGING_SCHEDULE_MATRIX_CHAR_HANDLE);
+      SendScheduleMatrixToPSOC5(plainMatrix);
 
       Schedule.last_ts_app_req=ts_app_req;
 

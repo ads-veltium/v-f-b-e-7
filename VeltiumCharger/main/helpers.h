@@ -34,6 +34,9 @@ void SendToPSOC5(uint8 *data, uint16 len, uint16 attrHandle);
 //Caso especial para enviar el status al psoc5
 void SendStatusToPSOC5(uint8_t connected, uint8_t inicializado, uint8_t comm_type);
 
+//Envío de la matriz de planificaciones
+void SendScheduleMatrixToPSOC5(uint8_t *data);
+
 //Caso especial para enviar firmware al psoc5
 uint8_t sendBinaryBlock ( uint8_t *data, int len );
 

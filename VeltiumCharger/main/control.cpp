@@ -781,7 +781,7 @@ void procesar_bloque(uint16 tipo_bloque){
 				modifyCharacteristic(&buffer_rx_local[46], 4, PHOTOVOLTAIC_TOTAL_POWER);
 				modifyCharacteristic(&buffer_rx_local[50], 4, PHOTOVOLTAIC_NET_POWER);
 				modifyCharacteristic(&buffer_rx_local[54], 1, MEASURES_APPARENT_POWER_CHAR_HANDLE);
-				modifyCharacteristic(&buffer_rx_local[55], 1, EXTERNAL_METER_POWER);
+				modifyCharacteristic(&buffer_rx_local[55], 4, EXTERNAL_METER_POWER);
 					
 					Status.error_code = buffer_rx_local[13];
 					
