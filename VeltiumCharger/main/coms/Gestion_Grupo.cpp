@@ -154,7 +154,6 @@ void store_group_in_mem(carac_charger* group, uint8_t size){
         delay(500);
     }
 	delay(500);
-
     return;
 }
 

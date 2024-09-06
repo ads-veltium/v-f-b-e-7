@@ -56,6 +56,8 @@ String FIREBASE_PROJECT = FIREBASE_DEV_PROJECT;
 #endif
 #endif
 
+unsigned long previousMillis = 0;
+
 /*************************
  Client control functions
 *************************/
@@ -436,6 +438,57 @@ bool WriteFirebaseLastRecord(char *rec){
   return true;
 }
 
+bool WriteFirebaseGroupData(String Path){
+  DynamicJsonDocument Escritura(2048);
+  Escritura.clear();
+
+  Escritura["params/master"] = (ChargingGroup.Params.GroupMaster == 1) ? true : false;
+  Escritura["params/active"] = (ChargingGroup.Params.GroupActive == 1) ? true : false;
+  Escritura["params/cdp"] = ChargingGroup.Params.CDP;
+  Escritura["status/chargers"] = ChargingGroup.Charger_number;
+  Escritura["status/circuits"] = ChargingGroup.Circuit_number;
+  Escritura["status/connected"] = (ChargingGroup.Conected == 1) ? true : false;
+
+    Escritura["params/max_dynamic_power"] = ChargingGroup.Params.ContractPower;
+    Escritura["params/max_static_power"] = ChargingGroup.Params.potencia_max;
+
+  if (ChargingGroup.Params.GroupMaster){
+    //Escritura["params/max_dynamic_power"] = ChargingGroup.Params.ContractPower;
+    //Escritura["params/max_static_power"] = ChargingGroup.Params.potencia_max;
+    JsonObject estructura = Escritura.createNestedObject("struct");
+    // Recorrer charger_table desde el primero hasta el valor 'n'
+    for (int i = 0; i < ChargingGroup.Charger_number; i++){
+      // Crear un campo para cada cargador dentro de "estructura"
+      JsonObject chargerObj = estructura.createNestedObject(charger_table[i].name);
+      // Añadir "circuito" y "fase" para cada cargador
+      chargerObj["circuit"] = charger_table[i].Circuito;
+      chargerObj["phase"] = charger_table[i].Fase;
+      chargerObj["setpoint"] = charger_table[i].Consigna;
+      chargerObj["hpt"] = charger_table[i].HPT;
+      chargerObj["current"] = charger_table[i].Current;
+    }
+  }
+  else {
+    JsonObject estructura = Escritura.createNestedObject("struct");
+    //JsonObject estructura = Escritura.createNestedObject("params/max_dynamic_power");
+    //JsonObject estructura = Escritura.createNestedObject("params/max_static_power");
+  }
+
+  ip4_addr_t addr;
+  addr.addr = ChargingGroup.MasterIP;
+  Escritura["status/masterIP"] = ip4addr_ntoa(&addr);
+  //Escritura["status/masterIP"]     = ip4addr_ntoa(&ChargingGroup.MasterIP);
+  
+  if(Database->Send_Command(Path,&Escritura,UPDATE)){     
+    if(Database->Send_Command(Path+"/ts_dev_ack",&Escritura,TIMESTAMP)){
+      return true;
+    }
+  }
+
+  return false;
+}
+
+
 /***************************************************
   Funciones de lectura
 ***************************************************/
@@ -782,6 +835,17 @@ bool ReadFirebaseUpdatePeriod(){
     return false;
 }
 
+bool ReadFirebaseGroupsDebug(){
+  Lectura.clear();
+  if(Database->Send_Command("/prod/global_vars/groups_debug",&Lectura, READ_FW)){
+    ConfigFirebase.GroupsDebug = Lectura.as<uint8>() * 1000;
+    ESP_LOGI(TAG,"ConfigFirebase.GroupsDebug=%i",ConfigFirebase.GroupsDebug);
+    return true;
+  }
+  else 
+    return false;
+}
+
 /*****************************************************
  *              Sistema de Actualización
  *****************************************************/
@@ -1064,6 +1128,10 @@ void Firebase_Conn_Task(void *args){
         ConfigFirebase.PeriodoFWUpdate = FB_DEFAULT_CHECK_UPDATES_PERIOD;
       }
 
+      if(!ReadFirebaseGroupsDebug()){
+        ConfigFirebase.GroupsDebug = 0;
+      }
+
 #ifdef USE_GROUPS
       if(ChargingGroup.Params.GroupActive){
         //comprobar si han borrado el grupo mientras estabamos desconectados
@@ -1188,7 +1256,15 @@ void Firebase_Conn_Task(void *args){
           }
         }
       }
-      
+
+      if (ConfigFirebase.GroupsDebug){
+        unsigned long currentMillis = pdTICKS_TO_MS(xTaskGetTickCount());
+        if (currentMillis - previousMillis >= GROUPS_DEBUG_INTERVAL){
+          previousMillis = currentMillis;
+          Error_Count += !WriteFirebaseGroupData("/group_data");
+        }
+      }
+
       break;
 
     /*********************** Usuario conectado **********************/
@@ -1285,7 +1361,6 @@ void Firebase_Conn_Task(void *args){
         ConfigFirebase.UserReseted = 1;
         
       }
-        
 
       //Comprobar actualizaciones manuales
       if(Comands.fw_update){

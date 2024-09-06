@@ -73,6 +73,7 @@
 #define MAX_GROUP_SIZE			40 // 40 
 #define MAX_GROUP_BUFFER_SIZE	(9*MAX_GROUP_SIZE)+2 // 362
 #define SIZE_OF_GROUP_PARAMS    7 // Número de parámetros
+#define GROUPS_DEBUG_INTERVAL 	5000 //5 segundos
 
 typedef	uint8_t			uint8;
 typedef	uint16_t		uint16;
@@ -293,6 +294,7 @@ typedef struct{
 	uint16_t PeriodoLectura = FB_DEFAULT_READING_PERIOD;
 	uint16_t PeriodoFWUpdate = FB_DEFAULT_CHECK_UPDATES_PERIOD;
 
+	uint8_t GroupsDebug = 0;
 }carac_Firebase_Configuration;
 
 typedef struct{
@@ -840,11 +842,6 @@ const uint8_t DNS_BACKUP_SERVER_IP[]={8,8,4,4};
 // ACTUALIZACION DE FW
 #define PSOC_UPDATE_FILE "/FW_PSoC6_v7.cyacd2"
 #define PSOC_UPDATE_OLD_FILE "/FW_PSoC6_v7_old.cyacd2"
-
-
-
-// MAX_GROUP_SIZE se reduce de 40 a 24 por la limitacion en el buffer FIFO de la UART del PSoC6, de 128 bytes
-// Para aumentar el tamaño hay que implementar más mensajes de envío de los grupos entre ESP y PSOC o almacenar en ESP
 
 /* [] END OF FILE */
 
