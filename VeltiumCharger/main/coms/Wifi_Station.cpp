@@ -507,14 +507,9 @@ void Eth_Loop(){
                         coap_start_client();
                     }
                     else{
-                        if (ChargingGroup.Params.GroupMaster)
-                        {
+                        if (ChargingGroup.Params.GroupMaster){
                             coap_start_server();
                         }
-                        /*      // ADS - eliminado el arranque del server y el else - ¿TIENE SENTIDO ARRANCAR AQUÍ EL SERVER ?
-                        else if(GetStateTime(xConnect) > 5000){
-                            coap_start_server();
-                        }  */
                     }
                 }
             }

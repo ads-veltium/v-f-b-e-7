@@ -233,12 +233,12 @@ void start_udp(){
 #ifdef DEBUG_UDP
     Serial.printf("Gestion_Grupo - start_udp\n");
 #endif   
-    if(udp_arrancado){
+    if(udp_arrancado){  
         return;
     }
-    udp_arrancado = true;
 
     if(udp.listen(2702)) {
+        udp_arrancado = true;
         udp.onPacket([](AsyncUDPPacket packet) {    
             int size = packet.length();
             char buffer[size+1] ;

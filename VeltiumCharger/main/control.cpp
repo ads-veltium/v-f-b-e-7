@@ -819,7 +819,9 @@ void procesar_bloque(uint16 tipo_bloque){
 					memcpy(&Status.external_meter_power,buffer_external_meter,4);
 					
 					ContadorExt.Power=Status.external_meter_power;  // Copiamos el valor de potencia recibido del medidor
+#ifdef DEMO_MODE_CURRENT
 					ContadorExt.Power=1000*ContadorExt.Power;
+#endif
 					
 #ifdef DEBUG_MEDIDOR
 					ESP_LOGI(TAG,"Potencia del contador recibida del PSoC=%i",Status.external_meter_power);
@@ -1052,7 +1054,7 @@ void procesar_bloque(uint16 tipo_bloque){
 					
 					if(!serverbleGetConnected()){
 						WriteFirebaseHistoric((char*)buffer_rx_local);
-						WriteFirebaseLastRecord((char*)LastRecord);
+						//WriteFirebaseLastRecord((char*)LastRecord);
 					}	
 				}
 			}

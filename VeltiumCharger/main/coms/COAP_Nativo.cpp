@@ -809,8 +809,7 @@ client_clean_up:
 #endif
     ChargingGroup.Conected = false;
     ChargingGroup.StartClient = false;
-    xClientHandle = NULL;
-    vTaskDelete(xClientHandle);
+    vTaskDelete(NULL);
 }
 
 static void coap_server(void *p){
@@ -1014,7 +1013,7 @@ static void coap_server(void *p){
                 for(uint8_t i=0 ;i<ChargingGroup.Charger_number;i++){
                     charger_table[i].Period += Transcurrido;
                     //si un equipo lleva mucho sin contestar, lo intentamos despertar
-                    if(charger_table[i].Period >=30000){
+                    if(charger_table[i].Period >32000){
                         send_to(get_IP(charger_table[i].name), "Start client");
 #ifdef DEBUG_UDP
                         Serial.printf("COAP_Nativo - coap_server: sent_to \"Start client\" to %s - %s por UDP\n",get_IP(charger_table[i].name).toString().c_str(), charger_table[i].name);
@@ -1050,7 +1049,6 @@ server_clean_up:
 #endif
     ChargingGroup.Conected = false;
     ChargingGroup.StartClient = false;
-    xServerHandle = NULL;
     vTaskDelete(xLimitHandle);
     xLimitHandle = NULL;
     vTaskDelete(NULL);
@@ -1242,10 +1240,16 @@ void MasterPanicTask(void *args){
 }
 
 void start_server(){
-    if(xServerHandle == NULL){
-        xServerHandle = xTaskCreateStatic(coap_server, "coap_server", 4096*4, NULL, 1, xServerStack, &xServerBuffer);
-        xLimitHandle  = xTaskCreateStatic(LimiteConsumo, "limite_consumo", 4096*4, NULL, 1, xLimitStack, &xLimitBuffer);
-    }  
+    if(xServerHandle != NULL){
+        vTaskDelete(xServerHandle);
+        xServerHandle = NULL;
+    } 
+    if(xLimitHandle != NULL){
+        vTaskDelete(xLimitHandle);
+        xLimitHandle = NULL;
+    }
+    xServerHandle = xTaskCreateStatic(coap_server, "coap_server", 4096*4, NULL, 1, xServerStack, &xServerBuffer);
+    xLimitHandle  = xTaskCreateStatic(LimiteConsumo, "limite_consumo", 4096*4, NULL, 1, xLimitStack, &xLimitBuffer);
 }
 
 void start_client(){
@@ -1255,9 +1259,12 @@ void start_client(){
         store_params_in_mem();
     }
 
-    if (xClientHandle == NULL){
-        xClientHandle = xTaskCreateStatic(coap_client, "coap_client", 4096 * 4, NULL, 1, xClientStack, &xClientBuffer);
+    if (xClientHandle != NULL) {
+        vTaskDelete(xClientHandle);  
+        xClientHandle = NULL;
     }
+    xClientHandle = xTaskCreateStatic(coap_client, "coap_client", 4096 * 4, NULL, 1, xClientStack, &xClientBuffer);
+
 }
 
 /*******************************************************
