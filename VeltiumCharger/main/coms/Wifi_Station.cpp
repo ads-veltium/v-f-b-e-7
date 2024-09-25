@@ -502,7 +502,7 @@ void Eth_Loop(){
         // Arrancar los grupos
         if (!ChargingGroup.Conected && (Coms.ETH.conectado || Coms.ETH.DHCP)){
             if (ChargingGroup.Params.GroupActive && GetStateTime(xConnect) > 1000){
-                if (ConfigFirebase.FirebaseConnState == IDLE || ConfigFirebase.FirebaseConnState == DISCONNECTED){ // Esperar a que arranque firebase
+                // if (ConfigFirebase.FirebaseConnState == IDLE || ConfigFirebase.FirebaseConnState == DISCONNECTED){ // Esperar a que arranque firebase
                     if (ChargingGroup.StartClient){
                         coap_start_client();
                     }
