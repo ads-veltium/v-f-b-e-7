@@ -34,11 +34,11 @@ void Contador::end(){
 
 bool Contador::read(){
     bool result_read;
-    result_read = MeterClient.Send_Command(MeterUrl,LEER);
+    result_read = MeterClient.Send_Command(MeterUrl,METER_READ);
 #ifdef DEBUG_MEDIDOR
     Serial.printf("contador - read(): Resultado de lectura: %i\n", result_read);
 #endif
-/*    if (!MeterClient.Send_Command(MeterUrl,LEER)) {
+/*    if (!MeterClient.Send_Command(MeterUrl,METER_READ)) {
         #ifdef DEVELOPMENT
         Serial.printf("Meter reading error\n");
         #endif
@@ -215,19 +215,19 @@ bool Meter_HTTP_Client::Send_Command(String url, uint8_t Command){
 
     esp_http_client_set_url(_client, url.c_str());
     switch(Command){
-        case ESCRIBIR:        
+        case METER_WRITE:        
             esp_http_client_set_method(_client, HTTP_METHOD_POST);
             //esp_http_client_set_post_field(_client, SerializedData.c_str(), SerializedData.length());
             break;
-        case UPDATE:
+        case METER_UPDATE:
             esp_http_client_set_method(_client, HTTP_METHOD_PATCH);
             //esp_http_client_set_post_field(_client, SerializedData.c_str(), SerializedData.length());
             break;
-        case TIMESTAMP:     
+        case METER_TIMESTAMP:     
             esp_http_client_set_method(_client, HTTP_METHOD_PUT);
             esp_http_client_set_post_field(_client, "{\".sv\": \"timestamp\"}", strlen("{\".sv\": \"timestamp\"}"));
             break;
-        case LEER:
+        case METER_READ:
             free(_respuesta_total);
             _respuesta_total = new char[2048];
             esp_http_client_set_method(_client, HTTP_METHOD_GET);

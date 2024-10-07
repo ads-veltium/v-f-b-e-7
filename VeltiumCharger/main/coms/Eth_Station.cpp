@@ -131,7 +131,7 @@ void BuscarContador_Task(void *args){
                 char url[100] = "http://";
                 strcat(url, ip);
                 delay(100); // ADS 100 así por las buenas
-                if(Cliente.Send_Command(url,LEER)){               
+                if(Cliente.Send_Command(url,METER_READ)){               
                     String respuesta = Cliente.ObtenerRespuesta();  
 #ifdef DEBUG_MEDIDOR
                     Serial.printf("Eth_Station - BuscarContador_Task: Buscando Iskra. Respuesta = %s\n", respuesta.c_str());

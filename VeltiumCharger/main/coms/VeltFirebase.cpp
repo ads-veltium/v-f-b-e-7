@@ -227,24 +227,24 @@ bool Real_Time_Database::Send_Command(String path, JsonDocument *doc, uint8_t Co
     esp_http_client_set_url(RTDB_client, Write_url.c_str());
 
     switch(Command){
-        case ESCRIBIR:        
+        case FB_WRITE:        
             esp_http_client_set_method(RTDB_client, HTTP_METHOD_POST);
             esp_http_client_set_post_field(RTDB_client, SerializedData.c_str(), SerializedData.length());
             break;
-        case UPDATE:
+        case FB_UPDATE:
             esp_http_client_set_method(RTDB_client, HTTP_METHOD_PATCH);
             esp_http_client_set_post_field(RTDB_client, SerializedData.c_str(), SerializedData.length());
             break;
-        case TIMESTAMP:     
+        case FB_TIMESTAMP:     
             esp_http_client_set_method(RTDB_client, HTTP_METHOD_PUT);
             esp_http_client_set_post_field(RTDB_client, "{\".sv\": \"timestamp\"}", strlen("{\".sv\": \"timestamp\"}"));
             break;
-        case LEER:
+        case FB_READ:
             esp_http_client_set_method(RTDB_client, HTTP_METHOD_GET);
             break;
-        case READ_FW:
+        case FB_READ_ROOT:
             Write_url = Base_Path+path+".json?auth="+idToken;
-            ESP_LOGD(TAG,"READ_FW URL=%s",Write_url.c_str());
+            ESP_LOGD(TAG,"FB_READ_ROOT URL=%s",Write_url.c_str());
             esp_http_client_set_url(RTDB_client, Write_url.c_str());
             esp_http_client_set_method(RTDB_client, HTTP_METHOD_GET);    
             break;

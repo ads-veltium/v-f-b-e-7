@@ -132,8 +132,8 @@ bool WriteFirebaseStatus(String Path){
   
   Escritura["error_code"] = Status.error_code;
   
-  if(Database->Send_Command(Path,&Escritura,UPDATE)){     
-    if(Database->Send_Command(Path+"/ts_dev_ack",&Lectura,TIMESTAMP)){
+  if(Database->Send_Command(Path,&Escritura,FB_UPDATE)){     
+    if(Database->Send_Command(Path+"/ts_dev_ack",&Lectura,FB_TIMESTAMP)){
       return true;
     }
   }
@@ -151,7 +151,7 @@ bool WriteFirebaseTimes(String Path){
   Escritura["charge_start_ts"]    = Status.Time.charge_start_time * 1000;
   Escritura["charge_stop_ts"]     = Status.Time.charge_stop_time * 1000;
 
-  if(Database->Send_Command(Path,&Escritura,UPDATE)){     
+  if(Database->Send_Command(Path,&Escritura,FB_UPDATE)){     
     return true;
   }
   return false;
@@ -168,9 +168,9 @@ bool WriteFirebaseParams(String Path){
   Escritura["dpc" ]                = Params.CDP;
   Escritura["fw_auto"]             = String(Params.Fw_Update_mode).substring(0,2);
   
-  if(Database->Send_Command(Path,&Escritura,UPDATE)){     
+  if(Database->Send_Command(Path,&Escritura,FB_UPDATE)){     
     //Write readed Timestamp
-    if(Database->Send_Command(Path+"/ts_dev_ack",&Escritura,TIMESTAMP)){
+    if(Database->Send_Command(Path+"/ts_dev_ack",&Escritura,FB_TIMESTAMP)){
       return true;
     }
   }
@@ -204,8 +204,8 @@ bool WriteFirebaseComs(String Path){
     Escritura["wifi/ip"]      = "";
   }
   
-  if(Database->Send_Command(Path,&Escritura,UPDATE)){     
-    if(Database->Send_Command(Path+"/ts_dev_ack",&Escritura,TIMESTAMP)){
+  if(Database->Send_Command(Path,&Escritura,FB_UPDATE)){     
+    if(Database->Send_Command(Path+"/ts_dev_ack",&Escritura,FB_TIMESTAMP)){
       return true;
     }
   }
@@ -222,7 +222,7 @@ bool WriteFirebaseControl(String Path){
   Escritura["start"]     = false;
   Escritura["stop"]      = false;
   Escritura["desired_current"] = Comands.desired_current;
-  if(Database->Send_Command(Path,&Escritura,UPDATE)){
+  if(Database->Send_Command(Path,&Escritura,FB_UPDATE)){
     return true;
   }
 
@@ -243,7 +243,7 @@ bool WriteFirebaseFW(String Path){
   }
 
 
-  if(Database->Send_Command(Path,&Escritura,UPDATE)){
+  if(Database->Send_Command(Path,&Escritura,FB_UPDATE)){
     return true;
   }
 
@@ -254,8 +254,8 @@ bool WriteInitTimestamp(String Path){
   DynamicJsonDocument Escritura(2048);
   Escritura.clear();
 
-  if(Database->Send_Command(Path,&Escritura,UPDATE)){     
-    if(Database->Send_Command(Path+"/ts_dev_ack",&Escritura,TIMESTAMP)){
+  if(Database->Send_Command(Path,&Escritura,FB_UPDATE)){     
+    if(Database->Send_Command(Path+"/ts_dev_ack",&Escritura,FB_TIMESTAMP)){
       return true;
     }
   }
@@ -269,7 +269,7 @@ bool WriteFirebasegroups(String Path){
 
     Escritura["delete"] = false;
 
-    if(Database->Send_Command(Path+"/params",&Escritura,UPDATE)){
+    if(Database->Send_Command(Path+"/params",&Escritura,FB_UPDATE)){
       return true;
     }
 
@@ -284,7 +284,7 @@ bool ReiniciarMultiusuario(){
     Escritura["charg_user_id"] = 255;
     Escritura["user_index"] = 255;
     Escritura["user_type"] = 255;
-    Database->Send_Command("/params/user",&Escritura,UPDATE);
+    Database->Send_Command("/params/user",&Escritura,FB_UPDATE);
     return true;
 }
 
@@ -294,7 +294,7 @@ bool EscribirMultiusuario(){
      printf("Escribiendo usuario!\n");
     Escritura.clear();
     Escritura["charg_user_id"] = user_index;
-    Database->Send_Command("/params/user",&Escritura,UPDATE);
+    Database->Send_Command("/params/user",&Escritura,FB_UPDATE);
     return true;
 }
 
@@ -407,7 +407,7 @@ bool WriteFirebaseHistoric(char* buffer){
     
     
     //escribir el historico nuevo
-    if(Database->Send_Command(Path+buf,&Escritura,UPDATE)){
+    if(Database->Send_Command(Path+buf,&Escritura,FB_UPDATE)){
       ConfigFirebase.FirebaseConnState = ReturnToLastconn;
       askForPermission = false;
       givePermission = false;
@@ -415,7 +415,7 @@ bool WriteFirebaseHistoric(char* buffer){
     }
     else{
       printf("Fallo en el envio del registro!\n");
-      Database->Send_Command(Path+buf,&Escritura,UPDATE);
+      Database->Send_Command(Path+buf,&Escritura,FB_UPDATE);
       ConfigFirebase.FirebaseConnState = ReturnToLastconn;
       askForPermission = false;
       givePermission = false;
@@ -434,7 +434,7 @@ bool WriteFirebaseLastRecord(char *rec){
   printf("Escribiendo ULTIMO REGISTRO!\n");
   Escritura.clear();
   Escritura["last_record"] = false;
-  Database->Send_Command("/records",&Escritura,UPDATE);
+  Database->Send_Command("/records",&Escritura,FB_UPDATE);
   return true;
 }
 
@@ -479,8 +479,8 @@ bool WriteFirebaseGroupData(String Path){
   Escritura["status/masterIP"] = ip4addr_ntoa(&addr);
   //Escritura["status/masterIP"]     = ip4addr_ntoa(&ChargingGroup.MasterIP);
   
-  if(Database->Send_Command(Path,&Escritura,UPDATE)){     
-    if(Database->Send_Command(Path+"/ts_dev_ack",&Escritura,TIMESTAMP)){
+  if(Database->Send_Command(Path,&Escritura,FB_UPDATE)){     
+    if(Database->Send_Command(Path+"/ts_dev_ack",&Escritura,FB_TIMESTAMP)){
       return true;
     }
   }
@@ -499,7 +499,7 @@ bool ReadFirebaseGroups(String Path){
   if(ts_app_req > ChargingGroup.last_ts_app_req){
     Lectura.clear();
     //Leer los parametros del grupo
-    if(Database->Send_Command(Path+"/params",&Lectura, LEER, true)){
+    if(Database->Send_Command(Path+"/params",&Lectura, FB_READ, true)){
       ChargingGroup.last_ts_app_req=ts_app_req;
     
       ChargingGroup.Params.GroupActive = Lectura["active"].as<uint8_t>();
@@ -513,7 +513,7 @@ bool ReadFirebaseGroups(String Path){
 
       //Leer los circuitos del grupo
       Lectura.clear();
-      if(Database->Send_Command(Path+"/circuits",&Lectura, LEER, true)){ 
+      if(Database->Send_Command(Path+"/circuits",&Lectura, FB_READ, true)){ 
         JsonObject root = Lectura.as<JsonObject>();
         ChargingGroup.Circuit_number = 0;
         for (JsonPair kv : root) {  
@@ -526,7 +526,7 @@ bool ReadFirebaseGroups(String Path){
       if(ChargingGroup.Params.GroupActive){
         //Leer los equipos del grupo
         Lectura.clear();
-        if(Database->Send_Command(Path+"/devices",&Lectura, LEER, true)){ 
+        if(Database->Send_Command(Path+"/devices",&Lectura, FB_READ, true)){ 
           JsonObject root = Lectura.as<JsonObject>();
 
           //crear una copia temporal para almacenar los que están cargando
@@ -589,7 +589,7 @@ bool ReadFirebaseGroups(String Path){
          }
       }
       
-      if(!Database->Send_Command(Path+"/ts_dev_ack",&Lectura,TIMESTAMP, true)){
+      if(!Database->Send_Command(Path+"/ts_dev_ack",&Lectura,FB_TIMESTAMP, true)){
           return false;
       } 
     }
@@ -606,7 +606,7 @@ bool ReadFirebaseShedule(String Path){
   if(ts_app_req > Schedule.last_ts_app_req){
     Lectura.clear();
 
-    if(Database->Send_Command(Path,&Lectura, LEER)){
+    if(Database->Send_Command(Path,&Lectura, FB_READ)){
 
       Schedule.num_shedules = 100;
       String programaciones[Schedule.num_shedules];
@@ -649,7 +649,7 @@ bool ReadFirebaseShedule(String Path){
 
       Schedule.last_ts_app_req=ts_app_req;
 
-      if(!Database->Send_Command(Path+"/ts_dev_ack",&Lectura,TIMESTAMP)){
+      if(!Database->Send_Command(Path+"/ts_dev_ack",&Lectura,FB_TIMESTAMP)){
           return false;
       } 
     }
@@ -662,7 +662,7 @@ bool ReadFirebaseComs(String Path){
   long long ts_app_req=Database->Get_Timestamp(Path+"/ts_app_req",&Lectura);
   if(ts_app_req > Coms.last_ts_app_req){
     Lectura.clear();
-    if(Database->Send_Command(Path,&Lectura, LEER)){
+    if(Database->Send_Command(Path,&Lectura, FB_READ)){
       Coms.last_ts_app_req=ts_app_req;
 
       Coms.Wifi.ON   = Lectura["wifi"]["on"];
@@ -673,7 +673,7 @@ bool ReadFirebaseComs(String Path){
             //Store coms in psoc5 flash memory
       //SendToPSOC5(COMS_CONFIGURATION_CHAR_HANDLE);
 
-      if(!Database->Send_Command(Path+"/ts_dev_ack",&Lectura,TIMESTAMP)){
+      if(!Database->Send_Command(Path+"/ts_dev_ack",&Lectura,FB_TIMESTAMP)){
           return false;
       } 
     }
@@ -686,7 +686,7 @@ bool ReadFirebaseParams(String Path){
   long long ts_app_req=Database->Get_Timestamp(Path+"/ts_app_req",&Lectura);
   if(ts_app_req > Params.last_ts_app_req){
     Lectura.clear();
-    if (Database->Send_Command(Path, &Lectura, LEER)){
+    if (Database->Send_Command(Path, &Lectura, FB_READ)){
       ESP_LOGI(TAG,"ReadFirebaseParams. Lectura = %s",Lectura.as<String>().c_str());
 
       Params.last_ts_app_req = ts_app_req;
@@ -733,7 +733,7 @@ bool ReadFirebaseParams(String Path){
         }
       }
 
-      if(!Database->Send_Command(Path+"/ts_dev_ack",&Lectura,TIMESTAMP)){
+      if(!Database->Send_Command(Path+"/ts_dev_ack",&Lectura,FB_TIMESTAMP)){
           return false;
       }
     }
@@ -746,7 +746,7 @@ bool ReadFirebaseParams(String Path){
 bool ReadFirebasePath(String Path){
   
     Lectura.clear();
-    if(Database->Send_Command(Path,&Lectura, LEER)){
+    if(Database->Send_Command(Path,&Lectura, FB_READ)){
       if(Lectura != NULL){
         serializeJson(Lectura,Serial);
       }
@@ -763,7 +763,7 @@ bool ReadFirebasePath(String Path){
 bool ReadFirebaseUser(){
 
   Lectura.clear();
-  if(Database->Send_Command("/params/user",&Lectura, LEER)){
+  if(Database->Send_Command("/params/user",&Lectura, FB_READ)){
     uint8 index = Lectura["user_index"].as<uint8>();
     uint8 type = Lectura["user_type"].as<uint8>();
     if(index!=255){
@@ -786,7 +786,7 @@ bool ReadFirebaseControl(String Path){
   long long ts_app_req = Database->Get_Timestamp(Path + "/ts_app_req", &Lectura);
   if (ts_app_req > last_ts_app_req){
     Lectura.clear();
-    if (Database->Send_Command(Path, &Lectura, LEER)){
+    if (Database->Send_Command(Path, &Lectura, FB_READ)){
       last_ts_app_req = ts_app_req;
       Comands.start = Lectura["start"] ? true : Comands.start;
       ConfigFirebase.ClientAuthenticated = Comands.start == true;
@@ -803,7 +803,7 @@ bool ReadFirebaseControl(String Path){
       }
 
       WriteFirebaseControl("/control");
-      if (!Database->Send_Command(Path + "/ts_dev_ack", &Lectura, TIMESTAMP)){
+      if (!Database->Send_Command(Path + "/ts_dev_ack", &Lectura, FB_TIMESTAMP)){
         return false;
       }
     }
@@ -815,7 +815,7 @@ bool ReadFirebaseControl(String Path){
 
 bool ReadFirebaseReadingPeriod(){
   Lectura.clear();
-  if(Database->Send_Command("/prod/global_vars/coms_period",&Lectura, READ_FW)){
+  if(Database->Send_Command("/prod/global_vars/coms_period",&Lectura, FB_READ_ROOT)){
     ConfigFirebase.PeriodoLectura = Lectura.as<uint8>() * 1000;
     ESP_LOGI(TAG,"ConfigFirebase.PeriodoLectura=%i",ConfigFirebase.PeriodoLectura);
     return true;
@@ -826,7 +826,7 @@ bool ReadFirebaseReadingPeriod(){
 
 bool ReadFirebaseUpdatePeriod(){
   Lectura.clear();
-  if(Database->Send_Command("/prod/global_vars/update_period",&Lectura, READ_FW)){
+  if(Database->Send_Command("/prod/global_vars/update_period",&Lectura, FB_READ_ROOT)){
     ConfigFirebase.PeriodoFWUpdate = Lectura.as<uint16>();
     ESP_LOGI(TAG,"ConfigFirebase.PeriodoFWUpdate=%i",ConfigFirebase.PeriodoFWUpdate);
     return true;
@@ -837,7 +837,7 @@ bool ReadFirebaseUpdatePeriod(){
 
 bool ReadFirebaseGroupsDebug(){
   Lectura.clear();
-  if(Database->Send_Command("/prod/global_vars/groups_debug",&Lectura, READ_FW)){
+  if(Database->Send_Command("/prod/global_vars/groups_debug",&Lectura, FB_READ_ROOT)){
     ConfigFirebase.GroupsDebug = Lectura.as<uint8>() * 1000;
     ESP_LOGI(TAG,"ConfigFirebase.GroupsDebug=%i",ConfigFirebase.GroupsDebug);
     return true;
@@ -852,7 +852,7 @@ bool ReadFirebaseGroupsDebug(){
 
 bool ReadFirebaseBranch(){
   Lectura.clear();
-  if (Database->Send_Command("/fw", &Lectura, LEER)){
+  if (Database->Send_Command("/fw", &Lectura, FB_READ)){
     UpdateStatus.Alt_available = Lectura["alt"]["available"];
     UpdateStatus.Group = Lectura["perms"]["group"].as<String>();
     if (UpdateStatus.Alt_available){
@@ -901,7 +901,7 @@ bool CheckForUpdate(){
   ESP_LOGI(TAG,"PSOC_string=%s - ESP_string=%s",PSOC_string.c_str(),ESP_string.c_str());
 
   //Check Firmware PSoC
-  if (Database->Send_Command("/prod/fw/" + branch + "/" + PSOC_string, &Lectura, READ_FW)){
+  if (Database->Send_Command("/prod/fw/" + branch + "/" + PSOC_string, &Lectura, FB_READ_ROOT)){
     String PSOC_Ver = Lectura["verstr"].as<String>();
     String fw_psoc_group = Lectura["group"].as<String>();
     uint16 PSOC_int_Version = ParseFirmwareVersion(PSOC_Ver);
@@ -920,7 +920,7 @@ bool CheckForUpdate(){
   }
 
   // Check Firmware ESP
-  if (Database->Send_Command("/prod/fw/" + branch + "/" + ESP_string, &Lectura, READ_FW)){
+  if (Database->Send_Command("/prod/fw/" + branch + "/" + ESP_string, &Lectura, FB_READ_ROOT)){
     String ESP_Ver = Lectura["verstr"].as<String>();
     String fw_esp_group = Lectura["group"].as<String>();
     uint16 ESP_int_Version = ParseFirmwareVersion(ESP_Ver);

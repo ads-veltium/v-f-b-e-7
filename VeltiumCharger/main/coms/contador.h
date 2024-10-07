@@ -26,11 +26,10 @@ class Meter_HTTP_Client{
     int  _timeout;
     
   public:
-    #define ESCRIBIR  0
-    #define UPDATE    1
-    #define TIMESTAMP 4
-    #define LEER      5
-    #define READ_FW   6
+    #define METER_WRITE     0
+    #define METER_UPDATE    1
+    #define METER_TIMESTAMP 4
+    #define METER_READ      5
     
     //Functions
     bool Send_Command(String url,  uint8_t Command);

@@ -35,11 +35,11 @@ class Real_Time_Database{
     esp_http_client_handle_t Auth_client;
     StaticJsonDocument<256> AuthDoc;
 
-    #define ESCRIBIR  0
-    #define UPDATE    1
-    #define TIMESTAMP 4
-    #define LEER      5
-    #define READ_FW   6
+    #define FB_WRITE     0
+    #define FB_UPDATE    1
+    #define FB_TIMESTAMP 4
+    #define FB_READ      5
+    #define FB_READ_ROOT 6
 
     String deviceID;
     String idToken;
