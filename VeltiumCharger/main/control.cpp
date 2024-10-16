@@ -78,7 +78,9 @@ uint8 cnt_fin_bloque = 0;
 int estado_recepcion = 0;
 //uint8 buffer_tx_local[256]  EXT_RAM_ATTR;
 uint8 buffer_rx_local[256]  EXT_RAM_ATTR;
-uint8 record_buffer[550]    EXT_RAM_ATTR;
+uint8 record_received_buffer[550]    EXT_RAM_ATTR;
+uint8 record_received_buffer_for_fb[550]    EXT_RAM_ATTR;
+
 uint16 puntero_rx_local = 0;
 uint32 TimeFromStart = 60; //tiempo para buscar el contador, hay que darle tiempo a conectarse
 uint8 updateTaskrunning=0;
@@ -128,6 +130,15 @@ bool add_to_group(const char* ID, IPAddress IP, carac_charger* group, uint8_t *s
 IPAddress get_IP(const char* ID);
 #endif
 
+// Variables registros de carga
+boolean new_record_received;
+boolean record_pending_for_write;
+boolean last_record_index_received;
+boolean last_record_lap_received;
+uint8_t record_index;
+uint8_t record_lap;
+uint8_t last_record_in_mem;
+uint8_t last_record_lap;
 
 /*******************************************************************************
  * Rutina de atencion a inerrupcion de timer (10mS)
@@ -340,6 +351,13 @@ void controlTask(void *arg) {
 							delay(500);		
 							ESP.restart();
 						}	
+
+						else if(ConfigFirebase.InternetConection && last_record_index_received && last_record_lap_received && new_record_received){
+							new_record_received = false;
+							if(!serverbleGetConnected()){
+								record_pending_for_write = true;
+							}
+						}
 #endif
 						if(++TimeoutMainDisconnect>30000){
 #ifdef DEBUG
@@ -1007,7 +1025,8 @@ void procesar_bloque(uint16 tipo_bloque){
 #ifdef DEBUG
 			Serial.println("Total record received");
 #endif
-			memcpy(record_buffer,buffer_rx_local,20);
+			memcpy(record_received_buffer,buffer_rx_local,20);
+			memcpy(record_received_buffer_for_fb,buffer_rx_local,sizeof(buffer_rx_local));
 
 			int j = 20;
 			bool end = false;
@@ -1018,29 +1037,29 @@ void procesar_bloque(uint16 tipo_bloque){
 					}
 					int PotLeida=buffer_rx_local[j]*0x100+buffer_rx_local[j+1];
 					if(PotLeida >0 && PotLeida < 5900 && !end){
-						record_buffer[i]   = buffer_rx_local[j];
-						record_buffer[i+1] = buffer_rx_local[j+1];
-						record_buffer[i+2] = 0;
-						record_buffer[i+3] = 0;
+						record_received_buffer[i]   = buffer_rx_local[j];
+						record_received_buffer[i+1] = buffer_rx_local[j+1];
+						record_received_buffer[i+2] = 0;
+						record_received_buffer[i+3] = 0;
 					}
 					else{
-						record_buffer[i]   = 0;
-						record_buffer[i+1] = 0;
-						record_buffer[i+2] = 0;
-						record_buffer[i+3] = 0;
+						record_received_buffer[i]   = 0;
+						record_received_buffer[i+1] = 0;
+						record_received_buffer[i+2] = 0;
+						record_received_buffer[i+3] = 0;
 					}
 
 					j+=2;
 				}
 				else{
-					record_buffer[i]   = 0;
-					record_buffer[i+1] = 0;
-					record_buffer[i+2] = 0;
-					record_buffer[i+3] = 0;
+					record_received_buffer[i]   = 0;
+					record_received_buffer[i+1] = 0;
+					record_received_buffer[i+2] = 0;
+					record_received_buffer[i+3] = 0;
 				}				
 			}
-
-			
+			new_record_received = true;
+		
 #ifdef CONNECTED
 			//Si no estamos conectados por ble
 			
@@ -1051,16 +1070,11 @@ void procesar_bloque(uint16 tipo_bloque){
 							ConfigFirebase.ResetUser = true;
 						}
 					}
-					
-					if(!serverbleGetConnected()){
-						WriteFirebaseHistoric((char*)buffer_rx_local);
-						//WriteFirebaseLastRecord((char*)LastRecord);
-					}	
 				}
 			}
 
 #endif
-			modifyCharacteristic(record_buffer, 512, ENERGY_RECORD_RECORD_CHAR_HANDLE);
+			modifyCharacteristic(record_received_buffer, 512, ENERGY_RECORD_RECORD_CHAR_HANDLE);
 		} 
 		break;
 		
@@ -1068,7 +1082,9 @@ void procesar_bloque(uint16 tipo_bloque){
 #ifdef DEBUG
 			Serial.printf("Me ha llegado una nueva recarga! %i\n", (buffer_rx_local[0] + buffer_rx_local[1] * 0x100));
 #endif
-			LastRecord = (buffer_rx_local[0] + buffer_rx_local[1]*0x100);
+			last_record_in_mem = (buffer_rx_local[0] + buffer_rx_local[1]*0x100);
+			last_record_index_received = true;
+			record_index = last_record_in_mem;
 			modifyCharacteristic(buffer_rx_local, 2, RECORDING_REC_LAST_CHAR_HANDLE);
 		} 
 		break;
@@ -1083,9 +1099,11 @@ void procesar_bloque(uint16 tipo_bloque){
 #ifdef DEBUG
 			Serial.printf("Me ha llegado una nueva vuelta! %i\n", (buffer_rx_local[0] + buffer_rx_local[1] * 0x100));
 #endif
-
-			buffer[0] = (uint8)(LastRecord & 0x00FF);
-			buffer[1] = (uint8)((LastRecord >> 8) & 0x00FF);
+			last_record_lap = (buffer_rx_local[0] + buffer_rx_local[1] * 0x100);
+			record_lap = last_record_lap;
+			last_record_lap_received = true;
+			buffer[0] = (uint8)(last_record_in_mem & 0x00FF);
+			buffer[1] = (uint8)((last_record_in_mem >> 8) & 0x00FF);
 
 			modifyCharacteristic(buffer_rx_local, 2, RECORDING_REC_LAPS_CHAR_HANDLE);
 			delay(10);

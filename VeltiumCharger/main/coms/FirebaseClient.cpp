@@ -29,6 +29,17 @@ extern carac_circuito               Circuitos[MAX_GROUP_SIZE];
 extern carac_charger                charger_table[MAX_GROUP_SIZE];
 #endif
 
+// Variables para escritura de registros de carga
+extern uint8_t last_record_in_mem;
+extern uint8_t last_record_lap;
+extern uint8_t record_index;
+extern uint8_t record_lap;
+extern boolean record_pending_for_write;
+extern boolean last_record_lap_received;
+extern boolean last_record_index_received;
+extern uint8 record_received_buffer_for_fb[550];
+uint8_t older_record_in_fb;
+
 //Declaracion de funciones locales
 void DownloadTask(void *arg);
 void store_group_in_mem(carac_charger* group, uint8_t size);
@@ -401,6 +412,8 @@ bool WriteFirebaseHistoric(char* buffer){
     Escritura["rea"] = "";
     Escritura["sta"] = StartTs;
     Escritura["usr"] = buffer[1] + buffer[0]*0x100;
+    Escritura["index"] = record_index;
+    Escritura["lap"] = record_lap;
 
     char buf[10];
     ltoa(ConectionTS, buf, 10); 
@@ -429,13 +442,28 @@ bool WriteFirebaseHistoric(char* buffer){
   return true;
 }
 
-bool WriteFirebaseLastRecord(char *rec){
+bool WriteFirebaseLastRecordSynced(uint8_t last_rec_in_mem, uint8_t rec_index, uint8_t rec_lap){
   DynamicJsonDocument Escritura(2048);
-  printf("Escribiendo ULTIMO REGISTRO!\n");
+  printf("Last in mem %i - Index %i - Lap %i\n",last_rec_in_mem, rec_index, rec_lap);
   Escritura.clear();
-  Escritura["last_record"] = false;
-  Database->Send_Command("/records",&Escritura,FB_UPDATE);
-  return true;
+  Escritura["last_record_in_mem"] = last_rec_in_mem;
+  Escritura["writting_record_index"] = rec_index;
+  Escritura["last_record_lap"] = rec_lap;
+  if (Database->Send_Command("/records_sync",&Escritura,FB_UPDATE)){
+    return true;
+  }
+  else return false;
+}
+
+bool WriteFirebaseOlderSyncRecord (uint8_t rec_index) {
+  DynamicJsonDocument Escritura(2048);
+  printf("Older registro escrito: Index %i\n",rec_index);
+  Escritura.clear();
+  Escritura["older_record_in_fb"] = rec_index;
+  if (Database->Send_Command("/records_sync",&Escritura,FB_UPDATE)){
+    return true;
+  }
+  else return false;
 }
 
 bool WriteFirebaseGroupData(String Path){
@@ -842,6 +870,17 @@ bool ReadFirebaseGroupsDebug(){
     ESP_LOGI(TAG,"ConfigFirebase.GroupsDebug=%i",ConfigFirebase.GroupsDebug);
     return true;
   }
+  else 
+    return false;
+}
+
+bool ReadFirebaseOlderSyncRecord(){
+  Lectura.clear();
+  if(Database->Send_Command("/records_sync",&Lectura, FB_READ)){
+    older_record_in_fb = Lectura["older_record_in_fb"].as<uint8>();
+    ESP_LOGI(TAG,"older_record_in_fb read = %i",older_record_in_fb); 
+    return true;
+  } 
   else 
     return false;
 }
@@ -1262,6 +1301,54 @@ void Firebase_Conn_Task(void *args){
         if (currentMillis - previousMillis >= GROUPS_DEBUG_INTERVAL){
           previousMillis = currentMillis;
           Error_Count += !WriteFirebaseGroupData("/group_data");
+        }
+      }
+
+      if (record_pending_for_write){
+        record_pending_for_write = false;           
+				if (WriteFirebaseHistoric((char*)record_received_buffer_for_fb)){
+					if(WriteFirebaseLastRecordSynced (last_record_in_mem, record_index, last_record_lap)){
+						if(ReadFirebaseOlderSyncRecord()){
+						  if (!(record_index == older_record_in_fb + 1)) {
+							  if (record_index > 0){
+								  record_index = record_index - 1;
+								}
+								else if (last_record_lap > 1){
+								  record_index = MAX_RECORDS_IN_MEMORY - 1;
+                  record_lap = last_record_lap - 1;
+								}
+								if (!(record_index == last_record_in_mem)){
+                  uint8_t buffer[2];
+                  buffer[0] = (uint8)(record_index & 0x00FF);
+                  buffer[1] = (uint8)((record_index >> 8) & 0x00FF);
+#ifdef DEBUG
+                  Serial.printf("Pidiendo registo %i al PSoC\n", record_index);
+#endif
+                  SendToPSOC5((char *)buffer, 2, RECORDING_REC_INDEX_CHAR_HANDLE);
+                }
+                else {
+#ifdef DEBUG
+                  Serial.printf("record_index = %i - last_record_in_mem = %i",record_index,last_record_in_mem);
+#endif
+                  WriteFirebaseOlderSyncRecord(last_record_in_mem);
+                  last_record_index_received = false;
+                  last_record_lap_received = false;
+                }
+              }
+              else{
+#ifdef DEBUG
+                Serial.printf("record_index = %i - older_record_in_fb = %i",record_index,older_record_in_fb);
+#endif
+                WriteFirebaseOlderSyncRecord(last_record_in_mem);
+                last_record_index_received = false;
+                last_record_lap_received = false;
+              }
+            }
+            else{
+              ESP_LOGE(TAG, "No puede leer older_record_in_fb");
+              WriteFirebaseOlderSyncRecord(record_index); 
+            }
+          }
         }
       }
 

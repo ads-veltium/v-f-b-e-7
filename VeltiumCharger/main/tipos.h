@@ -75,6 +75,9 @@
 #define SIZE_OF_GROUP_PARAMS    7 // Número de parámetros
 #define GROUPS_DEBUG_INTERVAL 	5000 //5 segundos
 
+// MEMORIA DEL PSOC
+#define MAX_RECORDS_IN_MEMORY 200
+
 typedef	uint8_t			uint8;
 typedef	uint16_t		uint16;
 typedef	uint32_t		uint32;
