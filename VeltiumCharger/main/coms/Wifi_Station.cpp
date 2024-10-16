@@ -503,14 +503,14 @@ void Eth_Loop(){
         if (!ChargingGroup.Conected && (Coms.ETH.conectado || Coms.ETH.DHCP)){
             if (ChargingGroup.Params.GroupActive && GetStateTime(xConnect) > 1000){
                 // if (ConfigFirebase.FirebaseConnState == IDLE || ConfigFirebase.FirebaseConnState == DISCONNECTED){ // Esperar a que arranque firebase
-                    if (ChargingGroup.StartClient){
-                        coap_start_client();
+                if (ChargingGroup.StartClient){
+                    coap_start_client();
+                }
+                else{
+                    if (ChargingGroup.Params.GroupMaster){
+                        coap_start_server();
                     }
-                    else{
-                        if (ChargingGroup.Params.GroupMaster){
-                            coap_start_server();
-                        }
-                    }
+                    // }
                 }
             }
         }
@@ -539,9 +539,9 @@ void Eth_Loop(){
             Coms.ETH.restart = false;
             break;
         }
-
+/*
         // Lectura del contador
-        /*if (ContadorExt.GatewayConectado && (Params.Tipo_Sensor || (ContadorConfigurado() && ChargingGroup.Params.GroupMaster && ChargingGroup.Conected))){
+        if (ContadorExt.GatewayConectado && (Params.Tipo_Sensor || (ContadorConfigurado() && ChargingGroup.Params.GroupMaster && ChargingGroup.Conected))){
             if (!Meter.Inicializado){
                 Meter.begin(ContadorExt.IPadd);
 #ifdef DEBUG_ETH
@@ -572,7 +572,8 @@ void Eth_Loop(){
             Meter.end();
             Coms.ETH.finding = false;
             Update_Status_Coms(0, MED_BLOCK);
-        }*/
+        }
+*/        
     }
     break;
 
