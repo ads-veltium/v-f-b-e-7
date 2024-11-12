@@ -102,9 +102,9 @@ uint16 cnt_diferencia = 1;
 uint8 HPT_estados[9][3] = {"0V", "A1", "A2", "B1", "B2", "C1", "C2", "E1", "F1"};
 
 #ifdef IS_UNO_KUBO
-uint8 ESP_version_firmware[11] = {"VBLE3_0611"};	   
+uint8 ESP_version_firmware[11] = {"VBLE3_0613"};	   
 #else
-uint8 ESP_version_firmware[11] = {"VBLE0_0611"};	
+uint8 ESP_version_firmware[11] = {"VBLE0_0613"};	
 #endif
 
 uint8 PSOC_version_firmware[11] ;		
@@ -135,6 +135,7 @@ boolean new_record_received;
 boolean record_pending_for_write;
 boolean last_record_index_received;
 boolean last_record_lap_received;
+boolean ask_for_new_record;
 uint8_t record_index;
 uint8_t record_lap;
 uint8_t last_record_in_mem;
@@ -202,7 +203,8 @@ void controlTask(void *arg) {
 	bool LastUserCon = false;
 	bool Iface_Con = BLE;
 	uint8 old_inicializado = 0;
-	serialLocal.begin(115200, SERIAL_8N1, 34, 4); // pins: rx, tx
+	//serialLocal.begin(115200, SERIAL_8N1, 34, 4); // pins: rx, tx
+	serialLocal.begin(576000, SERIAL_8N1, 34, 4); // pins: rx, tx
 
 	// INICIALIZO ELEMENTOS PARA AUTENTICACION
 	InitializeAuthsystem();
@@ -357,6 +359,17 @@ void controlTask(void *arg) {
 							if(!serverbleGetConnected()){
 								record_pending_for_write = true;
 							}
+						}
+
+						else if(ask_for_new_record){
+							ask_for_new_record = false;
+                  			uint8_t buffer[2];
+							buffer[0] = (uint8)(record_index & 0x00FF);
+							buffer[1] = (uint8)((record_index >> 8) & 0x00FF);
+#ifdef DEBUG
+                  			Serial.printf("Pidiendo registo %i al PSoC\n", record_index);
+#endif
+                  			SendToPSOC5((char *)buffer, 2, RECORDING_REC_INDEX_CHAR_HANDLE);
 						}
 #endif
 						if(++TimeoutMainDisconnect>30000){
@@ -524,9 +537,9 @@ void proceso_recepcion(void *arg){
 }
 
 void procesar_bloque(uint16 tipo_bloque){
-	static int LastRecord =0;
 #ifdef DEBUG_UART
-		Serial.printf("Recibido bloque=%X. Buffer=[%s]\n",tipo_bloque,buffer_rx_local);
+		Serial.printf("Recibido tipo_bloque=[0x%X]\n",tipo_bloque);
+		ESP_LOGD(TAG,"Recibido Buffer=[%s]",buffer_rx_local);
 #endif	
 	switch(tipo_bloque){	
 		case BLOQUE_INICIALIZACION:

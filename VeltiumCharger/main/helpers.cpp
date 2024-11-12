@@ -149,7 +149,7 @@ void SendToPSOC5(uint8 data, uint16 attrHandle){
   buffer_tx_local[4] = data;
   //controlSendToSerialLocal(buffer_tx_local, 5);
   err=serialLocal.write(buffer_tx_local, 5);
-#ifdef DEBUG_GROUPS
+#ifdef DEBUG
   Serial.printf("SenToPSOC5 %i bytes sent. attrHandle=%X\n",err, attrHandle);
 #endif   
 }
@@ -163,7 +163,7 @@ void SendToPSOC5(uint8 *data, uint16 len, uint16 attrHandle){
   buffer_tx_local[3] = len; //size
   memcpy(&buffer_tx_local[4],data,len);
   err = controlSendToSerialLocal(buffer_tx_local, len+4);
-#ifdef DEBUG_GROUPS
+#ifdef DEBUG
   Serial.printf("SenToPSOC5(int) %i bytes sent. attrHandle=%X\n",err, attrHandle);
 #endif 
 }
@@ -177,7 +177,7 @@ void SendToPSOC5(char *data, uint16 len, uint16 attrHandle){
   buffer_tx_local[3] = len; //size
   memcpy(&buffer_tx_local[4],data,len);
   err = controlSendToSerialLocal(buffer_tx_local, len+4);
-#ifdef DEBUG_GROUPS
+#ifdef DEBUG
   Serial.printf("SenToPSOC5(char). Sent %i bytes. attrHandle=%X. data=[%s]\n", err, attrHandle, data);
 #endif 
 }
@@ -193,7 +193,7 @@ void SendStatusToPSOC5(uint8_t connected, uint8_t inicializado, uint8_t comm_typ
   buffer_tx_local[5] = inicializado;
   buffer_tx_local[6] = comm_type;
   err=controlSendToSerialLocal(buffer_tx_local, 7);
-#ifdef DEBUG_GROUPS
+#ifdef DEBUG
   Serial.printf("SendStatusToPSOC5 %i bytes sent.\n",err);
 #endif 
 }
@@ -211,7 +211,7 @@ void SendScheduleMatrixToPSOC5(uint8_t *data) {
     buffer_tx_local[4] = day; 
     memcpy(&buffer_tx_local[5], &data[day * size], size);
     int err = controlSendToSerialLocal(buffer_tx_local, size + 4);
-#ifdef DEBUG_GROUPS
+#ifdef DEBUG
     Serial.printf("SendMatrixToPSOC5 (day %u): %i bytes sent.\n", day, err);
 #endif
     delay(10); 

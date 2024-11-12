@@ -39,6 +39,7 @@ extern boolean last_record_lap_received;
 extern boolean last_record_index_received;
 extern uint8 record_received_buffer_for_fb[550];
 uint8_t older_record_in_fb;
+extern boolean ask_for_new_record;
 
 //Declaracion de funciones locales
 void DownloadTask(void *arg);
@@ -320,9 +321,10 @@ bool WriteFirebaseHistoric(char* buffer){
     t.tm_sec  = buffer[7];
     int ConectionTS = mktime(&t);
 
-    if(ConectionTS> Status.Time.actual_time || ConectionTS < 1417305600){
-      printf("Hay algun error con las horas %i %lli \n", ConectionTS, Status.Time.actual_time);
-      return true;
+    if(ConectionTS> Status.Time.actual_time || ConectionTS < MIN_RECORD_TIMESTAMP){
+      ESP_LOGE(TAG,"Registro de carga con error en Connection Time= %i Actual Time = %lli", ConectionTS, Status.Time.actual_time);
+      ESP_LOGE(TAG,"Year= %i, Month= %i, Day= %i, Hour= %i, Min= %i, Sec= %i",t.tm_year,t.tm_mon,t.tm_mday,t.tm_hour,t.tm_min,t.tm_sec);
+      // return true; // No se bloquea el almacenamiento de recargas con horas incorrectas.
     }
 
     t = {0};  // Initalize to all 0's
@@ -334,9 +336,9 @@ bool WriteFirebaseHistoric(char* buffer){
     t.tm_sec  = buffer[13];
     int StartTs = mktime(&t);
 
-    if(StartTs> Status.Time.actual_time || StartTs < 1417305600){
-      printf("Hay algun error con las horas 2\n");
-      return true;
+    if(StartTs> Status.Time.actual_time || StartTs < MIN_RECORD_TIMESTAMP){
+      ESP_LOGE(TAG,"Registro de carga con error en Start Time= %i Actual Time = %lli", StartTs, Status.Time.actual_time);
+      // return true; // No se bloquea el almacenamiento de recargas con horas incorrectas
     }
 
     t = {0};  // Initalize to all 0's
@@ -348,9 +350,9 @@ bool WriteFirebaseHistoric(char* buffer){
     t.tm_sec  = buffer[19];
     int DisconTs = mktime(&t);
 
-    if(DisconTs < StartTs || DisconTs < 1417305600){
-      printf("Hay algun error con las horas 3\n");
-      return true;
+    if(DisconTs < StartTs || DisconTs < MIN_RECORD_TIMESTAMP){
+      ESP_LOGE(TAG,"Registro de carga con error en Dicconnect Time= %i Actual Time = %lli", DisconTs, Status.Time.actual_time);
+      // return true; // No se bloquea el almacenamiento de recargas con horas incorrectas
     }
 
     int j = 20;
@@ -418,7 +420,6 @@ bool WriteFirebaseHistoric(char* buffer){
     char buf[10];
     ltoa(ConectionTS, buf, 10); 
     
-    
     //escribir el historico nuevo
     if(Database->Send_Command(Path+buf,&Escritura,FB_UPDATE)){
       ConfigFirebase.FirebaseConnState = ReturnToLastconn;
@@ -428,7 +429,7 @@ bool WriteFirebaseHistoric(char* buffer){
     }
     else{
       printf("Fallo en el envio del registro!\n");
-      Database->Send_Command(Path+buf,&Escritura,FB_UPDATE);
+      Database->Send_Command(Path + buf, &Escritura, FB_UPDATE);
       ConfigFirebase.FirebaseConnState = ReturnToLastconn;
       askForPermission = false;
       givePermission = false;
@@ -437,33 +438,45 @@ bool WriteFirebaseHistoric(char* buffer){
     askForPermission = false;
     givePermission = false;
     ConfigFirebase.FirebaseConnState = ReturnToLastconn;
-
-
-  return true;
+    return true;
 }
 
 bool WriteFirebaseLastRecordSynced(uint8_t last_rec_in_mem, uint8_t rec_index, uint8_t rec_lap){
   DynamicJsonDocument Escritura(2048);
+#ifdef DEBUG
   printf("Last in mem %i - Index %i - Lap %i\n",last_rec_in_mem, rec_index, rec_lap);
+#endif
   Escritura.clear();
   Escritura["last_record_in_mem"] = last_rec_in_mem;
-  Escritura["writting_record_index"] = rec_index;
+  Escritura["writing_record_index"] = rec_index;
   Escritura["last_record_lap"] = rec_lap;
-  if (Database->Send_Command("/records_sync",&Escritura,FB_UPDATE)){
-    return true;
+  if (Database->Send_Command("/records_sync", &Escritura, FB_UPDATE)){
+    if (Database->Send_Command("/records_sync/writing_ts", &Escritura, FB_TIMESTAMP)){
+      return true;
+    }
+    else
+      return false;
   }
-  else return false;
+  else
+    return false;
 }
 
 bool WriteFirebaseOlderSyncRecord (uint8_t rec_index) {
   DynamicJsonDocument Escritura(2048);
-  printf("Older registro escrito: Index %i\n",rec_index);
+#ifdef DEBUG
+  printf("Older registro escrito: Index %i\n", rec_index);
+#endif
   Escritura.clear();
   Escritura["older_record_in_fb"] = rec_index;
-  if (Database->Send_Command("/records_sync",&Escritura,FB_UPDATE)){
-    return true;
+  if (Database->Send_Command("/records_sync", &Escritura, FB_UPDATE)){
+    if (Database->Send_Command("/records_sync/writing_ts", &Escritura, FB_TIMESTAMP)){
+      return true;
+    }
+    else
+      return false;
   }
-  else return false;
+  else
+    return false;
 }
 
 bool WriteFirebaseGroupData(String Path){
@@ -1308,6 +1321,7 @@ void Firebase_Conn_Task(void *args){
         record_pending_for_write = false;           
 				if (WriteFirebaseHistoric((char*)record_received_buffer_for_fb)){
 					if(WriteFirebaseLastRecordSynced (last_record_in_mem, record_index, last_record_lap)){
+						// if(ReadFirebaseOlderSyncRecord() && !(older_record_in_fb == 0)){
 						if(ReadFirebaseOlderSyncRecord()){
 						  if (!(record_index == older_record_in_fb + 1)) {
 							  if (record_index > 0){
@@ -1318,6 +1332,8 @@ void Firebase_Conn_Task(void *args){
                   record_lap = last_record_lap - 1;
 								}
 								if (!(record_index == last_record_in_mem)){
+                  ask_for_new_record = true;
+                  /*
                   uint8_t buffer[2];
                   buffer[0] = (uint8)(record_index & 0x00FF);
                   buffer[1] = (uint8)((record_index >> 8) & 0x00FF);
@@ -1325,10 +1341,11 @@ void Firebase_Conn_Task(void *args){
                   Serial.printf("Pidiendo registo %i al PSoC\n", record_index);
 #endif
                   SendToPSOC5((char *)buffer, 2, RECORDING_REC_INDEX_CHAR_HANDLE);
+                  */
                 }
                 else {
 #ifdef DEBUG
-                  Serial.printf("record_index = %i - last_record_in_mem = %i",record_index,last_record_in_mem);
+                  Serial.printf("record_index = %i - last_record_in_mem = %i\n",record_index,last_record_in_mem);
 #endif
                   WriteFirebaseOlderSyncRecord(last_record_in_mem);
                   last_record_index_received = false;
@@ -1337,7 +1354,7 @@ void Firebase_Conn_Task(void *args){
               }
               else{
 #ifdef DEBUG
-                Serial.printf("record_index = %i - older_record_in_fb = %i",record_index,older_record_in_fb);
+                Serial.printf("record_index = %i - older_record_in_fb = %i\n",record_index,older_record_in_fb);
 #endif
                 WriteFirebaseOlderSyncRecord(last_record_in_mem);
                 last_record_index_received = false;

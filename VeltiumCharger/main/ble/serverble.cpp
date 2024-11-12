@@ -817,7 +817,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks {
 
 			// if we are here, we are authenticated.
 			// send payload downstream.
-			ESP_LOGI(TAG,"Handle request = 0x%X",handle);
+			ESP_LOGI(TAG,"Handle request = [0x%X]",handle);
 			buffer_tx[0] = HEADER_TX;
 			buffer_tx[1] = (uint8)(handle >> 8);
 			buffer_tx[2] = (uint8)(handle);
