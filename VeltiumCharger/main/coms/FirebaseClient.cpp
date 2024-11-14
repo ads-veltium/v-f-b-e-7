@@ -313,13 +313,15 @@ bool EscribirMultiusuario(){
 bool WriteFirebaseHistoric(char* buffer){
     DynamicJsonDocument Escritura(2048);
     struct tm t = {0};  // Initalize to all 0's
-    t.tm_year = (buffer[4]!=0)?buffer[4]+100:0;  // This is year-1900, so 112 = 2012
+    t.tm_year = (2000+buffer[4]-1900);  // This is year-1900, so 112 = 2012
     t.tm_mon  = (buffer[3]!=0)?buffer[3]-1:0;
     t.tm_mday = buffer[2];
     t.tm_hour = buffer[5];
     t.tm_min  = buffer[6];
     t.tm_sec  = buffer[7];
     int ConectionTS = mktime(&t);
+
+    ESP_LOGI(TAG,"Escribiendo registro de carga. Connection Time - Year= %i, Month= %i, Day= %i, Hour= %i, Min= %i, Sec= %i - TimeStamp=[%i]",t.tm_year+1900,t.tm_mon+1,t.tm_mday,t.tm_hour,t.tm_min,t.tm_sec,ConectionTS);
 
     if(ConectionTS> Status.Time.actual_time || ConectionTS < MIN_RECORD_TIMESTAMP){
       ESP_LOGE(TAG,"Registro de carga con error en Connection Time= %i Actual Time = %lli", ConectionTS, Status.Time.actual_time);
@@ -328,7 +330,7 @@ bool WriteFirebaseHistoric(char* buffer){
     }
 
     t = {0};  // Initalize to all 0's
-    t.tm_year = (buffer[10]!=0)?buffer[10]+100:0;  // This is year-1900, so 112 = 2012
+    t.tm_year = buffer[10]+100;  // This is year-1900, so 112 = 2012
     t.tm_mon  = (buffer[9]!=0)?buffer[9]-1:0;
     t.tm_mday = buffer[8];
     t.tm_hour = buffer[11];
@@ -342,7 +344,7 @@ bool WriteFirebaseHistoric(char* buffer){
     }
 
     t = {0};  // Initalize to all 0's
-    t.tm_year = (buffer[16]!=0)?buffer[16]+100:0;  // This is year-1900, so 112 = 2012
+    t.tm_year = buffer[16]+100;  // This is year-1900, so 112 = 2012
     t.tm_mon  = (buffer[15]!=0)?buffer[15]-1:0;
     t.tm_mday = buffer[14];
     t.tm_hour = buffer[17];

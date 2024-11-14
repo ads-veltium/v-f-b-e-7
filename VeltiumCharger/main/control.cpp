@@ -203,8 +203,7 @@ void controlTask(void *arg) {
 	bool LastUserCon = false;
 	bool Iface_Con = BLE;
 	uint8 old_inicializado = 0;
-	//serialLocal.begin(115200, SERIAL_8N1, 34, 4); // pins: rx, tx
-	serialLocal.begin(576000, SERIAL_8N1, 34, 4); // pins: rx, tx
+	serialLocal.begin(115200, SERIAL_8N1, 34, 4); // pins: rx, tx
 
 	// INICIALIZO ELEMENTOS PARA AUTENTICACION
 	InitializeAuthsystem();
