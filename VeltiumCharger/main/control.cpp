@@ -371,7 +371,7 @@ void controlTask(void *arg) {
                   			SendToPSOC5((char *)buffer, 2, RECORDING_REC_INDEX_CHAR_HANDLE);
 						}
 #endif
-						if(++TimeoutMainDisconnect>30000){
+						if(++TimeoutMainDisconnect>100000){
 #ifdef DEBUG
 							Serial.println("Main reset detected");
 #endif

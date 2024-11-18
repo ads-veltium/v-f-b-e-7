@@ -330,7 +330,7 @@ bool WriteFirebaseHistoric(char* buffer){
     }
 
     t = {0};  // Initalize to all 0's
-    t.tm_year = buffer[10]+100;  // This is year-1900, so 112 = 2012
+    t.tm_year = (2000+buffer[10]-1900);  // This is year-1900, so 112 = 2012
     t.tm_mon  = (buffer[9]!=0)?buffer[9]-1:0;
     t.tm_mday = buffer[8];
     t.tm_hour = buffer[11];
@@ -344,7 +344,7 @@ bool WriteFirebaseHistoric(char* buffer){
     }
 
     t = {0};  // Initalize to all 0's
-    t.tm_year = buffer[16]+100;  // This is year-1900, so 112 = 2012
+    t.tm_year = (2000+buffer[16]-1900);  // This is year-1900, so 112 = 2012
     t.tm_mon  = (buffer[15]!=0)?buffer[15]-1:0;
     t.tm_mday = buffer[14];
     t.tm_hour = buffer[17];
