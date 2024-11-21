@@ -809,6 +809,7 @@ client_clean_up:
 #endif
     ChargingGroup.Conected = false;
     ChargingGroup.StartClient = false;
+    xClientHandle = NULL;
     vTaskDelete(NULL);
 }
 
@@ -1051,6 +1052,7 @@ server_clean_up:
     ChargingGroup.StartClient = false;
     vTaskDelete(xLimitHandle);
     xLimitHandle = NULL;
+    xServerHandle = NULL;
     vTaskDelete(NULL);
 }
 
@@ -1259,13 +1261,15 @@ void start_client(){
         store_params_in_mem();
     }
 
-    if (xClientHandle != NULL) {
+    if (xClientHandle != NULL && eTaskGetState(xClientHandle) != eDeleted) {
+        ESP_LOGI(TAG,"COAP Client task already running - Deleting...");
         vTaskDelete(xClientHandle);  
         xClientHandle = NULL;
     }
     xClientHandle = xTaskCreateStatic(coap_client, "coap_client", 4096 * 4, NULL, 1, xClientStack, &xClientBuffer);
-
+    ESP_LOGI(TAG,"COAP Client task started");
 }
+
 
 /*******************************************************
  * Funciones para llamar desde otros puntos del codigo
