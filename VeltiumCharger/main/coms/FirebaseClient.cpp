@@ -1062,7 +1062,7 @@ void DownloadFileTask(void *args){
           len -= c;
         }
       }
-    vTaskDelay(50 / portTICK_PERIOD_MS);
+    vTaskDelay(10 / portTICK_PERIOD_MS);
     }
   }
 
@@ -1324,7 +1324,6 @@ void Firebase_Conn_Task(void *args){
         record_pending_for_write = false;           
 				if (WriteFirebaseHistoric((char*)record_received_buffer_for_fb)){
 					if(WriteFirebaseLastRecordSynced (last_record_in_mem, record_index, last_record_lap)){
-						// if(ReadFirebaseOlderSyncRecord() && !(older_record_in_fb == 0)){
 						if(ReadFirebaseOlderSyncRecord()){
 						  if (!(record_index == older_record_in_fb + 1)) {
 							  if (record_index > 0){
@@ -1336,15 +1335,6 @@ void Firebase_Conn_Task(void *args){
 								}
 								if (!(record_index == last_record_in_mem)){
                   ask_for_new_record = true;
-                  /*
-                  uint8_t buffer[2];
-                  buffer[0] = (uint8)(record_index & 0x00FF);
-                  buffer[1] = (uint8)((record_index >> 8) & 0x00FF);
-#ifdef DEBUG
-                  Serial.printf("Pidiendo registo %i al PSoC\n", record_index);
-#endif
-                  SendToPSOC5((char *)buffer, 2, RECORDING_REC_INDEX_CHAR_HANDLE);
-                  */
                 }
                 else {
 #ifdef DEBUG

@@ -258,7 +258,7 @@ int controlSendToSerialLocal ( uint8_t * data, int len ){
 	if(!updateTaskrunning){
 #ifdef DEBUG_UART
     for (int i = 0; i < len; i++) {
-        ESP_LOGI(TAG, "controlSendToSerialLocal - Byte %d: 0x%02X", i, data[i]);
+      ESP_LOGI(TAG, "controlSendToSerialLocal - Byte %d: 0x%02X", i, data[i]);
     }
     ESP_LOGI(TAG,"controlSendToSerialLocal - len=[%i]",len);
 #endif
@@ -300,8 +300,8 @@ bool ContadorConfigurado(){
 #ifdef IS_UNO_KUBO
 
 void SetDNS(){
-    ESP_LOGD("SetDNS()", "Dirección del DNS Principal: %s", ipaddr_ntoa(dns_getserver(ESP_NETIF_DNS_MAIN)));
-    ESP_LOGD("SetDNS()", "Dirección del DNS Backup: %s", ipaddr_ntoa(dns_getserver(ESP_NETIF_DNS_BACKUP)));
+    ESP_LOGD(TAG,"SetDNS() - Dirección del DNS Principal: %s", ipaddr_ntoa(dns_getserver(ESP_NETIF_DNS_MAIN)));
+    ESP_LOGD(TAG,"SetDNS() - Dirección del DNS Backup: %s", ipaddr_ntoa(dns_getserver(ESP_NETIF_DNS_BACKUP)));
     ip_addr_t dns_main_server_info;
     ip_addr_t dns_backup_server_info;
 
@@ -311,8 +311,8 @@ void SetDNS(){
     dns_setserver(ESP_NETIF_DNS_MAIN, &dns_main_server_info);
     dns_setserver(ESP_NETIF_DNS_BACKUP, &dns_backup_server_info);
 
-    ESP_LOGD("SetDNS()", "Nueva dirección del DNS Principal: %s", ipaddr_ntoa(dns_getserver(ESP_NETIF_DNS_MAIN)));
-    ESP_LOGD("SetDNS()", "Nueva dirección del DNS Backup: %s", ipaddr_ntoa(dns_getserver(ESP_NETIF_DNS_BACKUP)));
+    ESP_LOGD(TAG,"SetDNS() - Nueva dirección del DNS Principal: %s", ipaddr_ntoa(dns_getserver(ESP_NETIF_DNS_MAIN)));
+    ESP_LOGD(TAG,"SetDNS() - Nueva dirección del DNS Backup: %s", ipaddr_ntoa(dns_getserver(ESP_NETIF_DNS_BACKUP)));
     dns_init();
 }
 
@@ -325,11 +325,11 @@ int obtener_direccion_IP(const String &host_name, String &ip_address) {
         ip4_addr_t *ip4 = (ip4_addr_t *)&addr.u_addr.ip4;
         sprintf(ip_str, IPSTR, IP2STR(ip4));
         ip_address = String(ip_str); // Guarda la dirección IP en el argumento de salida
-        ESP_LOGE("obtener_direccion_IP", "HOST: %s - IP: %s", host_name.c_str(), ip_str);
+        ESP_LOGE(TAG,"obtener_direccion_IP - HOST: %s - IP: %s", host_name.c_str(), ip_str);
         return 0; // Devuelve 0 para indicar éxito
     } else {
         ip_address = ""; // Asigna una cadena vacía en caso de error
-        ESP_LOGE("obtener_direccion_IP", "No se puede resolver la direccion del HOST: %s", host_name.c_str());
+        ESP_LOGE(TAG,"obtener_direccion_IP - No se puede resolver la direccion del HOST: %s", host_name.c_str());
         return -1; // Devuelve -1 para indicar error
     }
 }

@@ -336,6 +336,7 @@ void controlTask(void *arg) {
 				}
 
 				if (ask_for_new_record){
+					ask_for_new_record = false;
 					uint8_t buffer[2];
 					buffer[0] = (uint8)(record_index & 0x00FF);
 					buffer[1] = (uint8)((record_index >> 8) & 0x00FF);
@@ -1027,7 +1028,7 @@ void procesar_bloque(uint16 tipo_bloque){
 				}				
 			}
 			new_record_received = true;
-			ask_for_new_record = false;
+			//ask_for_new_record = false;
 #ifdef CONNECTED
 			//Si no estamos conectados por ble
 			
