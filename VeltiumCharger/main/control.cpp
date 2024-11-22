@@ -138,6 +138,7 @@ uint8_t record_index;
 uint8_t record_lap;
 uint8_t last_record_in_mem;
 uint8_t last_record_lap;
+TickType_t ask_for_new_record_start_timeout = 0;
 
 /*******************************************************************************
  * Rutina de atencion a inerrupcion de timer (10mS)
@@ -335,8 +336,7 @@ void controlTask(void *arg) {
 					}
 				}
 
-				if (ask_for_new_record){
-					ask_for_new_record = false;
+				if (ask_for_new_record && (xTaskGetTickCount()-ask_for_new_record_start_timeout>1000)){
 					uint8_t buffer[2];
 					buffer[0] = (uint8)(record_index & 0x00FF);
 					buffer[1] = (uint8)((record_index >> 8) & 0x00FF);
@@ -344,6 +344,7 @@ void controlTask(void *arg) {
 					Serial.printf("Pidiendo registo %i al PSoC\n", record_index);
 #endif
 					SendToPSOC5(buffer, 2, RECORDING_REC_INDEX_CHAR_HANDLE);
+					ask_for_new_record_start_timeout = xTaskGetTickCount();
 				}
 #endif
 				if (++TimeoutMainDisconnect > 100000){
@@ -1028,7 +1029,7 @@ void procesar_bloque(uint16 tipo_bloque){
 				}				
 			}
 			new_record_received = true;
-			//ask_for_new_record = false;
+			ask_for_new_record = false;
 #ifdef CONNECTED
 			//Si no estamos conectados por ble
 			
