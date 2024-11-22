@@ -8,6 +8,8 @@ extern uint8_t updateTaskrunning;
 extern uint8 deviceSerNumFlash[10];
 extern carac_group  ChargingGroup;
 
+const static char *TAG = "helpers";
+
 //*Declaracion de funciones privadas*/ 
 int controlSendToSerialLocal ( uint8_t * data, int len );
 
@@ -254,6 +256,12 @@ String ParseFirmwareModel(String Texto){ //SACA VELTx o VBLEx
 int controlSendToSerialLocal ( uint8_t * data, int len ){
 
 	if(!updateTaskrunning){
+#ifdef DEBUG_UART
+    for (int i = 0; i < len; i++) {
+        ESP_LOGI(TAG, "controlSendToSerialLocal - Byte %d: 0x%02X", i, data[i]);
+    }
+    ESP_LOGI(TAG,"controlSendToSerialLocal - len=[%i]",len);
+#endif
 	  int ret=0;
 		ret = serialLocal.write(data, len+1);
     // NOTA: Se envía 1 byte adicional por compatibilidad en la recepcion el PSoC. NO ELIMINAR 

@@ -61,8 +61,6 @@ uint8 not_delete_group [4][10] = {{0xCD, 0x01, 0x21, 0x07, 0x16, 0x00, 0x00, 0x0
 								 {0xCD, 0x01, 0x21, 0x09, 0x16, 0x00, 0x00, 0x06, 0x14, 0x58}};
 uint8 deviceSerNum[10] 		   = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};     //{0x00, 0x00, 0x00, 0x00, 0x0B, 0xCD, 0x17, 0x01, 0x00, 0x05};
 TickType_t AuthTimer=0;
-uint8 contador_cent_segundos = 0, contador_cent_segundos_ant = 0;
-uint32 cont_seg = 0, cont_seg_ant = 0, cont_min_ant = 0, cont_min=0, cont_hour=0, cont_hour_ant=0;
 uint8 estado_inicial = 1;
 uint8 estado_actual = ESTADO_ARRANQUE;
 extern uint8 authSuccess;
@@ -146,31 +144,14 @@ uint8_t last_record_lap;
  ********************************************************************************/
 
 hw_timer_t * timer10ms = NULL;
-hw_timer_t * timer1s = NULL;
 HardwareSerialMOD serialLocal(2);
 unsigned long StartTime = millis();
 
 void IRAM_ATTR onTimer10ms() 
 {
-	if(++contador_cent_segundos >= 100)	// 1 segundo
-	{
-		contador_cent_segundos = 0;
-	}
 	if ( cnt_fin_bloque )
 	{
 		--cnt_fin_bloque;
-	}
-}
-
-void IRAM_ATTR onTimer1s() 
-{
-
-	if(++cont_seg>=60){// 1 minuto
-		cont_seg=0;
-		cont_min++;
-	}
-	if(cont_min>=60){// 1 hora
-		cont_hour++;
 	}
 }
 
@@ -178,15 +159,10 @@ void configTimers ( void )
 {
 	//1 tick take 1/(80MHZ/80) = 1us so we set divider 80 and count up
 	timer10ms = timerBegin(0, 100, true);
-	timer1s = timerBegin(1, 100, true);
 	timerAttachInterrupt(timer10ms, &onTimer10ms, true);
-	timerAttachInterrupt(timer1s, &onTimer1s, true);
 	// every 10 millis
 	timerAlarmWrite(timer10ms, 10000, true);
-	timerAlarmWrite(timer1s, 1000000, true);
 	timerAlarmEnable(timer10ms);
-	timerAlarmEnable(timer1s);
-
 }
 
 void MAIN_RESET_Write( uint8_t val )
@@ -210,206 +186,186 @@ void controlTask(void *arg) {
 
 	MAIN_RESET_Write(1);        // Permito el arranque del micro principal
 
-	while(1){
-		// Eventos 10 mS
-		if(contador_cent_segundos != contador_cent_segundos_ant){
-			contador_cent_segundos_ant = contador_cent_segundos;
-			if(mainFwUpdateActive == 0 || emergencyState==1){
-				switch (estado_actual){
-					
-					case ESTADO_ARRANQUE:
-						if(!PSOC_inicializado){
-							if(--cnt_timeout_inicio == 0){
-								SendToPSOC5(0,BLOQUE_INICIALIZACION);
-								cnt_timeout_inicio = TIMEOUT_INICIO;
-								
-								if(--cnt_repeticiones_inicio == 0){
-									cnt_repeticiones_inicio = 750;		//1000;	
-									Configuracion.data.count_reinicios_malos ++;
-									if(Configuracion.data.count_reinicios_malos > 10){
-										#ifdef DEBUG
-											printf("Entramos en modo EMERGENCIA!!\n");
-										#endif
-										memcpy(device_ID,Configuracion.data.device_ID,sizeof(Configuracion.data.device_ID));
-										memcpy(deviceSerNum,deviceSerNumFlash,sizeof(deviceSerNum));
-										convertSN();
-										changeAdvName(device_ID);
-										dev_auth_init((void const*)&deviceSerNumFlash);
-										std::string sversion = std::to_string(Configuracion.data.FirmwarePSOC);
-										std::string svelt = std::to_string(Configuracion.data.velt_v);
-										std::string version_velt = "VELT"+svelt+"_0" +sversion;
+	while (1){
+		if (mainFwUpdateActive == 0 || emergencyState == 1){
+			switch (estado_actual){
 
-										uint8 version_psoc[version_velt.length()];
+			case ESTADO_ARRANQUE:
+				if (!PSOC_inicializado){
+					if (--cnt_timeout_inicio == 0){
+						SendToPSOC5(0, BLOQUE_INICIALIZACION);
+						cnt_timeout_inicio = TIMEOUT_INICIO;
 
-										memcpy(version_psoc,version_velt.data(),version_velt.length());
-								
-										modifyCharacteristic(version_psoc, 10, VERSIONES_VERSION_FIRMWARE_CHAR_HANDLE);
-										modifyCharacteristic(ESP_version_firmware, 10, VERSIONES_VERSION_FIRM_BLE_CHAR_HANDLE);
-										
-										estado_actual = ESTADO_NORMAL;
-										dispositivo_inicializado = 2;
-										emergencyState=1;
-									}else{
-									mainFwUpdateActive = 1;
-									updateTaskrunning=1;
-									Serial.println("Enviando firmware al PSOC5 por falta de comunicacion!");
-										xTaskCreate(UpdateTask,"TASK UPDATE",4096*5,NULL,1,NULL);
-									}
-								}
+						if (--cnt_repeticiones_inicio == 0){
+							cnt_repeticiones_inicio = 750; // 1000;
+							Configuracion.data.count_reinicios_malos++;
+							if (Configuracion.data.count_reinicios_malos > 10){
+#ifdef DEBUG
+								printf("Entramos en modo EMERGENCIA!!\n");
+#endif
+								memcpy(device_ID, Configuracion.data.device_ID, sizeof(Configuracion.data.device_ID));
+								memcpy(deviceSerNum, deviceSerNumFlash, sizeof(deviceSerNum));
+								convertSN();
+								changeAdvName(device_ID);
+								dev_auth_init((void const *)&deviceSerNumFlash);
+								std::string sversion = std::to_string(Configuracion.data.FirmwarePSOC);
+								std::string svelt = std::to_string(Configuracion.data.velt_v);
+								std::string version_velt = "VELT" + svelt + "_0" + sversion;
+
+								uint8 version_psoc[version_velt.length()];
+
+								memcpy(version_psoc, version_velt.data(), version_velt.length());
+
+								modifyCharacteristic(version_psoc, 10, VERSIONES_VERSION_FIRMWARE_CHAR_HANDLE);
+								modifyCharacteristic(ESP_version_firmware, 10, VERSIONES_VERSION_FIRM_BLE_CHAR_HANDLE);
+
+								estado_actual = ESTADO_NORMAL;
+								dispositivo_inicializado = 2;
+								emergencyState = 1;
+							}
+							else{
+								mainFwUpdateActive = 1;
+								updateTaskrunning = 1;
+								Serial.println("Enviando firmware al PSOC5 por falta de comunicacion!");
+								xTaskCreate(UpdateTask, "TASK UPDATE", 4096 * 5, NULL, 1, NULL);
 							}
 						}
-						else{
-							serialLocal.flush();
-							estado_actual = ESTADO_INICIALIZACION;
-						}
-						break;
-
-					case ESTADO_INICIALIZACION:{
-					    uint8_t data[2]={0};
-						#ifdef IS_UNO_KUBO
-						data[0] = serverbleGetConnected() || ConfigFirebase.ClientAuthenticated;
-						#else
-						data[0] = serverbleGetConnected();
-						#endif
-						data[1] = dispositivo_inicializado;
-
-						SendToPSOC5(data,2,BLOQUE_STATUS);
-						estado_actual = ESTADO_NORMAL;
-						break;
 					}
-
-					case ESTADO_NORMAL:						
-						//Alguien se está intentando conectar	
-						if(AuthTimer !=0){
-							uint32_t Transcurrido = pdTICKS_TO_MS(xTaskGetTickCount()-AuthTimer);
-							if(Transcurrido > DEFAULT_BLE_AUTH_TIMEOUT && !authSuccess){
-								AuthTimer=0;
-								ESP_LOGI(TAG, "Desconexion por autentenicacion fallida");
-								deviceBleDisconnect = true;
-							}
-						}
-
-					    if(serverbleGetConnected()){
-							Iface_Con = BLE;
-						}
-#ifdef IS_UNO_KUBO
-						else if(ConfigFirebase.ClientAuthenticated){
-							Iface_Con = COMS;
-						}
-#endif
-						if(Testing){
-							uint8_t data[2]={0};
-							data[0] = 1; 
-							data[1] = 4;							
-							SendToPSOC5(data,2,BLOQUE_STATUS);
-							LastUserCon = 1 ;
-						}
-
-						if((Iface_Con == BLE && LastUserCon != serverbleGetConnected()) || old_inicializado != dispositivo_inicializado){						
-							LastUserCon = serverbleGetConnected() ;
-							old_inicializado = dispositivo_inicializado;
-							conexion_trigger=1;
-						}
-
-						if(conexion_trigger && user_index_arrived){
-							SendStatusToPSOC5(serverbleGetConnected(), dispositivo_inicializado,0);
-							conexion_trigger=0;
-							user_index_arrived=0;
-						}
-#ifdef CONNECTED
-						else if(Iface_Con == COMS && LastUserCon != ConfigFirebase.ClientAuthenticated){
-							SendStatusToPSOC5(ConfigFirebase.ClientAuthenticated, dispositivo_inicializado,1);
-							LastUserCon = ConfigFirebase.ClientAuthenticated;
-						}
-
-						if (Comands.start){
-							SendToPSOC5(One, CHARGING_BLE_MANUAL_START_CHAR_HANDLE);
-							Comands.start = 0;   
-#ifdef DEBUG
-							Serial.println("Sending START");
-#endif
-						}
-
-						else if (Comands.stop){
-							SendToPSOC5(One, CHARGING_BLE_MANUAL_STOP_CHAR_HANDLE);
-#ifdef DEBUG
-							Serial.println("Sending STOP");
-#endif
-						}
-
-						else if (Comands.Newdata){
-#ifdef DEBUG
-							Serial.printf("Enviando corriente %i\n", Comands.desired_current);
-#endif
-							SendToPSOC5(Comands.desired_current, MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
-						}
-						
-						else if (Comands.reset){
-#ifdef DEBUG
-							Serial.println("Reiniciando por comando externo! No preocuparse");
-#endif
-							MAIN_RESET_Write(0);
-							delay(500);		
-							ESP.restart();
-						}	
-
-						else if(ConfigFirebase.InternetConection && last_record_index_received && last_record_lap_received && new_record_received){
-							new_record_received = false;
-							if(!serverbleGetConnected()){
-								record_pending_for_write = true;
-							}
-						}
-
-						else if(ask_for_new_record){
-							ask_for_new_record = false;
-                  			uint8_t buffer[2];
-							buffer[0] = (uint8)(record_index & 0x00FF);
-							buffer[1] = (uint8)((record_index >> 8) & 0x00FF);
-#ifdef DEBUG
-                  			Serial.printf("Pidiendo registo %i al PSoC\n", record_index);
-#endif
-                  			SendToPSOC5((char *)buffer, 2, RECORDING_REC_INDEX_CHAR_HANDLE);
-						}
-#endif
-						if(++TimeoutMainDisconnect>100000){
-#ifdef DEBUG
-							Serial.println("Main reset detected");
-#endif
-							MAIN_RESET_Write(0);						
-							ESP.restart();
-						}
-						
-						break;
-					default:
-						break;
 				}
+				else{
+					serialLocal.flush();
+					estado_actual = ESTADO_INICIALIZACION;
+				}
+				break;
+
+			case ESTADO_INICIALIZACION:{
+				uint8_t data[2] = {0};
+#ifdef IS_UNO_KUBO
+				data[0] = serverbleGetConnected() || ConfigFirebase.ClientAuthenticated;
+#else
+				data[0] = serverbleGetConnected();
+#endif
+				data[1] = dispositivo_inicializado;
+
+				SendToPSOC5(data, 2, BLOQUE_STATUS);
+				estado_actual = ESTADO_NORMAL;
+				break;
 			}
-			else{			
-				if(!updateTaskrunning){
-					//Poner el micro principal en modo bootload
-					SendToPSOC5(Zero,BOOT_LOADER_LOAD_SW_APP_CHAR_HANDLE);					
-				}				
+
+			case ESTADO_NORMAL:
+				// Alguien se está intentando conectar
+				if (AuthTimer != 0){
+					uint32_t Transcurrido = pdTICKS_TO_MS(xTaskGetTickCount() - AuthTimer);
+					if (Transcurrido > DEFAULT_BLE_AUTH_TIMEOUT && !authSuccess){
+						AuthTimer = 0;
+						ESP_LOGI(TAG, "Desconexion por autentenicacion fallida");
+						deviceBleDisconnect = true;
+					}
+				}
+
+				if (serverbleGetConnected()){
+					Iface_Con = BLE;
+				}
+#ifdef IS_UNO_KUBO
+				else if (ConfigFirebase.ClientAuthenticated){
+					Iface_Con = COMS;
+				}
+#endif
+				if (Testing){
+					uint8_t data[2] = {0};
+					data[0] = 1;
+					data[1] = 4;
+					SendToPSOC5(data, 2, BLOQUE_STATUS);
+					LastUserCon = 1;
+				}
+
+				if ((Iface_Con == BLE && LastUserCon != serverbleGetConnected()) || old_inicializado != dispositivo_inicializado){
+					LastUserCon = serverbleGetConnected();
+					old_inicializado = dispositivo_inicializado;
+					conexion_trigger = 1;
+				}
+
+				if (conexion_trigger && user_index_arrived){
+					SendStatusToPSOC5(serverbleGetConnected(), dispositivo_inicializado, 0);
+					conexion_trigger = 0;
+					user_index_arrived = 0;
+				}
+#ifdef CONNECTED
+				else if (Iface_Con == COMS && LastUserCon != ConfigFirebase.ClientAuthenticated){
+					SendStatusToPSOC5(ConfigFirebase.ClientAuthenticated, dispositivo_inicializado, 1);
+					LastUserCon = ConfigFirebase.ClientAuthenticated;
+				}
+
+				if (Comands.start){
+					SendToPSOC5(One, CHARGING_BLE_MANUAL_START_CHAR_HANDLE);
+					Comands.start = 0;
+#ifdef DEBUG
+					Serial.println("Sending START");
+#endif
+				}
+
+				else if (Comands.stop){
+					SendToPSOC5(One, CHARGING_BLE_MANUAL_STOP_CHAR_HANDLE);
+#ifdef DEBUG
+					Serial.println("Sending STOP");
+#endif
+				}
+
+				else if (Comands.Newdata){
+#ifdef DEBUG
+					Serial.printf("Enviando corriente %i\n", Comands.desired_current);
+#endif
+					SendToPSOC5(Comands.desired_current, MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
+				}
+
+				else if (Comands.reset){
+#ifdef DEBUG
+					Serial.println("Reiniciando por comando externo! No preocuparse");
+#endif
+					MAIN_RESET_Write(0);
+					delay(500);
+					ESP.restart();
+				}
+
+				if (ConfigFirebase.InternetConection && last_record_index_received && last_record_lap_received && new_record_received){
+					new_record_received = false;
+					if (!serverbleGetConnected())
+					{
+						record_pending_for_write = true;
+					}
+				}
+
+				if (ask_for_new_record){
+					uint8_t buffer[2];
+					buffer[0] = (uint8)(record_index & 0x00FF);
+					buffer[1] = (uint8)((record_index >> 8) & 0x00FF);
+#ifdef DEBUG
+					Serial.printf("Pidiendo registo %i al PSoC\n", record_index);
+#endif
+					SendToPSOC5(buffer, 2, RECORDING_REC_INDEX_CHAR_HANDLE);
+				}
+#endif
+				if (++TimeoutMainDisconnect > 100000){
+#ifdef DEBUG
+					Serial.println("Main reset detected");
+#endif
+					MAIN_RESET_Write(0);
+					ESP.restart();
+				}
+
+				break;
+			default:
+				break;
 			}
 		}
-		
-		// Eventos 1 segundo
-		if(cont_seg != cont_seg_ant){
-			cont_seg_ant = cont_seg;
+		else{
+			if (!updateTaskrunning){
+				// Poner el micro principal en modo bootload
+				SendToPSOC5(Zero, BOOT_LOADER_LOAD_SW_APP_CHAR_HANDLE);
+			}
 		}
 
-		// Eventos 1 minuto
-		if(cont_min != cont_min_ant)
-		{
-			cont_min_ant = cont_min;
-		}
-
-		// Eventos 1 Hora
-		if(cont_hour != cont_hour_ant)
-		{
-			cont_hour_ant = cont_hour;
-		}
-
-		delay(10);	
+		delay(50);
 	}
 }
 
@@ -536,10 +492,10 @@ void proceso_recepcion(void *arg){
 }
 
 void procesar_bloque(uint16 tipo_bloque){
-#ifdef DEBUG_UART
-		Serial.printf("Recibido tipo_bloque=[0x%X]\n",tipo_bloque);
-		ESP_LOGD(TAG,"Recibido Buffer=[%s]",buffer_rx_local);
-#endif	
+//#ifdef DEBUG_UART
+//		Serial.printf("Recibido tipo_bloque=[0x%X]\n",tipo_bloque);
+//		ESP_LOGD(TAG,"Recibido Buffer=[%s]",buffer_rx_local);
+//#endif	
 	switch(tipo_bloque){	
 		case BLOQUE_INICIALIZACION:
 			if (!systemStarted && (buffer_rx_local[239]==0x36 || buffer_rx_local[238]==0x36)) { //Compatibilidad con 509
@@ -1071,7 +1027,7 @@ void procesar_bloque(uint16 tipo_bloque){
 				}				
 			}
 			new_record_received = true;
-		
+			ask_for_new_record = false;
 #ifdef CONNECTED
 			//Si no estamos conectados por ble
 			
@@ -1118,8 +1074,7 @@ void procesar_bloque(uint16 tipo_bloque){
 			buffer[1] = (uint8)((last_record_in_mem >> 8) & 0x00FF);
 
 			modifyCharacteristic(buffer_rx_local, 2, RECORDING_REC_LAPS_CHAR_HANDLE);
-			delay(10);
-			SendToPSOC5((char*)buffer, 2, RECORDING_REC_INDEX_CHAR_HANDLE);
+			SendToPSOC5(buffer, 2, RECORDING_REC_INDEX_CHAR_HANDLE);
 		} 
 		break;
 

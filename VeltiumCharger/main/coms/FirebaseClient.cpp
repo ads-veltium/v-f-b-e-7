@@ -1062,7 +1062,7 @@ void DownloadFileTask(void *args){
           len -= c;
         }
       }
-    vTaskDelay(10 / portTICK_PERIOD_MS);
+    vTaskDelay(50 / portTICK_PERIOD_MS);
     }
   }
 
@@ -1320,6 +1320,7 @@ void Firebase_Conn_Task(void *args){
       }
 
       if (record_pending_for_write){
+        delayeando = 1;
         record_pending_for_write = false;           
 				if (WriteFirebaseHistoric((char*)record_received_buffer_for_fb)){
 					if(WriteFirebaseLastRecordSynced (last_record_in_mem, record_index, last_record_lap)){
