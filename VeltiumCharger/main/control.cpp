@@ -131,14 +131,13 @@ IPAddress get_IP(const char* ID);
 // Variables registros de carga
 boolean new_record_received;
 boolean record_pending_for_write;
-boolean last_record_index_received;
-boolean last_record_lap_received;
 boolean ask_for_new_record;
 uint8_t record_index;
 uint8_t record_lap;
 uint8_t last_record_in_mem;
 uint8_t last_record_lap;
 TickType_t ask_for_new_record_start_timeout = 0;
+boolean records_trigger = false;
 
 /*******************************************************************************
  * Rutina de atencion a inerrupcion de timer (10mS)
@@ -328,20 +327,26 @@ void controlTask(void *arg) {
 					ESP.restart();
 				}
 
-				if (ConfigFirebase.InternetConection && last_record_index_received && last_record_lap_received && new_record_received){
+				if (ConfigFirebase.InternetConection && new_record_received){
 					new_record_received = false;
-					if (!serverbleGetConnected())
-					{
+					if (!serverbleGetConnected()){
 						record_pending_for_write = true;
 					}
 				}
 
-				if (ask_for_new_record && (xTaskGetTickCount()-ask_for_new_record_start_timeout>1000)){
+				if (records_trigger){
+					records_trigger = false;
+					record_index = last_record_in_mem;
+					record_lap = last_record_lap;
+					ask_for_new_record = true;
+				}
+
+				if (ask_for_new_record && (xTaskGetTickCount()-ask_for_new_record_start_timeout>500)){
 					uint8_t buffer[2];
 					buffer[0] = (uint8)(record_index & 0x00FF);
 					buffer[1] = (uint8)((record_index >> 8) & 0x00FF);
 #ifdef DEBUG
-					Serial.printf("Pidiendo registo %i al PSoC\n", record_index);
+					ESP_LOGI(TAG,"Pidiendo registro %i al PSoC", record_index);
 #endif
 					SendToPSOC5(buffer, 2, RECORDING_REC_INDEX_CHAR_HANDLE);
 					ask_for_new_record_start_timeout = xTaskGetTickCount();
@@ -524,8 +529,12 @@ void procesar_bloque(uint16 tipo_bloque){
 
 				modifyCharacteristic(&buffer_rx_local[207], 2, RECORDING_REC_CAPACITY_CHAR_HANDLE);
 				modifyCharacteristic(&buffer_rx_local[209], 2, RECORDING_REC_LAST_CHAR_HANDLE);
+				last_record_in_mem = (buffer_rx_local[209] + buffer_rx_local[210]*0x100);
+				ESP_LOGI(TAG,"last_record_in_mem = %i",last_record_in_mem);
+				record_index = last_record_in_mem;
 				modifyCharacteristic(&buffer_rx_local[211], 1, RECORDING_REC_LAPS_CHAR_HANDLE);
-
+				last_record_lap = buffer_rx_local[211];
+				record_lap = last_record_lap;
 				//comprobar si el dato tiene sentido, sino cargar el de mi memoria
 				if(memcmp("AA", &buffer_rx_local[212],2) && memcmp("WA", &buffer_rx_local[212],2) && memcmp("MA", &buffer_rx_local[212],2)){
 					if(memcmp("AA", Configuracion.data.autentication_mode,2) && memcmp("WA", Configuracion.data.autentication_mode,2) && memcmp("MA", Configuracion.data.autentication_mode,2)){
@@ -993,7 +1002,7 @@ void procesar_bloque(uint16 tipo_bloque){
 		
 		case ENERGY_RECORD_RECORD_CHAR_HANDLE:{
 #ifdef DEBUG
-			Serial.println("Total record received");
+			ESP_LOGI(TAG,"Energy record received from PSoC");
 #endif
 			memcpy(record_received_buffer,buffer_rx_local,20);
 			memcpy(record_received_buffer_for_fb,buffer_rx_local,sizeof(buffer_rx_local));
@@ -1030,6 +1039,8 @@ void procesar_bloque(uint16 tipo_bloque){
 			}
 			new_record_received = true;
 			ask_for_new_record = false;
+			record_pending_for_write = true;
+
 #ifdef CONNECTED
 			//Si no estamos conectados por ble
 			
@@ -1053,7 +1064,6 @@ void procesar_bloque(uint16 tipo_bloque){
 			Serial.printf("Me ha llegado una nueva recarga! %i\n", (buffer_rx_local[0] + buffer_rx_local[1] * 0x100));
 #endif
 			last_record_in_mem = (buffer_rx_local[0] + buffer_rx_local[1]*0x100);
-			last_record_index_received = true;
 			record_index = last_record_in_mem;
 			modifyCharacteristic(buffer_rx_local, 2, RECORDING_REC_LAST_CHAR_HANDLE);
 		} 
@@ -1071,7 +1081,6 @@ void procesar_bloque(uint16 tipo_bloque){
 #endif
 			last_record_lap = (buffer_rx_local[0] + buffer_rx_local[1] * 0x100);
 			record_lap = last_record_lap;
-			last_record_lap_received = true;
 			buffer[0] = (uint8)(last_record_in_mem & 0x00FF);
 			buffer[1] = (uint8)((last_record_in_mem >> 8) & 0x00FF);
 

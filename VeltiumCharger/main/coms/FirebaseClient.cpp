@@ -35,10 +35,10 @@ extern uint8_t last_record_lap;
 extern uint8_t record_index;
 extern uint8_t record_lap;
 extern boolean record_pending_for_write;
-extern boolean last_record_lap_received;
-extern boolean last_record_index_received;
 extern uint8 record_received_buffer_for_fb[550];
 uint8_t older_record_in_fb;
+boolean write_records_trigger = false;
+extern boolean records_trigger;
 extern boolean ask_for_new_record;
 
 //Declaracion de funciones locales
@@ -321,11 +321,11 @@ bool WriteFirebaseHistoric(char* buffer){
     t.tm_sec  = buffer[7];
     int ConectionTS = mktime(&t);
 
-    ESP_LOGI(TAG,"Escribiendo registro de carga. Connection Time - Year= %i, Month= %i, Day= %i, Hour= %i, Min= %i, Sec= %i - TimeStamp=[%i]",t.tm_year+1900,t.tm_mon+1,t.tm_mday,t.tm_hour,t.tm_min,t.tm_sec,ConectionTS);
+    ESP_LOGI(TAG,"Wrtinging record. Connection Time - Year= %i, Month= %i, Day= %i, Hour= %i, Min= %i, Sec= %i - TimeStamp=[%i]",t.tm_year+1900,t.tm_mon+1,t.tm_mday,t.tm_hour,t.tm_min,t.tm_sec,ConectionTS);
 
     if(ConectionTS> Status.Time.actual_time || ConectionTS < MIN_RECORD_TIMESTAMP){
-      ESP_LOGE(TAG,"Registro de carga con error en Connection Time= %i Actual Time = %lli", ConectionTS, Status.Time.actual_time);
-      ESP_LOGE(TAG,"Year= %i, Month= %i, Day= %i, Hour= %i, Min= %i, Sec= %i",t.tm_year,t.tm_mon,t.tm_mday,t.tm_hour,t.tm_min,t.tm_sec);
+      ESP_LOGE(TAG,"Error in Connection Time=%i Actual Time =%lli", ConectionTS, Status.Time.actual_time);
+      ESP_LOGE(TAG,"Year=%i, Month=%i, Day=%i, Hour=%i, Min=%i, Sec=%i",t.tm_year,t.tm_mon,t.tm_mday,t.tm_hour,t.tm_min,t.tm_sec);
       // return true; // No se bloquea el almacenamiento de recargas con horas incorrectas.
     }
 
@@ -339,7 +339,7 @@ bool WriteFirebaseHistoric(char* buffer){
     int StartTs = mktime(&t);
 
     if(StartTs> Status.Time.actual_time || StartTs < MIN_RECORD_TIMESTAMP){
-      ESP_LOGE(TAG,"Registro de carga con error en Start Time= %i Actual Time = %lli", StartTs, Status.Time.actual_time);
+      ESP_LOGE(TAG,"Error in Start Time= %i Actual Time = %lli", StartTs, Status.Time.actual_time);
       // return true; // No se bloquea el almacenamiento de recargas con horas incorrectas
     }
 
@@ -353,7 +353,7 @@ bool WriteFirebaseHistoric(char* buffer){
     int DisconTs = mktime(&t);
 
     if(DisconTs < StartTs || DisconTs < MIN_RECORD_TIMESTAMP){
-      ESP_LOGE(TAG,"Registro de carga con error en Dicconnect Time= %i Actual Time = %lli", DisconTs, Status.Time.actual_time);
+      ESP_LOGE(TAG,"Error en Dicconnect Time= %i Actual Time = %lli", DisconTs, Status.Time.actual_time);
       // return true; // No se bloquea el almacenamiento de recargas con horas incorrectas
     }
 
@@ -446,7 +446,7 @@ bool WriteFirebaseHistoric(char* buffer){
 bool WriteFirebaseLastRecordSynced(uint8_t last_rec_in_mem, uint8_t rec_index, uint8_t rec_lap){
   DynamicJsonDocument Escritura(2048);
 #ifdef DEBUG
-  printf("Last in mem %i - Index %i - Lap %i\n",last_rec_in_mem, rec_index, rec_lap);
+  ESP_LOGI(TAG,"Last record in mem=%i - Writing index=%i - Writinglap=%i",last_rec_in_mem, rec_index, rec_lap);
 #endif
   Escritura.clear();
   Escritura["last_record_in_mem"] = last_rec_in_mem;
@@ -466,7 +466,7 @@ bool WriteFirebaseLastRecordSynced(uint8_t last_rec_in_mem, uint8_t rec_index, u
 bool WriteFirebaseOlderSyncRecord (uint8_t rec_index) {
   DynamicJsonDocument Escritura(2048);
 #ifdef DEBUG
-  printf("Older registro escrito: Index %i\n", rec_index);
+  ESP_LOGI(TAG,"Older registro escrito: Index %i", rec_index);
 #endif
   Escritura.clear();
   Escritura["older_record_in_fb"] = rec_index;
@@ -891,12 +891,54 @@ bool ReadFirebaseGroupsDebug(){
 
 bool ReadFirebaseOlderSyncRecord(){
   Lectura.clear();
-  if(Database->Send_Command("/records_sync",&Lectura, FB_READ)){
-    older_record_in_fb = Lectura["older_record_in_fb"].as<uint8>();
-    ESP_LOGI(TAG,"older_record_in_fb read = %i",older_record_in_fb); 
+  if (Database->Send_Command("/records_sync", &Lectura, FB_READ)){
+    if (Lectura.containsKey("older_record_in_fb")){
+      older_record_in_fb = Lectura["older_record_in_fb"].as<uint8>();
+      ESP_LOGI(TAG, "older_record_in_fb read = %i", older_record_in_fb);
+      return true;
+    }
+    else{
+      ESP_LOGW(TAG, "older_record_in_fb not found");
+      older_record_in_fb = 0;
+      WriteFirebaseOlderSyncRecord(older_record_in_fb);
+      return true;
+    }
+  }
+  else{
+    ESP_LOGW(TAG, "Failed to read /records_sync");
+    return false;
+  }
+}
+
+bool ReadFirebaseRecordsTrigger(){
+  Lectura.clear();
+  if (Database->Send_Command("/records_sync", &Lectura, FB_READ)){
+    if (Lectura.containsKey("write_records_trigger")){
+      write_records_trigger = Lectura["write_records_trigger"].as<bool>();
+      if (write_records_trigger){
+        ESP_LOGI(TAG, "write_records_trigger read = %i", write_records_trigger);
+      }
+      return true;
+    }
+    else{
+      ESP_LOGW(TAG, "write_records_trigger not found");
+      return false;
+    }
+  }
+  else{
+    ESP_LOGW(TAG, "Failed to read /records_sync");
+    return false;
+  }
+}
+
+bool WriteFirebaseRecordsTrigger(bool trigger_value){
+  DynamicJsonDocument Escritura(2048);
+  Escritura.clear();
+  Escritura["write_records_trigger"] = trigger_value;
+  if (Database->Send_Command("/records_sync", &Escritura, FB_UPDATE)){
     return true;
-  } 
-  else 
+  }
+  else
     return false;
 }
 
@@ -1186,6 +1228,17 @@ void Firebase_Conn_Task(void *args){
         ConfigFirebase.GroupsDebug = 0;
       }
 
+      if (!ReadFirebaseRecordsTrigger()){
+        WriteFirebaseRecordsTrigger(true);
+      }
+      else{
+        records_trigger = write_records_trigger;
+        if (ReadFirebaseOlderSyncRecord()){
+          bool trigger_value = (last_record_in_mem != older_record_in_fb);
+          WriteFirebaseRecordsTrigger(trigger_value);
+        }
+      }
+
 #ifdef USE_GROUPS
       if(ChargingGroup.Params.GroupActive){
         //comprobar si han borrado el grupo mientras estabamos desconectados
@@ -1319,44 +1372,46 @@ void Firebase_Conn_Task(void *args){
         }
       }
 
+      if(ReadFirebaseRecordsTrigger()){
+        records_trigger = write_records_trigger;
+        WriteFirebaseRecordsTrigger(false);
+      }
+
       if (record_pending_for_write){
         delayeando = 1;
-        record_pending_for_write = false;           
-				if (WriteFirebaseHistoric((char*)record_received_buffer_for_fb)){
-					if(WriteFirebaseLastRecordSynced (last_record_in_mem, record_index, last_record_lap)){
-						if(ReadFirebaseOlderSyncRecord()){
-						  if (!(record_index == older_record_in_fb + 1)) {
-							  if (record_index > 0){
-								  record_index = record_index - 1;
-								}
-								else if (last_record_lap > 1){
-								  record_index = MAX_RECORDS_IN_MEMORY - 1;
-                  record_lap = last_record_lap - 1;
-								}
-								if (!(record_index == last_record_in_mem)){
-                  ask_for_new_record = true;
-                }
-                else {
-#ifdef DEBUG
-                  Serial.printf("record_index = %i - last_record_in_mem = %i\n",record_index,last_record_in_mem);
-#endif
-                  WriteFirebaseOlderSyncRecord(last_record_in_mem);
-                  last_record_index_received = false;
-                  last_record_lap_received = false;
-                }
-              }
-              else{
-#ifdef DEBUG
-                Serial.printf("record_index = %i - older_record_in_fb = %i\n",record_index,older_record_in_fb);
-#endif
+        record_pending_for_write = false;      
+        if (WriteFirebaseHistoric((char*)record_received_buffer_for_fb)) {
+          if (WriteFirebaseLastRecordSynced(last_record_in_mem, record_index, last_record_lap)) {
+            if (ReadFirebaseOlderSyncRecord()) {
+              if (record_index == older_record_in_fb + 1) {
+  #ifdef DEBUG
+                ESP_LOGI(TAG, "record_index = %i - older_record_in_fb = %i", record_index, older_record_in_fb);
+  #endif
                 WriteFirebaseOlderSyncRecord(last_record_in_mem);
-                last_record_index_received = false;
-                last_record_lap_received = false;
+              } 
+              else {
+                if (record_index > 0) {
+                  record_index--;
+                } 
+                else if (last_record_lap > 1) {
+                  record_index = MAX_RECORDS_IN_MEMORY - 1;
+                  record_lap = last_record_lap - 1;
+                }
+
+                if (record_index != last_record_in_mem) {
+                  ask_for_new_record = true;
+                } 
+                else {
+  #ifdef DEBUG
+                  ESP_LOGI(TAG, "record_index = %i - last_record_in_mem = %i", record_index, last_record_in_mem);
+  #endif
+                  WriteFirebaseOlderSyncRecord(last_record_in_mem);
+                }
               }
-            }
-            else{
+            } 
+            else {
               ESP_LOGE(TAG, "No puede leer older_record_in_fb");
-              WriteFirebaseOlderSyncRecord(record_index); 
+              WriteFirebaseOlderSyncRecord(record_index);
             }
           }
         }

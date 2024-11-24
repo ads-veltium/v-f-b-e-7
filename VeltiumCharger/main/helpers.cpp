@@ -152,7 +152,7 @@ void SendToPSOC5(uint8 data, uint16 attrHandle){
   //controlSendToSerialLocal(buffer_tx_local, 5);
   err=serialLocal.write(buffer_tx_local, 5);
 #ifdef DEBUG
-  Serial.printf("SenToPSOC5 %i bytes sent. attrHandle=%X\n",err, attrHandle);
+  ESP_LOGI(TAG,"SenToPSOC5 - %i bytes sent to PSoC. attrHandle=0x%X",err,attrHandle);
 #endif   
 }
 
@@ -166,7 +166,7 @@ void SendToPSOC5(uint8 *data, uint16 len, uint16 attrHandle){
   memcpy(&buffer_tx_local[4],data,len);
   err = controlSendToSerialLocal(buffer_tx_local, len+4);
 #ifdef DEBUG
-  Serial.printf("SenToPSOC5(int) %i bytes sent. attrHandle=%X\n",err, attrHandle);
+  ESP_LOGI(TAG,"SenToPSOC5(int) - %i bytes sent to PSoC. attrHandle=0x%X",err,attrHandle);
 #endif 
 }
 
@@ -180,7 +180,7 @@ void SendToPSOC5(char *data, uint16 len, uint16 attrHandle){
   memcpy(&buffer_tx_local[4],data,len);
   err = controlSendToSerialLocal(buffer_tx_local, len+4);
 #ifdef DEBUG
-  Serial.printf("SenToPSOC5(char). Sent %i bytes. attrHandle=%X. data=[%s]\n", err, attrHandle, data);
+  ESP_LOGI(TAG,"SenToPSOC5(char) - %i bytes sent to PSoC. attrHandle=0x%X. data=[%s]",err,attrHandle,data);
 #endif 
 }
 
@@ -196,7 +196,7 @@ void SendStatusToPSOC5(uint8_t connected, uint8_t inicializado, uint8_t comm_typ
   buffer_tx_local[6] = comm_type;
   err=controlSendToSerialLocal(buffer_tx_local, 7);
 #ifdef DEBUG
-  Serial.printf("SendStatusToPSOC5 %i bytes sent.\n",err);
+  ESP_LOGI(TAG,"SendStatusToPSOC5 %i bytes sent to PSoC.\n",err);
 #endif 
 }
 

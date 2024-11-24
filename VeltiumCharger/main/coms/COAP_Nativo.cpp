@@ -809,6 +809,7 @@ client_clean_up:
 #endif
     ChargingGroup.Conected = false;
     ChargingGroup.StartClient = false;
+    xClientHandle = NULL;
     vTaskDelete(NULL);
 }
 
@@ -1051,6 +1052,7 @@ server_clean_up:
     ChargingGroup.StartClient = false;
     vTaskDelete(xLimitHandle);
     xLimitHandle = NULL;
+    xServerHandle = NULL;
     vTaskDelete(NULL);
 }
 
