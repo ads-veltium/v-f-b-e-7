@@ -1398,10 +1398,12 @@ void Firebase_Conn_Task(void *args){
                   record_lap = last_record_lap - 1;
                 }
                 else{
+                  ask_for_new_record = false;
   #ifdef DEBUG
                   ESP_LOGI(TAG, "record_index = %i - last_record_in_mem = %i", record_index, last_record_in_mem);
   #endif
                   WriteFirebaseOlderSyncRecord(last_record_in_mem);
+                  break;
                 }
 
                 if (record_index<last_record_in_mem || (record_index/8 > last_record_in_mem/8)){
