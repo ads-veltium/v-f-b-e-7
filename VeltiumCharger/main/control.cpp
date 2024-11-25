@@ -1039,7 +1039,6 @@ void procesar_bloque(uint16 tipo_bloque){
 			}
 			new_record_received = true;
 			ask_for_new_record = false;
-			record_pending_for_write = true;
 
 #ifdef CONNECTED
 			//Si no estamos conectados por ble
