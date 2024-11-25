@@ -1397,9 +1397,15 @@ void Firebase_Conn_Task(void *args){
                   record_index = MAX_RECORDS_IN_MEMORY - 1;
                   record_lap = last_record_lap - 1;
                 }
+                else{
+  #ifdef DEBUG
+                  ESP_LOGI(TAG, "record_index = %i - last_record_in_mem = %i", record_index, last_record_in_mem);
+  #endif
+                  WriteFirebaseOlderSyncRecord(last_record_in_mem);
+                }
 
-                if (record_index != last_record_in_mem) {
-                  ask_for_new_record = true;
+                if (record_index<last_record_in_mem || (record_index/8 > last_record_in_mem/8)){
+                    ask_for_new_record = true;
                 } 
                 else {
   #ifdef DEBUG
