@@ -1393,7 +1393,7 @@ void Firebase_Conn_Task(void *args){
                 if (record_index > 0) {
                   record_index--;
                 } 
-                else if (last_record_lap > 1) {
+                else if (last_record_lap >= 1) {
                   record_index = MAX_RECORDS_IN_MEMORY - 1;
                   record_lap = last_record_lap - 1;
                 }
