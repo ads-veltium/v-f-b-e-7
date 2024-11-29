@@ -151,7 +151,7 @@ void SendToPSOC5(uint8 data, uint16 attrHandle){
   buffer_tx_local[4] = data;
   //controlSendToSerialLocal(buffer_tx_local, 5);
   err=serialLocal.write(buffer_tx_local, 5);
-#ifdef DEBUG
+#ifdef DEBUG_TX_UART
   ESP_LOGI(TAG,"SenToPSOC5 - %i bytes sent to PSoC. attrHandle=0x%X",err,attrHandle);
 #endif   
 }
@@ -165,7 +165,7 @@ void SendToPSOC5(uint8 *data, uint16 len, uint16 attrHandle){
   buffer_tx_local[3] = len; //size
   memcpy(&buffer_tx_local[4],data,len);
   err = controlSendToSerialLocal(buffer_tx_local, len+4);
-#ifdef DEBUG
+#ifdef DEBUG_TX_UART
   ESP_LOGI(TAG,"SenToPSOC5(int) - %i bytes sent to PSoC. attrHandle=0x%X",err,attrHandle);
 #endif 
 }
@@ -179,7 +179,7 @@ void SendToPSOC5(char *data, uint16 len, uint16 attrHandle){
   buffer_tx_local[3] = len; //size
   memcpy(&buffer_tx_local[4],data,len);
   err = controlSendToSerialLocal(buffer_tx_local, len+4);
-#ifdef DEBUG
+#ifdef DEBUG_TX_UART
   ESP_LOGI(TAG,"SenToPSOC5(char) - %i bytes sent to PSoC. attrHandle=0x%X. data=[%s]",err,attrHandle,data);
 #endif 
 }
@@ -195,7 +195,7 @@ void SendStatusToPSOC5(uint8_t connected, uint8_t inicializado, uint8_t comm_typ
   buffer_tx_local[5] = inicializado;
   buffer_tx_local[6] = comm_type;
   err=controlSendToSerialLocal(buffer_tx_local, 7);
-#ifdef DEBUG
+#ifdef DEBUG_TX_UART
   ESP_LOGI(TAG,"SendStatusToPSOC5 %i bytes sent to PSoC.\n",err);
 #endif 
 }
@@ -213,7 +213,7 @@ void SendScheduleMatrixToPSOC5(uint8_t *data) {
     buffer_tx_local[4] = day; 
     memcpy(&buffer_tx_local[5], &data[day * size], size);
     int err = controlSendToSerialLocal(buffer_tx_local, size + 4);
-#ifdef DEBUG
+#ifdef DEBUG_TX_UART
     Serial.printf("SendMatrixToPSOC5 (day %u): %i bytes sent.\n", day, err);
 #endif
     delay(10); 
@@ -256,7 +256,7 @@ String ParseFirmwareModel(String Texto){ //SACA VELTx o VBLEx
 int controlSendToSerialLocal ( uint8_t * data, int len ){
 
 	if(!updateTaskrunning){
-#ifdef DEBUG_UART
+#ifdef DEBUG_TX_UART
     for (int i = 0; i < len; i++) {
       ESP_LOGI(TAG, "controlSendToSerialLocal - Byte %d: 0x%02X", i, data[i]);
     }

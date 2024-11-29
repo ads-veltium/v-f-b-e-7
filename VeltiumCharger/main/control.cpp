@@ -499,10 +499,24 @@ void proceso_recepcion(void *arg){
 }
 
 void procesar_bloque(uint16 tipo_bloque){
-//#ifdef DEBUG_UART
-//		Serial.printf("Recibido tipo_bloque=[0x%X]\n",tipo_bloque);
-//		ESP_LOGD(TAG,"Recibido Buffer=[%s]",buffer_rx_local);
-//#endif	
+#ifdef DEBUG_RX_UART
+		size_t buffer_size=sizeof(buffer_rx_local);
+		size_t pos=0;
+		char buffer_debug[1024];
+		ESP_LOGI(TAG,"Received UART block. Type=[0x%X] Buffer lentgh=[%i]",tipo_bloque,buffer_size);
+		for (size_t i = 0; i < buffer_size; i++) {
+    		pos += snprintf(buffer_debug + pos, sizeof(buffer_debug) - pos, "%d ", buffer_rx_local[i]);
+    		if (pos > sizeof(buffer_debug)) {
+        		ESP_LOGE(TAG, "El buffer_debug es demasiado pequeño para contener todos los datos. %i",pos);
+        		break;
+    		}
+		}
+		if (pos > 0 && buffer_debug[pos - 1] == ' ') {
+    		buffer_debug[pos - 1] = '\0'; 
+		}
+		ESP_LOGI(TAG,"Received UART DATA=[%s]", buffer_debug);
+#endif
+
 	switch(tipo_bloque){	
 		case BLOQUE_INICIALIZACION:
 			if (!systemStarted && (buffer_rx_local[239]==0x36 || buffer_rx_local[238]==0x36)) { //Compatibilidad con 509
