@@ -25,7 +25,7 @@
 		#define DEBUG_BLE		   //Activar el debug del ble
 		#define DEBUG_CONFIG	   //Debugar el almacenamiento de la configuracion
 		#define DEBUG_UPDATE
-		//#define DEBUG_UART
+		#define DEBUG_UART
 
 		#ifdef IS_UNO_KUBO	
 			#define DEBUG_WIFI	     //Activar el debug del wifi

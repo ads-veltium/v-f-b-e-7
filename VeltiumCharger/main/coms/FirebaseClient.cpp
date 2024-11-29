@@ -40,6 +40,7 @@ uint8_t older_record_in_fb;
 boolean write_records_trigger = false;
 extern boolean records_trigger;
 extern boolean ask_for_new_record;
+boolean retry_enable =true;
 
 //Declaracion de funciones locales
 void DownloadTask(void *arg);
@@ -324,9 +325,15 @@ bool WriteFirebaseHistoric(char* buffer){
     ESP_LOGI(TAG,"Wrtinging record. Connection Time - Year= %i, Month= %i, Day= %i, Hour= %i, Min= %i, Sec= %i - TimeStamp=[%i]",t.tm_year+1900,t.tm_mon+1,t.tm_mday,t.tm_hour,t.tm_min,t.tm_sec,ConectionTS);
 
     if(ConectionTS> Status.Time.actual_time || ConectionTS < MIN_RECORD_TIMESTAMP){
-      ESP_LOGE(TAG,"Error in Connection Time=%i Actual Time =%lli", ConectionTS, Status.Time.actual_time);
-      ESP_LOGE(TAG,"Year=%i, Month=%i, Day=%i, Hour=%i, Min=%i, Sec=%i",t.tm_year,t.tm_mon,t.tm_mday,t.tm_hour,t.tm_min,t.tm_sec);
+      ESP_LOGW(TAG,"Error in Connection Time=%i Actual Time =%lli", ConectionTS, Status.Time.actual_time);
+      ESP_LOGW(TAG,"Year=%i, Month=%i, Day=%i, Hour=%i, Min=%i, Sec=%i",t.tm_year,t.tm_mon,t.tm_mday,t.tm_hour,t.tm_min,t.tm_sec);
       // return true; // No se bloquea el almacenamiento de recargas con horas incorrectas.
+    }
+
+    //Bloqueo de escritura de registros recibidos con TS del 1/1/2000 00:00:00 o 3/3/2003 03:03:03
+    if (ConectionTS==946598400 || ConectionTS==1046660583){ 
+      ESP_LOGE(TAG,"Record with Connection Time=%i not written to Firebase",ConectionTS);
+      return false;
     }
 
     t = {0};  // Initalize to all 0's
@@ -339,7 +346,7 @@ bool WriteFirebaseHistoric(char* buffer){
     int StartTs = mktime(&t);
 
     if(StartTs> Status.Time.actual_time || StartTs < MIN_RECORD_TIMESTAMP){
-      ESP_LOGE(TAG,"Error in Start Time= %i Actual Time = %lli", StartTs, Status.Time.actual_time);
+      ESP_LOGW(TAG,"Error in Start Time= %i Actual Time = %lli", StartTs, Status.Time.actual_time);
       // return true; // No se bloquea el almacenamiento de recargas con horas incorrectas
     }
 
@@ -353,7 +360,7 @@ bool WriteFirebaseHistoric(char* buffer){
     int DisconTs = mktime(&t);
 
     if(DisconTs < StartTs || DisconTs < MIN_RECORD_TIMESTAMP){
-      ESP_LOGE(TAG,"Error en Dicconnect Time= %i Actual Time = %lli", DisconTs, Status.Time.actual_time);
+      ESP_LOGW(TAG,"Error en Dicconnect Time= %i Actual Time = %lli", DisconTs, Status.Time.actual_time);
       // return true; // No se bloquea el almacenamiento de recargas con horas incorrectas
     }
 
@@ -1381,6 +1388,7 @@ void Firebase_Conn_Task(void *args){
         delayeando = 1;
         record_pending_for_write = false;      
         if (WriteFirebaseHistoric((char*)record_received_buffer_for_fb)) {
+          retry_enable = true;
           if (WriteFirebaseLastRecordSynced(last_record_in_mem, record_index, last_record_lap)) {
             if (ReadFirebaseOlderSyncRecord()) {
               if (record_index == older_record_in_fb + 1) {
@@ -1422,6 +1430,10 @@ void Firebase_Conn_Task(void *args){
               WriteFirebaseOlderSyncRecord(record_index);
             }
           }
+        }
+        else if(retry_enable==true){
+          retry_enable = false;
+          ask_for_new_record = true;
         }
       }
 
