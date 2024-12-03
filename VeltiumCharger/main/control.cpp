@@ -544,11 +544,13 @@ void procesar_bloque(uint16 tipo_bloque){
 				modifyCharacteristic(&buffer_rx_local[207], 2, RECORDING_REC_CAPACITY_CHAR_HANDLE);
 				modifyCharacteristic(&buffer_rx_local[209], 2, RECORDING_REC_LAST_CHAR_HANDLE);
 				last_record_in_mem = (buffer_rx_local[209] + buffer_rx_local[210]*0x100);
-				ESP_LOGI(TAG,"last_record_in_mem = %i",last_record_in_mem);
+				ESP_LOGI(TAG,"Last record in mem. Index = %i",last_record_in_mem);
 				record_index = last_record_in_mem;
 				modifyCharacteristic(&buffer_rx_local[211], 1, RECORDING_REC_LAPS_CHAR_HANDLE);
 				last_record_lap = buffer_rx_local[211];
+				ESP_LOGI(TAG,"Last record in mem. Lap = %i",last_record_lap);
 				record_lap = last_record_lap;
+				
 				//comprobar si el dato tiene sentido, sino cargar el de mi memoria
 				if(memcmp("AA", &buffer_rx_local[212],2) && memcmp("WA", &buffer_rx_local[212],2) && memcmp("MA", &buffer_rx_local[212],2)){
 					if(memcmp("AA", Configuracion.data.autentication_mode,2) && memcmp("WA", Configuracion.data.autentication_mode,2) && memcmp("MA", Configuracion.data.autentication_mode,2)){
@@ -1089,10 +1091,14 @@ void procesar_bloque(uint16 tipo_bloque){
 		
 		case RECORDING_REC_LAPS_CHAR_HANDLE:{
 			uint8_t buffer[2];
+			uint8_t received_lap;
 #ifdef DEBUG
 			Serial.printf("Me ha llegado una nueva vuelta! %i\n", (buffer_rx_local[0] + buffer_rx_local[1] * 0x100));
 #endif
-			last_record_lap = (buffer_rx_local[0] + buffer_rx_local[1] * 0x100);
+			received_lap = (buffer_rx_local[0] + buffer_rx_local[1] * 0x100);
+			if ((received_lap == last_record_lap) || (received_lap == last_record_lap+1)) {
+				last_record_lap = received_lap;
+			}
 			record_lap = last_record_lap;
 			buffer[0] = (uint8)(last_record_in_mem & 0x00FF);
 			buffer[1] = (uint8)((last_record_in_mem >> 8) & 0x00FF);
