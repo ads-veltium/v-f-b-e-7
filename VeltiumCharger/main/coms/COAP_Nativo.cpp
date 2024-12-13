@@ -1261,13 +1261,15 @@ void start_client(){
         store_params_in_mem();
     }
 
-    if (xClientHandle != NULL) {
+    if (xClientHandle != NULL && eTaskGetState(xClientHandle) != eDeleted) {
+        ESP_LOGI(TAG,"COAP Client task already running - Deleting...");
         vTaskDelete(xClientHandle);  
         xClientHandle = NULL;
     }
     xClientHandle = xTaskCreateStatic(coap_client, "coap_client", 4096 * 4, NULL, 1, xClientStack, &xClientBuffer);
-
+    ESP_LOGI(TAG,"COAP Client task started");
 }
+
 
 /*******************************************************
  * Funciones para llamar desde otros puntos del codigo

@@ -11,7 +11,7 @@
 	#define USE_GROUPS			   //Comentar para no utilizar los grupos de potencia
 #endif
 
-#define DEVELOPMENT				   //Comentar para pasar firmware a produccion ( Cambio de base de datos y quitar debugs)
+//#define DEVELOPMENT				   //Comentar para pasar firmware a produccion ( Cambio de base de datos y quitar debugs)
 
 #ifdef DEVELOPMENT
 	#define DEBUG				   //Activar los distintos debugs
