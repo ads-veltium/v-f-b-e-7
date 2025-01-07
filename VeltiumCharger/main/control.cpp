@@ -100,9 +100,9 @@ uint16 cnt_diferencia = 1;
 uint8 HPT_estados[9][3] = {"0V", "A1", "A2", "B1", "B2", "C1", "C2", "E1", "F1"};
 
 #ifdef IS_UNO_KUBO
-uint8 ESP_version_firmware[11] = {"VBLE3_0613"};	   
+uint8 ESP_version_firmware[11] = {"VBLE3_0614"};	   
 #else
-uint8 ESP_version_firmware[11] = {"VBLE0_0613"};	
+uint8 ESP_version_firmware[11] = {"VBLE0_0614"};	
 #endif
 
 uint8 PSOC_version_firmware[11] ;		
@@ -594,6 +594,7 @@ void procesar_bloque(uint16 tipo_bloque){
 
 					if((buffer_rx_local[232] >> 1) & 0x01){
 						Params.Tipo_Sensor    = (buffer_rx_local[232]  >> 4)& 0x01;
+						SendToPSOC5(1, SEARCH_EXTERNAL_METER);
 					}
 					else{
 						Params.Tipo_Sensor    = 0;
