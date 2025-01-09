@@ -473,8 +473,13 @@ class CBCharacteristic: public BLECharacteristicCallbacks {
 						}
 					}
 
+					SPIFFS.begin(1,"/spiffs",2,"PSOC5");
+					SPIFFS.format();
 					UpdateFile = SPIFFS.open(PSOC_UPDATE_FILE, FILE_WRITE);
+
 					if (!UpdateFile){
+						ESP_LOGI(TAG,"!UpdateFile");
+
 						ESP_LOGE(TAG,"No se pudo crear y abrir %s",PSOC_UPDATE_FILE);
 					}
 					uint8 open_file_retry_number=0;
@@ -891,7 +896,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks {
 			else if(UpdateType == PSOC_UPDATE){
 				uint8 retry_number=0;
 				uint16 write_result = UpdateFile.write(payload,partSize);
-				ESP_LOGI(TAG,"partSize: %u write: %u", partSize, write_result);
+				ESP_LOGI(TAG,"Writing to file. partSize:%u - written:%u", partSize, write_result);
 				while ((write_result != partSize)&&(retry_number++ < 15)){
 						write_result = UpdateFile.write(payload,partSize);
 						ESP_LOGW(TAG,"Reintento %i de write: %u", retry_number, write_result);

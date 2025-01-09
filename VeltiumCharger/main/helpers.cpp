@@ -140,17 +140,17 @@ bool WaitForValue(String* variable, String objetivo, uint16_t timeout){
 }
 
 //----------------------------------------------------------------------------
-void SendToPSOC5(uint8 data, uint16 attrHandle){
-  uint8 buffer_tx_local[5];
+void SendToPSOC5(uint8_t data, uint16_t attrHandle){
+  uint8_t buffer_tx_local[5];
   int err;
   //cnt_timeout_tx = TIMEOUT_TX_BLOQUE2;
   buffer_tx_local[0] = HEADER_TX;
-  buffer_tx_local[1] = (uint8)(attrHandle >> 8);
-  buffer_tx_local[2] = (uint8)(attrHandle);
+  buffer_tx_local[1] = (uint8_t)(attrHandle >> 8);
+  buffer_tx_local[2] = (uint8_t)(attrHandle);
   buffer_tx_local[3] = 1; //size
   buffer_tx_local[4] = data;
-  //controlSendToSerialLocal(buffer_tx_local, 5);
-  err=serialLocal.write(buffer_tx_local, 5);
+  err = controlSendToSerialLocal(buffer_tx_local, 5);
+  // err=serialLocal.write(buffer_tx_local, 5);
 #ifdef DEBUG_TX_UART
   ESP_LOGI(TAG,"SenToPSOC5 - %i bytes sent to PSoC. attrHandle=0x%X",err,attrHandle);
 #endif   

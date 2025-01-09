@@ -23,6 +23,8 @@ extern uint8 user_index;
 extern uint8 PSOC_version_firmware[11];
 extern uint8 ESP_version_firmware[11];
 
+extern uint8_t updateTaskrunning;
+
 #ifdef USE_GROUPS
 extern carac_group                  ChargingGroup;
 extern carac_circuito               Circuitos[MAX_GROUP_SIZE];
@@ -1056,9 +1058,9 @@ void DownloadFileTask(void *args){
     url=UpdateStatus.PSOC_url;
     ESP_LOGI(TAG, "FW for PSoC Available at URL: %s", url.c_str());
     SPIFFS.end();
-    if(!SPIFFS.begin(1,"/spiffs",1,"PSOC5")){
+    if(!SPIFFS.begin(1,"/spiffs",2,"PSOC5")){
       SPIFFS.end();					
-      SPIFFS.begin(1,"/spiffs",1,"PSOC5");
+      SPIFFS.begin(1,"/spiffs",2,"PSOC5");
     }
     if(SPIFFS.exists(PSOC_UPDATE_FILE)){
       ESP_LOGI(TAG, "Existe fichero previo - formatendo SPIFFS");
@@ -1649,9 +1651,10 @@ void Firebase_Conn_Task(void *args){
       break;
 
     case DOWNLOADING:
-      if(!UpdateStatus.DescargandoArchivo){
+      if(!UpdateStatus.DescargandoArchivo && updateTaskrunning){
+      //if(!UpdateStatus.DescargandoArchivo){
         ESP_LOGI(TAG, "DOWNLOADING - Descarga finalizada");
-        xTaskCreate(UpdateTask,"TASK UPDATE",4096*3,NULL,1,NULL);
+        //xTaskCreate(UpdateTask,"TASK UPDATE",4096*3,NULL,1,NULL);
         ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
         ConfigFirebase.FirebaseConnState = INSTALLING;
         ESP_LOGI(TAG, "DOWNLOADING - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);      }  

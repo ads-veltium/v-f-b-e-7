@@ -82,6 +82,7 @@ uint8 record_received_buffer_for_fb[550]    EXT_RAM_ATTR;
 uint16 puntero_rx_local = 0;
 uint32 TimeFromStart = 60; //tiempo para buscar el contador, hay que darle tiempo a conectarse
 uint8 updateTaskrunning=0;
+uint8_t PSoCUpdateRequest=0;
 
 // initial serial number
 uint8 initialSerNum[10] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
@@ -359,6 +360,10 @@ void controlTask(void *arg) {
 					MAIN_RESET_Write(0);
 					ESP.restart();
 				}
+				else if(TimeoutMainDisconnect % 1000 == 0){
+					Serial.printf("**************  TimeoutMainDisconnect =");
+					Serial.println(TimeoutMainDisconnect);
+				}
 
 				break;
 			default:
@@ -366,9 +371,12 @@ void controlTask(void *arg) {
 			}
 		}
 		else{
-			if (!updateTaskrunning){
+			if (!updateTaskrunning && !PSoCUpdateRequest){
 				// Poner el micro principal en modo bootload
+				ESP_LOGI(TAG,"Poniendo al PSoC en Bootload");
 				SendToPSOC5(Zero, BOOT_LOADER_LOAD_SW_APP_CHAR_HANDLE);
+				PSoCUpdateRequest=1;
+				//delay(100);
 			}
 		}
 
@@ -519,6 +527,12 @@ void procesar_bloque(uint16 tipo_bloque){
 
 	switch(tipo_bloque){	
 		case BLOQUE_INICIALIZACION:
+#ifdef DEBUG
+			ESP_LOGI(TAG,"BLOQUE_INICIALIZACION - Imprimiendo contenido de buffer_rx_local:");
+			for (int i_bloq = 0; i_bloq < 256; i_bloq++){
+				ESP_LOGI(TAG,"Índice: %d, Valor: [%u]", i_bloq, buffer_rx_local[i_bloq]);
+			}
+#endif
 			if (!systemStarted && (buffer_rx_local[239]==0x36 || buffer_rx_local[238]==0x36)) { //Compatibilidad con 509
 				memcpy(device_ID, buffer_rx_local, 11);
 				changeAdvName(device_ID);
@@ -1216,6 +1230,8 @@ void procesar_bloque(uint16 tipo_bloque){
 		case BOOT_LOADER_LOAD_SW_APP_CHAR_HANDLE:{
 			xTaskCreate(UpdateTask,"TASK UPDATE",4096*5,NULL,1,NULL);
 			updateTaskrunning=1;
+			ESP_LOGI(TAG,"Arrancando UpdateTask");
+			PSoCUpdateRequest=0;
 		} 
 		break;
 				
@@ -1460,6 +1476,8 @@ void UpdateTask(void *arg){
 	Serial.println("\nComenzando actualizacion del PSoC!!");
 #endif
 
+	delay(1000);
+
 	int Nlinea = 0;
 	uint8_t err = 0;
 	String Buffer;
@@ -1493,10 +1511,10 @@ void UpdateTask(void *arg){
 			Serial.println("Se ha intentado 10 veces y existe un FW_Old, se prueba con este");
 			if(SPIFFS.exists(PSOC_UPDATE_FILE)){
 				err = SPIFFS.remove(PSOC_UPDATE_FILE);
-				ESP_LOGE(TAG,"Removing %s with errcode %u",PSOC_UPDATE_FILE,err);
+				ESP_LOGI(TAG,"Removing %s with errcode %u",PSOC_UPDATE_FILE,err);
 			}
 			err = SPIFFS.rename(PSOC_UPDATE_OLD_FILE, PSOC_UPDATE_FILE);
-			ESP_LOGE(TAG,"Renaming %s to %s with errcode %u",PSOC_UPDATE_OLD_FILE,PSOC_UPDATE_FILE,err);
+			ESP_LOGI(TAG,"Renaming %s to %s with errcode %u",PSOC_UPDATE_OLD_FILE,PSOC_UPDATE_FILE,err);
 		}
 	}
 
@@ -1506,10 +1524,10 @@ void UpdateTask(void *arg){
 	if (!err){
 		if(SPIFFS.exists(PSOC_UPDATE_OLD_FILE)){
 			err = SPIFFS.remove(PSOC_UPDATE_OLD_FILE);
-			ESP_LOGE(TAG,"Removing %s with errcode %u",PSOC_UPDATE_OLD_FILE,err);
+			ESP_LOGI(TAG,"Removing %s with errcode %u",PSOC_UPDATE_OLD_FILE,err);
 		}
 		err = SPIFFS.rename(PSOC_UPDATE_FILE, PSOC_UPDATE_OLD_FILE);
-		ESP_LOGE(TAG,"Renaming %s to %s with errcode %u",PSOC_UPDATE_FILE,PSOC_UPDATE_OLD_FILE,err);
+		ESP_LOGI(TAG,"Renaming %s to %s with errcode %u",PSOC_UPDATE_FILE,PSOC_UPDATE_OLD_FILE,err);
 	}
 	updateTaskrunning = 0;
 	setMainFwUpdateActive(0);

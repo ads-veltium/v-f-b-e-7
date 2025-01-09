@@ -11,7 +11,7 @@
 	#define USE_GROUPS			   //Comentar para no utilizar los grupos de potencia
 #endif
 
-//#define DEVELOPMENT				   //Comentar para pasar firmware a produccion ( Cambio de base de datos y quitar debugs)
+#define DEVELOPMENT				   //Comentar para pasar firmware a produccion ( Cambio de base de datos y quitar debugs)
 
 #ifdef DEVELOPMENT
 	#define DEBUG				   //Activar los distintos debugs
@@ -25,7 +25,7 @@
 		#define DEBUG_BLE		   //Activar el debug del ble
 		#define DEBUG_CONFIG	   //Debugar el almacenamiento de la configuracion
 		#define DEBUG_UPDATE
-		//#define DEBUG_TX_UART
+		#define DEBUG_TX_UART
 		//#define DEBUG_RX_UART
 
 		#ifdef IS_UNO_KUBO	
