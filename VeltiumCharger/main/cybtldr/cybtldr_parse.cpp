@@ -16,14 +16,20 @@
  */
 
 #include "cybtldr_parse.h"
+#include <ctype.h>
+#include <stdbool.h>
+#include <string.h>
 #include "Arduino.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+#include "SPIFFS.h"
 #include "../tipos.h"
 #include "../HardwareSerialMOD.h"
-#include "SPIFFS.h"
 
 
 /* Pointer to the *.cyacd file containing the data that is to be read */
-static File dataFile;
+static fs::File dataFile;
 
 static uint16_t parse2ByteValueLittleEndian(uint8_t* buf) { return ((uint16_t)buf[0]) | (((uint16_t)buf[1]) << 8); }
 
@@ -50,6 +56,7 @@ int CyBtldr_FromAscii(uint32_t bufSize, char* buffer, uint16_t* rowSize, uint8_t
         }
         *rowSize = i;
     }
+
     return err;
 }
 
@@ -67,7 +74,7 @@ int CyBtldr_ReadLine(uint32_t* size, char* buffer) {
             Buffer.toCharArray(buffer, len);
         }
         else if (NULL != dataFile && !dataFile.available())
-            err = CYRET_ERR_EOF;
+                err = CYRET_ERR_EOF;
         else
             err = CYRET_ERR_FILE;
     } while (err == CYRET_SUCCESS && buffer[0] == '#');
@@ -81,30 +88,31 @@ int CyBtldr_OpenDataFile(const char* file, const char* partition) {
     int err = CYRET_SUCCESS;
     SPIFFS.begin();
     SPIFFS.end();
-    SPIFFS.begin(0, "/spiffs", 1, partition);
+    SPIFFS.begin(0, "/spiffs", 2, "PSOC5");
 
     dataFile = SPIFFS.open(file);
     if (!dataFile || dataFile.size() == 0)
     {
         dataFile.close();
         SPIFFS.end();
-        Serial.println("El spiffs parece cerrado, intentandolo otra vez");
-        SPIFFS.begin(0, "/spiffs", 1, partition);
+        //Serial.println("El spiffs parece cerrado, intentandolo otra vez");
+        SPIFFS.begin(0, "/spiffs", 2, "PSOC5");
         dataFile = SPIFFS.open(file);
         if (!dataFile || dataFile.size() == 0)
         {
-            Serial.println("Imposible abrir");
+            //Serial.println("Imposible abrir");
             err = CYRET_ERR_FILE;
         }
     }
 
     if (CYRET_SUCCESS == err)
     {
-        Serial.print("Tamaño del archivo: ");
-        Serial.println(dataFile.size());
+        //Serial.print("Tamaño del archivo: ");
+        //Serial.println(dataFile.size());
     }
 
     return err;
+
 }
 
 int CyBtldr_CheckCyacdFileVersion(uint32_t bufSize, char *header, uint8_t *version)
@@ -124,7 +132,7 @@ int CyBtldr_CheckCyacdFileVersion(uint32_t bufSize, char *header, uint8_t *versi
         {
             err = CYRET_ERR_DATA;
         }
-        }
+    }
 
     return err;
 }

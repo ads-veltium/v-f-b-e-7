@@ -107,7 +107,7 @@ bool UpdateClass::rollBack(){
 
 bool UpdateClass::begin(size_t size, int command, int ledPin, uint8_t ledOn, const char *label) {
     if(_size > 0){
-        log_w("already running");
+        Serial.println("DescargaESP: already running");
         return false;
     }
 
@@ -121,6 +121,8 @@ bool UpdateClass::begin(size_t size, int command, int ledPin, uint8_t ledOn, con
 
     if(size == 0) {
         _error = UPDATE_ERROR_SIZE;
+        Serial.println("DescargaESP: UPDATE_ERROR_SIZE");
+
         return false;
     }
 
@@ -128,6 +130,7 @@ bool UpdateClass::begin(size_t size, int command, int ledPin, uint8_t ledOn, con
         _partition = esp_ota_get_next_update_partition(NULL);
         if(!_partition){
             _error = UPDATE_ERROR_NO_PARTITION;
+            Serial.println("DescargaESP: UPDATE_ERROR_NO_PARTITION");
             return false;
         }
         log_d("OTA Partition: %s", _partition->label);
@@ -140,6 +143,8 @@ bool UpdateClass::begin(size_t size, int command, int ledPin, uint8_t ledOn, con
             _paroffset = 0x1000;  //Offset for ffat, assuming size is already corrected
             if(!_partition){
                _error = UPDATE_ERROR_NO_PARTITION;
+                Serial.println("DescargaESP: UPDATE_ERROR_NO_PARTITION 2");
+
                return false;
             }
         }
@@ -147,6 +152,8 @@ bool UpdateClass::begin(size_t size, int command, int ledPin, uint8_t ledOn, con
     else {
         _error = UPDATE_ERROR_BAD_ARGUMENT;
         log_e("bad command %u", command);
+        Serial.println("DescargaESP: UPDATE_ERROR_BAD_ARGUMENT");
+
         return false;
     }
 
@@ -154,6 +161,8 @@ bool UpdateClass::begin(size_t size, int command, int ledPin, uint8_t ledOn, con
         size = _partition->size;
     } else if(size > _partition->size){
         _error = UPDATE_ERROR_SIZE;
+        Serial.println("DescargaESP: UPDATE_ERROR_SIZE 2");
+
         log_e("too large %u > %u", size, _partition->size);
         return false;
     }
@@ -162,11 +171,15 @@ bool UpdateClass::begin(size_t size, int command, int ledPin, uint8_t ledOn, con
     _buffer = (uint8_t*)malloc(SPI_FLASH_SEC_SIZE);
     if(!_buffer){
         log_e("malloc failed");
+        Serial.println("DescargaESP: Malloc Failed");
+
         return false;
     }
     _size = size;
     _command = command;
     _md5.begin();
+    Serial.println("DescargaESP: Va de locos");
+
     return true;
 }
 

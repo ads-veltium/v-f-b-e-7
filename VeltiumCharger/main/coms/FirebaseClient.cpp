@@ -1050,15 +1050,14 @@ void DownloadFileTask(void *args){
   File UpdateFile;
   String FileName;
   String url;
-
+  
   //Si descargamos actualizacion para el PSOC5, debemos crear el archivo en el SPIFFS
   if(UpdateStatus.PSOC_UpdateAvailable){
     url=UpdateStatus.PSOC_url;
     ESP_LOGI(TAG, "FW for PSoC Available at URL: %s", url.c_str());
     SPIFFS.end();
-    if(!SPIFFS.begin(1,"/spiffs",1,"PSOC5")){
-      SPIFFS.end();					
-      SPIFFS.begin(1,"/spiffs",1,"PSOC5");
+    if(!SPIFFS.begin(1,"/spiffs",2,"PSOC5")){
+      SPIFFS.begin(1,"/spiffs",2,"PSOC5");
     }
     if(SPIFFS.exists(PSOC_UPDATE_FILE)){
       ESP_LOGI(TAG, "Existe fichero previo - formatendo SPIFFS");
@@ -1088,9 +1087,11 @@ void DownloadFileTask(void *args){
     uint8_t buff[1024] = { 0 };
 
     if(UpdateStatus.ESP_UpdateAvailable && !UpdateStatus.PSOC_UpdateAvailable){
-      if(!Update.begin(total)){
-        ESP_LOGE(TAG, "Error with size");
-      };
+      if(!Update.begin(total))//descarga ESP
+      { 
+        Serial.println("Error with size en descarga del ESP");
+      }
+      else Serial.println("Correcta descarga del ESP");
     }
 
     while (DownloadClient.connected() &&(len > 0 || len == -1)){
@@ -1163,6 +1164,7 @@ void Firebase_Conn_Task(void *args){
       ConfigFirebase.FirebaseConnState=DISCONNECTING;
       ESP_LOGI(TAG, "GENERAL - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
     }
+    
     switch (ConfigFirebase.FirebaseConnState){
     case DISCONNECTED:{
 
@@ -1629,19 +1631,16 @@ void Firebase_Conn_Task(void *args){
     /*********************** UPDATING states **********************/
     case UPDATING:
       delayeando = 10;
-      ESP_LOGI(TAG, "UPDATING - Comprobación de nuevo FW");
       bool CheckResult;
       CheckResult = CheckForUpdate();
 
       if(CheckResult){
-        ESP_LOGI(TAG, "UPDATING - Descargando nuevo FW");
         xTaskCreate(DownloadFileTask,"DOWNLOAD FILE", 4096*2, NULL, 1,NULL);
         ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
         ConfigFirebase.FirebaseConnState = DOWNLOADING;
         ESP_LOGI(TAG, "UPDATING - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
       }
       else{
-        ESP_LOGI(TAG, "UPDATING - No hay FW nuevo");
         ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
         ConfigFirebase.FirebaseConnState = IDLE;
         ESP_LOGI(TAG, "Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
@@ -1650,21 +1649,29 @@ void Firebase_Conn_Task(void *args){
 
     case DOWNLOADING:
       if(!UpdateStatus.DescargandoArchivo){
-        ESP_LOGI(TAG, "DOWNLOADING - Descarga finalizada");
-        xTaskCreate(UpdateTask,"TASK UPDATE",4096*3,NULL,1,NULL);
+        //xTaskCreate(UpdateTask,"TASK UPDATE",4096*3,NULL,1,NULL);
         ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
         ConfigFirebase.FirebaseConnState = INSTALLING;
-        ESP_LOGI(TAG, "DOWNLOADING - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);      }  
+        ESP_LOGI(TAG, "DOWNLOADING - Maquina de estados de Firebase pasa de %s a %s", 
+         String(ConfigFirebase.LastConnState).c_str(), 
+         String(ConfigFirebase.FirebaseConnState).c_str());
+         }  
       break;
 
     case INSTALLING:
+      vTaskDelay(pdMS_TO_TICKS(4000));
+      Serial.print("**+** CASE INSTALLING. DobleUpdate: ");
+      Serial.println(UpdateStatus.DobleUpdate);
+
       if(UpdateStatus.DobleUpdate){
-        ESP_LOGI(TAG, "INSTALLING - Update segundo micro. Descargando");
+        Serial.println("INSTALLING - Update segundo micro. Descargando");
         xTaskCreate(DownloadFileTask,"DOWNLOAD FILE", 4096*2, NULL, 1,NULL);
         ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
         ConfigFirebase.FirebaseConnState = DOWNLOADING;
         ESP_LOGI(TAG, "INSTALLING - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
       }
+      vTaskDelay(pdMS_TO_TICKS(4000));
+
       if(!UpdateStatus.DescargandoArchivo && !UpdateStatus.InstalandoArchivo){
         ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
         ConfigFirebase.FirebaseConnState = IDLE;
@@ -1690,7 +1697,8 @@ void Firebase_Conn_Task(void *args){
       break;
     default:
       delay(1000);
-      ESP_LOGE (TAG, "Error en la maquina de estados de Firebase. Estado: %i", ConfigFirebase.FirebaseConnState);
+      Serial.print("Error en la maquina de estados de Firebase. Estado: ");
+      Serial.println(ConfigFirebase.FirebaseConnState);
       ESP_LOGW (TAG, "Borrando Database");
       Database->end();
       Database->endAuth();

@@ -100,9 +100,9 @@ uint16 cnt_diferencia = 1;
 uint8 HPT_estados[9][3] = {"0V", "A1", "A2", "B1", "B2", "C1", "C2", "E1", "F1"};
 
 #ifdef IS_UNO_KUBO
-uint8 ESP_version_firmware[11] = {"VBLE3_0614"};	   
+uint8 ESP_version_firmware[11] = {"VBLE3_0612"};	   
 #else
-uint8 ESP_version_firmware[11] = {"VBLE0_0614"};	
+uint8 ESP_version_firmware[11] = {"VBLE0_0610"};	
 #endif
 
 uint8 PSOC_version_firmware[11] ;		
@@ -114,7 +114,7 @@ uint8 Bloqueo_de_carga_old = 1; // ADS - Anañido para reducir envíos al PSoC
 bool Testing = false;
 int TimeoutMainDisconnect = 0;
 extern bool deviceBleDisconnect;
-
+uint8 psocUpdateCounter = 0;
 
 void startSystem(void);
 void modifyCharacteristic(uint8* data, uint16 len, uint16 attrHandle);
@@ -138,6 +138,8 @@ uint8_t last_record_in_mem;
 uint8_t last_record_lap;
 TickType_t ask_for_new_record_start_timeout = 0;
 boolean records_trigger = false;
+
+uint8_t update_flag = 0;
 
 /*******************************************************************************
  * Rutina de atencion a inerrupcion de timer (10mS)
@@ -227,6 +229,7 @@ void controlTask(void *arg) {
 								mainFwUpdateActive = 1;
 								updateTaskrunning = 1;
 								Serial.println("Enviando firmware al PSOC5 por falta de comunicacion!");
+								
 								xTaskCreate(UpdateTask, "TASK UPDATE", 4096 * 5, NULL, 1, NULL);
 							}
 						}
@@ -366,9 +369,22 @@ void controlTask(void *arg) {
 			}
 		}
 		else{
-			if (!updateTaskrunning){
+			if (!updateTaskrunning && psocUpdateCounter<=10){
 				// Poner el micro principal en modo bootload
+				Serial.println("**+** Envio actualización al PSOC");
 				SendToPSOC5(Zero, BOOT_LOADER_LOAD_SW_APP_CHAR_HANDLE);
+				psocUpdateCounter++;
+				vTaskDelay(pdMS_TO_TICKS(1000));
+			}
+			else if(psocUpdateCounter>10)
+			{
+				psocUpdateCounter=0;
+				Status.error_code = 0x60;
+				vTaskDelay(pdMS_TO_TICKS(5000));
+
+				MAIN_RESET_Write(0);
+				delay(500);
+				ESP.restart();
 			}
 		}
 
@@ -1214,7 +1230,17 @@ void procesar_bloque(uint16 tipo_bloque){
 		break;
 		
 		case BOOT_LOADER_LOAD_SW_APP_CHAR_HANDLE:{
-			xTaskCreate(UpdateTask,"TASK UPDATE",4096*5,NULL,1,NULL);
+			Serial.println("**+** PSOC A BOOTLOADER, ACTUALIZO.");
+
+			vTaskDelay(pdMS_TO_TICKS(2500));
+
+			BaseType_t update_err = xTaskCreate(UpdateTask,"TASK UPDATE",4096*3,NULL,1,NULL);
+			if (update_err == pdPASS) {
+				Serial.println("Tarea creada exitosamente.");
+			} else {
+				Serial.print("Error al crear la tarea. Código de error: ");
+				Serial.println(update_err); // Imprime el valor numérico del error
+			}
 			updateTaskrunning=1;
 		} 
 		break;
@@ -1455,6 +1481,8 @@ void procesar_bloque(uint16 tipo_bloque){
  * Update Task
  * **********************************************/
 void UpdateTask(void *arg){
+	Serial.println("**+** InstalandoArchivo a true\n");
+
 	UpdateStatus.InstalandoArchivo = true;
 #ifdef DEBUG
 	Serial.println("\nComenzando actualizacion del PSoC!!");
@@ -1481,12 +1509,6 @@ void UpdateTask(void *arg){
 	uint32_t blVer=0;
 	uint8_t rowData[512];
 	File file;
-	
-	SPIFFS.begin();
-	SPIFFS.end();
-	SPIFFS.begin(0,"/spiffs",1,"PSOC5");
-	//Si falla mas de diez veces la actualizacion, recuperamos el firmware viejo que teniamos y lo volvemos a usar. 
-	Serial.print("Intento número:");
 	Serial.println(Configuracion.data.count_reinicios_malos);
 	if(Configuracion.data.count_reinicios_malos > 5){
 		if(SPIFFS.exists(PSOC_UPDATE_OLD_FILE)){
@@ -1496,7 +1518,7 @@ void UpdateTask(void *arg){
 				ESP_LOGE(TAG,"Removing %s with errcode %u",PSOC_UPDATE_FILE,err);
 			}
 			err = SPIFFS.rename(PSOC_UPDATE_OLD_FILE, PSOC_UPDATE_FILE);
-			ESP_LOGE(TAG,"Renaming %s to %s with errcode %u",PSOC_UPDATE_OLD_FILE,PSOC_UPDATE_FILE,err);
+			ESP_LOGE(TAG,"Renaming %s to %s with ReturnValue: %u",PSOC_UPDATE_OLD_FILE,PSOC_UPDATE_FILE,err);
 		}
 	}
 
@@ -1506,13 +1528,15 @@ void UpdateTask(void *arg){
 	if (!err){
 		if(SPIFFS.exists(PSOC_UPDATE_OLD_FILE)){
 			err = SPIFFS.remove(PSOC_UPDATE_OLD_FILE);
-			ESP_LOGE(TAG,"Removing %s with errcode %u",PSOC_UPDATE_OLD_FILE,err);
+			Serial.print(String("Removing ") + PSOC_UPDATE_OLD_FILE + " with errcode "+err);
 		}
 		err = SPIFFS.rename(PSOC_UPDATE_FILE, PSOC_UPDATE_OLD_FILE);
-		ESP_LOGE(TAG,"Renaming %s to %s with errcode %u",PSOC_UPDATE_FILE,PSOC_UPDATE_OLD_FILE,err);
+		Serial.print(String("Renaming ") + PSOC_UPDATE_FILE + " to " + PSOC_UPDATE_OLD_FILE + " with, returnValue: " + err);
 	}
 	updateTaskrunning = 0;
 	setMainFwUpdateActive(0);
+	update_flag = 0;
+	Serial.println("**+** InstalandoArchivo a false");
 	UpdateStatus.InstalandoArchivo = false;
 	if (!UpdateStatus.ESP_UpdateAvailable){
 		Serial.println("Reiniciando en 4 segundos!");
@@ -1522,8 +1546,10 @@ void UpdateTask(void *arg){
 		ESP.restart();
 	}
 	else{
+		
 		UpdateStatus.PSOC_UpdateAvailable = false;
 		UpdateStatus.DobleUpdate = true;
+		Serial.println("**+** VELT Instalado. ESP_UpdateAvailable así que DobleUpdate pasa a 1");
 	}
 
 	vTaskDelete(NULL);
@@ -1702,5 +1728,37 @@ void Get_Stored_Group_Circuits(){
 		Serial.printf("Get_Stored_Group_Circuits: GROUPS_CIRCUITS: Circuito %i limite_corriente %i \n", i, Circuitos[i].limite_corriente);
 #endif
 	}
+}
+
+uint8 checkSpiffsBug()
+{
+	uint32_t checkPattern = random(0, UINT32_MAX);
+    uint32_t readcheckPattern = 0;
+	uint8 spiffs_bug;
+
+    // Inicializar la memoria no volátil (NVS)
+    esp_err_t nvs_init_result = nvs_flash_init_partition("nvs");
+    if (nvs_init_result == ESP_ERR_NVS_NO_FREE_PAGES || nvs_init_result == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        // Manejar errores de inicialización si es necesario
+        // En este ejemplo, simplemente se borran los datos y se vuelve a intentar
+        ESP_ERROR_CHECK(nvs_flash_erase_partition("nvs"));
+        nvs_init_result = nvs_flash_init_partition("nvs");
+    }
+    ESP_ERROR_CHECK(nvs_init_result);
+    // Abrir el espacio de almacenamiento en la memoria no volátil
+    nvs_handle_t nvs_handle;
+    ESP_ERROR_CHECK(nvs_open("nvs", NVS_READWRITE, &nvs_handle));
+    // Obtener el tipo de arranque
+    nvs_set_u32(nvs_handle, "pattern", checkPattern);
+    nvs_commit(nvs_handle);
+    nvs_get_u32(nvs_handle, "pattern", &readcheckPattern);
+    ESP_LOGW(TAG, " **************************** -- FLASH -- WritePattern %u / ReadPattern %u", checkPattern, readcheckPattern);
+	//Serial.println(" **************************** -- FLASH -- WritePattern %u / ReadPattern %u", checkPattern, readcheckPattern);
+
+    if (checkPattern == readcheckPattern) spiffs_bug = 0;
+    else spiffs_bug = 1;
+    // Cerrar el espacio de almacenamiento en la memoria no volátil
+    nvs_close(nvs_handle);
+	return spiffs_bug;
 }
 #endif

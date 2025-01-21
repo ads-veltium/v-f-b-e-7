@@ -224,6 +224,8 @@ uint8_t sendBinaryBlock ( uint8_t *data, int len ){
 	if(mainFwUpdateActive)
 	{
 		int ret=0;
+    Serial.print("SendBinaruBlock: ");
+    Serial.println((char*)data);
 		ret = serialLocal.write(data, len);
 		return ret;
 	}

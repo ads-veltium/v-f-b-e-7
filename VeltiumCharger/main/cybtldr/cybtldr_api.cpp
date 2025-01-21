@@ -16,10 +16,24 @@
  */
 
 #include "cybtldr_api.h"
+//#include "driver/uart.h"
+#include <stdlib.h>
+#include <string.h>
+
 #include "../control.h"
 #include "../helpers.h"
 
+extern carac_Update_Status          UpdateStatus;
 HardwareSerialMOD* channel = NULL;
+
+//uart_port_t g_comm = -1;
+
+#ifndef PSOC_UART_NUMBER
+#define PSOC_UART_NUMBER 2
+#endif
+#ifndef DFU_BUF_SIZE
+#define DFU_BUF_SIZE (128U)
+#endif
 
 static uint16_t min_uint16(uint16_t a, uint16_t b) { return (a < b) ? a : b; }
 
@@ -31,69 +45,49 @@ static void writePacketToFile(uint8_t* inBuf, uint32_t inSize, FILE* outFile) {
 }
 
 int CyBtldr_TransferData(uint8_t* inBuf, int inSize, uint8_t* outBuf, int outSize) {
-    int err = 1;
+
+    int err = CYRET_SUCCESS;
     uint8 cnt_timeout_tx = 1;
-    int timeout = 0;
+    int timeout = 30000; // Tiempo de espera en milisegundos (30 segundos)
+    int elapsedTime = 0; // Tiempo transcurrido
+    const int delayInterval = 10; // Intervalo de espera entre comprobaciones en milisegundos
 
     outBuf[0] = 'a';
 
     channel->flush(false);
 
-    while (err == 1)
-    {
-        if (timeout > 4000)
-        {
-            Serial.println(timeout);
-            err = 68;
-        }
-    
-        if (--cnt_timeout_tx == 0)
-        {
-            cnt_timeout_tx = 25;
-            sendBinaryBlock(inBuf, inSize);
-            vTaskDelay(pdMS_TO_TICKS(10));
-            timeout++;
-        }
-        if (channel->available() != 0)
-        {
-#ifdef DEBUG_UPDATE
-            Serial.print("Available: ");
-            Serial.println(channel->available());
-            Serial.println(outSize);
-#endif
-            int longitud_bloque = outSize;
-            int puntero_rx_local = 0;
-            do
-            {
-                if (longitud_bloque > 0)
-                {
-                    channel->read(&outBuf[puntero_rx_local], 1);
-                    puntero_rx_local++;
-                }
-                longitud_bloque--;
-            } while (longitud_bloque > 0);
-            for (int i = 0; i < outSize; i++)
-            {
-#ifdef DEBUG_UPDATE
-                Serial.print(outBuf[i]);
-                Serial.print(" ");
-#endif
-            }
-            if (outBuf[0] == 1 && outBuf[outSize - 1] == 0x17 && outBuf[1] == 0)
-            {
-#ifdef DEBUG_UPDATE
-                Serial.print("outBuf[1]: ");
-                Serial.println(outBuf[1]);
-#endif
-                err = outBuf[1];
-            }
-        }
-        vTaskDelay(pdMS_TO_TICKS(20));
-    }
-    channel->flush();
-    if (CYRET_SUCCESS != err)
-        err |= CYRET_ERR_COMM_MASK;
+    //enviar datos
+    sendBinaryBlock(inBuf, inSize);
+    Serial.print("Escrito... \n");
+    vTaskDelay(pdMS_TO_TICKS(300));
 
+
+
+    // Esperar hasta que haya suficientes datos o se alcance el timeout
+    while (channel->available() < outSize && elapsedTime < timeout) {
+        vTaskDelay(pdMS_TO_TICKS(delayInterval)); // Esperar 100 ms
+        elapsedTime += delayInterval;
+    }
+
+    if (channel->available() >= outSize) { // Hay suficientes datos
+        Serial.print("Channel available: ");
+        Serial.println(channel->available());
+        channel->read(&outBuf[0], outSize);
+    } else { // Timeout alcanzado
+        Serial.print("Channel available: ");
+        Serial.println(channel->available());
+        err = CYRET_ERR_LENGTH | CYRET_ERR_COMM_MASK;
+    }
+
+    for (int i = 0; i < outSize; i++)
+    {
+
+        Serial.print(outBuf[i]);
+        Serial.print(" ");
+
+    }
+    Serial.print("Transferdata err: ");
+    Serial.println(err);
     return err;
 }
 
@@ -134,7 +128,7 @@ int CyBtldr_StartBootloadOperation(HardwareSerialMOD *ReceivedChannel, uint32_t 
             err = status | CYRET_ERR_BTLDR_MASK;
         if (expSiId != siliconId || expSiRev != siliconRev)
             err = CYRET_ERR_DEVICE;
-    }
+        }
 
     return err;
 }
@@ -147,11 +141,15 @@ int CyBtldr_EndBootloadOperation(HardwareSerialMOD *ReceivedChannel)
 
     int err = CyBtldr_CreateExitBootLoaderCmd(inBuf, &inSize, &outSize);
     if (CYRET_SUCCESS == err) {
-        err = ReceivedChannel->write(inBuf, inSize);
+        int wrSize = ReceivedChannel->write(inBuf, inSize);
 
-        if (CYRET_SUCCESS != err) err |= CYRET_ERR_COMM_MASK;
+        if (inSize != wrSize)
+        {
+            err = CYRET_ERR_LENGTH | CYRET_ERR_COMM_MASK;
+        }
     }
     channel = NULL;
+
 
     return err;
 }
@@ -170,7 +168,8 @@ static int SendData(HardwareSerialMOD *ReceivedChannel, uint8_t *buf, uint16_t s
     int err = CYRET_SUCCESS;
     uint16_t cmdLen = 0;
     // Break row into pieces to ensure we don't send too much for the transfer protocol
-    while ((CYRET_SUCCESS == err) && ((size - (*offset)) > maxRemainingDataSize)) {
+    while ((CYRET_SUCCESS == err) && ((size - (*offset)) > maxRemainingDataSize) && UpdateStatus.InstalandoArchivo) {
+        printf("%d %d %d", size, *offset, maxRemainingDataSize);
         if ((size - (*offset)) > subBufSize) {
             cmdLen = subBufSize;
         } else {
@@ -228,7 +227,7 @@ int CyBtldr_ProgramRow(uint32_t address, uint8_t* buf, uint16_t size) {
     uint16_t maxDataTransferSize = (128 >= TRANSFER_HEADER_SIZE)
                         ? (uint16_t)(128 - TRANSFER_HEADER_SIZE)
                         : 0;
-        
+
     if (CYRET_SUCCESS == err)
         err = SendData(channel, buf, size, &offset, maxDataTransferSize, inBuf, outBuf, NULL);
 
