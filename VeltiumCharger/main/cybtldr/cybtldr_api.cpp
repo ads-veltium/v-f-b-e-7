@@ -23,7 +23,7 @@
 #include "../control.h"
 #include "../helpers.h"
 
-extern carac_Update_Status          UpdateStatus;
+extern uint8 updateTaskrunning;
 HardwareSerialMOD* channel = NULL;
 
 //uart_port_t g_comm = -1;
@@ -50,44 +50,35 @@ int CyBtldr_TransferData(uint8_t* inBuf, int inSize, uint8_t* outBuf, int outSiz
     uint8 cnt_timeout_tx = 1;
     int timeout = 30000; // Tiempo de espera en milisegundos (30 segundos)
     int elapsedTime = 0; // Tiempo transcurrido
-    const int delayInterval = 10; // Intervalo de espera entre comprobaciones en milisegundos
+    const int delayInterval = 2; // Intervalo de espera entre comprobaciones en milisegundos
 
     outBuf[0] = 'a';
 
     channel->flush(false);
+    memset(outBuf, 0, outSize);
+    vTaskDelay(pdMS_TO_TICKS(10));
 
     //enviar datos
     sendBinaryBlock(inBuf, inSize);
-    Serial.print("Escrito... \n");
-    vTaskDelay(pdMS_TO_TICKS(300));
+    vTaskDelay(pdMS_TO_TICKS(100));
 
-
-
-    // Esperar hasta que haya suficientes datos o se alcance el timeout
-    while (channel->available() < outSize && elapsedTime < timeout) {
-        vTaskDelay(pdMS_TO_TICKS(delayInterval)); // Esperar 100 ms
-        elapsedTime += delayInterval;
+    if (outSize != 0){
+        // Esperar hasta que haya suficientes datos o se alcance el timeout
+        while (channel->available() < outSize && elapsedTime < timeout) {
+            delay(delayInterval); // Esperar 100 ms
+            elapsedTime += delayInterval;
+        }
+        if (channel->available() >= outSize) { // Hay suficientes datos
+            //Serial.printf("Bien, hay: %d y se necesitan %d", channel->available(), outSize);
+            //ORIGENSTATUS
+            channel->read(&outBuf[0], outSize);
+        } else { // Timeout alcanzado
+            //Serial.print("Timeout, hay: ");
+            //Serial.println(channel->available());
+            err = CYRET_ERR_LENGTH | CYRET_ERR_COMM_MASK;
+        }
     }
 
-    if (channel->available() >= outSize) { // Hay suficientes datos
-        Serial.print("Channel available: ");
-        Serial.println(channel->available());
-        channel->read(&outBuf[0], outSize);
-    } else { // Timeout alcanzado
-        Serial.print("Channel available: ");
-        Serial.println(channel->available());
-        err = CYRET_ERR_LENGTH | CYRET_ERR_COMM_MASK;
-    }
-
-    for (int i = 0; i < outSize; i++)
-    {
-
-        Serial.print(outBuf[i]);
-        Serial.print(" ");
-
-    }
-    Serial.print("Transferdata err: ");
-    Serial.println(err);
     return err;
 }
 
@@ -168,8 +159,8 @@ static int SendData(HardwareSerialMOD *ReceivedChannel, uint8_t *buf, uint16_t s
     int err = CYRET_SUCCESS;
     uint16_t cmdLen = 0;
     // Break row into pieces to ensure we don't send too much for the transfer protocol
-    while ((CYRET_SUCCESS == err) && ((size - (*offset)) > maxRemainingDataSize) && UpdateStatus.InstalandoArchivo) {
-        printf("%d %d %d", size, *offset, maxRemainingDataSize);
+    while ((CYRET_SUCCESS == err) && ((size - (*offset)) > maxRemainingDataSize) && updateTaskrunning) {
+        Serial.printf("updateTaskRunning %d nuria: %d %d %d", updateTaskrunning, size, *offset, maxRemainingDataSize);
         if ((size - (*offset)) > subBufSize) {
             cmdLen = subBufSize;
         } else {

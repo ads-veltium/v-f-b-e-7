@@ -16,7 +16,7 @@
  */
 
 #include "cybtldr_command.h"
-
+#include "Arduino.h"
 /* Variable used to store the currently selected packet checksum type */
 CyBtldr_ChecksumType CyBtldr_Checksum = SUM_CHECKSUM;
 
@@ -108,8 +108,10 @@ static int ParseGenericCmdResult(uint8_t* cmdBuf, uint32_t dataSize, uint32_t ex
     uint32_t cmdSize = dataSize + BASE_CMD_SIZE;
     *status = cmdBuf[1];
     if (cmdSize != expectedSize)
+    {
         err = CYRET_ERR_LENGTH;
-    else if (*status != CYRET_SUCCESS)
+        Serial.printf("Seteamos el error. cmdSize: %u, expectedSize: %u\n", cmdSize, expectedSize);
+    }else if (*status != CYRET_SUCCESS)
         err = CYRET_ERR_BTLDR_MASK | (*status);
     else if (cmdBuf[0] != CMD_START || cmdBuf[2] != ((uint8_t)dataSize) || cmdBuf[3] != ((uint8_t)(dataSize >> 8)) ||
              cmdBuf[cmdSize - 1] != CMD_STOP)

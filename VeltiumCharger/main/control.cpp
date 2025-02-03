@@ -100,7 +100,7 @@ uint16 cnt_diferencia = 1;
 uint8 HPT_estados[9][3] = {"0V", "A1", "A2", "B1", "B2", "C1", "C2", "E1", "F1"};
 
 #ifdef IS_UNO_KUBO
-uint8 ESP_version_firmware[11] = {"VBLE3_0612"};	   
+uint8 ESP_version_firmware[11] = {"VBLE3_0611"};	   
 #else
 uint8 ESP_version_firmware[11] = {"VBLE0_0610"};	
 #endif
@@ -226,11 +226,11 @@ void controlTask(void *arg) {
 								emergencyState = 1;
 							}
 							else{
-								mainFwUpdateActive = 1;
+								setMainFwUpdateActive(1);
 								updateTaskrunning = 1;
 								Serial.println("Enviando firmware al PSOC5 por falta de comunicacion!");
 								
-								xTaskCreate(UpdateTask, "TASK UPDATE", 4096 * 5, NULL, 1, NULL);
+								xTaskCreate(UpdateTask, "TASK UPDATE", 4096 * 5, NULL, 5, NULL);
 							}
 						}
 					}
@@ -369,14 +369,13 @@ void controlTask(void *arg) {
 			}
 		}
 		else{
-			if (!updateTaskrunning && psocUpdateCounter<=10){
+			if (!updateTaskrunning && psocUpdateCounter<=100){
 				// Poner el micro principal en modo bootload
 				Serial.println("**+** Envio actualización al PSOC");
 				SendToPSOC5(Zero, BOOT_LOADER_LOAD_SW_APP_CHAR_HANDLE);
 				psocUpdateCounter++;
-				vTaskDelay(pdMS_TO_TICKS(1000));
 			}
-			else if(psocUpdateCounter>10)
+			else if(psocUpdateCounter>100)
 			{
 				psocUpdateCounter=0;
 				Status.error_code = 0x60;
@@ -1231,10 +1230,10 @@ void procesar_bloque(uint16 tipo_bloque){
 		
 		case BOOT_LOADER_LOAD_SW_APP_CHAR_HANDLE:{
 			Serial.println("**+** PSOC A BOOTLOADER, ACTUALIZO.");
-
+			psocUpdateCounter = 0;
 			vTaskDelay(pdMS_TO_TICKS(2500));
 
-			BaseType_t update_err = xTaskCreate(UpdateTask,"TASK UPDATE",4096*3,NULL,1,NULL);
+			BaseType_t update_err = xTaskCreate(UpdateTask,"TASK UPDATE",4096*3,NULL,5,NULL);
 			if (update_err == pdPASS) {
 				Serial.println("Tarea creada exitosamente.");
 			} else {
@@ -1515,24 +1514,26 @@ void UpdateTask(void *arg){
 			Serial.println("Se ha intentado 10 veces y existe un FW_Old, se prueba con este");
 			if(SPIFFS.exists(PSOC_UPDATE_FILE)){
 				err = SPIFFS.remove(PSOC_UPDATE_FILE);
-				ESP_LOGE(TAG,"Removing %s with errcode %u",PSOC_UPDATE_FILE,err);
+				Serial.printf("Removing %s with errcode %u\n",PSOC_UPDATE_FILE,err);
 			}
 			err = SPIFFS.rename(PSOC_UPDATE_OLD_FILE, PSOC_UPDATE_FILE);
-			ESP_LOGE(TAG,"Renaming %s to %s with ReturnValue: %u",PSOC_UPDATE_OLD_FILE,PSOC_UPDATE_FILE,err);
+			Serial.printf("Renaming %s to %s with ReturnValue: %u\n",PSOC_UPDATE_OLD_FILE,PSOC_UPDATE_FILE,err);
 		}
 	}
 
 	err = CyBtldr_RunAction(PROGRAM, &serialLocal, NULL, PSOC_UPDATE_FILE, "PSOC5");
-	Serial.print("Actualizacion terminada: err = ");
-	Serial.println(err);
+	Serial.printf("Actualizacion terminada: err = %d\n", err);
 	if (!err){
 		if(SPIFFS.exists(PSOC_UPDATE_OLD_FILE)){
+			Serial.printf("Borrando PSOC_UPDATE_OLD_FILE %d\n", err);
+
 			err = SPIFFS.remove(PSOC_UPDATE_OLD_FILE);
-			Serial.print(String("Removing ") + PSOC_UPDATE_OLD_FILE + " with errcode "+err);
+			Serial.printf("Removing oldfile with errcode %d", err);
 		}
 		err = SPIFFS.rename(PSOC_UPDATE_FILE, PSOC_UPDATE_OLD_FILE);
 		Serial.print(String("Renaming ") + PSOC_UPDATE_FILE + " to " + PSOC_UPDATE_OLD_FILE + " with, returnValue: " + err);
 	}
+	UpdateStatus.InstalandoArchivo = false;
 	updateTaskrunning = 0;
 	setMainFwUpdateActive(0);
 	update_flag = 0;

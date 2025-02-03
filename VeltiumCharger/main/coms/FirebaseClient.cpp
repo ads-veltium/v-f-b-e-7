@@ -1047,95 +1047,151 @@ bool CheckForUpdate(){
 void DownloadFileTask(void *args){
   UpdateStatus.DescargandoArchivo=true;
 
-  File UpdateFile;
-  String FileName;
   String url;
-  
-  //Si descargamos actualizacion para el PSOC5, debemos crear el archivo en el SPIFFS
-  if(UpdateStatus.PSOC_UpdateAvailable){
-    url=UpdateStatus.PSOC_url;
-    ESP_LOGI(TAG, "FW for PSoC Available at URL: %s", url.c_str());
-    SPIFFS.end();
-    if(!SPIFFS.begin(1,"/spiffs",2,"PSOC5")){
-      SPIFFS.begin(1,"/spiffs",2,"PSOC5");
-    }
-    if(SPIFFS.exists(PSOC_UPDATE_FILE)){
-      ESP_LOGI(TAG, "Existe fichero previo - formatendo SPIFFS");
-      vTaskDelay(pdMS_TO_TICKS(50));
-      SPIFFS.format();
-    }
-    vTaskDelay(pdMS_TO_TICKS(50));
-    UpdateFile = SPIFFS.open(PSOC_UPDATE_FILE, FILE_WRITE);
-  }
+  const uint8 MAX_RETRIES = 5; // Número máximo de intentos
+  bool successPSOC = false;
+  bool successESP = false;
+
+  if(UpdateStatus.PSOC_UpdateAvailable) url=UpdateStatus.PSOC_url;
   else{
-    ESP_LOGI(TAG, "FW for ESP32 Available");
     url=UpdateStatus.ESP_url;
-    ESP_LOGI(TAG, "URL: %s", url.c_str());
   }
+  Serial.printf("FW Available at URL: %s", url.c_str());
 
+  for(int attempt = 1; ((attempt <= MAX_RETRIES) && !(successPSOC || successESP)); attempt++)
+  {
+    Serial.printf("Intento de descarga %d de %d...\n", attempt, MAX_RETRIES);
+    //Si descargamos actualizacion para el PSOC5, debemos crear el archivo en el SPIFFS
+    File UpdateFile;
+    if(UpdateStatus.PSOC_UpdateAvailable){
+      ESP_LOGI(TAG, "FW for PSoC Available at URL: %s", url.c_str());
+      SPIFFS.end();
+      vTaskDelay(pdMS_TO_TICKS(20));
+      if (!SPIFFS.begin(1, "/spiffs", 2, "PSOC5")) {
+        vTaskDelay(pdMS_TO_TICKS(20));
+        Serial.println("Fallo al iniciar SPIFFS. Reintentando...");
+        SPIFFS.end();
+        vTaskDelay(pdMS_TO_TICKS(20));
+        if (!SPIFFS.begin(1, "/spiffs", 2, "PSOC5")) {
+          Serial.println("Fallo crítico al iniciar SPIFFS. Abortando...");
+          UpdateStatus.DescargandoArchivo = false;
+          vTaskDelete(NULL);
+        }
+      } 
+      if (SPIFFS.exists(PSOC_UPDATE_FILE)) {
+        Serial.println("Existe fichero previo - formateando SPIFFS");
+        SPIFFS.format();
+      }
+      vTaskDelay(pdMS_TO_TICKS(50));
+      Serial.println("Abriendo5");
+      UpdateFile = SPIFFS.open(PSOC_UPDATE_FILE, FILE_WRITE);
+    }
+    
+    HTTPClient DownloadClient;
+    Serial.printf("Downloading: %s\n", url.c_str());
+    DownloadClient.begin(url);
+    WiFiClient *stream = nullptr;
 
-  HTTPClient DownloadClient;
-  ESP_LOGI(TAG, "Downloading: %s", url.c_str());
-  DownloadClient.begin(url);
-  WiFiClient *stream = new WiFiClient();
-  int total = 0;
-  if(DownloadClient.GET()>0){
-    total = DownloadClient.getSize();
-    int len = total;
-    int written=0;
-    stream = DownloadClient.getStreamPtr();
-    uint8_t buff[1024] = { 0 };
+    int total = 0;
+    if(DownloadClient.GET()>0){
+      total = DownloadClient.getSize();
+      Serial.printf("Tam total del fichero de actualizacion: %d\n", total);
+      int len = total;
+      int written=0;
+      stream = DownloadClient.getStreamPtr();
+      uint8_t buff[2048] = { 0 };
+
+      if(UpdateStatus.ESP_UpdateAvailable && !UpdateStatus.PSOC_UpdateAvailable){
+        if(!Update.begin(total))//descarga ESP
+        { 
+          Serial.println("Error with size en descarga del ESP");
+        }
+        else
+        { 
+          Serial.println("Correcta descarga del ESP");
+          
+        }
+      }
+      const int MAX_EMPTY_CYCLES = 500;
+      int emptyCycles = 0;
+      while (DownloadClient.connected() &&(len > 0 || len == -1))
+      {
+        size_t size = stream->available();
+        if (size > 0)
+        {
+          int c = stream->readBytes(buff, ((size > sizeof(buff)) ? sizeof(buff) : size));
+
+          if(UpdateStatus.PSOC_UpdateAvailable)
+          {
+            if (UpdateFile.write(buff, c)!=c)
+            {
+              Serial.println("Error escribiendo en el archivo de actualización PSoC");
+              break;
+            }
+          } 
+          else
+          {
+            if (Update.write(buff, c) != c) {
+              Serial.println("Error escribiendo en la actualización del ESP");
+              break;
+            }
+          } 
+          
+          if (len > 0)
+          {
+            written +=c;
+            len -= c;
+          }
+        }
+        else 
+        {
+          emptyCycles++;
+          if (emptyCycles >= MAX_EMPTY_CYCLES) {
+            Serial.println("Error: demasiados ciclos sin datos. Abortando...");
+            break;
+          }
+          vTaskDelay(10 / portTICK_PERIOD_MS);
+        }
+      }
+      UpdateFile.close();
+      if (written == total) {
+        Serial.printf("Archivo descargado correctamente.Esperado: %d, Recibido: %d\n", total, written);
+        if(UpdateStatus.PSOC_UpdateAvailable)
+        {
+          Serial.println("Abriendo6");
+          UpdateFile = SPIFFS.open(PSOC_UPDATE_FILE);
+          Serial.printf("Rechequeo del fichero: %d\n", UpdateFile.size());
+          if(UpdateFile.size() == total) successPSOC = true;
+          UpdateFile.close();
+        }
+        else successESP = true;
+      }
+      else Serial.printf("Error descargando archivo. Esperado: %d, Recibido: %d\n", total, written);
+
+    }
 
     if(UpdateStatus.ESP_UpdateAvailable && !UpdateStatus.PSOC_UpdateAvailable){
-      if(!Update.begin(total))//descarga ESP
-      { 
-        Serial.println("Error with size en descarga del ESP");
+      if(Update.end()){	
+        //reboot
+        Serial.println("Update finalizado - Reboot");
+        MAIN_RESET_Write(0);
+        ESP.restart();
       }
-      else Serial.println("Correcta descarga del ESP");
     }
-
-    while (DownloadClient.connected() &&(len > 0 || len == -1)){
-      size_t size = stream->available();
-      if (size){
-
-        int c = stream->readBytes(buff, ((size > sizeof(buff)) ? sizeof(buff) : size));
-
-        if(UpdateStatus.PSOC_UpdateAvailable){
-          UpdateFile.write(buff, c);
-        }
-        else{
-          Update.write(buff,c);
-        } 
-        
-        if (len > 0){
-          written +=c;
-          len -= c;
-        }
-      }
-    vTaskDelay(10 / portTICK_PERIOD_MS);
-    }
+    // Aqui solo llega asi se está actualizando el PSOC
+    if (stream) stream->stop();
+    DownloadClient.end();
   }
 
-  if(UpdateStatus.ESP_UpdateAvailable && !UpdateStatus.PSOC_UpdateAvailable){
-    if(Update.end()){	
-      //reboot
-      ESP_LOGI(TAG, "Update finalizado - Reboot");
-      MAIN_RESET_Write(0);
-      ESP.restart();
-    }
-  }
-  //Aqui solo lleg asi se está actualizando el PSOC5
-
-  stream->stop();
-  DownloadClient.end(); 
-  delete stream;
-
-  UpdateFile.close();
   setMainFwUpdateActive(1);
-
   UpdateStatus.DescargandoArchivo=false;
+  Serial.println("Borramos tarea");
+
   vTaskDelete(NULL);
 }
+
+
+
 
 /***************************************************
  Tarea de control de firebase
@@ -1635,7 +1691,7 @@ void Firebase_Conn_Task(void *args){
       CheckResult = CheckForUpdate();
 
       if(CheckResult){
-        xTaskCreate(DownloadFileTask,"DOWNLOAD FILE", 4096*2, NULL, 1,NULL);
+        xTaskCreate(DownloadFileTask,"DOWNLOAD FILE", 4096*3, NULL, 5,NULL);
         ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
         ConfigFirebase.FirebaseConnState = DOWNLOADING;
         ESP_LOGI(TAG, "UPDATING - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
@@ -1665,7 +1721,7 @@ void Firebase_Conn_Task(void *args){
 
       if(UpdateStatus.DobleUpdate){
         Serial.println("INSTALLING - Update segundo micro. Descargando");
-        xTaskCreate(DownloadFileTask,"DOWNLOAD FILE", 4096*2, NULL, 1,NULL);
+        xTaskCreate(DownloadFileTask,"DOWNLOAD FILE", 4096*3, NULL, 5,NULL);
         ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
         ConfigFirebase.FirebaseConnState = DOWNLOADING;
         ESP_LOGI(TAG, "INSTALLING - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);

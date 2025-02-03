@@ -86,29 +86,32 @@ int CyBtldr_ReadLine(uint32_t* size, char* buffer) {
 
 int CyBtldr_OpenDataFile(const char* file, const char* partition) {
     int err = CYRET_SUCCESS;
-    SPIFFS.begin();
     SPIFFS.end();
-    SPIFFS.begin(0, "/spiffs", 2, "PSOC5");
-
+    vTaskDelay(pdMS_TO_TICKS(20));
+    SPIFFS.begin(1, "/spiffs", 2, partition);
+    vTaskDelay(pdMS_TO_TICKS(20));
+    Serial.println("Abriendo3");
     dataFile = SPIFFS.open(file);
     if (!dataFile || dataFile.size() == 0)
     {
         dataFile.close();
         SPIFFS.end();
-        //Serial.println("El spiffs parece cerrado, intentandolo otra vez");
-        SPIFFS.begin(0, "/spiffs", 2, "PSOC5");
+        Serial.println("Haciendo rareces con el spiffs");
+        SPIFFS.begin(1, "/spiffs", 2, partition);
+        vTaskDelay(pdMS_TO_TICKS(20));
+        Serial.println("Abriendo4");
         dataFile = SPIFFS.open(file);
         if (!dataFile || dataFile.size() == 0)
         {
-            //Serial.println("Imposible abrir");
+            Serial.println("Imposible abrir");
             err = CYRET_ERR_FILE;
         }
     }
 
     if (CYRET_SUCCESS == err)
     {
-        //Serial.print("Tamaño del archivo: ");
-        //Serial.println(dataFile.size());
+        Serial.print("Tamaño del archivo: ");
+        Serial.println(dataFile.size());
     }
 
     return err;
@@ -303,5 +306,6 @@ int CyBtldr_CloseDataFile(void) {
     if (dataFile) {
         dataFile.close();
     }
+    SPIFFS.end();
     return CYRET_SUCCESS;
 }

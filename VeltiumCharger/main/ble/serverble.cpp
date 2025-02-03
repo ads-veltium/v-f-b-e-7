@@ -472,7 +472,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks {
 							SPIFFS.format();
 						}
 					}
-
+					Serial.println("Abriendo1");
 					UpdateFile = SPIFFS.open(PSOC_UPDATE_FILE, FILE_WRITE);
 					if (!UpdateFile){
 						ESP_LOGE(TAG,"No se pudo crear y abrir %s",PSOC_UPDATE_FILE);
@@ -483,6 +483,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks {
 						SPIFFS.end();					
 						SPIFFS.begin(1,"/spiffs",2,"PSOC5");
 						SPIFFS.format();
+						Serial.println("Abriendo2");
 						UpdateFile = SPIFFS.open(PSOC_UPDATE_FILE, FILE_WRITE);
 					}
 				}
@@ -544,9 +545,9 @@ class CBCharacteristic: public BLECharacteristicCallbacks {
 						SPIFFS.end();
 						setMainFwUpdateActive(1);
 						if(emergencyState==1){
-							if(!SPIFFS.begin(1,"/spiffs",1,"ESP32")){
+							if(!SPIFFS.begin(1,"/spiffs",2,"ESP32")){
 								SPIFFS.end();					
-								SPIFFS.begin(1,"/spiffs",1,"ESP32");
+								SPIFFS.begin(1,"/spiffs",2,"ESP32");
 							}
 							Configuracion.data.count_reinicios_malos=0;
 							emergencyState = 0;

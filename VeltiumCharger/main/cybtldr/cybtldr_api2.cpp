@@ -47,12 +47,9 @@ int ProcessDataRow(CyBtldr_Action action, uint32_t rowSize, char* rowData, CyBtl
             break;
         }
     }
-    if (CYRET_SUCCESS == err){
+    if (CYRET_SUCCESS == err && NULL != update){
         ++(*applicationDataLinesSeen);
-        if (NULL != update)
-        {
-            update(*applicationDataLinesSeen * 100.0 / applicationDataLines);
-        }
+        update(*applicationDataLinesSeen * 100.0 / applicationDataLines);
     }
     return err;
 }
@@ -116,17 +113,12 @@ int CyBtldr_RunAction(CyBtldr_Action action, HardwareSerialMOD *comm, CyBtldr_Pr
 
                 // send ENTER DFU command to start communication
                 err = CyBtldr_StartBootloadOperation(comm, siliconId, siliconRev, &blVer, productId);
-                Serial.printf("baby %d", err);
                 // send Set Application Metadata command 
                 if (err == CYRET_SUCCESS) 
+                {
                     err = CyBtldr_SetApplicationMetaData(appId, applicationStartAddr, applicationSize);
-                bootloaderEntered = 1;
-                Serial.printf("bootloaderEntered %d", err);
-            }
-            else 
-            { 
-                Serial.print("Error en CyBtldr_ParseCyAcdAppStartAndSize");
-                Serial.println(err);
+                    bootloaderEntered = 1;
+                }
             }
             while (CYRET_SUCCESS == err) {
                 if (g_abort) {
