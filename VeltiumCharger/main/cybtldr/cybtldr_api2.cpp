@@ -47,9 +47,12 @@ int ProcessDataRow(CyBtldr_Action action, uint32_t rowSize, char* rowData, CyBtl
             break;
         }
     }
-    if (CYRET_SUCCESS == err && NULL != update){
+    if (CYRET_SUCCESS == err){
         ++(*applicationDataLinesSeen);
-        update(*applicationDataLinesSeen * 100.0 / applicationDataLines);
+        if (NULL != update)
+        {
+            update(*applicationDataLinesSeen * 100.0 / applicationDataLines);
+        }
     }
     return err;
 }
@@ -77,7 +80,7 @@ int CyBtldr_RunAction(CyBtldr_Action action, HardwareSerialMOD *comm, CyBtldr_Pr
     char line[MAX_BUFFER_SIZE * 2];  // 2 hex characters per byte
     uint8_t fileVersion = 0;
 
-    int err = CyBtldr_OpenDataFile(file, "PSOC5");
+    int err = CyBtldr_OpenDataFile(file, partition);
 
     if (CYRET_SUCCESS == err) {
         err = CyBtldr_ReadLine(&lineLen, line);
@@ -102,12 +105,6 @@ int CyBtldr_RunAction(CyBtldr_Action action, HardwareSerialMOD *comm, CyBtldr_Pr
             // Parse whole cyacd2 file to check 
             if (err == CYRET_SUCCESS)
                 err = CyBtldr_ParseCyAcdAppStartAndSize(&applicationStartAddr, &applicationSize, &applicationDataLines, line);
-            else
-            {
-                Serial.print("Error en CyBtldr_ParseHeader");
-                Serial.println(err);
-            }
-
             if (CYRET_SUCCESS == err) {
                 CyBtldr_SetCheckSumType(static_cast<CyBtldr_ChecksumType>(chksumtype));
 
@@ -115,11 +112,11 @@ int CyBtldr_RunAction(CyBtldr_Action action, HardwareSerialMOD *comm, CyBtldr_Pr
                 err = CyBtldr_StartBootloadOperation(comm, siliconId, siliconRev, &blVer, productId);
                 // send Set Application Metadata command 
                 if (err == CYRET_SUCCESS) 
-                {
                     err = CyBtldr_SetApplicationMetaData(appId, applicationStartAddr, applicationSize);
-                    bootloaderEntered = 1;
-                }
+                bootloaderEntered = 1;
+                Serial.println("bootloaderEntered");
             }
+
             while (CYRET_SUCCESS == err) {
                 if (g_abort) {
                     err = CYRET_ABORT;
@@ -154,8 +151,6 @@ int CyBtldr_RunAction(CyBtldr_Action action, HardwareSerialMOD *comm, CyBtldr_Pr
         }
         CyBtldr_CloseDataFile();
     }
-    Serial.print("RunAction devuelve: ");
-    Serial.println(err);
     return err;
 }
 

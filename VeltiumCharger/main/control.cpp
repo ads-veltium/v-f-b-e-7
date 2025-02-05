@@ -371,8 +371,13 @@ void controlTask(void *arg) {
 		else{
 			if (!updateTaskrunning && psocUpdateCounter<=100){
 				// Poner el micro principal en modo bootload
-				Serial.println("**+** Envio actualización al PSOC");
-				SendToPSOC5(Zero, BOOT_LOADER_LOAD_SW_APP_CHAR_HANDLE);
+				
+				//if(psocUpdateCounter==0)
+				//{
+					Serial.println("**+** Envio actualización al PSOC");
+					SendToPSOC5(Zero, BOOT_LOADER_LOAD_SW_APP_CHAR_HANDLE);
+					//vTaskDelay(pdMS_TO_TICKS(1000));
+				//}
 				psocUpdateCounter++;
 			}
 			else if(psocUpdateCounter>100)

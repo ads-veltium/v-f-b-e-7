@@ -544,7 +544,6 @@ bool WriteFirebaseGroupData(String Path){
 ***************************************************/
 #ifdef NO_EJECUTAR
 bool ReadFirebaseGroups(String Path){
-
   long long ts_app_req=Database->Get_Timestamp(Path+"/ts_app_req",&Lectura, true);
   if(ts_app_req > ChargingGroup.last_ts_app_req){
     Lectura.clear();
@@ -651,7 +650,6 @@ bool ReadFirebaseGroups(String Path){
 
 //Leer las programaciones que haya disponibles en firebase
 bool ReadFirebaseShedule(String Path){
-
   long long ts_app_req=Database->Get_Timestamp(Path+"/ts_app_req",&Lectura);
   if(ts_app_req > Schedule.last_ts_app_req){
     Lectura.clear();
@@ -708,7 +706,6 @@ bool ReadFirebaseShedule(String Path){
 }
 
 bool ReadFirebaseComs(String Path){
-
   long long ts_app_req=Database->Get_Timestamp(Path+"/ts_app_req",&Lectura);
   if(ts_app_req > Coms.last_ts_app_req){
     Lectura.clear();
@@ -732,7 +729,6 @@ bool ReadFirebaseComs(String Path){
 }
 
 bool ReadFirebaseParams(String Path){
-  
   long long ts_app_req=Database->Get_Timestamp(Path+"/ts_app_req",&Lectura);
   if(ts_app_req > Params.last_ts_app_req){
     Lectura.clear();
@@ -1083,7 +1079,6 @@ void DownloadFileTask(void *args){
         SPIFFS.format();
       }
       vTaskDelay(pdMS_TO_TICKS(50));
-      Serial.println("Abriendo5");
       UpdateFile = SPIFFS.open(PSOC_UPDATE_FILE, FILE_WRITE);
     }
     
@@ -1095,7 +1090,7 @@ void DownloadFileTask(void *args){
     int total = 0;
     if(DownloadClient.GET()>0){
       total = DownloadClient.getSize();
-      Serial.printf("Tam total del fichero de actualizacion: %d\n", total);
+      Serial.printf("Tamaño total del fichero de actualizacion: %d\n", total);
       int len = total;
       int written=0;
       stream = DownloadClient.getStreamPtr();
@@ -1158,9 +1153,8 @@ void DownloadFileTask(void *args){
         Serial.printf("Archivo descargado correctamente.Esperado: %d, Recibido: %d\n", total, written);
         if(UpdateStatus.PSOC_UpdateAvailable)
         {
-          Serial.println("Abriendo6");
           UpdateFile = SPIFFS.open(PSOC_UPDATE_FILE);
-          Serial.printf("Rechequeo del fichero: %d\n", UpdateFile.size());
+          Serial.printf("Revisión del tamaño del fichero: %d\n", UpdateFile.size());
           if(UpdateFile.size() == total) successPSOC = true;
           UpdateFile.close();
         }
@@ -1259,7 +1253,6 @@ void Firebase_Conn_Task(void *args){
       break;
     
     case CONECTADO:
-      // delayeando = 10;
       //Inicializar los timeouts
       Params.last_ts_app_req   = Database->Get_Timestamp("/params/ts_app_req",&Lectura);
       ESP_LOGI(TAG,"params/ts_app_req= %lld",Params.last_ts_app_req);
@@ -1369,8 +1362,8 @@ void Firebase_Conn_Task(void *args){
         bloquedByBLE = 0;
       }
       //comprobar si hay usuarios observando:   
-
       ts_app_req = Database->Get_Timestamp("/status/ts_app_req",&Lectura);
+      ESP_LOGI(TAG,"ts_app_req: %lld", ts_app_req);
       if (ts_app_req < 1){ // connection refused o autenticacion terminada, comprobar respuesta
         String ResponseString = Lectura["error"];
         if (strcmp(ResponseString.c_str(), "Auth token is expired") == 0){
@@ -1513,8 +1506,7 @@ void Firebase_Conn_Task(void *args){
         ESP_LOGI(TAG, "USER_CONNECTED - Conexión BLE - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
         break;
       }
-      
-       //comprobar si hay usuarios observando:    
+      //comprobar si hay usuarios observando:    
       ts_app_req=Database->Get_Timestamp("/status/ts_app_req",&Lectura);
       if(ts_app_req < 1){//connection refused o autenticacion terminada, comprobar respuesta
         String ResponseString = Lectura["error"];
@@ -1726,7 +1718,7 @@ void Firebase_Conn_Task(void *args){
         ConfigFirebase.FirebaseConnState = DOWNLOADING;
         ESP_LOGI(TAG, "INSTALLING - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
       }
-      vTaskDelay(pdMS_TO_TICKS(4000));
+      //vTaskDelay(pdMS_TO_TICKS(4000));
 
       if(!UpdateStatus.DescargandoArchivo && !UpdateStatus.InstalandoArchivo){
         ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
