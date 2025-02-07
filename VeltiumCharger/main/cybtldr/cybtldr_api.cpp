@@ -50,8 +50,7 @@ int CyBtldr_TransferData(uint8_t* inBuf, int inSize, uint8_t* outBuf, int outSiz
         {
             cnt_timeout_tx = 25;
             sendBinaryBlock(inBuf, inSize);
-            uart_wait_tx_idle_polling(UART_NUM_0);
-            //vTaskDelay(pdMS_TO_TICKS(10));
+            vTaskDelay(pdMS_TO_TICKS(10));
             timeout++;
         }
         if (channel->available() != 0)
