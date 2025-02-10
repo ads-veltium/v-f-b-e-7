@@ -212,7 +212,6 @@ int CyBtldr_ParseCyAcdAppStartAndSize(uint32_t* appStart, uint32_t* appSize, uin
     int err = CYRET_SUCCESS;
     uint32_t i;
     bool appInfoFound = false;
-    Serial.println("CyBtldr_ParseCyAcdAppStartAndSize");
     do
     {
         err = CyBtldr_ReadLine(&rowLength, buf);
@@ -247,7 +246,6 @@ int CyBtldr_ParseCyAcdAppStartAndSize(uint32_t* appStart, uint32_t* appSize, uin
                 }
                 else
                 {
-                    Serial.println("no le ha molado");
                     err = CYRET_ERR_FILE;
                 }
                 appInfoFound = true;
@@ -267,22 +265,18 @@ int CyBtldr_ParseCyAcdAppStartAndSize(uint32_t* appStart, uint32_t* appSize, uin
 
     if (err == CYRET_ERR_EOF)
     {
-        Serial.println("Hemos llegado al final");
         err = CYRET_SUCCESS;
     }
     else
     {
-        Serial.print("Po no hemos llegado al final. Error: ");
         Serial.println(err);
     }
 
     // reset to the file to where we were
     if (err == CYRET_SUCCESS)
     {
-        Serial.println("Todo bien.");
         if (dataFile.seek(fp, SeekSet) != true)
         {
-            Serial.println("No todo.");
             err = CYRET_ERR_EOF; // shouldn't be possible, we're just going to somewhere that was valid before
         }
     }

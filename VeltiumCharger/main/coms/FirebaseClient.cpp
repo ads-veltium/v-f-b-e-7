@@ -1052,11 +1052,10 @@ void DownloadFileTask(void *args){
   else{
     url=UpdateStatus.ESP_url;
   }
-  Serial.printf("FW Available at URL: %s", url.c_str());
 
   for(int attempt = 1; ((attempt <= MAX_RETRIES) && !(successPSOC || successESP)); attempt++)
   {
-    Serial.printf("Intento de descarga %d de %d...\n", attempt, MAX_RETRIES);
+    ESP_LOGI(TAG, "Intento de descarga %d de %d...", attempt, MAX_RETRIES);
     //Si descargamos actualizacion para el PSOC5, debemos crear el archivo en el SPIFFS
     File UpdateFile;
     if(UpdateStatus.PSOC_UpdateAvailable){
@@ -1065,7 +1064,7 @@ void DownloadFileTask(void *args){
       vTaskDelay(pdMS_TO_TICKS(20));
       if (!SPIFFS.begin(1, "/spiffs", 2, "PSOC5")) {
         vTaskDelay(pdMS_TO_TICKS(20));
-        Serial.println("Fallo al iniciar SPIFFS. Reintentando...");
+        ESP_LOGI(TAG, "Fallo al iniciar SPIFFS. Reintentando...");
         SPIFFS.end();
         vTaskDelay(pdMS_TO_TICKS(20));
         if (!SPIFFS.begin(1, "/spiffs", 2, "PSOC5")) {
@@ -1075,37 +1074,32 @@ void DownloadFileTask(void *args){
         }
       } 
       if (SPIFFS.exists(PSOC_UPDATE_FILE)) {
-        Serial.println("Existe fichero previo - formateando SPIFFS");
+        ESP_LOGI(TAG, "Existe fichero previo - formateando SPIFFS");
         SPIFFS.format();
+        delay(200);
       }
       vTaskDelay(pdMS_TO_TICKS(50));
       UpdateFile = SPIFFS.open(PSOC_UPDATE_FILE, FILE_WRITE);
     }
     
     HTTPClient DownloadClient;
-    Serial.printf("Downloading: %s\n", url.c_str());
+    ESP_LOGI(TAG, "Downloading: %s", url.c_str());
     DownloadClient.begin(url);
     WiFiClient *stream = nullptr;
 
     int total = 0;
     if(DownloadClient.GET()>0){
       total = DownloadClient.getSize();
-      Serial.printf("Tamaño total del fichero de actualizacion: %d\n", total);
+      ESP_LOGI(TAG,"Tamaño total del fichero de actualizacion: %d\n", total);
       int len = total;
       int written=0;
       stream = DownloadClient.getStreamPtr();
       uint8_t buff[2048] = { 0 };
 
-      if(UpdateStatus.ESP_UpdateAvailable && !UpdateStatus.PSOC_UpdateAvailable){
-        if(!Update.begin(total))//descarga ESP
-        { 
-          Serial.println("Error with size en descarga del ESP");
-        }
-        else
-        { 
-          Serial.println("Correcta descarga del ESP");
-          
-        }
+      if(UpdateStatus.ESP_UpdateAvailable && !UpdateStatus.PSOC_UpdateAvailable)
+      {
+        if(!Update.begin(total)) ESP_LOGI(TAG, "Error with size en descarga del ESP");
+        else ESP_LOGI(TAG,"Correcta descarga del ESP");
       }
       const int MAX_EMPTY_CYCLES = 500;
       int emptyCycles = 0;
@@ -1120,14 +1114,14 @@ void DownloadFileTask(void *args){
           {
             if (UpdateFile.write(buff, c)!=c)
             {
-              Serial.println("Error escribiendo en el archivo de actualización PSoC");
+              ESP_LOGI(TAG, "Error escribiendo en el archivo de actualización PSoC");
               break;
             }
           } 
           else
           {
             if (Update.write(buff, c) != c) {
-              Serial.println("Error escribiendo en la actualización del ESP");
+              ESP_LOGI(TAG, "Error escribiendo en la actualización del ESP");
               break;
             }
           } 
@@ -1142,7 +1136,7 @@ void DownloadFileTask(void *args){
         {
           emptyCycles++;
           if (emptyCycles >= MAX_EMPTY_CYCLES) {
-            Serial.println("Error: demasiados ciclos sin datos. Abortando...");
+            ESP_LOGW(TAG, "Error: demasiados ciclos sin datos. Abortando...");
             break;
           }
           vTaskDelay(10 / portTICK_PERIOD_MS);
@@ -1150,17 +1144,17 @@ void DownloadFileTask(void *args){
       }
       UpdateFile.close();
       if (written == total) {
-        Serial.printf("Archivo descargado correctamente.Esperado: %d, Recibido: %d\n", total, written);
+        ESP_LOGI(TAG, "Archivo descargado correctamente.Esperado: %d, Recibido: %d\n", total, written);
         if(UpdateStatus.PSOC_UpdateAvailable)
         {
           UpdateFile = SPIFFS.open(PSOC_UPDATE_FILE);
-          Serial.printf("Revisión del tamaño del fichero: %d\n", UpdateFile.size());
+          ESP_LOGI(TAG,"Revisión del tamaño del fichero: %d\n", UpdateFile.size());
           if(UpdateFile.size() == total) successPSOC = true;
           UpdateFile.close();
         }
         else successESP = true;
       }
-      else Serial.printf("Error descargando archivo. Esperado: %d, Recibido: %d\n", total, written);
+      else ESP_LOGI(TAG, "Error descargando archivo. Esperado: %d, Recibido: %d\n", total, written);
 
     }
 
@@ -1175,12 +1169,20 @@ void DownloadFileTask(void *args){
     // Aqui solo llega asi se está actualizando el PSOC
     if (stream) stream->stop();
     DownloadClient.end();
-  }
+    if(!successESP && !successPSOC && attempt==MAX_RETRIES)
+    {
+      ESP_LOGW(TAG, "ERROR. NO SE HA PODIDO DESCARGAR EL FICHERO DE ACTUALIZACION. Reiniciando...");
+      Status.error_code = 0x60;
+      vTaskDelay(pdMS_TO_TICKS(5000));
 
+      MAIN_RESET_Write(0);
+      delay(500);
+      ESP.restart();
+    }
+  }
+  
   setMainFwUpdateActive(1);
   UpdateStatus.DescargandoArchivo=false;
-  Serial.println("Borramos tarea");
-
   vTaskDelete(NULL);
 }
 
@@ -1697,7 +1699,6 @@ void Firebase_Conn_Task(void *args){
 
     case DOWNLOADING:
       if(!UpdateStatus.DescargandoArchivo){
-        //xTaskCreate(UpdateTask,"TASK UPDATE",4096*3,NULL,1,NULL);
         ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
         ConfigFirebase.FirebaseConnState = INSTALLING;
         ESP_LOGI(TAG, "DOWNLOADING - Maquina de estados de Firebase pasa de %s a %s", 
@@ -1708,11 +1709,9 @@ void Firebase_Conn_Task(void *args){
 
     case INSTALLING:
       vTaskDelay(pdMS_TO_TICKS(4000));
-      Serial.print("**+** CASE INSTALLING. DobleUpdate: ");
-      Serial.println(UpdateStatus.DobleUpdate);
 
       if(UpdateStatus.DobleUpdate){
-        Serial.println("INSTALLING - Update segundo micro. Descargando");
+        ESP_LOGI(TAG, "INSTALLING - Update segundo micro. Descargando");
         xTaskCreate(DownloadFileTask,"DOWNLOAD FILE", 4096*3, NULL, 5,NULL);
         ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
         ConfigFirebase.FirebaseConnState = DOWNLOADING;
@@ -1745,9 +1744,9 @@ void Firebase_Conn_Task(void *args){
       break;
     default:
       delay(1000);
-      Serial.print("Error en la maquina de estados de Firebase. Estado: ");
-      Serial.println(ConfigFirebase.FirebaseConnState);
+      ESP_LOGE (TAG, "Error en la maquina de estados de Firebase. Estado: %i", ConfigFirebase.FirebaseConnState);
       ESP_LOGW (TAG, "Borrando Database");
+
       Database->end();
       Database->endAuth();
       delete Database;
