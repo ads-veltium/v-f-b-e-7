@@ -21,6 +21,13 @@ void setup()
 
 	DRACO_GPIO_Init();
 	
+	if (checkSpiffsBug())
+	{
+		Serial.println("*************\n SPIFFS ERROR: Reiniciando ESP...");
+		
+		ESP.restart();
+	}
+	
 	#ifdef DEBUG
 	Serial.println("FREE HEAP MEMORY [after DRACO_GPIO_Init] **************************");
 	Serial.println(ESP.getFreeHeap());

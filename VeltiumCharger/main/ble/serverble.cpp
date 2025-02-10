@@ -472,9 +472,6 @@ class CBCharacteristic: public BLECharacteristicCallbacks {
 							SPIFFS.format();
 						}
 					}
-
-					SPIFFS.begin(1,"/spiffs",2,"PSOC5");
-					SPIFFS.format();
 					UpdateFile = SPIFFS.open(PSOC_UPDATE_FILE, FILE_WRITE);
 
 					if (!UpdateFile){
@@ -549,9 +546,9 @@ class CBCharacteristic: public BLECharacteristicCallbacks {
 						SPIFFS.end();
 						setMainFwUpdateActive(1);
 						if(emergencyState==1){
-							if(!SPIFFS.begin(1,"/spiffs",1,"ESP32")){
+							if(!SPIFFS.begin(1,"/spiffs",2,"ESP32")){
 								SPIFFS.end();					
-								SPIFFS.begin(1,"/spiffs",1,"ESP32");
+								SPIFFS.begin(1,"/spiffs",2,"ESP32");
 							}
 							Configuracion.data.count_reinicios_malos=0;
 							emergencyState = 0;

@@ -9,37 +9,37 @@
             "name": "BUILD",
             "color": "white",
             "singleInstance": true,
-            "command": ". /home/joel/Documents/fw-bird-esp32/SDK/esp-idf/./export.sh && cd /home/joel/Documents/fw-bird-esp32/VeltiumCharger/ && make -j6",
+            "command": ". /home/veltium/Documentos/fw-bird-esp32-v7/SDK/esp-idf/./export.sh && cd /home/veltium/Documentos/fw-bird-esp32-v7/VeltiumCharger/ && make -j6",
         },
         {
             "name": "MFM",
             "color": "white",
             "singleInstance": true,
-            "command": ". /home/joel/Documents/fw-bird-esp32/SDK/esp-idf/./export.sh && cd /home/joel/Documents/fw-bird-esp32/VeltiumCharger/ && make flash monitor -j6",
+            "command": ". /home/veltium/Documentos/fw-bird-esp32-v7/SDK/esp-idf/./export.sh && cd /home/veltium/Documentos/fw-bird-esp32-v7/VeltiumCharger/ && make flash monitor -j6",
         },
         {
             "name": "MONITOR",
             "color": "white",
             "singleInstance": true,
-            "command": ". /home/joel/Documents/fw-bird-esp32/SDK/esp-idf/./export.sh && cd /home/joel/Documents/fw-bird-esp32/VeltiumCharger/ && make monitor",
+            "command": ". /home/veltium/Documentos/fw-bird-esp32-v7/SDK/esp-idf/./export.sh && cd /home/veltium/Documentos/fw-bird-esp32-v7/VeltiumCharger/ && make monitor",
         },
         {
             "name": "MENUCONFIG",
             "color": "white",
             "singleInstance": true,
-            "command": ". /home/joel/Documents/fw-bird-esp32/SDK/esp-idf/./export.sh && cd /home/joel/Documents/fw-bird-esp32/VeltiumCharger && make menuconfig",
+            "command": ". /home/veltium/Documentos/fw-bird-esp32-v7/SDK/esp-idf/./export.sh && cd /home/veltium/Documentos/fw-bird-esp32-v7/VeltiumCharger && make menuconfig",
         },
         {
             "name": "FLASH",
             "color": "white",
             "singleInstance": true,
-            "command": ". /home/joel/Documents/fw-bird-esp32/SDK/esp-idf/./export.sh && cd /home/joel/Documents/fw-bird-esp32/VeltiumCharger/ && make flash -j6",
+            "command": ". /home/veltium/Documentos/fw-bird-esp32-v7/SDK/esp-idf/./export.sh && cd /home/veltium/Documentos/fw-bird-esp32-v7/VeltiumCharger/ && make flash -j6",
         },
         {
             "name": "ERASE",
             "color": "white",
             "singleInstance": true,
-            "command": ". /home/joel/Documents/fw-bird-esp32/SDK/esp-idf/./export.sh && cd /home/joel/Documents/fw-bird-esp32/VeltiumCharger/ && make erase_flash -j6",
+            "command": ". /home/veltium/Documentos/fw-bird-esp32-v7/SDK/esp-idf/./export.sh && cd /home/veltium/Documentos/fw-bird-esp32-v7/VeltiumCharger/ && make erase_flash -j6",
         },
 
     ]
@@ -65,7 +65,16 @@
     "unordered_map": "cpp",
     "unordered_set": "cpp",
     "vector": "cpp",
-    "random": "cpp"
+    "random": "cpp",
+    "functional": "cpp",
+    "condition_variable": "cpp",
+    "future": "cpp",
+    "fstream": "cpp",
+    "initializer_list": "cpp",
+    "cstdio": "cpp",
+    "new": "cpp",
+    "bitset": "cpp",
+    "utility": "cpp"
 },
 "cmake.configureOnOpen": false
 }

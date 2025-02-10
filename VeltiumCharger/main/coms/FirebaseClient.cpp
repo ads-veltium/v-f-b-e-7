@@ -546,7 +546,6 @@ bool WriteFirebaseGroupData(String Path){
 ***************************************************/
 #ifdef NO_EJECUTAR
 bool ReadFirebaseGroups(String Path){
-
   long long ts_app_req=Database->Get_Timestamp(Path+"/ts_app_req",&Lectura, true);
   if(ts_app_req > ChargingGroup.last_ts_app_req){
     Lectura.clear();
@@ -653,7 +652,6 @@ bool ReadFirebaseGroups(String Path){
 
 //Leer las programaciones que haya disponibles en firebase
 bool ReadFirebaseShedule(String Path){
-
   long long ts_app_req=Database->Get_Timestamp(Path+"/ts_app_req",&Lectura);
   if(ts_app_req > Schedule.last_ts_app_req){
     Lectura.clear();
@@ -710,7 +708,6 @@ bool ReadFirebaseShedule(String Path){
 }
 
 bool ReadFirebaseComs(String Path){
-
   long long ts_app_req=Database->Get_Timestamp(Path+"/ts_app_req",&Lectura);
   if(ts_app_req > Coms.last_ts_app_req){
     Lectura.clear();
@@ -734,7 +731,6 @@ bool ReadFirebaseComs(String Path){
 }
 
 bool ReadFirebaseParams(String Path){
-  
   long long ts_app_req=Database->Get_Timestamp(Path+"/ts_app_req",&Lectura);
   if(ts_app_req > Params.last_ts_app_req){
     Lectura.clear();
@@ -1049,94 +1045,151 @@ bool CheckForUpdate(){
 void DownloadFileTask(void *args){
   UpdateStatus.DescargandoArchivo=true;
 
-  File UpdateFile;
-  String FileName;
   String url;
+  const uint8 MAX_RETRIES = 5; // Número máximo de intentos
+  bool successPSOC = false;
+  bool successESP = false;
 
-  //Si descargamos actualizacion para el PSOC5, debemos crear el archivo en el SPIFFS
-  if(UpdateStatus.PSOC_UpdateAvailable){
-    url=UpdateStatus.PSOC_url;
-    ESP_LOGI(TAG, "FW for PSoC Available at URL: %s", url.c_str());
-    SPIFFS.end();
-    if(!SPIFFS.begin(1,"/spiffs",2,"PSOC5")){
-      SPIFFS.end();					
-      SPIFFS.begin(1,"/spiffs",2,"PSOC5");
-    }
-    if(SPIFFS.exists(PSOC_UPDATE_FILE)){
-      ESP_LOGI(TAG, "Existe fichero previo - formatendo SPIFFS");
-      vTaskDelay(pdMS_TO_TICKS(50));
-      SPIFFS.format();
-    }
-    vTaskDelay(pdMS_TO_TICKS(50));
-    UpdateFile = SPIFFS.open(PSOC_UPDATE_FILE, FILE_WRITE);
-  }
+  if(UpdateStatus.PSOC_UpdateAvailable) url=UpdateStatus.PSOC_url;
   else{
-    ESP_LOGI(TAG, "FW for ESP32 Available");
     url=UpdateStatus.ESP_url;
-    ESP_LOGI(TAG, "URL: %s", url.c_str());
   }
 
-
-  HTTPClient DownloadClient;
-  ESP_LOGI(TAG, "Downloading: %s", url.c_str());
-  DownloadClient.begin(url);
-  WiFiClient *stream = new WiFiClient();
-  int total = 0;
-  if(DownloadClient.GET()>0){
-    total = DownloadClient.getSize();
-    int len = total;
-    int written=0;
-    stream = DownloadClient.getStreamPtr();
-    uint8_t buff[1024] = { 0 };
-
-    if(UpdateStatus.ESP_UpdateAvailable && !UpdateStatus.PSOC_UpdateAvailable){
-      if(!Update.begin(total)){
-        ESP_LOGE(TAG, "Error with size");
-      };
-    }
-
-    while (DownloadClient.connected() &&(len > 0 || len == -1)){
-      size_t size = stream->available();
-      if (size){
-
-        int c = stream->readBytes(buff, ((size > sizeof(buff)) ? sizeof(buff) : size));
-
-        if(UpdateStatus.PSOC_UpdateAvailable){
-          UpdateFile.write(buff, c);
+  for(int attempt = 1; ((attempt <= MAX_RETRIES) && !(successPSOC || successESP)); attempt++)
+  {
+    ESP_LOGI(TAG, "Intento de descarga %d de %d...", attempt, MAX_RETRIES);
+    //Si descargamos actualizacion para el PSOC5, debemos crear el archivo en el SPIFFS
+    File UpdateFile;
+    if(UpdateStatus.PSOC_UpdateAvailable){
+      ESP_LOGI(TAG, "FW for PSoC Available at URL: %s", url.c_str());
+      SPIFFS.end();
+      vTaskDelay(pdMS_TO_TICKS(20));
+      if (!SPIFFS.begin(1, "/spiffs", 2, "PSOC5")) {
+        vTaskDelay(pdMS_TO_TICKS(20));
+        ESP_LOGI(TAG, "Fallo al iniciar SPIFFS. Reintentando...");
+        SPIFFS.end();
+        vTaskDelay(pdMS_TO_TICKS(20));
+        if (!SPIFFS.begin(1, "/spiffs", 2, "PSOC5")) {
+          Serial.println("Fallo crítico al iniciar SPIFFS. Abortando...");
+          UpdateStatus.DescargandoArchivo = false;
+          vTaskDelete(NULL);
         }
-        else{
-          Update.write(buff,c);
-        } 
-        
-        if (len > 0){
-          written +=c;
-          len -= c;
+      } 
+      if (SPIFFS.exists(PSOC_UPDATE_FILE)) {
+        ESP_LOGI(TAG, "Existe fichero previo - formateando SPIFFS");
+        SPIFFS.format();
+        delay(200);
+      }
+      vTaskDelay(pdMS_TO_TICKS(50));
+      UpdateFile = SPIFFS.open(PSOC_UPDATE_FILE, FILE_WRITE);
+    }
+    
+    HTTPClient DownloadClient;
+    ESP_LOGI(TAG, "Downloading: %s", url.c_str());
+    DownloadClient.begin(url);
+    WiFiClient *stream = nullptr;
+
+    int total = 0;
+    if(DownloadClient.GET()>0){
+      total = DownloadClient.getSize();
+      ESP_LOGI(TAG,"Tamaño total del fichero de actualizacion: %d\n", total);
+      int len = total;
+      int written=0;
+      stream = DownloadClient.getStreamPtr();
+      uint8_t buff[2048] = { 0 };
+
+      if(UpdateStatus.ESP_UpdateAvailable && !UpdateStatus.PSOC_UpdateAvailable)
+      {
+        if(!Update.begin(total)) ESP_LOGI(TAG, "Error with size en descarga del ESP");
+        else ESP_LOGI(TAG,"Correcta descarga del ESP");
+      }
+      const int MAX_EMPTY_CYCLES = 500;
+      int emptyCycles = 0;
+      while (DownloadClient.connected() &&(len > 0 || len == -1))
+      {
+        size_t size = stream->available();
+        if (size > 0)
+        {
+          int c = stream->readBytes(buff, ((size > sizeof(buff)) ? sizeof(buff) : size));
+
+          if(UpdateStatus.PSOC_UpdateAvailable)
+          {
+            if (UpdateFile.write(buff, c)!=c)
+            {
+              ESP_LOGI(TAG, "Error escribiendo en el archivo de actualización PSoC");
+              break;
+            }
+          } 
+          else
+          {
+            if (Update.write(buff, c) != c) {
+              ESP_LOGI(TAG, "Error escribiendo en la actualización del ESP");
+              break;
+            }
+          } 
+          
+          if (len > 0)
+          {
+            written +=c;
+            len -= c;
+          }
+        }
+        else 
+        {
+          emptyCycles++;
+          if (emptyCycles >= MAX_EMPTY_CYCLES) {
+            ESP_LOGW(TAG, "Error: demasiados ciclos sin datos. Abortando...");
+            break;
+          }
+          vTaskDelay(10 / portTICK_PERIOD_MS);
         }
       }
-    vTaskDelay(10 / portTICK_PERIOD_MS);
-    }
-  }
+      UpdateFile.close();
+      if (written == total) {
+        ESP_LOGI(TAG, "Archivo descargado correctamente.Esperado: %d, Recibido: %d\n", total, written);
+        if(UpdateStatus.PSOC_UpdateAvailable)
+        {
+          UpdateFile = SPIFFS.open(PSOC_UPDATE_FILE);
+          ESP_LOGI(TAG,"Revisión del tamaño del fichero: %d\n", UpdateFile.size());
+          if(UpdateFile.size() == total) successPSOC = true;
+          UpdateFile.close();
+        }
+        else successESP = true;
+      }
+      else ESP_LOGI(TAG, "Error descargando archivo. Esperado: %d, Recibido: %d\n", total, written);
 
-  if(UpdateStatus.ESP_UpdateAvailable && !UpdateStatus.PSOC_UpdateAvailable){
-    if(Update.end()){	
-      //reboot
-      ESP_LOGI(TAG, "Update finalizado - Reboot");
+    }
+
+    if(UpdateStatus.ESP_UpdateAvailable && !UpdateStatus.PSOC_UpdateAvailable){
+      if(Update.end()){	
+        //reboot
+        Serial.println("Update finalizado - Reboot");
+        MAIN_RESET_Write(0);
+        ESP.restart();
+      }
+    }
+    // Aqui solo llega asi se está actualizando el PSOC
+    if (stream) stream->stop();
+    DownloadClient.end();
+    if(!successESP && !successPSOC && attempt==MAX_RETRIES)
+    {
+      ESP_LOGW(TAG, "ERROR. NO SE HA PODIDO DESCARGAR EL FICHERO DE ACTUALIZACION. Reiniciando...");
+      Status.error_code = 0x60;
+      vTaskDelay(pdMS_TO_TICKS(5000));
+
       MAIN_RESET_Write(0);
+      delay(500);
       ESP.restart();
     }
   }
-  //Aqui solo lleg asi se está actualizando el PSOC5
-
-  stream->stop();
-  DownloadClient.end(); 
-  delete stream;
-
-  UpdateFile.close();
+  
   setMainFwUpdateActive(1);
-
   UpdateStatus.DescargandoArchivo=false;
   vTaskDelete(NULL);
 }
+
+
+
 
 /***************************************************
  Tarea de control de firebase
@@ -1165,6 +1218,7 @@ void Firebase_Conn_Task(void *args){
       ConfigFirebase.FirebaseConnState=DISCONNECTING;
       ESP_LOGI(TAG, "GENERAL - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
     }
+    
     switch (ConfigFirebase.FirebaseConnState){
     case DISCONNECTED:{
 
@@ -1203,7 +1257,6 @@ void Firebase_Conn_Task(void *args){
       break;
     
     case CONECTADO:
-      // delayeando = 10;
       //Inicializar los timeouts
       Params.last_ts_app_req   = Database->Get_Timestamp("/params/ts_app_req",&Lectura);
       ESP_LOGI(TAG,"params/ts_app_req= %lld",Params.last_ts_app_req);
@@ -1313,8 +1366,8 @@ void Firebase_Conn_Task(void *args){
         bloquedByBLE = 0;
       }
       //comprobar si hay usuarios observando:   
-
       ts_app_req = Database->Get_Timestamp("/status/ts_app_req",&Lectura);
+      ESP_LOGI(TAG,"ts_app_req: %lld", ts_app_req);
       if (ts_app_req < 1){ // connection refused o autenticacion terminada, comprobar respuesta
         String ResponseString = Lectura["error"];
         if (strcmp(ResponseString.c_str(), "Auth token is expired") == 0){
@@ -1457,8 +1510,7 @@ void Firebase_Conn_Task(void *args){
         ESP_LOGI(TAG, "USER_CONNECTED - Conexión BLE - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
         break;
       }
-      
-       //comprobar si hay usuarios observando:    
+      //comprobar si hay usuarios observando:    
       ts_app_req=Database->Get_Timestamp("/status/ts_app_req",&Lectura);
       if(ts_app_req < 1){//connection refused o autenticacion terminada, comprobar respuesta
         String ResponseString = Lectura["error"];
@@ -1631,19 +1683,16 @@ void Firebase_Conn_Task(void *args){
     /*********************** UPDATING states **********************/
     case UPDATING:
       delayeando = 10;
-      ESP_LOGI(TAG, "UPDATING - Comprobación de nuevo FW");
       bool CheckResult;
       CheckResult = CheckForUpdate();
 
       if(CheckResult){
-        ESP_LOGI(TAG, "UPDATING - Descargando nuevo FW");
-        xTaskCreate(DownloadFileTask,"DOWNLOAD FILE", 4096*2, NULL, 1,NULL);
+        xTaskCreate(DownloadFileTask,"DOWNLOAD FILE", 4096*3, NULL, 5,NULL);
         ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
         ConfigFirebase.FirebaseConnState = DOWNLOADING;
         ESP_LOGI(TAG, "UPDATING - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
       }
       else{
-        ESP_LOGI(TAG, "UPDATING - No hay FW nuevo");
         ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
         ConfigFirebase.FirebaseConnState = IDLE;
         ESP_LOGI(TAG, "Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
@@ -1651,23 +1700,27 @@ void Firebase_Conn_Task(void *args){
       break;
 
     case DOWNLOADING:
-      if(!UpdateStatus.DescargandoArchivo && updateTaskrunning){
-      //if(!UpdateStatus.DescargandoArchivo){
-        ESP_LOGI(TAG, "DOWNLOADING - Descarga finalizada");
-        //xTaskCreate(UpdateTask,"TASK UPDATE",4096*3,NULL,1,NULL);
+      if(!UpdateStatus.DescargandoArchivo){
         ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
         ConfigFirebase.FirebaseConnState = INSTALLING;
-        ESP_LOGI(TAG, "DOWNLOADING - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);      }  
+        ESP_LOGI(TAG, "DOWNLOADING - Maquina de estados de Firebase pasa de %s a %s", 
+         String(ConfigFirebase.LastConnState).c_str(), 
+         String(ConfigFirebase.FirebaseConnState).c_str());
+         }  
       break;
 
     case INSTALLING:
+      vTaskDelay(pdMS_TO_TICKS(4000));
+
       if(UpdateStatus.DobleUpdate){
         ESP_LOGI(TAG, "INSTALLING - Update segundo micro. Descargando");
-        xTaskCreate(DownloadFileTask,"DOWNLOAD FILE", 4096*2, NULL, 1,NULL);
+        xTaskCreate(DownloadFileTask,"DOWNLOAD FILE", 4096*3, NULL, 5,NULL);
         ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
         ConfigFirebase.FirebaseConnState = DOWNLOADING;
         ESP_LOGI(TAG, "INSTALLING - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
       }
+      //vTaskDelay(pdMS_TO_TICKS(4000));
+
       if(!UpdateStatus.DescargandoArchivo && !UpdateStatus.InstalandoArchivo){
         ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
         ConfigFirebase.FirebaseConnState = IDLE;
@@ -1695,6 +1748,7 @@ void Firebase_Conn_Task(void *args){
       delay(1000);
       ESP_LOGE (TAG, "Error en la maquina de estados de Firebase. Estado: %i", ConfigFirebase.FirebaseConnState);
       ESP_LOGW (TAG, "Borrando Database");
+
       Database->end();
       Database->endAuth();
       delete Database;

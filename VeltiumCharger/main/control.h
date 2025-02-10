@@ -13,24 +13,24 @@
 
 #define DEVELOPMENT				   //Comentar para pasar firmware a produccion ( Cambio de base de datos y quitar debugs)
 
-#ifdef DEVELOPMENT
+//#ifdef DEVELOPMENT
 	#define DEBUG				   //Activar los distintos debugs
 	#ifdef DEBUG
 		#ifdef USE_GROUPS
-			#define DEBUG_GROUPS	//Activar el debug de los grupos
+			//#define DEBUG_GROUPS	//Activar el debug de los grupos
 			//#define DEBUG_COAP		// ADS - Debug de mensajes COAP
-			#define DEBUG_UDP		//Debug de mensajes UDP enviados y recibidos
+			//#define DEBUG_UDP		//Debug de mensajes UDP enviados y recibidos
 		#endif
 
 		#define DEBUG_BLE		   //Activar el debug del ble
-		#define DEBUG_CONFIG	   //Debugar el almacenamiento de la configuracion
-		#define DEBUG_UPDATE
-		#define DEBUG_TX_UART
+		//#define DEBUG_CONFIG	   //Debugar el almacenamiento de la configuracion
+		//#define DEBUG_UPDATE
+		//#define DEBUG_TX_UART
 		//#define DEBUG_RX_UART
 
 		#ifdef IS_UNO_KUBO	
-			#define DEBUG_WIFI	     //Activar el debug del wifi
-			#define DEBUG_ETH	   	 //Activar el debug del ETH
+			//#define DEBUG_WIFI	     //Activar el debug del wifi
+			//#define DEBUG_ETH	   	 //Activar el debug del ETH
 			//#define DEBUG_MEDIDOR  //Activar el debug del medidor
 		#endif
 	#endif
@@ -40,7 +40,7 @@
 		//#define DEMO_MODE_CURRENT	//Valor de corriente de carga enviado por un cargador ficticia
 		#define DEMO_MODE_BACKEND   //Modo para conectar el equipo al backend de Firebase de producción estando trabajando en DEVELOPMENT
 	#endif 
-#endif
+//#endif
 
 /*********** Fin configuracion build**************/
 #include "Arduino.h"
@@ -48,6 +48,8 @@
 
 #include "cybtldr/cybtldr_api2.h"
 #include "cybtldr/cybtldr_command.h"
+#include "driver/uart.h"
+#include "cybtldr/cybtldr_api.h"
 
 #ifdef IS_UNO_KUBO
 	#include "coms/Wifi_Station.h"
@@ -167,5 +169,7 @@ void modifyCharacteristic(uint8* data, uint16 len, uint16 attrHandle);
 void Get_Stored_Group_Data();
 void Get_Stored_Group_Params();
 void Get_Stored_Group_Circuits();
+
+uint8 checkSpiffsBug();
 
 #endif // __CONTROL_MAIN

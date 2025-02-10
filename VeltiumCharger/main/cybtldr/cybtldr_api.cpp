@@ -38,7 +38,6 @@ int CyBtldr_TransferData(uint8_t* inBuf, int inSize, uint8_t* outBuf, int outSiz
     outBuf[0] = 'a';
 
     channel->flush(false);
-
     while (err == 1)
     {
         if (timeout > 4000)
@@ -171,6 +170,7 @@ static int SendData(HardwareSerialMOD *ReceivedChannel, uint8_t *buf, uint16_t s
     uint16_t cmdLen = 0;
     // Break row into pieces to ensure we don't send too much for the transfer protocol
     while ((CYRET_SUCCESS == err) && ((size - (*offset)) > maxRemainingDataSize)) {
+
         if ((size - (*offset)) > subBufSize) {
             cmdLen = subBufSize;
         } else {
