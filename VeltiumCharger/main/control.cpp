@@ -92,8 +92,8 @@ uint8 emergencyState = 0;
 
 uint8 dispositivo_inicializado = 0;
 uint8 PSOC_inicializado =0;
-uint8 cnt_timeout_inicio = 0;
-uint16 cnt_repeticiones_inicio = 500;	//1000;
+uint8 cnt_timeout_inicio = 1;
+uint16 cnt_repeticiones_inicio = 120;	//1000;
 
 uint8 status_hpt_anterior[2] = {'F','F' };
 uint16 inst_current_anterior = 0x0000;
