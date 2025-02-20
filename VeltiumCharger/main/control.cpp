@@ -101,9 +101,9 @@ uint16 cnt_diferencia = 1;
 uint8 HPT_estados[9][3] = {"0V", "A1", "A2", "B1", "B2", "C1", "C2", "E1", "F1"};
 
 #ifdef IS_UNO_KUBO
-uint8 ESP_version_firmware[11] = {"VBLE3_0615"};	   
+uint8 ESP_version_firmware[11] = {"VBLE3_0616"};	   
 #else
-uint8 ESP_version_firmware[11] = {"VBLE0_0610"};	
+uint8 ESP_version_firmware[11] = {"VBLE0_0616"};	
 #endif
 
 uint8 PSOC_version_firmware[11] ;		
