@@ -88,22 +88,26 @@ int CyBtldr_OpenDataFile(const char* file, const char* partition) {
     {
         dataFile.close();
         SPIFFS.end();
+#ifdef DEBUG_UPDATE
         Serial.println("El spiffs parece cerrado, intentandolo otra vez");
+#endif        
         SPIFFS.begin(0, "/spiffs", 1, partition);
         dataFile = SPIFFS.open(file);
         if (!dataFile || dataFile.size() == 0)
         {
+#ifdef DEBUG_UPDATE
             Serial.println("Imposible abrir");
+#endif            
             err = CYRET_ERR_FILE;
         }
     }
-
+#ifdef DEBUG_UPDATE
     if (CYRET_SUCCESS == err)
     {
         Serial.print("Tamaño del archivo: ");
         Serial.println(dataFile.size());
     }
-
+#endif
     return err;
 }
 
@@ -198,8 +202,6 @@ int CyBtldr_ParseCyAcdAppStartAndSize(uint32_t* appStart, uint32_t* appSize, uin
     const char APPINFO_META_SEPERATOR_START[] = ",";
 
     size_t fp = dataFile.position();
-    Serial.print("position: ");
-    Serial.println(fp);
     *appStart = 0xffffffff;
     *appSize = 0;
     *dataLines = 0;
@@ -229,8 +231,6 @@ int CyBtldr_ParseCyAcdAppStartAndSize(uint32_t* appStart, uint32_t* appSize, uin
             } else if (rowLength >= APPINFO_META_HEADER_SIZE && strncmp(buf, APPINFO_META_HEADER, APPINFO_META_HEADER_SIZE) == 0) {
                 // find seperator index
                 seperatorIndex = (uint32_t)strcspn(buf, APPINFO_META_SEPERATOR_START);
-                Serial.print("seperatorIndex: ");
-                Serial.println(seperatorIndex);
                 if (strncmp(buf + seperatorIndex, APPINFO_META_SEPERATOR, APPINFO_META_SEPERATOR_SIZE) == 0)
                 {
                     *appStart = 0;
@@ -256,20 +256,10 @@ int CyBtldr_ParseCyAcdAppStartAndSize(uint32_t* appStart, uint32_t* appSize, uin
     }
     while (err == CYRET_SUCCESS);
 
-    Serial.print("appStart: ");
-    Serial.println(*appStart);
-    Serial.print("appSize: ");
-    Serial.println(*appSize);
-    Serial.print("dataLines: ");
-    Serial.println(*dataLines);
 
     if (err == CYRET_ERR_EOF)
     {
         err = CYRET_SUCCESS;
-    }
-    else
-    {
-        Serial.println(err);
     }
 
     // reset to the file to where we were

@@ -114,7 +114,9 @@ int CyBtldr_RunAction(CyBtldr_Action action, HardwareSerialMOD *comm, CyBtldr_Pr
                 if (err == CYRET_SUCCESS) 
                     err = CyBtldr_SetApplicationMetaData(appId, applicationStartAddr, applicationSize);
                 bootloaderEntered = 1;
+#ifdef DEBUG_UPDATE
                 Serial.println("bootloaderEntered");
+#endif
             }
 
             while (CYRET_SUCCESS == err) {

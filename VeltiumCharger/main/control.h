@@ -11,9 +11,9 @@
 	#define USE_GROUPS			   //Comentar para no utilizar los grupos de potencia
 #endif
 
-#define DEVELOPMENT				   //Comentar para pasar firmware a produccion ( Cambio de base de datos y quitar debugs)
+//#define DEVELOPMENT				   //Comentar para pasar firmware a produccion ( Cambio de base de datos y quitar debugs)
 
-//#ifdef DEVELOPMENT
+#ifdef DEVELOPMENT
 	#define DEBUG				   //Activar los distintos debugs
 	#ifdef DEBUG
 		#ifdef USE_GROUPS
@@ -40,7 +40,7 @@
 		//#define DEMO_MODE_CURRENT	//Valor de corriente de carga enviado por un cargador ficticia
 		#define DEMO_MODE_BACKEND   //Modo para conectar el equipo al backend de Firebase de producción estando trabajando en DEVELOPMENT
 	#endif 
-//#endif
+#endif
 
 /*********** Fin configuracion build**************/
 #include "Arduino.h"
