@@ -1077,6 +1077,7 @@ void DownloadFileTask(void *args){
       } 
       if (SPIFFS.exists(PSOC_UPDATE_FILE)) {
         ESP_LOGI(TAG, "Existe fichero previo - formateando SPIFFS");
+        SPIFFS.remove(PSOC_UPDATE_FILE);
         SPIFFS.format();
         delay(200);
       }
