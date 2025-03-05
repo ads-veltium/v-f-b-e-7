@@ -370,7 +370,8 @@ bool WriteFirebaseHistoric(char* buffer){
     int size =0;
     bool end = false;
     uint8_t* record_buffer = (uint8_t*) malloc(252);
-
+    memset(record_buffer, 0, 252);
+    
     for(int i = 0;i<252;i+=2){		
       if(j<252){
         if(buffer[j]==255 && buffer[j+1]==255){
@@ -386,12 +387,14 @@ bool WriteFirebaseHistoric(char* buffer){
         }
         else{
           record_buffer[i]   = 0;
+          record_buffer[i+1]   = 0;
           size+=2;
         }
         j+=2;
       }
       else{
         record_buffer[i]   = 0;
+        record_buffer[i+1]   = 0;
         size+=2;
       }				
     }
