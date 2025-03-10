@@ -67,6 +67,10 @@ uint64_t endTime;
 uint8 backdoor_selector = 0;
 uint8 err_code = 0;
 
+
+TimerHandle_t xAdvertisingTimer;
+bool advertisingFlag = false;
+
 /* milestone: one-liner for reporting memory usage */
 void milestone(const char* mname)
 {
@@ -996,6 +1000,10 @@ void changeAdvName( uint8_t * name ){
 	return;
 }
 
+void vAdvertisingTimerCallback(TimerHandle_t xTimer) {
+	advertisingFlag = true; // Activar el flag
+    xTimerStop(xAdvertisingTimer, 0); // Detener el timer
+}
 
 void serverbleInit() {
 
@@ -1075,6 +1083,19 @@ void serverbleInit() {
 
 	xTaskCreateStatic(serverbleTask,"TASK BLE_SERVER",4096*2,NULL,PRIORIDAD_BLE,xBLEStack,&xBLEBuffer); 
 
+	// Times de (24 horas = 86400000 ms) para reiniciar advertising
+    xAdvertisingTimer = xTimerCreate("AdvertisingTimer",
+									pdMS_TO_TICKS(86400000), // 24h
+									//pdMS_TO_TICKS(60000), 
+									pdTRUE,   // Repetitivo
+									(void *)0,
+									vAdvertisingTimerCallback);
+
+	if (xAdvertisingTimer != NULL) {
+		xTimerStart(xAdvertisingTimer, 0);
+	}
+
+
 	#ifdef DEBUG_BLE
 	milestone("after creating serverbleTask");
 	#endif
@@ -1082,7 +1103,7 @@ void serverbleInit() {
 
 void serverbleStartAdvertising(void)
 {
-	Serial.println("start advertising...");
+	ESP_LOGI(TAG, "start advertising...");
 	pServer->getAdvertising()->start();
 }
 
@@ -1099,6 +1120,25 @@ void serverbleTask(void *arg)
 			}
 		}
 
+		//disconnected
+		if(!deviceBleConnected && !oldDeviceBleConnected)
+		{
+			if (advertisingFlag) {
+				ESP_LOGI(TAG, "Reinicio rutinario de advertising");
+
+				pServer->getAdvertising()->stop();
+				pServer->getAdvertising()->start();
+
+				advertisingFlag = false; // Resetear el flag
+				xTimerStop(xAdvertisingTimer, 0); // Asegurar que el timer esté detenido
+				xTimerReset(xAdvertisingTimer, 0); // Resetear el timer
+				xTimerStart(xAdvertisingTimer, 0); // Iniciar el timer nuevamente
+			}
+
+			if (!ble_gap_adv_active()) pServer->getAdvertising()->start();
+		}
+
+		
 		// disconnecting
 		if (!deviceBleConnected && oldDeviceBleConnected){
 			ESP_LOGI(TAG, "Disconnectig");
