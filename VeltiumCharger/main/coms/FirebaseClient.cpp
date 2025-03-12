@@ -1371,7 +1371,7 @@ void Firebase_Conn_Task(void *args){
       }
       //comprobar si hay usuarios observando:   
       ts_app_req = Database->Get_Timestamp("/status/ts_app_req",&Lectura);
-      ESP_LOGI(TAG,"ts_app_req: %lld", ts_app_req);
+      //ESP_LOGI(TAG,"ts_app_req: %lld", ts_app_req);
       if (ts_app_req < 1){ // connection refused o autenticacion terminada, comprobar respuesta
         String ResponseString = Lectura["error"];
         if (strcmp(ResponseString.c_str(), "Auth token is expired") == 0){

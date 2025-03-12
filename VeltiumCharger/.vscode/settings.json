@@ -74,7 +74,8 @@
     "cstdio": "cpp",
     "new": "cpp",
     "bitset": "cpp",
-    "utility": "cpp"
+    "utility": "cpp",
+    "chrono": "cpp"
 },
 "cmake.configureOnOpen": false
 }

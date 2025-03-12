@@ -70,6 +70,8 @@ uint8 err_code = 0;
 
 TimerHandle_t xAdvertisingTimer;
 bool advertisingFlag = false;
+#define HOUR_TO_MS 3600000
+
 
 /* milestone: one-liner for reporting memory usage */
 void milestone(const char* mname)
@@ -316,7 +318,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks {
 		if (pCharacteristic->getUUID().equals(blefields[SELECTOR].uuid)){
 			// safety check: at least one byte for selector
 			if (dlen < 1) {
-				Serial.println("Error at write callback for Selector CHR: size less than 1");
+				ESP_LOGW(TAG, "Error at write callback for Selector CHR: size less than 1");
 				uint8_t empty_packet[4] = {0, 0, 0, 0};
 				pbleCharacteristics[BLE_CHA_OMNIBUS]->setValue(empty_packet, 4);
 				return;
@@ -380,7 +382,7 @@ class CBCharacteristic: public BLECharacteristicCallbacks {
 			// as it should have a minimum payload of 1,
 			// its size should never be less than 5
 			if (dlen < 5) {
-				Serial.println("Error at write callback for Omnibus CHR: size less than 5");
+				ESP_LOGW(TAG, "Error at write callback for Omnibus CHR: size less than 5");
 				return;
 			}
 
@@ -1000,9 +1002,21 @@ void changeAdvName( uint8_t * name ){
 	return;
 }
 
+static uint8 advTimerCallback_counter = 0;
+
 void vAdvertisingTimerCallback(TimerHandle_t xTimer) {
-	advertisingFlag = true; // Activar el flag
     xTimerStop(xAdvertisingTimer, 0); // Detener el timer
+	xTimerReset(xAdvertisingTimer, 0); // Resetear el timer
+
+	advTimerCallback_counter++; 
+	
+	if(advTimerCallback_counter >= 24)
+	{
+		advertisingFlag = true; // Activar el flag
+		advTimerCallback_counter = 0;
+	}
+	else xTimerStart(xAdvertisingTimer, 0);
+	ESP_LOGI(TAG, "Valor de AdvTimerCallback_counter: %d\n", advTimerCallback_counter);
 }
 
 void serverbleInit() {
@@ -1083,18 +1097,15 @@ void serverbleInit() {
 
 	xTaskCreateStatic(serverbleTask,"TASK BLE_SERVER",4096*2,NULL,PRIORIDAD_BLE,xBLEStack,&xBLEBuffer); 
 
-	// Times de (24 horas = 86400000 ms) para reiniciar advertising
+	// Timer de 1 hora. Se itera con el 24 veces debido al mal funcionamiento del timer al utilizar un periodo mayor a 1 h.
     xAdvertisingTimer = xTimerCreate("AdvertisingTimer",
-									pdMS_TO_TICKS(86400000), // 24h
-									//pdMS_TO_TICKS(60000), 
-									pdTRUE,   // Repetitivo
+									pdMS_TO_TICKS(HOUR_TO_MS), // 1h
+									pdFALSE,
 									(void *)0,
 									vAdvertisingTimerCallback);
 
-	if (xAdvertisingTimer != NULL) {
-		xTimerStart(xAdvertisingTimer, 0);
-	}
-
+	xTimerStart(xAdvertisingTimer, 0);
+	ESP_LOGI(TAG, "Temporizador disparado. Periodo: %u ms\n", pdTICKS_TO_MS(xTimerGetPeriod(xAdvertisingTimer)));
 
 	#ifdef DEBUG_BLE
 	milestone("after creating serverbleTask");
@@ -1117,11 +1128,13 @@ void serverbleTask(void *arg)
 			if (pdTICKS_TO_MS(xTaskGetTickCount() - ConexTimer) > DEFAULT_BLE_INACTIVE_TIMEOUT){
 				ESP_LOGI(TAG, "Desconexion por inactividad");
 				deviceBleDisconnect = true;
+				ConexTimer = xTaskGetTickCount();
 			}
 		}
 
 		//disconnected
-		if(!deviceBleConnected && !oldDeviceBleConnected)
+		//if(!deviceBleConnected && !oldDeviceBleConnected)
+		if(pServer->getConnectedCount()==0)
 		{
 			if (advertisingFlag) {
 				ESP_LOGI(TAG, "Reinicio rutinario de advertising");
@@ -1130,14 +1143,15 @@ void serverbleTask(void *arg)
 				pServer->getAdvertising()->start();
 
 				advertisingFlag = false; // Resetear el flag
-				xTimerStop(xAdvertisingTimer, 0); // Asegurar que el timer esté detenido
-				xTimerReset(xAdvertisingTimer, 0); // Resetear el timer
 				xTimerStart(xAdvertisingTimer, 0); // Iniciar el timer nuevamente
 			}
 
-			if (!ble_gap_adv_active()) pServer->getAdvertising()->start();
+			if (!ble_gap_adv_active())
+			{
+				ESP_LOGI(TAG, "Se ha detectado que el advertising está desactivado cuando no hay ningún dispositivo conectado. Activando advertising...");
+				pServer->getAdvertising()->start();
+			} 
 		}
-
 		
 		// disconnecting
 		if (!deviceBleConnected && oldDeviceBleConnected){
@@ -1156,6 +1170,7 @@ void serverbleTask(void *arg)
 		// connecting
 		if (deviceBleConnected && !oldDeviceBleConnected) {
 			ESP_LOGI(TAG, "Connected");
+			
 			// do stuff here on connecting
 			oldDeviceBleConnected = deviceBleConnected;
 			serverbleNotCharacteristic((uint8_t *)Status.HPT_status, 2, STATUS_HPT_STATUS_CHAR_HANDLE);
@@ -1175,6 +1190,7 @@ void serverbleTask(void *arg)
 			ConexTimer = xTaskGetTickCount();
 		}
 		if (deviceBleDisconnect){
+			ESP_LOGI(TAG, "Desconectando dispositivo BLE por inactividad de 10 minutos.");
 			pServer->disconnect(Conn_Handle);
 			deviceBleDisconnect= false;
 		}
