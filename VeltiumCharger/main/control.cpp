@@ -386,7 +386,7 @@ void controlTask(void *arg) {
 			{
 				ESP_LOGW(TAG, "ERROR: RESPUESTA DEL PSOC NO RECIBIDA, REINICIANDO...");
 				psocUpdateCounter=0;
-				Status.error_code = 0x60;
+				Status.error_code = 0x08;
 				vTaskDelay(pdMS_TO_TICKS(5000));
 
 				MAIN_RESET_Write(0);

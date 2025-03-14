@@ -437,7 +437,7 @@ void LedControl_Task(void *arg){
 					Fade(ROJO);
 				}
 				//Error grave
-				else if(Status.error_code == (uint8)0x60 || Status.error_code == (uint8)0x70 || Status.error_code == (uint8)0x30){
+				else if(Status.error_code == (uint8)0x60 || Status.error_code == (uint8)0x70 || Status.error_code == (uint8)0x30 || Status.error_code == (uint8)0x08){
 					displayAll(100,ROJO);
 					Delay=1000;
 				}

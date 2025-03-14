@@ -1178,7 +1178,7 @@ void DownloadFileTask(void *args){
     if(!successESP && !successPSOC && attempt==MAX_RETRIES)
     {
       ESP_LOGW(TAG, "ERROR. NO SE HA PODIDO DESCARGAR EL FICHERO DE ACTUALIZACION. Reiniciando...");
-      Status.error_code = 0x60;
+      Status.error_code = 0x08;
       vTaskDelay(pdMS_TO_TICKS(5000));
 
       MAIN_RESET_Write(0);
