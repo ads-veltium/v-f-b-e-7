@@ -75,7 +75,8 @@
     "new": "cpp",
     "bitset": "cpp",
     "utility": "cpp",
-    "chrono": "cpp"
+    "chrono": "cpp",
+    "algorithm": "cpp"
 },
 "cmake.configureOnOpen": false
 }

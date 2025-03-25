@@ -142,6 +142,9 @@ boolean records_trigger = false;
 
 uint8_t update_flag = 0;
 
+bool flag_schedule_ack = false;
+
+extern uint8_t global_schedule_buffer[24*7];
 /*******************************************************************************
  * Rutina de atencion a inerrupcion de timer (10mS)
  ********************************************************************************/
@@ -993,7 +996,41 @@ void procesar_bloque(uint16 tipo_bloque){
 		break;
 
 		case SCHED_CHARGING_SCHEDULE_MATRIX_CHAR_HANDLE:{
+
+#ifdef DEBUG_RX_UART
+			Serial.print("Full global_schedule_buffer: ");
+			for (uint8_t i = 0; i < sizeof(global_schedule_buffer); i++) {
+			  Serial.printf("%02X ", global_schedule_buffer[i]);
+			}
+			Serial.println();
+
+			Serial.println("Me ha llegado lo siguiente: ");
+			for (uint8_t i = 0; i < 168 ; i++) {
+			Serial.printf("%02X ", buffer_rx_local[i]);
+			}
+			Serial.println();
+#endif
+			bool buffers_are_equal = true;
+			for (uint8_t i = 0; i < 168; i++) {
+				if (global_schedule_buffer[i] != buffer_rx_local[i]) {
+					buffers_are_equal = false;
+					ESP_LOGW(TAG, "Error: Diferencia en índice %u: enviado=%02X, recibido=%02X\n", 
+								i, global_schedule_buffer[i], buffer_rx_local[i]);
+				}
+			}
+
+			// Resultado final de la comparación
+			if (buffers_are_equal) {
+				flag_schedule_ack = true;
+			} else {
+				flag_schedule_ack = false;
+				ESP_LOGE(TAG, "No ha sido posible enviar correctamente la programacion.");
+			}
+
 			modifyCharacteristic(buffer_rx_local, 168, SCHED_CHARGING_SCHEDULE_MATRIX_CHAR_HANDLE);
+
+
+			
 		}
 		break;
 		

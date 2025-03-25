@@ -7,6 +7,8 @@ extern uint8_t mainFwUpdateActive;
 extern uint8_t updateTaskrunning;
 extern uint8 deviceSerNumFlash[10];
 extern carac_group  ChargingGroup;
+extern bool flag_schedule_ack;
+uint8_t global_schedule_buffer[7 * 24] = {0};
 
 const static char *TAG = "helpers";
 
@@ -201,22 +203,37 @@ void SendStatusToPSOC5(uint8_t connected, uint8_t inicializado, uint8_t comm_typ
 }
 
 void SendScheduleMatrixToPSOC5(uint8_t *data) {
+
   const uint8_t size = 24; // 24 horas
-  uint8_t buffer_tx_local[size + 1 + 4]; //24 horas + día + cabecera
+  uint8_t buffer_tx_local[size + 1 + 4]; // 24 horas + día + cabecera
 
   buffer_tx_local[0] = HEADER_TX;
-  buffer_tx_local[1] = (uint8)(SCHED_CHARGING_SCHEDULE_MATRIX_CHAR_HANDLE >> 8);
-  buffer_tx_local[2] = (uint8)(SCHED_CHARGING_SCHEDULE_MATRIX_CHAR_HANDLE);
+  buffer_tx_local[1] = (uint8_t)(SCHED_CHARGING_SCHEDULE_MATRIX_CHAR_HANDLE >> 8);
+  buffer_tx_local[2] = (uint8_t)(SCHED_CHARGING_SCHEDULE_MATRIX_CHAR_HANDLE);
   buffer_tx_local[3] = size + 1; 
+  uint8 attempts = 0;
+  while(!flag_schedule_ack && attempts<3)
+  {
+    for (uint8_t day = 0; day < 7; ++day) {
+      buffer_tx_local[4] = day; 
+      memcpy(&buffer_tx_local[5], &data[day * size], size);
+      memcpy(&global_schedule_buffer[day * size], &data[day * size], size);
+      int err = controlSendToSerialLocal(buffer_tx_local, size + 4);
 
-  for (uint8_t day = 0; day < 7; ++day) {
-    buffer_tx_local[4] = day; 
-    memcpy(&buffer_tx_local[5], &data[day * size], size);
-    int err = controlSendToSerialLocal(buffer_tx_local, size + 4);
-#ifdef DEBUG_TX_UART
-    Serial.printf("SendMatrixToPSOC5 (day %u): %i bytes sent.\n", day, err);
-#endif
-    delay(10); 
+  #ifdef DEBUG_TX_UART
+      Serial.printf("SendMatrixToPSOC5 (day %u): %i bytes sent.\n", day, err);
+  #endif
+      delay(10); 
+    }
+
+    uint32_t start_time = millis();
+    while (millis() - start_time < 2000);
+    attempts++;
+  }
+  if(flag_schedule_ack)
+  {
+    Serial.printf("Se ha enviado y recibido la sched matrix en %d attempts\n", attempts);
+    flag_schedule_ack = false;
   }
 }
 
