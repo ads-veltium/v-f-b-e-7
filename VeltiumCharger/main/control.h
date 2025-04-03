@@ -27,6 +27,7 @@
 		//#define DEBUG_UPDATE
 		//#define DEBUG_TX_UART
 		//#define DEBUG_RX_UART
+		#define DEBUG_RECORDS
 
 		#ifdef IS_UNO_KUBO	
 			//#define DEBUG_WIFI	     //Activar el debug del wifi
