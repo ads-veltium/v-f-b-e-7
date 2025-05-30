@@ -197,7 +197,9 @@ void Real_Time_Database::end(){
 }
 
 void Real_Time_Database::reload (){
+#ifdef DEBUG
     ESP_LOGI(TAG, "Real_Time_Database reload");
+#endif
     end();
     Write_url = RTDB_url+"/status/ts_app_req.json?auth="+idToken+"&timeout=2500ms";
     esp_http_client_config_t config = {
@@ -317,7 +319,9 @@ long long  Real_Time_Database::Get_Timestamp(String path, JsonDocument *respuest
             Readed = 0;
             ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
             ConfigFirebase.FirebaseConnState = DISCONNECTING;
+#ifdef DEBUG
             ESP_LOGI(TAG, "Get_Timestamp: Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
+#endif
         }
         return -1;
     }

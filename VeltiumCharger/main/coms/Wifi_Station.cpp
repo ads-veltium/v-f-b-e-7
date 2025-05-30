@@ -61,7 +61,9 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
             break;
         case WIFI_EVENT_STA_DISCONNECTED:
             wifi_event_sta_disconnected_t* event = (wifi_event_sta_disconnected_t*) event_data;
+#ifdef DEBUG_WIFI
             ESP_LOGI(TAG, "Station disconnect. Reason code: %d", event->reason);
+#endif
             Update_Status_Coms(0, WIFI_BLOCK);
             Coms.Wifi.Internet = false;
             if (!Coms.StartProvisioning){
@@ -153,7 +155,9 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
                 break;
             }
             case WIFI_PROV_CRED_SUCCESS:
+#ifdef DEBUG_WIFI
                 ESP_LOGI(TAG, "Provisioning finalizado");
+#endif
                 Update_Status_Coms(WIFI_CONNECTED);
                 Coms.Wifi.ON = true;
                 SendToPSOC5(Coms.Wifi.ON,COMS_CONFIGURATION_WIFI_ON);
@@ -166,7 +170,9 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
                 
                 break;
             case WIFI_PROV_END:
+#ifdef DEBUG_WIFI
                 ESP_LOGI(TAG, "Provisioning service deinit");
+#endif
                 ESP_ERROR_CHECK(esp_event_handler_unregister(WIFI_PROV_EVENT, ESP_EVENT_ANY_ID, &event_handler));
                 wifi_prov_mgr_deinit();
                 if(!Coms.Provisioning){

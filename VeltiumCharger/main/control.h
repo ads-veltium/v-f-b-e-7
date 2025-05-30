@@ -22,7 +22,7 @@
 			//#define DEBUG_UDP		//Debug de mensajes UDP enviados y recibidos
 		#endif
 
-		#define DEBUG_BLE		   //Activar el debug del ble
+		//#define DEBUG_BLE		   //Activar el debug del ble
 		//#define DEBUG_CONFIG	   //Debugar el almacenamiento de la configuracion
 		//#define DEBUG_UPDATE
 		//#define DEBUG_TX_UART

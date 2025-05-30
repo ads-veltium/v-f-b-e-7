@@ -223,7 +223,7 @@ void SendScheduleMatrixToPSOC5(uint8_t *data) {
   #ifdef DEBUG_TX_UART
       Serial.printf("SendMatrixToPSOC5 (day %u): %i bytes sent.\n", day, err);
   #endif
-      delay(10); 
+      delay(50); 
     }
 
     uint32_t start_time = millis();

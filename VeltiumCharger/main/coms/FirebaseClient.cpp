@@ -92,9 +92,9 @@ bool initFirebaseClient(){
 
   HOST_FOR_DATABASE = FIREBASE_PROJECT; 
   HOST_FOR_AUTH = FIREBASE_AUTH_HOST;
-
+#ifdef DEBUG
   ESP_LOGI(TAG, "HOST_FOR_DATABASE=%s HOST_FOR_AUTH=%s", HOST_FOR_DATABASE.c_str(), HOST_FOR_AUTH.c_str());
-
+#endif
   Database->deviceID = ConfigFirebase.Device_Id;
   if (!Database->LogIn(HOST_FOR_AUTH)){
     return false;
@@ -323,8 +323,10 @@ bool WriteFirebaseHistoric(char* buffer){
     t.tm_min  = buffer[6];
     t.tm_sec  = buffer[7];
     int ConectionTS = mktime(&t);
+#ifdef DEBUG
 
     ESP_LOGI(TAG,"Wrtinging record. Connection Time - Year= %i, Month= %i, Day= %i, Hour= %i, Min= %i, Sec= %i - TimeStamp=[%i]",t.tm_year+1900,t.tm_mon+1,t.tm_mday,t.tm_hour,t.tm_min,t.tm_sec,ConectionTS);
+#endif
 
     if(ConectionTS> Status.Time.actual_time || ConectionTS < MIN_RECORD_TIMESTAMP){
       ESP_LOGW(TAG,"Error in Connection Time=%i Actual Time =%lli", ConectionTS, Status.Time.actual_time);
@@ -417,8 +419,10 @@ bool WriteFirebaseHistoric(char* buffer){
     uint8 ReturnToLastconn = ConfigFirebase.FirebaseConnState;
     ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
     ConfigFirebase.FirebaseConnState = WRITING_RECORD;
+#ifdef DEBUG
     ESP_LOGI(TAG, "Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
 
+#endif
     String Path = "/records/";
     Escritura.clear();
 
@@ -738,22 +742,27 @@ bool ReadFirebaseParams(String Path){
   if(ts_app_req > Params.last_ts_app_req){
     Lectura.clear();
     if (Database->Send_Command(Path, &Lectura, FB_READ)){
+#ifdef DEBUG
       ESP_LOGI(TAG,"ReadFirebaseParams. Lectura = %s",Lectura.as<String>().c_str());
-
+#endif
       Params.last_ts_app_req = ts_app_req;
 
       if (Lectura["auth_mode"].as<String>() != "null"){
         if (memcmp(Params.autentication_mode, Lectura["auth_mode"].as<String>().c_str(), 2)){
           memcpy(Params.autentication_mode, Lectura["auth_mode"].as<String>().c_str(), 2);
           Params.autentication_mode[2] = '\0';
+#ifdef DEBUG
           ESP_LOGI(TAG,"ReadFirebaseParams - auth_mode = %s",Params.autentication_mode);
+#endif
           SendToPSOC5(Params.autentication_mode, 2, CONFIGURACION_AUTENTICATION_MODES_CHAR_HANDLE);
         }
     
         if (memcmp(Params.Fw_Update_mode, Lectura["fw_auto"].as<String>().c_str(), 2) != 0){
           memcpy(Params.Fw_Update_mode, Lectura["fw_auto"].as<String>().c_str(), 2);
           Params.Fw_Update_mode[2] = '\0';
+#ifdef DEBUG
           ESP_LOGI(TAG,"ReadFirebaseParams - Fw_Update_mode = %s",Params.Fw_Update_mode);
+ #endif
           SendToPSOC5(Params.Fw_Update_mode, 2, COMS_FW_UPDATEMODE_CHAR_HANDLE);
         }
 
@@ -868,7 +877,9 @@ bool ReadFirebaseReadingPeriod(){
   Lectura.clear();
   if(Database->Send_Command("/prod/global_vars/coms_period",&Lectura, FB_READ_ROOT)){
     ConfigFirebase.PeriodoLectura = Lectura.as<uint8>() * 1000;
+#ifdef DEBUG
     ESP_LOGI(TAG,"ConfigFirebase.PeriodoLectura=%i",ConfigFirebase.PeriodoLectura);
+#endif
     return true;
   }
   else 
@@ -879,8 +890,10 @@ bool ReadFirebaseUpdatePeriod(){
   Lectura.clear();
   if(Database->Send_Command("/prod/global_vars/update_period",&Lectura, FB_READ_ROOT)){
     ConfigFirebase.PeriodoFWUpdate = Lectura.as<uint16>();
+    #ifdef DEBUG
     ESP_LOGI(TAG,"ConfigFirebase.PeriodoFWUpdate=%i",ConfigFirebase.PeriodoFWUpdate);
-    return true;
+#endif
+     return true;
   }
   else 
     return false;
@@ -890,8 +903,10 @@ bool ReadFirebaseGroupsDebug(){
   Lectura.clear();
   if(Database->Send_Command("/prod/global_vars/groups_debug",&Lectura, FB_READ_ROOT)){
     ConfigFirebase.GroupsDebug = Lectura.as<uint8>() * 1000;
+#ifdef DEBUG
     ESP_LOGI(TAG,"ConfigFirebase.GroupsDebug=%i",ConfigFirebase.GroupsDebug);
-    return true;
+#endif
+     return true;
   }
   else 
     return false;
@@ -902,7 +917,9 @@ bool ReadFirebaseOlderSyncRecord(){
   if (Database->Send_Command("/records_sync", &Lectura, FB_READ)){
     if (Lectura.containsKey("older_record_in_fb")){
       older_record_in_fb = Lectura["older_record_in_fb"].as<uint8>();
-      ESP_LOGI(TAG, "older_record_in_fb read = %i", older_record_in_fb);
+      #ifdef DEBUG
+    ESP_LOGI(TAG, "older_record_in_fb read = %i", older_record_in_fb);
+ #endif
       return true;
     }
     else{
@@ -924,8 +941,10 @@ bool ReadFirebaseRecordsTrigger(){
     if (Lectura.containsKey("write_records_trigger")){
       write_records_trigger = Lectura["write_records_trigger"].as<bool>();
       if (write_records_trigger){
-        ESP_LOGI(TAG, "write_records_trigger read = %i", write_records_trigger);
-      }
+        #ifdef DEBUG
+    ESP_LOGI(TAG, "write_records_trigger read = %i", write_records_trigger);
+#endif
+       }
       return true;
     }
     else{
@@ -999,27 +1018,37 @@ bool CheckForUpdate(){
     branch = "prod";
   }
 
-  ESP_LOGI(TAG,"Branch de FW=%s",branch.c_str());
-  PSOC_string = ParseFirmwareModel((char *)(PSOC_version_firmware));
+  #ifdef DEBUG
+    ESP_LOGI(TAG,"Branch de FW=%s",branch.c_str());
+#endif
+   PSOC_string = ParseFirmwareModel((char *)(PSOC_version_firmware));
   ESP_string = ParseFirmwareModel((char *)(ESP_version_firmware));
-  ESP_LOGI(TAG,"PSOC_string=%s - ESP_string=%s",PSOC_string.c_str(),ESP_string.c_str());
-
+  #ifdef DEBUG
+    ESP_LOGI(TAG,"PSOC_string=%s - ESP_string=%s",PSOC_string.c_str(),ESP_string.c_str());
+#endif
+ 
   //Check Firmware PSoC
   if (Database->Send_Command("/prod/fw/" + branch + "/" + PSOC_string, &Lectura, FB_READ_ROOT)){
     String PSOC_Ver = Lectura["verstr"].as<String>();
     String fw_psoc_group = Lectura["group"].as<String>();
     uint16 PSOC_int_Version = ParseFirmwareVersion(PSOC_Ver);
+    #ifdef DEBUG
     ESP_LOGI(TAG, "PSoC: Version instalada:%i - Version publicada:%i",Configuracion.data.FirmwarePSOC,PSOC_int_Version);
+ #endif
     if (PSOC_int_Version != Configuracion.data.FirmwarePSOC){
       if (CheckFwPermissions(fw_psoc_group)){
         UpdateStatus.PSOC_UpdateAvailable = true;
         UpdateStatus.PSOC_url = Lectura["url"].as<String>();
         update = true;
-        ESP_LOGI(TAG, "PSoC: Actualizando a %i",PSOC_int_Version);
+        #ifdef DEBUG
+    ESP_LOGI(TAG, "PSoC: Actualizando a %i",PSOC_int_Version);
+ #endif
       }
       else{
-        ESP_LOGI(TAG, "group=%s. FW group=%s. PSoC NO se actualiza",UpdateStatus.Group.c_str(),fw_psoc_group.c_str());
-      }
+        #ifdef DEBUG
+    ESP_LOGI(TAG, "group=%s. FW group=%s. PSoC NO se actualiza",UpdateStatus.Group.c_str(),fw_psoc_group.c_str());
+#endif
+       }
     }
   }
 
@@ -1028,16 +1057,22 @@ bool CheckForUpdate(){
     String ESP_Ver = Lectura["verstr"].as<String>();
     String fw_esp_group = Lectura["group"].as<String>();
     uint16 ESP_int_Version = ParseFirmwareVersion(ESP_Ver);
+    #ifdef DEBUG
     ESP_LOGI(TAG, "ESP: Version instalada:%i - Version publicada:%i",Configuracion.data.FirmwareESP,ESP_int_Version);
-    if (ESP_int_Version != Configuracion.data.FirmwareESP){
+#endif
+     if (ESP_int_Version != Configuracion.data.FirmwareESP){
       if (CheckFwPermissions(fw_esp_group)){
         UpdateStatus.ESP_UpdateAvailable = true;
         UpdateStatus.ESP_url = Lectura["url"].as<String>();
         update = true;
-        ESP_LOGI(TAG, "ESP32: Actualizando a %i", ESP_int_Version);
+        #ifdef DEBUG
+    ESP_LOGI(TAG, "ESP32: Actualizando a %i", ESP_int_Version);
+ #endif
       }
       else{
-        ESP_LOGI(TAG, "group=%s. FW group=%s. ESP NO se actualiza", UpdateStatus.Group.c_str(), fw_esp_group.c_str());
+        #ifdef DEBUG
+    ESP_LOGI(TAG, "group=%s. FW group=%s. ESP NO se actualiza", UpdateStatus.Group.c_str(), fw_esp_group.c_str());
+ #endif
       }
     }
   }
@@ -1220,7 +1255,9 @@ void Firebase_Conn_Task(void *args){
     if(!ConfigFirebase.InternetConection && ConfigFirebase.FirebaseConnState!= DISCONNECTED){
       ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
       ConfigFirebase.FirebaseConnState=DISCONNECTING;
-      ESP_LOGI(TAG, "GENERAL - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
+      #ifdef DEBUG
+    ESP_LOGI(TAG, "GENERAL - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
+#endif
     }
     
     switch (ConfigFirebase.FirebaseConnState){
@@ -1229,18 +1266,24 @@ void Firebase_Conn_Task(void *args){
       if (ConfigFirebase.InternetConection){
         if (Database != NULL)
         {
-          ESP_LOGI (TAG, "DISCONNECTED - Borrando Database");
-          delete Database;
+          #ifdef DEBUG
+    ESP_LOGI (TAG, "DISCONNECTED - Borrando Database");
+#endif
+           delete Database;
         }
-        ESP_LOGI (TAG, "DISCONNECTED - Creando Database");
-        Database = new Real_Time_Database();
+        #ifdef DEBUG
+    ESP_LOGI (TAG, "DISCONNECTED - Creando Database");
+#endif
+         Database = new Real_Time_Database();
 
         Error_Count = 0;
         // Base_Path = "/prod/devices/"; 
         ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
         ConfigFirebase.FirebaseConnState = CONNECTING;
-        ESP_LOGI(TAG, "DISCONNECTED - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
-        delayeando = 10;
+        #ifdef DEBUG
+    ESP_LOGI(TAG, "DISCONNECTED - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
+#endif
+         delayeando = 10;
       }
       break;
     }
@@ -1252,8 +1295,10 @@ void Firebase_Conn_Task(void *args){
         // Base_Path += (char *)ConfigFirebase.Device_Db_ID;
         ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
         ConfigFirebase.FirebaseConnState = CONECTADO;
-        ESP_LOGI(TAG, "CONNECTING - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
-        delayeando = 10;
+        #ifdef DEBUG
+    ESP_LOGI(TAG, "CONNECTING - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
+#endif
+         delayeando = 10;
       }
       else{
         Error_Count++;
@@ -1263,16 +1308,26 @@ void Firebase_Conn_Task(void *args){
     case CONECTADO:
       //Inicializar los timeouts
       Params.last_ts_app_req   = Database->Get_Timestamp("/params/ts_app_req",&Lectura);
-      ESP_LOGI(TAG,"params/ts_app_req= %lld",Params.last_ts_app_req);
-      Comands.last_ts_app_req  = Database->Get_Timestamp("/control/ts_app_req",&Lectura);
-      ESP_LOGI(TAG,"control/ts_app_req= %lld",Comands.last_ts_app_req);
-      Coms.last_ts_app_req     = Database->Get_Timestamp("/coms/ts_app_req",&Lectura);
-      ESP_LOGI(TAG,"coms/ts_app_req= %lld",Coms.last_ts_app_req);
+      #ifdef DEBUG
+    ESP_LOGI(TAG,"params/ts_app_req= %lld",Params.last_ts_app_req);
+#endif
+       Comands.last_ts_app_req  = Database->Get_Timestamp("/control/ts_app_req",&Lectura);
+      #ifdef DEBUG
+    ESP_LOGI(TAG,"control/ts_app_req= %lld",Comands.last_ts_app_req);
+#endif
+       Coms.last_ts_app_req     = Database->Get_Timestamp("/coms/ts_app_req",&Lectura);
+      #ifdef DEBUG
+    ESP_LOGI(TAG,"coms/ts_app_req= %lld",Coms.last_ts_app_req);
+ #endif
       Status.last_ts_app_req   = Database->Get_Timestamp("/status/ts_app_req",&Lectura);
-      ESP_LOGI(TAG,"status/ts_app_req= %lld",Status.last_ts_app_req);
+      #ifdef DEBUG
+    ESP_LOGI(TAG,"status/ts_app_req= %lld",Status.last_ts_app_req);
+ #endif
       Schedule.last_ts_app_req = Database->Get_Timestamp("/schedule/ts_app_req",&Lectura);
-      ESP_LOGI(TAG,"schedule/ts_app_req= %lld",Schedule.last_ts_app_req);
-      
+      #ifdef DEBUG
+    ESP_LOGI(TAG,"schedule/ts_app_req= %lld",Schedule.last_ts_app_req);
+#endif
+       
       Error_Count+=!WriteFirebaseFW("/fw/current");
       Error_Count+=!WriteFirebaseComs("/coms");
 
@@ -1322,17 +1377,23 @@ void Firebase_Conn_Task(void *args){
       //Comprobar si hay firmware nuevo
 /*#ifndef DEVELOPMENT*/
       if(!memcmp(Params.Fw_Update_mode, "AA", 2)){
-        ESP_LOGI(TAG, "Fw_Update_mode = %s",Params.Fw_Update_mode);
-        ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
+        #ifdef DEBUG
+    ESP_LOGI(TAG, "Fw_Update_mode = %s",Params.Fw_Update_mode);
+#endif
+         ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
         ConfigFirebase.FirebaseConnState = UPDATING;
-        ESP_LOGI(TAG, "CONECTADO - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
-        break;
+        #ifdef DEBUG
+    ESP_LOGI(TAG, "CONECTADO - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
+#endif
+         break;
       }
 /*#endif*/
       
       ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
       ConfigFirebase.FirebaseConnState = IDLE;
-      ESP_LOGI(TAG, "CONECTADO - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
+      #ifdef DEBUG
+    ESP_LOGI(TAG, "CONECTADO - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
+ #endif
       break;
 
     case IDLE:
@@ -1344,13 +1405,17 @@ void Firebase_Conn_Task(void *args){
       if(!ConfigFirebase.InternetConection || Error_Count>10){
         ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
         ConfigFirebase.FirebaseConnState = DISCONNECTING;
-        ESP_LOGI(TAG, "IDLE - No ha conexión a Internet - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
-        break;
+        #ifdef DEBUG
+    ESP_LOGI(TAG, "IDLE - No ha conexión a Internet - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
+#endif
+         break;
       }
       else if(ConfigFirebase.ResetUser){
         if(!serverbleGetConnected()){
-          ESP_LOGI(TAG,"A ReiniciarMultiusiario");
-          ReiniciarMultiusuario();
+          #ifdef DEBUG
+    ESP_LOGI(TAG,"A ReiniciarMultiusiario");
+#endif
+           ReiniciarMultiusuario();
         }
         ConfigFirebase.ResetUser = 0;
         ConfigFirebase.UserReseted = 1;
@@ -1380,14 +1445,18 @@ void Firebase_Conn_Task(void *args){
           }
           ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
           ConfigFirebase.FirebaseConnState = DISCONNECTING;
-          ESP_LOGI(TAG, "IDLE - Auth token expirado - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
-      }
+          #ifdef DEBUG
+    ESP_LOGI(TAG, "IDLE - Auth token expirado - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
+#endif
+       }
         else{
           if (++null_count >= 3){
             ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
             ConfigFirebase.FirebaseConnState = DISCONNECTING;
-            ESP_LOGI(TAG, "IDLE - Error de lectura de /status/ts_app_req - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
-          }
+            #ifdef DEBUG
+    ESP_LOGI(TAG, "IDLE - Error de lectura de /status/ts_app_req - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
+#endif
+           }
         }
         break;
       }
@@ -1398,14 +1467,20 @@ void Firebase_Conn_Task(void *args){
 
       //Comprobar actualizaciones automaticas cada FB_CHECK_UPDATES_PERIOD horas
       if(++UpdateCheckTimeout > (ConfigFirebase.PeriodoFWUpdate*60*60)/(ConfigFirebase.PeriodoLectura/1000)){
-        ESP_LOGI(TAG, "UpdateCheckTimeout");
+        #ifdef DEBUG
+    ESP_LOGI(TAG, "UpdateCheckTimeout");
+ #endif
         if(!memcmp(Status.HPT_status, "A1", 2) || !memcmp(Status.HPT_status, "0V", 2)){
           UpdateCheckTimeout = 0;
           if(!memcmp(Params.Fw_Update_mode, "AA", 2)){
-            ESP_LOGI(TAG, "Fw_Update_mode = %s",Params.Fw_Update_mode);
-            ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
+            #ifdef DEBUG
+    ESP_LOGI(TAG, "Fw_Update_mode = %s",Params.Fw_Update_mode);
+#endif
+             ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
             ConfigFirebase.FirebaseConnState = UPDATING;
-            ESP_LOGI(TAG, "IDLE - Fw_Update - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
+            #ifdef DEBUG
+    ESP_LOGI(TAG, "IDLE - Fw_Update - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
+ #endif
             break;
           }
         }
@@ -1422,8 +1497,10 @@ void Firebase_Conn_Task(void *args){
             delayeando = 10;   
             ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
             ConfigFirebase.FirebaseConnState = USER_CONNECTED;
-            ESP_LOGI(TAG, "IDLE - Usuario conectado - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
-            ConfigFirebase.ClientConnected  = true;
+            #ifdef DEBUG
+    ESP_LOGI(TAG, "IDLE - Usuario conectado - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
+#endif
+             ConfigFirebase.ClientConnected  = true;
             Error_Count=0;
             break;
           }
@@ -1511,8 +1588,10 @@ void Firebase_Conn_Task(void *args){
         ConfigFirebase.ClientAuthenticated = false;
         ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
         ConfigFirebase.FirebaseConnState = IDLE;
-        ESP_LOGI(TAG, "USER_CONNECTED - Conexión BLE - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
-        break;
+        #ifdef DEBUG
+    ESP_LOGI(TAG, "USER_CONNECTED - Conexión BLE - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
+#endif
+         break;
       }
       //comprobar si hay usuarios observando:    
       ts_app_req=Database->Get_Timestamp("/status/ts_app_req",&Lectura);
@@ -1524,14 +1603,18 @@ void Firebase_Conn_Task(void *args){
             }
             ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
             ConfigFirebase.FirebaseConnState = DISCONNECTING;
-            ESP_LOGI(TAG, "USER_CONNECTED - Auth token expirado - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
-        }
+            #ifdef DEBUG
+    ESP_LOGI(TAG, "USER_CONNECTED - Auth token expirado - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
+#endif
+         }
         else{
           if(++null_count>=3){
             ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
             ConfigFirebase.FirebaseConnState = DISCONNECTING;
-            ESP_LOGI(TAG, "USER_CONNECTED - Erorr de lectura /status/ts_app_req - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
-          }
+            #ifdef DEBUG
+    ESP_LOGI(TAG, "USER_CONNECTED - Erorr de lectura /status/ts_app_req - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
+#endif
+           }
         }
         break; 
       }
@@ -1552,9 +1635,11 @@ void Firebase_Conn_Task(void *args){
         ConfigFirebase.ClientConnected  = false;
         ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
         ConfigFirebase.FirebaseConnState = IDLE;
-        ESP_LOGI(TAG, "USER_CONNECTED - ts_app_req no actualizado en %i segundos", FB_USER_CONNECTED_TIMEOUT_S);
+        #ifdef DEBUG
+    ESP_LOGI(TAG, "USER_CONNECTED - ts_app_req no actualizado en %i segundos", FB_USER_CONNECTED_TIMEOUT_S);
         ESP_LOGI(TAG, "USER_CONNECTED - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
-        break;
+#endif
+         break;
       }
 
       
@@ -1595,12 +1680,16 @@ void Firebase_Conn_Task(void *args){
       //Comprobar actualizaciones manuales
       if(Comands.fw_update){
         if(!memcmp(Status.HPT_status, "A1",2) || !memcmp(Status.HPT_status, "0V",2) ){
-          ESP_LOGI(TAG, "Orden de Update recibida");
-          UpdateCheckTimeout=0;
+          #ifdef DEBUG
+    ESP_LOGI(TAG, "Orden de Update recibida");
+#endif
+           UpdateCheckTimeout=0;
           Comands.fw_update=0;
           ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
           ConfigFirebase.FirebaseConnState = UPDATING;
-          ESP_LOGI(TAG, "USER_CONNECTED - fw_update - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
+          #ifdef DEBUG
+    ESP_LOGI(TAG, "USER_CONNECTED - fw_update - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
+ #endif
           break;
         }
       }
@@ -1616,8 +1705,10 @@ void Firebase_Conn_Task(void *args){
       Error_Count+=!WriteFirebaseControl("/control");
       ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
       ConfigFirebase.FirebaseConnState = IDLE;
-      ESP_LOGI(TAG, "WRITING_CONTROL - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
-      break;
+      #ifdef DEBUG
+    ESP_LOGI(TAG, "WRITING_CONTROL - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
+#endif
+       break;
 
     case WRITING_STATUS:
       Error_Count+=!WriteFirebaseStatus("/status");
@@ -1625,7 +1716,9 @@ void Firebase_Conn_Task(void *args){
         askForPermission = false;
         ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
         ConfigFirebase.FirebaseConnState = IDLE;
-        ESP_LOGI(TAG, "WRITING_STATUS - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
+        #ifdef DEBUG
+    ESP_LOGI(TAG, "WRITING_STATUS - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
+ #endif
         break;
       }
       ConfigFirebase.FirebaseConnState = NextState ==0 ? READING_CONTROL : NextState;
@@ -1635,44 +1728,56 @@ void Firebase_Conn_Task(void *args){
       Error_Count+=!WriteFirebaseComs("/coms");
       ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
       ConfigFirebase.FirebaseConnState = IDLE;
-      ESP_LOGI(TAG, "WRITING_COMS - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
-      break;
+      #ifdef DEBUG
+    ESP_LOGI(TAG, "WRITING_COMS - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
+#endif
+       break;
     
     case WRITING_PARAMS:
       Error_Count+=!WriteFirebaseParams("/params");
       ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
       ConfigFirebase.FirebaseConnState = IDLE;
-      ESP_LOGI(TAG, "WRITING_PARAMS - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
+      #ifdef DEBUG
+    ESP_LOGI(TAG, "WRITING_PARAMS - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
+ #endif
       break;
 
     case WRITING_TIMES:
       Error_Count+=!WriteFirebaseTimes("/status/times");
       ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
       ConfigFirebase.FirebaseConnState = IDLE;
-      ESP_LOGI(TAG, "WRITING_TIMES - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
-      break;
+      #ifdef DEBUG
+    ESP_LOGI(TAG, "WRITING_TIMES - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
+#endif
+       break;
     /*********************** READING states **********************/
     case READING_CONTROL:
       Error_Count+=!ReadFirebaseControl("/control");
       ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
       ConfigFirebase.FirebaseConnState = NextState == 0 ? IDLE : NextState;
-      ESP_LOGI(TAG, "READING_CONTROL - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
-      break;
+      #ifdef DEBUG
+    ESP_LOGI(TAG, "READING_CONTROL - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
+#endif
+       break;
 
     case READING_PARAMS:
       Error_Count+=!ReadFirebaseParams("/params");
       ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
       ConfigFirebase.FirebaseConnState = IDLE;
-      ESP_LOGI(TAG, "READING_PARAMS - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
-      break;
+      #ifdef DEBUG
+    ESP_LOGI(TAG, "READING_PARAMS - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
+#endif
+       break;
     
     //Está preparado pero nunca lee las comunicaciones de firebase
     case READING_COMS: 
       Error_Count+=!ReadFirebaseComs("/coms");
       ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
       ConfigFirebase.FirebaseConnState = IDLE;
-      ESP_LOGI(TAG, "READING_COMS - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
-      NextState=READING_PARAMS;
+      #ifdef DEBUG
+    ESP_LOGI(TAG, "READING_COMS - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
+#endif
+       NextState=READING_PARAMS;
       break;
 
 #ifdef NO_EJECUTAR
@@ -1694,22 +1799,28 @@ void Firebase_Conn_Task(void *args){
         xTaskCreate(DownloadFileTask,"DOWNLOAD FILE", 4096*3, NULL, 5,NULL);
         ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
         ConfigFirebase.FirebaseConnState = DOWNLOADING;
-        ESP_LOGI(TAG, "UPDATING - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
-      }
+        #ifdef DEBUG
+    ESP_LOGI(TAG, "UPDATING - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
+#endif
+       }
       else{
         ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
         ConfigFirebase.FirebaseConnState = IDLE;
-        ESP_LOGI(TAG, "Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
-      }
+        #ifdef DEBUG
+    ESP_LOGI(TAG, "Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
+#endif
+       }
       break;
 
     case DOWNLOADING:
       if(!UpdateStatus.DescargandoArchivo){
         ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
         ConfigFirebase.FirebaseConnState = INSTALLING;
-        ESP_LOGI(TAG, "DOWNLOADING - Maquina de estados de Firebase pasa de %s a %s", 
-         String(ConfigFirebase.LastConnState).c_str(), 
+        #ifdef DEBUG
+    ESP_LOGI(TAG, "DOWNLOADING - Maquina de estados de Firebase pasa de %s a %s", 
+          String(ConfigFirebase.LastConnState).c_str(), 
          String(ConfigFirebase.FirebaseConnState).c_str());
+#endif
          }  
       break;
 
@@ -1717,19 +1828,25 @@ void Firebase_Conn_Task(void *args){
       vTaskDelay(pdMS_TO_TICKS(4000));
 
       if(UpdateStatus.DobleUpdate){
-        ESP_LOGI(TAG, "INSTALLING - Update segundo micro. Descargando");
+        #ifdef DEBUG
+    ESP_LOGI(TAG, "INSTALLING - Update segundo micro. Descargando");
+ #endif
         xTaskCreate(DownloadFileTask,"DOWNLOAD FILE", 4096*3, NULL, 5,NULL);
         ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
         ConfigFirebase.FirebaseConnState = DOWNLOADING;
-        ESP_LOGI(TAG, "INSTALLING - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
-      }
+        #ifdef DEBUG
+    ESP_LOGI(TAG, "INSTALLING - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
+#endif
+       }
       //vTaskDelay(pdMS_TO_TICKS(4000));
 
       if(!UpdateStatus.DescargandoArchivo && !UpdateStatus.InstalandoArchivo){
         ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
         ConfigFirebase.FirebaseConnState = IDLE;
-        ESP_LOGI(TAG, "INSTALLING - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
-      }
+        #ifdef DEBUG
+    ESP_LOGI(TAG, "INSTALLING - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
+#endif
+       }
       //Do nothing
       break;
 
@@ -1742,8 +1859,10 @@ void Firebase_Conn_Task(void *args){
       Database = nullptr;  
       ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
       ConfigFirebase.FirebaseConnState = DISCONNECTED;
-      ESP_LOGI(TAG, "DISCONNECTING - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
-      delayeando = 10;
+      #ifdef DEBUG
+    ESP_LOGI(TAG, "DISCONNECTING - Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
+#endif
+       delayeando = 10;
       break;
 
     case WRITING_RECORD:
@@ -1759,8 +1878,10 @@ void Firebase_Conn_Task(void *args){
       Database = nullptr;  
       ConfigFirebase.LastConnState = ConfigFirebase.FirebaseConnState;
       ConfigFirebase.FirebaseConnState = DISCONNECTED;
-      ESP_LOGI(TAG, "Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
-      break;
+      #ifdef DEBUG
+    ESP_LOGI(TAG, "Maquina de estados de Firebase pasa de %i a %i", ConfigFirebase.LastConnState, ConfigFirebase.FirebaseConnState);
+#endif
+       break;
     }
 
     if (ConfigFirebase.FirebaseConnState != DISCONNECTING && delayeando == 0){

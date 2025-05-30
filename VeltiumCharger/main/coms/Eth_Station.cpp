@@ -207,7 +207,9 @@ static void eth_event_handler(void *arg, esp_event_base_t event_base, int32_t ev
 #endif
         switch (event_id) {
             case ETHERNET_EVENT_CONNECTED:
+#ifdef DEBUG_ETH
                 ESP_LOGI(TAG,"link1=%i link2=%i",phy->link1,phy->link2);
+#endif
                 if(phy->link1 && phy->link2)Coms.ETH.Puerto = 3;
                 else if(phy->link1)Coms.ETH.Puerto = 1;
                 else if(phy->link2)Coms.ETH.Puerto = 2;
@@ -224,8 +226,8 @@ static void eth_event_handler(void *arg, esp_event_base_t event_base, int32_t ev
                 Update_Status_Coms(0,ETH_BLOCK);
                 break;
             case ETHERNET_EVENT_STOP:
-                ESP_LOGI(TAG,"link1=%i link2=%i",phy->link1,phy->link2);
 #ifdef DEBUG_ETH
+                ESP_LOGI(TAG,"link1=%i link2=%i",phy->link1,phy->link2);
                 Serial.println("Eth_Station - eth_event_handler: ETHERNET_EVENT_STOP - Ethernet Stopped");
 #endif
                 Update_Status_Coms(0,ETH_BLOCK);
@@ -238,8 +240,8 @@ static void eth_event_handler(void *arg, esp_event_base_t event_base, int32_t ev
                 Coms.ETH.connected = false;
                 break;
             case ETHERNET_EVENT_DISCONNECTED:
-                ESP_LOGI(TAG,"link1=%i link2=%i",phy->link1,phy->link2);
 #ifdef DEBUG_ETH
+                ESP_LOGI(TAG,"link1=%i link2=%i",phy->link1,phy->link2);
                 Serial.println("Eth_Station - eth_event_handler: ETHERNET_EVENT_DISCONNECTED - Ethernet Link Down");
 #endif
                 Update_Status_Coms(0,ETH_BLOCK);
