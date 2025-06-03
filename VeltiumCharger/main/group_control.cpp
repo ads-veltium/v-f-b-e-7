@@ -884,8 +884,8 @@ bool Calculo_General(){
       }
     }
 
-    if((corriente_disponible_limitada-total_consigna) > 5) {
-      if(++recalc_count > 25){
+    if(fabs(corriente_disponible_limitada-total_consigna) > MAX_DIFF_TO_RECALC_GROUPS){
+      if(++recalc_count > 10){
         recalcular = true;
         recalc_count = 0;
       } 

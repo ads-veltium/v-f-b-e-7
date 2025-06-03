@@ -75,6 +75,8 @@
 #define MAX_GROUP_BUFFER_SIZE	(9*MAX_GROUP_SIZE)+2 // 362
 #define SIZE_OF_GROUP_PARAMS    7 // Número de parámetros
 #define GROUPS_DEBUG_INTERVAL 	5000 //5 segundos
+#define MAX_DIFF_TO_RECALC_GROUPS 2.0 // Amperios de diferencia entre consignas y corriente disponible para recalcular el grupo
+
 
 // MEMORIA DEL PSOC
 #define MAX_RECORDS_IN_MEMORY 200
