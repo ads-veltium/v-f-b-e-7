@@ -5,6 +5,10 @@
 #include "helpers.h"
 #include "cJSON.h"
 
+static const char* TAG = "group_control.cpp";
+
+bool new_charging_request = false;
+
 extern carac_Params Params;
 extern carac_Status Status;
 extern carac_Comands Comands;
@@ -453,7 +457,7 @@ void LimiteConsumo(void *p){
                 print_table(charger_table, "Grupo en reposo", ChargingGroup.Charger_number);
 #endif
                 charger_table[i].order =1;
-                ControlGrupoState = CALCULO;
+                ControlGrupoState = EQUILIBRADO;
               }
             }
             else{
@@ -562,6 +566,10 @@ void LimiteConsumo(void *p){
         for(int i = 0; i < ChargingGroup.Charger_number; i++){ 
           //if(!memcmp(charger_table[i].HPT, "B1", 2) && charger_table[i].ChargeReq){  // ADS Eliminado requisito B1
           if(charger_table[i].ChargeReq){ 
+#ifdef DEBUG_GROUPS
+            ESP_LOGI(TAG, "El equipo %s quiere empezar a cargar", charger_table[i].name);
+#endif
+            new_charging_request = true;
             //Compruebo si entraria en el grupo con la corriente general
             if(charger_table[i].trifasico ){ //Si el equipo estaba detectado como trifasico, debemos tener en cuenta el triple de corriente
               float reparto = (corriente_disponible_limitada) / (conex_con_tri+3);
@@ -583,6 +591,7 @@ void LimiteConsumo(void *p){
                         }
                         charger_table[i].order = last_order + 1;
                         ControlGrupoState = CALCULO;
+                        new_charging_request = false;
                         break;
                     }
                   }
@@ -605,12 +614,26 @@ void LimiteConsumo(void *p){
                 }
                 charger_table[i].order = last_order + 1;
                 ControlGrupoState = CALCULO;
+                new_charging_request = false;
                 break;
               }
             }
-
+            uint8_t last_order = 0;
+            if (charger_table[i].order == 0){ // ADS - Si el orden es 0, significa que no se ha asignado un orden de carga
+              //Asignar el orden de carga
+              for(int j = 0; j < ChargingGroup.Charger_number; j++){
+                if(!memcmp(charger_table[j].HPT,"C2",2) || !memcmp(charger_table[j].HPT,"B2",2)){
+                  last_order = last_order < charger_table[j].order ? charger_table[j].order: last_order;
+                }
+              }
+            }
+            else{
+              last_order = charger_table[i].order-1;
+            }
+            charger_table[i].order = last_order + 1;            
             Serial.printf("No hay sitio en el grupo!\n");
             charger_table[i].Consigna = 0;
+            new_charging_request = false;
           }
         }
 
@@ -693,10 +716,10 @@ bool Calculo_General(){
           conectados ++;
         }
 #ifdef DEBUG_GROUPS
-        Serial.printf("group_control - Calculo_General: Cargador %s. HPT = %s. I = %i. ChargeReq = %i\n",charger_table[i].name,charger_table[i].HPT,charger_table[i].Current,charger_table[i].ChargeReq);
+        Serial.printf("group_control - Calculo_General: Cargador %s. HPT = %s. Consigna = %i. I = %i. ChargeReq = %i\n",charger_table[i].name,charger_table[i].HPT, charger_table[i].Consigna ,charger_table[i].Current,charger_table[i].ChargeReq);
 #endif
         //Datos por Grupo
-        if(!memcmp(charger_table[i].HPT,"C2",2) || !memcmp(charger_table[i].HPT,"C1",2) || !memcmp(charger_table[i].HPT,"B2",2) || !memcmp(charger_table[i].HPT,"B1",2)){
+        if(!memcmp(charger_table[i].HPT,"C2",2) || !memcmp(charger_table[i].HPT,"C1",2) || !memcmp(charger_table[i].HPT,"B2",2) || !memcmp(charger_table[i].HPT,"B1",2)) {
             conex++;
             conex_con_tri++;
             uint8_t faseA, faseB = 0, faseC = 0;
@@ -847,48 +870,51 @@ bool Calculo_General(){
         }
       }
       // Si tenemos un limite menor que 6A para cada coche, debemos expulsar al ultimo que haya entrado
-      while(corriente_disponible_total < 6){
-        //Buscar el último que ha empezado a cargar
-        uint8_t last_index = 0;
-        uint8_t last_order = 0;
-        for(int j = 0; j < ChargingGroup.Charger_number; j++){
-          if(!memcmp(charger_table[j].HPT,"C2",2) || !memcmp(charger_table[j].HPT,"B2",2) || !memcmp(charger_table[j].HPT,"C1",2)){
-            if(last_order < charger_table[j].order ){
-                last_order = charger_table[j].order;
-                last_index = j;
+      if (!new_charging_request)  {
+        while(corriente_disponible_total < 6){
+          //Buscar el último que ha empezado a cargar
+          uint8_t last_index = 0;
+          uint8_t last_order = 0;
+          for(int j = 0; j < ChargingGroup.Charger_number; j++){
+            if(!memcmp(charger_table[j].HPT,"C2",2) || !memcmp(charger_table[j].HPT,"B",1) || !memcmp(charger_table[j].HPT,"C1",2)){
+              if(last_order < charger_table[j].order ){
+                  last_order = charger_table[j].order;
+                  last_index = j;
+              }
             }
           }
-        }
-        charger_table[last_index].Consigna = 0;
-        charger_table[last_index].ChargeReq = 0;
-#ifdef DEBUG_GROUPS
-        Serial.printf("group_control - LimiteConsumo: corriente_disponible_total=%f. Echamos a %s, en %s, Corriente=%i y Consigna=%i\n", corriente_disponible_total, charger_table[last_index].name, charger_table[last_index].HPT,charger_table[last_index].Current,charger_table[last_index].Consigna);
-#endif
-        memcpy(charger_table[last_index].HPT,"B1",3);
-        charger_table[last_index].Current = 0;
-        charger_table[last_index].Delta = 0;
-        charger_table[last_index].Delta_timer = 0;
-        charger_table[last_index].CurrentB = 0;
-        charger_table[last_index].CurrentC = 0;
-        conex--;
-        conex_con_tri --;
-        if(charger_table[last_index].trifasico){
-          conex_con_tri -=2;
-        }
-        if(conex_con_tri > 0){
-          corriente_disponible_total = floor(corriente_disponible_limitada / conex_con_tri);
-        }
-        else{
-          break;
+          charger_table[last_index].Consigna = 0;
+          charger_table[last_index].ChargeReq = 0;
+  #ifdef DEBUG_GROUPS
+          Serial.printf("group_control - LimiteConsumo: corriente_disponible_total=%f. Echamos a %s, en %s, Corriente=%i y Consigna=%i\n", corriente_disponible_total, charger_table[last_index].name, charger_table[last_index].HPT,charger_table[last_index].Current,charger_table[last_index].Consigna);
+  #endif
+          memcpy(charger_table[last_index].HPT,"B1",3);
+          charger_table[last_index].Current = 0;
+          charger_table[last_index].Delta = 0;
+          charger_table[last_index].Delta_timer = 0;
+          charger_table[last_index].CurrentB = 0;
+          charger_table[last_index].CurrentC = 0;
+          conex--;
+          conex_con_tri --;
+          if(charger_table[last_index].trifasico){
+            conex_con_tri -=2;
+          }
+          if(conex_con_tri > 0){
+            corriente_disponible_total = floor(corriente_disponible_limitada / conex_con_tri);
+          }
+          else{
+            break;
+          }
         }
       }
     }
 
     if(fabs(corriente_disponible_limitada-total_consigna) > MAX_DIFF_TO_RECALC_GROUPS){
-      if(++recalc_count > 10){
-        recalcular = true;
-        recalc_count = 0;
-      } 
+      recalcular = true;
+    //  if(++recalc_count > 10){
+    //    recalcular = true;
+    //    recalc_count = 0;
+    //  } 
     }
 
 #ifdef DEBUG_GROUPS

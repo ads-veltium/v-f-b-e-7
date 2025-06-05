@@ -72,7 +72,6 @@ char LastControl[50] EXT_RAM_ATTR;
 char LastData[100]   EXT_RAM_ATTR;
 static char FullData[4096] EXT_RAM_ATTR;
 bool hello_verification = false;
-uint16_t corrienteDeseada = 600;
 
 extern bool PARAR_CLIENTE;
 
@@ -545,18 +544,19 @@ void coap_put( char* Topic, char* Message){
 #endif
             }            
             
-            //TODOJ: Cambiar lo de corriente d
             if((uint8_t)Cargador.Consigna != Comands.desired_current && Cargador.Consigna!=0){
-                //corrienteDeseada = Cargador.Consigna * 100;
 #ifdef DEBUG_COAP
-                Serial.printf("Enviando nueva consigna! %i %i\n", Cargador.Consigna, Comands.desired_current);
+                Serial.printf("Enviando consigna %i al PSoC. Ultimo valor de respuesta=%i\n", Cargador.Consigna, Comands.desired_current);
 #endif
                 SendToPSOC5((uint8_t)Cargador.Consigna, MEASURES_CURRENT_COMMAND_CHAR_HANDLE);
-#ifdef DEBUG_COAP
-                Serial.printf("Enviado al PSoC Consigna = %i\n", Cargador.Consigna);
-#endif
+                delay(5);
             }
-
+            else if(Cargador.Consigna == 0 && Comands.desired_current > 1){ 
+#ifdef DEBUG_COAP
+                Serial.printf("Enviando consigna %i al PSoC. Ultimo valor de respuesta=%i\n", Cargador.Consigna, Comands.desired_current);
+#endif
+                SendToPSOC5(1, MEASURES_CURRENT_COMMAND_CHAR_HANDLE); // Se envíá un valor 1 en lugar de 0 para no modificar el código del PSoC que espera valores >0
+            }
         }
         else if(!memcmp("PARAMS", Topic, 6)){
             New_Params(Message,  strlen(Message));
@@ -1068,13 +1068,6 @@ void Send_Data()
 
     cJSON_AddStringToObject(Datos_Json, "device_id", ConfigFirebase.Device_Id);
     cJSON_AddNumberToObject(Datos_Json, "current", Status.Measures.instant_current);
-    //TODOJ: Cambiar esto!!!
-    /*if(!memcmp("C", Status.HPT_status, 1)){
-        cJSON_AddNumberToObject(Datos_Json, "current", corrienteDeseada);
-    }
-    else{
-        cJSON_AddNumberToObject(Datos_Json, "current", Status.Measures.instant_current);
-    }*/
 
     //si es trifasico, enviar informacion de todas las fases
     if(Status.Trifasico){

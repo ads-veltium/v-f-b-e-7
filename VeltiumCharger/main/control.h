@@ -11,21 +11,21 @@
 	#define USE_GROUPS			   //Comentar para no utilizar los grupos de potencia
 #endif
 
-//#define DEVELOPMENT				   //Comentar para pasar firmware a produccion ( Cambio de base de datos y quitar debugs)
+// #define DEVELOPMENT				   //Comentar para pasar firmware a produccion ( Cambio de base de datos y quitar debugs)
 
 #ifdef DEVELOPMENT
 	#define DEBUG				   //Activar los distintos debugs
 	#ifdef DEBUG
 		#ifdef USE_GROUPS
-			//#define DEBUG_GROUPS	//Activar el debug de los grupos
-			//#define DEBUG_COAP		// ADS - Debug de mensajes COAP
+			#define DEBUG_GROUPS	//Activar el debug de los grupos
+			#define DEBUG_COAP		// ADS - Debug de mensajes COAP
 			//#define DEBUG_UDP		//Debug de mensajes UDP enviados y recibidos
 		#endif
 
 		#define DEBUG_BLE		   //Activar el debug del ble
 		//#define DEBUG_CONFIG	   //Debugar el almacenamiento de la configuracion
 		//#define DEBUG_UPDATE
-		//#define DEBUG_TX_UART
+		#define DEBUG_TX_UART
 		//#define DEBUG_RX_UART
 		#define DEBUG_RECORDS
 

@@ -320,7 +320,6 @@ typedef struct{
 	TickType_t Period = 0;
 	bool Conected = false;
 	bool ChargeReq = false;
-
 }carac_charger;
 
 typedef struct{
