@@ -223,7 +223,7 @@ void SendScheduleMatrixToPSOC5(uint8_t *data) {
   #ifdef DEBUG_TX_UART
       Serial.printf("SendMatrixToPSOC5 (day %u): %i bytes sent.\n", day, err);
   #endif
-      delay(50); 
+      delay(100); 
     }
 
     uint32_t start_time = millis();
@@ -232,7 +232,6 @@ void SendScheduleMatrixToPSOC5(uint8_t *data) {
   }
   if(flag_schedule_ack)
   {
-    Serial.printf("Se ha enviado y recibido la sched matrix en %d attempts\n", attempts);
     flag_schedule_ack = false;
   }
 }

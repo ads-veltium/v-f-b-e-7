@@ -554,11 +554,6 @@ void procesar_bloque(uint16 tipo_bloque){
 #endif
 			if (!systemStarted && (buffer_rx_local[239]==0x36 || buffer_rx_local[238]==0x36)) { //Compatibilidad con 509
 				memcpy(device_ID, buffer_rx_local, 11);
-				Serial.print("******NOMBRE DISPOSITIVO: ");
-				for (int i = 0; i < 11; i++) {
-					Serial.printf("%02X ", device_ID[i]);
-				}
-				Serial.println();
 				changeAdvName(device_ID);
 				modifyCharacteristic(device_ID, 11, VCD_NAME_USERS_CHARGER_DEVICE_ID_CHAR_HANDLE);
 				modifyCharacteristic(&buffer_rx_local[11], 1, MEASURES_INSTALATION_CURRENT_LIMIT_CHAR_HANDLE);
@@ -1090,44 +1085,56 @@ void procesar_bloque(uint16 tipo_bloque){
 		break;
 		
 		case ENERGY_RECORD_RECORD_CHAR_HANDLE:{
-#ifdef DEBUG
-			ESP_LOGI(TAG,"Energy record received from PSoC");
+			#ifdef DEBUG
+						ESP_LOGI(TAG,"Energy record received from PSoC");
+			#endif
+						memcpy(record_received_buffer,buffer_rx_local,20);
+						memcpy(record_received_buffer_for_fb,buffer_rx_local,sizeof(buffer_rx_local));
+						int j = 20;
+						bool end = false;
+						for(int i =20;i<512;i+=4){      
+							if(j<252){
+								if(buffer_rx_local[j]==255 && buffer_rx_local[j+1]==255){
+									end = true;
+								}
+								int PotLeida=buffer_rx_local[j]*0x100+buffer_rx_local[j+1];
+								if(PotLeida >0 && PotLeida < 5900 && !end){
+									record_received_buffer[i]   = buffer_rx_local[j];
+									record_received_buffer[i+1] = buffer_rx_local[j+1];
+									record_received_buffer[i+2] = 0;
+									record_received_buffer[i+3] = 0;
+								}
+								else{
+									record_received_buffer[i]   = 0;
+									record_received_buffer[i+1] = 0;
+									record_received_buffer[i+2] = 0;
+									record_received_buffer[i+3] = 0;
+								}
+								j+=2;
+							}
+							else{
+								record_received_buffer[i]   = 0;
+								record_received_buffer[i+1] = 0;
+								record_received_buffer[i+2] = 0;
+								record_received_buffer[i+3] = 0;
+							}               
+						}
+						new_record_received = true;
+						ask_for_new_record = false;
+
+#ifdef DEBUG_RECORDS
+						char buffer_str1[513] = {0}; // 256 * 2 + 1 for null terminator
+						char buffer_str2[513] = {0}; // 256 * 2 + 1 for null terminator
+						char buffer_str3[513] = {0}; // 256 * 2 + 1 for null terminator
+						for (int i = 0; i < 256; i++) {
+							snprintf(buffer_str1 + i * 2, sizeof(buffer_str1) - i * 2, "%02X", buffer_rx_local[i]);
+							snprintf(buffer_str2 + i * 2, sizeof(buffer_str2) - i * 2, "%02X", record_received_buffer[i]);
+							snprintf(buffer_str3 + i * 2, sizeof(buffer_str3) - i * 2, "%02X", record_received_buffer_for_fb[i]);
+						}
+						ESP_LOGE(TAG, "***** Record received buffer_rx_local               = %s", buffer_str1);
+						ESP_LOGE(TAG, "***** Record received record_received_buffer        = %s", buffer_str2);
+						ESP_LOGE(TAG, "***** Record received record_received_buffer_for_fb = %s", buffer_str3);
 #endif
-			memcpy(record_received_buffer,buffer_rx_local,20);
-			memcpy(record_received_buffer_for_fb,buffer_rx_local,sizeof(buffer_rx_local));
-
-			int j = 20;
-			bool end = false;
-			for(int i =20;i<512;i+=4){		
-				if(j<252){
-					if(buffer_rx_local[j]==255 && buffer_rx_local[j+1]==255){
-						end = true;
-					}
-					int PotLeida=buffer_rx_local[j]*0x100+buffer_rx_local[j+1];
-					if(PotLeida >0 && PotLeida < 5900 && !end){
-						record_received_buffer[i]   = buffer_rx_local[j];
-						record_received_buffer[i+1] = buffer_rx_local[j+1];
-						record_received_buffer[i+2] = 0;
-						record_received_buffer[i+3] = 0;
-					}
-					else{
-						record_received_buffer[i]   = 0;
-						record_received_buffer[i+1] = 0;
-						record_received_buffer[i+2] = 0;
-						record_received_buffer[i+3] = 0;
-					}
-
-					j+=2;
-				}
-				else{
-					record_received_buffer[i]   = 0;
-					record_received_buffer[i+1] = 0;
-					record_received_buffer[i+2] = 0;
-					record_received_buffer[i+3] = 0;
-				}				
-			}
-			new_record_received = true;
-			ask_for_new_record = false;
 
 #ifdef CONNECTED
 			//Si no estamos conectados por ble
@@ -1146,6 +1153,7 @@ void procesar_bloque(uint16 tipo_bloque){
 			modifyCharacteristic(record_received_buffer, 512, ENERGY_RECORD_RECORD_CHAR_HANDLE);
 		} 
 		break;
+
 		
 		case RECORDING_REC_LAST_CHAR_HANDLE:{
 #ifdef DEBUG
