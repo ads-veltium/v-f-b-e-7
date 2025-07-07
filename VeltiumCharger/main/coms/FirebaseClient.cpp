@@ -40,6 +40,7 @@ extern boolean record_pending_for_write;
 extern uint8 record_received_buffer_for_fb[550];
 uint8_t older_record_in_fb;
 boolean write_records_trigger = false;
+bool records_on_off = true;
 extern boolean records_trigger;
 extern boolean ask_for_new_record;
 boolean retry_enable =true;
@@ -950,6 +951,42 @@ bool WriteFirebaseRecordsTrigger(bool trigger_value){
     return false;
 }
 
+// Función para leer el flag write_records_on_off en Firebase
+bool ReadFirebaseRecordsOnOffFlag() {
+    Lectura.clear();
+    if (Database->Send_Command("/records_sync/write_records_on_off", &Lectura, FB_READ)) {
+        if (Lectura.containsKey("on_off_flag")) {
+            records_on_off = Lectura["on_off_flag"].as<bool>();
+            return true;
+        } else {
+          records_on_off = true;
+          ESP_LOGW(TAG, "on_off_flag not found");
+          return false;
+        }
+    } else {
+        // Si no se puede leer, por defecto true
+        records_on_off = true;
+        ESP_LOGW(TAG, "Failed to read /records_sync/write_records_on_off");
+        return false;
+    }
+}
+
+bool WriteFirebaseRecordsOnOffFlag(bool on_off_value) {
+  DynamicJsonDocument Escritura(2048);
+  Escritura.clear();
+  Escritura["on_off_flag"] = records_on_off;
+  Escritura["readed_value"] = on_off_value;
+  if (Database->Send_Command("/records_sync/write_records_on_off", &Escritura, FB_UPDATE)){
+    if (!Database->Send_Command("/records_sync/write_records_on_off/dev_ack_ts", &Escritura, FB_TIMESTAMP)){
+      return true;
+      }
+  }
+#ifdef DEBUG
+  ESP_LOGW(TAG, "Failed to write /records_sync/write_records_on_off");
+#endif
+  return false;
+}
+
 /*****************************************************
  *              Sistema de Actualización
  *****************************************************/
@@ -1305,6 +1342,20 @@ void Firebase_Conn_Task(void *args){
         }
       }
 
+      if (!ReadFirebaseRecordsOnOffFlag()){
+        records_on_off = true;
+        WriteFirebaseRecordsOnOffFlag (true);
+#ifdef DEBUG
+        ESP_LOGW(TAG, "Failed to read /records_sync/write_records_on_off");
+#endif
+      }
+      else{
+        WriteFirebaseRecordsOnOffFlag (records_on_off);
+#ifdef DEBUG
+        ESP_LOGI(TAG, "write_records_on_off = %i", records_on_off);
+#endif
+      }
+
 #ifdef USE_GROUPS
       if(ChargingGroup.Params.GroupActive){
         //comprobar si han borrado el grupo mientras estabamos desconectados
@@ -1443,7 +1494,15 @@ void Firebase_Conn_Task(void *args){
         WriteFirebaseRecordsTrigger(false);
       }
 
-      if (record_pending_for_write){
+      //if (ReadFirebaseRecordsOnOffFlag()){
+      //  WriteFirebaseRecordsOnOffFlag(records_on_off); 
+      //}
+
+      // Para poder escribir los records ha de estar habilitado el flag records_on_off
+      // records_on_off se lee en el arranque del valor de Firebase de /records_sync/write_records_on_off/on_off_flag
+      // records_on_off está a true por defecto
+      
+      if (record_pending_for_write && records_on_off){
         delayeando = 1;
         record_pending_for_write = false;      
         if (WriteFirebaseHistoric((char*)record_received_buffer_for_fb)) {
