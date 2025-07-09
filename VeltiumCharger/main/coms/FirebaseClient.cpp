@@ -55,6 +55,7 @@ uint8_t CreateMatrix(uint16_t* inBuff, uint8_t* outBufff);
 uint8_t hex2int(char ch);
 uint16_t hexChar_To_uint16_t(const uint8_t num);
 void Hex_Array_To_Uint16A_Array(const char* inBuff, uint16_t* outBuff);
+String obtenerAct(char* buffer);
 
 bool askForPermission = false ;
 bool givePermission = false;
@@ -367,44 +368,8 @@ bool WriteFirebaseHistoric(char* buffer){
       // return true; // No se bloquea el almacenamiento de recargas con horas incorrectas
     }
 
-    int j = 20;
-    int size =0;
-    bool end = false;
-    uint8_t* record_buffer = (uint8_t*) malloc(252);
-    memset(record_buffer, 0, 252);
+    String encodedAct = obtenerAct(buffer);
     
-    for(int i = 0;i<252;i+=2){		
-      if(j<252){
-        if(buffer[j]==255 && buffer[j+1]==255){
-          end = true;
-          break;
-        }
-        uint16_t PotLeida=buffer[j]*0x100+buffer[j+1];
-        if(PotLeida > 0 && PotLeida < 5500 && !end){
-          record_buffer[i]   = buffer[j];
-          record_buffer[i+1]   = buffer[j+1];
-
-          size+=2;
-        }
-        else{
-          record_buffer[i]   = 0;
-          record_buffer[i+1]   = 0;
-          size+=2;
-        }
-        j+=2;
-      }
-      else{
-        record_buffer[i]   = 0;
-        record_buffer[i+1]   = 0;
-        size+=2;
-      }				
-    }
-    
-  
-    String Encoded = base64::encode(record_buffer,(size_t)size);
-
-    free(record_buffer);
-
     int count = 0;
     askForPermission = true;
     
@@ -423,7 +388,7 @@ bool WriteFirebaseHistoric(char* buffer){
     String Path = "/records/";
     Escritura.clear();
 
-    Escritura["act"] = Encoded;
+    Escritura["act"] = encodedAct;
     Escritura["con"] = ConectionTS;
     Escritura["dis"] = DisconTs;
     Escritura["rea"] = "";
@@ -454,6 +419,47 @@ bool WriteFirebaseHistoric(char* buffer){
     givePermission = false;
     ConfigFirebase.FirebaseConnState = ReturnToLastconn;
     return true;
+}
+String obtenerAct(char* buffer)
+{
+  int j = 20;
+  int size =0;
+  bool end = false;
+  uint8_t* record_buffer = (uint8_t*) malloc(252);
+  memset(record_buffer, 0, 252);
+  
+  for(int i = 0;i<252;i+=2){		
+    if(j<252){
+      if(buffer[j]==255 && buffer[j+1]==255){
+        end = true;
+        break;
+      }
+      uint16_t PotLeida=buffer[j]*0x100+buffer[j+1];
+      if(PotLeida > 0 && PotLeida < 5500 && !end){
+        record_buffer[i]   = buffer[j];
+        record_buffer[i+1]   = buffer[j+1];
+
+        size+=2;
+      }
+      else{
+        record_buffer[i]   = 0;
+        record_buffer[i+1]   = 0;
+        size+=2;
+      }
+      j+=2;
+    }
+    else{
+      record_buffer[i]   = 0;
+      record_buffer[i+1]   = 0;
+      size+=2;
+    }				
+  }
+  
+
+  String Encoded = base64::encode(record_buffer,(size_t)size);
+
+  free(record_buffer);
+  return Encoded;
 }
 
 bool WriteFirebaseLastRecordSynced(uint8_t last_rec_in_mem, uint8_t rec_index, uint8_t rec_lap){
@@ -1251,6 +1257,8 @@ void Firebase_Conn_Task(void *args){
   TickType_t xElapsed = 0; 
   uint32_t UpdateCheckTimeout=0;
   int  delayeando = 0;
+  
+  bool firebaseWriteRecordStop = 0;
 
   while(1){
     delayeando = 0;
@@ -1501,8 +1509,14 @@ void Firebase_Conn_Task(void *args){
       // Para poder escribir los records ha de estar habilitado el flag records_on_off
       // records_on_off se lee en el arranque del valor de Firebase de /records_sync/write_records_on_off/on_off_flag
       // records_on_off está a true por defecto
+      Serial.print("LO DE TU ACT: ");
+      Serial.println(obtenerAct((char*)record_received_buffer_for_fb));
+
+      if(!records_on_off && obtenerAct((char*)record_received_buffer_for_fb)=="")
+        firebaseWriteRecordStop = 1;
+      else firebaseWriteRecordStop = 0;
       
-      if (record_pending_for_write && records_on_off){
+      if (record_pending_for_write && !firebaseWriteRecordStop){
         delayeando = 1;
         record_pending_for_write = false;      
         if (WriteFirebaseHistoric((char*)record_received_buffer_for_fb)) {
