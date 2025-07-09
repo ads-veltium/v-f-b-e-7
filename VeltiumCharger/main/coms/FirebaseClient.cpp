@@ -1509,9 +1509,6 @@ void Firebase_Conn_Task(void *args){
       // Para poder escribir los records ha de estar habilitado el flag records_on_off
       // records_on_off se lee en el arranque del valor de Firebase de /records_sync/write_records_on_off/on_off_flag
       // records_on_off está a true por defecto
-      Serial.print("LO DE TU ACT: ");
-      Serial.println(obtenerAct((char*)record_received_buffer_for_fb));
-
       if(!records_on_off && obtenerAct((char*)record_received_buffer_for_fb)=="")
         firebaseWriteRecordStop = 1;
       else firebaseWriteRecordStop = 0;
