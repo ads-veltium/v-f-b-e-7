@@ -26,8 +26,14 @@
 		//#define DEBUG_CONFIG	   //Debugar el almacenamiento de la configuracion
 		//#define DEBUG_UPDATE
 		//#define DEBUG_TX_UART
+<<<<<<< 30bee37d827e8108a76a0c76b81e9c9de4869565
 		#define DEBUG_RX_UART
 		//#define DEBUG_RECORDS
+=======
+		//#define DEBUG_RX_UART
+		#define DEBUG_RECORDS
+
+>>>>>>> e632a05e718c02d3417659bb991a1c11dd8def38
 		#ifdef IS_UNO_KUBO	
 			//#define DEBUG_WIFI	     //Activar el debug del wifi
 			//#define DEBUG_ETH	   	 //Activar el debug del ETH
