@@ -16,21 +16,15 @@ class Config {
         void Group_Carac_to_json(DynamicJsonDocument& ConfigJSON);       
 #endif
         File ConfigFile;
+        carac_config data;
+        carac_group_config group_data;
     
     public:
-        //ordenes de guardado y carga de datos
-        bool Guardar = false;
-        bool Cargar = false;
-#ifdef CONNECTED
-        bool Group_Guardar = false;
-        bool Group_Cargar = false;
-#endif
-        //Inicializador
         void init();
 
         //Atributos
-        carac_config data;
-        carac_group_config group_data;
+        carac_config& getData() { return data; };
+        carac_group_config& getGroupData() { return group_data; };
         
         //Acciones sobre el archivo al completo
         bool Load();

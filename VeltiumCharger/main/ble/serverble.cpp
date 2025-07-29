@@ -992,10 +992,10 @@ void changeAdvName( uint8_t * name ){
 
 	pAdvertising->setAdvertisementData(advert);
 	pAdvertising->setName(std::string((char*)name));
-	pAdvertising->setMaxInterval(1600);
-	pAdvertising->setMinInterval(32);
-	pAdvertising->setMaxPreferred(128);
-	pAdvertising->setMinPreferred(6);
+	pAdvertising->setMaxInterval(320);
+	pAdvertising->setMinInterval(160);
+	pAdvertising->setMaxPreferred(24);
+	pAdvertising->setMinPreferred(12);
 	pAdvertising->addServiceUUID(BLEUUID((uint16_t)0xCD01));
 	pAdvertising->start();
 	
@@ -1194,7 +1194,6 @@ void serverbleTask(void *arg)
 			pServer->disconnect(Conn_Handle);
 			deviceBleDisconnect= false;
 		}
-		vTaskDelay(pdMS_TO_TICKS(10));
 	}
 }
 
